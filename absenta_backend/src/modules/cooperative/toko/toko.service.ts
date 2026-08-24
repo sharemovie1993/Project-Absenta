@@ -45,13 +45,18 @@ export class TokoService {
                 price:             Number(data.price),
                 costPrice:         Number(data.costPrice || 0),
                 stock:             Number(data.stock || 0),
+                minStock:          Number(data.minStock || 0),
                 category:          data.category || null,
                 imageUrl:          data.imageUrl || null,
                 productType:       data.productType || 'Default',
                 showInTransaction: data.showInTransaction !== undefined ? Boolean(data.showInTransaction) : true,
                 useStock:          data.useStock !== undefined ? Boolean(data.useStock) : true,
-                barcode:           data.barcode || null,
+                weight:            data.weight !== undefined ? Number(data.weight) : 0,
                 unit:              data.unit || null,
+                discount:          data.discount !== undefined ? Number(data.discount) : 0,
+                discountType:      data.discountType || 'PERCENT',
+                rackLocation:      data.rackLocation || null,
+                barcode:           data.barcode || null,
                 description:       data.description || null,
             },
         });
@@ -95,13 +100,18 @@ export class TokoService {
         if (data.price !== undefined) updateData.price = Number(data.price);
         if (data.costPrice !== undefined) updateData.costPrice = Number(data.costPrice);
         if (data.stock !== undefined) updateData.stock = Number(data.stock);
+        if (data.minStock !== undefined) updateData.minStock = Number(data.minStock);
         if (data.category !== undefined) updateData.category = data.category || null;
         if (data.imageUrl !== undefined) updateData.imageUrl = data.imageUrl || null;
         if (data.productType !== undefined) updateData.productType = data.productType || 'Default';
         if (data.showInTransaction !== undefined) updateData.showInTransaction = Boolean(data.showInTransaction);
         if (data.useStock !== undefined) updateData.useStock = Boolean(data.useStock);
-        if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
+        if (data.weight !== undefined) updateData.weight = Number(data.weight);
         if (data.unit !== undefined) updateData.unit = data.unit || null;
+        if (data.discount !== undefined) updateData.discount = Number(data.discount);
+        if (data.discountType !== undefined) updateData.discountType = data.discountType || 'PERCENT';
+        if (data.rackLocation !== undefined) updateData.rackLocation = data.rackLocation || null;
+        if (data.barcode !== undefined) updateData.barcode = data.barcode || null;
         if (data.description !== undefined) updateData.description = data.description || null;
 
         const updated = await prisma.product.update({

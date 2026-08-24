@@ -2681,14 +2681,19 @@ model Product {
   price             Decimal
   costPrice         Decimal  @default(0)
   stock             Int      @default(0)
+  minStock          Int      @default(0)
   category          String?
   imageUrl          String?
   productType       String?  @default("Default")
   showInTransaction Boolean  @default(true)
   useStock          Boolean  @default(true)
-  barcode           String?
+  weight            Decimal? @default(0)
   unit              String?
+  discount          Decimal? @default(0)
+  discountType      String?  @default("PERCENT")
+  rackLocation      String?
   description       String?
+  barcode           String?
 
   tenantId String
 

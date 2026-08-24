@@ -6,10 +6,11 @@ import {
   RotateCw, 
   Barcode, 
   Plus, 
-  Check, 
   Info, 
   Loader2, 
-  X 
+  X,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Button } from '../../../components/cooperative/ui/Button';
 import api from '../../../lib/axiosInstance';
@@ -23,14 +24,19 @@ interface Product {
   price: string;
   costPrice: string;
   stock: number;
+  minStock?: number;
   category: string;
   imageUrl?: string | null;
   productType?: string | null;
   showInTransaction?: boolean;
   useStock?: boolean;
-  barcode?: string | null;
+  weight?: string | number | null;
   unit?: string | null;
+  discount?: string | number | null;
+  discountType?: string | null;
+  rackLocation?: string | null;
   description?: string | null;
+  barcode?: string | null;
 }
 
 interface ProductFormModalProps {
@@ -43,11 +49,19 @@ interface ProductFormModalProps {
     price: string;
     costPrice: string;
     stock: string;
+    minStock?: string;
     category: string;
     imageUrl?: string;
     productType?: string;
     showInTransaction?: boolean;
     useStock?: boolean;
+    weight?: string;
+    unit?: string;
+    discount?: string;
+    discountType?: string;
+    rackLocation?: string;
+    description?: string;
+    barcode?: string;
   }) => Promise<void>;
   isLoading: boolean;
   existingCategories: string[];
@@ -67,16 +81,22 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     price: '0',
     costPrice: '0',
     stock: '0',
+    minStock: '0',
     category: '',
     imageUrl: '',
     productType: 'Default',
     showInTransaction: true,
     useStock: true,
+    weight: '0',
+    unit: 'pcs',
+    discount: '0',
+    discountType: 'PERCENT', // 'PERCENT' or 'NOMINAL'
+    rackLocation: '',
+    description: '',
+    barcode: '',
   });
 
-  const [isCustomCategory, setIsCustomCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,12 +130,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         price: editingProduct.price.toString(),
         costPrice: editingProduct.costPrice.toString(),
         stock: editingProduct.stock.toString(),
+        minStock: editingProduct.minStock !== undefined ? editingProduct.minStock.toString() : '0',
         category: editingProduct.category || categoryOptions[0] || 'Makanan',
         imageUrl: editingProduct.imageUrl || '',
         productType: editingProduct.productType || 'Default',
         showInTransaction: editingProduct.showInTransaction !== undefined ? editingProduct.showInTransaction : true,
         useStock: editingProduct.useStock !== undefined ? editingProduct.useStock : true,
+        weight: editingProduct.weight !== undefined && editingProduct.weight !== null ? editingProduct.weight.toString() : '0',
+        unit: editingProduct.unit || 'pcs',
+        discount: editingProduct.discount !== undefined && editingProduct.discount !== null ? editingProduct.discount.toString() : '0',
+        discountType: editingProduct.discountType || 'PERCENT',
+        rackLocation: editingProduct.rackLocation || '',
+        description: editingProduct.description || '',
+        barcode: editingProduct.barcode || '',
       });
+      // If product has extra fields populated, auto expand
+      if (editingProduct.minStock || editingProduct.rackLocation || editingProduct.description || editingProduct.discount) {
+        setIsExpanded(true);
+      }
     } else {
       const randomNum = Math.floor(10000000 + Math.random() * 90000000);
       setFormData({
@@ -124,12 +156,21 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         price: '0',
         costPrice: '0',
         stock: '0',
+        minStock: '0',
         category: categoryOptions[0] || 'Makanan',
         imageUrl: '',
         productType: 'Default',
         showInTransaction: true,
         useStock: true,
+        weight: '0',
+        unit: 'pcs',
+        discount: '0',
+        discountType: 'PERCENT',
+        rackLocation: '',
+        description: '',
+        barcode: '',
       });
+      setIsExpanded(false);
     }
     setValidationErrors({});
   }, [editingProduct, isOpen, categoryOptions]);
@@ -173,7 +214,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     }
   }, []);
 
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setValidationErrors((prev) => ({ ...prev, [name]: '' }));
@@ -244,11 +285,19 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
       price: String(priceNum),
       costPrice: String(costNum),
       stock: String(stockNum),
+      minStock: String(Number(formData.minStock || 0)),
       category: formData.category.trim(),
       imageUrl: formData.imageUrl || undefined,
       productType: formData.productType,
       showInTransaction: formData.showInTransaction,
       useStock: formData.useStock,
+      weight: String(Number(formData.weight || 0)),
+      unit: formData.unit.trim() || undefined,
+      discount: String(Number(formData.discount || 0)),
+      discountType: formData.discountType,
+      rackLocation: formData.rackLocation.trim() || undefined,
+      description: formData.description.trim() || undefined,
+      barcode: formData.barcode.trim() || undefined,
     });
   }, [formData, onSubmit]);
 
@@ -550,7 +599,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
           </div>
 
           {/* 9. Kategori */}
-          <div className="space-y-1 pb-4">
+          <div className="space-y-1">
             <label htmlFor="prod-category-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
               Kategori
             </label>
@@ -588,7 +637,170 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
             </div>
           </div>
 
-          {/* 10. Bottom Full-Width Simpan Button */}
+          {/* ─────────────────────────────────────────────────────────────────────
+              EXPANDABLE EXTRA FIELDS SECTION (Kasir Pintar 1:1 Persona)
+              ───────────────────────────────────────────────────────────────────── */}
+          {isExpanded && (
+            <div className="space-y-4 pt-1 animate-in fade-in slide-in-from-top-2 duration-200">
+              {/* 10. Batas Minimum Stok */}
+              <div className="space-y-1">
+                <label htmlFor="prod-minstock-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Batas Minimum Stok
+                </label>
+                <input
+                  id="prod-minstock-input"
+                  type="number"
+                  min="0"
+                  name="minStock"
+                  value={formData.minStock}
+                  onChange={handleInputChange}
+                  placeholder="0"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* 11. Berat (gram) & Satuan (gram,pcs) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor="prod-weight-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Berat (gram)
+                  </label>
+                  <input
+                    id="prod-weight-input"
+                    type="number"
+                    min="0"
+                    name="weight"
+                    value={formData.weight}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="prod-unit-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Satuan (gram,pcs)
+                  </label>
+                  <input
+                    id="prod-unit-input"
+                    type="text"
+                    name="unit"
+                    value={formData.unit}
+                    onChange={handleInputChange}
+                    placeholder="pcs"
+                    className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* 12. Diskon with Toggle [% / Rp] */}
+              <div className="space-y-1">
+                <label htmlFor="prod-discount-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Diskon
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    id="prod-discount-input"
+                    type="number"
+                    min="0"
+                    name="discount"
+                    value={formData.discount}
+                    onChange={handleInputChange}
+                    placeholder="0"
+                    className="flex-1 h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <div className="flex h-11 rounded-xl border border-slate-200 dark:border-slate-800 p-0.5 bg-slate-50 dark:bg-slate-900 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, discountType: 'PERCENT' }))}
+                      className={cn(
+                        "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
+                        formData.discountType === 'PERCENT'
+                          ? "bg-emerald-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                      )}
+                    >
+                      %
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, discountType: 'NOMINAL' }))}
+                      className={cn(
+                        "px-3 h-full rounded-lg text-xs font-bold transition-all cursor-pointer",
+                        formData.discountType === 'NOMINAL'
+                          ? "bg-emerald-600 text-white shadow-xs"
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                      )}
+                    >
+                      Rp
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 13. Letak Rak */}
+              <div className="space-y-1">
+                <label htmlFor="prod-rack-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Letak rak
+                </label>
+                <input
+                  id="prod-rack-input"
+                  type="text"
+                  name="rackLocation"
+                  value={formData.rackLocation}
+                  onChange={handleInputChange}
+                  placeholder="Contoh: Rak A-02"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* 14. Keterangan */}
+              <div className="space-y-1">
+                <label htmlFor="prod-desc-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Keterangan
+                </label>
+                <input
+                  id="prod-desc-input"
+                  type="text"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Catatan / keterangan tambahan produk"
+                  className="w-full h-11 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* 15. Tambah Tipe Harga Outlined Box */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => toast('Fitur multi-tier harga (Grosir/Eceran) siap dikonfigurasi')}
+                  className="w-full py-3 px-4 rounded-xl border border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-50/20 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 text-center transition-colors cursor-pointer"
+                >
+                  <p className="text-xs font-black">Tambah Tipe Harga</p>
+                  <p className="text-[11px] font-semibold opacity-90">(Grosir / Retailer / Eceran / Gojek)</p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ─────────────────────────────────────────────────────────────────────
+              EXPAND / COLLAPSE TOGGLE (Tampilkan lebih / Tampilkan sedikit)
+              ───────────────────────────────────────────────────────────────────── */}
+          <div className="pt-2 text-center">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 transition-colors cursor-pointer select-none py-1"
+            >
+              <span>{isExpanded ? 'Tampilkan sedikit' : 'Tampilkan lebih'}</span>
+              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          </div>
+
+          {/* ─────────────────────────────────────────────────────────────────────
+              BOTTOM FULL-WIDTH SIMPAN BUTTON
+              ───────────────────────────────────────────────────────────────────── */}
           <div className="pt-2 sticky bottom-0 bg-white dark:bg-slate-950 pb-2">
             <Button
               type="submit"

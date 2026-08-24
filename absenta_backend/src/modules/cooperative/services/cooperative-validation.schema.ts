@@ -98,13 +98,18 @@ export const createProductSchema = z.object({
   }).min(0, 'Harga jual tidak boleh negatif'),
   costPrice: z.coerce.number().min(0, 'Harga modal tidak boleh negatif').optional(),
   stock: z.coerce.number().int().min(0, 'Stok tidak boleh negatif').optional(),
+  minStock: z.coerce.number().int().min(0, 'Batas minimum stok tidak boleh negatif').optional(),
   category: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   imageUrl: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   productType: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   showInTransaction: z.boolean().optional(),
   useStock: z.boolean().optional(),
-  barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v),
-  unit: z.string().nullable().optional().transform(v => v === null ? undefined : v)
+  weight: z.coerce.number().min(0, 'Berat tidak boleh negatif').optional(),
+  unit: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  discount: z.coerce.number().min(0, 'Diskon tidak boleh negatif').optional(),
+  discountType: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  rackLocation: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });
 
 export const updateProductSchema = z.object({
@@ -114,13 +119,18 @@ export const updateProductSchema = z.object({
   price: z.coerce.number().min(0, 'Harga jual tidak boleh negatif').optional(),
   costPrice: z.coerce.number().min(0, 'Harga modal tidak boleh negatif').optional(),
   stock: z.coerce.number().int().min(0, 'Stok tidak boleh negatif').optional(),
+  minStock: z.coerce.number().int().min(0, 'Batas minimum stok tidak boleh negatif').optional(),
   category: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   imageUrl: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   productType: z.string().nullable().optional().transform(v => v === null ? undefined : v),
   showInTransaction: z.boolean().optional(),
   useStock: z.boolean().optional(),
-  barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v),
-  unit: z.string().nullable().optional().transform(v => v === null ? undefined : v)
+  weight: z.coerce.number().min(0, 'Berat tidak boleh negatif').optional(),
+  unit: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  discount: z.coerce.number().min(0, 'Diskon tidak boleh negatif').optional(),
+  discountType: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  rackLocation: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  barcode: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });
 
 export const posCheckoutSchema = z.object({
