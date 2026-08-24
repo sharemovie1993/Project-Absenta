@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
 import type { Column } from '../../ui/Table';
@@ -65,7 +66,6 @@ interface ProductMovementLog {
 interface ProductInventoryTabProps {
   categories: ProductCategory[];
   products: Product[];
-  fetchProducts: () => Promise<void>;
   setActiveTab?: (tab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
   onQuickPurchase?: (product: Product) => void;
   loading?: boolean;
@@ -83,7 +83,6 @@ interface AxiosErrorLike {
 export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
   categories,
   products = [],
-  fetchProducts,
   setActiveTab,
   onQuickPurchase,
   loading = false
@@ -124,9 +123,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
     onSuccess: () => {
       toast.success('Stok produk berhasil disesuaikan');
       setSelectedProductForAdjust(null);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products'] });
-      fetchProducts();
+      invalidateAllProductCaches(queryClient);
     },
     onError: (error) => {
       const err = error as AxiosErrorLike;
@@ -136,7 +133,7 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
 
   // Query to fetch product logs (Kasir Pintar Persona: Log Barang)
   const productLogsQuery = useQuery({
-    queryKey: ['koperasi-product-logs', selectedProductForLog?.id],
+    queryKey: COOP_QUERY_KEYS.productLogs(selectedProductForLog?.id),
     queryFn: async () => {
       if (!selectedProductForLog) return { logs: [] };
       const res = await api.get(`/cooperative/toko/${selectedProductForLog.id}/logs`);

@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { requestWithFallback } from '../api/apiUtils';
+import { COOP_QUERY_KEYS } from '../lib/coopQueryKeys';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
 export interface KoperasiProduct {
@@ -14,7 +15,7 @@ export interface KoperasiProduct {
 
 export function useKoperasiProductOptions(search?: string) {
   const query = useQuery({
-    queryKey: ['koperasi-products-options-list', search],
+    queryKey: COOP_QUERY_KEYS.productOptions(search),
     queryFn: async () => {
       const res = await requestWithFallback<any>('get', '/cooperative/toko/products', { params: { search } });
       const list: KoperasiProduct[] = res.data?.list || res.data || (Array.isArray(res) ? res : []);

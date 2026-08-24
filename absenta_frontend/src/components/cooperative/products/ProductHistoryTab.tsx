@@ -4,6 +4,7 @@ import api from '../../../lib/axiosInstance';
 import { Button } from '../ui/Button';
 import { Search, Calendar, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { COOP_QUERY_KEYS } from '../../../lib/coopQueryKeys';
 
 interface Product {
   id: string;
@@ -48,7 +49,7 @@ export const ProductHistoryTab = React.memo<ProductHistoryTabProps>(({ activeTab
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
 
   const historyQuery = useQuery({
-    queryKey: ['koperasi-stock-in-history', historySupplierFilter, historyStartDate, historyEndDate],
+    queryKey: COOP_QUERY_KEYS.stockInHistory(historySupplierFilter, historyStartDate, historyEndDate),
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (historySupplierFilter) params.supplier = historySupplierFilter;

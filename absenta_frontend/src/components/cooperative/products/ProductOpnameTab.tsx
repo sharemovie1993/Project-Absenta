@@ -11,6 +11,8 @@ import { useAuthStore } from '../../../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import OpnameDetail from '../../../pages/cooperative/components/OpnameDetail';
 
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
+
 interface ProductCategory {
   id: string;
   code: string;
@@ -31,7 +33,6 @@ interface OpnameSession {
 
 interface ProductOpnameTabProps {
   categories: ProductCategory[];
-  fetchProducts: () => Promise<void>;
   activeTab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname';
 }
 
@@ -46,7 +47,6 @@ interface AxiosErrorLike {
 
 export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
   categories,
-  fetchProducts,
   activeTab
 }) => {
   const navigate = useNavigate();
@@ -60,7 +60,7 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
   const [newOpnameCategoryFilter, setNewOpnameCategoryFilter] = useState('ALL');
 
   const opnameQuery = useQuery({
-    queryKey: ['koperasi-opname-history'],
+    queryKey: COOP_QUERY_KEYS.opnameHistory,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko/opname');
       return (Array.isArray(response.data) ? response.data : []) as OpnameSession[];
@@ -85,7 +85,7 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
       setNewOpnameNotes('');
       setNewOpnameCategoryFilter('ALL');
       setIsCreateOpnameModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.opnameHistory });
       if (data?.id) {
         setActiveOpnameSessionId(data.id);
       }
@@ -119,7 +119,7 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
           onFinalizeSuccess={() => {
             setActiveOpnameSessionId(null);
             fetchOpnameSessions();
-            fetchProducts();
+            invalidateAllProductCaches(queryClient);
           }}
         />
       ) : (

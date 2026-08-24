@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../ui/Button';
 import { Table } from '../../ui';
 import type { Column } from '../../ui/Table';
@@ -53,15 +54,11 @@ interface AxiosErrorLike {
 interface ProductCategoriesTabProps {
   categories: ProductCategory[];
   products?: Product[];
-  fetchCategories: () => Promise<void>;
-  fetchProducts: () => Promise<void>;
 }
 
 export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
   categories,
-  products = [],
-  fetchCategories,
-  fetchProducts
+  products = []
 }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -131,10 +128,8 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
     onSuccess: () => {
       toast.dismiss();
       toast.success(editingCategory ? 'Kategori berhasil diperbarui' : 'Kategori baru berhasil ditambahkan', { duration: 2500 });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      fetchCategories();
-      fetchProducts();
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
+      invalidateAllProductCaches(queryClient);
       setIsCategoryModalOpen(false);
     },
     onError: (error) => {
@@ -173,10 +168,8 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
     onSuccess: () => {
       toast.dismiss();
       toast.success('Kategori berhasil dihapus', { duration: 2500 });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-categories'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      fetchCategories();
-      fetchProducts();
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
+      invalidateAllProductCaches(queryClient);
       setCategoryDeleteConfirmOpen(false);
       setCategoryIdToDelete(null);
     },

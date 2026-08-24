@@ -7,6 +7,7 @@ import { Input } from '../../../components/cooperative/ui/Input';
 import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
 import { useAuthStore } from '../../../store/authStore';
 import toast from 'react-hot-toast';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { 
   ArrowLeft, 
   Save, 
@@ -342,8 +343,8 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
     onSuccess: () => {
       toast.success('Sesi Stock Opname berhasil difinalisasi!');
       queryClient.invalidateQueries({ queryKey: ['koperasi-opname-detail', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.opnameHistory });
+      invalidateAllProductCaches(queryClient);
       onFinalizeSuccess();
     },
     onError: (err) => {
@@ -374,7 +375,7 @@ export const OpnameDetail: React.FC<OpnameDetailProps> = React.memo(({
     },
     onSuccess: () => {
       toast.success('Sesi opname telah dibatalkan');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-opname-history'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.opnameHistory });
       onBack();
     },
     onError: (err) => {

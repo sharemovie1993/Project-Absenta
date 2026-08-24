@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { fetchCoopSettings, type CoopSettingsData, printCoopReceipt } from '../../../utils/cooperative/coopDocUtils';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import type { Subscription } from '../../../types/subscription';
 
 export interface CoopMember {
@@ -28,30 +29,56 @@ export interface Voucher {
   id: string;
   code: string;
   discount: string;
-  validUntil: string | null;
+  minPurchase: string;
+  validUntil?: string;
+  status: 'ACTIVE' | 'USED' | 'EXPIRED';
+}
+
+export interface Product {
+  id: string;
+  code: string;
+  name: string;
+  price: string;
+  costPrice: string;
+  stock: number;
+  minStock?: number;
+  category: string;
+  imageUrl?: string | null;
+  unit?: string | null;
+  useStock?: boolean;
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+  cartItemId?: string;
+}
+
+export interface ProductCategory {
+  id: string;
+  code: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  order: number;
 }
 
 export interface SaleItem {
-  id?: string;
+  id: string;
   productId: string;
-  product?: {
-    id: string;
+  quantity: number;
+  price: string;
+  subtotal: string;
+  Product?: {
     name: string;
     code: string;
   };
-  quantity: number;
-  price: string | number;
 }
 
 export interface SaleRecord {
   id: string;
+  invoiceNumber?: string;
+  receiptNumber?: string;
   date: string;
-  paymentMethod: 'CASH' | 'SAVING';
-  discount: number;
-  total: number;
-  voucherCode?: string;
-  cashReceived?: string | number;
-  change?: number;
   memberId?: string | null;
   member?: CoopMember | null;
   items?: SaleItem[];
@@ -526,8 +553,8 @@ export const usePOSState = () => {
       setPin('');
       setVoucherCode('');
       setAppliedVoucher(null);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-products'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-history'] });
+      invalidateAllProductCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posHistory });
     },
     onError: (error: unknown) => {
       console.error(error);

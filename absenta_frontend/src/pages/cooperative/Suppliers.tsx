@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import { Modal } from '../../components/cooperative/ui/Modal';
 import toast from 'react-hot-toast';
+import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
 import {
   ArrowLeft,
   Plus,
@@ -68,7 +69,7 @@ const Suppliers: React.FC = () => {
 
   // ─── Query: Fetch Suppliers ───────────────────────────────────────────────
   const { data: suppliers = [], isLoading } = useQuery<CoopSupplier[]>({
-    queryKey: ['coop-suppliers'],
+    queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
       const res = await api.get('/cooperative/suppliers');
       return res.data;
@@ -93,7 +94,7 @@ const Suppliers: React.FC = () => {
     },
     onSuccess: () => {
       toast.success('Supplier berhasil ditambahkan');
-      queryClient.invalidateQueries({ queryKey: ['coop-suppliers'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
       setIsFormOpen(false);
       setFormData(EMPTY_FORM);
       setEditingSupplier(null);
@@ -111,7 +112,7 @@ const Suppliers: React.FC = () => {
     },
     onSuccess: () => {
       toast.success('Data supplier berhasil diperbarui');
-      queryClient.invalidateQueries({ queryKey: ['coop-suppliers'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
       setIsFormOpen(false);
       setFormData(EMPTY_FORM);
       setEditingSupplier(null);
@@ -128,7 +129,7 @@ const Suppliers: React.FC = () => {
     },
     onSuccess: () => {
       toast.success('Supplier berhasil dinonaktifkan');
-      queryClient.invalidateQueries({ queryKey: ['coop-suppliers'] });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
       setIsDeleteConfirmOpen(false);
       setDeletingSupplier(null);
     },

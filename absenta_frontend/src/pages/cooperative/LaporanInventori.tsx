@@ -20,6 +20,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ interface StockItem {
   stock: number; costPrice: number; price: number;
   nilaiPersediaan: number; status: 'NORMAL' | 'RENDAH' | 'HABIS';
 }
+
 interface StockSummary {
   totalSKU: number; totalItems: number; totalNilaiPersediaan: number;
   jumlahHabis: number; jumlahRendah: number;
@@ -62,7 +64,7 @@ const LaporanInventori: React.FC = React.memo(() => {
   // ─── React Query Hooks ───────────────────────────────────────────────────
 
   const stockQuery = useQuery({
-    queryKey: ['koperasi-reports-inventory-stock'],
+    queryKey: COOP_QUERY_KEYS.inventoryStock,
     queryFn: async () => {
       const res = await api.get('/cooperative/reports/inventory/stock');
       return res.data as { items: StockItem[]; summary: StockSummary };
@@ -80,7 +82,7 @@ const LaporanInventori: React.FC = React.memo(() => {
   }, [stockQuery]);
 
   const valuationQuery = useQuery({
-    queryKey: ['koperasi-reports-inventory-valuation'],
+    queryKey: COOP_QUERY_KEYS.inventoryValuation,
     queryFn: async () => {
       const res = await api.get('/cooperative/reports/inventory/valuation');
       return res.data as { rows: ValuationRow[]; grandTotal: ValuationGrand };
@@ -98,7 +100,7 @@ const LaporanInventori: React.FC = React.memo(() => {
   }, [valuationQuery]);
 
   const purchasesQuery = useQuery({
-    queryKey: ['koperasi-reports-inventory-purchases', startDate, endDate, supplierFilter],
+    queryKey: COOP_QUERY_KEYS.inventoryPurchases(startDate, endDate, supplierFilter),
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (startDate) params.startDate = startDate;

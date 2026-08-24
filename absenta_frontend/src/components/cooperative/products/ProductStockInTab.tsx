@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
+import { COOP_QUERY_KEYS, invalidateStockInCaches, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Modal } from '../ui/Modal';
@@ -79,7 +80,6 @@ interface CoopSupplier {
 interface ProductStockInTabProps {
   products: Product[];
   categories?: ProductCategory[];
-  fetchProducts: () => Promise<void>;
   setActiveTab: (tab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
   initialSelectedProduct?: Product | null;
   onClearInitialProduct?: () => void;
@@ -88,7 +88,6 @@ interface ProductStockInTabProps {
 export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   products = [],
   categories = [],
-  fetchProducts,
   setActiveTab,
   initialSelectedProduct,
   onClearInitialProduct
@@ -109,7 +108,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
 
   // Fetch supplier list for checkout dropdown
   const { data: supplierList = [] } = useQuery<CoopSupplier[]>({
-    queryKey: ['coop-suppliers'],
+    queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
       const res = await api.get('/cooperative/suppliers');
       return res.data;
@@ -158,6 +157,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     const draftPayload = {
       items: selectedStockInItems,
       supplier: stockInSupplier,
+      supplierId: stockInSupplierId,
       invoiceNumber: stockInInvoiceNumber,
       notes: stockInNotes,
       paymentMethod: stockInPaymentMethod,
@@ -166,7 +166,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     };
     localStorage.setItem('absenta_coop_purchase_draft', JSON.stringify(draftPayload));
     toast.success('Draft pembelian berhasil disimpan', { icon: '📋' });
-  }, [selectedStockInItems, stockInSupplier, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee]);
+  }, [selectedStockInItems, stockInSupplier, stockInSupplierId, stockInInvoiceNumber, stockInNotes, stockInPaymentMethod, stockInShippingFee]);
 
   const handleLoadDraft = useCallback(() => {
     const savedDraft = localStorage.getItem('absenta_coop_purchase_draft');
@@ -178,6 +178,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       const parsed = JSON.parse(savedDraft);
       setSelectedStockInItems(parsed.items || []);
       setStockInSupplier(parsed.supplier || '');
+      setStockInSupplierId(parsed.supplierId || '');
       setStockInInvoiceNumber(parsed.invoiceNumber || '');
       setStockInNotes(parsed.notes || '');
       setStockInPaymentMethod(parsed.paymentMethod || 'CASH');
@@ -224,55 +225,53 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     }`, { id: 'sort-toast', duration: 1500 });
   }, [sortOption]);
 
-  // Cart operations
+  // Cart / Selection helpers
+  const isProductSelected = useCallback((productId: string) => {
+    return selectedStockInItems.some(item => item.product.id === productId);
+  }, [selectedStockInItems]);
+
+  const getSelectedItem = useCallback((productId: string) => {
+    return selectedStockInItems.find(item => item.product.id === productId);
+  }, [selectedStockInItems]);
+
   const handleToggleProductInCart = useCallback((product: Product) => {
     setSelectedStockInItems(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
-      if (existing) {
-        return prev.map(item => 
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+      const exists = prev.find(item => item.product.id === product.id);
+      if (exists) {
+        return prev.filter(item => item.product.id !== product.id);
+      } else {
+        return [
+          ...prev,
+          {
+            product,
+            quantity: 1,
+            costPrice: Number(product.costPrice || 0)
+          }
+        ];
       }
-      return [
-        ...prev,
-        {
-          product,
-          quantity: 1,
-          costPrice: Number(product.costPrice || 0)
-        }
-      ];
     });
   }, []);
 
-  const handleUpdateItemQty = useCallback((productId: string, delta: number) => {
-    setSelectedStockInItems(prev => {
-      return prev.map(item => {
-        if (item.product.id === productId) {
-          const newQty = item.quantity + delta;
-          return newQty > 0 ? { ...item, quantity: newQty } : null;
-        }
-        return item;
-      }).filter(Boolean) as TempStockInItem[];
-    });
-  }, []);
-
-  const handleSetItemQty = useCallback((productId: string, val: number) => {
-    setSelectedStockInItems(prev => {
-      if (val <= 0) {
-        return prev.filter(item => item.product.id !== productId);
+  const handleUpdateItemQuantity = useCallback((productId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setSelectedStockInItems(prev => prev.filter(item => item.product.id !== productId));
+      return;
+    }
+    setSelectedStockInItems(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        return { ...item, quantity };
       }
-      return prev.map(item => 
-        item.product.id === productId ? { ...item, quantity: val } : item
-      );
-    });
+      return item;
+    }));
   }, []);
 
-  const handleSetItemCostPrice = useCallback((productId: string, val: number) => {
-    setSelectedStockInItems(prev => 
-      prev.map(item => 
-        item.product.id === productId ? { ...item, costPrice: val } : item
-      )
-    );
+  const handleUpdateItemCostPrice = useCallback((productId: string, costPrice: number) => {
+    setSelectedStockInItems(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        return { ...item, costPrice: Math.max(0, costPrice) };
+      }
+      return item;
+    }));
   }, []);
 
   const handleRemoveItem = useCallback((productId: string) => {
@@ -318,10 +317,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       setMobileStep('SELECT');
       localStorage.removeItem('absenta_coop_purchase_draft');
 
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
-      fetchProducts();
+      invalidateStockInCaches(queryClient);
       setActiveTab('history');
     },
     onError: (error) => {
@@ -369,7 +365,8 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     onSuccess: (newProd) => {
       toast.success('Produk baru berhasil dibuat');
       setIsCreateProductModalOpen(false);
-      fetchProducts();
+      invalidateAllProductCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
       if (newProd) {
         handleToggleProductInCart(newProd);
       }

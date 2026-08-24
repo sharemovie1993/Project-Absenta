@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../ui/Button';
 import { Table, MobileDataList } from '../../ui';
 import type { Column } from '../../ui/Table';
@@ -55,16 +56,12 @@ interface AxiosErrorLike {
 interface ProductCatalogTabProps {
   products: Product[];
   categories: ProductCategory[];
-  fetchProducts: () => Promise<void>;
-  fetchCategories: () => Promise<void>;
   loading?: boolean;
 }
 
 export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   products,
   categories,
-  fetchProducts,
-  fetchCategories,
   loading = false,
 }) => {
   const isMobile = useIsMobile();
@@ -166,9 +163,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     onSuccess: () => {
       toast.dismiss();
       toast.success(editingProduct ? 'Produk berhasil diperbarui' : 'Produk berhasil ditambahkan', { duration: 2500 });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      fetchProducts();
-      fetchCategories();
+      invalidateAllProductCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
       setIsProductModalOpen(false);
     },
     onError: (error) => {
@@ -205,8 +201,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     },
     onSuccess: () => {
       toast.success('Produk berhasil dihapus.');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      fetchProducts();
+      invalidateAllProductCaches(queryClient);
       setDeleteConfirmOpen(false);
       setProductIdToDelete(null);
     },
@@ -240,8 +235,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
     },
     onSuccess: () => {
       toast.success('Stok berhasil disesuaikan');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-      fetchProducts();
+      invalidateAllProductCaches(queryClient);
       setIsOpnameModalOpen(false);
     },
     onError: (error) => {
@@ -610,10 +604,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
             onImport={handleImportProducts}
             onDownloadTemplate={handleTemplateDownload}
             onSuccess={() => {
-              queryClient.invalidateQueries({ queryKey: ['koperasi-products-catalog'] });
-              queryClient.invalidateQueries({ queryKey: ['koperasi-products'] });
-              fetchProducts();
-              fetchCategories();
+              invalidateAllProductCaches(queryClient);
+              queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
             }}
             sampleDataHint="Pastikan format file sesuai dengan template. Kategori baru yang belum terdaftar akan otomatis ditambahkan ke database."
           />

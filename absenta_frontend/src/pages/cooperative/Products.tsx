@@ -8,6 +8,7 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Package, Plus, History, Tag, BarChart2, Boxes } from 'lucide-react';
+import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
 
 // Static audit compliance anchors: <Card> <SectionCard> import '../../components/ui'
 
@@ -68,7 +69,7 @@ const Products: React.FC = React.memo(() => {
 
   // React Query setup for shared central states
   const productsQuery = useQuery({
-    queryKey: ['koperasi-products-catalog'],
+    queryKey: COOP_QUERY_KEYS.productsCatalog,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko');
       return (Array.isArray(response.data) ? response.data : []) as Product[];
@@ -79,7 +80,7 @@ const Products: React.FC = React.memo(() => {
   const loading = productsQuery.isLoading;
 
   const categoriesQuery = useQuery({
-    queryKey: ['koperasi-products-categories'],
+    queryKey: COOP_QUERY_KEYS.categories,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko/categories');
       return (Array.isArray(response.data) ? response.data : []) as ProductCategory[];
@@ -87,14 +88,6 @@ const Products: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
   const categories = categoriesQuery.data || [];
-
-  const fetchProducts = useCallback(async () => {
-    await productsQuery.refetch();
-  }, [productsQuery]);
-
-  const fetchCategories = useCallback(async () => {
-    await categoriesQuery.refetch();
-  }, [categoriesQuery]);
 
   // Layout info structures
   const breadcrumbs = useMemo(() => [
@@ -229,8 +222,6 @@ const Products: React.FC = React.memo(() => {
               <ProductCatalogTab
                 products={products}
                 categories={categories}
-                fetchProducts={fetchProducts}
-                fetchCategories={fetchCategories}
                 loading={loading}
               />
             )}
@@ -239,7 +230,6 @@ const Products: React.FC = React.memo(() => {
               <ProductInventoryTab
                 products={products}
                 categories={categories}
-                fetchProducts={fetchProducts}
                 setActiveTab={setActiveTab}
                 onQuickPurchase={(product) => {
                   setPreselectedPurchaseProduct(product);
@@ -253,7 +243,6 @@ const Products: React.FC = React.memo(() => {
               <ProductStockInTab
                 products={products}
                 categories={categories}
-                fetchProducts={fetchProducts}
                 setActiveTab={setActiveTab}
                 initialSelectedProduct={preselectedPurchaseProduct}
                 onClearInitialProduct={() => setPreselectedPurchaseProduct(null)}
@@ -270,15 +259,12 @@ const Products: React.FC = React.memo(() => {
               <ProductCategoriesTab
                 categories={categories}
                 products={products}
-                fetchCategories={fetchCategories}
-                fetchProducts={fetchProducts}
               />
             )}
             
             {activeTab === 'opname' && (
               <ProductOpnameTab
                 categories={categories}
-                fetchProducts={fetchProducts}
                 activeTab={activeTab}
               />
             )}
