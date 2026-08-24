@@ -534,183 +534,134 @@ export const MobilePOSView: React.FC<MobilePOSViewProps> = React.memo(({
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // STEP 2: LAYAR RINGKASAN PESANAN (KASIR PINTAR CLEAN PRO STYLE)
+  // STEP 2: LAYAR RINGKASAN PESANAN (KASIR PINTAR 1:1 CLEAN PRO STYLE)
   // ─────────────────────────────────────────────────────────────────────────────
   if (mobileStep === 'summary') {
     return (
-      <div className="min-h-[calc(100vh-140px)] bg-slate-50 dark:bg-slate-950 flex flex-col justify-between p-3 pb-[calc(130px+env(safe-area-inset-bottom))]">
-        <div className="space-y-3">
-          {/* Header Bar */}
-          <div className="flex items-center justify-between bg-white dark:bg-slate-900 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setMobileStep('catalog')}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 active:scale-95 cursor-pointer"
-              aria-label="Kembali ke Katalog"
-            >
-              <ArrowLeft size={18} />
-            </button>
-            <div className="text-right">
-              <span className="text-[11px] font-extrabold text-slate-400 block uppercase tracking-wider">
-                Total Tagihan ({totalItemsCount} item)
-              </span>
-              <span className="text-lg font-black text-blue-600 dark:text-blue-400">
-                Rp {totalAmount.toLocaleString('id-ID')}
-              </span>
-            </div>
-          </div>
-
-          {/* Member Selection Card */}
-          <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-            {selectedMember ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs shrink-0">
-                    <UserCheck size={18} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-black text-xs text-slate-900 dark:text-slate-100 truncate">
-                      {selectedMember.name}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      No: {selectedMember.memberNo} • Saldo: <strong className="text-blue-600 dark:text-blue-400">Rp {selectedMember.sukarelaBalance.toLocaleString('id-ID')}</strong>
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedMember(null)}
-                  className="p-1.5 rounded-xl hover:bg-rose-50 text-slate-400 hover:text-rose-600 shrink-0 cursor-pointer"
-                  aria-label="Hapus Anggota"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
+      <div className="min-h-[calc(100vh-140px)] bg-white dark:bg-slate-950 flex flex-col justify-between pb-[calc(125px+env(safe-area-inset-bottom))]">
+        <div className="flex-1 flex flex-col">
+          {/* Top Clean App Bar */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setShowMemberModal(true)}
-                className="w-full py-1.5 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 font-bold cursor-pointer"
+                onClick={() => setMobileStep('catalog')}
+                className="p-1 -ml-1 text-slate-700 dark:text-slate-200 active:scale-95 cursor-pointer"
+                aria-label="Kembali"
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                    <User size={16} />
-                  </div>
-                  <span>Pilih Pelanggan / Anggota Koperasi</span>
-                </div>
-                <span className="text-xs font-black text-blue-600 dark:text-blue-400">+ Pilih</span>
+                <ArrowLeft size={22} />
               </button>
-            )}
+              <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 font-sans tracking-tight">
+                Rp {finalPayAmount.toLocaleString('id-ID')}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => toast('Biaya tambahan dapat diatur melalui menu Koperasi')}
+              className="px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center gap-1 border border-blue-200 dark:border-blue-800"
+            >
+              <span>+ Biaya</span>
+            </button>
           </div>
 
-          {/* Clean Order Items List (Kasir Pintar Style) */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs divide-y divide-slate-100 dark:divide-slate-800 max-h-[48vh] overflow-y-auto">
+          {/* Simple Clean Order Items List (1:1 Kasir Pintar) */}
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/80 overflow-y-auto max-h-[60vh]">
             {cart.map((item, index) => {
               const itemSubtotal = item.qty * Number(item.price);
               return (
-                <div key={item.id} className="p-3.5 flex items-center justify-between gap-3">
-                  {/* Left: Number + Product Avatar Initials + Details */}
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="text-xs font-bold text-slate-400 w-3 font-mono">
+                <div key={item.id} className="px-4 py-4 flex items-center justify-between gap-3">
+                  {/* Left: Number + Circle Avatar + Text Details */}
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    <span className="text-sm font-black text-slate-800 dark:text-slate-100 w-3 font-mono">
                       {index + 1}
                     </span>
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 font-black text-[11px] flex items-center justify-center shrink-0 select-none">
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold text-xs flex items-center justify-center shrink-0 select-none">
                       {getInitials(item.name)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
                         {item.name}
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
-                        {item.qty} × Rp {Number(item.price).toLocaleString('id-ID')} = <strong className="text-slate-800 dark:text-slate-200">Rp {itemSubtotal.toLocaleString('id-ID')}</strong>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
+                        {item.qty} x Rp {Number(item.price).toLocaleString('id-ID')} = Rp {itemSubtotal.toLocaleString('id-ID')}
                       </p>
                     </div>
                   </div>
 
-                  {/* Right: Stepper Buttons & Trash */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => updateQty(item.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold active:scale-95 cursor-pointer"
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span className="w-5 text-center font-black text-xs font-mono">
-                      {item.qty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => updateQty(item.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold active:scale-95 cursor-pointer"
-                    >
-                      <Plus size={13} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removeFromCart(item.id)}
-                      className="w-7 h-7 rounded-lg text-slate-300 hover:text-rose-600 flex items-center justify-center ml-0.5 cursor-pointer"
-                      aria-label="Hapus Item"
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
+                  {/* Right: Trash Icon to Delete */}
+                  <button
+                    type="button"
+                    onClick={() => removeFromCart(item.id)}
+                    className="p-2 text-rose-500 hover:text-rose-700 active:scale-90 transition-transform cursor-pointer shrink-0"
+                    aria-label="Hapus Item"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               );
             })}
           </div>
-
-          {/* Voucher Bar */}
-          <div className="bg-white dark:bg-slate-900 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-2">
-            <Tag size={16} className="text-slate-400 ml-2" />
-            <input
-              type="text"
-              placeholder="Kode Voucher..."
-              value={voucherCode}
-              onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-              className="flex-1 bg-transparent px-2 py-1 text-xs font-bold uppercase tracking-wider outline-none"
-            />
-            {appliedVoucher ? (
-              <button
-                type="button"
-                onClick={handleRemoveVoucher}
-                className="px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-bold cursor-pointer"
-              >
-                Hapus
-              </button>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleApplyVoucher}
-                isLoading={checkingVoucher}
-                className="text-xs rounded-xl"
-              >
-                Pakai
-              </Button>
-            )}
-          </div>
         </div>
 
-        {/* Bottom Actions: Hold & Selesaikan Pembayaran */}
-        <div className="pt-3 flex gap-2.5 items-center">
-          <button
-            type="button"
-            onClick={handleHoldCart}
-            className="w-13 h-13 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
-            title="Tahan Keranjang"
-          >
-            <PauseCircle size={22} />
-          </button>
-          
-          <Button
-            size="lg"
-            onClick={() => setMobileStep('payment')}
-            className="flex-1 h-13 rounded-2xl text-sm font-black uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex justify-between px-5 items-center cursor-pointer"
-          >
-            <span>BAYAR</span>
-            <span className="font-mono text-base">Rp {finalPayAmount.toLocaleString('id-ID')}</span>
-          </Button>
+        {/* ─────────────────────────────────────────────────────────────────────
+            BOTTOM CONTROL PANELS: 3-Column Tool Bar + BAYAR Button
+            ───────────────────────────────────────────────────────────────────── */}
+        <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 pt-2 px-3 space-y-2.5">
+          {/* 3-Column Option Bar: Untung | Promosi | Pelanggan */}
+          <div className="grid grid-cols-3 divide-x divide-slate-200 dark:divide-slate-800 py-1 text-xs">
+            {/* 1. Untung / Info */}
+            <div className="flex items-center justify-center gap-1.5 px-2 py-1 text-slate-700 dark:text-slate-300 font-bold">
+              <span>{totalItemsCount} Item</span>
+              <span className="w-4 h-4 rounded-full border border-slate-400 text-slate-500 text-[10px] flex items-center justify-center font-serif">i</span>
+            </div>
+
+            {/* 2. Promosi / Voucher */}
+            <button
+              type="button"
+              onClick={() => {
+                const code = prompt('Masukkan Kode Voucher:', voucherCode);
+                if (code !== null) {
+                  setVoucherCode(code.toUpperCase());
+                  if (code.trim()) handleApplyVoucher();
+                }
+              }}
+              className="flex items-center justify-center gap-1 px-2 py-1 text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
+            >
+              <span>{appliedVoucher ? appliedVoucher.code : 'Promosi'}</span>
+              <span className="text-[11px]">›</span>
+            </button>
+
+            {/* 3. Pelanggan / Anggota */}
+            <button
+              type="button"
+              onClick={() => setShowMemberModal(true)}
+              className="flex items-center justify-center gap-1.5 px-2 py-1 text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer truncate"
+            >
+              <span className="truncate">{selectedMember ? selectedMember.name.split(' ')[0] : 'Pelanggan'}</span>
+              <User size={14} className="shrink-0" />
+            </button>
+          </div>
+
+          {/* Bottom Primary Button Bar: BAYAR + Hold Cart */}
+          <div className="flex gap-2 items-center pb-1">
+            <Button
+              size="lg"
+              onClick={() => setMobileStep('payment')}
+              className="flex-1 h-13 rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-sm uppercase tracking-wider shadow-lg flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+            >
+              BAYAR
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleHoldCart}
+              className="w-13 h-13 rounded-2xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 active:scale-95 transition-transform cursor-pointer"
+              title="Tahan Keranjang"
+            >
+              <PauseCircle size={22} />
+            </button>
+          </div>
         </div>
 
         {/* Member Selector Modal */}
