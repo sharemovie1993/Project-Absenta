@@ -66,6 +66,8 @@ interface ProductInventoryTabProps {
   categories: ProductCategory[];
   products: Product[];
   fetchProducts: () => Promise<void>;
+  setActiveTab?: (tab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
+  onQuickPurchase?: (product: Product) => void;
   loading?: boolean;
 }
 
@@ -82,6 +84,8 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
   categories,
   products = [],
   fetchProducts,
+  setActiveTab,
+  onQuickPurchase,
   loading = false
 }) => {
   const navigate = useNavigate();
@@ -665,7 +669,13 @@ export const ProductInventoryTab = React.memo<ProductInventoryTabProps>(({
                 <button
                   type="button"
                   onClick={() => {
-                    toast.success('Buka form input barang masuk untuk item ini');
+                    const prod = selectedProductForStockDetail;
+                    setSelectedProductForStockDetail(null);
+                    if (onQuickPurchase) {
+                      onQuickPurchase(prod);
+                    } else if (setActiveTab) {
+                      setActiveTab('stock-in');
+                    }
                   }}
                   className="px-3.5 py-1.5 rounded-xl border border-emerald-500 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 text-xs font-bold active:scale-95 transition-all cursor-pointer"
                 >

@@ -51,6 +51,7 @@ const Products: React.FC = React.memo(() => {
   const canViewReports = isAdmin || isKoperasiHead || can('cooperative.reports.view.financial');
 
   const [activeTab, setActiveTab] = useState<'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname'>('catalog');
+  const [preselectedPurchaseProduct, setPreselectedPurchaseProduct] = useState<Product | null>(null);
   
   // Reset tab if user has no edit rights
   useEffect(() => {
@@ -239,6 +240,11 @@ const Products: React.FC = React.memo(() => {
                 products={products}
                 categories={categories}
                 fetchProducts={fetchProducts}
+                setActiveTab={setActiveTab}
+                onQuickPurchase={(product) => {
+                  setPreselectedPurchaseProduct(product);
+                  setActiveTab('stock-in');
+                }}
                 loading={loading}
               />
             )}
@@ -249,6 +255,8 @@ const Products: React.FC = React.memo(() => {
                 categories={categories}
                 fetchProducts={fetchProducts}
                 setActiveTab={setActiveTab}
+                initialSelectedProduct={preselectedPurchaseProduct}
+                onClearInitialProduct={() => setPreselectedPurchaseProduct(null)}
               />
             )}
             

@@ -71,13 +71,17 @@ interface ProductStockInTabProps {
   categories?: ProductCategory[];
   fetchProducts: () => Promise<void>;
   setActiveTab: (tab: 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname') => void;
+  initialSelectedProduct?: Product | null;
+  onClearInitialProduct?: () => void;
 }
 
 export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   products = [],
   categories = [],
   fetchProducts,
-  setActiveTab
+  setActiveTab,
+  initialSelectedProduct,
+  onClearInitialProduct
 }) => {
   const queryClient = useQueryClient();
 
@@ -88,6 +92,26 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   const [stockInPaymentMethod, setStockInPaymentMethod] = useState<'CASH' | 'CREDIT'>('CASH');
   const [selectedStockInItems, setSelectedStockInItems] = useState<TempStockInItem[]>([]);
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
+
+  // Auto-select initial purchase product (e.g. from Detail Sisa Stok 'Beli Barang' button)
+  useEffect(() => {
+    if (initialSelectedProduct) {
+      setSelectedStockInItems(prev => {
+        const exists = prev.find(item => item.product.id === initialSelectedProduct.id);
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            product: initialSelectedProduct,
+            quantity: 1,
+            costPrice: Number(initialSelectedProduct.costPrice || 0)
+          }
+        ];
+      });
+      toast.success(`${initialSelectedProduct.name} ditambahkan ke pembelian`, { icon: '🛒' });
+      onClearInitialProduct?.();
+    }
+  }, [initialSelectedProduct, onClearInitialProduct]);
 
   // Search, Filter & Sort states
   const [searchQuery, setSearchQuery] = useState('');
