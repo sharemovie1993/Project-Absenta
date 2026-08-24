@@ -573,8 +573,8 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
           )}
         </div>
 
-        {/* 5. Bottom Sticky Floating Cart Action Bar */}
-        <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] inset-x-4 z-40">
+        {/* 5. Bottom Sticky Floating Cart Action Bar (Elevated Above Double Bottom Nav) */}
+        <div className="fixed bottom-[calc(135px+env(safe-area-inset-bottom))] inset-x-4 z-[9999] pointer-events-auto animate-in slide-in-from-bottom-3 duration-200">
           <div 
             onClick={() => {
               if (selectedStockInItems.length === 0) {
@@ -583,10 +583,10 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
               }
               setIsCheckoutModalOpen(true);
             }}
-            className="w-full h-13 px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-between shadow-xl cursor-pointer active:scale-98 transition-all"
+            className="w-full h-13 px-5 rounded-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white flex items-center justify-between shadow-2xl cursor-pointer active:scale-98 transition-all border border-emerald-400/30 ring-4 ring-black/5 dark:ring-white/5"
           >
             <div className="flex items-center gap-2 font-bold text-sm">
-              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-black">
+              <span className="w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-xs font-black">
                 {totalQuantity}
               </span>
               <span>Barang</span>

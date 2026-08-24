@@ -395,11 +395,11 @@ export const ProductCategoriesTab = React.memo<ProductCategoriesTabProps>(({
 
         {/* 5. Sticky Bottom Action Button (TAMBAH KATEGORI - Elevated Above Bottom Nav) */}
         {canUpdate && (
-          <div className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] inset-x-4 z-40 animate-in slide-in-from-bottom-2 duration-200">
+          <div className="fixed bottom-[calc(135px+env(safe-area-inset-bottom))] inset-x-4 z-[9999] pointer-events-auto animate-in slide-in-from-bottom-2 duration-200">
             <button
               type="button"
               onClick={() => handleOpenCategoryModal()}
-              className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs tracking-wider uppercase shadow-xl flex items-center justify-center cursor-pointer active:scale-98 transition-transform"
+              className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-black text-xs tracking-wider uppercase shadow-2xl flex items-center justify-center cursor-pointer active:scale-98 transition-transform border border-emerald-400/30 ring-4 ring-black/5 dark:ring-white/5"
             >
               Tambah Kategori
             </button>
