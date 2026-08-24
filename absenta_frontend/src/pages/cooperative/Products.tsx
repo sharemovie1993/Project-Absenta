@@ -7,7 +7,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Package, Plus, History, Tag, BarChart2 } from 'lucide-react';
+import { Package, Plus, History, Tag, BarChart2, Boxes } from 'lucide-react';
 
 // Static audit compliance anchors: <Card> <SectionCard> import '../../components/ui'
 
