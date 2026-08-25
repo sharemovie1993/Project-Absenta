@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// ─── 11 PILAR STANDARISASI BACKEND MULTI-TENANT GOOGLE ─────────────────────
+// ─── 12 PILAR STANDARISASI BACKEND MULTI-TENANT GOOGLE ─────────────────────
 // P1: Tenant Context Injection Guard
 // P2: Tenant Data Isolation Guard
 // P3: Role & Permission RBAC Guard
@@ -13,6 +13,7 @@ const path = require('path');
 // P9: Logging & Audit Trail Compliance
 // P10: Health Check & Fault Tolerance
 // P11: Anti God-File & Modular Architecture Guard
+// P12: End-to-End Payload & Contract Symmetry Guard (Request/Response Envelope)
 // ────────────────────────────────────────────────────────────────────────────
 
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -183,6 +184,20 @@ function auditRoute(routeFilePath) {
     issues.push(`⚠️ [P11 Anti God-File] Terdeteksi berkas melebihi batas modularitas: ${detail}.`);
   }
 
+  // P12: End-to-End Payload & Contract Symmetry Guard
+  // (a) Semua mutasi mengembalikan { success: true, message: ..., data: ... }
+  // (b) List data memiliki pagination object atau envelope standar
+  // (c) Menggunakan status code semantik (200, 201, 400, 401, 403, 404, 409, 500)
+  const hasRawReturnWithoutEnvelope = /return\s+(?!\{[\s\S]*?success)[a-zA-Z0-9_]+\s*;/g.test(combinedContent) && !combinedContent.includes('reply.send');
+  const hasStatusSemantics = /reply\.status\(\s*(200|201|400|401|403|404|409|500)\s*\)/.test(combinedContent) || /status\s*:\s*(200|201|400|401|403|404|409|500)/.test(combinedContent);
+  const hasListEndpoint = /fastify\.get\(/i.test(routeContent);
+  const hasPaginationOrArray = !hasListEndpoint || /pagination|totalItems|totalPages|count|items|data/i.test(combinedContent);
+  
+  const passPayloadContractSymmetry = !hasRawReturnWithoutEnvelope && hasStatusSemantics && hasPaginationOrArray;
+  if (!passPayloadContractSymmetry) {
+    issues.push('⚠️ [P12 Payload Symmetry] Kontrak respon belum simetris: pastikan menggunakan status code semantik & amplop { success, message, data, pagination }.');
+  }
+
   // Calculate Score
   const pillars = {
     tenantContext: passTenantContext,
@@ -196,10 +211,11 @@ function auditRoute(routeFilePath) {
     loggingAuditTrail: passLogging,
     faultTolerance: passFaultTolerance,
     godFileGuard: passGodFile,
+    payloadContractSymmetry: passPayloadContractSymmetry,
   };
 
   const totalPassed = Object.values(pillars).filter(Boolean).length;
-  const score = Math.round((totalPassed / 11) * 100);
+  const score = Math.round((totalPassed / 12) * 100);
 
   let status = '✅ TERSTANDARISASI';
   if (score < 70 || !passTenantContext || !passTenantIsolation) {
@@ -225,7 +241,7 @@ function main() {
   const moduleFilterIdx = args.findIndex(a => a === '--module' || a === '-m');
   const moduleFilter = moduleFilterIdx !== -1 ? args[moduleFilterIdx + 1] : null;
 
-  console.log('🛡️  MEMULAI AUDIT STATIS BACKEND ARSITEKTUR MULTI-TENANT & GOD-FILE GOOGLE...\n');
+  console.log('🛡️  MEMULAI AUDIT STATIS BACKEND ARSITEKTUR MULTI-TENANT, GOD-FILE & KONTRAK PAYLOAD (12 PILAR GOOGLE)...\n');
 
   const allRouteFiles = findRouteFiles(MODULES_DIR);
   let filteredRoutes = allRouteFiles;
@@ -254,12 +270,12 @@ function main() {
     });
   });
 
-  console.log('\n================ RINGKASAN HASIL AUDIT BACKEND ================');
+  console.log('\n================ RINGKASAN HASIL AUDIT BACKEND (12 PILAR) ================');
   console.log(`Total Route/Modul Diaudit : ${filteredRoutes.length} berkas`);
   console.log(`Sempurna Terstandarisasi  : ${fullyStandardized} berkas`);
   console.log(`Sebagian Terstandarisasi  : ${partiallyStandardized} berkas`);
   console.log(`Belum Terstandarisasi     : ${notStandardized} berkas`);
-  console.log('===============================================================\n');
+  console.log('===========================================================================\n');
 
   // Save JSON report if full audit
   if (!moduleFilter) {
