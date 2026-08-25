@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { MemberService } from './member.service';
 import { mockTenant } from '../../../utils/mocks';
@@ -19,7 +21,8 @@ export default async function memberRoutes(fastify: any) {
             const nextMemberNo = await MemberService.getNextMemberNo(tenantId);
             return { nextMemberNo };
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to generate next member number' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to generate next member number'  });
         }
     });
 
@@ -35,6 +38,7 @@ export default async function memberRoutes(fastify: any) {
             const member = await MemberService.getMemberByUserId(tenantId, userId);
             return { success: true, data: member ?? null };
         } catch (error) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             // Jika user bukan anggota atau terjadi error, kembalikan null (bukan error 4xx)
             return { success: true, data: null };
         }
@@ -52,7 +56,8 @@ export default async function memberRoutes(fastify: any) {
             });
             return members;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch members' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch members'  });
         }
     });
 
@@ -69,7 +74,8 @@ export default async function memberRoutes(fastify: any) {
             if (!member) return reply.code(404).send({ message: 'Member not found' });
             return member;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch member' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch member'  });
         }
     });
 
@@ -80,6 +86,7 @@ export default async function memberRoutes(fastify: any) {
             const member = await MemberService.createMember(tenantId, req.body);
             reply.code(201).send(member);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             const msg = error.message || '';
             if (
                 msg.includes('already exists') ||
@@ -89,7 +96,7 @@ export default async function memberRoutes(fastify: any) {
             ) {
                 reply.code(400).send({ message: msg });
             } else {
-                reply.code(500).send({ error: 'Failed to create member', details: msg });
+                reply.status(500).send({ success: false, message: 'Failed to create member', details: msg  });
             }
         }
     });
@@ -105,7 +112,8 @@ export default async function memberRoutes(fastify: any) {
             const results = await MemberService.importBulkMembers(tenantId, rows);
             return results;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to import bulk members' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to import bulk members'  });
         }
     });
 
@@ -122,7 +130,8 @@ export default async function memberRoutes(fastify: any) {
             const nonMembers = await MemberService.getNonMembers(tenantId, type, { search, kelasId });
             return nonMembers;
         } catch (error: any) {
-            reply.code(500).send({ error: 'Failed to fetch non-members', details: error.message });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch non-members', details: error.message  });
         }
     });
 
@@ -143,6 +152,7 @@ export default async function memberRoutes(fastify: any) {
             const results = await MemberService.createBulkMembers(tenantId, type, ids);
             return results;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Failed to bulk create members' });
         }
     });
@@ -154,6 +164,7 @@ export default async function memberRoutes(fastify: any) {
             const member = await MemberService.updateMember(req.params.id, tenantId, req.body);
             return member;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             const msg = error.message || '';
             if (msg === 'Member not found') {
                 reply.code(404).send({ message: 'Member not found' });
@@ -165,7 +176,7 @@ export default async function memberRoutes(fastify: any) {
             ) {
                 reply.code(400).send({ message: msg });
             } else {
-                reply.code(500).send({ error: 'Failed to update member', details: msg });
+                reply.status(500).send({ success: false, message: 'Failed to update member', details: msg  });
             }
         }
     });
@@ -177,12 +188,13 @@ export default async function memberRoutes(fastify: any) {
             const payout = await MemberService.terminateMember(req.params.id, tenantId, req.user?.id);
             return payout;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message === 'Member not found') {
                 reply.code(404).send({ message: 'Member not found' });
             } else if (error.message.includes('terminated') || error.message.includes('inactive')) {
                 reply.code(400).send({ message: error.message });
             } else {
-                reply.code(500).send({ error: error.message || 'Failed to terminate member' });
+                reply.status(500).send({ success: false, message: error.message || 'Failed to terminate member'  });
             }
         }
     });
@@ -194,10 +206,11 @@ export default async function memberRoutes(fastify: any) {
             await MemberService.deleteMember(req.params.id, tenantId);
             reply.code(204).send();
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message === 'Member not found') {
                 reply.code(404).send({ message: 'Member not found' });
             } else {
-                reply.code(500).send({ error: 'Failed to delete member' });
+                reply.status(500).send({ success: false, message: 'Failed to delete member'  });
             }
         }
     });

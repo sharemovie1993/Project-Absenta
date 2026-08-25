@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../../../utils/prisma';
 import { mockTenant } from '../../../utils/mocks';
@@ -112,6 +114,7 @@ export default async function settingsRoutes(fastify: any) {
                 }
             });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             req.log.error(error);
             return reply.code(500).send({ success: false, error: 'Failed to retrieve cooperative settings' });
         }
@@ -122,7 +125,7 @@ export default async function settingsRoutes(fastify: any) {
         try {
             const url = req.query.url;
             if (!url) {
-                return reply.code(400).send({ error: 'URL is required' });
+                return reply.status(400).send({ success: false, message: 'URL is required'  });
             }
 
             const response = await require('axios').get(url, {
@@ -133,8 +136,9 @@ export default async function settingsRoutes(fastify: any) {
             reply.header('Content-Type', contentType);
             return reply.send(Buffer.from(response.data));
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             req.log.error(error);
-            return reply.code(500).send({ error: 'Failed to proxy logo image' });
+            return reply.status(500).send({ success: false, message: 'Failed to proxy logo image'  });
         }
     });
 
@@ -180,6 +184,7 @@ export default async function settingsRoutes(fastify: any) {
 
             return reply.send({ success: true, message: 'Cooperative settings saved successfully' });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             req.log.error(error);
             return reply.code(500).send({ success: false, error: 'Failed to save cooperative settings' });
         }

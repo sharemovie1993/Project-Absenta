@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TokoService } from './toko.service';
 import { EWalletService } from './ewallet.service';
@@ -35,7 +37,8 @@ export default async function tokoRoutes(fastify: any) {
             const products = await TokoService.getProducts(tenantId, search);
             return products;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch products' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch products'  });
         }
     });
 
@@ -48,13 +51,14 @@ export default async function tokoRoutes(fastify: any) {
             const product = await TokoService.createProduct(tenantId, parsed, operatorId);
             reply.code(201).send(product);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
                     errors: error.errors
                 });
             }
-            reply.code(500).send({ error: error.message || 'Failed to create product' });
+            reply.status(500).send({ success: false, message: error.message || 'Failed to create product'  });
         }
     });
 
@@ -66,13 +70,14 @@ export default async function tokoRoutes(fastify: any) {
             const product = await TokoService.updateProduct(req.params.id, parsed, operatorId);
             return product;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
                     errors: error.errors
                 });
             }
-            reply.code(500).send({ error: error.message || 'Failed to update product' });
+            reply.status(500).send({ success: false, message: error.message || 'Failed to update product'  });
         }
     });
 
@@ -83,7 +88,8 @@ export default async function tokoRoutes(fastify: any) {
             await TokoService.deleteProduct(req.params.id, operatorId);
             reply.code(204).send();
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to delete product' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to delete product'  });
         }
     });
 
@@ -95,7 +101,8 @@ export default async function tokoRoutes(fastify: any) {
             const members = await TokoService.searchMembersForPOS(tenantId, search);
             return members;
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to search members' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to search members'  });
         }
     });
 
@@ -109,6 +116,7 @@ export default async function tokoRoutes(fastify: any) {
             const sale = await TokoService.processSale(tenantId, memberId, items, { paymentMethod, cashAmount, changeAmount, operatorId, pin, voucherCode });
             reply.code(201).send(sale);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -150,7 +158,8 @@ export default async function tokoRoutes(fastify: any) {
             const sales = await TokoService.getMemberSalesHistory(tenantId, String(user.id), canViewAll, req.query as any);
             return sales;
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to fetch sales history' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to fetch sales history'  });
         }
     });
 
@@ -164,6 +173,7 @@ export default async function tokoRoutes(fastify: any) {
             const product = await TokoService.adjustStock(tenantId, req.params.id, newStock, reason, operatorId);
             return product;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -173,7 +183,7 @@ export default async function tokoRoutes(fastify: any) {
             if (error.message === 'Product not found') {
                 reply.code(404).send({ message: 'Product not found' });
             } else {
-                reply.code(500).send({ error: 'Failed to adjust stock' });
+                reply.status(500).send({ success: false, message: 'Failed to adjust stock'  });
             }
         }
     });
@@ -185,7 +195,8 @@ export default async function tokoRoutes(fastify: any) {
             const logs = await TokoService.getProductLogs(tenantId, req.params.id, req.query as any);
             return logs;
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to fetch product logs' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to fetch product logs'  });
         }
     });
 
@@ -197,7 +208,8 @@ export default async function tokoRoutes(fastify: any) {
             const stockIn = await TokoService.processStockIn(tenantId, operatorId, req.body as any);
             reply.code(201).send(stockIn);
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to process stock-in' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to process stock-in'  });
         }
     });
 
@@ -209,7 +221,8 @@ export default async function tokoRoutes(fastify: any) {
             const history = await TokoService.getStockInHistory(tenantId, { startDate, endDate, supplier });
             return history;
         } catch (error: any) {
-            reply.code(500).send({ error: 'Failed to fetch stock-in history' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch stock-in history'  });
         }
     });
 
@@ -224,7 +237,8 @@ export default async function tokoRoutes(fastify: any) {
                 return stockIn;
             }
         } catch (error: any) {
-            reply.code(500).send({ error: 'Failed to fetch stock-in transaction details' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch stock-in transaction details'  });
         }
     });
 
@@ -235,7 +249,8 @@ export default async function tokoRoutes(fastify: any) {
             const categories = await ProductCategoryService.getCategories(tenantId);
             return categories;
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to fetch categories' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to fetch categories'  });
         }
     });
 
@@ -248,6 +263,7 @@ export default async function tokoRoutes(fastify: any) {
             const category = await ProductCategoryService.createCategory(tenantId, parsed.name, parsed.description, operatorId);
             reply.code(201).send(category);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -267,6 +283,7 @@ export default async function tokoRoutes(fastify: any) {
             const category = await ProductCategoryService.updateCategory(req.params.id, tenantId, parsed.name, parsed.description, operatorId);
             return category;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -285,6 +302,7 @@ export default async function tokoRoutes(fastify: any) {
             await ProductCategoryService.deleteCategory(req.params.id, tenantId, operatorId);
             reply.code(204).send();
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Failed to delete category' });
         }
     });
@@ -296,7 +314,8 @@ export default async function tokoRoutes(fastify: any) {
             const sessions = await OpnameService.getSessions(tenantId);
             return sessions;
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to fetch opname sessions' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to fetch opname sessions'  });
         }
     });
 
@@ -311,7 +330,8 @@ export default async function tokoRoutes(fastify: any) {
                 return session;
             }
         } catch (error: any) {
-            reply.code(500).send({ error: error.message || 'Failed to fetch opname details' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: error.message || 'Failed to fetch opname details'  });
         }
     });
 
@@ -324,6 +344,7 @@ export default async function tokoRoutes(fastify: any) {
             const session = await OpnameService.createSession(tenantId, operatorId, parsed.notes, parsed.categoryFilter);
             reply.code(201).send(session);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -342,6 +363,7 @@ export default async function tokoRoutes(fastify: any) {
             const updated = await OpnameService.updateSessionItems(tenantId, req.params.id, parsed.items);
             return updated;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -360,6 +382,7 @@ export default async function tokoRoutes(fastify: any) {
             const session = await OpnameService.finalizeSession(tenantId, req.params.id, operatorId);
             return session;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Failed to finalize opname session' });
         }
     });
@@ -371,6 +394,7 @@ export default async function tokoRoutes(fastify: any) {
             const session = await OpnameService.cancelSession(tenantId, req.params.id);
             return session;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Failed to cancel opname session' });
         }
     });
@@ -482,6 +506,7 @@ export default async function tokoRoutes(fastify: any) {
             reply.header('Content-Disposition', 'attachment; filename="import_produk_koperasi_template.xlsx"');
             return reply.send(buffer);
         } catch (error) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             console.error('Error generating template:', error);
             reply.code(500).send({ message: 'Failed to generate template' });
         }
@@ -511,6 +536,7 @@ export default async function tokoRoutes(fastify: any) {
             const result = await TokoService.importProducts(tenantId, data, operatorId);
             return result;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             console.error('Error importing products:', error);
             reply.code(500).send({ message: error.message || 'Failed to import products' });
         }
@@ -526,6 +552,7 @@ export default async function tokoRoutes(fastify: any) {
             const balance = await EWalletService.getBalanceByRfid(tenantId, rfid);
             return balance;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Gagal mengambil saldo E-Wallet' });
         }
     });
@@ -546,6 +573,7 @@ export default async function tokoRoutes(fastify: any) {
             
             reply.code(201).send(sale);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),

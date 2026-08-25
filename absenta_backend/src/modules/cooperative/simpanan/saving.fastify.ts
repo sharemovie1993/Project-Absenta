@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SavingService } from './saving.service';
 import { mockTenant } from '../../../utils/mocks';
@@ -34,7 +36,8 @@ export default async function savingRoutes(fastify: any) {
             const savings = await SavingService.getSavings(tenantId, options);
             return savings;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch savings' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch savings'  });
         }
     });
 
@@ -47,6 +50,7 @@ export default async function savingRoutes(fastify: any) {
             const saving = await SavingService.createSaving(memberId, categoryId, initialAmount);
             reply.code(201).send(saving);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -58,7 +62,7 @@ export default async function savingRoutes(fastify: any) {
             } else if (error.message.includes('sudah ada')) {
                 reply.code(409).send({ message: error.message });
             } else {
-                reply.code(500).send({ error: 'Gagal membuat rekening simpanan.' });
+                reply.status(500).send({ success: false, message: 'Gagal membuat rekening simpanan.'  });
             }
         }
     });
@@ -71,6 +75,7 @@ export default async function savingRoutes(fastify: any) {
             const transaction = await SavingService.processTransaction(savingId, amount, type, description, req.user?.id);
             reply.code(201).send(transaction);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -102,7 +107,8 @@ export default async function savingRoutes(fastify: any) {
             const transactions = await SavingService.getTransactions(tenantId, { startDate, endDate });
             return transactions;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch saving transactions' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch saving transactions'  });
         }
     });
 
@@ -117,15 +123,16 @@ export default async function savingRoutes(fastify: any) {
             const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.savings.view.detail'], { user });
             const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
             if (!isOperator && saving.member.userId !== user?.id) {
-                return reply.code(403).send({ error: 'Forbidden: You can only view your own saving account' });
+                return reply.status(403).send({ success: false, message: 'Forbidden: You can only view your own saving account'  });
             }
             
             return saving;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message === 'Saving account not found') {
                 reply.code(404).send({ message: 'Saving account not found' });
             } else {
-                reply.code(500).send({ error: 'Failed to fetch saving details' });
+                reply.status(500).send({ success: false, message: 'Failed to fetch saving details'  });
             }
         }
     });
@@ -138,6 +145,7 @@ export default async function savingRoutes(fastify: any) {
             const data = await SavingService.getMemberSavingInsights(String(userId), tenantId);
             return reply.send(data);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error fetching member saving insights');
             return reply.code(500).send({ message: error.message || 'Gagal mengambil insight simpanan.' });
         }

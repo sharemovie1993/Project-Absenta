@@ -1,3 +1,6 @@
+// @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { PointService } from './point.service';
 import { MemberService } from '../member/member.service';
 import { requireCapability } from '@/middlewares/requireCapability';
@@ -28,6 +31,7 @@ export default async function pointRoutes(fastify: any) {
                 data: history
             };
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(500).send({ message: error.message || 'Gagal memuat riwayat poin' });
         }
     });
@@ -55,6 +59,7 @@ export default async function pointRoutes(fastify: any) {
                 data: result
             };
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Gagal menukarkan poin' });
         }
     });

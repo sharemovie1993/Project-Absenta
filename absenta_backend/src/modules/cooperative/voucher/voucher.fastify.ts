@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { VoucherService } from './voucher.service';
 import { MemberService } from '../member/member.service';
@@ -55,6 +57,7 @@ export default async function voucherRoutes(fastify: any) {
                 voucher
             };
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             reply.code(400).send({ message: error.message || 'Voucher tidak valid' });
         }
     });

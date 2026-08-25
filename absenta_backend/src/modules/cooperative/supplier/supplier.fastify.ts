@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance } from 'fastify';
 import { SupplierService } from './supplier.service';
 import { requireCapability } from '@/middlewares/requireCapability';
@@ -19,9 +21,10 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         const tenantId = getTenantId(req);
         const includeInactive = req.query?.includeInactive === 'true';
         const suppliers = await SupplierService.findAll(tenantId, includeInactive);
-        return suppliers;
+        return reply.status(200).send({ success: true, message: 'Daftar supplier', data: suppliers });
       } catch (error: any) {
-        reply.code(500).send({ error: error.message || 'Gagal mengambil daftar supplier' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+        reply.status(500).send({ success: false, message: error.message || 'Gagal mengambil daftar supplier'  });
       }
     }
   );
@@ -36,11 +39,12 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         const { id } = req.params as { id: string };
         const supplier = await SupplierService.findById(id, tenantId);
         if (!supplier) {
-          return reply.code(404).send({ error: 'Supplier tidak ditemukan' });
+          return reply.status(404).send({ success: false, message: 'Supplier tidak ditemukan'  });
         }
-        return supplier;
+        return reply.status(200).send({ success: true, message: 'Detail supplier', data: supplier });
       } catch (error: any) {
-        reply.code(500).send({ error: error.message || 'Gagal mengambil detail supplier' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+        reply.status(500).send({ success: false, message: error.message || 'Gagal mengambil detail supplier'  });
       }
     }
   );
@@ -69,10 +73,11 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
 
         reply.code(201).send(supplier);
       } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
         if (error.code === 'P2002') {
           return reply.code(409).send({ message: 'Supplier dengan nama ini sudah terdaftar' });
         }
-        reply.code(500).send({ error: error.message || 'Gagal membuat supplier' });
+        reply.status(500).send({ success: false, message: error.message || 'Gagal membuat supplier'  });
       }
     }
   );
@@ -97,15 +102,16 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
           isActive: body.isActive
         });
 
-        return supplier;
+        return reply.status(200).send({ success: true, message: 'Detail supplier', data: supplier });
       } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
         if (error.message === 'Supplier tidak ditemukan') {
           return reply.code(404).send({ message: error.message });
         }
         if (error.code === 'P2002') {
           return reply.code(409).send({ message: 'Supplier dengan nama ini sudah terdaftar' });
         }
-        reply.code(500).send({ error: error.message || 'Gagal mengupdate supplier' });
+        reply.status(500).send({ success: false, message: error.message || 'Gagal mengupdate supplier'  });
       }
     }
   );
@@ -121,10 +127,11 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         await SupplierService.delete(id, tenantId);
         return { success: true, message: 'Supplier berhasil dinonaktifkan' };
       } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
         if (error.message === 'Supplier tidak ditemukan') {
           return reply.code(404).send({ message: error.message });
         }
-        reply.code(500).send({ error: error.message || 'Gagal menghapus supplier' });
+        reply.status(500).send({ success: false, message: error.message || 'Gagal menghapus supplier'  });
       }
     }
   );

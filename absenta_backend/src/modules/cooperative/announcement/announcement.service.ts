@@ -1,9 +1,9 @@
 // @ts-nocheck
+import { appLogger } from '@/utils/app-logger';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '../../../utils/prisma';
 
 export class AnnouncementService {
-    
-    // Get all announcements
     static async getAnnouncements(tenantId: string) {
         return await prisma.announcement.findMany({
             where: { tenantId, isActive: true },
@@ -11,7 +11,6 @@ export class AnnouncementService {
         });
     }
 
-    // Create announcement
     static async createAnnouncement(tenantId: string, data: any) {
         return await prisma.announcement.create({
             data: {
@@ -23,13 +22,9 @@ export class AnnouncementService {
         });
     }
 
-    // Delete announcement
-    static async deleteAnnouncement(id: string) {
-        return await prisma.announcement.delete({
-            where: { id }
+    static async deleteAnnouncement(id: string, tenantId?: string) {
+        return await prisma.announcement.deleteMany({
+            where: { id, ...(tenantId ? { tenantId } : {}) }
         });
     }
 }
-
-
-

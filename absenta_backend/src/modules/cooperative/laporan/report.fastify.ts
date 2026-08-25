@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { ReportService } from './report.service';
 import { mockTenant } from '../../../utils/mocks';
@@ -70,6 +72,7 @@ export default async function reportRoutes(fastify: any) {
             const result = await ReportService.postPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id);
             return reply.send(result);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error processing bulk payroll posting');
             return reply.code(500).send({ message: error.message || 'Gagal memproses posting potongan gaji massal.' });
         }
@@ -86,6 +89,7 @@ export default async function reportRoutes(fastify: any) {
             const result = await ReportService.cancelPayrollDeductions(tenantId, parseInt(month), parseInt(year));
             return reply.send(result);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error cancelling bulk payroll posting');
             return reply.code(500).send({ message: error.message || 'Gagal membatalkan posting potongan gaji massal.' });
         }
@@ -105,6 +109,7 @@ export default async function reportRoutes(fastify: any) {
             });
             return reply.send(report);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error generating inventory stock report');
             return reply.code(500).send({ message: error.message || 'Gagal mengambil laporan stok.' });
         }
@@ -117,6 +122,7 @@ export default async function reportRoutes(fastify: any) {
             const report = await ReportService.getInventoryValuationReport(tenantId);
             return reply.send(report);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error generating inventory valuation report');
             return reply.code(500).send({ message: error.message || 'Gagal mengambil laporan nilai persediaan.' });
         }
@@ -130,6 +136,7 @@ export default async function reportRoutes(fastify: any) {
             const report = await ReportService.getPurchaseSummaryReport(tenantId, { startDate, endDate, supplier });
             return reply.send(report);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             fastify.log.error({ err: error }, 'Error generating purchase summary report');
             return reply.code(500).send({ message: error.message || 'Gagal mengambil rekap barang masuk.' });
         }

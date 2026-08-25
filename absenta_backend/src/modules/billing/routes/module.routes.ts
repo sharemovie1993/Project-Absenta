@@ -1,4 +1,6 @@
 import { moduleController } from '../controllers/module.controller';
+import { requireCapability } from '@/middlewares/requireCapability';
+import { determineDataScope } from '@/middlewares/dataScope';
 
 export async function moduleRoutes(fastify: any) {
   // Public endpoint
@@ -7,8 +9,9 @@ export async function moduleRoutes(fastify: any) {
     handler: moduleController.getPublicModules.bind(moduleController),
   });
 
-  // Admin endpoint (optional for now, can add RBAC later)
+  // Admin endpoint
   fastify.get('/', {
+    preHandler: [requireCapability('billing.modules.view'), determineDataScope()],
     handler: moduleController.getAllModules.bind(moduleController),
   });
 }

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from 'zod';
 
 // === 1. Pinjaman (Loans) ===

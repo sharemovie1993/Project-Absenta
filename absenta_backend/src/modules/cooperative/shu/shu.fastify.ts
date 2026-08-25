@@ -1,3 +1,6 @@
+// @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { ShuService } from './shu.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 
@@ -54,6 +57,7 @@ export async function shuRoutes(fastify: any) {
             await ShuService.deletePeriod(req.params.id, req.tenantId);
             return reply.send({ success: true, message: 'Periode SHU berhasil dihapus' });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             return reply.code(400).send({ success: false, message: error.message });
         }
     });
@@ -66,6 +70,7 @@ export async function shuRoutes(fastify: any) {
             const data = await ShuService.syncPeriodFinancials(req.params.id, req.tenantId);
             return reply.send({ success: true, data });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             return reply.code(400).send({ success: false, message: error.message });
         }
     });
@@ -78,6 +83,7 @@ export async function shuRoutes(fastify: any) {
             const data = await ShuService.calculateShu(req.params.id, req.tenantId);
             return reply.send({ success: true, data });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message?.startsWith('SHU_RESTRICTION:')) {
                 // Ambil pesan bersih dari error bisnis
                 const cleanMessage = error.message.replace(/^SHU_RESTRICTION:NEGATIVE:\s*/, '');

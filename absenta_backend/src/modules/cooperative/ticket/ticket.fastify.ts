@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { TicketService } from './ticket.service';
 import { MemberService } from '../member/member.service';
@@ -53,6 +55,7 @@ export default async function ticketRoutes(fastify: any) {
 
             return reply.send({ data: ticket });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             return reply.status(404).send({ message: error.message });
         }
     });
@@ -113,6 +116,7 @@ export default async function ticketRoutes(fastify: any) {
             const message = await TicketService.replyTicket(id, content, isStaff);
             return reply.send({ message: 'Reply added', data: message });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             return reply.status(404).send({ message: error.message });
         }
     });

@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { PPOBService } from './ppob.service';
 import { mockTenant } from '../../../utils/mocks';
@@ -29,6 +31,7 @@ export default async function ppobRoutes(fastify: any) {
             const product = await PPOBService.createProduct(tenantId, parsed);
             return reply.send({ message: 'PPOB Product created', data: product });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.status(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -47,6 +50,7 @@ export default async function ppobRoutes(fastify: any) {
             const transaction = await PPOBService.createTransaction(tenantId, parsed);
             return reply.send({ message: 'Transaction created', data: transaction });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.status(400).send({
                     message: error.errors.map(e => e.message).join(', '),

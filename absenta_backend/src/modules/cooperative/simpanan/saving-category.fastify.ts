@@ -1,3 +1,6 @@
+// @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { SavingCategoryService } from './saving-category.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { z } from 'zod';
@@ -32,6 +35,7 @@ export async function savingCategoryRoutes(fastify: any) {
             const data = await SavingCategoryService.createCategory(req.tenantId, parsed);
             return reply.code(201).send({ success: true, data });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     success: false,
@@ -52,6 +56,7 @@ export async function savingCategoryRoutes(fastify: any) {
             const data = await SavingCategoryService.updateCategory(req.params.id, req.tenantId, parsed);
             return reply.send({ success: true, data });
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     success: false,

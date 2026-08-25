@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { LoanService } from './loan.service';
 import { mockTenant } from '../../../utils/mocks';
@@ -25,7 +27,8 @@ export default async function loanRoutes(fastify: any) {
             const loans = await LoanService.getLoans(tenantId);
             return loans;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch loans' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch loans'  });
         }
     });
 
@@ -46,13 +49,14 @@ export default async function loanRoutes(fastify: any) {
                     where: { tenantId, userId: user.id }
                 });
                 if (!member || member.id !== memberId) {
-                    return reply.code(403).send({ error: 'Forbidden: You can only apply for loans under your own member account' });
+                    return reply.status(403).send({ success: false, message: 'Forbidden: You can only apply for loans under your own member account'  });
                 }
             }
 
             const loan = await LoanService.createLoan(memberId, amount, interestRate, duration);
             reply.code(201).send(loan);
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -67,7 +71,7 @@ export default async function loanRoutes(fastify: any) {
             } else if (error.message?.includes('not found')) {
                 reply.code(404).send({ message: error.message });
             } else {
-                reply.code(500).send({ error: 'Failed to create loan' });
+                reply.status(500).send({ success: false, message: 'Failed to create loan'  });
             }
         }
     });
@@ -82,7 +86,8 @@ export default async function loanRoutes(fastify: any) {
             const loans = await LoanService.getLoansByUserId(tenantId, userId);
             return loans;
         } catch (error) {
-            reply.code(500).send({ error: 'Failed to fetch personal loans' });
+        appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch personal loans'  });
         }
     });
 
@@ -97,15 +102,16 @@ export default async function loanRoutes(fastify: any) {
             const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.view.detail'], { user });
             const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
             if (!isOperator && loan.member.userId !== user?.id) {
-                return reply.code(403).send({ error: 'Forbidden: You can only view your own loan account' });
+                return reply.status(403).send({ success: false, message: 'Forbidden: You can only view your own loan account'  });
             }
             
             return loan;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message === 'Loan not found') {
                 reply.code(404).send({ message: 'Loan not found' });
             } else {
-                reply.code(500).send({ error: 'Failed to fetch loan details' });
+                reply.status(500).send({ success: false, message: 'Failed to fetch loan details'  });
             }
         }
     });
@@ -117,6 +123,7 @@ export default async function loanRoutes(fastify: any) {
             const updatedInstallment = await LoanService.payInstallment(parsed.installmentId);
             return updatedInstallment;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -128,7 +135,7 @@ export default async function loanRoutes(fastify: any) {
             } else if (error.message === 'Installment already paid') {
                 reply.code(400).send({ message: 'Installment already paid' });
             } else {
-                reply.code(500).send({ error: 'Failed to pay installment' });
+                reply.status(500).send({ success: false, message: 'Failed to pay installment'  });
             }
         }
     });
@@ -141,6 +148,7 @@ export default async function loanRoutes(fastify: any) {
             const loan = await LoanService.updateLoanStatus(req.params.id, parsed.status, tenantId, req.user?.id);
             return loan;
         } catch (error: any) {
+        appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -150,7 +158,7 @@ export default async function loanRoutes(fastify: any) {
             if (error.message?.includes('Self-Approval')) {
                 reply.code(400).send({ message: error.message });
             } else {
-                reply.code(500).send({ error: 'Failed to update loan status' });
+                reply.status(500).send({ success: false, message: 'Failed to update loan status'  });
             }
         }
     });

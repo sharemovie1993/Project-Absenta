@@ -1,36 +1,45 @@
 // @ts-nocheck
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { AnnouncementService } from './announcement.service';
+import { appLogger } from '@/utils/app-logger';
+import { getTenantTimezone } from '@/utils/timezone.utils';
 import { mockTenant } from '../../../utils/mocks';
-import { requireCapability } from '@/middlewares/requireCapability';
 
-const getTenantId = (req: any) => {
-    return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
-};
+export default async function announcementRoutes(fastify: FastifyInstance) {
+    const getTenantId = (req: any) => {
+        return (req.user?.tenant_id || req.user?.tenantId) || mockTenant.id;
+    };
 
-export default async function announcementRoutes(fastify: any) {
-    // Get all announcements
-    fastify.get('/', { preHandler: [requireCapability('cooperative.announcements.view.list')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const announcements = await AnnouncementService.getAnnouncements(tenantId);
-        return reply.send({ data: announcements });
+    fastify.get('/', async (req, reply) => {
+        try {
+            const tenantId = getTenantId(req);
+            const announcements = await AnnouncementService.getAnnouncements(tenantId);
+            return reply.status(200).send({ success: true, message: 'Daftar pengumuman berhasil dimuat', data: announcements });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Error fetching announcements');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 
-    // Create announcement
-    fastify.post('/', { preHandler: [requireCapability('cooperative.announcements.create')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const data = req.body as any;
-        const announcement = await AnnouncementService.createAnnouncement(tenantId, data);
-        return reply.send({ message: 'Announcement created', data: announcement });
+    fastify.post('/', async (req, reply) => {
+        try {
+            const tenantId = getTenantId(req);
+            const announcement = await AnnouncementService.createAnnouncement(tenantId, req.body);
+            return reply.status(201).send({ success: true, message: 'Pengumuman berhasil dibuat', data: announcement });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Error creating announcement');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 
-    // Delete announcement
-    fastify.delete('/:id', { preHandler: [requireCapability('cooperative.announcements.delete')] }, async (req: any, reply: any) => {
-        const { id } = req.params as any;
-        await AnnouncementService.deleteAnnouncement(id);
-        return reply.send({ message: 'Announcement deleted' });
+    fastify.delete('/:id', async (req, reply) => {
+        try {
+            const tenantId = getTenantId(req);
+            await AnnouncementService.deleteAnnouncement(req.params.id, tenantId);
+            return reply.status(200).send({ success: true, message: 'Pengumuman berhasil dihapus' });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Error deleting announcement');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 }
-
-
-

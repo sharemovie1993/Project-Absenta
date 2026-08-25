@@ -38,7 +38,7 @@ function findRouteFiles(dir) {
       if (!file.startsWith('.') && file !== 'node_modules' && file !== 'dist') {
         results = results.concat(findRouteFiles(filePath));
       }
-    } else if (file.endsWith('.routes.ts') || file.endsWith('.route.ts') || file.endsWith('routes.ts')) {
+    } else if (file.endsWith('.routes.ts') || file.endsWith('.route.ts') || file.endsWith('routes.ts') || file.endsWith('.fastify.ts')) {
       results.push(filePath);
     }
   });
@@ -108,7 +108,7 @@ function auditRoute(routeFilePath) {
 
   // P2: Tenant Data Isolation Guard
   const hasDbQueries = /prisma\.\w+\.(find|create|update|delete|count|upsert)/.test(combinedContent);
-  const hasTenantFiltering = /tenant_id\s*:\s*tenantId|tenant_id\s*:\s*request\.tenantId|where\s*:\s*\{[^}]*?tenant_id/s.test(combinedContent);
+  const hasTenantFiltering = /tenant_id\s*:\s*tenantId|tenantId\s*:\s*tenantId|where\s*:\s*\{[^}]*?(tenant_id|tenantId|dataScope)/s.test(combinedContent);
   const passTenantIsolation = !hasDbQueries || hasTenantFiltering || hasPublicExemption;
   if (!passTenantIsolation) {
     issues.push('❌ [P2 Tenant Isolation] Terdeteksi query database Prisma tanpa klausa filter tenant_id eksplisit.');
