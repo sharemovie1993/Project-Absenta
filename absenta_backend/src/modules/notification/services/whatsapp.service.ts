@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import * as fs from 'fs';
 import * as path from 'path';
 import { resolveBaseUrlFromRequest, getSmartFrontendBaseUrl } from '../../../utils/url-helper';
@@ -62,7 +63,7 @@ export class WhatsAppService {
   }
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = prisma;
     this.apiUrl = process.env.WHATSAPP_API_URL || 'https://api.fonnte.com/send';
     this.apiKey = process.env.WHATSAPP_API_KEY || '';
   }

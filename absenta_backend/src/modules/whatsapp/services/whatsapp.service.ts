@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import axios from 'axios';
 
-const prisma = new PrismaClient();
+
 
 /**
  * Normalisasi nomor HP ke format internasional Indonesia (628xxx).

@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 
 export interface FinancialReportData {
   tenantId: string;
@@ -21,7 +22,7 @@ export class FinancialService {
   private prisma: PrismaClient;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = prisma;
   }
 
   async generateFinancialReport(

@@ -1,11 +1,12 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import webpush from 'web-push';
 
 export class PushService {
   private prisma: PrismaClient;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = prisma;
     
     // Initialize VAPID keys
     // In production, these should be in environment variables

@@ -1,5 +1,6 @@
+import type { PrismaClient } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import * as fs from 'fs';
 import * as path from 'path';
 import { NotificationEvent } from '../types/notification-event.enum';
@@ -149,7 +150,7 @@ export class EmailService {
   private prisma: PrismaClient;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = prisma;
     const rawHost = process.env.EMAIL_HOST || process.env.SMTP_HOST || 'smtp.gmail.com';
     // Fix: localhost often resolves to IPv6 (::1) in Node 17+, but local mail services like Mailpit 
     // usually listen on IPv4 (127.0.0.1). Force 127.0.0.1 if host is exactly 'localhost'.

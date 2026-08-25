@@ -1,11 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import { findBestMatch } from '@/utils/normalization';
 import { RoleName } from '../../../../constants/enums';
 import { isSystemSuperAdmin } from '../../../../utils/rbac';
 import { DataScope } from '../../../../types/fastify';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
-const prisma = new PrismaClient();
+
 
 export interface CreateMapelInput {
   nama_mapel: string;

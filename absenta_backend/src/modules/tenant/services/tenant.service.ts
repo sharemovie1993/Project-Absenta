@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import { DataScope, UserPayload } from '../../../types/fastify';
 import { seedDefaultJenisKegiatanForTenant } from '../../academic/jenis-kegiatan-master/services/jenis-kegiatan-master.service';
 import { seedDefaultJenisPelanggaranForTenant } from '../../kesiswaan/services/jenis-pelanggaran.service';
@@ -7,7 +7,7 @@ import { strukturOrganisasiService } from '../../academic/struktur-organisasi/se
 import { tenantEntitlementService } from '../../billing/services/tenant-entitlement.service';
 import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
 
-const prisma = new PrismaClient();
+
 
 // Removed hardcoded DEFAULT_STRUKTUR_ORGANISASI in favor of shared config
 

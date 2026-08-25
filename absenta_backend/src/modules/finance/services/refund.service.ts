@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 
 export interface RecordRefundInput {
   tenant_id: string;
@@ -13,7 +14,7 @@ export class RefundService {
   private prisma: PrismaClient;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = prisma;
   }
 
   async recordRefund(input: RecordRefundInput) {

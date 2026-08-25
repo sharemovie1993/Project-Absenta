@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// ─── 12 PILAR STANDARISASI BACKEND MULTI-TENANT GOOGLE ─────────────────────
+// ─── 13 PILAR STANDARISASI BACKEND MULTI-TENANT GOOGLE ─────────────────────
 // P1: Tenant Context Injection Guard
 // P2: Tenant Data Isolation Guard
 // P3: Role & Permission RBAC Guard
@@ -14,6 +14,7 @@ const path = require('path');
 // P10: Health Check & Fault Tolerance
 // P11: Anti God-File & Modular Architecture Guard
 // P12: End-to-End Payload & Contract Symmetry Guard (Request/Response Envelope)
+// P13: Centralized Database Singleton & Anti-Connection-Leak Guard (Prisma Utils Hub)
 // ────────────────────────────────────────────────────────────────────────────
 
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -185,9 +186,6 @@ function auditRoute(routeFilePath) {
   }
 
   // P12: End-to-End Payload & Contract Symmetry Guard
-  // (a) Semua mutasi mengembalikan { success: true, message: ..., data: ... }
-  // (b) List data memiliki pagination object atau envelope standar
-  // (c) Menggunakan status code semantik (200, 201, 400, 401, 403, 404, 409, 500)
   const hasRawReturnWithoutEnvelope = /return\s+(?!\{[\s\S]*?success)[a-zA-Z0-9_]+\s*;/g.test(combinedContent) && !combinedContent.includes('reply.send');
   const hasStatusSemantics = /reply\.status\(\s*(200|201|400|401|403|404|409|500)\s*\)/.test(combinedContent) || /status\s*:\s*(200|201|400|401|403|404|409|500)/.test(combinedContent);
   const hasListEndpoint = /fastify\.get\(/i.test(routeContent);
@@ -196,6 +194,13 @@ function auditRoute(routeFilePath) {
   const passPayloadContractSymmetry = !hasRawReturnWithoutEnvelope && hasStatusSemantics && hasPaginationOrArray;
   if (!passPayloadContractSymmetry) {
     issues.push('⚠️ [P12 Payload Symmetry] Kontrak respon belum simetris: pastikan menggunakan status code semantik & amplop { success, message, data, pagination }.');
+  }
+
+  // P13: Centralized Database Singleton & Anti-Connection-Leak Guard (Prisma Utils Hub)
+  const hasNewPrismaClient = importedFiles.some(f => !f.path.includes('utils\\prisma.ts') && !f.path.includes('utils/prisma.ts') && /new\s+PrismaClient\s*\(/i.test(fs.readFileSync(f.path, 'utf8')));
+  const passPrismaSingleton = !hasNewPrismaClient;
+  if (!passPrismaSingleton) {
+    issues.push('❌ [P13 Prisma Singleton Guard] Terdeteksi instansiasi liar new PrismaClient()! Wajib menggunakan jalur tunggal: import { prisma } from "@/utils/prisma".');
   }
 
   // Calculate Score
@@ -212,13 +217,14 @@ function auditRoute(routeFilePath) {
     faultTolerance: passFaultTolerance,
     godFileGuard: passGodFile,
     payloadContractSymmetry: passPayloadContractSymmetry,
+    prismaSingletonGuard: passPrismaSingleton,
   };
 
   const totalPassed = Object.values(pillars).filter(Boolean).length;
-  const score = Math.round((totalPassed / 12) * 100);
+  const score = Math.round((totalPassed / 13) * 100);
 
   let status = '✅ TERSTANDARISASI';
-  if (score < 70 || !passTenantContext || !passTenantIsolation) {
+  if (score < 70 || !passTenantContext || !passTenantIsolation || !passPrismaSingleton) {
     status = '❌ BELUM STANDAR';
   } else if (score < 100 || issues.length > 0) {
     status = '⚠️ SEBAGIAN';
@@ -241,7 +247,7 @@ function main() {
   const moduleFilterIdx = args.findIndex(a => a === '--module' || a === '-m');
   const moduleFilter = moduleFilterIdx !== -1 ? args[moduleFilterIdx + 1] : null;
 
-  console.log('🛡️  MEMULAI AUDIT STATIS BACKEND ARSITEKTUR MULTI-TENANT, GOD-FILE & KONTRAK PAYLOAD (12 PILAR GOOGLE)...\n');
+  console.log('🛡️  MEMULAI AUDIT STATIS BACKEND MULTI-TENANT 13 PILAR GOOGLE & PRISMA SINGLETON...\n');
 
   const allRouteFiles = findRouteFiles(MODULES_DIR);
   let filteredRoutes = allRouteFiles;
@@ -270,7 +276,7 @@ function main() {
     });
   });
 
-  console.log('\n================ RINGKASAN HASIL AUDIT BACKEND (12 PILAR) ================');
+  console.log('\n================ RINGKASAN HASIL AUDIT BACKEND (13 PILAR) ================');
   console.log(`Total Route/Modul Diaudit : ${filteredRoutes.length} berkas`);
   console.log(`Sempurna Terstandarisasi  : ${fullyStandardized} berkas`);
   console.log(`Sebagian Terstandarisasi  : ${partiallyStandardized} berkas`);
