@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { semesterService, CreateSemesterInput, UpdateSemesterInput } from '../services/semester.service';
 import { createSemesterSchema, updateSemesterSchema } from '../services/semester.schema';
 
@@ -14,6 +15,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to retrieve semester',
@@ -43,6 +45,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to retrieve semester',
@@ -64,6 +67,7 @@ export class SemesterController {
         data: semesters,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to retrieve semesters',
@@ -90,6 +94,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to create semester',
@@ -119,6 +124,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to update semester',
@@ -139,6 +145,7 @@ export class SemesterController {
         message: 'Semester deleted successfully',
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       const msg = String(error?.message || '');
       if (
         msg.includes('not found') ||
@@ -172,6 +179,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to retrieve active semester',
@@ -193,6 +201,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500).send({
         success: false,
         message: 'Failed to set active semester',
@@ -214,6 +223,7 @@ export class SemesterController {
         data: semester,
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(400).send({
         success: false,
         message: error.message || 'Failed to deactivate semester',

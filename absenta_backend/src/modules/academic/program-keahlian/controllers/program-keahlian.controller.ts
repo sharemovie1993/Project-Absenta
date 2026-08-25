@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { programKeahlianService } from '../services/program-keahlian.service';
 import { createProgramKeahlianSchema, updateProgramKeahlianSchema } from '../services/program-keahlian.schema';
 
@@ -17,6 +18,7 @@ export const programKeahlianController = {
         pagination: result.pagination,
       });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   },
@@ -29,6 +31,7 @@ export const programKeahlianController = {
       if (!result) return reply.status(404).send({ success: false, message: 'Program Keahlian tidak ditemukan' });
       return reply.status(200).send({ success: true, data: result });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   },
@@ -42,6 +45,7 @@ export const programKeahlianController = {
       const result = await programKeahlianService.createProgramKeahlian(parsed.data, user.tenantId);
       return reply.status(201).send({ success: true, data: result, message: 'Program Keahlian berhasil ditambahkan' });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(400).send({ success: false, message: err.message });
     }
   },
@@ -55,6 +59,7 @@ export const programKeahlianController = {
       const result = await programKeahlianService.updateProgramKeahlian(id, parsed.data, user.roleName, user.tenantId);
       return reply.status(200).send({ success: true, data: result, message: 'Program Keahlian berhasil diperbarui' });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(400).send({ success: false, message: err.message });
     }
   },
@@ -66,6 +71,7 @@ export const programKeahlianController = {
       await programKeahlianService.removeProgramKeahlian(id, user.roleName, user.tenantId);
       return reply.status(200).send({ success: true, message: 'Program Keahlian berhasil dihapus' });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(400).send({ success: false, message: err.message });
     }
   },

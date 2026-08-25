@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { jadwalKontrakKbmService } from '../services/jadwal-kontrak-kbm.service';
 
 export class JadwalKontrakKbmController {
@@ -11,6 +12,7 @@ export class JadwalKontrakKbmController {
       });
       return reply.send({ success: true, message: 'OK', data, total: data.length });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   }
@@ -24,6 +26,7 @@ export class JadwalKontrakKbmController {
       const updated = await jadwalKontrakKbmService.update(id, tenantId, body);
       return reply.send({ success: true, message: 'Kontrak KBM berhasil diperbarui.', data: updated });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   }
@@ -36,6 +39,7 @@ export class JadwalKontrakKbmController {
       await jadwalKontrakKbmService.delete(id, tenantId);
       return reply.send({ success: true, message: 'Kontrak KBM berhasil dihapus.' });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   }
@@ -48,6 +52,7 @@ export class JadwalKontrakKbmController {
       const data = await jadwalKontrakKbmService.getSummary(tenantId, tahun_pelajaran_id, semester_id);
       return reply.send({ success: true, message: 'OK', data });
     } catch (err: any) {
+      appLogger.error({ err: err }, 'Controller error');
       return reply.status(500).send({ success: false, message: err.message });
     }
   }

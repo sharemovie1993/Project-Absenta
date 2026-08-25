@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { guruMapelService, CreateGuruMapelInput } from '../services/guru-mapel.service';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
@@ -23,6 +24,7 @@ export class GuruMapelController {
       reply.status(200);
       return { success: true, message: 'Assignments retrieved successfully', data };
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       const msg = error instanceof Error ? error.message : 'Failed to retrieve assignments';
       reply.status(500);
       return { success: false, message: msg };
@@ -56,6 +58,7 @@ export class GuruMapelController {
       reply.status(201);
       return { success: true, message: 'Assignment created successfully', data: created };
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       const msg = error instanceof Error ? error.message : 'Failed to create assignment';
       if (msg.includes('not found') || msg.includes('already exists')) {
         reply.status(400);
@@ -79,6 +82,7 @@ export class GuruMapelController {
       reply.status(200);
       return { success: true, message: 'Assignment removed successfully' };
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       const msg = error instanceof Error ? error.message : 'Failed to remove assignment';
       if (msg.includes('Insufficient permissions') || msg.includes('not found')) {
         reply.status(400);
@@ -120,6 +124,7 @@ export class GuruMapelController {
       reply.header('Content-Disposition', 'attachment; filename="template_impor_guru_mapel.xlsx"');
       return reply.send(buffer);
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: 'Gagal membuat template' });
     }
   }
@@ -143,6 +148,7 @@ export class GuruMapelController {
         data: result
       });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message });
     }
   }

@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 
 import { backupService } from '../services/backup.service';
 
@@ -14,6 +15,7 @@ export const backupController = {
       
       return reply.send(result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       console.error('Error exporting data:', error);
       return reply.status(500).send({
         success: false,
@@ -31,6 +33,7 @@ export const backupController = {
 
       return reply.status(200).send(result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       console.error('Error importing data:', error);
       return reply.status(500).send({
         success: false,

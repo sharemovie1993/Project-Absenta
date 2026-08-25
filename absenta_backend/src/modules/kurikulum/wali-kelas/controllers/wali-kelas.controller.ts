@@ -1,8 +1,9 @@
+import { appLogger } from '@/utils/app-logger';
+import { z } from 'zod';
 import {
   waliKelasService,
 } from '../services/wali-kelas.service';
 import { assignWaliKelasStrukturSchema } from '../../../../modules/academic/services/academic-validation.schema';
-import { z } from 'zod';
 
 export const waliKelasController = {
 
@@ -42,6 +43,7 @@ export const waliKelasController = {
         pagination: result.pagination,
       });
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
     }
   },
@@ -59,10 +61,11 @@ export const waliKelasController = {
       const data = await waliKelasService.assignStrukturWaliKelas(tenantId, parsed);
       return reply.status(200).send({ success: true, message: 'OK', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
-          message: error.errors.map(e => e.message).join(', '),
+          message: error.errors.map((e: any) => e.message).join(', '),
           errors: error.errors
         });
       }
@@ -92,6 +95,7 @@ export const waliKelasController = {
       await waliKelasService.nonaktifStrukturAssignment(tenantId, id);
       return reply.status(200).send({ success: true, message: 'OK', data: null });
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       if (error instanceof Error) {
         if (error.message.includes('not found') || error.message.includes('Tenant ID is required')) {
           return reply.status(400).send({ success: false, message: error.message, data: null });
@@ -118,6 +122,7 @@ export const waliKelasController = {
       }
       return reply.status(200).send({ success: true, message: 'OK', data });
     } catch (error) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: 'Internal server error', data: null });
     }
   },
@@ -134,6 +139,7 @@ export const waliKelasController = {
       const data = await waliKelasService.saveSkArsip(tenantId, userId, request.body);
       return reply.status(200).send({ success: true, message: 'SK berhasil diarsipkan', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -148,6 +154,7 @@ export const waliKelasController = {
       const data = await waliKelasService.getSkArsipList(tenantId, { tahun_pelajaran, guru_id, search });
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -165,6 +172,7 @@ export const waliKelasController = {
       }
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -179,6 +187,7 @@ export const waliKelasController = {
       await waliKelasService.deleteSkArsip(tenantId, id);
       return reply.status(200).send({ success: true, message: 'Arsip SK berhasil dihapus' });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -192,6 +201,7 @@ export const waliKelasController = {
       const result = await waliKelasService.getJurnal(tenantId, request.user, request.query);
       return reply.status(200).send({ success: true, message: 'OK', data: result.data, pagination: result.pagination });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -204,6 +214,7 @@ export const waliKelasController = {
       const data = await waliKelasService.createJurnal(tenantId, request.user, request.body);
       return reply.status(201).send({ success: true, message: 'Jurnal berhasil disimpan', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
     }
   },
@@ -217,6 +228,7 @@ export const waliKelasController = {
       await waliKelasService.deleteJurnal(tenantId, id);
       return reply.status(200).send({ success: true, message: 'Jurnal berhasil dihapus' });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -230,6 +242,7 @@ export const waliKelasController = {
       const result = await waliKelasService.getPermohonanIzin(tenantId, request.user, request.query);
       return reply.status(200).send({ success: true, message: 'OK', data: result.data, pagination: result.pagination });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },
@@ -242,6 +255,7 @@ export const waliKelasController = {
       const data = await waliKelasService.createPermohonanIzin(tenantId, request.user, request.body);
       return reply.status(201).send({ success: true, message: 'Permohonan izin berhasil diajukan', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
     }
   },
@@ -255,6 +269,7 @@ export const waliKelasController = {
       const data = await waliKelasService.updatePermohonanIzinStatus(tenantId, request.user, id, request.body);
       return reply.status(200).send({ success: true, message: 'Status permohonan izin berhasil diperbarui', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(400).send({ success: false, message: error.message || 'Bad Request' });
     }
   },
@@ -268,6 +283,7 @@ export const waliKelasController = {
       const data = await waliKelasService.getEwsPerKelas(tenantId, request.user, request.query);
       return reply.status(200).send({ success: true, message: 'OK', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       return reply.status(500).send({ success: false, message: error.message || 'Internal server error' });
     }
   },

@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { guruTimeOffService } from '../services/guru-time-off.service';
 
 interface ApiResponse<T = any> {
@@ -25,6 +26,7 @@ export class GuruTimeOffController {
       reply.status(200);
       return { success: true, message: 'Time-off list retrieved', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Failed to fetch time-off' };
     }
@@ -42,6 +44,7 @@ export class GuruTimeOffController {
       reply.status(200);
       return { success: true, message: 'All tenant time-offs retrieved', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Failed to fetch all time-offs' };
     }
@@ -69,6 +72,7 @@ export class GuruTimeOffController {
       reply.status(200);
       return { success: true, message: 'Time-off preferences saved successfully', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Failed to save time-off' };
     }
@@ -87,6 +91,7 @@ export class GuruTimeOffController {
       reply.status(200);
       return { success: true, message: 'Time-off record deleted', data: res };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Failed to delete time-off' };
     }

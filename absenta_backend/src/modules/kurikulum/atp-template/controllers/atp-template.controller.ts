@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 ﻿import { atpTemplateService } from '../services/atp-template.service';
 import { prisma } from '@/utils/prisma';
 
@@ -20,6 +21,7 @@ export class AtpTemplateController {
 
       return { success: true, message: 'Daftar template ATP berhasil dimuat', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Gagal memuat template ATP' };
     }
@@ -34,6 +36,7 @@ export class AtpTemplateController {
       const data = await atpTemplateService.getTemplateById(id);
       return { success: true, message: 'Detail template ATP berhasil dimuat', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal memuat detail template ATP' };
     }
@@ -54,6 +57,7 @@ export class AtpTemplateController {
 
       return { success: true, message: 'Template ATP berhasil disimpan', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal menyimpan template ATP' };
     }
@@ -79,6 +83,7 @@ export class AtpTemplateController {
         data
       };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal mengubah status template' };
     }
@@ -93,6 +98,7 @@ export class AtpTemplateController {
       const result = await atpTemplateService.deleteTemplate(id);
       return { success: true, message: result.message };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal menghapus template ATP' };
     }
@@ -143,6 +149,7 @@ export class AtpTemplateController {
         data
       };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal mengimpor template ATP' };
     }

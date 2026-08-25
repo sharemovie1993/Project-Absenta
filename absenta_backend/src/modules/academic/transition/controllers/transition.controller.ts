@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { transitionService, TransitionPreviewInput } from '../services/transition.service';
 import { DataScope } from '../../../../types/fastify';
 
@@ -16,6 +17,7 @@ class TransitionController {
       const result = await transitionService.preview(scope, input);
       return reply.status(200).send({ success: true, message: 'OK', data: result });
     } catch (e: any) {
+      appLogger.error({ err: e }, 'Controller error');
       console.error('TRANSITION PREVIEW ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }
@@ -35,6 +37,7 @@ class TransitionController {
       const result = await transitionService.execute(scope, input, request.user?.id);
       return reply.status(200).send({ success: true, message: 'OK', data: result });
     } catch (e: any) {
+      appLogger.error({ err: e }, 'Controller error');
       console.error('TRANSITION EXECUTE ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }
@@ -53,6 +56,7 @@ class TransitionController {
       const result = await transitionService.detectMissingNextClasses(scope.tenantId);
       return reply.status(200).send({ success: true, message: 'OK', data: result });
     } catch (e: any) {
+      appLogger.error({ err: e }, 'Controller error');
       console.error('TRANSITION DETECT MISSING ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }
@@ -76,6 +80,7 @@ class TransitionController {
       const result = await transitionService.createNextGradeClasses(scope.tenantId, classes);
       return reply.status(200).send({ success: true, message: `${result.created} kelas berhasil dibuat`, data: result });
     } catch (e: any) {
+      appLogger.error({ err: e }, 'Controller error');
       console.error('TRANSITION CREATE NEXT GRADE ERROR:', e);
       return reply.status(400).send({ success: false, message: e?.message || 'Bad Request', data: null });
     }

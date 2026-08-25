@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { atpService } from '../services/atp.service';
 import { prisma } from '@/utils/prisma';
 
@@ -36,6 +37,7 @@ export class AtpController {
 
       return { success: true, message: 'Daftar ATP berhasil dimuat', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Gagal memuat daftar ATP' };
     }
@@ -52,6 +54,7 @@ export class AtpController {
       const data = await atpService.getAtpById(user.tenantId, id);
       return { success: true, message: 'Detail ATP berhasil dimuat', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal memuat detail ATP' };
     }
@@ -87,6 +90,7 @@ export class AtpController {
 
       return { success: true, message: 'Rencana ATP berhasil disimpan', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal menyimpan rencana ATP' };
     }
@@ -103,6 +107,7 @@ export class AtpController {
       const result = await atpService.deleteAtp(user.tenantId, id);
       return { success: true, message: result.message };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(error.statusCode || 500);
       return { success: false, message: error.message || 'Gagal menghapus rencana ATP' };
     }
@@ -119,6 +124,7 @@ export class AtpController {
       const data = await atpService.getActiveTpForSesi(user.tenantId, sesiId);
       return { success: true, message: 'Daftar TP untuk sesi KBM berhasil dimuat', data };
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Controller error');
       reply.status(500);
       return { success: false, message: error.message || 'Gagal memuat rekomendasi TP' };
     }
