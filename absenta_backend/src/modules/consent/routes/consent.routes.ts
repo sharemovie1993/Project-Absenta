@@ -31,7 +31,7 @@ export async function consentRoutes(fastify: any) {
       ip_address: ip,
       user_agent: typeof userAgent === 'string' ? userAgent : null,
     });
-    return reply.code(201).send({ success: true, message: 'Created', data: created });
+    return reply.status(201).send({ success: true, message: 'Created', data: created });
   });
 
   fastify.get('/logs', {
@@ -52,6 +52,6 @@ export async function consentRoutes(fastify: any) {
     const userId = req.user?.id || null;
     const qs = req.query as { type?: ConsentType };
     const logs = await consentLogService.list(roleName, tenantId, userId, qs?.type);
-    return reply.send({ success: true, message: 'OK', data: logs });
+    return reply.status(200).send({ success: true, message: 'OK', data: logs });
   });
 }

@@ -2,15 +2,22 @@ import { prisma } from '@/utils/prisma';
 import { RedisSubscriber } from '@/infra/redis/redis-subscriber';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
+import { appLogger } from '@/utils/app-logger';
 
 export async function restoreProgressRoutes(app: any) {
   app.get('/:id/progress/stream', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, async (req: any, reply: any) => {
     const { id } = req.params;
+    const tenantId = req.tenantId || req.dataScope?.tenantId;
 
-    // 1. Validation
-    const backup = await prisma.tenantBackup.findUnique({ where: { id } });
+    // 1. Validation with Tenant Context
+    const backup = await prisma.tenantBackup.findFirst({
+      where: {
+        id,
+        ...(tenantId ? { tenant_id: tenantId } : {})
+      }
+    });
     if (!backup) {
-      return reply.status(404).send('Backup not found');
+      return reply.status(404).send({ success: false, message: 'Backup not found' });
     }
 
     // 2. Set SSE Headers
@@ -42,7 +49,7 @@ export async function restoreProgressRoutes(app: any) {
         clearInterval(heartbeat);
         await subscriber.unsubscribe(channel);
         await subscriber.close();
-        console.log(`[SSE] Client disconnected from restore progress ${id}`);
+        appLogger.info({ id }, '[SSE] Client disconnected from restore progress');
     });
   });
 }

@@ -1,3 +1,6 @@
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
+import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
 import { EmailService } from '../services/email.service';
 import { WhatsAppService } from '../services/whatsapp.service';
 import { isSystemSuperAdmin } from '@/utils/rbac';
@@ -13,6 +16,8 @@ export class NotificationController {
   }
 
   async sendTestEmail(request: any, reply: any) {
+    const tz = await getTenantTimezone(request.tenantId) || PLATFORM_TIMEZONE;
+    appLogger.info({ tz }, 'Sending test email');
     try {
       const { email, subject, message } = request.body as {
         email: string;

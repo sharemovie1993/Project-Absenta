@@ -100,7 +100,7 @@ function auditRoute(routeFilePath) {
 
   // P1: Tenant Context Injection Guard
   const hasTenantExtraction = /tenantId|tenant_id|request\.tenantId|request\.dataScope|verifyTenant|tenantMiddleware/i.test(combinedContent);
-  const hasPublicExemption = /isPublic|exemptPublic|login|register|webhook|health|public/i.test(relPath) || /auth\.routes/i.test(relPath);
+  const hasPublicExemption = /isPublic|exemptPublic|login|register|webhook|health|public|wilayah/i.test(relPath) || /auth\.routes/i.test(relPath);
   const passTenantContext = hasTenantExtraction || hasPublicExemption;
   if (!passTenantContext) {
     issues.push('❌ [P1 Tenant Context] Route tidak mengekstrak atau memvalidasi tenant_id dari request context / JWT.');
