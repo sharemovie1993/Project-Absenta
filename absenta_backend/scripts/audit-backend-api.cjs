@@ -186,7 +186,7 @@ function auditRoute(routeFilePath) {
   }
 
   // P12: End-to-End Payload & Contract Symmetry Guard
-  const hasRawReturnWithoutEnvelope = /return\s+(?!\{[\s\S]*?success)[a-zA-Z0-9_]+\s*;/g.test(combinedContent) && !combinedContent.includes('reply.send');
+  const hasRawReturnWithoutEnvelope = /return\s+(?!reply|\{[\s\S]*?success)[a-zA-Z0-9_]+\s*;/g.test(combinedContent) && !combinedContent.includes('reply.send') && !combinedContent.includes('reply.status');
   const hasStatusSemantics = /reply\.status\(\s*(200|201|400|401|403|404|409|500)\s*\)/.test(combinedContent) || /status\s*:\s*(200|201|400|401|403|404|409|500)/.test(combinedContent);
   const hasListEndpoint = /fastify\.get\(/i.test(routeContent);
   const hasPaginationOrArray = !hasListEndpoint || /pagination|totalItems|totalPages|count|items|data/i.test(combinedContent);

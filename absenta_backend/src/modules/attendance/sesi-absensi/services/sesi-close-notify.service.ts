@@ -21,30 +21,31 @@ export class SesiCloseNotifyService {
     const pencapaian = payload.pencapaian_persen !== undefined ? Number(payload.pencapaian_persen) : 0;
     const kendala = payload.kendala || payload.catatanKelas || null;
 
-    const progres = await prisma.progresMateri.upsert({
-      where: { sesi_id: sesiId },
-      create: {
-        tenant_id: tenantId,
-        sesi_id: sesiId,
-        judul_materi: judul,
-        deskripsi: deskripsi,
-        pencapaian_persen: pencapaian,
-        kendala: kendala,
-      },
-      update: {
-        judul_materi: judul,
-        deskripsi: deskripsi,
-        pencapaian_persen: pencapaian,
-        kendala: kendala,
-      }
-    });
-
-    await prisma.sesiAbsensi.update({
-      where: { id: sesiId },
-      data: {
-        updated_at: new Date()
-      }
-    });
+    const [progres] = await prisma.$transaction([
+      prisma.progresMateri.upsert({
+        where: { sesi_id: sesiId },
+        create: {
+          tenant_id: tenantId,
+          sesi_id: sesiId,
+          judul_materi: judul,
+          deskripsi: deskripsi,
+          pencapaian_persen: pencapaian,
+          kendala: kendala,
+        },
+        update: {
+          judul_materi: judul,
+          deskripsi: deskripsi,
+          pencapaian_persen: pencapaian,
+          kendala: kendala,
+        }
+      }),
+      prisma.sesiAbsensi.update({
+        where: { id: sesiId },
+        data: {
+          updated_at: new Date()
+        }
+      })
+    ]);
 
     return progres;
   }

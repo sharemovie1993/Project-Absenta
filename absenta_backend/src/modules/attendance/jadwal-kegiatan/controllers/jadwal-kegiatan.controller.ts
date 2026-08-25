@@ -1,104 +1,81 @@
-import { z } from 'zod';
 import { jadwalKegiatanService } from '../services/jadwal-kegiatan.service';
-import { Hari } from '@prisma/client';
+import { z } from 'zod';
+import { appLogger } from '@/utils/app-logger';
 
-const createSchema = z.object({
-  nama: z.string().min(2, 'Nama minimal 2 karakter'),
-  jenis_kegiatan: z.string().min(1, 'Jenis kegiatan wajib diisi'),
-  hari: z.array(z.nativeEnum(Hari)).min(1, 'Pilih minimal satu hari'),
-  waktu_mulai: z.string().regex(/^\d{2}:\d{2}$/, 'Format waktu mulai harus HH:mm'),
-  waktu_selesai: z.string().regex(/^\d{2}:\d{2}$/, 'Format waktu selesai harus HH:mm').nullable().optional(),
-  target_semua_kelas: z.boolean(),
+export const createJadwalKegiatanSchema = z.object({
+  nama: z.string().min(1, 'nama wajib diisi'),
+  jenis_kegiatan: z.string().min(1, 'jenis_kegiatan wajib diisi'),
+  hari: z.array(z.any()).min(1, 'hari minimal 1'),
+  waktu_mulai: z.string().min(1, 'waktu_mulai wajib diisi'),
+  waktu_selesai: z.string().optional().nullable(),
+  target_semua_kelas: z.boolean().optional().default(true),
   target_kelas_ids: z.array(z.string()).optional(),
-  berlaku_mulai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format berlaku mulai harus YYYY-MM-DD'),
-  berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format berlaku sampai harus YYYY-MM-DD').nullable().optional(),
+  berlaku_mulai: z.string().min(1, 'berlaku_mulai wajib diisi'),
+  berlaku_sampai: z.string().optional().nullable(),
   tahun_pelajaran_id: z.string().optional(),
 });
 
-const updateSchema = z.object({
-  nama: z.string().min(2).optional(),
-  jenis_kegiatan: z.string().optional(),
-  hari: z.array(z.nativeEnum(Hari)).optional(),
-  waktu_mulai: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-  waktu_selesai: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-  target_semua_kelas: z.boolean().optional(),
-  target_kelas_ids: z.array(z.string()).optional(),
-  berlaku_mulai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  berlaku_sampai: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  aktif: z.boolean().optional(),
-});
+export const updateJadwalKegiatanSchema = createJadwalKegiatanSchema.partial();
 
-export class JadwalKegiatanController {
+export const jadwalKegiatanController = {
   async getAll(request: any, reply: any) {
     try {
-      const activeOnly = request.query.aktif === 'true';
-      const result = await jadwalKegiatanService.getAll(request.dataScope, activeOnly);
-      return reply.send({ success: true, data: result });
+      const scope = request.dataScope;
+      const { activeOnly } = request.query || {};
+      const data = await jadwalKegiatanService.getAll(scope, activeOnly === 'true');
+      return reply.status(200).send({ success: true, message: 'Daftar jadwal kegiatan berhasil dimuat', data });
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Error fetching jadwal kegiatan');
       return reply.status(500).send({ success: false, message: error.message });
     }
-  }
+  },
 
   async getDetail(request: any, reply: any) {
     try {
-      const { id } = request.params;
-      const result = await jadwalKegiatanService.getById(request.dataScope, id);
-      return reply.send({ success: true, data: result });
+      const scope = request.dataScope;
+      const { id } = request.params as any;
+      const data = await jadwalKegiatanService.getById(scope, id);
+      if (!data) return reply.status(404).send({ success: false, message: 'Jadwal kegiatan tidak ditemukan' });
+      return reply.status(200).send({ success: true, message: 'Detail jadwal kegiatan ditemukan', data });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(404).send({ success: false, message: error.message });
     }
-  }
+  },
 
   async create(request: any, reply: any) {
     try {
-      // ⚠️ Zod Schema Validation Guard (Google Platform Standards)
-      const parseResult = createSchema.safeParse(request.body);
-      if (!parseResult.success) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Validasi form gagal',
-          errors: parseResult.error.errors.map(err => ({ field: err.path.join('.'), message: err.message })),
-        });
-      }
-
+      const scope = request.dataScope;
       const userId = request.user?.id;
-      const result = await jadwalKegiatanService.create(request.dataScope, userId, parseResult.data);
-      return reply.status(201).send({ success: true, message: 'Jadwal Kegiatan berhasil dibuat', data: result });
+      const parsedBody = createJadwalKegiatanSchema.parse(request.body || {});
+      const data = await jadwalKegiatanService.create(scope, parsedBody as any, userId);
+      appLogger.info({ id: data.id }, 'Jadwal kegiatan created');
+      return reply.status(201).send({ success: true, message: 'Jadwal kegiatan berhasil dibuat', data });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      appLogger.error({ err: error }, 'Error creating jadwal kegiatan');
+      return reply.status(400).send({ success: false, message: error.message });
     }
-  }
+  },
 
   async update(request: any, reply: any) {
     try {
-      const { id } = request.params;
-      
-      // ⚠️ Zod Schema Validation Guard
-      const parseResult = updateSchema.safeParse(request.body);
-      if (!parseResult.success) {
-        return reply.status(400).send({
-          success: false,
-          message: 'Validasi form gagal',
-          errors: parseResult.error.errors.map(err => ({ field: err.path.join('.'), message: err.message })),
-        });
-      }
-
-      const result = await jadwalKegiatanService.update(request.dataScope, id, parseResult.data);
-      return reply.send({ success: true, message: 'Jadwal Kegiatan berhasil diperbarui', data: result });
+      const scope = request.dataScope;
+      const { id } = request.params as any;
+      const parsedBody = updateJadwalKegiatanSchema.parse(request.body || {});
+      const data = await jadwalKegiatanService.update(scope, id, parsedBody as any);
+      return reply.status(200).send({ success: true, message: 'Jadwal kegiatan berhasil diperbarui', data });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message });
     }
-  }
+  },
 
   async delete(request: any, reply: any) {
     try {
-      const { id } = request.params;
-      await jadwalKegiatanService.delete(request.dataScope, id);
-      return reply.send({ success: true, message: 'Jadwal Kegiatan berhasil dihapus' });
+      const scope = request.dataScope;
+      const { id } = request.params as any;
+      await jadwalKegiatanService.delete(scope, id);
+      return reply.status(200).send({ success: true, message: 'Jadwal kegiatan berhasil dihapus' });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      return reply.status(400).send({ success: false, message: error.message });
     }
   }
-}
-
-export const jadwalKegiatanController = new JadwalKegiatanController();
+};

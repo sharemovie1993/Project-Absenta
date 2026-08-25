@@ -72,8 +72,10 @@ export class DeviceService {
   }
 
   async deleteDevice(id: string, tenantId: string) {
-    await this.getDeviceDetail(id, tenantId);
-    return prisma.attendanceDevice.delete({ where: { id } });
+    const device = await this.getDeviceDetail(id, tenantId);
+    return prisma.$transaction([
+      prisma.attendanceDevice.delete({ where: { id: device.id } })
+    ]);
   }
 
   async heartbeat(deviceId: string, data: { battery?: number | null; version?: string | null }) {

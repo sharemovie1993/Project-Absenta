@@ -1,25 +1,30 @@
 import { deviceController } from '../controllers/device.controller';
 import { determineDataScope } from '@/middlewares/dataScope';
+import { requireCapability } from '@/middlewares/requireCapability';
 
 export const deviceRoutes = async (fastify: any) => {
   // Device Management (Admin/Staff only)
   fastify.get('/', {
-    preHandler: [determineDataScope()]
+    preHandler: [requireCapability('attendance.devices.view'), determineDataScope()]
   }, deviceController.getDevices);
+
   fastify.get('/:id', {
-    preHandler: [determineDataScope()]
+    preHandler: [requireCapability('attendance.devices.view'), determineDataScope()]
   }, deviceController.getDeviceDetail);
+
   fastify.post('/', {
-    preHandler: [determineDataScope()]
+    preHandler: [requireCapability('attendance.devices.manage'), determineDataScope()]
   }, deviceController.createDevice);
+
   fastify.put('/:id', {
-    preHandler: [determineDataScope()]
+    preHandler: [requireCapability('attendance.devices.manage'), determineDataScope()]
   }, deviceController.updateDevice);
+
   fastify.delete('/:id', {
-    preHandler: [determineDataScope()]
+    preHandler: [requireCapability('attendance.devices.manage'), determineDataScope()]
   }, deviceController.deleteDevice);
 
-  // Heartbeat (IoT/Hardware) - Possibly unsecured or secured with Device Token
+  // Heartbeat (IoT/Hardware) - Secured via Device Identifier
   fastify.post('/heartbeat', {
     config: {
       skipAuth: true,
