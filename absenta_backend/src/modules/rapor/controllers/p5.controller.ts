@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { P5Service } from '../services/p5.service';
 import {
@@ -18,6 +19,7 @@ export class P5Controller {
       const result = await P5Service.createProjek(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Projek P5 berhasil dibuat', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -38,6 +40,7 @@ export class P5Controller {
       const result = await P5Service.updateProjek(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Projek P5 berhasil diperbarui', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -61,6 +64,7 @@ export class P5Controller {
 
       return sendResponse(reply, 200, true, 'Daftar projek P5 berhasil dimuat', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal memuat daftar projek P5', error);
     }
   }
@@ -80,6 +84,7 @@ export class P5Controller {
 
       return sendResponse(reply, 200, true, 'Projek P5 berhasil dihapus');
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal menghapus projek P5', error);
     }
   }
@@ -93,6 +98,7 @@ export class P5Controller {
       const result = await P5Service.upsertNilai(tenant_id, parsed);
       return sendResponse(reply, 200, true, 'Nilai projek P5 berhasil disimpan', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -112,6 +118,7 @@ export class P5Controller {
       const result = await P5Service.upsertBulkNilai(tenant_id, parsed);
       return sendResponse(reply, 200, true, `Berhasil menyimpan ${result.length} nilai projek P5 siswa`, result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -136,6 +143,7 @@ export class P5Controller {
 
       return sendResponse(reply, 200, true, 'Daftar nilai projek P5 berhasil dimuat', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal memuat nilai projek P5', error);
     }
   }

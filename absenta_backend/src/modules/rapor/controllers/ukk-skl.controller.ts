@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { UkkSklService } from '../services/ukk-skl.service';
 import { sertifikatUkkUpsertSchema, kelulusanSiswaUpsertSchema } from '../services/penilaian.schema';
@@ -13,6 +14,7 @@ export class UkkSklController {
       const result = await UkkSklService.upsertUkk(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Sertifikat UKK berhasil disimpan', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -36,6 +38,7 @@ export class UkkSklController {
 
       return sendResponse(reply, 200, true, 'Daftar sertifikat UKK berhasil dimuat', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal memuat data UKK', error);
     }
   }
@@ -55,6 +58,7 @@ export class UkkSklController {
 
       return sendResponse(reply, 200, true, 'Sertifikat UKK berhasil dihapus');
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal menghapus sertifikat UKK', error);
     }
   }
@@ -68,6 +72,7 @@ export class UkkSklController {
       const result = await UkkSklService.upsertSkl(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'SKL kelulusan berhasil disimpan', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -91,6 +96,7 @@ export class UkkSklController {
 
       return sendResponse(reply, 200, true, 'Daftar SKL berhasil dimuat', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal memuat data SKL', error);
     }
   }
@@ -110,6 +116,7 @@ export class UkkSklController {
 
       return sendResponse(reply, 200, true, 'SKL kelulusan berhasil dihapus');
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Gagal menghapus SKL', error);
     }
   }

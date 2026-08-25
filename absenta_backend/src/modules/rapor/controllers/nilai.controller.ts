@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { NilaiService } from '../services/nilai.service';
 import {
@@ -16,6 +17,7 @@ export class NilaiController {
       const result = await NilaiService.getAllJenis(tenant_id);
       return sendResponse(reply, 200, true, 'Jenis penilaian retrieved', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Failed to retrieve jenis penilaian', error);
     }
   }
@@ -28,6 +30,7 @@ export class NilaiController {
       const result = await NilaiService.createJenis(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Jenis penilaian created successfully', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -48,6 +51,7 @@ export class NilaiController {
       const result = await NilaiService.updateJenis(tenant_id, id, parsed);
       return sendResponse(reply, 200, true, 'Jenis penilaian updated successfully', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -67,6 +71,7 @@ export class NilaiController {
       await NilaiService.deleteJenis(tenant_id, id);
       return sendResponse(reply, 200, true, 'Jenis penilaian deleted successfully');
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, error.message.includes('not found') ? 404 : 500, 'Failed to delete', error);
     }
   }
@@ -88,6 +93,7 @@ export class NilaiController {
 
       return sendResponse(reply, 200, true, 'Data nilai retrieved successfully', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, 'Failed to retrieve nilai', error);
     }
   }
@@ -100,6 +106,7 @@ export class NilaiController {
       const result = await NilaiService.upsertNilai(tenant_id, parsed);
       return sendResponse(reply, 200, true, 'Nilai saved successfully', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -119,6 +126,7 @@ export class NilaiController {
       const result = await NilaiService.upsertBulkNilai(tenant_id, parsed);
       return sendResponse(reply, 200, true, `${result.length} nilai saved successfully`, result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -151,6 +159,7 @@ export class NilaiController {
 
       return sendResponse(reply, 200, true, 'Batch nilai sumatif berhasil disimpan & dikalkulasi', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal menyimpan batch nilai sumatif', error);
     }
   }
@@ -178,6 +187,7 @@ export class NilaiController {
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
       return reply.send(buffer);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Failed to export e-Rapor Kemendikbud', error);
     }
   }
@@ -206,6 +216,7 @@ export class NilaiController {
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
       return reply.send(buffer);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Failed to export e-Rapor Excel', error);
     }
   }
@@ -253,6 +264,7 @@ export class NilaiController {
         result
       );
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal mengimpor nilai dari Excel', error);
     }
   }
@@ -280,6 +292,7 @@ export class NilaiController {
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
       return reply.send(buffer);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal mengunduh template Excel', error);
     }
   }
@@ -298,6 +311,7 @@ export class NilaiController {
 
       return sendResponse(reply, 200, true, 'Progres pengisian nilai berhasil dimuat', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal memuat progres pengisian nilai', error);
     }
   }

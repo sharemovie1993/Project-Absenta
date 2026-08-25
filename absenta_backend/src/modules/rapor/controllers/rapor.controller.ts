@@ -1,3 +1,4 @@
+import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { RaporService } from '../services/rapor.service';
 import { raporSiswaUpsertSchema } from '../services/penilaian.schema';
@@ -12,6 +13,7 @@ export class RaporController {
       const result = await RaporService.upsertRapor(tenant_id, parsed);
       return sendResponse(reply, 201, true, 'Data catatan/kehadiran rapor berhasil disimpan', result);
     } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -43,6 +45,7 @@ export class RaporController {
 
       return sendResponse(reply, 200, true, 'Detail nilai rapor berhasil dimuat', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal memuat detail nilai rapor', error);
     }
   }
@@ -67,6 +70,7 @@ export class RaporController {
 
       return sendResponse(reply, 200, true, 'Data leger nilai berhasil dimuat', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal memuat leger nilai', error);
     }
   }
@@ -93,6 +97,7 @@ export class RaporController {
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
       return reply.send(buffer);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal mengekspor leger nilai ke Excel', error);
     }
   }
@@ -112,6 +117,7 @@ export class RaporController {
       const result = await RaporService.getTranskripNilaiSiswa(tenant_id, siswa_id);
       return sendResponse(reply, 200, true, 'Transkrip nilai siswa berhasil dimuat', result);
     } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
       return sendError(reply, 500, error.message || 'Gagal memuat transkrip nilai siswa', error);
     }
   }

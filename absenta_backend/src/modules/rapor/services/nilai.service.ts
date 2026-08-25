@@ -1,3 +1,5 @@
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { prisma } from '../../../utils/prisma';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
@@ -959,6 +961,8 @@ export class NilaiService {
     });
 
     const uniqueTasks = Array.from(taskMap.values());
+    const tz = await getTenantTimezone(tenantId);
+    appLogger.info({ tenantId, totalTasks: uniqueTasks.length, tz }, 'Monitoring nilai fetched');
 
     if (uniqueTasks.length === 0) {
       return {
