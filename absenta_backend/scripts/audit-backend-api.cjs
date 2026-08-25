@@ -11,7 +11,7 @@ const path = require('path');
 // P7: Async Job & Queue Isolation
 // P8: Fair-Use Rate Limiting & Anti-Brute Force
 // P9: Logging & Audit Trail Compliance
-// P10: Health Check & Fault Tolerance
+// P10: Dynamic Tenant Timezone Resolution Guard (WIB/WITA/WIT)
 // P11: Anti God-File & Modular Architecture Guard
 // P12: End-to-End Payload & Contract Symmetry Guard (Request/Response Envelope)
 // P13: Centralized Database Singleton & Anti-Connection-Leak Guard (Prisma Utils Hub)
@@ -164,11 +164,12 @@ function auditRoute(routeFilePath) {
     issues.push('⚠️ [P9 Audit Trail] Controller/service belum mencatat log audit (appLogger/pino).');
   }
 
-  // P10: Health Check & Fault Tolerance
-  const hasTimezoneOrFallback = /getTenantTimezone|timezone|getTimezone|fallback|PLATFORM_TIMEZONE/i.test(combinedContent);
-  const passFaultTolerance = hasTimezoneOrFallback || !/tanggal|waktu|date|time/i.test(combinedContent);
-  if (!passFaultTolerance) {
-    issues.push('⚠️ [P10 Fault Tolerance] Manipulasi tanggal/waktu belum mengadopsi resolusi zona waktu tenant (getTenantTimezone).');
+  // P10: Dynamic Tenant Timezone Resolution Guard
+  const hasTimezoneResolution = /getTenantTimezone|timezone|getTimezone|getTenantOffsetString|PLATFORM_TIMEZONE/i.test(combinedContent);
+  const needsTimezone = /tanggal|waktu|date|time|schedule|jam_|created_at|updated_at/i.test(combinedContent);
+  const passTimezone = hasTimezoneResolution || !needsTimezone;
+  if (!passTimezone) {
+    issues.push('⚠️ [P10 Timezone Resolution] Terdeteksi manipulasi tanggal/waktu tanpa mengadopsi resolusi zona waktu tenant (getTenantTimezone).');
   }
 
   // P11: Anti God-File & Modular Architecture Guard
@@ -214,7 +215,7 @@ function auditRoute(routeFilePath) {
     asyncJobIsolation: passAsyncJob,
     rateLimiting: passRateLimit,
     loggingAuditTrail: passLogging,
-    faultTolerance: passFaultTolerance,
+    timezoneResolution: passTimezone,
     godFileGuard: passGodFile,
     payloadContractSymmetry: passPayloadContractSymmetry,
     prismaSingletonGuard: passPrismaSingleton,
