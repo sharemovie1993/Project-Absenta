@@ -1,3 +1,6 @@
+import { PLATFORM_TIMEZONE } from '@/infra/jobEngine';
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { appLogger } from '@/utils/app-logger';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../utils/prisma';
 import { parentNotificationService } from '../../parent-app/services/parent-notification.service';
@@ -1622,6 +1625,8 @@ export class BpbkService {
 
   // === Dashboard Stats & Early Warning System ===
   static async getDashboardStats(tenantId: string) {
+    const tz = await getTenantTimezone(tenantId) || PLATFORM_TIMEZONE;
+    appLogger.info({ tenantId, tz }, 'BPBK stats fetched');
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

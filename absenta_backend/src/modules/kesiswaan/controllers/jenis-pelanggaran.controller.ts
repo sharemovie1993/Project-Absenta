@@ -1,4 +1,5 @@
 import { sendResponse, sendError } from '../../../utils/response';
+import { z } from 'zod';
 import {
   countJenisPelanggaran,
   createJenisPelanggaran,
@@ -7,7 +8,6 @@ import {
   seedDefaultJenisPelanggaranForTenant,
   updateJenisPelanggaran
 } from '../services/jenis-pelanggaran.service';
-import { z } from 'zod';
 import {
   createJenisPelanggaranSchema,
   updateJenisPelanggaranSchema
@@ -33,7 +33,7 @@ export class JenisPelanggaranController {
       return sendResponse(reply, 201, true, 'Jenis pelanggaran created successfully', result);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+        return sendError(reply, 400, error.errors.map((e: any) => e.message).join(', '), error);
       }
       return sendError(reply, 500, 'Failed to create jenis pelanggaran', error);
     }
@@ -54,7 +54,7 @@ export class JenisPelanggaranController {
       return sendResponse(reply, 200, true, 'Jenis pelanggaran updated successfully');
     } catch (error: any) {
       if (error instanceof z.ZodError) {
-        return sendError(reply, 400, error.errors.map(e => e.message).join(', '), error);
+        return sendError(reply, 400, error.errors.map((e: any) => e.message).join(', '), error);
       }
       return sendError(reply, 500, 'Failed to update jenis pelanggaran', error);
     }
