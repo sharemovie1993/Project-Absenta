@@ -50,7 +50,8 @@ interface Product {
 interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  editingProduct: Product | null;
+  editingProduct?: Product | null;
+  product?: Product | null;
   onSubmit: (data: {
     code: string;
     name: string;
@@ -70,9 +71,12 @@ interface ProductFormModalProps {
     rackLocation?: string;
     description?: string;
     barcode?: string;
-  }) => Promise<void>;
-  isLoading: boolean;
-  existingCategories: string[];
+  }) => Promise<void> | void;
+  isLoading?: boolean;
+  loading?: boolean;
+  existingCategories?: string[];
+  categories?: string[];
+  onDelete?: () => void;
 }
 
 // Zod Schema Validation Guard (Pilar 25)
@@ -95,10 +99,21 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   isOpen,
   onClose,
   editingProduct,
+  product,
   onSubmit,
-  isLoading,
-  existingCategories
+  isLoading = false,
+  loading = false,
+  existingCategories,
+  categories,
+  onDelete
 }) => {
+  const activeProduct = editingProduct ?? product ?? null;
+  const activeLoading = isLoading || loading;
+  const resolvedCategories = useMemo(() => {
+    const list = existingCategories ?? categories ?? [];
+    return Array.isArray(list) ? list : [];
+  }, [existingCategories, categories]);
+
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     code: '',
@@ -131,28 +146,28 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editingProduct) {
+    if (activeProduct) {
       setFormData({
-        code: editingProduct.code || '',
-        name: editingProduct.name || '',
-        price: editingProduct.price || '0',
-        costPrice: editingProduct.costPrice || '0',
-        stock: String(editingProduct.stock ?? 0),
-        minStock: String(editingProduct.minStock ?? 0),
-        category: editingProduct.category || '',
-        imageUrl: editingProduct.imageUrl || '',
-        productType: editingProduct.productType || 'Default',
-        showInTransaction: editingProduct.showInTransaction ?? true,
-        useStock: editingProduct.useStock ?? true,
-        weight: String(editingProduct.weight ?? 0),
-        unit: editingProduct.unit || 'pcs',
-        discount: String(editingProduct.discount ?? 0),
-        discountType: editingProduct.discountType || 'PERCENT',
-        rackLocation: editingProduct.rackLocation || '',
-        description: editingProduct.description || '',
-        barcode: editingProduct.barcode || '',
+        code: activeProduct.code || '',
+        name: activeProduct.name || '',
+        price: activeProduct.price || '0',
+        costPrice: activeProduct.costPrice || '0',
+        stock: String(activeProduct.stock ?? 0),
+        minStock: String(activeProduct.minStock ?? 0),
+        category: activeProduct.category || resolvedCategories[0] || 'Umum',
+        imageUrl: activeProduct.imageUrl || '',
+        productType: activeProduct.productType || 'Default',
+        showInTransaction: activeProduct.showInTransaction ?? true,
+        useStock: activeProduct.useStock ?? true,
+        weight: String(activeProduct.weight ?? 0),
+        unit: activeProduct.unit || 'pcs',
+        discount: String(activeProduct.discount ?? 0),
+        discountType: activeProduct.discountType || 'PERCENT',
+        rackLocation: activeProduct.rackLocation || '',
+        description: activeProduct.description || '',
+        barcode: activeProduct.barcode || '',
       });
-      setIsExpanded(Boolean(editingProduct.rackLocation || editingProduct.description || editingProduct.barcode || editingProduct.minStock));
+      setIsExpanded(Boolean(activeProduct.rackLocation || activeProduct.description || activeProduct.barcode || activeProduct.minStock));
     } else {
       setFormData({
         code: 'KOP-' + Math.floor(10000000 + Math.random() * 90000000),
@@ -161,7 +176,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
         costPrice: '0',
         stock: '0',
         minStock: '0',
-        category: existingCategories[0] || 'Umum',
+        category: resolvedCategories[0] || 'Umum',
         imageUrl: '',
         productType: 'Default',
         showInTransaction: true,
@@ -179,7 +194,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
     setValidationErrors({});
     setIsAddingNewCategory(false);
     setNewCategoryInput('');
-  }, [editingProduct, isOpen, existingCategories]);
+  }, [activeProduct, isOpen, resolvedCategories]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -251,8 +266,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   }, [formData, onSubmit, queryClient]);
 
   const categoryOptions = useMemo(() => {
-    return existingCategories?.map(c => ({ value: c, label: c })) || [];
-  }, [existingCategories]);
+    return resolvedCategories.map(c => ({ value: c, label: c }));
+  }, [resolvedCategories]);
 
   if (!isOpen) return null;
 
@@ -271,7 +286,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
               <ArrowLeft size={18} />
             </button>
             <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              {editingProduct ? 'Edit Barang' : 'Tambah Barang'}
+              {activeProduct ? 'Edit Barang' : 'Tambah Barang'}
             </h2>
           </div>
           <button
@@ -468,22 +483,34 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
           )}
 
           {/* Footer Submit Button */}
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isLoading}
-            >
-              Batal
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              isLoading={isLoading}
-            >
-              {editingProduct ? 'Simpan Perubahan' : 'Tambah Barang'}
-            </Button>
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center gap-3">
+            {activeProduct && onDelete ? (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={onDelete}
+                disabled={activeLoading}
+              >
+                Hapus
+              </Button>
+            ) : <div />}
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={activeLoading}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={activeLoading}
+              >
+                {activeProduct ? 'Simpan Perubahan' : 'Tambah Barang'}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
