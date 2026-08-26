@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 export async function seedDemoTenant() {
   console.log('🚀 [DEMO SEEDER] Memulai inisialisasi Tenant Demo Absenta...');
 
-  const DEMO_TENANT_ID = 'demo-tenant-absenta';
+  const DEMO_TENANT_ID = '2acb7e12-d264-4784-8262-8f7369061542';
   const DEMO_SUBDOMAIN = 'demo';
   const DEMO_CUSTOM_DOMAIN = 'demo.absenta.id';
   const DEFAULT_PASSWORD = await bcrypt.hash('password123', 10);

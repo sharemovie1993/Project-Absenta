@@ -16,7 +16,7 @@ export async function seedDemoFromSanitized() {
   const raw = fs.readFileSync(datasetPath, 'utf-8');
   const data = JSON.parse(raw);
 
-  const DEMO_TENANT_ID = 'demo-tenant-absenta';
+  const DEMO_TENANT_ID = '2acb7e12-d264-4784-8262-8f7369061542';
   const DEMO_SUBDOMAIN = 'demo';
   const DEMO_CUSTOM_DOMAIN = 'demo.absenta.id';
 
