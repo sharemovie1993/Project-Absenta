@@ -49,6 +49,15 @@ export function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const getSafeLabel = (opt: any): string => {
+    if (!opt) return '';
+    if (typeof opt.label === 'string') return opt.label;
+    if (typeof opt.label === 'number') return String(opt.label);
+    if (opt.label && typeof opt.label === 'object' && opt.label.name) return String(opt.label.name);
+    if (typeof opt.value === 'string') return opt.value;
+    return String(opt.label ?? opt.value ?? '');
+  };
+
   // Debounce search query for external search
   const debouncedSearch = useDebounce(searchQuery, searchDelay);
 
@@ -62,16 +71,18 @@ export function SearchableSelect({
   // Derived selected option
   const selectedOption = useMemo(() => {
     if (!value) return null;
-    const found = options.find((opt) => opt.value === value || opt.label.toLowerCase() === value.toLowerCase());
+    const targetVal = String(value).toLowerCase();
+    const found = options.find((opt) => String(opt.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal);
     if (found) return found;
     return null;
   }, [options, value]);
 
-  const selectedLabel = selectedOption ? selectedOption.label : '';
+  const selectedLabel = selectedOption ? getSafeLabel(selectedOption) : '';
 
   // Reset searchQuery when options change or value is cleared
   useEffect(() => {
-    if (!value || (options.length > 0 && !options.some(opt => opt.value === value || opt.label.toLowerCase() === value.toLowerCase()))) {
+    const targetVal = String(value || '').toLowerCase();
+    if (!value || (options.length > 0 && !options.some(opt => String(opt.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal))) {
       setSearchQuery('');
     } else if (!isOpen) {
       setSearchQuery(selectedLabel);
@@ -90,13 +101,14 @@ export function SearchableSelect({
     if (onSearch) return options;
     if (!searchQuery) return options;
     
-    const isExactMatch = selectedOption && searchQuery === selectedOption.label;
+    const isExactMatch = selectedOption && searchQuery === selectedLabel;
     if (isOpen && isExactMatch) return options;
 
+    const query = searchQuery.toLowerCase();
     return options.filter((opt) =>
-      opt.label.toLowerCase().includes(searchQuery.toLowerCase())
+      getSafeLabel(opt).toLowerCase().includes(query)
     );
-  }, [options, searchQuery, onSearch, isOpen, selectedOption]);
+  }, [options, searchQuery, onSearch, isOpen, selectedOption, selectedLabel]);
 
   // Click outside & Escape key to auto-close dropdown
   useEffect(() => {

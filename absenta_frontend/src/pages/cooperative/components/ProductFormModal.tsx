@@ -111,7 +111,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
   const activeLoading = isLoading || loading;
   const resolvedCategories = useMemo(() => {
     const list = existingCategories ?? categories ?? [];
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    return list.map((item: any) => {
+      if (typeof item === 'string') return item;
+      if (item && typeof item === 'object') return item.name || item.label || item.value || '';
+      return String(item || '');
+    }).filter(Boolean);
   }, [existingCategories, categories]);
 
   const queryClient = useQueryClient();
