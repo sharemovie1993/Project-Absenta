@@ -131,7 +131,7 @@ export const getPelanggaranList = async (kelas_id?: string, limit = 100) => {
 export const getPrestasiList = async (kelas_id?: string, limit = 100) => {
   const params = new URLSearchParams({ limit: String(limit) });
   if (kelas_id) params.set('kelas_id', kelas_id);
-  return requestWithFallback<any>('get', `/kesiswaan/prestasi/prestasi?${params.toString()}`);
+  return requestWithFallback<any>('get', `/kesiswaan/prestasi?${params.toString()}`);
 };
 
 // ── Siswa & Presensi Matrix Rombel ──

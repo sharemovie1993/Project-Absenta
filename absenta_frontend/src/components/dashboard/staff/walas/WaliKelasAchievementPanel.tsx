@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Student, AchievementRecord } from './types';
 import { 
-  Trophy, Award, Star, Crown, Zap, Send, Medal, Sparkles, CheckCircle, HeartHandshake, ShieldCheck
+  Trophy, Award, Crown, Send, Medal, Sparkles, ShieldCheck
 } from 'lucide-react';
 
 interface WaliKelasAchievementPanelProps {
@@ -21,10 +21,21 @@ export const WaliKelasAchievementPanel: React.FC<WaliKelasAchievementPanelProps>
   isApiConnected = false,
   className = 'X AKL 1'
 }) => {
-  // Sort students for Top 3 podium
-  const starStudents = [...students]
-    .sort((a, b) => (b.academicAverage + b.goodDeedsPoints) - (a.academicAverage + a.goodDeedsPoints))
-    .slice(0, 3);
+  // Sort students for Top 3 podium (calculated dynamically from real API data)
+  const starStudents = useMemo(() => {
+    const withPoints = students.filter(s => (s.goodDeedsPoints || 0) > 0 || (s.badges && s.badges.length > 0));
+    const pool = withPoints.length > 0 ? withPoints : students;
+    return [...pool]
+      .sort((a, b) => ((b.academicAverage || 0) + (b.goodDeedsPoints || 0)) - ((a.academicAverage || 0) + (a.goodDeedsPoints || 0)))
+      .slice(0, 3);
+  }, [students]);
+
+  // Dynamic calculation of total good deeds / positive points from all students in rombel
+  const totalGoodDeeds = useMemo(() => {
+    const fromStudents = students.reduce((acc, s) => acc + (s.goodDeedsPoints || 0), 0);
+    const fromAchievements = achievements.reduce((acc, a) => acc + (a.points || 0), 0);
+    return Math.max(fromStudents, fromAchievements);
+  }, [students, achievements]);
 
   const getRankColor = (rank: number) => {
     if (rank === 0) return 'from-amber-400 via-amber-300 to-amber-500 border-amber-300 text-amber-950'; // Gold
@@ -36,6 +47,30 @@ export const WaliKelasAchievementPanel: React.FC<WaliKelasAchievementPanelProps>
     if (rank === 0) return '🥇 Top 1 Rombel';
     if (rank === 1) return '🥈 Top 2 Rombel';
     return '🥉 Top 3 Rombel';
+  };
+
+  const renderAvatar = (name: string, avatarUrl?: string, size = 'w-14 h-14', ringColor = 'ring-amber-100') => {
+    if (avatarUrl && !avatarUrl.includes('pravatar.cc')) {
+      return (
+        <img
+          src={avatarUrl}
+          alt={name}
+          className={`${size} rounded-full object-cover ring-4 ${ringColor} cursor-pointer hover:opacity-80 transition-opacity shrink-0`}
+        />
+      );
+    }
+    const initials = name
+      .split(' ')
+      .filter(Boolean)
+      .map(n => n[0])
+      .slice(0, 2)
+      .join('')
+      .toUpperCase();
+    return (
+      <div className={`${size} rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-xs sm:text-sm flex items-center justify-center ring-4 ${ringColor} cursor-pointer hover:opacity-80 transition-opacity shrink-0 shadow-inner`}>
+        {initials || 'S'}
+      </div>
+    );
   };
 
   return (
@@ -58,7 +93,9 @@ export const WaliKelasAchievementPanel: React.FC<WaliKelasAchievementPanelProps>
             <Sparkles className="w-8 h-8 text-amber-300 animate-spin-slow" />
             <div className="text-xs">
               <span className="text-purple-200 block">Total Poin Kebaikan Rombel:</span>
-              <strong className="text-amber-300 font-extrabold text-base">1,240 Poin Pozitif</strong>
+              <strong className="text-amber-300 font-extrabold text-base">
+                {totalGoodDeeds.toLocaleString('id-ID')} Poin Positif
+              </strong>
             </div>
           </div>
         </div>
@@ -114,12 +151,9 @@ export const WaliKelasAchievementPanel: React.FC<WaliKelasAchievementPanelProps>
 
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <img
-                    src={st.avatar || 'https://i.pravatar.cc/150'}
-                    alt={st.name}
-                    onClick={() => onSelectStudent(st.id)}
-                    className="w-14 h-14 rounded-full object-cover ring-4 ring-amber-100 cursor-pointer hover:opacity-80 transition-opacity"
-                  />
+                  <div onClick={() => onSelectStudent(st.id)}>
+                    {renderAvatar(st.name, st.avatar, 'w-14 h-14', 'ring-amber-100')}
+                  </div>
                   <div>
                     <h4 
                       onClick={() => onSelectStudent(st.id)}
@@ -212,12 +246,9 @@ export const WaliKelasAchievementPanel: React.FC<WaliKelasAchievementPanelProps>
               className="p-4 rounded-2xl border border-slate-200 hover:border-purple-300 transition-all bg-gradient-to-r from-purple-50/20 via-white to-white flex items-start justify-between gap-3"
             >
               <div className="flex items-start gap-3">
-                <img
-                  src={ach.avatar || 'https://i.pravatar.cc/150'}
-                  alt={ach.studentName}
-                  onClick={() => onSelectStudent(ach.studentId)}
-                  className="w-11 h-11 rounded-full object-cover ring-2 ring-purple-200 shrink-0 cursor-pointer"
-                />
+                <div onClick={() => onSelectStudent(ach.studentId)}>
+                  {renderAvatar(ach.studentName, ach.avatar, 'w-11 h-11', 'ring-purple-200')}
+                </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h4 

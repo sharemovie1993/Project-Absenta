@@ -229,11 +229,14 @@ export function useWaliKelasDashboard(kelasId?: string, bulan?: string) {
       )));
 
       // Badges dari prestasi riil
-      const badges = studentAchievements.map((ach, bIdx) => ({
+      const badges: StudentBadge[] = studentAchievements.map((ach, bIdx) => ({
         id: `badge-${ach.id || bIdx}`,
-        name: ach.title,
+        badgeName: ach.title,
         icon: 'Trophy',
-        description: `${ach.category} (${ach.level})`
+        category: ach.category,
+        awardedBy: 'Wali Kelas / Kesiswaan',
+        awardedAt: ach.date,
+        note: ach.description
       }));
 
       return {
@@ -250,7 +253,7 @@ export function useWaliKelasDashboard(kelasId?: string, bulan?: string) {
         sakitCount,
         izinCount,
         violationPoints: totalViolPoints,
-        goodDeedsPoints: Math.max(10, totalAchPoints),
+        goodDeedsPoints: totalAchPoints,
         academicAverage,
         isStarStudent: false,
         starRank: undefined as number | undefined,
@@ -267,7 +270,7 @@ export function useWaliKelasDashboard(kelasId?: string, bulan?: string) {
 
     sortedForStar.slice(0, 3).forEach((star, idx) => {
       const target = mapped.find(m => m.id === star.id);
-      if (target && target.goodDeedsPoints > 10) {
+      if (target && target.goodDeedsPoints > 0) {
         target.isStarStudent = true;
         target.starRank = idx + 1;
       }

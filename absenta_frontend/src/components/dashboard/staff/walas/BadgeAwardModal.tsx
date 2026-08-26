@@ -43,7 +43,7 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   if (!student) return null;
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAwardBadge(student.id, selectedPreset.name, selectedPreset.icon, customNote || `Apresiasi atas dedikasi ${student.name} sebagai siswa teladan XI RPL 1.`);
+    onAwardBadge(student.id, selectedPreset.name, selectedPreset.icon, customNote || `Apresiasi atas dedikasi dan prestasi ananda ${student.name}.`);
     onClose();
   };
   return <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
