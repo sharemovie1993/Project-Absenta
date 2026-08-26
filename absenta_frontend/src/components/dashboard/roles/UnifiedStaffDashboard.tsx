@@ -272,20 +272,20 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [activeTab, setActiveWorkspaceId]);
 
   // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
-  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
-
   const waliKelasStrukturItem = useMemo(() => {
-    const guruProfileId = (user as any)?.guru_profile?.id;
-    const userId = user?.id;
+    const guruProfileId = (user as any)?.guru_profile?.id || (user as any)?.guru_profile_id || guruProfile?.id;
+    const userId = user?.id || (user as any)?.userId;
     if (waliKelasAssignments && waliKelasAssignments.length > 0) {
       return waliKelasAssignments.find((item: any) => {
+        const hasClass = Boolean(item.kelas_id || item.Kelas?.id);
+        if (!hasClass) return false;
         if (guruProfileId && (item.guru_id === guruProfileId || item.Guru?.id === guruProfileId)) return true;
         if (userId && (item.user_id === userId || item.Guru?.user_id === userId)) return true;
         return false;
       });
     }
     return null;
-  }, [user, waliKelasAssignments]);
+  }, [user, waliKelasAssignments, guruProfile]);
 
   const waliKelasId = useMemo(() => {
     if (waliKelasStrukturItem?.Kelas?.id) return waliKelasStrukturItem.Kelas.id;
@@ -296,7 +296,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const waliKelasNama = useMemo(() => {
     if (waliKelasStrukturItem?.Kelas?.nama_kelas) return waliKelasStrukturItem.Kelas.nama_kelas;
     if (waliKelasStrukturItem?.StrukturOrganisasi?.Kelas?.nama_kelas) return waliKelasStrukturItem.StrukturOrganisasi.Kelas.nama_kelas;
-    return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '8B';
+    return guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || 'Kelas Binaan';
   }, [waliKelasStrukturItem, guruProfile, user]);
 
   const { data: classPresence, isLoading: classPresenceLoading } = useQuery({
