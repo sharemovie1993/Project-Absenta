@@ -272,6 +272,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
   }, [activeTab, setActiveWorkspaceId]);
 
   // ── 3. Role-Specific Scoped Queries (Google Platform Standard: Scoped Lazy Query Execution) ───
+  const { rawList: waliKelasAssignments } = useWaliKelasOptions();
+
   const waliKelasStrukturItem = useMemo(() => {
     const guruProfileId = (user as any)?.guru_profile?.id || (user as any)?.guru_profile_id || guruProfile?.id;
     const userId = user?.id || (user as any)?.userId;
