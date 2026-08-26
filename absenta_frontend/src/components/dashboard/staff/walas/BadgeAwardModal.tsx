@@ -6,6 +6,33 @@ interface BadgeAwardModalProps {
   onClose: () => void;
   onAwardBadge: (studentId: string, badgeName: string, icon: string, note: string) => void;
 }
+const BADGE_PRESETS = [
+  {
+    name: '🌟 Bintang Kehadiran',
+    icon: 'Star',
+    category: 'Kedisiplinan',
+    desc: 'Diberikan untuk persentase kehadiran 100% atau sangat konsisten.'
+  },
+  {
+    name: '🏆 Pejuang Prestasi',
+    icon: 'Trophy',
+    category: 'Prestasi',
+    desc: 'Diberikan atas capaian juara perlombaan/kegiatan akademik/non-akademik.'
+  },
+  {
+    name: '💎 Teladan Karakter',
+    icon: 'Shield',
+    category: 'Karakter',
+    desc: 'Diberikan untuk kepribadian santun, jujur, dan aktif membantu teman.'
+  },
+  {
+    name: '🚀 Siswa Paling Disiplin',
+    icon: 'Zap',
+    category: 'Kedisiplinan',
+    desc: 'Diberikan atas ketaatan aturan sekolah dan seragam lengkap.'
+  }
+];
+
 export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   student,
   onClose,
@@ -14,27 +41,6 @@ export const BadgeAwardModal: React.FC<BadgeAwardModalProps> = ({
   const [selectedPreset, setSelectedPreset] = useState(BADGE_PRESETS[0]);
   const [customNote, setCustomNote] = useState('');
   if (!student) return null;
-  const BADGE_PRESETS = [{
-    name: '🌟 Bintang Kehadiran',
-    icon: 'Star',
-    category: 'Kedisiplinan',
-    desc: 'Diberikan untuk persentase kehadiran 100% atau sangat konsisten.'
-  }, {
-    name: '🏆 Pejuang Prestasi',
-    icon: 'Trophy',
-    category: 'Prestasi',
-    desc: 'Diberikan atas capaian juara perlombaan/kegiatan akademik/non-akademik.'
-  }, {
-    name: '💎 Teladan Karakter',
-    icon: 'Shield',
-    category: 'Karakter',
-    desc: 'Diberikan untuk kepribadian santun, jujur, dan aktif membantu teman.'
-  }, {
-    name: '🚀 Siswa Paling Disiplin',
-    icon: 'Zap',
-    category: 'Kedisiplinan',
-    desc: 'Diberikan atas ketaatan aturan sekolah dan seragam lengkap.'
-  }];
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAwardBadge(student.id, selectedPreset.name, selectedPreset.icon, customNote || `Apresiasi atas dedikasi ${student.name} sebagai siswa teladan XI RPL 1.`);
