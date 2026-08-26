@@ -1,3 +1,4 @@
+import { prisma } from '@/utils/prisma';
 import { parentDataService } from '../services/parent-data.service';
 import { systemConfigService } from '../../system-config/services/system-config.service';
 import { gerbangService } from '@/modules/attendance/gerbang/services/gerbang.service';
@@ -130,6 +131,43 @@ export class ParentAppController {
         'PARENT_APP',
         keterangan,
       );
+
+      // Create Permohonan Izin Siswa record for Wali Kelas Approval Panel
+      try {
+        const student = await prisma.siswa.findUnique({
+          where: { id: siswaId },
+          select: { id: true, user_id: true },
+        });
+
+        let submitterUserId = student?.user_id;
+        if (!submitterUserId) {
+          const fallbackUser = await prisma.user.findFirst({
+            where: { tenant_id: parent.tenant_id },
+            select: { id: true },
+          });
+          submitterUserId = fallbackUser?.id;
+        }
+
+        if (submitterUserId) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          await prisma.permohonanIzinSiswa.create({
+            data: {
+              tenant_id: parent.tenant_id,
+              siswa_id: siswaId,
+              tipe_izin: status,
+              tanggal_mulai: today,
+              tanggal_selesai: today,
+              alasan: keterangan || (status === 'SAKIT' ? 'Sakit' : 'Izin'),
+              status: 'PENDING',
+              diajukan_oleh: submitterUserId,
+            },
+          });
+        }
+      } catch (izinErr) {
+        console.error('[ParentApp] Failed to create permohonanIzinSiswa:', izinErr);
+      }
 
       await this.logActivity(parent.tenant_id, 'external.parent.report.absence', siswaId, {
         source: 'PARENT_APP',
