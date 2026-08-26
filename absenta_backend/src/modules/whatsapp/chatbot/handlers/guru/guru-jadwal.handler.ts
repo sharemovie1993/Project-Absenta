@@ -609,7 +609,7 @@ export class GuruJadwalHandler {
 
     // Helper: resolve status icon + label dari sesiList
     const resolveStatus = (j: any): { icon: string; label: string } => {
-      const sesi = sesiList.find(s =>
+      const sesi = sesiList.find((s: any) =>
         (s.jadwal_kbm_id && s.jadwal_kbm_id === j.id) ||
         (s.guru_id === j.guru_id && s.kelas_id === j.kelas_id)
       );

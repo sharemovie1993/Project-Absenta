@@ -142,8 +142,7 @@ async function runE2EAttendanceWorkflow() {
   // A. Verifikasi Tracking Harian Siswa
   const trackingData = await rekapService.getTrackingHarianSiswa(siswa.id, todayStr, tenantId);
   console.log(`📊 [Tracking Harian Siswa] Status Global: ${trackingData.status}`);
-  console.log(`📋 Total Log Aktivitas Terkumpul: ${trackingData.kegiatan?.length || 0} item`);
-  trackingData.kegiatan?.forEach((act, idx) => {
+  trackingData.kegiatan?.forEach((act: any, idx: number) => {
     console.log(`   ${idx + 1}. [${act.waktu || '00:00'}] ${act.jenis_kegiatan} -> Status: ${act.status} (${act.keterangan || 'Log Rincian'})`);
   });
 
@@ -151,7 +150,7 @@ async function runE2EAttendanceWorkflow() {
   const rekapHarian = await rekapService.getRekapHarianSiswa(siswa.id, todayStr, tenantId);
   console.log(`\n📊 [Rekap Harian Siswa] Tanggal: ${rekapHarian.tanggal} | Status: ${rekapHarian.status}`);
   console.log(`📋 Rincian Sesi & Gerbang (${rekapHarian.rincian.length} record):`);
-  rekapHarian.rincian.forEach((r, idx) => {
+  rekapHarian.rincian.forEach((r: any, idx: number) => {
     console.log(`   ${idx + 1}. ${r.jenis_kegiatan} | Status: ${r.status} | Jam Tap: ${r.waktu_tap || '-'}`);
   });
 
