@@ -8,6 +8,7 @@ import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { SectionCard } from '@/components/ui';
 
 // Lazy Loaded View Modes (Pilar 13)
 const ModeSimpleView = lazy(() => import('./components/ModeSimpleView'));

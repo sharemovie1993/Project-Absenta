@@ -154,9 +154,9 @@ async function main() {
   console.log('Fetching Recent Activity Feed...');
   const activities = await hubinService.getRecentActivity(tenantId);
   console.log(`Found ${activities.length} recent HUBIN activities.`);
-  const hasLowonganCreateLog = activities.some(a => a.action === 'HUBIN_LOWONGAN_CREATE');
-  const hasLamaranCreateLog = activities.some(a => a.action === 'HUBIN_LAMARAN_CREATE');
-  const hasTracerSubmitLog = activities.some(a => a.action === 'HUBIN_TRACER_SUBMIT');
+  const hasLowonganCreateLog = activities.some((a: any) => a.action === 'HUBIN_LOWONGAN_CREATE');
+  const hasLamaranCreateLog = activities.some((a: any) => a.action === 'HUBIN_LAMARAN_CREATE');
+  const hasTracerSubmitLog = activities.some((a: any) => a.action === 'HUBIN_TRACER_SUBMIT');
 
   if (!hasLowonganCreateLog || !hasLamaranCreateLog || !hasTracerSubmitLog) {
     throw new Error('Verification failed: Missing expected audit logs in activity feed');
