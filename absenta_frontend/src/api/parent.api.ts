@@ -153,17 +153,23 @@ export const reportStudentAbsence = async (
   siswaId: string, 
   payload: { status: 'SAKIT' | 'IZIN'; keterangan: string; attachment?: File }
 ) => {
-  const formData = new FormData();
-  formData.append('status', payload.status);
-  formData.append('keterangan', payload.keterangan);
   if (payload.attachment) {
+    const formData = new FormData();
+    formData.append('status', payload.status);
+    formData.append('keterangan', payload.keterangan);
     formData.append('attachment', payload.attachment);
+
+    const { data } = await parentAxiosInstance.post<ApiResponse<any>>(`/parent-app/siswa/${siswaId}/lapor-absen`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return data;
   }
 
-  const { data } = await parentAxiosInstance.post<ApiResponse<any>>(`/parent-app/siswa/${siswaId}/lapor-absen`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+  const { data } = await parentAxiosInstance.post<ApiResponse<any>>(`/parent-app/siswa/${siswaId}/lapor-absen`, {
+    status: payload.status,
+    keterangan: payload.keterangan,
   });
   return data;
 };

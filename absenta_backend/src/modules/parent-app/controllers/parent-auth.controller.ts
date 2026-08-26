@@ -88,7 +88,24 @@ export class ParentAppController {
         });
       }
       const { id: siswaId } = request.params;
-      const { status, keterangan } = request.body;
+      let status = '';
+      let keterangan: string | undefined = undefined;
+
+      if (typeof request.isMultipart === 'function' && request.isMultipart()) {
+        const parts = request.parts();
+        for await (const part of parts) {
+          if (part.type === 'file') {
+            await part.toBuffer?.();
+          } else {
+            if (part.fieldname === 'status') status = String(part.value || '');
+            if (part.fieldname === 'keterangan') keterangan = String(part.value || '');
+          }
+        }
+      } else {
+        const body = request.body || {};
+        status = body.status;
+        keterangan = body.keterangan;
+      }
 
       const isLinked = parent.OrangTuaSiswa?.some(
         (link: any) => link.Siswa?.id === siswaId && link.Siswa?.status === 'AKTIF'
