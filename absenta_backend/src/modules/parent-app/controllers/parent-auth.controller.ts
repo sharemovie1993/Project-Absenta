@@ -136,7 +136,7 @@ export class ParentAppController {
       try {
         const student = await prisma.siswa.findUnique({
           where: { id: siswaId },
-          select: { id: true, user_id: true },
+          select: { id: true, user_id: true, nama_siswa: true, kelas_id: true },
         });
 
         let submitterUserId = student?.user_id;
@@ -164,6 +164,41 @@ export class ParentAppController {
               diajukan_oleh: submitterUserId,
             },
           });
+
+          // Otomatis kirim WhatsApp ke Wali Kelas jika nomor HP terdaftar
+          if (student?.kelas_id) {
+            try {
+              const walasAssignment = await prisma.organizationalAssignment.findFirst({
+                where: {
+                  tenant_id: parent.tenant_id,
+                  kelas_id: student.kelas_id,
+                  is_active: true,
+                  Position: { code: 'WALIKELAS' },
+                },
+                include: {
+                  User: { include: { Guru: true } },
+                  Kelas: true,
+                },
+              });
+
+              const walasPhone = walasAssignment?.User?.Guru?.no_hp;
+              const walasName = walasAssignment?.User?.Guru?.nama_guru || walasAssignment?.User?.full_name || 'Wali Kelas';
+              const studentName = student.nama_siswa;
+              const className = walasAssignment?.Kelas?.nama_kelas || '';
+
+              if (walasPhone) {
+                const { WhatsappService } = await import('@/modules/whatsapp/services/whatsapp.service');
+                const waService = new WhatsappService();
+                const waConfig = await prisma.whatsappConfig.findFirst({ where: { tenant_id: parent.tenant_id } });
+                if (waConfig) {
+                  const msg = `🔔 *Pemberitahuan Izin Siswa - Absenta*\n\nYth. Bpk/Ibu ${walasName},\nOrang tua dari siswa *${studentName}* (${className}) telah mengajukan permohonan *${status}* untuk hari ini.\n\n📝 *Keterangan:* ${keterangan || '-'}\n\nSilakan validasi melalui Portal Wali Kelas di Absenta saat senggang. Terima kasih.`;
+                  await waService.sendMessage(waConfig, walasPhone, msg);
+                }
+              }
+            } catch (waErr) {
+              console.warn('[ParentApp] WhatsApp dispatch to Walas skipped/failed:', waErr);
+            }
+          }
         }
       } catch (izinErr) {
         console.error('[ParentApp] Failed to create permohonanIzinSiswa:', izinErr);
