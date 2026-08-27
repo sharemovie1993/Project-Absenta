@@ -44,9 +44,17 @@ import { id as idLocale } from 'date-fns/locale';
 import { TarikGuruJPModal } from '@/components/kurikulum/jadwal-builder/TarikGuruJPModal';
 import { useUnifiedScheduleData } from '@/hooks/attendance/useUnifiedScheduleData';
 import { useKelasOptions, useGuruOptions } from '@/components/common';
+import {
+  Avatar,
+  ContactItem,
+  GroupItem,
+  ChatBubble,
+  DateDivider,
+  EmptyChat,
+  formatDateGroup,
+} from '@/components/notifications/chatlog/WhatsAppChatLogSubcomponents';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Subcomponents extracted to WhatsAppChatLogSubcomponents
 // MAIN PAGE COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 const WhatsAppChatLogPage: React.FC = () => {
