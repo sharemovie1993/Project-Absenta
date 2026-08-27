@@ -44,6 +44,8 @@ const WaliKelasHealthPanel = lazy(() => import('./WaliKelasHealthPanel').then(m 
 const WaliKelasDisciplinePanel = lazy(() => import('./WaliKelasDisciplinePanel').then(m => ({ default: m.WaliKelasDisciplinePanel })));
 const WaliKelasAchievementPanel = lazy(() => import('./WaliKelasAchievementPanel').then(m => ({ default: m.WaliKelasAchievementPanel })));
 const WaliKelasRekapPanel = lazy(() => import('./WaliKelasRekapPanel').then(m => ({ default: m.WaliKelasRekapPanel })));
+const CatatanPembinaanPanel = lazy(() => import('./CatatanPembinaanPanel').then(m => ({ default: m.CatatanPembinaanPanel })));
+const CetakRekapBulananPanel = lazy(() => import('./CetakRekapBulananPanel').then(m => ({ default: m.CetakRekapBulananPanel })));
 
 import { SiswaOnboardingModal } from '../../../academic/siswa/SiswaOnboardingModal';
 import { StudentDetailModal } from './StudentDetailModal';
@@ -170,7 +172,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
   const [activeTab, setActiveTab] = useState<string>(subtabParam || 'approval');
 
   useEffect(() => {
-    if (subtabParam && ['approval', 'students', 'health', 'discipline', 'halloffame', 'rekap'].includes(subtabParam)) {
+    if (subtabParam && ['approval', 'health', 'rekap', 'discipline', 'pembinaan', 'halloffame', 'students', 'rekap-cetak'].includes(subtabParam)) {
       setActiveTab(subtabParam);
     }
   }, [subtabParam]);
@@ -403,6 +405,7 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
               <span className="text-xs font-bold text-slate-400">Memuat Modul Wali Kelas...</span>
             </div>
           }>
+            {/* 1. Operasional Harian / Actionable */}
             {activeTab === 'approval' && (
               <WaliKelasApprovalPanel
                 requests={leaveRequests}
@@ -413,18 +416,6 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
                 onOpenWhatsApp={handleOpenWhatsApp}
                 onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
                 isApiConnected={isApiConnected}
-              />
-            )}
-
-            {activeTab === 'students' && (
-              <WaliKelasStudentsPanel
-                students={students}
-                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
-                onEditStudent={(id) => setEditingStudentId(id)}
-                onOpenWhatsApp={handleOpenWhatsApp}
-                onOpenExportModal={() => setIsExportModalOpen(true)}
-                isApiConnected={isApiConnected}
-                className={classInfo.className}
               />
             )}
 
@@ -441,6 +432,16 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
               />
             )}
 
+            {/* 2. Monitoring Rutin, Pembinaan Karakter & Prestasi */}
+            {activeTab === 'rekap' && (
+              <WaliKelasRekapPanel
+                journalEntries={journalEntries}
+                onOpenAddJournalModal={() => setIsAddJournalOpen(true)}
+                onOpenExportModal={() => setIsExportModalOpen(true)}
+                isApiConnected={isApiConnected}
+              />
+            )}
+
             {activeTab === 'discipline' && (
               <WaliKelasDisciplinePanel
                 violations={violations}
@@ -449,6 +450,10 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
                 onUpdateBKStatus={handleUpdateBKStatus}
                 isApiConnected={isApiConnected}
               />
+            )}
+
+            {activeTab === 'pembinaan' && (
+              <CatatanPembinaanPanel />
             )}
 
             {activeTab === 'halloffame' && (
@@ -462,12 +467,23 @@ export function WaliKelasDashboardContainer({ waliKelasNama, kelasId }: WaliKela
               />
             )}
 
-            {activeTab === 'rekap' && (
-              <WaliKelasRekapPanel
-                journalEntries={journalEntries}
-                onOpenAddJournalModal={() => setIsAddJournalOpen(true)}
+            {/* 3. Direktori Data Siswa & Cetak Rekapitulasi */}
+            {activeTab === 'students' && (
+              <WaliKelasStudentsPanel
+                students={students}
+                onSelectStudent={(id) => setSelectedStudent(students.find(s => s.id === id) || null)}
+                onEditStudent={(id) => setEditingStudentId(id)}
+                onOpenWhatsApp={handleOpenWhatsApp}
                 onOpenExportModal={() => setIsExportModalOpen(true)}
                 isApiConnected={isApiConnected}
+                className={classInfo.className}
+              />
+            )}
+
+            {activeTab === 'rekap-cetak' && (
+              <CetakRekapBulananPanel
+                kelasNama={classInfo.className}
+                totalSiswa={classInfo.totalStudents}
               />
             )}
           </Suspense>

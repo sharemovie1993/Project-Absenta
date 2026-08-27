@@ -17,7 +17,10 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Layers,
+  Folder,
+  FolderOpen,
   X,
   AlertCircle,
   Eye,
@@ -39,6 +42,16 @@ import {
 import { toast } from 'react-hot-toast';
 import { cn } from '../../../lib/utils';
 import { BahanAjarReaderModal } from './BahanAjarReaderModal';
+
+export interface BabItem {
+  id: string;
+  nomorBab: number;
+  judulBab: string;
+  deskripsi: string;
+  fase: string;
+  tingkat: number;
+  pertemuanList: PertemuanItem[];
+}
 
 interface ModulAjarStudioModalProps {
   isOpen: boolean;
@@ -64,25 +77,24 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
   fase
 }) => {
   const queryClient = useQueryClient();
+  const [babs, setBabs] = useState<BabItem[]>([
+    {
+      id: perangkatId || 'new-1',
+      nomorBab: 1,
+      judulBab: '',
+      deskripsi: '',
+      fase: fase || 'E',
+      tingkat: tingkat || 10,
+      pertemuanList: []
+    }
+  ]);
+  const [activeBabIdx, setActiveBabIdx] = useState<number>(0);
   const [activeMeetingIdx, setActiveMeetingIdx] = useState<number>(0);
-  const [pertemuanList, setPertemuanList] = useState<PertemuanItem[]>([]);
-  const [moduleJudul, setModuleJudul] = useState<string>(perangkatJudul || '');
-  const [selectedFase, setSelectedFase] = useState<string>(fase || 'E');
-  const [selectedTingkat, setSelectedTingkat] = useState<number>(tingkat || 10);
+  const [activeView, setActiveView] = useState<'BAB_INFO' | 'MEETING'>('BAB_INFO');
+  const [mobileTab, setMobileTab] = useState<'TREE' | 'EDITOR'>('TREE');
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState<boolean>(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
   const [selectedPresetId, setSelectedPresetId] = useState<string>('');
-
-  useEffect(() => {
-    if (perangkatJudul) {
-      setModuleJudul(perangkatJudul);
-    }
-  }, [perangkatJudul]);
-
-  useEffect(() => {
-    if (fase) setSelectedFase(fase);
-    if (tingkat) setSelectedTingkat(tingkat);
-  }, [fase, tingkat]);
 
   // 1. Fetch Existing Structured Content for this Perangkat
   const { data: readerData, isLoading: isLoadingContent } = useQuery({
@@ -99,7 +111,38 @@ export const ModulAjarStudioModal: React.FC<ModulAjarStudioModalProps> = ({
     enabled: isOpen
   });
 
-// ── CONTOH LENGKAP REALISTIS MODUL AJAR (FULL SAMPLE TEMPLATE) ──
+// ── EMPTY CLEAN MEETING STRUCTURE FOR BLANK WORKSPACE ──
+const createEmptyMeeting = (num: number = 1): PertemuanItem => ({
+  nomor_pertemuan: num,
+  alokasi_jp: 2,
+  durasi_menit: 90,
+  topik: `Pertemuan ${num}`,
+  tujuan_pembelajaran: [''],
+  langkah_kbm: {
+    pendahuluan: {
+      durasi_menit: 15,
+      kegiatan: ['']
+    },
+    inti: {
+      durasi_menit: 60,
+      kegiatan: [''],
+      teks_bacaan: {
+        judul: '',
+        paragraf: ['']
+      },
+      lkpd: {
+        judul: '',
+        petunjuk: ''
+      }
+    },
+    penutup: {
+      durasi_menit: 15,
+      kegiatan: ['']
+    }
+  }
+});
+
+// ── CONTOH LENGKAP REALISTIS MODUL AJAR (REFERENSI JIKA DIPILIH) ──
 const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
   {
     nomor_pertemuan: 1,
@@ -196,121 +239,228 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
       penutup: {
         durasi_menit: 15,
         kegiatan: [
-          'Refleksi kilas balik pemahaman istilah kebahasaan.',
-          'Rangkuman bersama dan doa penutup.'
+          'Siswa menyimpulkan 3 struktur teks observasi dengan bimbingan guru.',
+          'Refleksi pembelajaran dan doa penutup.'
         ]
       }
     }
   }
 ];
 
-// Populate local state when readerData loads
+  // Populate local state when readerData loads
   useEffect(() => {
-    if (readerData?.konten && readerData.konten.length > 0) {
-      setPertemuanList(JSON.parse(JSON.stringify(readerData.konten)));
-    } else if (pertemuanList.length === 0) {
-      // Default initial meeting 1 if completely empty
-      setPertemuanList(JSON.parse(JSON.stringify(FULL_SAMPLE_MEETINGS)));
-    }
-  }, [readerData]);
+    if (!isOpen) return;
 
-  // Active meeting object
-  const currentMeeting = pertemuanList[activeMeetingIdx] || pertemuanList[0];
+    if (perangkatId === 'new') {
+      const initBab: BabItem = {
+        id: 'new-1',
+        nomorBab: 1,
+        judulBab: perangkatJudul && !perangkatJudul.startsWith('Modul Ajar:') ? perangkatJudul.replace(/^Bab\s*\d+\s*[:\s]*/i, '') : '',
+        deskripsi: '',
+        fase: fase || 'E',
+        tingkat: tingkat || 10,
+        pertemuanList: [createEmptyMeeting(1)]
+      };
+      setBabs([initBab]);
+      setActiveBabIdx(0);
+      setActiveMeetingIdx(0);
+      setActiveView('BAB_INFO');
+      return;
+    }
+
+    if (readerData?.konten && readerData.konten.length > 0 && readerData.source === 'CUSTOM') {
+      const rawJudul = perangkatJudul || readerData.perangkat?.judul || '';
+      const matchBabNum = rawJudul.match(/^Bab\s*(\d+)/i);
+      const babNum = matchBabNum ? parseInt(matchBabNum[1], 10) : 1;
+      const cleanJudul = rawJudul.replace(/^Bab\s*\d+\s*[:\s]*/i, '').replace(/^Modul Ajar:\s*/i, '');
+
+      const loadedBab: BabItem = {
+        id: perangkatId,
+        nomorBab: babNum,
+        judulBab: cleanJudul,
+        deskripsi: readerData.perangkat?.deskripsi || '',
+        fase: readerData.perangkat?.fase || fase || 'E',
+        tingkat: readerData.perangkat?.tingkat || tingkat || 10,
+        pertemuanList: JSON.parse(JSON.stringify(readerData.konten))
+      };
+      setBabs([loadedBab]);
+      setActiveBabIdx(0);
+      setActiveMeetingIdx(0);
+      setActiveView('BAB_INFO');
+    } else if (!readerData?.konten || readerData.source === 'NONE') {
+      const cleanJudul = (perangkatJudul || '').replace(/^Bab\s*\d+\s*[:\s]*/i, '').replace(/^Modul Ajar:\s*/i, '');
+      const initBab: BabItem = {
+        id: perangkatId,
+        nomorBab: 1,
+        judulBab: cleanJudul.startsWith('Modul Ajar:') ? '' : cleanJudul,
+        deskripsi: '',
+        fase: fase || 'E',
+        tingkat: tingkat || 10,
+        pertemuanList: [createEmptyMeeting(1)]
+      };
+      setBabs([initBab]);
+      setActiveBabIdx(0);
+      setActiveMeetingIdx(0);
+      setActiveView('BAB_INFO');
+    }
+  }, [isOpen, perangkatId, readerData, perangkatJudul, fase, tingkat]);
+
+  // Active bab and meeting objects
+  const currentBab: BabItem = babs[activeBabIdx] || babs[0];
+  const currentMeeting: PertemuanItem = currentBab?.pertemuanList?.[activeMeetingIdx] || currentBab?.pertemuanList?.[0] || createEmptyMeeting(1);
 
   // 3. Save Mutation
   const saveMutation = useMutation({
-    mutationFn: (dataToSave: PertemuanItem[]) => saveReaderContent(perangkatId, dataToSave, {
-      judul: moduleJudul.trim() || perangkatJudul || `Modul Ajar: ${mapelNama || 'Mata Pelajaran'}`,
-      mapel_id: mapelId,
-      mapel_nama: mapelNama,
-      guru_id: guruId,
-      fase: selectedFase,
-      tingkat: selectedTingkat
-    }),
+    mutationFn: async () => {
+      const targetPerangkatId = currentBab.id.startsWith('new-') ? 'new' : currentBab.id;
+      const effectiveJudul = currentBab.judulBab.trim()
+        ? `Bab ${currentBab.nomorBab}: ${currentBab.judulBab.trim()}`
+        : `Bab ${currentBab.nomorBab}: Modul Ajar ${mapelNama || 'Mata Pelajaran'}`;
+
+      return saveReaderContent(targetPerangkatId, currentBab.pertemuanList, {
+        judul: effectiveJudul,
+        mapel_id: mapelId,
+        mapel_nama: mapelNama,
+        guru_id: guruId,
+        fase: currentBab.fase,
+        tingkat: currentBab.tingkat
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bahanAjarReader'] });
       queryClient.invalidateQueries({ queryKey: ['bahanAjarReaderStudio'] });
       queryClient.invalidateQueries({ queryKey: ['myPerangkatAjarKbm'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar'] });
-      toast.success('💾 Seluruh Pertemuan Berhasil Disimpan ke Asisten Mengajar!', { icon: '✨' });
+      toast.success('💾 Bab & Seluruh Sesi Berhasil Disimpan ke Asisten Mengajar!', { icon: '✨' });
     },
     onError: (err: any) => {
       toast.error(err.message || 'Gagal menyimpan modul ajar');
     }
   });
 
-  // Helpers for modifying meetings
-  const handleAddMeeting = () => {
-    const newNum = pertemuanList.length + 1;
-    const newMeeting: PertemuanItem = {
-      nomor_pertemuan: newNum,
-      alokasi_jp: 3,
-      durasi_menit: 135,
-      topik: `Pertemuan ${newNum}: Topik Pembelajaran Lanjutan`,
-      tujuan_pembelajaran: [`Menguasai indikator capaian pada Pertemuan ${newNum}`],
-      langkah_kbm: {
-        pendahuluan: {
-          durasi_menit: 15,
-          kegiatan: [
-            'Pembukaan: Salam, doa, dan presensi.',
-            'Apersepsi: Mengaitkan dengan pertemuan sebelumnya.',
-            'Pertanyaan Pemantik: "Apa hal baru yang ingin kita eksplorasi hari ini?"'
-          ]
-        },
-        inti: {
-          durasi_menit: 105,
-          kegiatan: [
-            'Eksplorasi Konsep & Praktik Penerapan.',
-            'Diskusi Kelompok & Pengerjaan LKPD.',
-            'Apresiasi & Presentasi Kelas.'
-          ],
-          teks_bacaan: {
-            judul: `Materi Bacaan Pertemuan ${newNum}`,
-            paragraf: ['Tuliskan uraian bahan bacaan siswa di sini...']
-          },
-          lkpd: {
-            judul: `LKPD Pertemuan ${newNum}`,
-            petunjuk: '1. Pelajari materi bersama kelompok!\n2. Selesaikan tantangan dan presentasikan!'
-          }
-        },
-        penutup: {
-          durasi_menit: 15,
-          kegiatan: ['Refleksi penutup, rangkuman, dan doa bersama.']
-        }
-      }
-    };
+  // Bab Mutators
+  const updateCurrentBab = (updater: (prev: BabItem) => BabItem) => {
+    setBabs(prevBabs => {
+      const copy = [...prevBabs];
+      const target = copy[activeBabIdx] || copy[0];
+      if (!target) return prevBabs;
+      copy[activeBabIdx] = updater(target);
+      return copy;
+    });
+  };
 
-    setPertemuanList([...pertemuanList, newMeeting]);
-    setActiveMeetingIdx(pertemuanList.length);
-    toast.success(`➕ Pertemuan ${newNum} berhasil ditambahkan!`);
+  const handleAddBab = () => {
+    const nextBabNum = babs.length + 1;
+    const newBab: BabItem = {
+      id: `new-${nextBabNum}-${Date.now()}`,
+      nomorBab: nextBabNum,
+      judulBab: '',
+      deskripsi: '',
+      fase: currentBab.fase || 'E',
+      tingkat: currentBab.tingkat || 10,
+      pertemuanList: [createEmptyMeeting(1)]
+    };
+    setBabs(prev => [...prev, newBab]);
+    setActiveBabIdx(babs.length);
+    setActiveMeetingIdx(0);
+    setActiveView('BAB_INFO');
+    toast.success(`📂 Bab ${nextBabNum} baru berhasil ditambahkan! Silakan atur judul bab.`, { icon: '✨' });
+  };
+
+  const handleDeleteBab = (babIdxToDelete: number) => {
+    if (babs.length <= 1) {
+      toast.error('Minimal harus ada 1 Bab pembelajaran!');
+      return;
+    }
+    const updated = babs.filter((_, i) => i !== babIdxToDelete).map((b, i) => ({
+      ...b,
+      nomorBab: i + 1
+    }));
+    setBabs(updated);
+    setActiveBabIdx(Math.max(0, activeBabIdx - 1));
+    setActiveMeetingIdx(0);
+    setActiveView('BAB_INFO');
+    toast.success('🗑️ Bab berhasil dihapus');
+  };
+
+  // Helpers for modifying meetings in current Bab
+  const updateCurrentMeeting = (updater: (prev: PertemuanItem) => PertemuanItem) => {
+    setBabs(prevBabs => {
+      const copy = [...prevBabs];
+      const targetBab = copy[activeBabIdx] || copy[0];
+      if (!targetBab) return prevBabs;
+      const targetMeeting = targetBab.pertemuanList[activeMeetingIdx] || targetBab.pertemuanList[0];
+      if (!targetMeeting) return prevBabs;
+
+      const updatedMeeting = updater(targetMeeting);
+      const updatedList = [...targetBab.pertemuanList];
+      updatedList[activeMeetingIdx] = updatedMeeting;
+      copy[activeBabIdx] = {
+        ...targetBab,
+        pertemuanList: updatedList
+      };
+      return copy;
+    });
+  };
+
+  const handleAddMeeting = () => {
+    const nextSesiNum = (currentBab.pertemuanList?.length || 0) + 1;
+    const newMeeting = createEmptyMeeting(nextSesiNum);
+
+    setBabs(prevBabs => {
+      const copy = [...prevBabs];
+      const targetBab = copy[activeBabIdx] || copy[0];
+      if (!targetBab) return prevBabs;
+      copy[activeBabIdx] = {
+        ...targetBab,
+        pertemuanList: [...targetBab.pertemuanList, newMeeting]
+      };
+      return copy;
+    });
+    setActiveMeetingIdx(currentBab.pertemuanList.length);
+    setActiveView('MEETING');
+    toast.success(`➕ Sesi ${nextSesiNum} berhasil ditambahkan!`, { icon: '✨' });
   };
 
   const handleDeleteMeeting = (idxToDelete: number) => {
-    if (pertemuanList.length <= 1) {
-      toast.error('Modul ajar minimal harus memiliki 1 pertemuan!');
+    if (currentBab.pertemuanList.length <= 1) {
+      toast.error('Bab minimal harus memiliki 1 pertemuan!');
       return;
     }
 
-    const updated = pertemuanList.filter((_, idx) => idx !== idxToDelete).map((m, i) => ({
-      ...m,
-      nomor_pertemuan: i + 1
-    }));
+    const updatedList = currentBab.pertemuanList
+      .filter((_, idx) => idx !== idxToDelete)
+      .map((m, i) => ({ ...m, nomor_pertemuan: i + 1 }));
 
-    setPertemuanList(updated);
+    setBabs(prevBabs => {
+      const copy = [...prevBabs];
+      copy[activeBabIdx] = {
+        ...copy[activeBabIdx],
+        pertemuanList: updatedList
+      };
+      return copy;
+    });
     setActiveMeetingIdx(Math.max(0, activeMeetingIdx - 1));
     toast.success('🗑️ Pertemuan berhasil dihapus');
   };
 
   const handleDuplicateMeeting = (idxToDup: number) => {
-    const target = pertemuanList[idxToDup];
+    const target = currentBab.pertemuanList[idxToDup];
     const duplicated: PertemuanItem = JSON.parse(JSON.stringify(target));
     duplicated.topik = `${duplicated.topik} (Salinan)`;
     
-    const updated = [...pertemuanList];
+    const updated = [...currentBab.pertemuanList];
     updated.splice(idxToDup + 1, 0, duplicated);
     const renumbered = updated.map((m, i) => ({ ...m, nomor_pertemuan: i + 1 }));
 
-    setPertemuanList(renumbered);
+    setBabs(prevBabs => {
+      const copy = [...prevBabs];
+      copy[activeBabIdx] = {
+        ...copy[activeBabIdx],
+        pertemuanList: renumbered
+      };
+      return copy;
+    });
     setActiveMeetingIdx(idxToDup + 1);
     toast.success('📑 Pertemuan berhasil diduplikasi!');
   };
@@ -328,17 +478,6 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
     const hasTujuan = Boolean(m.tujuan_pembelajaran && m.tujuan_pembelajaran.length > 0 && m.tujuan_pembelajaran[0].trim());
     const hasInti = Boolean(m.langkah_kbm?.inti?.kegiatan && m.langkah_kbm.inti.kegiatan.length > 0);
     return Boolean(hasTopic || (hasTujuan && hasInti));
-  };
-
-  // Update field on current meeting
-  const updateCurrentMeeting = (updater: (prev: PertemuanItem) => PertemuanItem) => {
-    setPertemuanList(prevList => {
-      const copy = [...prevList];
-      if (copy[activeMeetingIdx]) {
-        copy[activeMeetingIdx] = updater(copy[activeMeetingIdx]);
-      }
-      return copy;
-    });
   };
 
   const [isUploadingImage, setIsUploadingImage] = useState<boolean>(false);
@@ -450,8 +589,14 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
     try {
       const preset = await getBahanAjarPresetById(presetId);
       if (preset && preset.konten_json && Array.isArray(preset.konten_json)) {
-        setPertemuanList(JSON.parse(JSON.stringify(preset.konten_json)));
+        updateCurrentBab(prev => ({
+          ...prev,
+          judulBab: preset.judul_modul.replace(/^Bab\s*\d+\s*[:\s]*/i, ''),
+          fase: preset.fase || prev.fase,
+          pertemuanList: JSON.parse(JSON.stringify(preset.konten_json))
+        }));
         setActiveMeetingIdx(0);
+        setActiveView('MEETING');
         setIsTemplateModalOpen(false);
         toast.success(`📋 Berhasil mengadopsi ${preset.konten_json.length} pertemuan dari '${preset.judul_modul}'!`, { icon: '✨' });
       }
@@ -461,11 +606,15 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
   };
 
   const handleLoadFullSample = () => {
-    setModuleJudul('BAB 1: Teks Laporan Hasil Observasi (LHO) & Literasi Sains');
-    setSelectedFase('E');
-    setSelectedTingkat(10);
-    setPertemuanList(JSON.parse(JSON.stringify(FULL_SAMPLE_MEETINGS)));
+    updateCurrentBab(prev => ({
+      ...prev,
+      judulBab: 'Teks Laporan Hasil Observasi (LHO)',
+      fase: 'E',
+      tingkat: 10,
+      pertemuanList: JSON.parse(JSON.stringify(FULL_SAMPLE_MEETINGS))
+    }));
     setActiveMeetingIdx(0);
+    setActiveView('MEETING');
     toast.success('🪄 Contoh Modul Lengkap Siap Tayang Berhasil Dimuat!', { icon: '✨' });
   };
 
@@ -479,261 +628,411 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
       size="full"
       className="h-[98vh] max-h-[98vh] flex flex-col rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden bg-slate-50 dark:bg-slate-900"
       title={
-        <div className="flex items-center justify-between w-full pr-6 flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-500/20">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-black text-slate-900 dark:text-white text-base">
-                  Studio Modul Ajar &amp; Asisten Mengajar Guru
-                </span>
-                <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-black text-[10px]">
-                  Fase {selectedFase} (Kelas {selectedTingkat})
-                </span>
-                <span className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold text-[10px]">
-                  {mapelNama || 'Perangkat Ajar'}
-                </span>
+        <div className="flex flex-col gap-2.5 w-full pr-4 sm:pr-6">
+          <div className="flex items-center justify-between w-full flex-wrap gap-2">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="p-2 sm:p-2.5 bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-500/20 shrink-0">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                {perangkatJudul || 'Susun pertemuan pembelajaran bertahap untuk dipakai di kelas & proyektor'}
-              </p>
+              <div>
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <span className="font-black text-slate-900 dark:text-white text-sm sm:text-base">
+                    Studio Modul Ajar
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 font-black text-[10px]">
+                    Fase {currentBab?.fase || 'E'} (Kelas {currentBab?.tingkat || 10})
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] hidden sm:inline-block">
+                    {mapelNama || 'Perangkat Ajar'}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium truncate max-w-xs sm:max-w-md">
+                  {currentBab?.judulBab ? `Bab ${currentBab.nomorBab}: ${currentBab.judulBab}` : (mapelNama || 'Susun pertemuan mengajar bertahap')}
+                </p>
+              </div>
+            </div>
+
+            {/* Action Header Buttons */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleLoadFullSample}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl font-bold text-xs bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 hidden md:flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+                title="Muat contoh lengkap modul ajar beserta teks bacaan, LKPD, dan gambar nyata"
+              >
+                <Sparkles size={13} className="text-purple-600 dark:text-purple-400" />
+                <span>Contoh Lengkap</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 hidden sm:flex items-center gap-1.5 cursor-pointer shadow-xs border-slate-200 dark:border-slate-700 hover:bg-slate-100"
+                title="Salin langkah pembelajaran dari Template Nasional yang sudah ada"
+              >
+                <Copy size={13} className="text-indigo-600 dark:text-indigo-400" />
+                <span>Template</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsPreviewModalOpen(true)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 shadow-2xs"
+                title="Uji coba tampilan modul ini di Mode Baca & Layar Proyektor"
+              >
+                <Presentation size={13} className="text-amber-500" />
+                <span className="hidden sm:inline">Uji Tayang</span>
+                <span className="sm:hidden">Tayang</span>
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                className="h-8 sm:h-9 px-3 sm:px-4 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-900/20"
+              >
+                <Save size={13} />
+                <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan'}</span>
+              </Button>
             </div>
           </div>
 
-          {/* Action Header Buttons */}
-          <div className="flex items-center gap-2">
-            <Button
+          {/* Tab Switcher Mobile (Hanya tampil di HP / Layar < md) */}
+          <div className="flex md:hidden items-center bg-slate-200/80 dark:bg-slate-800 p-1 rounded-2xl w-full">
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleLoadFullSample}
-              className="h-9 px-3 rounded-xl font-bold text-xs bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 hover:bg-purple-100 flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
-              title="Muat contoh lengkap modul ajar beserta teks bacaan, LKPD, dan gambar nyata"
+              onClick={() => setMobileTab('TREE')}
+              className={cn(
+                "flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                mobileTab === 'TREE'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300"
+              )}
             >
-              <Sparkles size={13} className="text-purple-600 dark:text-purple-400" />
-              <span>Contoh Lengkap</span>
-            </Button>
-
-            <Button
+              <Layers size={13} />
+              <span>1. Struktur ({babs.length} Bab)</span>
+            </button>
+            <button
               type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setIsTemplateModalOpen(true)}
-              className="h-9 px-3 rounded-xl font-bold text-xs bg-white dark:bg-slate-800 flex items-center gap-1.5 cursor-pointer shadow-xs border-slate-200 dark:border-slate-700 hover:bg-slate-100"
-              title="Salin langkah pembelajaran dari Template Nasional yang sudah ada"
+              onClick={() => setMobileTab('EDITOR')}
+              className={cn(
+                "flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer",
+                mobileTab === 'EDITOR'
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-slate-600 dark:text-slate-300"
+              )}
             >
-              <Copy size={13} className="text-indigo-600 dark:text-indigo-400" />
-              <span>Salin dari Template</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setIsPreviewModalOpen(true)}
-              className="h-9 px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200"
-              title="Uji coba tampilan modul ini di Mode Baca & Layar Proyektor"
-            >
-              <Presentation size={14} className="text-amber-500" />
-              <span>Uji Tayang Proyektor</span>
-            </Button>
-
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => saveMutation.mutate(pertemuanList)}
-              disabled={saveMutation.isPending}
-              className="h-9 px-4 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-900/20"
-            >
-              <Save size={14} />
-              <span>{saveMutation.isPending ? 'Menyimpan...' : 'Simpan Modul'}</span>
-            </Button>
+              <FileText size={13} />
+              <span>2. Form Kerja</span>
+            </button>
           </div>
         </div>
       }
     >
       <div className="flex flex-1 overflow-hidden">
-        {/* ── SIDEBAR KIRI: DAFTAR PERTEMUAN ── */}
-        <div className="w-64 sm:w-72 bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-3 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
-          <div className="space-y-2.5 pb-6">
-            <div className="flex items-center justify-between px-1 pb-1">
-              <span className="text-[11px] font-black tracking-wider uppercase text-slate-400 dark:text-slate-500">
-                Daftar Pertemuan ({pertemuanList.length})
-              </span>
-              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 font-mono">
-                Total {pertemuanList.reduce((acc, p) => acc + (p.alokasi_jp || 3), 0)} JP
+        {/* ── SIDEBAR KIRI: EXPLORER TREE HIERARKI (WINDOWS EXPLORER STYLE) ── */}
+        <div className={cn(
+          "bg-slate-50/90 dark:bg-slate-900/90 border-r border-slate-200/80 dark:border-slate-800 p-3 sm:p-4 flex-col shrink-0 overflow-y-auto custom-scrollbar select-none justify-between",
+          mobileTab === 'TREE' ? "w-full md:w-80 flex" : "hidden md:flex md:w-80"
+        )}>
+          <div className="space-y-3">
+            {/* Header Explorer */}
+            <div className="flex items-center justify-between px-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-1.5 text-xs font-black text-slate-500 uppercase tracking-wider">
+                <Layers size={13} className="text-indigo-600" />
+                <span>STRUKTUR KURIKULUM</span>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded">
+                {babs.length} Bab
               </span>
             </div>
 
-            {pertemuanList.map((pt, idx) => {
-              const isActive = idx === activeMeetingIdx;
-              const isComplete = isMeetingComplete(pt);
-              const cleanTopic = cleanTopicName(pt.topik);
+            {/* Root Subject Node */}
+            <div className="flex items-center gap-2 px-2.5 py-2 text-xs font-black text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+              <BookOpen size={14} className="text-blue-600 shrink-0" />
+              <span className="truncate">{mapelNama || 'Mata Pelajaran'}</span>
+              <span className="ml-auto text-[9px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold shrink-0">
+                Fase {currentBab?.fase || 'E'}
+              </span>
+            </div>
 
-              return (
-                <div
-                  key={idx}
-                  onClick={() => setActiveMeetingIdx(idx)}
-                  className={cn(
-                    "p-3 rounded-2xl transition-all cursor-pointer border flex flex-col gap-1 text-xs relative group",
-                    isActive
-                      ? "bg-indigo-50 dark:bg-indigo-950/70 border-indigo-300 dark:border-indigo-700 shadow-xs ring-1 ring-indigo-400"
-                      : "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800/60 hover:bg-slate-100"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn(
-                        "font-black text-[11px] px-2 py-0.5 rounded-md",
-                        isActive
-                          ? "bg-indigo-600 text-white"
-                          : "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold"
-                      )}>
-                        Pertemuan {pt.nomor_pertemuan || idx + 1}
-                      </span>
-                      {isComplete ? (
-                        <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 font-black text-[9px]">
-                          🟢 Lengkap
-                        </span>
-                      ) : (
-                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 font-black text-[9px]">
-                          🟡 Draf
-                        </span>
-                      )}
-                    </div>
+            {/* Tree Branch: List of Babs */}
+            <div className="space-y-3 pl-1">
+              {babs.map((bab, bIdx) => {
+                const isBabActive = activeBabIdx === bIdx;
+                const isBabInfoView = isBabActive && activeView === 'BAB_INFO';
 
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] font-bold text-slate-400 font-mono">
-                        {pt.alokasi_jp || 3} JP
-                      </span>
-
-                      {/* Quick Duplicate / Delete on Hover */}
+                return (
+                  <div key={bab.id} className="space-y-1.5">
+                    {/* Bab Folder Node */}
+                    <div className="flex items-center gap-1 group">
                       <button
                         type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicateMeeting(idx);
+                        onClick={() => {
+                          setActiveBabIdx(bIdx);
+                          setActiveView('BAB_INFO');
+                          setMobileTab('EDITOR');
                         }}
-                        title="Duplikasi pertemuan"
-                        className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500 transition-opacity"
+                        className={cn(
+                          "w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl text-xs font-bold transition-all text-left cursor-pointer border",
+                          isBabInfoView
+                            ? "bg-indigo-600 text-white shadow-sm font-black border-indigo-600"
+                            : isBabActive
+                              ? "bg-indigo-50/80 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 border-indigo-200 dark:border-indigo-800 font-black"
+                              : "bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 hover:bg-white hover:text-indigo-600 border-slate-200/60 dark:border-slate-700/60"
+                        )}
                       >
-                        <Copy size={11} />
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FolderOpen size={14} className={cn("shrink-0", isBabInfoView ? "text-amber-300" : isBabActive ? "text-indigo-600" : "text-amber-500")} />
+                          <span className="truncate">
+                            Bab {bab.nomorBab}: {bab.judulBab || 'Tanpa Judul'}
+                          </span>
+                        </div>
+                        <span className={cn(
+                          "text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0",
+                          isBabInfoView ? "bg-indigo-700 text-indigo-100" : "bg-slate-100 dark:bg-slate-700 text-slate-500"
+                        )}>
+                          {bab.pertemuanList?.length || 0} Sesi
+                        </span>
                       </button>
 
-                      {pertemuanList.length > 1 && (
+                      {babs.length > 1 && (
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteMeeting(idx);
+                            handleDeleteBab(bIdx);
                           }}
-                          title="Hapus pertemuan"
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded text-rose-500 transition-opacity"
+                          title="Hapus Bab"
+                          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded-lg text-rose-500 transition-opacity"
                         >
-                          <Trash2 size={11} />
+                          <Trash2 size={12} />
                         </button>
                       )}
                     </div>
-                  </div>
-                  <p className={cn(
-                    "font-bold text-xs line-clamp-2 leading-snug pt-0.5",
-                    isActive ? "text-indigo-950 dark:text-indigo-100 font-black" : "text-slate-700 dark:text-slate-300"
-                  )}>
-                    {cleanTopic || 'Belum ada topik'}
-                  </p>
-                </div>
-              );
-            })}
 
-            {/* Dynamic Add Meeting Button - Always right below the last meeting card */}
-            <div className="pt-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddMeeting}
-                className="w-full h-11 rounded-2xl font-black text-xs border-dashed border-2 border-indigo-300 dark:border-indigo-700/80 text-indigo-700 dark:text-indigo-300 bg-indigo-50/40 dark:bg-indigo-950/20 hover:bg-indigo-100/70 dark:hover:bg-indigo-900/40 flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
-              >
-                <Plus size={15} className="stroke-[2.5]" />
-                <span>+ Tambah Pertemuan Baru</span>
-              </Button>
+                    {/* Sesi List under this Bab */}
+                    {isBabActive && (
+                      <div className="pl-3 border-l-2 border-dashed border-indigo-200 dark:border-indigo-900/60 ml-3 space-y-1">
+                        {(bab.pertemuanList || []).map((pt, mIdx) => {
+                          const isMeetingSelected = isBabActive && activeView === 'MEETING' && activeMeetingIdx === mIdx;
+                          const isComplete = isMeetingComplete(pt);
+                          const cleanTopic = cleanTopicName(pt.topik);
+
+                          return (
+                            <div
+                              key={mIdx}
+                              onClick={() => {
+                                setActiveBabIdx(bIdx);
+                                setActiveMeetingIdx(mIdx);
+                                setActiveView('MEETING');
+                                setMobileTab('EDITOR');
+                              }}
+                              className={cn(
+                                "group flex items-center justify-between gap-1.5 px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer border",
+                                isMeetingSelected
+                                  ? "bg-indigo-50 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-100 font-black shadow-2xs ring-1 ring-indigo-400"
+                                  : "bg-white dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/40 text-slate-600 dark:text-slate-300 hover:bg-slate-100"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText size={13} className={cn("shrink-0", isMeetingSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400")} />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] font-mono font-bold shrink-0">
+                                      Sesi {pt.nomor_pertemuan || mIdx + 1}
+                                    </span>
+                                    <span className="text-[9px] text-slate-400 font-mono">
+                                      ({pt.alokasi_jp || 2} JP)
+                                    </span>
+                                    {isComplete ? (
+                                      <span className="text-[9px] text-emerald-600 font-bold">●</span>
+                                    ) : (
+                                      <span className="text-[9px] text-amber-500 font-bold">○</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] truncate font-normal leading-tight text-slate-500 dark:text-slate-400">
+                                    {cleanTopic || 'Draf Baru'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Action buttons on hover */}
+                              <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDuplicateMeeting(mIdx);
+                                  }}
+                                  title="Duplikasi"
+                                  className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded text-slate-500"
+                                >
+                                  <Copy size={11} />
+                                </button>
+                                {bab.pertemuanList.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteMeeting(mIdx);
+                                    }}
+                                    title="Hapus"
+                                    className="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/50 rounded text-rose-500"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        {/* Button add meeting inside this Bab */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleAddMeeting();
+                            setMobileTab('EDITOR');
+                          }}
+                          className="w-full flex items-center gap-2 px-2.5 py-1.5 mt-1 rounded-xl text-xs font-bold border border-dashed border-indigo-300 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all cursor-pointer"
+                        >
+                          <Plus size={13} />
+                          <span>+ Tambah Sesi</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+          </div>
+
+          {/* Bottom Sidebar: Button Tambah Bab Baru */}
+          <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                handleAddBab();
+                setMobileTab('EDITOR');
+              }}
+              className="w-full h-10 rounded-2xl font-black text-xs bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-all active:scale-[0.98]"
+            >
+              <Plus size={15} />
+              <span>+ Tambah Bab Baru</span>
+            </button>
           </div>
         </div>
 
         {/* ── AREA EDITOR UTAMA (STUDIO BLOK FORM) ── */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 space-y-6 bg-white dark:bg-slate-950">
-          {currentMeeting && (
-            <div className="max-w-4xl mx-auto space-y-6">
-              {/* CARD 0: IDENTITAS BAB / LINGKUP MATERI UTAMA */}
-              <div className="p-5 rounded-3xl bg-indigo-50/60 dark:bg-indigo-950/30 border-2 border-indigo-200/80 dark:border-indigo-800/60 space-y-3.5 shadow-xs">
-                <div className="flex items-center justify-between flex-wrap gap-2 border-b border-indigo-200/60 dark:border-indigo-800/60 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-black text-xs">
-                      IDENTITAS BAB &amp; MODUL
-                    </span>
-                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200">
-                      Lingkup Materi Pokok Modul Ini
-                    </span>
+        <div className={cn(
+          "flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-8 space-y-6 bg-white dark:bg-slate-950",
+          mobileTab === 'EDITOR' ? "block" : "hidden md:block"
+        )}>
+          {/* Mobile Back to Tree Bar */}
+          <div className="flex md:hidden items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setMobileTab('TREE')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 cursor-pointer active:scale-95"
+            >
+              <ChevronLeft size={14} />
+              <span>Kembali ke Struktur Bab</span>
+            </button>
+
+            <span className="text-[11px] font-mono font-bold text-slate-500">
+              {activeView === 'BAB_INFO' ? `Bab ${currentBab?.nomorBab || 1}` : `Sesi ${currentMeeting?.nomor_pertemuan || 1}`}
+            </span>
+          </div>
+          {activeView === 'BAB_INFO' && currentBab ? (
+            <div className="max-w-2xl mx-auto space-y-6 pt-4 animate-in fade-in duration-150">
+              <div className="p-6 sm:p-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-5 shadow-xs">
+                {/* Header Bab */}
+                <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                  <div className="w-9 h-9 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shrink-0 shadow-xs">
+                    <FolderOpen size={18} />
                   </div>
-                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
-                    *Tampil pada Peta Bab Dashboard KBM
-                  </span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Judul Bab / Modul Ajar (Contoh: Bab 1: Teks Laporan Hasil Observasi / LHO):
-                  </label>
-                  <input
-                    type="text"
-                    value={moduleJudul}
-                    onChange={(e) => setModuleJudul(e.target.value)}
-                    placeholder="Contoh: Bab 1: Teks Laporan Hasil Observasi (LHO)"
-                    className="w-full px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-white dark:bg-slate-900 font-black text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs"
-                  />
-                </div>
-
-                {/* Fase & Tingkat Kelas Target Selector */}
-                <div className="space-y-1.5 pt-1">
-                  <label className="text-[11px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Fase &amp; Tingkat Kelas Target:
-                  </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {[
-                      { label: 'Fase E (Kelas 10)', faseVal: 'E', tingkatVal: 10, desc: 'Kurikulum Kelas X' },
-                      { label: 'Fase F (Kelas 11)', faseVal: 'F', tingkatVal: 11, desc: 'Kurikulum Kelas XI' },
-                      { label: 'Fase F (Kelas 12)', faseVal: 'F', tingkatVal: 12, desc: 'Kurikulum Kelas XII' }
-                    ].map((opt) => {
-                      const isSelected = selectedFase === opt.faseVal && selectedTingkat === opt.tingkatVal;
-                      return (
-                        <button
-                          key={`${opt.faseVal}-${opt.tingkatVal}`}
-                          type="button"
-                          onClick={() => {
-                            setSelectedFase(opt.faseVal);
-                            setSelectedTingkat(opt.tingkatVal);
-                          }}
-                          className={cn(
-                            "px-3.5 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex flex-col items-start gap-0.5 text-left active:scale-95",
-                            isSelected
-                              ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20 ring-2 ring-indigo-400 font-black"
-                              : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60"
-                          )}
-                        >
-                          <span className="font-black text-xs">{opt.label}</span>
-                          <span className={cn(
-                            "text-[10px]",
-                            isSelected ? "text-indigo-100" : "text-slate-400"
-                          )}>
-                            {opt.desc}
-                          </span>
-                        </button>
-                      );
-                    })}
+                  <div>
+                    <h3 className="font-black text-base text-slate-900 dark:text-white">
+                      Pengaturan Bab
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Isi judul bab dan tentukan target fase kurikulum
+                    </p>
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  {/* Judul Bab */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                      <span>Judul Bab:</span>
+                      <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold">
+                        *Nomor bab otomatis diatur oleh sistem
+                      </span>
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3.5 py-3 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-sm border border-indigo-200 dark:border-indigo-800 shrink-0">
+                        Bab {currentBab?.nomorBab || 1}:
+                      </span>
+                      <input
+                        type="text"
+                        value={currentBab.judulBab || ''}
+                        onChange={(e) => updateCurrentBab(prev => ({ ...prev, judulBab: e.target.value.replace(/^Bab\s*\d+\s*[:\s]*/i, '') }))}
+                        placeholder="Contoh: Membuat Puisi"
+                        className="flex-1 px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none shadow-2xs"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dropdown Fase & Tingkat Kelas */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Fase &amp; Tingkat Kelas:
+                    </label>
+                    <select
+                      value={`${currentBab.fase || 'E'}-${currentBab.tingkat || 10}`}
+                      onChange={(e) => {
+                        const [faseVal, tingkatVal] = e.target.value.split('-');
+                        updateCurrentBab(prev => ({
+                          ...prev,
+                          fase: faseVal,
+                          tingkat: parseInt(tingkatVal, 10)
+                        }));
+                      }}
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 font-bold text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none shadow-2xs cursor-pointer"
+                    >
+                      <option value="E-10">Fase E (Kelas 10) - Kurikulum Kelas X</option>
+                      <option value="F-11">Fase F (Kelas 11) - Kurikulum Kelas XI</option>
+                      <option value="F-12">Fase F (Kelas 12) - Kurikulum Kelas XII</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : currentMeeting ? (
+            <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-150">
+              {/* Breadcrumb Context Bar */}
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold px-1">
+                <span>{mapelNama || 'Mapel'}</span>
+                <span>›</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('BAB_INFO')}
+                  className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer font-bold"
+                >
+                  Bab {currentBab?.nomorBab || 1}: {currentBab?.judulBab || 'Tanpa Judul'}
+                </button>
+                <span>›</span>
+                <span className="text-slate-900 dark:text-white font-black">Pertemuan {currentMeeting.nomor_pertemuan}</span>
               </div>
 
               {/* CARD 1: IDENTITAS & TARGET PERTEMUAN */}
@@ -804,59 +1103,246 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                   </div>
                 </div>
 
-                {/* Input Tujuan Pembelajaran */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                    <span>Tujuan Pembelajaran (1 baris per poin):</span>
-                    <span className="text-[10px] text-slate-400 font-normal">Otomatis dipisah per baris baru</span>
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={(currentMeeting.tujuan_pembelajaran || []).join('\n')}
-                    onChange={(e) => updateCurrentMeeting(prev => ({
-                      ...prev,
-                      tujuan_pembelajaran: e.target.value.split('\n').filter(Boolean)
-                    }))}
-                    placeholder="1. Peserta didik mampu menganalisis struktur teks...\n2. Peserta didik mampu memilah data fakta vs opini..."
-                    className="w-full px-4 py-2 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed"
-                  />
+                {/* Input Tujuan Pembelajaran (Slot-based) */}
+                <div className="space-y-2.5 pt-1">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Tujuan Pembelajaran:
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const topicName = cleanTopicName(currentMeeting.topik) || 'materi pembelajaran';
+                          updateCurrentMeeting(prev => ({
+                            ...prev,
+                            tujuan_pembelajaran: [
+                              `Peserta didik mampu memahami dan menjelaskan konsep ${topicName} secara mendalam.`,
+                              `Peserta didik mampu menganalisis permasalahan kontekstual terkait ${topicName} secara kritis.`,
+                              `Peserta didik mampu menyajikan hasil karya/analisis ${topicName} secara kolaboratif.`
+                            ]
+                          }));
+                          toast.success('🪄 Template Pola Standar Tujuan Pembelajaran dimuat!', { icon: '✨' });
+                        }}
+                        className="h-7 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="Isi otomatis dengan 3 indikator tujuan kompetensi standar"
+                      >
+                        <Sparkles size={12} className="text-indigo-600" />
+                        <span>Isi Pola Standar</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(currentMeeting.tujuan_pembelajaran && currentMeeting.tujuan_pembelajaran.length > 0
+                      ? currentMeeting.tujuan_pembelajaran
+                      : ['']
+                    ).map((tp, tpIdx) => (
+                      <div key={tpIdx} className="flex items-center gap-2">
+                        <span className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-200 dark:border-indigo-800 shadow-2xs">
+                          {tpIdx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          value={tp}
+                          onChange={(e) => {
+                            const currentList = currentMeeting.tujuan_pembelajaran && currentMeeting.tujuan_pembelajaran.length > 0
+                              ? [...currentMeeting.tujuan_pembelajaran]
+                              : [''];
+                            currentList[tpIdx] = e.target.value;
+                            updateCurrentMeeting(prev => ({
+                              ...prev,
+                              tujuan_pembelajaran: currentList
+                            }));
+                          }}
+                          placeholder={`Tujuan pembelajaran ke-${tpIdx + 1}...`}
+                          className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 outline-none shadow-2xs"
+                        />
+                        {(currentMeeting.tujuan_pembelajaran?.length || 1) > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const list = (currentMeeting.tujuan_pembelajaran || []).filter((_, i) => i !== tpIdx);
+                              updateCurrentMeeting(prev => ({
+                                ...prev,
+                                tujuan_pembelajaran: list.length > 0 ? list : ['']
+                              }));
+                            }}
+                            title="Hapus poin tujuan"
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-xl transition-colors shrink-0 cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const currentList = currentMeeting.tujuan_pembelajaran && currentMeeting.tujuan_pembelajaran.length > 0
+                          ? [...currentMeeting.tujuan_pembelajaran, '']
+                          : ['', ''];
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          tujuan_pembelajaran: currentList
+                        }));
+                      }}
+                      className="h-8 px-3 rounded-xl text-xs font-bold border-dashed border-2 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 flex items-center gap-1.5 cursor-pointer mt-1"
+                    >
+                      <Plus size={13} />
+                      <span>+ Tambah Tujuan Pembelajaran</span>
+                    </Button>
+                  </div>
                 </div>
               </div>
 
               {/* CARD 2: TAHAP 1 — PENDAHULUAN & APERSEPSI */}
               <div className="p-5 rounded-3xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/50 space-y-4 shadow-xs">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-black text-sm">
                     <HelpCircle className="w-4 h-4 text-amber-600" />
                     <span>Tahap 1: Pendahuluan, Apersepsi &amp; Pertanyaan Pemantik (15 Menit)</span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-lg bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-black text-xs font-mono">
-                    Slide Proyektor 1
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const topicName = cleanTopicName(currentMeeting.topik) || 'materi pelajaran';
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            pendahuluan: {
+                              ...prev.langkah_kbm.pendahuluan,
+                              kegiatan: [
+                                'Guru membuka pelajaran dengan salam hangat, berdoa bersama, dan mengecek kehadiran serta kesiapan belajar siswa.',
+                                `Apersepsi: Guru mengaitkan topik ${topicName} dengan tayangan visual dan fenomena nyata di sekitar siswa.`,
+                                `Pertanyaan Pemantik: "Mengapa pemahaman tentang ${topicName} sangat penting dalam kehidupan kita?"`
+                              ]
+                            }
+                          }
+                        }));
+                        toast.success('🪄 Template Standar Pendahuluan berhasil dimuat!', { icon: '✨' });
+                      }}
+                      className="h-7 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100 flex items-center gap-1 cursor-pointer shadow-2xs"
+                      title="Isi otomatis dengan 3 runtutan pembuka standar (Doa, Apersepsi, Pemantik)"
+                    >
+                      <Sparkles size={12} className="text-amber-600" />
+                      <span>Isi Pola Standar</span>
+                    </Button>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-200/80 dark:bg-amber-900 text-amber-900 dark:text-amber-200 font-black text-xs font-mono">
+                      Slide Proyektor 1
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="space-y-1">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-amber-900 dark:text-amber-300">
-                      Runtutan Kegiatan Pembukaan &amp; Pertanyaan Pemantik (1 baris per aktivitas):
+                      Runtutan Kegiatan Pembukaan &amp; Pertanyaan Pemantik:
                     </label>
-                    <textarea
-                      rows={3}
-                      value={(currentMeeting.langkah_kbm?.pendahuluan?.kegiatan || []).join('\n')}
-                      onChange={(e) => updateCurrentMeeting(prev => ({
-                        ...prev,
-                        langkah_kbm: {
-                          ...prev.langkah_kbm,
-                          pendahuluan: {
-                            durasi_menit: 15,
-                            kegiatan: e.target.value.split('\n').filter(Boolean)
-                          }
-                        }
-                      }))}
-                      placeholder="Pembukaan: Guru membuka dengan salam dan doa.\nApersepsi: Guru menampilkan gambar fenomena alam.\nPertanyaan Pemantik: Mengapa fakta penting dalam observasi?"
-                      className="w-full px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none leading-relaxed"
-                    />
+                    <span className="text-[11px] text-amber-700/80 dark:text-amber-400 font-bold">
+                      Otomatis menjadi alur tayang Slide Proyektor 1
+                    </span>
                   </div>
+
+                  <div className="space-y-2">
+                    {(currentMeeting.langkah_kbm?.pendahuluan?.kegiatan && currentMeeting.langkah_kbm.pendahuluan.kegiatan.length > 0
+                      ? currentMeeting.langkah_kbm.pendahuluan.kegiatan
+                      : ['']
+                    ).map((act, actIdx) => {
+                      const defaultPlaceholders = [
+                        'Contoh: Guru membuka pelajaran dengan salam hangat, berdoa, dan mengecek presensi...',
+                        'Contoh: Guru mengaitkan materi dengan tayangan visual / fenomena alam...',
+                        'Contoh: "Mengapa pengamatan yang objektif penting dalam laporan sains?"'
+                      ];
+
+                      return (
+                        <div key={actIdx} className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-300 dark:border-amber-800 shadow-2xs">
+                            {actIdx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={act}
+                            onChange={(e) => {
+                              const list = currentMeeting.langkah_kbm?.pendahuluan?.kegiatan && currentMeeting.langkah_kbm.pendahuluan.kegiatan.length > 0
+                                ? [...currentMeeting.langkah_kbm.pendahuluan.kegiatan]
+                                : [''];
+                              list[actIdx] = e.target.value;
+                              updateCurrentMeeting(prev => ({
+                                ...prev,
+                                langkah_kbm: {
+                                  ...prev.langkah_kbm,
+                                  pendahuluan: {
+                                    ...prev.langkah_kbm.pendahuluan,
+                                    kegiatan: list
+                                  }
+                                }
+                              }));
+                            }}
+                            placeholder={defaultPlaceholders[actIdx] || `Aktivitas pembuka ke-${actIdx + 1}...`}
+                            className="flex-1 px-4 py-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-amber-500 outline-none shadow-2xs"
+                          />
+                          {(currentMeeting.langkah_kbm?.pendahuluan?.kegiatan?.length || 1) > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const list = (currentMeeting.langkah_kbm?.pendahuluan?.kegiatan || []).filter((_, i) => i !== actIdx);
+                                updateCurrentMeeting(prev => ({
+                                  ...prev,
+                                  langkah_kbm: {
+                                    ...prev.langkah_kbm,
+                                    pendahuluan: {
+                                      ...prev.langkah_kbm.pendahuluan,
+                                      kegiatan: list.length > 0 ? list : ['']
+                                    }
+                                  }
+                                }));
+                              }}
+                              title="Hapus langkah pembuka"
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const list = currentMeeting.langkah_kbm?.pendahuluan?.kegiatan && currentMeeting.langkah_kbm.pendahuluan.kegiatan.length > 0
+                          ? [...currentMeeting.langkah_kbm.pendahuluan.kegiatan, '']
+                          : ['', ''];
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            pendahuluan: {
+                              ...prev.langkah_kbm.pendahuluan,
+                              kegiatan: list
+                            }
+                          }
+                        }));
+                      }}
+                      className="h-8 px-3 rounded-xl text-xs font-bold border-dashed border-2 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 hover:bg-amber-100/60 flex items-center gap-1.5 cursor-pointer mt-1"
+                    >
+                      <Plus size={13} />
+                      <span>+ Tambah Langkah Pembuka</span>
+                    </Button>
+                  </div>
+                </div>
 
                   {/* Foto Pemantik / Kasus */}
                   <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 space-y-2">
@@ -968,43 +1454,151 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
                     )}
                   </div>
                 </div>
-              </div>
 
               {/* CARD 3: TAHAP 2 — KEGIATAN INTI, TEKS BACAAN & LKPD */}
               <div className="p-5 rounded-3xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-900/50 space-y-4 shadow-xs">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200 font-black text-sm">
                     <FileText className="w-4 h-4 text-blue-600" />
                     <span>Tahap 2: Kegiatan Inti, Teks Bacaan Pokok &amp; LKPD Diskusi (105 Menit)</span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-lg bg-blue-200/80 dark:bg-blue-900 text-blue-900 dark:text-blue-200 font-black text-xs font-mono">
-                    Slide Proyektor 2 &amp; 3
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const topicName = cleanTopicName(currentMeeting.topik) || 'materi pokok';
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            inti: {
+                              ...prev.langkah_kbm.inti,
+                              kegiatan: [
+                                `Orientasi Materi: Siswa menyimak tayangan slide penjelasan materi ${topicName} dan mencatat poin-poin penting.`,
+                                `Eksplorasi & Kolaborasi: Siswa berkelompok (4-5 orang) membedah studi kasus dan mengerjakan Lembar Kerja (LKPD).`,
+                                'Verifikasi & Presentasi: Perwakilan kelompok mempresentasikan hasil diskusi dan menarik simpulan bersama guru.'
+                              ]
+                            }
+                          }
+                        }));
+                        toast.success('🪄 Template Standar Kegiatan Inti (PBL) berhasil dimuat!', { icon: '✨' });
+                      }}
+                      className="h-7 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border-blue-300 dark:border-blue-800 text-blue-800 dark:text-blue-300 hover:bg-blue-100 flex items-center gap-1 cursor-pointer shadow-2xs"
+                      title="Isi otomatis dengan 3 langkah inti standar (Orientasi, Kolaborasi LKPD, Presentasi)"
+                    >
+                      <Sparkles size={12} className="text-blue-600" />
+                      <span>Isi Pola Standar</span>
+                    </Button>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-blue-200/80 dark:bg-blue-900 text-blue-900 dark:text-blue-200 font-black text-xs font-mono">
+                      Slide Proyektor 2 &amp; 3
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  {/* Runtutan Kegiatan Inti */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-blue-900 dark:text-blue-300">
-                      Runtutan Kegiatan Inti &amp; Eksplorasi Konsep (1 baris per aktivitas):
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={(currentMeeting.langkah_kbm?.inti?.kegiatan || []).join('\n')}
-                      onChange={(e) => updateCurrentMeeting(prev => ({
-                        ...prev,
-                        langkah_kbm: {
-                          ...prev.langkah_kbm,
-                          inti: {
-                            ...prev.langkah_kbm.inti,
-                            durasi_menit: (prev.alokasi_jp * 45) - 30,
-                            kegiatan: e.target.value.split('\n').filter(Boolean)
-                          }
-                        }
-                      }))}
-                      placeholder="1. Siswa menyimak penjelasan konsep...\n2. Siswa berdiskusi kelompok membedah teks...\n3. Presentasi perwakilan kelompok..."
-                      className="w-full px-4 py-2.5 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none leading-relaxed"
-                    />
+                  {/* Runtutan Kegiatan Inti (Slot-based) */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-blue-900 dark:text-blue-300">
+                        Runtutan Kegiatan Inti &amp; Eksplorasi Konsep:
+                      </label>
+                      <span className="text-[11px] text-blue-700/80 dark:text-blue-400 font-bold">
+                        Langkah operasional belajar di kelas
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {(currentMeeting.langkah_kbm?.inti?.kegiatan && currentMeeting.langkah_kbm.inti.kegiatan.length > 0
+                        ? currentMeeting.langkah_kbm.inti.kegiatan
+                        : ['']
+                      ).map((act, actIdx) => {
+                        const defaultPlaceholders = [
+                          'Contoh: Siswa menyimak tayangan slide materi pokok dan mencatat poin penting...',
+                          'Contoh: Siswa berkelompok (4-5 orang) untuk menganalisis studi kasus pada LKPD...',
+                          'Contoh: Setiap kelompok mempresentasikan hasil diskusinya di depan kelas...'
+                        ];
+
+                        return (
+                          <div key={actIdx} className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 font-black text-xs flex items-center justify-center shrink-0 border border-blue-300 dark:border-blue-800 shadow-2xs">
+                              {actIdx + 1}
+                            </span>
+                            <input
+                              type="text"
+                              value={act}
+                              onChange={(e) => {
+                                const list = currentMeeting.langkah_kbm?.inti?.kegiatan && currentMeeting.langkah_kbm.inti.kegiatan.length > 0
+                                  ? [...currentMeeting.langkah_kbm.inti.kegiatan]
+                                  : [''];
+                                list[actIdx] = e.target.value;
+                                updateCurrentMeeting(prev => ({
+                                  ...prev,
+                                  langkah_kbm: {
+                                    ...prev.langkah_kbm,
+                                    inti: {
+                                      ...prev.langkah_kbm.inti,
+                                      durasi_menit: (prev.alokasi_jp * 45) - 30,
+                                      kegiatan: list
+                                    }
+                                  }
+                                }));
+                              }}
+                              placeholder={defaultPlaceholders[actIdx] || `Langkah inti ke-${actIdx + 1}...`}
+                              className="flex-1 px-4 py-2.5 rounded-2xl border border-blue-200 dark:border-blue-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none shadow-2xs"
+                            />
+                            {(currentMeeting.langkah_kbm?.inti?.kegiatan?.length || 1) > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const list = (currentMeeting.langkah_kbm?.inti?.kegiatan || []).filter((_, i) => i !== actIdx);
+                                  updateCurrentMeeting(prev => ({
+                                    ...prev,
+                                    langkah_kbm: {
+                                      ...prev.langkah_kbm,
+                                      inti: {
+                                        ...prev.langkah_kbm.inti,
+                                        kegiatan: list.length > 0 ? list : ['']
+                                      }
+                                    }
+                                  }));
+                                }}
+                                title="Hapus langkah inti"
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const list = currentMeeting.langkah_kbm?.inti?.kegiatan && currentMeeting.langkah_kbm.inti.kegiatan.length > 0
+                            ? [...currentMeeting.langkah_kbm.inti.kegiatan, '']
+                            : ['', ''];
+                          updateCurrentMeeting(prev => ({
+                            ...prev,
+                            langkah_kbm: {
+                              ...prev.langkah_kbm,
+                              inti: {
+                                ...prev.langkah_kbm.inti,
+                                kegiatan: list
+                              }
+                            }
+                          }));
+                        }}
+                        className="h-8 px-3 rounded-xl text-xs font-bold border-dashed border-2 border-blue-300 dark:border-blue-800 text-blue-800 dark:text-blue-300 hover:bg-blue-100/60 flex items-center gap-1.5 cursor-pointer mt-1"
+                      >
+                        <Plus size={13} />
+                        <span>+ Tambah Langkah Inti</span>
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Multi-Slide Materi Pokok Siswa */}
@@ -1369,42 +1963,150 @@ const FULL_SAMPLE_MEETINGS: PertemuanItem[] = [
 
               {/* CARD 4: TAHAP 3 — PENUTUP & REFLEKSI */}
               <div className="p-5 rounded-3xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-900/50 space-y-4 shadow-xs">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-black text-sm">
                     <Compass className="w-4 h-4 text-indigo-600" />
                     <span>Tahap 3: Penutup, Refleksi Pembelajaran &amp; Rangkuman (15 Menit)</span>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-lg bg-indigo-200/80 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 font-black text-xs font-mono">
-                    Slide Proyektor 4
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const topicName = cleanTopicName(currentMeeting.topik) || 'materi hari ini';
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            penutup: {
+                              ...prev.langkah_kbm.penutup,
+                              kegiatan: [
+                                `Refleksi Siswa: Guru memfasilitasi siswa mengungkapkan hal baru yang dipelajari dari ${topicName} dan manfaatnya dalam kehidupan.`,
+                                'Rangkuman Bersama: Guru bersama siswa merangkum poin-poin esensial dan memberikan apresiasi atas partisipasi aktif seluruh kelas.',
+                                'Tindak Lanjut & Doa: Guru menyampaikan rencana materi pertemuan berikutnya dan menutup pembelajaran dengan doa bersama.'
+                              ]
+                            }
+                          }
+                        }));
+                        toast.success('🪄 Template Standar Penutup berhasil dimuat!', { icon: '✨' });
+                      }}
+                      className="h-7 px-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border-indigo-300 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer shadow-2xs"
+                      title="Isi otomatis dengan 3 langkah penutup standar (Refleksi, Rangkuman, Doa & Tindak Lanjut)"
+                    >
+                      <Sparkles size={12} className="text-indigo-600" />
+                      <span>Isi Pola Standar</span>
+                    </Button>
+                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-200/80 dark:bg-indigo-900 text-indigo-900 dark:text-indigo-200 font-black text-xs font-mono">
+                      Slide Proyektor 4
+                    </span>
+                  </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="space-y-1">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                      Runtutan Refleksi &amp; Penutup (1 baris per aktivitas):
+                      Runtutan Refleksi &amp; Penutup:
                     </label>
-                    <textarea
-                      rows={3}
-                      value={(currentMeeting.langkah_kbm?.penutup?.kegiatan || []).join('\n')}
-                      onChange={(e) => updateCurrentMeeting(prev => ({
-                        ...prev,
-                        langkah_kbm: {
-                          ...prev.langkah_kbm,
-                          penutup: {
-                            durasi_menit: 15,
-                            kegiatan: e.target.value.split('\n').filter(Boolean)
+                    <span className="text-[11px] text-indigo-700/80 dark:text-indigo-400 font-bold">
+                      Otomatis menjadi alur tayang Slide Proyektor 4
+                    </span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {(currentMeeting.langkah_kbm?.penutup?.kegiatan && currentMeeting.langkah_kbm.penutup.kegiatan.length > 0
+                      ? currentMeeting.langkah_kbm.penutup.kegiatan
+                      : ['']
+                    ).map((act, actIdx) => {
+                      const defaultPlaceholders = [
+                        'Contoh: Siswa menyampaikan refleksi: "Apa konsep paling menarik yang kalian pelajari hari ini?"',
+                        'Contoh: Guru bersama siswa merangkum poin-poin utama kesimpulan materi...',
+                        'Contoh: Guru memberikan apresiasi, info materi pertemuan berikutnya, dan doa penutup.'
+                      ];
+
+                      return (
+                        <div key={actIdx} className="flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-300 font-black text-xs flex items-center justify-center shrink-0 border border-indigo-300 dark:border-indigo-800 shadow-2xs">
+                            {actIdx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={act}
+                            onChange={(e) => {
+                              const list = currentMeeting.langkah_kbm?.penutup?.kegiatan && currentMeeting.langkah_kbm.penutup.kegiatan.length > 0
+                                ? [...currentMeeting.langkah_kbm.penutup.kegiatan]
+                                : [''];
+                              list[actIdx] = e.target.value;
+                              updateCurrentMeeting(prev => ({
+                                ...prev,
+                                langkah_kbm: {
+                                  ...prev.langkah_kbm,
+                                  penutup: {
+                                    ...prev.langkah_kbm.penutup,
+                                    durasi_menit: 15,
+                                    kegiatan: list
+                                  }
+                                }
+                              }));
+                            }}
+                            placeholder={defaultPlaceholders[actIdx] || `Langkah penutup ke-${actIdx + 1}...`}
+                            className="flex-1 px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none shadow-2xs"
+                          />
+                          {(currentMeeting.langkah_kbm?.penutup?.kegiatan?.length || 1) > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const list = (currentMeeting.langkah_kbm?.penutup?.kegiatan || []).filter((_, i) => i !== actIdx);
+                                updateCurrentMeeting(prev => ({
+                                  ...prev,
+                                  langkah_kbm: {
+                                    ...prev.langkah_kbm,
+                                    penutup: {
+                                      ...prev.langkah_kbm.penutup,
+                                      kegiatan: list.length > 0 ? list : ['']
+                                    }
+                                  }
+                                }));
+                              }}
+                              title="Hapus langkah penutup"
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors shrink-0 cursor-pointer"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const list = currentMeeting.langkah_kbm?.penutup?.kegiatan && currentMeeting.langkah_kbm.penutup.kegiatan.length > 0
+                          ? [...currentMeeting.langkah_kbm.penutup.kegiatan, '']
+                          : ['', ''];
+                        updateCurrentMeeting(prev => ({
+                          ...prev,
+                          langkah_kbm: {
+                            ...prev.langkah_kbm,
+                            penutup: {
+                              ...prev.langkah_kbm.penutup,
+                              kegiatan: list
+                            }
                           }
-                        }
-                      }))}
-                      placeholder="Refleksi: Apa pemahaman baru yang kalian dapatkan?\nRangkuman bersama guru dan penugasan tindak lanjut.\nDoa dan salam penutup."
-                      className="w-full px-4 py-2.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-white dark:bg-slate-900 text-xs font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none leading-relaxed"
-                    />
+                        }));
+                      }}
+                      className="h-8 px-3 rounded-xl text-xs font-bold border-dashed border-2 border-indigo-300 dark:border-indigo-800 text-indigo-800 dark:text-indigo-300 hover:bg-indigo-100/60 flex items-center gap-1.5 cursor-pointer mt-1"
+                    >
+                      <Plus size={13} />
+                      <span>+ Tambah Langkah Penutup</span>
+                    </Button>
                   </div>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

@@ -6,7 +6,7 @@ import { DEMO_PARENT_MAGIC_TOKEN } from './setup-demo-parent-magic-token';
 const prisma = new PrismaClient();
 const DEMO_ID = '2acb7e12-d264-4784-8262-8f7369061542';
 
-async function unifyDemoClassEcosystem() {
+export async function unifyDemoClassEcosystem() {
   console.log('🚀 [PENYELARASAN 100% SATU KELAS DEMO: GURU MAPEL, WALI KELAS, SISWA, PETUGAS KELAS & ORTU]...\n');
 
   // 1. Target Kelas Utama: X TJKT 1 (diajar oleh Erwin Demo)
@@ -288,4 +288,6 @@ async function unifyDemoClassEcosystem() {
   console.log('🎉 SEMUA 5 PERAN DEMO KINI TERSINKRONISASI 100% DALAM SATU KELAS YANG SAMA!');
 }
 
-unifyDemoClassEcosystem().catch(console.error).finally(() => prisma.$disconnect());
+if (require.main === module) {
+  unifyDemoClassEcosystem().catch(console.error).finally(() => prisma.$disconnect());
+}

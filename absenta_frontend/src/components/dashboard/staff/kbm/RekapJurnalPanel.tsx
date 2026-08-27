@@ -8,6 +8,8 @@ import { getSesiAbsensiList } from '../../../../api/attendanceGerbang.api';
 import { JurnalKbmModal } from '../../../kurikulum/JurnalKbmModal';
 import toast from 'react-hot-toast';
 
+import { useAuthStore } from '../../../../store/authStore';
+
 export interface JurnalRecord {
   id: string;
   sesiId: string;
@@ -34,14 +36,17 @@ export interface JurnalRecord {
 }
 
 interface RekapJurnalPanelProps {
+  guruId?: string;
   compact?: boolean;
   limitItems?: number;
 }
 
 export const RekapJurnalPanel: React.FC<RekapJurnalPanelProps> = ({
+  guruId: propGuruId,
   compact = true,
   limitItems = 3,
 }) => {
+  const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('ALL');
@@ -49,11 +54,14 @@ export const RekapJurnalPanel: React.FC<RekapJurnalPanelProps> = ({
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingJurnal, setEditingJurnal] = useState<JurnalRecord | null>(null);
 
-  // ── Fetch Live Sessions from Backend ──
+  const effectiveGuruId = propGuruId || (user?.guru_profile as any)?.id || (user as any)?.guru_id || undefined;
+
+  // ── Fetch Live Sessions from Backend (Filtered by Logged-in Teacher) ──
   const { data: responseData, isLoading, error } = useQuery({
-    queryKey: ['rekapJurnalSesiList'],
+    queryKey: ['rekapJurnalSesiList', effectiveGuruId],
     queryFn: async () => {
       const res = await getSesiAbsensiList({
+        guru_id: effectiveGuruId,
         limit: 100,
         summary: true,
       });
@@ -219,7 +227,7 @@ export const RekapJurnalPanel: React.FC<RekapJurnalPanelProps> = ({
                 className="h-8 px-3 rounded-lg bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-600 dark:text-blue-400 text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 border border-blue-200 dark:border-blue-800/80"
               >
                 <BookOpen size={13} />
-                <span>Buka Buku Jurnal Lengkap</span>
+                <span>Buku Jurnal</span>
                 <ExternalLink size={12} className="opacity-70" />
               </Link>
             ) : (

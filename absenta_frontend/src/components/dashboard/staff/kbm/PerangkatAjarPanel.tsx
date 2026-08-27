@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Plus, ExternalLink, FileText, Download,
+  Book, BookOpen, Plus, ExternalLink, FileText, Download,
   Search, CheckCircle2, Sparkles, Folder, Presentation,
-  Globe, UserCheck, Clock, Layers, ChevronRight, AlertCircle,
+  Globe, UserCheck, Clock, Layers, ChevronRight, ChevronDown, ChevronUp, AlertCircle,
   Zap, Check, ArrowRight, BookCheck, ShieldCheck
 } from 'lucide-react';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
@@ -19,6 +19,65 @@ import { toast } from 'react-hot-toast';
 import { BahanAjarReaderModal } from '../../../kurikulum/bahan-ajar/BahanAjarReaderModal';
 import { ModulAjarStudioModal } from '../../../kurikulum/bahan-ajar/ModulAjarStudioModal';
 
+// ── ICON BUKU BERDIRI (STANDING BOOK 3D) ──
+const StandingBookIcon: React.FC<{
+  color?: string;
+  spineColor?: string;
+  isActive?: boolean;
+  className?: string;
+}> = ({
+  color = '#2563eb',
+  spineColor = '#1d4ed8',
+  isActive = false,
+  className = 'w-5 h-6'
+}) => (
+  <svg viewBox="0 0 48 54" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    {/* Soft Shadow */}
+    <ellipse cx="24" cy="51" rx="16" ry="2.5" fill="black" fillOpacity={isActive ? "0.2" : "0.08"} />
+    
+    {/* Spine (Left side) */}
+    <path d="M10 8C10 6.89543 10.8954 6 12 6H17V48H12C10.8954 48 10 47.1046 10 46V8Z" fill={spineColor} />
+    <path d="M12 6H17V48H12C10.8954 48 10 47.1046 10 46V8C10 6.89543 10.8954 6 12 6Z" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
+    
+    {/* Spine ribs */}
+    <line x1="10" y1="13" x2="17" y2="13" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+    <line x1="10" y1="17" x2="17" y2="17" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+    <line x1="10" y1="37" x2="17" y2="37" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+    <line x1="10" y1="41" x2="17" y2="41" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+    
+    {/* Front Cover */}
+    <path d="M17 6H35C36.1046 6 37 6.89543 37 8V46C37 47.1046 36.1046 48 35 48H17V6Z" fill={color} />
+    
+    {/* Top Pages Isometric */}
+    <path d="M17 6L25 2H43L35 6H17Z" fill="#F8FAFC" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
+    <line x1="19" y1="5.2" x2="26" y2="2.7" stroke="#CBD5E1" strokeWidth="0.7" />
+    <line x1="24" y1="5.2" x2="32" y2="2.7" stroke="#CBD5E1" strokeWidth="0.7" />
+    <line x1="29" y1="5.2" x2="37" y2="2.7" stroke="#CBD5E1" strokeWidth="0.7" />
+    
+    {/* Side Edge Pages */}
+    <path d="M37 8L43 2V42L37 48V8Z" fill="#F1F5F9" stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
+    <line x1="39" y1="7" x2="39" y2="45" stroke="#E2E8F0" strokeWidth="0.8" />
+    <line x1="41" y1="5" x2="41" y2="43" stroke="#CBD5E1" strokeWidth="0.8" />
+
+    {/* Gold Bookmark Ribbon if Active */}
+    {isActive ? (
+      <path d="M24 6V20L28 17L32 20V6H24Z" fill="#F59E0B" />
+    ) : null}
+
+    {/* Title frame label on front cover */}
+    <rect x="20" y="14" width="13" height="18" rx="1.5" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.7" />
+  </svg>
+);
+
+const BOOK_PALETTES = [
+  { main: '#2563eb', spine: '#1d4ed8', activeBg: 'bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-700 dark:text-blue-300' },
+  { main: '#059669', spine: '#047857', activeBg: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-700 dark:text-emerald-300' },
+  { main: '#7c3aed', spine: '#6d28d9', activeBg: 'bg-purple-50 dark:bg-purple-950/40 border-purple-500 text-purple-700 dark:text-purple-300' },
+  { main: '#d97706', spine: '#b45309', activeBg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-500 text-amber-700 dark:text-amber-300' },
+  { main: '#e11d48', spine: '#be123c', activeBg: 'bg-rose-50 dark:bg-rose-950/40 border-rose-500 text-rose-700 dark:text-rose-300' },
+  { main: '#0891b2', spine: '#0e7490', activeBg: 'bg-cyan-50 dark:bg-cyan-950/40 border-cyan-500 text-cyan-700 dark:text-cyan-300' },
+];
+
 interface PerangkatAjarPanelProps {
   guruId?: string;
 }
@@ -26,10 +85,7 @@ interface PerangkatAjarPanelProps {
 export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [activeMainTab, setActiveMainTab] = useState<'READINESS_MAP' | 'GLOBAL_PRESETS' | 'ALL_DOCS'>('READINESS_MAP');
   const [selectedMapelFilter, setSelectedMapelFilter] = useState<string>('ALL');
-  const [selectedFaseFilter, setSelectedFaseFilter] = useState<string>('E');
 
   // Reader & Studio Modals State
   const [readerPerangkatId, setReaderPerangkatId] = useState<string>('');
@@ -174,54 +230,89 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
     return distinctSubjects[0]?.name || 'Bahasa Indonesia';
   }, [selectedMapelFilter, distinctSubjects]);
 
-  // Chapter Readiness Calculation for Active Subject (Sorted in natural ascending order)
-  const subjectPresets = useMemo(() => {
-    const filtered = globalPresets.filter(p => {
-      const matchSubject = p.nama_mapel_ref.toLowerCase() === activeSubjectName.toLowerCase() ||
-        p.tags?.some(t => t.toLowerCase() === activeSubjectName.toLowerCase());
-      
-      const matchFase = selectedFaseFilter === 'ALL' || p.fase === selectedFaseFilter;
-      return matchSubject && matchFase;
+  // Expand/Collapse state for each Fase (Default: expanded)
+  const [expandedFases, setExpandedFases] = useState<Record<string, boolean>>({
+    'E': true,
+    'F': true,
+  });
+
+  const toggleFase = (faseKey: string) => {
+    setExpandedFases(prev => ({
+      ...prev,
+      [faseKey]: !prev[faseKey]
+    }));
+  };
+
+  // Grouped modules & presets per Fase for active subject
+  const fasesData = useMemo(() => {
+    const aMapel = activeSubjectName.toLowerCase().trim();
+
+    // Presets for this subject
+    const mapelPresets = globalPresets.filter(p => {
+      const pMapel = (p.nama_mapel_ref || '').toLowerCase().trim();
+      return (
+        pMapel === aMapel ||
+        pMapel.includes(aMapel) ||
+        aMapel.includes(pMapel) ||
+        p.tags?.some(t => t.toLowerCase().trim() === aMapel || aMapel.includes(t.toLowerCase().trim()))
+      );
     });
 
-    // Natural ascending sort (Modul 1 -> Modul 2 -> Modul 3 ...)
-    return filtered.sort((a, b) => {
-      if (a.fase !== b.fase) return a.fase.localeCompare(b.fase);
-      return extractModulNumber(a.judul_modul) - extractModulNumber(b.judul_modul);
-    });
-  }, [globalPresets, activeSubjectName, selectedFaseFilter]);
-
-  const subjectMyPerangkats = useMemo(() => {
-    return myPerangkatList.filter((p: any) =>
-      p.Mapel?.nama_mapel?.toLowerCase() === activeSubjectName.toLowerCase()
+    // Teacher's saved modules for this subject
+    const mapelMyPerangkats = myPerangkatList.filter((p: any) =>
+      (p.Mapel?.nama_mapel || '').toLowerCase().trim() === aMapel
     );
-  }, [myPerangkatList, activeSubjectName]);
 
-  // Matched Chapters (List of all required chapters for this subject)
-  const chaptersReadiness = useMemo(() => {
-    return subjectPresets.map((preset) => {
-      const num = extractModulNumber(preset.judul_modul);
+    const fases = [
+      { key: 'E', name: 'Fase E (Kelas 10)', tingkat: 10 },
+      { key: 'F', name: 'Fase F (Kelas 11-12)', tingkat: 11 },
+    ];
 
-      // Find if teacher has a custom/adopted module matching this preset or chapter
-      const myItem = subjectMyPerangkats.find((mp: any) =>
-        mp.preset_ref_id === preset.id ||
-        mp.judul?.toLowerCase().includes(preset.judul_modul.toLowerCase()) ||
-        preset.judul_modul.toLowerCase().includes((mp.judul || '').toLowerCase()) ||
-        extractModulNumber(mp.judul || '') === num
+    return fases.map(f => {
+      const presetsInFase = mapelPresets
+        .filter(p => p.fase === f.key)
+        .sort((a, b) => extractModulNumber(a.judul_modul) - extractModulNumber(b.judul_modul));
+
+      const myItemsInFase = mapelMyPerangkats.filter((mp: any) => mp.fase === f.key || (!mp.fase && f.key === 'E'));
+
+      // Match preset with teacher's item
+      const chapters = presetsInFase.map(preset => {
+        const num = extractModulNumber(preset.judul_modul);
+        const myItem = myItemsInFase.find((mp: any) =>
+          mp.preset_ref_id === preset.id ||
+          mp.judul?.toLowerCase().includes(preset.judul_modul.toLowerCase()) ||
+          preset.judul_modul.toLowerCase().includes((mp.judul || '').toLowerCase()) ||
+          extractModulNumber(mp.judul || '') === num
+        );
+        return {
+          id: preset.id,
+          babNumber: num < 999 ? num : 1,
+          judul: preset.judul_modul,
+          deskripsi: preset.deskripsi,
+          total_pertemuan: preset.total_pertemuan,
+          total_alokasi_jp: preset.total_alokasi_jp,
+          preset,
+          myItem: myItem || null,
+          isReady: Boolean(myItem)
+        };
+      });
+
+      // Include standalone custom modules created by teacher
+      const unmatchedMyItems = myItemsInFase.filter(mp => 
+        !chapters.some(c => c.myItem?.id === mp.id)
       );
 
       return {
-        babNumber: num < 999 ? num : 1,
-        preset,
-        myItem: myItem || null,
-        isReady: Boolean(myItem)
+        faseKey: f.key,
+        faseName: f.name,
+        tingkat: f.tingkat,
+        chapters,
+        customItems: unmatchedMyItems,
+        totalCount: chapters.length + unmatchedMyItems.length,
+        readyCount: chapters.filter(c => c.isReady).length + unmatchedMyItems.length
       };
     });
-  }, [subjectPresets, subjectMyPerangkats]);
-
-  const readyCount = chaptersReadiness.filter(c => c.isReady).length;
-  const totalCount = Math.max(chaptersReadiness.length, 1);
-  const readinessPercent = Math.round((readyCount / totalCount) * 100);
+  }, [globalPresets, myPerangkatList, activeSubjectName]);
 
   const handleOpenReader = (id: string, ctx?: { mapelNama?: string; fase?: string; tingkat?: number }) => {
     setReaderPerangkatId(id);
@@ -246,591 +337,290 @@ export const PerangkatAjarPanel: React.FC<PerangkatAjarPanelProps> = ({ guruId }
   };
 
   return (
-    <div className="space-y-5">
-      {/* ── 1. BANNER KESIAPAN MENGAJAR GURU (STATUS & PROGRESS) ── */}
-      <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white shadow-xl shadow-indigo-950/20 border border-indigo-800/40 relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute left-1/3 bottom-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-xl">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-black uppercase tracking-wider">
-                Asisten Administrasi &amp; KBM Guru
-              </span>
-              <span className="px-2.5 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-black">
-                Semester Ganjil 2026/2027
-              </span>
-            </div>
-
-            <h2 className="text-base sm:text-lg font-black text-white leading-snug">
-              Status Kelengkapan Modul Ajar: <span className="text-indigo-300">{activeSubjectName}</span>
-            </h2>
-
-            <p className="text-xs text-slate-300 leading-relaxed font-medium">
-              Pastikan seluruh bab pembelajaran telah memiliki modul terdaftar agar panduan mengajar, materi slide proyektor, dan jurnal KBM otomatis aktif di ruang kelas.
-            </p>
-
-            <div className="pt-1 flex items-center gap-2">
-              <Button
-                type="button"
-                onClick={() => handleOpenStudio({
-                  id: 'new',
-                  judul: `Modul Ajar: ${activeSubjectName}`,
-                  mapelNama: activeSubjectName,
-                  fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
-                  tingkat: selectedFaseFilter === 'F' ? 11 : 10
-                })}
-                className="h-9 px-4 rounded-2xl bg-indigo-500 hover:bg-indigo-400 text-white font-black text-xs shadow-md shadow-indigo-950/40 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-              >
-                <Sparkles size={14} className="text-amber-300 fill-amber-300" />
-                <span>+ Susun Modul Baru di Studio</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* KPI Widget Cards */}
-          <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            <div className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 text-center min-w-[100px]">
-              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-200 block">
-                Kelengkapan
-              </span>
-              <span className="text-xl font-black text-white font-mono">
-                {readinessPercent}%
-              </span>
-              <span className="text-[10px] text-slate-300 block">
-                {readyCount} dari {totalCount} Bab
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-emerald-500/20 backdrop-blur-md border border-emerald-400/30 text-center min-w-[100px]">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 block">
-                Siap Mengajar
-              </span>
-              <span className="text-xl font-black text-emerald-300 font-mono">
-                {readyCount}
-              </span>
-              <span className="text-[10px] text-emerald-200/80 block">
-                Bab Aktif
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-amber-500/20 backdrop-blur-md border border-amber-400/30 text-center min-w-[100px]">
-              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 block">
-                Perlu Dilengkapi
-              </span>
-              <span className="text-xl font-black text-amber-300 font-mono">
-                {Math.max(0, totalCount - readyCount)}
-              </span>
-              <span className="text-[10px] text-amber-200/80 block">
-                Bab Kosong
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Visual Progress Bar */}
-        <div className="mt-5 pt-4 border-t border-white/10 space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] font-bold">
-            <span className="text-slate-300">Progres Kesiapan Modul Ajar Semester Ini</span>
-            <span className="text-indigo-300 font-mono font-black">{readinessPercent}% Siap Mengajar</span>
-          </div>
-          <div className="w-full h-2.5 rounded-full bg-slate-800/80 overflow-hidden p-0.5 border border-white/10">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-teal-400 to-emerald-400 transition-all duration-700"
-              style={{ width: `${Math.max(8, readinessPercent)}%` }}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* ── 2. PILIHAN MATA PELAJARAN & SUB-TABS NAVIGASI ── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 flex-wrap">
-        {/* Mapel & Fase Switcher Chips */}
-        <div className="flex items-center gap-3 overflow-x-auto max-w-full pb-1 flex-wrap">
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 mr-1">
-              Pilih Mapel:
-            </span>
-            {distinctSubjects.map(sub => (
+    <div className="space-y-4">
+      {/* ── 1. PILIHAN MAPEL (BUKU BERDIRI) ── */}
+      <div className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
+        {/* Pilihan Mapel Guru: Icon Buku Berdiri (Standing Book 3D) */}
+        <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar max-w-full pb-0.5">
+          {distinctSubjects.map((sub, idx) => {
+            const isActive = activeSubjectName.toLowerCase() === sub.name.toLowerCase();
+            const palette = BOOK_PALETTES[idx % BOOK_PALETTES.length];
+            return (
               <button
                 key={sub.id}
                 type="button"
                 onClick={() => setSelectedMapelFilter(sub.name)}
                 className={cn(
-                  "px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
-                  activeSubjectName.toLowerCase() === sub.name.toLowerCase()
-                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 hover:bg-slate-100"
+                  "px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-2.5 border shrink-0 group select-none shadow-2xs",
+                  isActive
+                    ? `${palette.activeBg} ring-2 ring-blue-500/20 shadow-xs scale-[1.02]`
+                    : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:border-slate-300"
                 )}
               >
-                <span>{sub.name}</span>
+                <div className={cn(
+                  "transition-transform duration-200 shrink-0",
+                  isActive ? "scale-110 -translate-y-0.5" : "group-hover:scale-105"
+                )}>
+                  <StandingBookIcon
+                    color={palette.main}
+                    spineColor={palette.spine}
+                    isActive={isActive}
+                    className="w-5 h-6 sm:w-6 sm:h-7"
+                  />
+                </div>
+                <div className="text-left">
+                  <span className="block leading-tight font-extrabold text-xs sm:text-sm">{sub.name}</span>
+                  {isActive && (
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold block leading-none mt-0.5">
+                      Buku Aktif
+                    </span>
+                  )}
+                </div>
               </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-1 shrink-0 p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-            <button
-              type="button"
-              onClick={() => setSelectedFaseFilter('E')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
-                selectedFaseFilter === 'E'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              Fase E (Kelas 10)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedFaseFilter('F')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
-                selectedFaseFilter === 'F'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              Fase F (Kelas 11-12)
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedFaseFilter('ALL')}
-              className={cn(
-                "px-2.5 py-1 rounded-lg text-xs font-black transition-all cursor-pointer",
-                selectedFaseFilter === 'ALL'
-                  ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
-              )}
-            >
-              Semua
-            </button>
-          </div>
-        </div>
-
-        {/* View Modes */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shrink-0">
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('READINESS_MAP')}
-            className={cn(
-              "px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1",
-              activeMainTab === 'READINESS_MAP'
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <BookCheck size={13} />
-            <span>Peta Bab ({chaptersReadiness.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('GLOBAL_PRESETS')}
-            className={cn(
-              "px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1",
-              activeMainTab === 'GLOBAL_PRESETS'
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <Globe size={13} />
-            <span>Katalog Nasional ({globalPresets.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveMainTab('ALL_DOCS')}
-            className={cn(
-              "px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center gap-1",
-              activeMainTab === 'ALL_DOCS'
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-500 hover:text-slate-900"
-            )}
-          >
-            <Folder size={13} />
-            <span>Semua Berkas ({myPerangkatList.length})</span>
-          </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* ── 3. TAB UTAMA 1: PETA BAB PEMBELAJARAN (KESIAPAN MENGAJAR) ── */}
-      {activeMainTab === 'READINESS_MAP' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Daftar Bab Pembelajaran: {activeSubjectName}
-            </span>
-            <span className="text-xs font-bold text-slate-400">
-              {chaptersReadiness.length > 0 ? 'Klik Pasang Template atau Susun untuk melengkapi' : 'Mulai susun modul mandiri'}
-            </span>
-          </div>
+      {/* ── 2. SAJIAN VERTIKAL ACCORDION PER FASE (EXPAND & COLLAPSE) ── */}
+      <div className="space-y-4">
+        {fasesData.map(fase => {
+          const isExpanded = expandedFases[fase.faseKey] ?? true;
+          const hasContent = fase.chapters.length > 0 || fase.customItems.length > 0;
 
-          {chaptersReadiness.length === 0 && subjectMyPerangkats.length === 0 ? (
-            <div className="p-8 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900/50 space-y-4 max-w-lg mx-auto my-4 animate-in fade-in">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-sm">
-                <BookOpen size={28} />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-sm font-black text-slate-800 dark:text-slate-200">
-                  Belum Ada Modul Ajar untuk {activeSubjectName}
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Mata pelajaran ini belum memiliki modul ajar tersimpan. Anda dapat mulai menyicil penyusunan modul per-pertemuan di Studio untuk asisten mengajar pribadi Anda.
-                </p>
-              </div>
-              <div className="pt-2 flex items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => handleOpenStudio({
-                    id: 'new',
-                    judul: `Modul Ajar: ${activeSubjectName}`,
-                    mapelNama: activeSubjectName,
-                    fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
-                    tingkat: selectedFaseFilter === 'F' ? 11 : 10
-                  })}
-                  className="h-10 px-5 rounded-2xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
-                >
-                  <Sparkles size={15} />
-                  <span>+ Buka Studio Modul Ajar</span>
-                </Button>
-              </div>
-            </div>
-          ) : chaptersReadiness.length === 0 && subjectMyPerangkats.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {subjectMyPerangkats.map((myItem: any, idx: number) => (
-                <div
-                  key={myItem.id}
-                  className="p-5 rounded-3xl border bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-[11px] font-mono">
-                        BAB {idx + 1}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] flex items-center gap-1">
-                        <CheckCircle2 size={12} />
-                        <span>SIAP MENGAJAR</span>
-                      </span>
-                    </div>
-
-                    <div className="space-y-1">
-                      <h3 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                        {myItem.judul}
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        {myItem.Mapel?.nama_mapel} • {myItem.TahunPelajaran?.tahun || ''}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => handleOpenStudio(myItem)}
-                      className="h-8 px-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles size={12} />
-                      <span>Edit di Studio</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleOpenReader(myItem.id, { mapelNama: myItem.Mapel?.nama_mapel })}
-                      className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Presentation size={13} className="text-amber-500" />
-                      <span>Proyektor</span>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              {/* Add Next Bab Card */}
-              <div
-                onClick={() => handleOpenStudio({
-                  id: 'new',
-                  judul: `Bab ${subjectMyPerangkats.length + 1}: `,
-                  mapelNama: activeSubjectName,
-                  fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
-                  tingkat: selectedFaseFilter === 'F' ? 11 : 10
-                })}
-                className="p-6 rounded-3xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/80 bg-indigo-50/30 dark:bg-indigo-950/20 hover:bg-indigo-50/70 dark:hover:bg-indigo-900/30 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-3 group min-h-[160px]"
+          return (
+            <div
+              key={fase.faseKey}
+              className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden"
+            >
+              {/* Accordion Header (Click to Expand / Collapse) */}
+              <button
+                type="button"
+                onClick={() => toggleFase(fase.faseKey)}
+                className="w-full p-3.5 sm:p-4 bg-slate-50/70 dark:bg-slate-800/50 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors flex items-center justify-between gap-3 text-left cursor-pointer"
               >
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Plus size={24} className="stroke-[2.5]" />
-                </div>
-                <div className="space-y-0.5">
-                  <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-200">
-                    + Susun BAB {subjectMyPerangkats.length + 1} Baru di Studio
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Tambah bab / materi pokok pembelajaran selanjutnya
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {chaptersReadiness.map(({ babNumber, preset, myItem, isReady }) => (
-              <div
-                key={preset.id}
-                className={cn(
-                  "p-5 rounded-3xl border transition-all flex flex-col justify-between space-y-4 relative overflow-hidden",
-                  isReady
-                    ? "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md"
-                    : "bg-amber-50/40 dark:bg-amber-950/15 border-dashed border-2 border-amber-200/80 dark:border-amber-900/60"
-                )}
-              >
-                <div className="space-y-2.5">
-                  {/* Status Badges */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black text-[11px] font-mono">
-                      BAB {babNumber}
-                    </span>
-
-                    {isReady ? (
-                      <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-black text-[10px] flex items-center gap-1">
-                        <CheckCircle2 size={12} />
-                        <span>SIAP MENGAJAR</span>
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/60 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 font-black text-[10px] flex items-center gap-1">
-                        <AlertCircle size={12} />
-                        <span>BELUM DILENGKAPI</span>
-                      </span>
-                    )}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xs shrink-0 border border-blue-200/60 dark:border-blue-800/60">
+                    {fase.faseKey}
                   </div>
-
-                  {/* Title & Details */}
-                  <div className="space-y-1">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white leading-snug">
-                      {preset.judul_modul}
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-tight">
+                      {fase.faseName}
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                      Fase {preset.fase} (Kelas {preset.tingkat || 10}) • {preset.total_pertemuan} Pertemuan • {preset.total_alokasi_jp} JP
-                    </p>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                      {fase.readyCount} dari {fase.totalCount} Modul Siap Mengajar
+                    </span>
                   </div>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                    {preset.deskripsi}
-                  </p>
                 </div>
 
-                {/* Bottom Action Row */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
-                  {isReady ? (
-                    <>
-                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <ShieldCheck size={13} />
-                        <span>Tersimpan di Akun Guru</span>
-                      </span>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider",
+                    fase.readyCount > 0 && fase.readyCount === fase.totalCount
+                      ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
+                      : "bg-blue-100 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300"
+                  )}>
+                    {fase.readyCount === fase.totalCount && fase.totalCount > 0 ? "Lengkap" : `${fase.totalCount} Bab`}
+                  </span>
 
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => handleOpenStudio(myItem || preset)}
-                          className="h-8 px-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 cursor-pointer"
-                          title="Edit materi dan pertemuan di Studio"
-                        >
-                          <Sparkles size={12} />
-                          <span>Edit di Studio</span>
-                        </Button>
+                  <div className="w-7 h-7 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center text-slate-500 border border-slate-200 dark:border-slate-700 shrink-0">
+                    {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                  </div>
+                </div>
+              </button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenReader(myItem?.id || preset.id, { mapelNama: preset.nama_mapel_ref, fase: preset.fase, tingkat: preset.tingkat })}
-                          className="h-8 px-3 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer"
-                          title="Buka panduan mengajar & layar proyektor"
-                        >
-                          <Presentation size={13} className="text-amber-500" />
-                          <span>Proyektor</span>
-                        </Button>
-                      </div>
-                    </>
+              {/* Accordion Body */}
+              {isExpanded && (
+                <div className="p-3.5 sm:p-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4 animate-in fade-in duration-200">
+                  {!hasContent ? (
+                    <div className="py-8 px-4 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Belum ada modul ajar tersimpan untuk {activeSubjectName} di {fase.faseName}.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleOpenStudio({
+                          id: 'new',
+                          judul: `Modul Ajar: ${activeSubjectName} (${fase.faseName})`,
+                          mapelNama: activeSubjectName,
+                          fase: fase.faseKey,
+                          tingkat: fase.tingkat
+                        })}
+                        className="h-8 px-3.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 cursor-pointer mx-auto"
+                      >
+                        <Plus size={13} />
+                        <span>Susun Modul di {fase.faseKey}</span>
+                      </Button>
+                    </div>
                   ) : (
-                    <>
-                      <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
-                        Template siap diadopsi
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={adoptMutation.isPending}
-                          onClick={() => adoptMutation.mutate(preset)}
-                          className="h-8 px-3 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/20"
-                          title="Otomatis salin seluruh langkah KBM dan teks materi ke modul mengajar Anda"
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {/* Presets / Chapters */}
+                      {fase.chapters.map((ch) => (
+                        <div
+                          key={ch.id}
+                          className={cn(
+                            "p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3.5 shadow-2xs",
+                            ch.isReady
+                              ? "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800"
+                              : "bg-slate-50/50 dark:bg-slate-800/30 border-dashed border-slate-300 dark:border-slate-700"
+                          )}
                         >
-                          <Zap size={13} className="text-amber-300 fill-amber-300" />
-                          <span>Pasang Template (1-Klik)</span>
-                        </Button>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-black text-[10px] font-mono">
+                                BAB {ch.babNumber}
+                              </span>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenStudio(preset)}
-                          className="h-8 px-2.5 rounded-xl text-xs font-bold border-slate-300 text-slate-700 dark:text-slate-300 hover:bg-slate-100 cursor-pointer"
-                          title="Susun sendiri dari nol atau sesuaikan template"
+                              {ch.isReady ? (
+                                <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
+                                  <CheckCircle2 size={11} />
+                                  <span>SIAP AJAR</span>
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold text-[10px]">
+                                  TEMPLATE
+                                </span>
+                              )}
+                            </div>
+
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug line-clamp-2">
+                              {ch.judul}
+                            </h4>
+
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {ch.total_pertemuan} Pertemuan • {ch.total_alokasi_jp} JP
+                            </p>
+                          </div>
+
+                          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
+                            {ch.isReady ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenReader(ch.myItem?.id || ch.id, { mapelNama: activeSubjectName, fase: fase.faseKey, tingkat: fase.tingkat })}
+                                  className="h-8 px-2.5 rounded-xl text-xs font-bold border-amber-300/80 bg-amber-50/50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Presentation size={13} className="text-amber-600" />
+                                  <span>Proyektor</span>
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => handleOpenStudio(ch.myItem || ch.preset)}
+                                  className="h-8 px-2.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer"
+                                >
+                                  <Sparkles size={12} />
+                                  <span>Edit</span>
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={adoptMutation.isPending}
+                                  onClick={() => adoptMutation.mutate(ch.preset)}
+                                  className="h-8 px-3 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                  <Zap size={12} className="text-amber-300 fill-amber-300" />
+                                  <span>Pasang (1-Klik)</span>
+                                </Button>
+
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleOpenReader(ch.id, { mapelNama: activeSubjectName, fase: fase.faseKey, tingkat: fase.tingkat })}
+                                  className="h-8 px-2 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 cursor-pointer"
+                                >
+                                  <BookOpen size={12} />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Custom User Modules */}
+                      {fase.customItems.map((item: any) => (
+                        <div
+                          key={item.id}
+                          className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col justify-between space-y-3.5"
                         >
-                          <span>Susun</span>
-                        </Button>
-                      </div>
-                    </>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-black text-[10px]">
+                                {item.jenis?.replace('_', ' ') || 'MODUL AJAR'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px]">
+                                SIAP AJAR
+                              </span>
+                            </div>
+
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white leading-snug line-clamp-2">
+                              {item.judul}
+                            </h4>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              Modul Mandiri Guru
+                            </p>
+                          </div>
+
+                          <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenReader(item.id, { mapelNama: activeSubjectName, fase: fase.faseKey, tingkat: fase.tingkat })}
+                              className="h-8 px-2.5 rounded-xl text-xs font-bold border-amber-300/80 bg-amber-50/50 text-amber-700 dark:text-amber-300 flex items-center gap-1 cursor-pointer"
+                            >
+                              <Presentation size={13} className="text-amber-600" />
+                              <span>Proyektor</span>
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() => handleOpenStudio(item)}
+                              className="h-8 px-2.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1 cursor-pointer"
+                            >
+                              <Sparkles size={12} />
+                              <span>Edit</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add Bab Card */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenStudio({
+                          id: 'new',
+                          judul: `Bab ${fase.totalCount + 1}: `,
+                          mapelNama: activeSubjectName,
+                          fase: fase.faseKey,
+                          tingkat: fase.tingkat
+                        })}
+                        className="p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-600 bg-slate-50/40 dark:bg-slate-900/40 hover:bg-blue-50/20 transition-all flex flex-col items-center justify-center text-center space-y-2 cursor-pointer min-h-[140px] group"
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Plus size={18} />
+                        </div>
+                        <span className="text-xs font-black text-slate-700 dark:text-slate-300 group-hover:text-blue-600">
+                          Susun Bab Baru ({fase.faseKey})
+                        </span>
+                      </button>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
-          </div>
-          )}
-        </div>
-      )}
-
-      {/* ── 4. TAB UTAMA 2: KATALOG NASIONAL LENGKAP ── */}
-      {activeMainTab === 'GLOBAL_PRESETS' && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {globalPresets.map((preset) => (
-              <div
-                key={preset.id}
-                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-3.5 hover:shadow-md transition-shadow"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-extrabold text-[10px]">
-                      Fase {preset.fase} (Kelas {preset.tingkat || 10})
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-bold text-[10px]">
-                      TEMPLATE NASIONAL
-                    </span>
-                  </div>
-
-                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white leading-snug line-clamp-2">
-                    {preset.judul_modul}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {preset.nama_mapel_ref} • {preset.total_pertemuan} Pertemuan ({preset.total_alokasi_jp} JP)
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={adoptMutation.isPending}
-                    onClick={() => adoptMutation.mutate(preset)}
-                    className="h-8 px-3 rounded-xl text-[11px] font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1 cursor-pointer"
-                  >
-                    <Zap size={12} className="text-amber-300 fill-amber-300" />
-                    <span>Adopsi Modul</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenReader(preset.id, { mapelNama: preset.nama_mapel_ref, fase: preset.fase, tingkat: preset.tingkat })}
-                    className="h-8 px-3 rounded-xl text-[11px] font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer"
-                  >
-                    <BookOpen size={12} />
-                    <span>Buka Reader</span>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 5. TAB UTAMA 3: SEMUA BERKAS ADMINISTRASI ── */}
-      {activeMainTab === 'ALL_DOCS' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-500">
-              Seluruh berkas administrasi KBM guru (Modul Ajar, ATP, PROTA, PROMES)
-            </span>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => handleOpenStudio({
-                id: 'new',
-                judul: `Modul Ajar: ${activeSubjectName}`,
-                mapelNama: activeSubjectName,
-                fase: selectedFaseFilter === 'ALL' ? 'E' : selectedFaseFilter,
-                tingkat: selectedFaseFilter === 'F' ? 11 : 10
-              })}
-              className="text-xs font-bold bg-indigo-600 text-white flex items-center gap-1 cursor-pointer"
-            >
-              <Sparkles size={13} />
-              <span>+ Susun Modul Baru di Studio</span>
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {myPerangkatList.map((item: any) => (
-              <div
-                key={item.id}
-                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-3.5"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 font-extrabold text-[10px]">
-                      {item.jenis?.replace('_', ' ') || 'MODUL AJAR'}
-                    </span>
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-md font-extrabold text-[10px]",
-                      item.status === 'APPROVED' ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400" :
-                      item.status === 'REJECTED' ? "bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400" :
-                      "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400"
-                    )}>
-                      {item.status || 'DRAF'}
-                    </span>
-                  </div>
-
-                  <h4 className="text-xs font-extrabold text-slate-900 dark:text-white leading-snug line-clamp-2">
-                    {item.judul}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    {item.Mapel?.nama_mapel || 'Mata Pelajaran'} • {item.TahunPelajaran?.tahun || ''}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-1.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => handleOpenStudio(item)}
-                    className="h-8 px-2.5 rounded-xl text-[11px] font-black bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1 cursor-pointer"
-                  >
-                    <Sparkles size={12} />
-                    <span>Susun</span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleOpenReader(item.id, { mapelNama: item.Mapel?.nama_mapel })}
-                    className="h-8 px-2.5 rounded-xl text-[11px] font-bold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Presentation size={12} className="text-amber-500" />
-                    <span>Proyektor</span>
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* ── MODALS: READER & STUDIO ── */}
       {isReaderOpen && (

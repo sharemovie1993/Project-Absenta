@@ -1,4 +1,4 @@
-import React, { useMemo, lazy, Suspense, useState } from 'react';
+import React, { useMemo, lazy, Suspense, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Clock, 

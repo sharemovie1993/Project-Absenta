@@ -47,6 +47,7 @@ interface SesiAjarCardProps {
 export const SesiAjarCard: React.FC<SesiAjarCardProps> = React.memo(({
   sesi,
   onOpenJournal,
+  onOpenBahanAjar,
   onViewDetail,
   isManager = false,
   isReadOnly = false,

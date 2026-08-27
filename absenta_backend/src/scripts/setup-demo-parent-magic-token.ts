@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const DEMO_ID = '2acb7e12-d264-4784-8262-8f7369061542';
 export const DEMO_PARENT_MAGIC_TOKEN = 'absenta-demo-parent-magic-token-2026';
 
-async function setupDemoParentMagicToken() {
+export async function setupDemoParentMagicToken() {
   console.log('🚀 [SETUP MAGIC TOKEN ORANG TUA SISWA DI TENANT DEMO]...\n');
 
   // 1. Ambil 1 Siswa Aktif di Demo (utamakan yang punya kelas aktif)
@@ -93,4 +93,6 @@ async function setupDemoParentMagicToken() {
   console.log(`   └─ URL Demo : /parent-app?token=${tokenRecord.token}\n`);
 }
 
-setupDemoParentMagicToken().catch(console.error).finally(() => prisma.$disconnect());
+if (require.main === module) {
+  setupDemoParentMagicToken().catch(console.error).finally(() => prisma.$disconnect());
+}

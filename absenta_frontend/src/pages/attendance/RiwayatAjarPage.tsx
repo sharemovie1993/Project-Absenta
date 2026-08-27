@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { guruApi, kelasApi } from '../../api/academic.api';
+import { listGuruMapel } from '../../api/kurikulum/guru-mapel.api';
 import { getSesiAbsensiList, getSesiAbsenSiswa } from '../../api/attendanceGerbang.api';
 import { 
   History, 
@@ -140,14 +141,6 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   });
   const guruOptions = (guruOptionsData?.data ?? [])?.map(g => ({ id: g.id, nama_guru: g.nama_guru }));
 
-  const { data: kelasOptionsData } = useQuery({
-    queryKey: ['kelas-list-options', tenantId],
-    queryFn: () => kelasApi.getAll({ limit: 200 }),
-    enabled: true,
-    staleTime: 600000,
-  });
-  const kelasOptions = (kelasOptionsData?.data ?? [])?.map(k => ({ id: k.id, nama_kelas: k.nama_kelas }));
-
   // 2. Get Guru Profile if user is a Teacher
   const { data: guruData } = useQuery({
     queryKey: ['guru-profile', user?.id, tenantId],
@@ -160,6 +153,22 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
   const effectiveGuruId = isManager
     ? (selectedGuruId || undefined)
     : loggedInGuruId;
+
+  // Fetch all classes if manager without specific teacher filter
+  const { data: allKelasData } = useQuery({
+    queryKey: ['kelas-list-options-all', tenantId],
+    queryFn: () => kelasApi.getAll({ limit: 200 }),
+    enabled: Boolean(isManager && !effectiveGuruId),
+    staleTime: 600000,
+  });
+
+  // Fetch teacher-specific assigned classes (Guru Mapel)
+  const { data: teacherMapelData } = useQuery({
+    queryKey: ['guru-mapel-classes', effectiveGuruId, tenantId],
+    queryFn: () => listGuruMapel({ guru_id: effectiveGuruId }),
+    enabled: Boolean(effectiveGuruId),
+    staleTime: 300000,
+  });
 
   // 3. Fetch History Sessions
   const { data: sesiData, isLoading, refetch } = useQuery({
@@ -182,6 +191,46 @@ export const RiwayatAjarPage: React.FC = React.memo(() => {
     if (Array.isArray((raw as { items?: SesiAjar[] })?.items)) return (raw as { items: SesiAjar[] }).items;
     return [];
   }, [sesiData]);
+
+  // Dynamic Class List for Filter Dropdown (Strictly filtered by teacher's assigned / historical classes)
+  const kelasOptions = useMemo(() => {
+    // If manager with no teacher filter, show all school classes
+    if (isManager && !effectiveGuruId) {
+      return (allKelasData?.data ?? []).map(k => ({ id: k.id, nama_kelas: k.nama_kelas }));
+    }
+
+    const classMap = new Map<string, string>();
+
+    // 1. From assigned GuruMapel
+    const assignments = teacherMapelData?.data ?? [];
+    assignments.forEach((gm: any) => {
+      const id = gm.kelas_id || gm.Kelas?.id;
+      const name = gm.Kelas?.nama_kelas || gm.kelas_nama;
+      if (id && name) {
+        classMap.set(id, name);
+      }
+    });
+
+    // 2. From actual historical sessions
+    rawList.forEach((s) => {
+      const id = s.kelas_id || s.Kelas?.id;
+      const name = s.Kelas?.nama_kelas || s.kelas_nama;
+      if (id && name) {
+        classMap.set(id, name);
+      }
+    });
+
+    return Array.from(classMap.entries())
+      .map(([id, nama_kelas]) => ({ id, nama_kelas }))
+      .sort((a, b) => a.nama_kelas.localeCompare(b.nama_kelas));
+  }, [isManager, effectiveGuruId, allKelasData, teacherMapelData, rawList]);
+
+  // Reset selectedKelasId if it's no longer in the teacher's available classes
+  React.useEffect(() => {
+    if (selectedKelasId && kelasOptions.length > 0 && !kelasOptions.some(k => k.id === selectedKelasId)) {
+      setSelectedKelasId('');
+    }
+  }, [kelasOptions, selectedKelasId]);
 
   // Filtered flat list of sessions
   const filteredSessions = useMemo((): SesiAjar[] => {

@@ -110,8 +110,8 @@ export const FloatingDemoSwitcher: React.FC = () => {
     try {
       const isDevMode = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
       const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const currentTenantId = localStorage.getItem('tenant_id') || undefined;
-      const devTenantArg = (isDevMode && isLocalhostLogin) ? currentTenantId : undefined;
+      const currentTenantId = localStorage.getItem('tenant_id') || '2acb7e12-d264-4784-8262-8f7369061542';
+      const devTenantArg = (isDevMode && isLocalhostLogin) ? currentTenantId : '2acb7e12-d264-4784-8262-8f7369061542';
 
       // 1. Silent logout
       logout();

@@ -17,6 +17,7 @@
     "migrate:absen-siswa": "ts-node -r tsconfig-paths/register src/scripts/migrate_absen_siswa_snapshot.ts",
     "migrate:kesiswaan-capabilities": "ts-node -r tsconfig-paths/register src/scripts/migrate_kesiswaan_capabilities.ts",
     "seed:clean-policies": "ts-node -r tsconfig-paths/register prisma/clean-and-seed-permissions.ts",
+    "seed:clean-dev-demo": "ts-node -r tsconfig-paths/register src/scripts/clean-and-reseed-demo-only.ts",
     "prisma:generate": "node scripts/adhoc/auto-backup-schema.js && cross-env NODE_OPTIONS=--max-old-space-size=4096 node scripts/adhoc/prisma-generate-with-retry.js",
     "prisma:migrate": "node scripts/adhoc/auto-backup-schema.js && prisma migrate dev",
     "prisma:migrate:deploy": "node scripts/adhoc/auto-backup-schema.js && prisma migrate deploy",

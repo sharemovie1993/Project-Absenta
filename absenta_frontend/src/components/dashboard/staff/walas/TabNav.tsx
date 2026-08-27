@@ -15,6 +15,7 @@ export const TabNav: React.FC<TabNavProps> = ({
   atRiskCount
 }) => {
   const tabs = [
+    // 1. Level Operasional Harian / Actionable (Mendesak Tiap Pagi)
     {
       id: 'approval',
       label: 'Izin Siswa',
@@ -23,22 +24,23 @@ export const TabNav: React.FC<TabNavProps> = ({
       badgeColor: 'bg-orange-500 text-white'
     },
     {
-      id: 'students',
-      label: 'Data Siswa',
-      icon: Users,
-      badge: null
-    },
-    {
       id: 'health',
-      label: 'Presensi Kelas',
+      label: 'Presensi & EWS',
       icon: HeartPulse,
       badge: atRiskCount > 0 ? `${atRiskCount} EWS` : null,
       badgeColor: 'bg-red-500 text-white'
     },
+    // 2. Level Monitoring Rutin & Pembinaan Karakter Siswa
     {
-      id: 'rekap-cetak',
-      label: 'Cetak Rekap Bulanan',
-      icon: Printer,
+      id: 'rekap',
+      label: 'Jurnal Walas',
+      icon: ScrollText,
+      badge: null
+    },
+    {
+      id: 'discipline',
+      label: 'Pelanggaran & BK',
+      icon: Scale,
       badge: null
     },
     {
@@ -48,21 +50,22 @@ export const TabNav: React.FC<TabNavProps> = ({
       badge: null
     },
     {
-      id: 'discipline',
-      label: 'Pelanggaran Siswa',
-      icon: Scale,
-      badge: null
-    },
-    {
       id: 'halloffame',
       label: 'Prestasi Siswa',
       icon: Trophy,
       badge: null
     },
+    // 3. Level Referensi Data & Laporan Bulanan/Periodik
     {
-      id: 'rekap',
-      label: 'Jurnal Kelas',
-      icon: ScrollText,
+      id: 'students',
+      label: 'Data Siswa',
+      icon: Users,
+      badge: null
+    },
+    {
+      id: 'rekap-cetak',
+      label: 'Cetak Rekap',
+      icon: Printer,
       badge: null
     }
   ];

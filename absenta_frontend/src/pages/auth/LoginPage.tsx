@@ -241,7 +241,7 @@ export default function LoginPage() {
     try {
       const isDevMode = String(import.meta.env.VITE_DEV_MODE || '').toLowerCase() === 'true' && import.meta.env.MODE !== 'production';
       const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      const devTenantArg = isDevMode && isLocalhostLogin && tenantIdDev.trim() ? tenantIdDev.trim() : undefined;
+      const devTenantArg = isDevMode && isLocalhostLogin ? (tenantIdDev.trim() || '2acb7e12-d264-4784-8262-8f7369061542') : '2acb7e12-d264-4784-8262-8f7369061542';
       sessionStorage.setItem('is_demo_session', 'true');
       sessionStorage.setItem('demo_active_role', profile.title);
       sessionStorage.setItem('demo_active_name', profile.simulatedName);

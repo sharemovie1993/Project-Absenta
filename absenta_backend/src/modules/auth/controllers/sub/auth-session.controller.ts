@@ -75,9 +75,33 @@ export const authSessionController = {
         }
       }
 
-      // Resolve tenant strictly from domain/header
+      // Resolve tenant strictly from body / domain / header
       let resolvedTenantId: string | null = null;
       let resolutionMethod: 'DOMAIN' | 'BODY' | 'EMAIL_FALLBACK' = 'DOMAIN';
+
+      // 1. Priority 1 (Dev / Localhost / Explicit Body Selection): Check body.tenant_id first
+      if (allowLocalDevLogin) {
+        const bodyTenantIdRaw = (request.body && (request.body as any).tenant_id) ? String((request.body as any).tenant_id).trim() : '';
+        if (bodyTenantIdRaw) {
+          const tenantRecord = await prisma.tenant.findUnique({ where: { id: bodyTenantIdRaw } });
+          if (tenantRecord) {
+            resolvedTenantId = tenantRecord.id;
+            resolutionMethod = 'BODY';
+            logDomain = String(tenantRecord.custom_domain || tenantRecord.subdomain || logDomain).toLowerCase();
+          }
+        }
+      }
+
+      // 2. Priority 2: Host header / domain resolution
+      if (!resolvedTenantId) {
+        const tenantRecord = await authTenantController.resolveTenantByHost(request.headers);
+        if (tenantRecord) {
+          resolvedTenantId = tenantRecord.id;
+          logDomain = String(tenantRecord.custom_domain || tenantRecord.subdomain || logDomain).toLowerCase();
+        }
+      }
+
+      // 3. Priority 3: Email fallback in dev/local mode if still unresolved
       if (allowLocalDevLogin && !resolvedTenantId) {
         try {
           let resolvedEmailForDev = email;
@@ -95,7 +119,11 @@ export const authSessionController = {
               resolvedEmailForDev = siswa.User.email;
             }
           }
+          // Exclude system tenant for regular demo users
           const devUser = await prisma.user.findFirst({
+            where: { email: resolvedEmailForDev, tenant_id: { not: 'system' } },
+            select: { tenant_id: true, Role: { select: { name: true } } }
+          }) || await prisma.user.findFirst({
             where: { email: resolvedEmailForDev },
             select: { tenant_id: true, Role: { select: { name: true } } }
           });
@@ -104,25 +132,6 @@ export const authSessionController = {
             resolutionMethod = 'EMAIL_FALLBACK';
           }
         } catch {}
-      }
-      if (!resolvedTenantId) {
-        const tenantRecord = await authTenantController.resolveTenantByHost(request.headers);
-        if (tenantRecord) {
-          resolvedTenantId = tenantRecord.id;
-          logDomain = String(tenantRecord.custom_domain || tenantRecord.subdomain || logDomain).toLowerCase();
-        }
-      }
-      if (!resolvedTenantId) {
-        if (allowLocalDevLogin) {
-          const bodyTenantIdRaw = (request.body && (request.body as any).tenant_id) ? String((request.body as any).tenant_id).trim() : '';
-          if (bodyTenantIdRaw) {
-            const tenantRecord = await prisma.tenant.findUnique({ where: { id: bodyTenantIdRaw } });
-            if (tenantRecord) {
-              resolvedTenantId = tenantRecord.id;
-              resolutionMethod = 'BODY';
-            }
-          }
-        }
       }
         
       // Check if user is a system superadmin (Allow cross-domain access)

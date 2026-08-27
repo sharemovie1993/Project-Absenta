@@ -328,48 +328,51 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-5 sm:space-y-6"
     >
-      {/* 1. SUB-TAB INTERNAL PILL BAR - COLOR BLOCKED */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-slate-200/80 dark:bg-slate-800/90 w-fit overflow-x-auto max-w-full shadow-inner">
+      {/* 1. SUB-TAB INTERNAL PILL BAR - RESPONSIF & SIMPLE */}
+      <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-slate-200/80 dark:bg-slate-800/90 w-full sm:w-fit shadow-xs">
         <button
           type="button"
           onClick={() => setActiveKbmSubTab('agenda')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            "py-2 px-2.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 text-center",
             activeKbmSubTab === 'agenda'
               ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           )}
         >
-          <BookOpen size={14} />
-          <span>Agenda &amp; Jurnal KBM</span>
+          <BookOpen size={14} className="shrink-0" />
+          <span className="hidden sm:inline">Jurnal &amp; Presensi</span>
+          <span className="sm:hidden">Jurnal</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveKbmSubTab('perangkat-ajar')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            "py-2 px-2.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 text-center",
             activeKbmSubTab === 'perangkat-ajar'
               ? "bg-blue-600 text-white shadow-md shadow-blue-500/30"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           )}
         >
-          <Layers size={14} />
-          <span>Perangkat Ajar</span>
+          <Layers size={14} className="shrink-0" />
+          <span className="hidden sm:inline">Perangkat Ajar</span>
+          <span className="sm:hidden">Perangkat</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveKbmSubTab('inval')}
           className={cn(
-            "px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5",
+            "py-2 px-2.5 sm:px-4 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 text-center",
             activeKbmSubTab === 'inval'
               ? "bg-purple-600 text-white shadow-md shadow-purple-500/30"
               : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
           )}
         >
-          <Users size={14} />
-          <span>Jadwal Inval</span>
+          <Users size={14} className="shrink-0" />
+          <span className="hidden sm:inline">Guru Inval</span>
+          <span className="sm:hidden">Inval</span>
         </button>
       </div>
 
@@ -387,7 +390,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               <BookOpen size={14} />
             </div>
             <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span>Jadwal &amp; Sesi KBM Mengajar</span>
+              <span>Jadwal Mengajar Hari Ini</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
                 {timelineItems.length} Sesi
               </span>
@@ -521,12 +524,12 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               <FileText size={14} />
             </div>
             <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-              <span>Arsip &amp; Riwayat Jurnal Mengajar</span>
+              <span>Riwayat Jurnal Mengajar</span>
             </h3>
           </div>
         </div>
 
-        <RekapJurnalPanel />
+        <RekapJurnalPanel guruId={guruId} />
       </div>
     </>
   )}
