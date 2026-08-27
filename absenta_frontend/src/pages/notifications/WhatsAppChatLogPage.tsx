@@ -250,52 +250,47 @@ const WhatsAppChatLogPage: React.FC = () => {
       }}
     >
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
-        <div
-        className="flex overflow-hidden rounded-xl border border-[] shadow-2xl"
-        
-      >
+        <div className="flex overflow-hidden rounded-xl border border-border shadow-sm bg-card h-[calc(100vh-12rem)] min-h-[550px]">
 
         {/* ────────────────────────────────────────────────
             LEFT PANEL: Contact / Group list
         ──────────────────────────────────────────────── */}
         <aside
           className={`
-            flex flex-col border-r border-[]
+            flex flex-col border-r border-border bg-card
             w-full md:w-[350px] lg:w-[380px] shrink-0
             ${mobilePanel === 'chat' ? 'hidden md:flex' : 'flex'}
           `}
-          
         >
           {/* Sidebar Header & Tab Switcher */}
-          <div className="px-4 py-3 flex flex-col gap-2 border-b border-[]"
-            >
+          <div className="px-4 py-3 flex flex-col gap-2 border-b border-border bg-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shrink-0 shadow-sm">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-[] font-semibold text-[15px] leading-none">WhatsApp Center</p>
-                  <p className="text-[] text-[11px] mt-0.5">
+                  <p className="text-foreground font-semibold text-[15px] leading-none">WhatsApp Center</p>
+                  <p className="text-muted-foreground text-[11px] mt-1">
                     {viewMode === 'chats' ? `${totalContacts} percakapan` : `${groups.length} grup tertaut`}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setTarikGuruModalOpen(true)}
-                  className="px-2.5 py-1.5 rounded-lg bg-[] hover:bg-[] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
                   title="Tarik Daftar Guru Pada JP Tertentu untuk Broadcast WhatsApp"
                 >
                   <Megaphone className="w-3.5 h-3.5" />
-                  <span>📢 Tarik Guru JP</span>
+                  <span className="hidden sm:inline">Tarik Guru JP</span>
                 </button>
                 <button
                   id="wa-chatlog-refresh"
                   onClick={() => viewMode === 'chats' ? fetchContacts(1, false) : fetchGroups()}
                   disabled={loadingContacts || loadingGroups}
-                  className="p-2 rounded-full hover:bg-white/10 text-[] transition-colors"
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Refresh"
                 >
                   <RefreshCw className={`w-4 h-4 ${(loadingContacts || loadingGroups) ? 'animate-spin' : ''}`} />
@@ -304,14 +299,14 @@ const WhatsAppChatLogPage: React.FC = () => {
             </div>
 
             {/* View Mode Toggle: Chats vs Groups */}
-            <div className="flex bg-[] p-1 rounded-lg border border-[] mt-1">
+            <div className="flex bg-muted p-1 rounded-lg border border-border mt-1">
               <button
                 type="button"
                 onClick={() => { setViewMode('chats'); setSelectedGroup(null); }}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                   viewMode === 'chats'
-                    ? 'bg-[] text-white shadow-sm'
-                    : 'text-[] hover:text-[]'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
@@ -320,10 +315,10 @@ const WhatsAppChatLogPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => { setViewMode('groups'); setSelected(null); }}
-                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
                   viewMode === 'groups'
-                    ? 'bg-[] text-white shadow-sm'
-                    : 'text-[] hover:text-[]'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <Users className="w-3.5 h-3.5" />
@@ -333,17 +328,17 @@ const WhatsAppChatLogPage: React.FC = () => {
           </div>
 
           {/* Search bar */}
-          <div className="px-3 py-2" >
+          <div className="px-3 py-2 border-b border-border/60 bg-muted/20">
             <div className="relative flex items-center">
-              <Search className="w-4 h-4 absolute left-3 text-[]" />
-              <input aria-label="Input pencarian pesan WhatsApp" 
+              <Search className="w-4 h-4 absolute left-3 text-muted-foreground" />
+              <input
+                aria-label="Input pencarian pesan WhatsApp" 
                 id="wa-chatlog-search"
                 type="text"
                 placeholder={viewMode === 'chats' ? 'Cari nama atau nomor...' : 'Cari nama grup atau ID...'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 rounded-lg text-[14px] text-[] placeholder-[] outline-none border-none"
-                
+                className="w-full pl-9 pr-3 py-1.5 rounded-lg text-[13px] bg-background text-foreground placeholder:text-muted-foreground border border-border focus:ring-1 focus:ring-primary outline-none"
               />
             </div>
           </div>
@@ -352,15 +347,15 @@ const WhatsAppChatLogPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto wa-scrollbar">
             {viewMode === 'chats' ? (
               loadingContacts && contacts.length === 0 ? (
-                <div className="flex items-center justify-center h-32 gap-2 text-[]">
+                <div className="flex items-center justify-center h-32 gap-2 text-muted-foreground">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   <span className="text-sm">Memuat...</span>
                 </div>
               ) : contacts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-3 text-[] px-6 text-center">
-                  <MessageSquare className="w-10 h-10 opacity-20" />
-                  <p className="text-sm">Belum ada percakapan</p>
-                  <p className="text-xs opacity-60">Log chatbot WA akan muncul di sini</p>
+                <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground px-6 text-center">
+                  <MessageSquare className="w-10 h-10 opacity-30" />
+                  <p className="text-sm font-medium">Belum ada percakapan</p>
+                  <p className="text-xs text-muted-foreground">Log chatbot WA akan muncul di sini</p>
                 </div>
               ) : (
                 <>
@@ -376,7 +371,7 @@ const WhatsAppChatLogPage: React.FC = () => {
                     <button
                       onClick={() => { const n = contactPage + 1; setContactPage(n); fetchContacts(n, true); }}
                       disabled={loadingContacts}
-                      className="w-full py-3 text-[12px] text-[] hover:text-[] hover:bg-[] transition-colors"
+                      className="w-full py-3 text-[12px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors border-t border-border"
                     >
                       {loadingContacts ? 'Memuat...' : `Tampilkan lebih banyak (${totalContacts - contacts.length} lagi)`}
                     </button>
@@ -385,15 +380,15 @@ const WhatsAppChatLogPage: React.FC = () => {
               )
             ) : (
               loadingGroups && groups.length === 0 ? (
-                <div className="flex items-center justify-center h-32 gap-2 text-[]">
+                <div className="flex items-center justify-center h-32 gap-2 text-muted-foreground">
                   <RefreshCw className="w-4 h-4 animate-spin" />
                   <span className="text-sm">Mendeteksi grup WA...</span>
                 </div>
               ) : filteredGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-48 gap-3 text-[] px-6 text-center">
-                  <Users className="w-10 h-10 opacity-20" />
-                  <p className="text-sm">Tidak ada grup WhatsApp</p>
-                  <p className="text-xs opacity-60">Pastikan nomor WA sekolah terhubung dan sudah masuk ke grup WA</p>
+                <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground px-6 text-center">
+                  <Users className="w-10 h-10 opacity-30" />
+                  <p className="text-sm font-medium">Tidak ada grup WhatsApp</p>
+                  <p className="text-xs text-muted-foreground">Pastikan nomor WA sekolah terhubung dan sudah masuk ke grup WA</p>
                 </div>
               ) : (
                 filteredGroups?.map(g => (
@@ -414,35 +409,31 @@ const WhatsAppChatLogPage: React.FC = () => {
         ──────────────────────────────────────────────── */}
         <main
           className={`
-            flex-1 flex flex-col min-w-0
+            flex-1 flex flex-col min-w-0 bg-background/50
             ${mobilePanel === 'contacts' ? 'hidden md:flex' : 'flex'}
           `}
-          
         >
           {selectedGroup ? (
             /* ── GROUP DETAILS VIEW ── */
-            <div className="flex-1 flex flex-col h-full bg-[]/90">
+            <div className="flex-1 flex flex-col h-full bg-card">
               {/* Group Header */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 border-b border-[] shrink-0"
-                
-              >
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card shrink-0">
                 <button
-                  className="md:hidden p-1.5 hover:bg-white/10 rounded-full text-[] transition-colors"
+                  className="md:hidden p-1.5 hover:bg-muted rounded-full text-foreground transition-colors"
                   onClick={() => { setMobilePanel('contacts'); setSelectedGroup(null); }}
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
 
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-lg shrink-0">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center font-bold text-white text-lg shrink-0 shadow-sm">
                   {selectedGroup.subject ? selectedGroup.subject[0].toUpperCase() : 'G'}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base text-[] leading-none truncate">
+                  <h3 className="font-semibold text-base text-foreground leading-none truncate">
                     {selectedGroup.subject}
                   </h3>
-                  <p className="text-xs text-[] mt-1 flex items-center gap-2">
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-2">
                     <span>{selectedGroup.participantsCount} Anggota</span>
                     <span>·</span>
                     <span className="font-mono text-[11px] truncate max-w-[200px]">{selectedGroup.id}</span>
@@ -451,72 +442,72 @@ const WhatsAppChatLogPage: React.FC = () => {
               </div>
 
               {/* Group Information Body */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 wa-scrollbar">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 wa-scrollbar bg-muted/20">
                 {/* Information Card */}
-                <div className="bg-[] border border-[] rounded-2xl p-5 space-y-4">
+                <div className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-500 flex items-center justify-center shrink-0">
                       <Users className="w-5 h-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-[]">Detail Grup WhatsApp</h4>
-                      <p className="text-xs text-[]">Informasi keanggotaan dan preferensi grup</p>
+                      <h4 className="text-sm font-bold text-foreground">Detail Grup WhatsApp</h4>
+                      <p className="text-xs text-muted-foreground">Informasi keanggotaan dan preferensi grup</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                    <div className="bg-[] p-3 rounded-xl border border-[]">
-                      <p className="text-[11px] text-[]">Nama Grup</p>
-                      <p className="text-sm font-bold text-[] mt-0.5">{selectedGroup.subject}</p>
+                    <div className="bg-muted/50 p-3 rounded-xl border border-border/60">
+                      <p className="text-[11px] text-muted-foreground">Nama Grup</p>
+                      <p className="text-sm font-bold text-foreground mt-0.5">{selectedGroup.subject}</p>
                     </div>
 
-                    <div className="bg-[] p-3 rounded-xl border border-[]">
-                      <p className="text-[11px] text-[]">Total Anggota</p>
-                      <p className="text-sm font-bold text-[] mt-0.5">{selectedGroup.participantsCount} Nomor HP</p>
+                    <div className="bg-muted/50 p-3 rounded-xl border border-border/60">
+                      <p className="text-[11px] text-muted-foreground">Total Anggota</p>
+                      <p className="text-sm font-bold text-foreground mt-0.5">{selectedGroup.participantsCount} Nomor HP</p>
                     </div>
 
-                    <div className="bg-[] p-3 rounded-xl border border-[]">
-                      <p className="text-[11px] text-[]">Mode Akses Chat</p>
-                      <p className="text-xs font-bold text-[] mt-0.5 flex items-center gap-1.5">
+                    <div className="bg-muted/50 p-3 rounded-xl border border-border/60">
+                      <p className="text-[11px] text-muted-foreground">Mode Akses Chat</p>
+                      <p className="text-xs font-bold text-foreground mt-0.5 flex items-center gap-1.5">
                         {selectedGroup.announce ? (
                           <>
-                            <Megaphone className="w-3.5 h-3.5 text-amber-400" />
-                            <span className="text-amber-300">Pengumuman (Admin Only)</span>
+                            <Megaphone className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-amber-600 dark:text-amber-400">Pengumuman (Admin Only)</span>
                           </>
                         ) : (
                           <>
-                            <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-                            <span className="text-emerald-300">Semua Anggota Bisa Chat</span>
+                            <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+                            <span className="text-emerald-600 dark:text-emerald-400">Semua Anggota Bisa Chat</span>
                           </>
                         )}
                       </p>
                     </div>
 
-                    <div className="bg-[] p-3 rounded-xl border border-[]">
-                      <p className="text-[11px] text-[]">Tipe Komunitas</p>
-                      <p className="text-xs font-bold text-[] mt-0.5">
+                    <div className="bg-muted/50 p-3 rounded-xl border border-border/60">
+                      <p className="text-[11px] text-muted-foreground">Tipe Komunitas</p>
+                      <p className="text-xs font-bold text-foreground mt-0.5">
                         {selectedGroup.isCommunity ? 'Grup Komunitas' : 'Grup Reguler'}
                       </p>
                     </div>
                   </div>
 
                   {/* Copy JID Section */}
-                  <div className="bg-[] p-3.5 rounded-xl border border-[] flex items-center justify-between gap-3">
+                  <div className="bg-muted/50 p-3.5 rounded-xl border border-border flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] text-[]">ID WhatsApp Group (JID)</p>
-                      <p className="text-xs font-mono text-blue-400 font-semibold truncate mt-0.5">
+                      <p className="text-[11px] text-muted-foreground">ID WhatsApp Group (JID)</p>
+                      <p className="text-xs font-mono text-blue-500 font-semibold truncate mt-0.5">
                         {selectedGroup.id}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyGroupId(selectedGroup.id)}
-                      className="px-3 py-1.5 rounded-lg bg-[] hover:bg-[] text-xs text-[] font-semibold flex items-center gap-1.5 shrink-0 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-card hover:bg-muted text-xs text-foreground font-semibold flex items-center gap-1.5 shrink-0 transition-colors border border-border shadow-sm"
                     >
                       {copiedGroupId === selectedGroup.id ? (
                         <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400">Tersalin</span>
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          <span className="text-emerald-500">Tersalin</span>
                         </>
                       ) : (
                         <>
@@ -529,11 +520,11 @@ const WhatsAppChatLogPage: React.FC = () => {
                 </div>
 
                 {/* Bot Protection Note */}
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 space-y-2 text-xs text-emerald-300">
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 space-y-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-sm">
                     <ShieldCheck className="w-4 h-4" /> Proteksi Chatbot Otomatis (Aman dari Spam)
                   </div>
-                  <p className="leading-relaxed text-[]">
+                  <p className="leading-relaxed text-muted-foreground">
                     Pesan yang diposting di dalam grup ini <strong>secara otomatis diabaikan (100% Ignore)</strong> oleh Chatbot Absenta. Bot tidak akan pernah memberikan balasan otomatis di dalam grup WA ini sehingga nomor sekolah aman dan tidak mengganggu percakapan grup.
                   </p>
                 </div>
@@ -545,13 +536,10 @@ const WhatsAppChatLogPage: React.FC = () => {
             /* ── CHAT LOG VIEW ── */
             <>
               {/* Chat header */}
-              <div
-                className="flex items-center gap-3 px-4 py-2.5 border-b border-[] shrink-0"
-                
-              >
+              <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-card shrink-0">
                 {/* Mobile back button */}
                 <button
-                  className="md:hidden p-1.5 hover:bg-white/10 rounded-full text-[] transition-colors"
+                  className="md:hidden p-1.5 hover:bg-muted rounded-full text-foreground transition-colors"
                   onClick={() => { setMobilePanel('contacts'); setSelected(null); }}
                 >
                   <ArrowLeft className="w-4 h-4" />
@@ -560,16 +548,16 @@ const WhatsAppChatLogPage: React.FC = () => {
                 <Avatar phone={selected.phone} nama={selected.nama} />
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[15px] text-[] leading-none truncate">
+                  <p className="font-semibold text-[15px] text-foreground leading-none truncate">
                     {selected.nama ?? selected.phone}
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-1">
                     {roleInfo && (
                       <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${roleInfo.color}`}>
                         {roleInfo.icon} {roleInfo.label}
                       </span>
                     )}
-                    <span className="text-[12px] text-[]">
+                    <span className="text-[12px] text-muted-foreground">
                       {selected.phone} · {selected.total_in}↑ {selected.total_out}↓
                     </span>
                   </div>
@@ -579,7 +567,7 @@ const WhatsAppChatLogPage: React.FC = () => {
                   id="wa-chatlog-detail-refresh"
                   onClick={() => { setMessages([]); setMsgPage(1); fetchMessages(selected.phone, 1, false); }}
                   disabled={loadingMsgs}
-                  className="p-2 rounded-full hover:bg-white/10 text-[] transition-colors"
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   title="Refresh chat"
                 >
                   <RefreshCw className={`w-4 h-4 ${loadingMsgs ? 'animate-spin' : ''}`} />
@@ -587,16 +575,16 @@ const WhatsAppChatLogPage: React.FC = () => {
               </div>
 
               {/* Messages scroll area */}
-              <div className="flex-1 overflow-y-auto py-2 wa-scrollbar">
+              <div className="flex-1 overflow-y-auto py-2 wa-scrollbar bg-muted/20 dark:bg-zinc-950/40">
                 {loadingMsgs ? (
-                  <div className="flex items-center justify-center h-full gap-2 text-[]">
+                  <div className="flex items-center justify-center h-full gap-2 text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span className="text-[13px]">Memuat percakapan...</span>
                   </div>
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full gap-2 text-[]">
-                    <MessageSquare className="w-7 h-7 opacity-20" />
-                    <p className="text-[13px]">Belum ada pesan</p>
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+                    <MessageSquare className="w-7 h-7 opacity-30" />
+                    <p className="text-[13px] font-medium">Belum ada pesan</p>
                   </div>
                 ) : (
                   <>
@@ -607,7 +595,7 @@ const WhatsAppChatLogPage: React.FC = () => {
                           id="wa-chatlog-load-more"
                           onClick={() => { const n = msgPage + 1; setMsgPage(n); fetchMessages(selected.phone, n, true); }}
                           disabled={loadingMore}
-                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[12px] text-[] hover:text-[] transition-colors border border-[] hover:bg-[]"
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[12px] text-muted-foreground hover:text-foreground transition-colors border border-border bg-card hover:bg-muted shadow-sm"
                         >
                           {loadingMore
                             ? <RefreshCw className="w-3 h-3 animate-spin" />
@@ -630,16 +618,10 @@ const WhatsAppChatLogPage: React.FC = () => {
               </div>
 
               {/* Read-only footer bar */}
-              <div
-                className="flex items-center gap-3 px-4 py-3 border-t border-[] shrink-0"
-                
-              >
-                <div className="flex-1 px-4 py-2 rounded-full text-[13px] text-[] select-none"
-                  >
-                  <span className="flex items-center gap-1.5">
-                    <Bot className="w-3.5 h-3.5 text-[]" />
-                    Hanya baca — ini adalah log percakapan chatbot
-                  </span>
+              <div className="flex items-center gap-3 px-4 py-3 border-t border-border bg-card shrink-0">
+                <div className="flex-1 px-4 py-2 rounded-full text-[13px] text-muted-foreground bg-muted border border-border select-none flex items-center justify-center gap-1.5">
+                  <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>Hanya baca — ini adalah log percakapan chatbot</span>
                 </div>
               </div>
             </>
@@ -651,8 +633,8 @@ const WhatsAppChatLogPage: React.FC = () => {
       <style>{`
         .wa-scrollbar::-webkit-scrollbar { width: 6px; }
         .wa-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .wa-scrollbar::-webkit-scrollbar-thumb { background: ; border-radius: 3px; }
-        .wa-scrollbar::-webkit-scrollbar-thumb:hover { background: ; }
+        .wa-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.2); border-radius: 3px; }
+        .wa-scrollbar::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); }
       `}</style>
 
       <TarikGuruJPModal
