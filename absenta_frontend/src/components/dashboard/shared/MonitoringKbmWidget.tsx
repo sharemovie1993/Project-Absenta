@@ -237,7 +237,7 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
       ? sesiData.items
       : [];
     if (!Array.isArray(items) || items.length === 0) {
-      return isSubscriptionRequired ? SAMPLE_DEMO_SESSIONS : [];
+      return [];
     }
     return items.map((s: any) => normalizeFromSesiAbsensi(s));
   }, [sesiData, isSubscriptionRequired]);
