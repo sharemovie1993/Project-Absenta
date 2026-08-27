@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
-import ReactOriginal, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, Modal, SectionCard } from '../../components/ui';
 import SiswaList from '../../components/academic/siswa/SiswaList';
@@ -9,8 +8,8 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import type { Siswa } from '../../types/academic';
 import { getAcademicStats, type AcademicStats } from '../../api/academic-stats.api';
-import { Users, CheckCircle2, GraduationCap, UserCheck, UserX } from 'lucide-react';
-import { getActiveTahunPelajaran, getActiveSemester } from '../../api/dropdown.api';
+import { Users, CheckCircle2, GraduationCap, UserCheck, UserX, Plus, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
+import { getActiveTahunPelajaran, getActiveSemester, getSemesterByTahunPelajaranForDropdown, getTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { downloadFileFromBlob, generateStandardFilename } from '../../utils/file-download.utils';
 import { exportDataToExcel, generateImportTemplate, type ExcelColumnConfig } from '../../utils/export.utils';
@@ -18,12 +17,9 @@ import * as XLSX from 'xlsx-js-style';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 import { useQuery } from '@tanstack/react-query';
 import { getAcademicRegistrationStats, getSiswaList, importSiswaFromExcel } from '../../api/academic/siswa.api';
-import { getSemesterByTahunPelajaranForDropdown, getTahunPelajaranForDropdown } from '../../api/dropdown.api';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { kelasApi, jurusanApi } from '../../api/academic.api';
 import toast from 'react-hot-toast';
-import { lazy, Suspense } from 'react';
-import { Plus, FileSpreadsheet, Download, RefreshCw } from 'lucide-react';
 
 // Lazy load heavy components
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(module => ({ default: module.SiswaForm })));
