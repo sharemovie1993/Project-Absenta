@@ -1,12 +1,8 @@
 // @ts-nocheck
-import { prisma } from '@/utils/prisma';
-import { AbsensiMode } from '@/constants/enums';
-import { formatTenantTime, getTenantTimezone, getTenantOffsetString, getTenantDayRange } from '@/utils/timezone.utils';
-import { sesiLifecycleService, SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
-import { DashboardCommonHelper } from './dashboard-common.helper';
+import { getTenantTimezone, getTenantDayRangeUTC } from '@/utils/timezone.utils';
 
 export class DashboardCommonHelper {
-  private async resolveDayRange(tenantId: string | null, tanggal?: string): Promise<{ startOfDay: Date; endOfDay: Date; dateStr: string; timeZone: string }> {
+  public async resolveDayRange(tenantId: string | null, tanggal?: string): Promise<{ startOfDay: Date; endOfDay: Date; dateStr: string; timeZone: string }> {
     const tz = await getTenantTimezone(tenantId);
     let dateStr = tanggal;
     if (!dateStr) {
@@ -16,8 +12,4 @@ export class DashboardCommonHelper {
     const { startUTC, endUTC } = getTenantDayRangeUTC(dateStr, tz);
     return { startOfDay: startUTC, endOfDay: endUTC, dateStr, timeZone: tz };
   }
-
-  /**
-   * 1️⃣ Dashboard Overview - Ringkasan global per tenant untuk hari ini
-   */
 }
