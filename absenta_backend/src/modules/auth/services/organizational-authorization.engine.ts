@@ -94,16 +94,11 @@ export class OrganizationalAuthorizationEngine {
       });
 
       const rawKelasList = Array.from(kelasIds);
-      if (siswa?.kelas_id) {
-        const sKelasId = String(siswa.kelas_id);
-        if (!rawKelasList.includes(sKelasId)) {
-          rawKelasList.unshift(sKelasId);
-        } else {
-          const index = rawKelasList.indexOf(sKelasId);
-          if (index > 0) {
-            rawKelasList.splice(index, 1);
-            rawKelasList.unshift(sKelasId);
-          }
+      if (siswa?.kelas_id && rawKelasList.includes(String(siswa.kelas_id))) {
+        const index = rawKelasList.indexOf(String(siswa.kelas_id));
+        if (index > 0) {
+          rawKelasList.splice(index, 1);
+          rawKelasList.unshift(String(siswa.kelas_id));
         }
       }
 
