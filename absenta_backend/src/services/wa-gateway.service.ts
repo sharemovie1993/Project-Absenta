@@ -1,12 +1,11 @@
-// @ts-nocheck
 import {
   callMasterViaRpc,
   waGatewayServiceLocal,
-  getRedisConnection,
   getGroupsCacheKey,
   initClusterRpc,
   isMasterInstance
 } from './wa-gateway/wa-engine';
+import { getRedisConnection } from '@/queue/redis';
 
 export const waGatewayService = {
   async initTenant(tenantId: string): Promise<void> {

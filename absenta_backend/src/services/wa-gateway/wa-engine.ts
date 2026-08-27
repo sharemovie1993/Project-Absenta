@@ -20,6 +20,7 @@ import { createRedisConnection } from '@/infra/redis/redisClient';
 import { appLogger } from '@/utils/app-logger';
 
 // ─── WA Groups Redis Cache ─────────────────────────────────────────────────────
+export { getRedisConnection } from '@/queue/redis';
 const WA_GROUPS_CACHE_TTL_SECONDS = 300; // 5 menit
 export function getGroupsCacheKey(tenantId: string): string {
   return `wa:groups:${tenantId}`;
