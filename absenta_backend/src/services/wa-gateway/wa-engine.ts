@@ -204,7 +204,7 @@ async function connectTenant(tenantId: string): Promise<void> {
   const pino = (await import('pino')).default;
   const logger = pino({ level: 'silent' });
 
-  const { usePrismaAuthState } = await import('./wa-prisma-auth.service');
+  const { usePrismaAuthState } = await import('../wa-prisma-auth.service');
   const { state, saveCreds } = await usePrismaAuthState(tenantId);
   const { version } = await fetchLatestBaileysVersion().catch(() => ({ version: [2, 3000, 1015970961] as any }));
 
@@ -583,7 +583,7 @@ export const waGatewayServiceLocal = {
   async sendMessageSoft(tenantId: string, nomor: string | null | undefined, pesan: string, source?: string): Promise<void> {
     if (!nomor) return;
     try {
-      const { waQueueService } = await import('./wa-queue.service');
+      const { waQueueService } = await import('../wa-queue.service');
       await waQueueService.enqueueSoft({ tenantId, nomor, pesan, source: source ?? 'soft-send' });
     } catch (e: any) {
       console.warn(`[WA-Pool:${tenantId}] Skip WA notif queue (${e.message})`);
@@ -721,7 +721,7 @@ export const waGatewayServiceLocal = {
 
   async clearTenantAuth(tenantId: string): Promise<void> {
     try {
-      const { usePrismaAuthState } = await import('./wa-prisma-auth.service');
+      const { usePrismaAuthState } = await import('../wa-prisma-auth.service');
       const authState = await usePrismaAuthState(tenantId);
       await authState.clearAuth();
     } catch (e: any) {
