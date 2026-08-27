@@ -26,15 +26,16 @@ export const gerbangRecordsController = {
       const isWaliKelas = positions.some((p: any) => p.code === 'WALIKELAS');
       const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS');
       const isPetugasGerbang = positions.some((p: any) => p.code === 'GERBANG');
+      const isSiswa = roleName === 'SISWA';
       const managementRoles = ['KEPALA_SEKOLAH', 'KURIKULUM', 'KESISWAAN', 'HUBIN'];
       const isManagement = managementRoles.includes(roleName) || positions.some((p: any) => managementRoles.includes(p.code));
       const hasPrivilegedAccess = roleName === RoleName.ADMIN || roleName === RoleName.SUPERADMIN || isManagement || isPetugasGerbang || org?.tenant_wide === true;
       
       let enforcedKelasId: string | null = (kelas_id as string) || null;
 
-      if (!hasPrivilegedAccess && !isWaliKelas && !isPetugasSesi) {
+      if (!hasPrivilegedAccess && !isWaliKelas && !isPetugasSesi && !isSiswa) {
           reply.status(403);
-          return { success: false, message: 'Forbidden: Hanya Wali Kelas atau Petugas yang dapat mengakses daftar ini' };
+          return { success: false, message: 'Forbidden: Hanya Wali Kelas, Petugas, atau Siswa yang dapat mengakses daftar ini' };
       }
 
       // Enforce class isolation for non-admins
@@ -49,8 +50,15 @@ export const gerbangRecordsController = {
               // Jika tidak kirim kelas_id, default ke kelas pertama yang dimiliki
               if (!enforcedKelasId) enforcedKelasId = kelasIds[0];
           } else {
-              reply.status(403);
-              return { success: false, message: 'Forbidden: Anda tidak memiliki penugasan kelas yang aktif' };
+              // Fallback to student's own class from Siswa table
+              if (isSiswa && request.user?.id) {
+                const s = await prisma.siswa.findFirst({ where: { user_id: request.user.id }, select: { kelas_id: true } });
+                if (s?.kelas_id) enforcedKelasId = s.kelas_id;
+              }
+              if (!enforcedKelasId) {
+                reply.status(403);
+                return { success: false, message: 'Forbidden: Anda tidak memiliki penugasan kelas yang aktif' };
+              }
           }
       }
 

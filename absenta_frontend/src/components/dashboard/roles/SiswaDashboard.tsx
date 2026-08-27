@@ -172,6 +172,8 @@ export const SiswaDashboard: React.FC = () => {
   const { subscribe, unsubscribe } = useSocket();
 
   const { tenantId } = useTenant();
+  const effectiveKelasId = siswaProfile?.kelas_id || (user as any)?.kelas_id || (user as any)?.siswa_profile?.kelas_id || (user as any)?.siswa?.kelas_id || '';
+
   const {
     notPresent: notPresentData = [],
     notPresentLoading,
@@ -180,7 +182,7 @@ export const SiswaDashboard: React.FC = () => {
     refreshStats: refetchMiniStats,
   } = useGerbangAttendanceData({
     tenantId,
-    selectedKelasId: siswaProfile?.kelas_id || '',
+    selectedKelasId: effectiveKelasId,
     enabled: showBelumAbsenModal,
   });
 
@@ -1997,7 +1999,7 @@ export const SiswaDashboard: React.FC = () => {
                     notPresent={notPresentData}
                     notPresentLoading={notPresentLoading}
                     miniStats={miniStatsData}
-                    selectedKelasId={siswaProfile?.kelas_id || ''}
+                    selectedKelasId={effectiveKelasId}
                     setSelectedKelasId={() => {}}
                     kelasOptions={[]}
                     isPetugasSiswa={true}

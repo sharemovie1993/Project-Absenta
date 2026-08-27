@@ -842,14 +842,23 @@ export class AuthService {
     response.capabilities = await authorizationService.resolveUserCapabilities(user.id, { user });
     response.position_codes = orgCtx.positions.map(p => p.code);
     
-    // Attach siswa_id if role is SISWA
+    // Attach siswa_id and profile if role is SISWA
     if (response.role?.name === 'SISWA') {
       const student = await prisma.siswa.findFirst({
         where: { user_id: user.id },
-        select: { id: true }
+        include: { Kelas: true }
       });
       if (student) {
         response.siswa_id = student.id;
+        (response as any).kelas_id = student.kelas_id;
+        (response as any).kelas_nama = student.Kelas?.nama_kelas;
+        (response as any).siswa_profile = {
+          id: student.id,
+          nama_siswa: student.nama_siswa,
+          nis: student.nis,
+          kelas_id: student.kelas_id,
+          Kelas: student.Kelas,
+        };
       }
     }
 
