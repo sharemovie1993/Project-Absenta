@@ -235,17 +235,24 @@ export async function seedDemoTenant() {
     { email: 'tu.keuangan@absenta.id', name: 'Dewi Lestari, S.E', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_KEUANGAN, nip: '199302142016012014' },
     { email: 'tu.kepegawaian@absenta.id', name: 'Ginanzhar Sudiarto, S.Kom', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_KEPEGAWAIAN, nip: '198903152013011015' },
     { email: 'tu.sarpras@absenta.id', name: 'Depi Kurniawan', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_SARPRAS, nip: '199404162017011016' },
+    { email: 'tu.buku-induk@absenta.id', name: 'Rina Marlina, A.Md', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_PERSURATAN, nip: '199505172018012017' },
+    { email: 'tu.inventaris@absenta.id', name: 'Hadi Prasetyo', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_SARPRAS, nip: '199606182019011018' },
+    { email: 'tu.arsip@absenta.id', name: 'Novi Anggraeni, S.AP', role: roleAdminId, roleCode: STRUKTUR_CODES.TU_PERSURATAN, nip: '199707192020012019' },
 
     // ── 🛒 KOPERASI ERP ──
     { email: 'koperasi.ketua@absenta.id', name: 'Indra Mohamad Gozali, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.KETUA_KOPERASI, nip: '198504202022211000' },
     { email: 'koperasi.bendahara@absenta.id', name: 'Dani Setiawan, S.E', role: roleGuruId, roleCode: STRUKTUR_CODES.BENDAHARA_KOPERASI, nip: '198003072023211000' },
     { email: 'koperasi.sekretaris@absenta.id', name: 'Sarip Hidayat, S.Pd.I', role: roleGuruId, roleCode: STRUKTUR_CODES.SEKRETARIS_KOPERASI, nip: '198210262025211000' },
     { email: 'koperasi.kasir@absenta.id', name: 'Tati Karyati, S.Pd', role: roleAdminId, roleCode: STRUKTUR_CODES.MANAJER_TOKO_KOPERASI, nip: '198509102022212000' },
+    { email: 'koperasi.gudang@absenta.id', name: 'Yayan Sopian', role: roleAdminId, roleCode: STRUKTUR_CODES.MANAJER_TOKO_KOPERASI, nip: '198808112022211000' },
     { email: 'koperasi.pengawas@absenta.id', name: 'Siswoko, S.T', role: roleGuruId, roleCode: STRUKTUR_CODES.PENGAWAS_KOPERASI, nip: '197509092022211000' },
 
     // ── 👨‍🏫 GURU & WALI KELAS (1 KELAS: X TJKT 1) ──
     { email: 'walikelas@absenta.id', name: 'Ai Kustiani, S.Pd.', role: roleGuruId, roleCode: STRUKTUR_CODES.WALIKELAS, nip: '198710222011012022', kelas_id: targetDemoClass?.id },
     { email: 'guru@absenta.id', name: 'Erwin, S.Pd.', role: roleGuruId, roleCode: 'GURU_MAPEL', nip: '198911232014011023' },
+    { email: 'guru.piket@absenta.id', name: 'Rian Hidayat, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.GERBANG, nip: '199010152015011025' },
+    { email: 'pembina.osis@absenta.id', name: 'Dedi Kurniawan, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.PEMBINA_ESKUL, nip: '199201202016011026' },
+    { email: 'pembina.ekskul@absenta.id', name: 'Eko Prasetyo, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.PEMBINA_ESKUL, nip: '199112242017011024' },
     { email: 'eskul@absenta.id', name: 'Eko Prasetyo, S.Pd', role: roleGuruId, roleCode: STRUKTUR_CODES.PEMBINA_ESKUL, nip: '199112242017011024' },
   ];
 
@@ -360,32 +367,45 @@ export async function seedDemoTenant() {
     }
   });
 
-  const siswaEntity = await prisma.siswa.upsert({
-    where: { user_id: userSiswa.id },
-    update: {
-      nama_siswa: 'Amelia Reygina Putri',
-      nis: '20251906',
-      nisn: '0071906001',
-      tenant_id: effectiveTenantId,
-      kelas_id: targetDemoClass?.id,
-      jenis_kelamin: 'P',
-      nama_ayah: 'Bapak Hartono',
-      no_hp_ayah: '081234567890',
-      no_hp_ortu: '081234567890',
-    },
-    create: {
-      user_id: userSiswa.id,
-      nama_siswa: 'Amelia Reygina Putri',
-      nis: '20251906',
-      nisn: '0071906001',
-      tenant_id: effectiveTenantId,
-      kelas_id: targetDemoClass?.id,
-      jenis_kelamin: 'P',
-      nama_ayah: 'Bapak Hartono',
-      no_hp_ayah: '081234567890',
-      no_hp_ortu: '081234567890',
+  let siswaEntity = await prisma.siswa.findFirst({
+    where: {
+      OR: [
+        { user_id: userSiswa.id },
+        { tenant_id: effectiveTenantId, nis: '20251906' }
+      ]
     }
   });
+
+  if (siswaEntity) {
+    siswaEntity = await prisma.siswa.update({
+      where: { id: siswaEntity.id },
+      data: {
+        user_id: userSiswa.id,
+        nama_siswa: 'Amelia Reygina Putri',
+        tenant_id: effectiveTenantId,
+        kelas_id: targetDemoClass?.id,
+        jenis_kelamin: 'P',
+        nama_ayah: 'Bapak Hartono',
+        no_hp_ayah: '081234567890',
+        no_hp_ortu: '081234567890',
+      }
+    });
+  } else {
+    siswaEntity = await prisma.siswa.create({
+      data: {
+        user_id: userSiswa.id,
+        nama_siswa: 'Amelia Reygina Putri',
+        nis: '20251906',
+        nisn: '0071906001',
+        tenant_id: effectiveTenantId,
+        kelas_id: targetDemoClass?.id,
+        jenis_kelamin: 'P',
+        nama_ayah: 'Bapak Hartono',
+        no_hp_ayah: '081234567890',
+        no_hp_ortu: '081234567890',
+      }
+    });
+  }
 
   // 2. Petugas Absensi Kelas (Putri Amelia di X TJKT 1)
   const userPetugas = await prisma.user.upsert({
@@ -408,26 +428,33 @@ export async function seedDemoTenant() {
     }
   });
 
-  await prisma.siswa.upsert({
-    where: { user_id: userPetugas.id },
-    update: {
-      nama_siswa: 'Putri Amelia',
-      nis: '20251907',
-      nisn: '0071907002',
-      tenant_id: effectiveTenantId,
-      kelas_id: targetDemoClass?.id,
-      jenis_kelamin: 'P',
-    },
-    create: {
-      user_id: userPetugas.id,
-      nama_siswa: 'Putri Amelia',
-      nis: '20251907',
-      nisn: '0071907002',
-      tenant_id: effectiveTenantId,
-      kelas_id: targetDemoClass?.id,
-      jenis_kelamin: 'P',
-    }
+  const existingPetugas = await prisma.siswa.findFirst({
+    where: { user_id: userPetugas.id }
   });
+
+  if (existingPetugas) {
+    await prisma.siswa.update({
+      where: { id: existingPetugas.id },
+      data: {
+        nama_siswa: 'Putri Amelia',
+        tenant_id: effectiveTenantId,
+        kelas_id: targetDemoClass?.id,
+        jenis_kelamin: 'P',
+      }
+    });
+  } else {
+    await prisma.siswa.create({
+      data: {
+        user_id: userPetugas.id,
+        nama_siswa: 'Putri Amelia',
+        nis: '20251907',
+        nisn: '0071907002',
+        tenant_id: effectiveTenantId,
+        kelas_id: targetDemoClass?.id,
+        jenis_kelamin: 'P',
+      }
+    });
+  }
 
   const positionPetugas = await prisma.organizationalPosition.upsert({
     where: {
