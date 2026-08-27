@@ -734,7 +734,7 @@ export class WaliKelasService {
       throw new Error('Permohonan izin tidak ditemukan');
     }
 
-    return await prisma.permohonanIzinSiswa.update({
+    const updated = await prisma.permohonanIzinSiswa.update({
       where: { id },
       data: {
         status: input.status,
@@ -745,6 +745,24 @@ export class WaliKelasService {
         Siswa: { select: { id: true, nama_siswa: true, nis: true } },
       },
     });
+
+    if (input.status === 'DISETUJUI') {
+      try {
+        const { gerbangService } = await import('@/modules/attendance/gerbang/services/gerbang.service');
+        await gerbangService.markManualAbsence(
+          tenantId,
+          existing.siswa_id,
+          existing.tipe_izin,
+          user.id,
+          'WALIKELAS_APPROVAL',
+          existing.alasan
+        );
+      } catch (err) {
+        console.warn('[WaliKelas] Failed to sync approved permission to gate attendance:', err);
+      }
+    }
+
+    return updated;
   }
 
   // ── Early Warning System (EWS) ──
