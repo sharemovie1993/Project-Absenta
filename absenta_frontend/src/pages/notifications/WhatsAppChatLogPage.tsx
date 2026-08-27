@@ -52,6 +52,7 @@ import {
   DateDivider,
   EmptyChat,
   formatDateGroup,
+  formatRole,
 } from '@/components/notifications/chatlog/WhatsAppChatLogSubcomponents';
 
 // ─────────────────────────────────────────────────────────────────────────────
