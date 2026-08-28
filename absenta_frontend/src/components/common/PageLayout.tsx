@@ -178,7 +178,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
             <button
               type="button"
               onClick={handleGoBack}
-              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none"
+              className="sm:hidden group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none"
               title="Kembali ke halaman sebelumnya"
             >
               <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
