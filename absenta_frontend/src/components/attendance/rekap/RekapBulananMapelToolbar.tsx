@@ -105,6 +105,7 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
   selectedMapelLabel,
   selectedKelasLabel,
   totalSesi,
+  hasData = false,
   setKelasId,
   setMapelId,
   setBulan,
