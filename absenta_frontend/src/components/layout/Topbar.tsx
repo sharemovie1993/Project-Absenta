@@ -247,18 +247,6 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   </span>
                 </div>
               </Link>
-            )}
-
-            {isNotDashboard && (
-              <Link
-                to="/dashboard"
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700/60 transition-all shadow-2xs group ml-1 shrink-0"
-                title="Kembali ke Beranda Portal"
-              >
-                <ArrowLeft size={12} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
-                <span>Beranda</span>
-              </Link>
-            )}
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}

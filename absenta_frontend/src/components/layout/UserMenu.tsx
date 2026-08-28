@@ -117,6 +117,25 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
     );
   }
 
+  const primaryRoleLabel = useMemo(() => {
+    const jabatanList: string[] = Array.isArray(guruProfile?.jabatan_list)
+      ? guruProfile.jabatan_list
+      : Array.isArray((user as any)?.jabatan_list)
+        ? (user as any).jabatan_list
+        : [];
+    
+    if (jabatanList.length > 0) {
+      const topJabatan = jabatanList.find(j => ['KURIKULUM', 'KEPALA_SEKOLAH', 'WAKA_KURIKULUM', 'STAFF_TU', 'KESISWAAN', 'BENDAHARA'].includes(j.toUpperCase())) || jabatanList[0];
+      if (topJabatan) {
+        return topJabatan.toUpperCase();
+      }
+    }
+
+    if (roleName === 'GURU') return 'Guru';
+    if (roleName === 'SISWA') return 'Siswa';
+    return user?.role?.name || 'User';
+  }, [user, guruProfile, roleName]);
+
   const initialChar = user?.full_name?.charAt(0).toUpperCase() || 'U';
 
   return (
@@ -144,7 +163,7 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
             {user?.full_name || 'User'}
           </div>
           <div className="text-[9px] font-black text-indigo-500 uppercase tracking-wider leading-none mt-0.5">
-            {roleName === 'GURU' ? 'Guru' : (roleName === 'SISWA' ? 'Siswa' : user?.role?.name || 'User')}
+            {primaryRoleLabel}
           </div>
         </div>
         <ChevronDown className={cn(
@@ -175,7 +194,7 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800">
-                  {user?.role?.name || 'SISWA'}
+                  {primaryRoleLabel}
                 </span>
                 <span className="text-[10px] text-slate-400 truncate">
                   {user?.username || user?.email || ''}
