@@ -201,21 +201,42 @@ export function RekapBulananMapelContent() {
         if (!mapelId && sortedMapel.length > 0) setMapelId(sortedMapel[0].value);
       }
 
-      // ── Opsi Kelas (Tampilkan Semua Kelas dengan Prioritas Kelas Anda di Atas) ──
-      const sortedKelas = [...rawKelas].sort((a, b) => {
-        const aTaught = taughtKelasMap.has(a.value);
-        const bTaught = taughtKelasMap.has(b.value);
-        if (aTaught && !bTaught) return -1;
-        if (!aTaught && bTaught) return 1;
-        return 0;
-      }).map(k => taughtKelasMap.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
+      // ── Opsi Kelas ──
+      if (!isManagement) {
+        // Khusus Guru: HANYA tampilkan kelas yang diajar pada mapel yang dipilih
+        const mapelClasses = taughtList.filter((a: any) => !mapelId || a.mapel_id === mapelId);
+        const mapelKelasMap = new Map<string, string>();
+        mapelClasses.forEach((a: any) => {
+          if (a.kelas_id) {
+            const name = a.Kelas?.nama_kelas || a.kelas?.nama_kelas;
+            mapelKelasMap.set(a.kelas_id, name || 'Kelas');
+          }
+        });
 
-      setKelasOptions(sortedKelas);
+        const targetKelasMap = mapelKelasMap.size > 0 ? mapelKelasMap : taughtKelasMap;
 
-      if (!kelasId || !rawKelas.some(k => k.value === kelasId)) {
-        const firstTaughtKelas = sortedKelas.find(k => taughtKelasMap.has(k.value));
-        if (firstTaughtKelas) setKelasId(firstTaughtKelas.value);
-        else if (sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
+        const strictlyKelas: DropdownOption[] = targetKelasMap.size > 0
+          ? Array.from(targetKelasMap.entries()).map(([val, lbl]) => ({ value: val, label: lbl }))
+          : rawKelas.filter(k => targetKelasMap.has(k.value));
+
+        setKelasOptions(strictlyKelas.length > 0 ? strictlyKelas : (rawKelas.length > 0 ? [rawKelas[0]] : []));
+
+        if (!kelasId || !strictlyKelas.some(k => k.value === kelasId)) {
+          if (strictlyKelas.length > 0) setKelasId(strictlyKelas[0].value);
+          else if (rawKelas.length > 0) setKelasId(rawKelas[0].value);
+        }
+      } else {
+        // Manajemen: Tampilkan semua kelas
+        const sortedKelas = [...rawKelas].sort((a, b) => {
+          const aTaught = taughtKelasMap.has(a.value);
+          const bTaught = taughtKelasMap.has(b.value);
+          if (aTaught && !bTaught) return -1;
+          if (!aTaught && bTaught) return 1;
+          return 0;
+        }).map(k => taughtKelasMap.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
+
+        setKelasOptions(sortedKelas);
+        if (!kelasId && sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
       }
     }
   }, [dropdownsQuery.data, taughtList, tahunPelajaranId, kelasId, mapelId, isManagement]);
