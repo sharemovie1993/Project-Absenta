@@ -53,6 +53,37 @@ export const getAcademicYearFromPeriod = (periodStr?: string): string => {
   return `${year - 1}/${year}`;
 };
 
+export const resolveProgramKeahlian = (currentClass: any): string => {
+  const direct = currentClass?.Jurusan?.nama || currentClass?.Jurusan?.nama_jurusan || currentClass?.jurusan_nama || currentClass?.jurusan;
+  if (direct && typeof direct === 'string' && direct.trim() && direct.trim().toLowerCase() !== 'teknik elektronika') {
+    return direct.trim();
+  }
+  if (direct && typeof direct === 'string' && direct.trim()) {
+    const rawClass = String(currentClass?.nama_kelas || '').toUpperCase();
+    if (!rawClass.includes('TE') && !rawClass.includes('ELEKTRONIKA')) {
+      // Intentionally fall through to heuristic mapping if the class is not actually TE
+    } else {
+      return direct.trim();
+    }
+  }
+
+  const rawClass = String(currentClass?.nama_kelas || '').toUpperCase();
+  if (rawClass.includes('TM') || rawClass.includes('TP') || rawClass.includes('MESIN')) return 'Teknik Pemesinan';
+  if (rawClass.includes('TJKT') || rawClass.includes('TKJ') || rawClass.includes('KOMPUTER') || rawClass.includes('JARINGAN')) return 'Teknik Komputer dan Jaringan';
+  if (rawClass.includes('TKR') || rawClass.includes('KENDARAAN')) return 'Teknik Kendaraan Ringan';
+  if (rawClass.includes('TSM') || rawClass.includes('SEPEDA MOTOR')) return 'Teknik Sepeda Motor';
+  if (rawClass.includes('TOI') || rawClass.includes('OTOMASI')) return 'Teknik Otomasi Industri';
+  if (rawClass.includes('TAV') || rawClass.includes('AUDIO VIDEO')) return 'Teknik Audio Video';
+  if (rawClass.includes('TE') || rawClass.includes('ELEKTRONIKA')) return 'Teknik Elektronika';
+  if (rawClass.includes('AKL') || rawClass.includes('AKUNTANSI')) return 'Akuntansi dan Keuangan Lembaga';
+  if (rawClass.includes('KUL') || rawClass.includes('KULINER') || rawClass.includes('TATA BOGA')) return 'Kuliner';
+  if (rawClass.includes('PHT') || rawClass.includes('PERHOTELAN')) return 'Perhotelan';
+  if (rawClass.includes('DPIB') || rawClass.includes('BANGUNAN')) return 'Desain Pemodelan dan Informasi Bangunan';
+  if (rawClass.includes('RPL') || rawClass.includes('PERANGKAT LUNAK')) return 'Rekayasa Perangkat Lunak';
+
+  return direct || '-';
+};
+
 export const drawClassHeaderInfo = (
   doc: jsPDF,
   title: string,
@@ -67,8 +98,8 @@ export const drawClassHeaderInfo = (
     ? getAcademicYearFromPeriod(periodStr) 
     : (checklistData?.current_year?.tahun || getAcademicYearFromPeriod());
     
-  const progKeahlian = currentClass?.Jurusan?.nama || currentClass?.Jurusan?.nama_jurusan || 'Teknik Elektronika';
-  const kelasName = currentClass?.nama_kelas || 'X TE 1';
+  const progKeahlian = resolveProgramKeahlian(currentClass);
+  const kelasName = currentClass?.nama_kelas || 'Kelas';
 
   // 1. Draw Title
   doc.setFont('Helvetica', 'bold');

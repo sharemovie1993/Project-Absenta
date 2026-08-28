@@ -457,7 +457,12 @@ export function RekapBulananMapelContent() {
           guruMapelNip: guruMapelInfo?.nip || '',
           waliKelasName: waliKelasInfo?.nama_guru || '________________________',
           waliKelasNip: waliKelasInfo?.nip || '',
-          classes: (kelasOptions ?? []).map(k => ({ id: k.value, nama_kelas: k.label })),
+          classes: (kelasOptions ?? []).map(k => ({
+            id: k.value,
+            nama_kelas: (k as any).nama_kelas || k.label?.split(' - ')[0] || k.label,
+            jurusan_nama: (k as any).jurusan_nama,
+            Jurusan: (k as any).Jurusan || { nama: (k as any).jurusan_nama || '' }
+          })),
           rekapList: (rows ?? []).map(r => ({
             id: r.siswa_id,
             nama_siswa: r.nama_siswa,

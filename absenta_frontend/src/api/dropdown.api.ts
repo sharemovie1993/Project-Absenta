@@ -69,8 +69,11 @@ export async function getKelasForDropdown(): Promise<DropdownOption[]> {
     return kelasList.map(kelas => ({
       value: kelas.id,
       label: `${kelas.nama_kelas} - Tingkat ${kelas.tingkat}`,
+      nama_kelas: kelas.nama_kelas,
       tingkat: kelas.tingkat,
       jurusan_id: kelas.jurusan_id,
+      jurusan_nama: (kelas as any).Jurusan?.nama || (kelas as any).Jurusan?.nama_jurusan || '',
+      Jurusan: (kelas as any).Jurusan || ((kelas as any).jurusan_id ? { id: (kelas as any).jurusan_id, nama: (kelas as any).Jurusan?.nama || '' } : null),
       is_active: (kelas as any).is_active !== false,
       siswa_count: (kelas as any)._count?.Siswa || 0
     }));

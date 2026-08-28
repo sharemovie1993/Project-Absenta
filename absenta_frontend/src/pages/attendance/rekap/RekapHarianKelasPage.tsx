@@ -398,7 +398,12 @@ export function RekapHarianKelasContent({
         includeSchoolLogo: true,
         eventDetails: { bulanRekap: tanggal.substring(0, 7) },
         filterData: {
-          classes: (kelasOptions ?? []).map(k => ({ id: k.value, nama_kelas: k.label })),
+          classes: (kelasOptions ?? []).map(k => ({
+            id: k.value,
+            nama_kelas: (k as any).nama_kelas || k.label?.split(' - ')[0] || k.label,
+            jurusan_nama: (k as any).jurusan_nama,
+            Jurusan: (k as any).Jurusan || { nama: (k as any).jurusan_nama || '' }
+          })),
           rekapList: (rows ?? []).map(r => ({
             id: r.siswa_id || r.id,
             nama_siswa: r.nama || r.nama_siswa || '',
