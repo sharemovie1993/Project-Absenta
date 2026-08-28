@@ -7,6 +7,12 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     where: { user_id: userId, tenant_id: tenantId },
     include: {
       User: PRISMA_GURU_USER_SELECT,
+      GuruMapel: {
+        include: {
+          Mapel: true,
+          Kelas: true,
+        },
+      },
     },
   });
 
