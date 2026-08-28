@@ -62,9 +62,11 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
     queryKey: ['attendance-dashboard-live', isSiswa],
     queryFn: async () => {
       if (isSiswa) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const thisMonthStr = todayStr.slice(0, 7);
         const [dailyRes, monthlyRes] = await Promise.all([
-          getRekapHarianSiswaMe().catch(() => null),
-          getRekapBulananSiswaMe().catch(() => null)
+          getRekapHarianSiswaMe({ tanggal: todayStr }).catch(() => null),
+          getRekapBulananSiswaMe({ bulan: thisMonthStr }).catch(() => null)
         ]);
         return {
           myAttendance: dailyRes?.data || null,

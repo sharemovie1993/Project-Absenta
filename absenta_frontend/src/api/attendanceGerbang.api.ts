@@ -255,7 +255,7 @@ export async function getRekapBulananSiswa(
 }
 
 export async function getRekapBulananSiswaMe(
-  params: { bulan: string; tahun_pelajaran_id?: string }
+  params?: { bulan?: string; tahun_pelajaran_id?: string }
 ): Promise<{ success: boolean; message: string; data: { 
     nama_siswa: string; 
     bulan: string; 
@@ -269,6 +269,10 @@ export async function getRekapBulananSiswaMe(
     total_poin?: number;
     detail: any[]; 
   } }> {
+  const safeParams = {
+    bulan: params?.bulan || new Date().toISOString().slice(0, 7),
+    ...(params?.tahun_pelajaran_id ? { tahun_pelajaran_id: params.tahun_pelajaran_id } : {})
+  };
   return requestWithFallback<{ success: boolean; message: string; data: { 
     nama_siswa: string; 
     bulan: string; 
@@ -282,7 +286,7 @@ export async function getRekapBulananSiswaMe(
     total_poin?: number;
     detail: any[]; 
   } }>('get', `/attendance/rekap/siswa/me/bulanan`, {
-    params,
+    params: safeParams,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
@@ -355,10 +359,14 @@ export async function getRekapHarianSiswa(
 }
 
 export async function getRekapHarianSiswaMe(
-  params: { tanggal: string; tahun_pelajaran_id?: string }
+  params?: { tanggal?: string; tahun_pelajaran_id?: string }
 ): Promise<{ success: boolean; message: string; data: { nama_siswa: string; tanggal: string; status: string; rincian: any[] } }> {
+  const safeParams = {
+    tanggal: params?.tanggal || new Date().toISOString().slice(0, 10),
+    ...(params?.tahun_pelajaran_id ? { tahun_pelajaran_id: params.tahun_pelajaran_id } : {})
+  };
   return requestWithFallback<{ success: boolean; message: string; data: { nama_siswa: string; tanggal: string; status: string; rincian: any[] } }>('get', `/attendance/rekap/siswa/me/harian`, {
-    params,
+    params: safeParams,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
