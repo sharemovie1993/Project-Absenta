@@ -1,6 +1,5 @@
 import { prisma } from '@/utils/prisma';
 import { cacheService } from '@/utils/cache.service';
-import { featureStateResolver } from '@/services/feature-state-resolver.service';
 import { FeatureState } from '@/types/feature-state';
 
 export interface SidebarRenderingContext {
@@ -212,12 +211,6 @@ export class SidebarRenderingService {
 
     for (const m of filtered) {
       const requiredFeatures = resolveEffectiveFeatures(m);
-      const mainFeature = requiredFeatures[0] || null;
-      const featureState = await featureStateResolver.resolveFeatureState(context.tenantId, mainFeature);
-      
-      // Locked logic for UI backward compatibility if needed, 
-      // but we now primarily use feature_state
-      const isLocked = featureState === FeatureState.LOCKED || featureState === FeatureState.EXPIRED;
 
       byId[m.id] = { 
         id: m.id, 

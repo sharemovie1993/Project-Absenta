@@ -212,7 +212,7 @@ async function main() {
 
   type NavItem = {
     label: string;
-    icon?: string;
+    icon?: string | null;
     path: string | null;
     type?: string | null;
     required_capability?: string | null;
