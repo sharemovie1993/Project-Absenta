@@ -9,7 +9,9 @@ export interface TabOption {
 }
 
 interface TabSwitcherProps {
-  options: TabOption[];
+  options?: TabOption[];
+  tabs?: TabOption[];
+  items?: TabOption[];
   activeTab: string;
   onChange: (id: string) => void;
   className?: string;
@@ -17,16 +19,19 @@ interface TabSwitcherProps {
 
 export const TabSwitcher: React.FC<TabSwitcherProps> = ({
   options,
+  tabs,
+  items,
   activeTab,
   onChange,
   className,
 }) => {
+  const tabOptions = options || tabs || items || [];
   return (
     <div 
       className={cn("flex items-center gap-1 bg-slate-100 dark:bg-slate-800/60 p-1 rounded-2xl w-fit max-w-full overflow-x-auto no-scrollbar flex-nowrap shrink-0", className)} 
       role="tablist"
     >
-      {options.map((opt) => {
+      {tabOptions.map((opt) => {
         const isActive = activeTab === opt.id;
         const Icon = opt.icon;
         return (
