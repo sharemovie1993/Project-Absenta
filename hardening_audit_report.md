@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **205 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **205 Halaman** | 100% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **0 Halaman** | 0% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **203 Halaman** | 99% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **2 Halaman** | 1% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **0 Halaman** | 0% | **Prioritas Utama Refaktor** |
 
 ---
@@ -18,6 +18,25 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 ## 🛠️ DAFTAR RINCIAN REFAKTOR PER-HALAMAN
 
 Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halaman utama:
+
+### 📄 Halaman: `RiwayatAjarPage.tsx`
+* **Lokasi File:** [RiwayatAjarPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/RiwayatAjarPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+
+---
+
+### 📄 Halaman: `ProductFormModal.tsx`
+* **Lokasi File:** [ProductFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 527 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [ProductFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx) (527 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
 
 ### 📄 Halaman: `BackupPage.tsx`
 * **Lokasi File:** [BackupPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/BackupPage.tsx)
@@ -313,13 +332,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `RiwayatAjarPage.tsx`
-* **Lokasi File:** [RiwayatAjarPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/RiwayatAjarPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `TrackingSiswaPage.tsx`
 * **Lokasi File:** [TrackingSiswaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/TrackingSiswaPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -574,13 +586,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `OpnameFormModal.tsx`
 * **Lokasi File:** [OpnameFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/OpnameFormModal.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `ProductFormModal.tsx`
-* **Lokasi File:** [ProductFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

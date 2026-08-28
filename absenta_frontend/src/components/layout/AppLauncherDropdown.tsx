@@ -72,7 +72,7 @@ export function AppLauncherDropdown() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Aplikasi Sekolah"
-        title="Aplikasi Sekolah (Google 9-Dots)"
+        title="Aplikasi Sekolah"
         className={cn(
           "h-10 w-10 flex items-center justify-center rounded-full transition-all duration-200 outline-none",
           isOpen
@@ -179,9 +179,9 @@ export function AppLauncherDropdown() {
             {/* Footer Summary */}
             <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 px-1">
               <span>{visibleApps.length} Aplikasi Tersedia</span>
-              <span className="flex items-center gap-1 text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
-                <Sparkles className="h-3 w-3 text-amber-500" />
-                Google 1:1 Workspace
+              <span className="flex items-center gap-1 text-[10px] font-semibold text-slate-400 tracking-wider uppercase">
+                <Sparkles className="h-3 w-3 text-blue-500" />
+                Pusat Layanan
               </span>
             </div>
           </motion.div>

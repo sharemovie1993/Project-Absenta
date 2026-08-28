@@ -21,7 +21,6 @@ import { PendingPaymentBlocker } from '../billing/PendingPaymentBlocker';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 
 // Lazy load heavy layout components to improve TBT
-const Sidebar = React.lazy(() => import('./Sidebar').then(module => ({ default: module.Sidebar })));
 const InAppSidebar = React.lazy(() => import('./InAppSidebar').then(module => ({ default: module.InAppSidebar })));
 const CommandPalette = React.lazy(() => import('./CommandPalette').then(module => ({ default: module.CommandPalette })));
 const InstructionPanel = React.lazy(() => import('@/components/dashboard/shared/InstructionPanel').then(module => ({ default: module.InstructionPanel })));
@@ -171,21 +170,12 @@ function MainLayoutContent() {
               >
                 <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
                   <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
-                    {activeApp ? (
-                      <InAppSidebar 
-                        isMobileDrawer={true} 
-                        onClose={() => setIsMobileMenuOpen(false)} 
-                        isCollapsed={false} 
-                        onToggleCollapse={() => {}} 
-                      />
-                    ) : (
-                      <Sidebar 
-                        isOpen={true} 
-                        onClose={() => setIsMobileMenuOpen(false)} 
-                        onToggle={() => {}} 
-                        isInline={true}
-                      />
-                    )}
+                    <InAppSidebar 
+                      isMobileDrawer={true} 
+                      onClose={() => setIsMobileMenuOpen(false)} 
+                      isCollapsed={false} 
+                      onToggleCollapse={() => {}} 
+                    />
                   </Suspense>
                 </div>
               </motion.aside>

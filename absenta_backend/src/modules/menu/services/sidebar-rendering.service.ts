@@ -226,8 +226,8 @@ export class SidebarRenderingService {
         type: (m.name === 'divider' && !m.path) ? 'divider' : null,
         icon: m.icon, 
         order: m.order, 
-        locked: isLocked,
-        feature_state: featureState,
+        locked: false,
+        feature_state: FeatureState.ACTIVE,
         required_features: requiredFeatures,
         required_capability: m.required_capability, 
         children: [] as any[] 

@@ -13,7 +13,6 @@ import Breadcrumb, { type BreadcrumbItem } from '@/components/ui/Breadcrumb';
 // Impor komponen standardisasi hardening terpusat tingkat layout
 import { InfraErrorBoundary } from '../superadmin/infra/InfraErrorBoundary';
 import { HardeningInspector } from '../superadmin/infra/InfraSharedComponents';
-import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
 import { getHardeningConfig } from '../../config/hardeningRegistry';
 import auditReport from '../../config/hardeningAuditReport.json';
 import { useTvStore } from '@/store/tvStore';
@@ -346,8 +345,7 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
               )
             )}
 
-            {/* Bilah Navigasi Menu Terkait Otomatis Sejajar (Desktop / Tablet Topbar) */}
-            <RelatedModuleNavPills className="hidden sm:flex" />
+            {/* Bilah Status Hardening Dev Audit */}
 
             {hardeningConfig && resolvedKey && (
               <div className="hidden sm:block">

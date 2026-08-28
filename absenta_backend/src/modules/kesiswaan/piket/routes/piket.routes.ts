@@ -7,9 +7,8 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function piketRoutes(fastify: any) {
   const controller = new PiketController();
 
-  // ── Izin Keluar Siswa (Piket) ──
   fastify.get('/', {
-    preHandler: [requireCapability(['attendance.piket.view', 'attendance.gate.scan']), elevatedScopeMiddleware, determineDataScope()],
+    preHandler: [requireCapability(['attendance.piket.view', 'attendance.gate.scan', 'attendance.piket.manage', 'affairs.violations.view.list', 'dashboard.view.kesiswaan', 'core.sekolah.view.profile']), elevatedScopeMiddleware, determineDataScope()],
     handler: controller.getIzinHarian.bind(controller)
   });
 

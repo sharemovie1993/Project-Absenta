@@ -90,7 +90,7 @@ export async function seedCore(tenantId: string) {
     }
 
     // 1.5 Create Tenant Admin
-    const roleAdmin = await prisma.role.findFirst({ where: { name: 'ADMIN', tenant_id: null } });
+    const roleAdmin = await prisma.role.findFirst({ where: { name: 'ADMIN', OR: [{ tenant_id: tenantId }, { tenant_id: null }] } });
     if (!roleAdmin) throw new Error('Role ADMIN not found');
 
     const adminPassword = await bcrypt.hash('admin123', 10);
@@ -113,7 +113,7 @@ export async function seedCore(tenantId: string) {
 
     // 2. Create Guru (5 Data)
     // Need Role GURU
-    const roleGuru = await prisma.role.findFirst({ where: { name: 'GURU', tenant_id: null } });
+    const roleGuru = await prisma.role.findFirst({ where: { name: 'GURU', OR: [{ tenant_id: tenantId }, { tenant_id: null }] } });
     if (!roleGuru) throw new Error('Role GURU not found');
 
     const hashedPassword = await bcrypt.hash('guru123', 10);
@@ -158,7 +158,7 @@ export async function seedCore(tenantId: string) {
     // 3. Create Siswa (20 Data)
     // Need Role SISWA (Optional, usually Siswa don't need User account immediately, but for Login they do)
     // We will create User for Siswa too for completeness of "Unified Login"
-    const roleSiswa = await prisma.role.findFirst({ where: { name: 'SISWA', tenant_id: null } });
+    const roleSiswa = await prisma.role.findFirst({ where: { name: 'SISWA', OR: [{ tenant_id: tenantId }, { tenant_id: null }] } });
     if (!roleSiswa) throw new Error('Role SISWA not found');
     
     const siswaPassword = await bcrypt.hash('raka1234', 10);

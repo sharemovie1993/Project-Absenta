@@ -24,12 +24,15 @@ import { MODULE_REGISTRY } from '@/config/module.registry';
 import { useTvStore } from '@/store/tvStore';
 import { useJenjang } from '../../hooks/useJenjang';
 import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
+import type { AbsentaApp } from '@/config/absentaAppsRegistry';
 
-interface SidebarProps {
+export interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onToggle: () => void;
   isInline?: boolean;
+  activeApp?: AbsentaApp | null;
+  inAppMode?: boolean;
 }
 
 const getIconColor = (label: string, path: string, isActive: boolean) => {
@@ -183,7 +186,7 @@ const hasBackendPathAccess = (
   return checkNodes(menuTree);
 };
 
-export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false }: SidebarProps) => {
+export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false, activeApp, inAppMode = false }: SidebarProps) => {
   const { user, subscription, token, logout } = useAuthStore();
   const navigate = useNavigate();
   const { isTvMode } = useTvStore();
@@ -446,6 +449,39 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
   const getFilteredNavigation = () => {
     const sorted = sortTree(menuTree);
     const mapped = mapToNavItems(sorted);
+
+    // 0. Filter khusus In-App Mode (Google Persona Sub-Application)
+    if (inAppMode && activeApp) {
+      const appPrefixes = activeApp.pathPrefixes.map(p => p.toLowerCase());
+      const catKey = activeApp.category.toUpperCase();
+
+      const matchedRoots = mapped.filter(root => {
+        const rName = String(root.label || '').toUpperCase().trim();
+        if (rName === catKey) return true;
+        if (catKey === 'DATA MASTER' && (rName === 'DATA MASTER' || rName === 'AKADEMIK')) return true;
+        if (activeApp.id === 'kurikulum' && (rName.includes('KURIKULUM') || rName.includes('RAPOR') || rName.includes('CBT'))) return true;
+        if (activeApp.id === 'settings' && (rName.includes('SISTEM') || rName.includes('PENGATURAN'))) return true;
+        
+        const hasChildPath = (node: NavItem): boolean => {
+          const np = (node.path || '').toLowerCase();
+          if (np && appPrefixes.some(pref => np.startsWith(pref))) return true;
+          if (node.children && node.children.length > 0) return node.children.some(hasChildPath);
+          return false;
+        };
+        return hasChildPath(root);
+      });
+
+      const inAppItems: NavItem[] = [];
+      matchedRoots.forEach(root => {
+        if (root.children && root.children.length > 0) {
+          inAppItems.push(...root.children);
+        } else {
+          inAppItems.push(root);
+        }
+      });
+
+      return cleanEmptyParents(inAppItems.length > 0 ? inAppItems : matchedRoots);
+    }
 
     const isAdmin = String(user?.role?.name || '').toUpperCase() === 'ADMIN' || 
                     String(user?.role?.name || '').toUpperCase() === 'SUPERADMIN' || 
@@ -1148,36 +1184,38 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
         {/* Navigation */}
         <nav className={cn("flex-1", isOpen ? "p-3 sm:p-4" : "lg:p-2 p-3")}>
           {/* Domain Workspace Top Bar in Sidebar */}
-          {isOpen ? (
-            <div className="space-y-2 mb-3">
-              {/* Back to Central Dashboard Button */}
-              <Link
-                to="/dashboard?tab=ringkasan"
-                className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs transition-all duration-150 group cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <ChevronLeft size={15} className="text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
-                  <span>Kembali ke Dasbor</span>
-                </div>
-                <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">ESC / ⌂</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="mb-3 flex flex-col items-center gap-2">
-              <Tooltip content="Kembali ke Dasbor Utama" position="right">
+          {!inAppMode && (
+            isOpen ? (
+              <div className="space-y-2 mb-3">
+                {/* Back to Central Dashboard Button */}
                 <Link
                   to="/dashboard?tab=ringkasan"
-                  className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                  className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black text-slate-700 dark:text-slate-200 bg-slate-100/90 hover:bg-slate-200/90 dark:bg-slate-800/90 dark:hover:bg-slate-700/90 border border-slate-200/80 dark:border-slate-700/80 shadow-xs transition-all duration-150 group cursor-pointer"
                 >
-                  <Home size={18} />
+                  <div className="flex items-center gap-2">
+                    <ChevronLeft size={15} className="text-slate-500 group-hover:-translate-x-0.5 transition-transform" />
+                    <span>Kembali ke Dasbor</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">ESC / ⌂</span>
                 </Link>
-              </Tooltip>
-              <Tooltip content={`Ruang Kerja ${currentWorkspaceInfo.label}`} position="right">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center border border-slate-700">
-                  {React.createElement(currentWorkspaceInfo.icon || LayoutGrid, { size: 18 })}
-                </div>
-              </Tooltip>
-            </div>
+              </div>
+            ) : (
+              <div className="mb-3 flex flex-col items-center gap-2">
+                <Tooltip content="Kembali ke Dasbor Utama" position="right">
+                  <Link
+                    to="/dashboard?tab=ringkasan"
+                    className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center transition-colors"
+                  >
+                    <Home size={18} />
+                  </Link>
+                </Tooltip>
+                <Tooltip content={`Ruang Kerja ${currentWorkspaceInfo.label}`} position="right">
+                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center border border-slate-700">
+                    {React.createElement(currentWorkspaceInfo.icon || LayoutGrid, { size: 18 })}
+                  </div>
+                </Tooltip>
+              </div>
+            )
           )}
 
           {isLoadingTree && (

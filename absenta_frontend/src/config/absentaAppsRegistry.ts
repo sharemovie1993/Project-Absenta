@@ -4,12 +4,6 @@ import {
   LucideIcon
 } from 'lucide-react';
 
-export interface AppActionButton {
-  label: string;
-  path: string;
-  icon?: string;
-}
-
 export interface AbsentaApp {
   id: string;
   name: string;
@@ -25,9 +19,6 @@ export interface AbsentaApp {
   };
   defaultPath: string;
   pathPrefixes: string[];
-  requiredCapabilities: string[];
-  requiredFeatures?: string[];
-  actionButton?: AppActionButton;
   category: string;
 }
 
@@ -47,20 +38,8 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-blue-600 to-indigo-600',
     },
     defaultPath: '/academic/siswa',
-    pathPrefixes: ['/academic', '/master', '/data-master', '/siswa', '/guru', '/kelas'],
-    requiredCapabilities: [
-      'academic.students.view.list',
-      'academic.manage.academic',
-      'academic.teachers.view.list',
-      'academic.classes.view.list',
-      'academic.subjects.view.list'
-    ],
-    requiredFeatures: ['CORE'],
-    actionButton: {
-      label: '+ Tambah Siswa',
-      path: '/academic/siswa?action=create',
-    },
-    category: 'AKADEMIK',
+    pathPrefixes: ['/academic', '/master', '/data-master', '/siswa', '/guru', '/kelas', '/documents', '/tahun-pelajaran', '/semester', '/jurusan', '/mapel'],
+    category: 'DATA MASTER',
   },
 
   // 2. Presensi
@@ -78,23 +57,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-emerald-600 to-teal-600',
     },
     defaultPath: '/attendance/dashboard',
-    pathPrefixes: ['/attendance'],
-    requiredCapabilities: [
-      'attendance.sessions.view.list',
-      'attendance.recap.view.daily',
-      'attendance.recap.view.monthly',
-      'attendance.recap.view.global',
-      'attendance.monitoring.view.live.status',
-      'attendance.manage.session',
-      'attendance.gate.scan',
-      'attendance.gate.tap.entry',
-      'academic.teaching.view'
-    ],
-    requiredFeatures: ['ABSENSI'],
-    actionButton: {
-      label: '+ Buka Sesi KBM',
-      path: '/attendance/ops',
-    },
+    pathPrefixes: ['/attendance', '/absensi', '/presensi'],
     category: 'ABSENSI',
   },
 
@@ -113,21 +76,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-indigo-600 to-violet-600',
     },
     defaultPath: '/kurikulum/jadwal',
-    pathPrefixes: ['/kurikulum'],
-    requiredCapabilities: [
-      'academic.schedules.view.list',
-      'academic.schedules.manage',
-      'academic.teaching.view',
-      'academic.manage.academic',
-      'curriculum.supervision.manage',
-      'academic.structures.view.list',
-      'academic.years.view.list'
-    ],
-    requiredFeatures: ['CORE'],
-    actionButton: {
-      label: '+ Susun Jadwal',
-      path: '/kurikulum/jadwal',
-    },
+    pathPrefixes: ['/kurikulum', '/cbt', '/rapor', '/jadwal', '/jam-kbm', '/supervisi', '/kosp'],
     category: 'KURIKULUM',
   },
 
@@ -146,21 +95,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-amber-500 to-orange-600',
     },
     defaultPath: '/kesiswaan/monitoring',
-    pathPrefixes: ['/kesiswaan'],
-    requiredCapabilities: [
-      'affairs.violations.view.list',
-      'affairs.violations.manage',
-      'attendance.piket.view',
-      'attendance.piket.manage',
-      'affairs.achievements.view.list',
-      'dashboard.view.kesiswaan',
-      'affairs.violation.types.manage'
-    ],
-    requiredFeatures: ['CORE'],
-    actionButton: {
-      label: '+ Catat Izin / Kasus',
-      path: '/kesiswaan/piket',
-    },
+    pathPrefixes: ['/kesiswaan', '/affairs', '/pelanggaran', '/prestasi', '/piket'],
     category: 'KESISWAAN',
   },
 
@@ -179,21 +114,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-rose-600 to-pink-600',
     },
     defaultPath: '/bpbk/dashboard',
-    pathPrefixes: ['/bpbk'],
-    requiredCapabilities: [
-      'bk.cases.view.list',
-      'bk.counseling.view.list',
-      'bk.assessment.view.list',
-      'bk.summons.view.list',
-      'bk.homevisit.view.list',
-      'bk.referrals.view.list',
-      'bk.reports.view'
-    ],
-    requiredFeatures: ['BPBK'],
-    actionButton: {
-      label: '+ Sesi Konseling',
-      path: '/bpbk/konseling',
-    },
+    pathPrefixes: ['/bpbk', '/bk', '/konseling', '/bimbingan'],
     category: 'BP/BK',
   },
 
@@ -212,18 +133,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-cyan-600 to-blue-600',
     },
     defaultPath: '/correspondence/dashboard',
-    pathPrefixes: ['/correspondence'],
-    requiredCapabilities: [
-      'correspondence.inbox.view',
-      'correspondence.outbox.view',
-      'correspondence.inbox.create',
-      'correspondence.outbox.create'
-    ],
-    requiredFeatures: ['CORE'],
-    actionButton: {
-      label: '+ Buat Surat Keluar',
-      path: '/correspondence/surat-keluar',
-    },
+    pathPrefixes: ['/correspondence', '/surat', '/persuratan'],
     category: 'PERSURATAN',
   },
 
@@ -242,19 +152,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-emerald-600 to-green-600',
     },
     defaultPath: '/chatlog',
-    pathPrefixes: ['/chatlog', '/whatsapp', '/communication'],
-    requiredCapabilities: [
-      'whatsapp.manage.config',
-      'whatsapp.view.log',
-      'notifications.view',
-      'whatsapp.queue.manage',
-      'notifications.settings.manage'
-    ],
-    requiredFeatures: ['WHATSAPP_SERVICE'],
-    actionButton: {
-      label: '+ Kirim Broadcast',
-      path: '/chatlog',
-    },
+    pathPrefixes: ['/chatlog', '/whatsapp', '/communication', '/notifications'],
     category: 'WHATSAPP',
   },
 
@@ -273,21 +171,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-orange-500 to-amber-600',
     },
     defaultPath: '/cooperative/dashboard',
-    pathPrefixes: ['/cooperative'],
-    requiredCapabilities: [
-      'cooperative.pos.view',
-      'cooperative.pos.cashier',
-      'cooperative.savings.view',
-      'cooperative.loans.view',
-      'cooperative.accounting.view',
-      'tu.finance.view',
-      'cooperative.shu.manage'
-    ],
-    requiredFeatures: ['KEUANGAN'],
-    actionButton: {
-      label: '+ Buka Kasir POS',
-      path: '/cooperative/pos',
-    },
+    pathPrefixes: ['/cooperative', '/koperasi', '/pos', '/savings', '/loans'],
     category: 'KOPERASI',
   },
 
@@ -306,20 +190,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-purple-600 to-indigo-600',
     },
     defaultPath: '/sarpras/dashboard',
-    pathPrefixes: ['/sarpras'],
-    requiredCapabilities: [
-      'sarpras.items.view',
-      'sarpras.items.manage',
-      'sarpras.rooms.view',
-      'sarpras.rooms.manage',
-      'sarpras.maintenance.view',
-      'sarpras.borrow.manage'
-    ],
-    requiredFeatures: ['SARPRAS'],
-    actionButton: {
-      label: '+ Tambah Aset',
-      path: '/sarpras/items',
-    },
+    pathPrefixes: ['/sarpras', '/fasilitas', '/inventory', '/ruangan'],
     category: 'SARPRAS',
   },
 
@@ -338,20 +209,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-teal-600 to-emerald-600',
     },
     defaultPath: '/hubin/dashboard',
-    pathPrefixes: ['/hubin', '/pkl'],
-    requiredCapabilities: [
-      'hubin.internship.view',
-      'hubin.internship.manage',
-      'hubin.bkk.view',
-      'hubin.bkk.manage',
-      'hubin.tracer.view',
-      'hubin.partners.view'
-    ],
-    requiredFeatures: ['HUBIN'],
-    actionButton: {
-      label: '+ Tambah Mitra PKL',
-      path: '/hubin/mitra',
-    },
+    pathPrefixes: ['/hubin', '/pkl', '/bkk', '/tracer', '/magang'],
     category: 'HUBIN',
   },
 
@@ -370,19 +228,8 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-slate-600 to-zinc-700',
     },
     defaultPath: '/settings/tenant',
-    pathPrefixes: ['/settings', '/pengaturan', '/role-management', '/user-management'],
-    requiredCapabilities: [
-      'tenant.manage.config',
-      'role.manage',
-      'system.platform.full_access',
-      'backup.manage'
-    ],
-    requiredFeatures: ['CORE'],
-    actionButton: {
-      label: '+ Kelola Pengguna',
-      path: '/user-management',
-    },
-    category: 'PENGATURAN',
+    pathPrefixes: ['/settings', '/pengaturan', '/users', '/user-management', '/role-management', '/management', '/superadmin'],
+    category: 'SISTEM',
   },
 ];
 
@@ -400,36 +247,13 @@ export function getActiveApp(pathname: string): AbsentaApp | null {
 }
 
 /**
- * Menyaring aplikasi yang boleh diakses pengguna berdasarkan kapabilitas & paket langganan
+ * Menyaring aplikasi yang boleh diakses pengguna (Semua Unlocked)
  */
 export function getVisibleApps(
-  userCapabilities: string[] = [],
-  activeFeatures: string[] = ['CORE', 'ABSENSI', 'BPBK', 'WHATSAPP_SERVICE', 'KEUANGAN', 'SARPRAS', 'HUBIN'],
-  roleName?: string
+  _userCapabilities: string[] = [],
+  _activeFeatures: string[] = [],
+  _roleName?: string
 ): AbsentaApp[] {
-  // Superadmin / Admin memiliki akses penuh ke semua aplikasi
-  const isSuperOrAdmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN';
-
-  return ABSENTA_APPS_REGISTRY.filter(app => {
-    // 1. Periksa Feature Flag Tenant
-    if (app.requiredFeatures && app.requiredFeatures.length > 0) {
-      const hasRequiredFeature = app.requiredFeatures.some(f => activeFeatures.includes(f));
-      if (!hasRequiredFeature && !isSuperOrAdmin) {
-        return false;
-      }
-    }
-
-    if (isSuperOrAdmin) return true;
-
-    // 2. Periksa RBAC Capabilities
-    if (!app.requiredCapabilities || app.requiredCapabilities.length === 0) {
-      return true;
-    }
-
-    return app.requiredCapabilities.some(cap => {
-      if (userCapabilities.includes(cap)) return true;
-      const domainPrefix = cap.split('.')[0];
-      return userCapabilities.some(userCap => userCap.startsWith(`${domainPrefix}.`));
-    });
-  });
+  // Tanpa restriksi RBAC frontend: Seluruh 11 aplikasi kanonikal selalu terbuka & dapat diakses
+  return ABSENTA_APPS_REGISTRY;
 }
