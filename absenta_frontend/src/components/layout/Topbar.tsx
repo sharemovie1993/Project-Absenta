@@ -264,11 +264,11 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 ml-auto shrink-0">
 
-          {/* 🔍 Cari Posisi Guru (Teacher Locator) */}
+          {/* 🔍 Cari Posisi Guru (Teacher Locator) - Desktop Only */}
           <button
             type="button"
             onClick={() => setLocatorModalOpen(true)}
-            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
+            className="hidden md:flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-indigo-500/10 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/60 dark:border-slate-700/60 text-xs font-bold transition-all cursor-pointer shadow-xs shrink-0"
             title="Cari Posisi Guru (Shortcut: Ctrl + G)"
           >
             <Search className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-indigo-500 shrink-0" />
@@ -276,10 +276,10 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             <kbd className="hidden lg:inline-block px-1 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[9px] font-mono text-slate-400">Ctrl+G</kbd>
           </button>
 
-          {/* 💬 Pusat Komunikasi Sekolah */}
+          {/* 💬 Pusat Komunikasi Sekolah - Desktop Only */}
           <Link
             to="/komunikasi"
-            className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="hidden md:flex relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             title="Pusat Komunikasi & Perpesanan Sekolah"
           >
             <MessageSquare className="w-5 h-5" />
@@ -290,8 +290,8 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             )}
           </Link>
 
-          {/* Notifications */}
-          <div className="relative">
+          {/* Notifications - Desktop Only */}
+          <div className="hidden md:block relative">
             <Button
               variant="ghost"
               size="sm"
@@ -461,25 +461,34 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             )}
           </div>
 
-          {/* Date Pill (Matching reference layout) */}
+          {/* Date Pill (Matching reference layout - Desktop Only) */}
           <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs border border-emerald-200/60 dark:border-emerald-800/60 shadow-2xs">
             <Calendar size={14} className="text-emerald-600 dark:text-emerald-400" />
             <span>{formattedToday}</span>
           </div>
 
-          {/* ⠶ Google 1:1 App Launcher (9-Dots) */}
+          {/* ⠶ Google 1:1 App Launcher (9-Dots) - Both Mobile & Desktop */}
           <AppLauncherDropdown />
 
-          <ThemeToggle />
+          {/* Theme Toggle - Desktop Only */}
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
 
-          {/* Clean Logout Door Button */}
+          {/* Clean Logout Door Button - Desktop Only */}
           <button
             onClick={handleLogout}
-            className="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shadow-2xs"
+            className="hidden md:flex items-center justify-center p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shadow-2xs"
             title="Keluar / Logout"
           >
             <LogOut size={18} />
           </button>
+
+          {/* 👤 Profile User Menu (Avatar Dropdown) - Both Mobile & Desktop */}
+          <UserMenu 
+            onOpenTeacherLocator={() => setLocatorModalOpen(true)}
+            onOpenNotifications={() => setOpen(true)}
+          />
         </div>
 
         {/* Notification Detail Modal */}

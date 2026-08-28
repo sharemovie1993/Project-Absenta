@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { User, Settings, LogOut, ChevronDown, Loader } from 'lucide-react';
+import { User, Settings, LogOut, ChevronDown, Loader, Search, MessageSquare, Bell, Moon, Sun } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
 import { cn } from '../../lib/utils';
@@ -10,12 +10,34 @@ import {
   listSiswaDocuments, listGuruDocuments, 
   getMemberDocPreviewUrl 
 } from '../../api/memberDocs.api';
+import { useTheme } from '../../hooks/useTheme';
+import { useNotifications } from '../../hooks/useNotifications';
+import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
+import toast from 'react-hot-toast';
 
-export function UserMenu() {
+export interface UserMenuProps {
+  onOpenTeacherLocator?: () => void;
+  onOpenNotifications?: () => void;
+}
+
+export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenuProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, logout, isLoading } = useAuthStore();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const { unreadCount: notifUnreadCount } = useNotifications({ pollIntervalMs: 60000 });
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const isDarkMode = theme === 'dark-default';
+
+  // 💬 Pusat Komunikasi Unread Count
+  const { data: commUnreadCount = 0 } = useQuery({
+    queryKey: communicationKeys.unreadCount(),
+    queryFn: () => internalCommunicationApi.getUnreadCount(),
+    enabled: !!user?.id,
+    staleTime: 15 * 1000,
+    refetchInterval: 20 * 1000
+  });
 
   const roleName = user?.role?.name || '';
   const isSiswa = roleName === 'SISWA';
@@ -82,6 +104,8 @@ export function UserMenu() {
   const handleLogout = () => {
     logout();
     setIsOpen(false);
+    navigate('/login');
+    toast.success('Berhasil keluar dari akun!');
   };
 
   if (isLoading) {
@@ -98,22 +122,20 @@ export function UserMenu() {
   return (
     <div className="relative" ref={menuRef}>
       {/* User Button */}
-      <Button
-        variant="outline"
-        size="sm"
+      <button
         onClick={() => setIsOpen(!isOpen)}
         aria-label="Menu Pengguna"
         aria-expanded={isOpen}
-        className="flex items-center space-x-2 px-2.5 h-9 rounded-xl border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800 transition-all"
+        className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs cursor-pointer group"
       >
         {fotoUrl ? (
           <img 
             src={fotoUrl} 
             alt={user?.full_name} 
-            className="w-7 h-7 rounded-full object-cover shadow-sm border border-slate-100 dark:border-slate-800" 
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-cover shadow-xs border border-slate-100 dark:border-slate-800 shrink-0" 
           />
         ) : (
-          <div className="w-7 h-7 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white text-xs font-black shadow-sm">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-xl flex items-center justify-center text-white text-xs font-black shadow-xs shrink-0">
             {initialChar}
           </div>
         )}
@@ -126,66 +148,151 @@ export function UserMenu() {
           </div>
         </div>
         <ChevronDown className={cn(
-          "w-3.5 h-3.5 text-slate-400 transition-transform duration-200",
+          "w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-transform duration-200 shrink-0 hidden sm:block",
           isOpen && "rotate-180"
         )} />
-      </Button>
+      </button>
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-850 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* User Info */}
-          <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-800/60 flex items-center gap-3">
+        <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          {/* User Info Header */}
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
             {fotoUrl ? (
               <img 
                 src={fotoUrl} 
                 alt={user?.full_name} 
-                className="w-9 h-9 rounded-full object-cover border border-slate-100 dark:border-slate-800 shadow-sm" 
+                className="w-10 h-10 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 shadow-sm shrink-0" 
               />
             ) : (
-              <div className="w-9 h-9 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-full flex items-center justify-center text-white text-sm font-black shadow-sm">
+              <div className="w-10 h-10 bg-gradient-to-tr from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center text-white text-sm font-black shadow-sm shrink-0">
                 {initialChar}
               </div>
             )}
-            <div className="min-w-0">
-              <div className="text-xs font-black text-slate-850 dark:text-white truncate">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                 {user?.full_name || 'User'}
               </div>
-              <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
-                {user?.role?.name || 'SISWA'}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="px-1.5 py-0.5 rounded-md text-[9px] font-extrabold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800">
+                  {user?.role?.name || 'SISWA'}
+                </span>
+                <span className="text-[10px] text-slate-400 truncate">
+                  {user?.username || user?.email || ''}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Menu Items */}
-          <div className="py-1 px-1.5 space-y-0.5">
+          {/* Menu Items List */}
+          <div className="py-1.5 px-2 space-y-1">
+            {/* Profil Saya */}
             <button
               onClick={() => { setIsOpen(false); navigate('/profile'); }}
-              className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+              className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
             >
-              <User className="w-3.5 h-3.5 mr-2.5 text-slate-400" />
-              Profil Saya
+              <User className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+              <span>Profil Saya</span>
+            </button>
+
+            {/* 🔍 Cari Posisi Guru */}
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                if (onOpenTeacherLocator) {
+                  onOpenTeacherLocator();
+                } else {
+                  navigate('/attendance/live-status');
+                }
+              }}
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
+            >
+              <div className="flex items-center">
+                <Search className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />
+                <span>Cari Posisi Guru</span>
+              </div>
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">Ctrl+G</span>
+            </button>
+
+            {/* 💬 Pusat Komunikasi */}
+            <button
+              onClick={() => { setIsOpen(false); navigate('/komunikasi'); }}
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
+            >
+              <div className="flex items-center">
+                <MessageSquare className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" />
+                <span>Pusat Komunikasi</span>
+              </div>
+              {commUnreadCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded-full bg-blue-600 text-white min-w-[18px] text-center">
+                  {commUnreadCount > 99 ? '99+' : commUnreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* 🔔 Notifikasi */}
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                if (onOpenNotifications) {
+                  onOpenNotifications();
+                } else {
+                  navigate('/dashboard');
+                }
+              }}
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
+            >
+              <div className="flex items-center">
+                <Bell className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-amber-500 dark:group-hover:text-amber-400 transition-colors" />
+                <span>Notifikasi</span>
+              </div>
+              {notifUnreadCount > 0 && (
+                <span className="px-1.5 py-0.5 text-[9.5px] font-black rounded-full bg-rose-500 text-white min-w-[18px] text-center">
+                  {Math.min(notifUnreadCount, 99)}
+                </span>
+              )}
+            </button>
+
+            {/* 🌓 Mode Tema Tampilan */}
+            <button
+              onClick={() => {
+                toggleTheme();
+              }}
+              className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
+            >
+              <div className="flex items-center">
+                {isDarkMode ? (
+                  <Moon className="w-4 h-4 mr-2.5 text-indigo-400" />
+                ) : (
+                  <Sun className="w-4 h-4 mr-2.5 text-amber-500" />
+                )}
+                <span>Tema: {isDarkMode ? 'Gelap' : 'Terang'}</span>
+              </div>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+                {isDarkMode ? '🌙 Gelap' : '☀️ Terang'}
+              </span>
             </button>
             
             {/* RBAC Protected Settings Menu (Excludes SISWA) */}
             {user?.role?.name !== 'SISWA' && (user?.capabilities?.some(cap => cap.startsWith('core.system.')) || user?.role?.name === 'SUPERADMIN') && (
               <button
                 onClick={() => { setIsOpen(false); navigate('/settings'); }}
-                className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors"
+                className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
               >
-                <Settings className="w-3.5 h-3.5 mr-2.5 text-slate-400" />
-                Pengaturan Sistem
+                <Settings className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+                <span>Pengaturan Sistem</span>
               </button>
             )}
 
-            <div className="border-t border-slate-50 dark:border-slate-800/60 my-1 mx-2.5"></div>
+            <div className="border-t border-slate-100 dark:border-slate-800 my-1 mx-2"></div>
 
+            {/* Logout */}
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-3 py-2 text-xs font-bold text-red-650 hover:bg-red-50/50 dark:hover:bg-red-950/20 rounded-xl transition-colors"
+              className="flex items-center w-full px-3 py-2 text-xs font-black text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors group cursor-pointer"
             >
-              <LogOut className="w-3.5 h-3.5 mr-2.5 text-red-400" />
-              Keluar Sesi
+              <LogOut className="w-4 h-4 mr-2.5 text-rose-500 group-hover:translate-x-0.5 transition-transform" />
+              <span>Keluar Sesi</span>
             </button>
           </div>
         </div>
@@ -193,3 +300,6 @@ export function UserMenu() {
     </div>
   );
 }
+
+export default UserMenu;
+
