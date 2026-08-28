@@ -134,7 +134,8 @@ export default function CommunicationCenterPage() {
   });
 
   const threads = useMemo(() => {
-    return (threadsData?.data || []) as InternalThreadItem[];
+    if (Array.isArray(threadsData)) return threadsData;
+    return ((threadsData as any)?.data || []) as InternalThreadItem[];
   }, [threadsData]);
 
   // ── Socket realtime thread update ─────────────────────────────────────────

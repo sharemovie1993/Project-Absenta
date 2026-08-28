@@ -100,7 +100,9 @@ export interface SendMessagePayload {
 
 export const communicationKeys = {
   all: ['internal-communication'] as const,
+  allThreads: ['internal-communication', 'threads'] as const,
   threads: (filters?: Record<string, any>) => [...communicationKeys.all, 'threads', filters] as const,
+  threadList: (filters?: Record<string, any>) => [...communicationKeys.all, 'threads', filters] as const,
   messages: (threadId: string) => [...communicationKeys.all, 'messages', threadId] as const,
   contacts: () => [...communicationKeys.all, 'contacts'] as const,
   unreadCount: () => [...communicationKeys.all, 'unread-count'] as const,
