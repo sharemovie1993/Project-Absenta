@@ -373,10 +373,19 @@ export async function getTrackingHarianSiswa(
   });
 }
 export async function getStatistikHarian(
-  params: { tanggal: string; tahun_pelajaran_id?: string }
+  params?: { tanggal?: string; tahun_pelajaran_id?: string } | string
 ): Promise<{ success: boolean; message: string; data: Array<{ kelas: string; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number }> }> {
+  let p: { tanggal: string; tahun_pelajaran_id?: string };
+  const today = toLocalDate();
+  if (typeof params === 'string') {
+    p = { tanggal: params || today };
+  } else if (params && typeof params === 'object') {
+    p = { tanggal: params.tanggal || today, tahun_pelajaran_id: params.tahun_pelajaran_id };
+  } else {
+    p = { tanggal: today };
+  }
   return requestWithFallback<{ success: boolean; message: string; data: Array<{ kelas: string; HADIR: number; IZIN: number; SAKIT: number; ALPA: number; TERLAMBAT: number }> }>('get', `/attendance/rekap/statistik/harian`, { 
-    params,
+    params: p,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }
