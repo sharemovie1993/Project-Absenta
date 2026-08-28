@@ -96,7 +96,6 @@ import {
   ClipboardList,
   Award,
   Inbox,
-  Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -120,7 +119,6 @@ const iconMap: Record<string, LucideIcon> = {
   Award,
   Inbox,
   Tool: Wrench,
-  Wrench,
   User,
   CreditCard,
   Layers,
