@@ -198,26 +198,32 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
         </div>
       </div>
 
-      {/* ─── Baris 2: Tombol Pilihan Mapel (Pill-Button Launcher Ramping) ──────── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
+      {/* ─── Baris 2: Kartu Pilihan Mapel (Mini App-Launcher Cards) ─────────── */}
+      <div className="flex items-stretch gap-1.5 overflow-x-auto py-1 no-scrollbar">
         {/* Tombol ALL untuk Manajemen (Kepsek/Kurikulum) */}
         {isManagement && (
           <button
             type="button"
             onClick={onSelectAll}
-            className={`group shrink-0 flex items-center gap-1.5 py-1.5 px-3 rounded-xl border text-xs font-black transition-all ${
+            className={`group shrink-0 flex flex-col items-center justify-center py-1.5 px-1 w-[70px] sm:w-[78px] rounded-xl border text-center transition-all ${
               isAllSelected
-                ? 'bg-blue-600 text-white border-blue-600 shadow-2xs ring-1 ring-blue-400/40'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-1 ring-blue-400/40'
                 : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 hover:bg-blue-50/40'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
-            <span>SEMUA</span>
-            <span className={`text-[9px] font-bold ${isAllSelected ? 'text-blue-100' : 'text-slate-400'}`}>(Supervisi)</span>
+            <div className={`p-1 rounded-md mb-0.5 transition-transform ${isAllSelected ? 'bg-white/20 text-white' : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 group-hover:scale-105'}`}>
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            <div className="text-[9px] sm:text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+              SEMUA
+            </div>
+            <div className={`text-[7.5px] sm:text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${isAllSelected ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
+              (Supervisi)
+            </div>
           </button>
         )}
 
-        {/* Kartu Tombol Guru Mapel Pribadi (Horizontal Pill Style) */}
+        {/* Kartu Guru Mapel Pribadi (Mini Card Style) */}
         {cards.length > 0 ? (
           cards.map((card) => {
             const isActive = !isAllSelected && card.mapelId === mapelId && card.kelasId === kelasId;
@@ -226,22 +232,32 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                 key={card.id}
                 type="button"
                 onClick={() => onSelectCard(card)}
-                className={`group shrink-0 flex items-center gap-1.5 py-1.5 px-3 rounded-xl border text-xs transition-all ${
+                className={`group shrink-0 flex flex-col items-center justify-center py-1.5 px-1 w-[70px] sm:w-[78px] rounded-xl border text-center transition-all ${
                   isActive
-                    ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500/40 shadow-2xs font-black'
+                    ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500/40 shadow-xs font-black'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50 font-bold'
                 }`}
               >
-                <BookOpen className={`w-3.5 h-3.5 ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                <span className="uppercase tracking-tight">{card.mapelName}</span>
-                <span className={`text-[9.5px] font-extrabold ${isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400'}`}>
+                <div className={`p-1 rounded-md mb-0.5 transition-all ${
+                  isActive
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:bg-indigo-50 group-hover:scale-105'
+                }`}>
+                  <BookOpen className="w-3.5 h-3.5" />
+                </div>
+                <div className="text-[9px] sm:text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+                  {card.mapelName}
+                </div>
+                <div className={`text-[7.5px] sm:text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${
+                  isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
+                }`}>
                   ({card.kelasName})
-                </span>
+                </div>
               </button>
             );
           })
         ) : !isManagement ? (
-          <div className="py-1 px-3 rounded-lg bg-slate-100/80 dark:bg-slate-800/60 text-slate-400 text-xs font-medium">
+          <div className="py-1.5 px-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 text-slate-400 text-xs font-medium">
             Tidak ada jadwal mengajar pada tahun pelajaran ini.
           </div>
         ) : null}
@@ -266,8 +282,8 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
             </Suspense>
           </div>
 
-          {/* Langkah 2: Klik Mapel di Kelas Tersebut */}
-          <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar">
+          {/* Langkah 2: Klik Mapel di Kelas Tersebut (Mini Cards) */}
+          <div className="flex items-center gap-1.5 flex-1 overflow-x-auto no-scrollbar py-0.5">
             <span className="flex items-center justify-center w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-black shrink-0">2</span>
             {classMapelList.length > 0 ? (
               classMapelList.map((m) => {
@@ -277,18 +293,22 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                     key={m.mapelId}
                     type="button"
                     onClick={() => setMapelId(m.mapelId)}
-                    className={`group shrink-0 flex items-center gap-1.5 py-1 px-2.5 rounded-lg border text-xs transition-all ${
+                    className={`group shrink-0 flex flex-col items-center justify-center py-1.5 px-1 w-[70px] sm:w-[78px] rounded-xl border text-center transition-all ${
                       isMapelActive
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-black'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-1 ring-indigo-400/40 font-black'
                         : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300 font-bold'
                     }`}
                   >
-                    <BookOpen className="w-3 h-3" />
-                    <span>{m.mapelName}</span>
+                    <div className={`p-1 rounded-md mb-0.5 transition-transform ${isMapelActive ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 group-hover:scale-105'}`}>
+                      <BookOpen className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="text-[9px] sm:text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+                      {m.mapelName}
+                    </div>
                     {m.guruName && (
-                      <span className={`text-[8.5px] font-normal ${isMapelActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                      <div className={`text-[7.5px] font-normal mt-0.5 line-clamp-1 leading-tight ${isMapelActive ? 'text-indigo-100' : 'text-slate-400'}`}>
                         ({m.guruName.split(',')[0]})
-                      </span>
+                      </div>
                     )}
                   </button>
                 );
