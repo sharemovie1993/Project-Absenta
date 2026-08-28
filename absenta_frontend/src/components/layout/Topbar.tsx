@@ -269,6 +269,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
           title={cleanMessage(selectedNotification?.subject) || 'Detail Notifikasi'}
           size="md"
         >
+          <div className="space-y-4">
             <div className="flex items-center gap-3 mb-4">
               <div className={`p-2 rounded-full flex items-center justify-center ${selectedNotification ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
                 {selectedNotification && getNotificationIcon(selectedNotification.type, selectedNotification.status)}
