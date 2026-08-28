@@ -100,7 +100,7 @@ export const RekapPage: React.FC<{ initialTab?: RekapTab }> = React.memo(({ init
             hardeningModuleKey="rekappage"
           >
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-              <div className="space-y-6 w-full min-w-0 max-w-full">
+              <div className="space-y-3 w-full min-w-0 max-w-full">
                 {/* Reusable TabSwitcher (Pilar 30) */}
                 <TabSwitcher
                   tabs={tabs}

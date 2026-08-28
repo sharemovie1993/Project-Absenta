@@ -492,9 +492,9 @@ export function RekapBulananMapelContent() {
   const safeRows = Array.isArray(rows) ? rows : [];
 
   return (
-    <SectionCard title="Hasil Rekapitulasi Presensi Per Mata Pelajaran" icon={BookOpen} fullWidth noPadding>
+    <div className="space-y-2.5">
       {/* TOOLBAR */}
-      <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/10">
+      <div className="p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
         <RekapBulananMapelToolbar
           kelasId={kelasId}
           mapelId={mapelId}
@@ -525,7 +525,7 @@ export function RekapBulananMapelContent() {
       </div>
 
       {/* TABEL */}
-      <div className="bg-white dark:bg-slate-900 overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800 p-2">
+      <div className="bg-white dark:bg-slate-900 overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2 shadow-2xs">
         <Suspense fallback={<div className="p-8 text-center"><Loader size="lg" /></div>}>
           <Table
             columns={columns}
@@ -554,7 +554,7 @@ export function RekapBulananMapelContent() {
           onClose={() => setPdfPreviewUrl(null)}
         />
       )}
-    </SectionCard>
+    </div>
   );
 }
 
