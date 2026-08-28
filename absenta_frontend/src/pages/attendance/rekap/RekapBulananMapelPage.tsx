@@ -6,6 +6,8 @@ import toast from 'react-hot-toast';
 import { SectionCard, Loader, Alert, AlertDescription } from '../../../components/ui';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapBulananMapel } from '../../../api/attendanceGerbang.api';
+import { guruApi } from '../../../api/academic.api';
+import { listGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import { sekolahApi, type Sekolah } from '../../../api/academic/sekolah.api';
 import { getTenantById, type Tenant } from '../../../api/tenants.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../../api/academic/strukturOrganisasi.api';
@@ -83,6 +85,29 @@ export function RekapBulananMapelContent() {
   const subFeatures = subRecord?.features ?? subRecord?.Plan?.features_json ?? subRecord?.plan?.features_json ?? [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
+  // Query Profil Guru
+  const { data: myGuruData } = useQuery({
+    queryKey: ['my-guru-profile-mapel-rekap', user?.id],
+    queryFn: async () => {
+      const res = await guruApi.getMe().catch(() => null);
+      if (res?.data) return res.data;
+      const allRes = await guruApi.getAll({ limit: 1, ...({ user_id: user?.id } as any) }).catch(() => null);
+      return allRes?.data?.[0] || null;
+    },
+    enabled: !!user?.id && (user?.role?.name === 'GURU' || (user as any)?.role === 'GURU'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const myGuruId = myGuruData?.id;
+
+  // Query Penugasan GuruMapel Guru yang Login
+  const { data: myGuruMapelData } = useQuery({
+    queryKey: ['my-guru-mapel-assignments', myGuruId],
+    queryFn: () => listGuruMapel({ guru_id: myGuruId }),
+    enabled: !!myGuruId,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // Dropdowns Query
   const dropdownsQuery = useQuery({
     queryKey: ['rekap-bulanan-mapel-dropdowns'],
@@ -107,12 +132,57 @@ export function RekapBulananMapelContent() {
     if (dropdownsQuery.data) {
       setTahunOptions(dropdownsQuery.data.tahun);
       if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
-      setKelasOptions(dropdownsQuery.data.kelas);
-      if (!kelasId && dropdownsQuery.data.kelas.length > 0) setKelasId(dropdownsQuery.data.kelas[0].value);
-      setMapelOptions(dropdownsQuery.data.mapel);
-      if (!mapelId && dropdownsQuery.data.mapel.length > 0) setMapelId(dropdownsQuery.data.mapel[0].value);
+
+      const rawMapel = dropdownsQuery.data.mapel || [];
+      const rawKelas = dropdownsQuery.data.kelas || [];
+
+      const assignedList = Array.isArray(myGuruMapelData?.data) ? myGuruMapelData.data : [];
+      const taughtMapelIds = new Set(assignedList.map(a => a.mapel_id).filter(Boolean));
+      const taughtKelasIds = new Set(assignedList.map(a => a.kelas_id).filter(Boolean));
+
+      // Prioritaskan Mapel yang diampu Guru
+      if (taughtMapelIds.size > 0) {
+        const sortedMapel = [...rawMapel].sort((a, b) => {
+          const aTaught = taughtMapelIds.has(a.value);
+          const bTaught = taughtMapelIds.has(b.value);
+          if (aTaught && !bTaught) return -1;
+          if (!aTaught && bTaught) return 1;
+          return 0;
+        }).map(m => taughtMapelIds.has(m.value) ? { ...m, label: `⭐ ${m.label} (Mapel Anda)` } : m);
+        setMapelOptions(sortedMapel);
+
+        if (!mapelId || !rawMapel.some(m => m.value === mapelId)) {
+          const firstTaughtMapel = sortedMapel.find(m => taughtMapelIds.has(m.value));
+          if (firstTaughtMapel) setMapelId(firstTaughtMapel.value);
+          else if (sortedMapel.length > 0) setMapelId(sortedMapel[0].value);
+        }
+      } else {
+        setMapelOptions(rawMapel);
+        if (!mapelId && rawMapel.length > 0) setMapelId(rawMapel[0].value);
+      }
+
+      // Prioritaskan Kelas yang diampu Guru
+      if (taughtKelasIds.size > 0) {
+        const sortedKelas = [...rawKelas].sort((a, b) => {
+          const aTaught = taughtKelasIds.has(a.value);
+          const bTaught = taughtKelasIds.has(b.value);
+          if (aTaught && !bTaught) return -1;
+          if (!aTaught && bTaught) return 1;
+          return 0;
+        }).map(k => taughtKelasIds.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
+        setKelasOptions(sortedKelas);
+
+        if (!kelasId || !rawKelas.some(k => k.value === kelasId)) {
+          const firstTaughtKelas = sortedKelas.find(k => taughtKelasIds.has(k.value));
+          if (firstTaughtKelas) setKelasId(firstTaughtKelas.value);
+          else if (sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
+        }
+      } else {
+        setKelasOptions(rawKelas);
+        if (!kelasId && rawKelas.length > 0) setKelasId(rawKelas[0].value);
+      }
     }
-  }, [dropdownsQuery.data, tahunPelajaranId, kelasId, mapelId]);
+  }, [dropdownsQuery.data, myGuruMapelData?.data, tahunPelajaranId, kelasId, mapelId]);
 
   // Kop Query
   const kopQuery = useQuery({

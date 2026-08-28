@@ -120,6 +120,21 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
   const subFeatures = subRecord?.features ?? subRecord?.Plan?.features_json ?? subRecord?.plan?.features_json ?? [];
   const isLocked = !Array.isArray(subFeatures) || !subFeatures.includes('ABSENSI');
 
+  // Query Profil Guru & Jabatan Wali Kelas untuk Smart Auto-Filter
+  const { data: myGuruData } = useQuery({
+    queryKey: ['my-guru-profile-rekap', user?.id],
+    queryFn: async () => {
+      const res = await guruApi.getMe().catch(() => null);
+      if (res?.data) return res.data;
+      const allRes = await guruApi.getAll({ limit: 1, ...({ user_id: user?.id } as any) }).catch(() => null);
+      return allRes?.data?.[0] || null;
+    },
+    enabled: !!user?.id && (user?.role?.name === 'GURU' || (user as any)?.role === 'GURU'),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const assignedWaliKelas = myGuruData?.wali_kelas_di || customUser?.guru_profile?.wali_kelas_di;
+
   // Dropdowns Query
   const dropdownsQuery = useQuery({
     queryKey: ['rekap-bulanan-kelas-dropdowns'],
@@ -138,12 +153,28 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
     if (dropdownsQuery.data) {
       setTahunOptions(dropdownsQuery.data.tahun);
       if (dropdownsQuery.data.activeId && !tahunPelajaranId) setTahunPelajaranId(dropdownsQuery.data.activeId);
-      setKelasOptions(dropdownsQuery.data.kelas);
-      if (!kelasId && dropdownsQuery.data.kelas.length > 0) {
-        setKelasId(dropdownsQuery.data.kelas[0].value);
+      
+      const rawKelas = dropdownsQuery.data.kelas || [];
+      const waliClassId = assignedWaliKelas?.id || initialKelasId || waliKelasId;
+
+      if (waliClassId) {
+        const sorted = [...rawKelas].sort((a, b) => {
+          if (a.value === waliClassId) return -1;
+          if (b.value === waliClassId) return 1;
+          return 0;
+        }).map(k => k.value === waliClassId ? { ...k, label: `⭐ ${k.label} (Kelas Binaan Anda)` } : k);
+        setKelasOptions(sorted);
+        if (!kelasId || !rawKelas.some(k => k.value === kelasId)) {
+          setKelasId(waliClassId);
+        }
+      } else {
+        setKelasOptions(rawKelas);
+        if (!kelasId && rawKelas.length > 0) {
+          setKelasId(rawKelas[0].value);
+        }
       }
     }
-  }, [dropdownsQuery.data, tahunPelajaranId, kelasId]);
+  }, [dropdownsQuery.data, tahunPelajaranId, kelasId, assignedWaliKelas?.id, initialKelasId, waliKelasId]);
 
   // Kop Surat & Sekolah Query
   const kopQuery = useQuery({
