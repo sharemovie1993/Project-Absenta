@@ -59,28 +59,28 @@ const ViewModeSwitcher = ({
   setViewMode: (v: ViewMode) => void;
   compact?: boolean;
 }) => (
-  <div className={`flex items-center p-1 rounded-xl bg-slate-200/60 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 ${compact ? 'h-10' : ''}`}>
+  <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-200/70 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 h-8 shrink-0">
     <button
       type="button"
       onClick={() => setViewMode('SUMMARY')}
-      className={`${compact ? 'flex-1 py-1 text-[9px]' : 'px-3 py-1.5 text-[10px]'} rounded-lg font-black uppercase tracking-wider transition-all ${
+      className={`px-2.5 py-1 text-[10px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer whitespace-nowrap ${
         viewMode === 'SUMMARY'
-          ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
+          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
       }`}
     >
-      {compact ? 'Akumulasi' : '📊 Total Akumulasi'}
+      Akumulasi
     </button>
     <button
       type="button"
       onClick={() => setViewMode('MATRIX')}
-      className={`${compact ? 'flex-1 py-1 text-[9px]' : 'px-3 py-1.5 text-[10px]'} rounded-lg font-black uppercase tracking-wider transition-all ${
+      className={`px-2.5 py-1 text-[10px] rounded-md font-bold uppercase tracking-tight transition-all cursor-pointer whitespace-nowrap ${
         viewMode === 'MATRIX'
-          ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-          : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+          ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-2xs font-extrabold'
+          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
       }`}
     >
-      {compact ? 'Per Hari' : '📅 Detail Per Hari'}
+      Per Hari
     </button>
   </div>
 );
