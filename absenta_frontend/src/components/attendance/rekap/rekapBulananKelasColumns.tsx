@@ -59,40 +59,42 @@ export function useRekapBulananKelasColumns(viewMode: ViewMode, dayNumbers: numb
   if (viewMode === 'SUMMARY') {
     return [
       { label: 'Nama Siswa', key: 'nama_siswa', render: NamaCell() },
-      { label: 'NIS', key: 'nis', render: NisCell },
+      { label: 'NIS', key: 'nis', className: 'text-center', render: NisCell },
       {
-        label: 'Hadir', key: 'HADIR',
+        label: 'Hadir',
+        key: 'HADIR',
+        className: 'text-center',
         render: (v: unknown) => (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <div className="flex items-center justify-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             <span className="font-bold text-emerald-600">{Number(v) || 0}</span>
           </div>
         )
       },
-      { label: 'Izin', key: 'IZIN', render: (v: unknown) => <span className="font-bold text-blue-600">{Number(v) || 0}</span> },
-      { label: 'Sakit', key: 'SAKIT', render: (v: unknown) => <span className="font-bold text-amber-600">{Number(v) || 0}</span> },
-      { label: 'Alpa', key: 'ALPA', render: (v: unknown) => <span className="font-bold text-rose-600">{Number(v) || 0}</span> },
-      { label: 'Terlambat', key: 'TERLAMBAT', render: (v: unknown) => <span className="font-bold text-purple-600">{Number(v) || 0}</span> },
-      { label: '% Kehadiran', key: 'persentase', render: PctCell },
-      { label: 'Total Poin', key: 'total_poin', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
+      { label: 'Izin', key: 'IZIN', className: 'text-center', render: (v: unknown) => <span className="font-bold text-blue-600">{Number(v) || 0}</span> },
+      { label: 'Sakit', key: 'SAKIT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-amber-600">{Number(v) || 0}</span> },
+      { label: 'Alpa', key: 'ALPA', className: 'text-center', render: (v: unknown) => <span className="font-bold text-rose-600">{Number(v) || 0}</span> },
+      { label: 'Terlambat', key: 'TERLAMBAT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-purple-600">{Number(v) || 0}</span> },
+      { label: '% Kehadiran', key: 'persentase', className: 'text-center', render: PctCell },
+      { label: 'Total Poin', key: 'total_poin', className: 'text-center', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
     ];
   }
 
   // MATRIX
   const dailyCols = (dayNumbers ?? []).map(d => {
     const dayStr = d.toString();
-    return { label: dayStr, key: `day_${d}`, render: DayCell(dayStr, d) };
+    return { label: dayStr, key: `day_${d}`, className: 'text-center', render: DayCell(dayStr, d) };
   });
 
   return [
     { label: 'Nama Siswa', key: 'nama_siswa', render: NamaCell('whitespace-nowrap min-w-[140px]') },
-    { label: 'NIS', key: 'nis', render: NisCell },
+    { label: 'NIS', key: 'nis', className: 'text-center', render: NisCell },
     ...dailyCols,
-    { label: 'H', key: 'HADIR', render: (v: unknown) => <span className="font-bold text-emerald-600 text-xs">{Number(v) || 0}</span> },
-    { label: 'S', key: 'SAKIT', render: (v: unknown) => <span className="font-bold text-amber-600 text-xs">{Number(v) || 0}</span> },
-    { label: 'I', key: 'IZIN', render: (v: unknown) => <span className="font-bold text-blue-600 text-xs">{Number(v) || 0}</span> },
-    { label: 'A', key: 'ALPA', render: (v: unknown) => <span className="font-bold text-rose-600 text-xs">{Number(v) || 0}</span> },
-    { label: 'T', key: 'TERLAMBAT', render: (v: unknown) => <span className="font-bold text-purple-600 text-xs">{Number(v) || 0}</span> },
-    { label: 'POIN', key: 'total_poin', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
+    { label: 'H', key: 'HADIR', className: 'text-center', render: (v: unknown) => <span className="font-bold text-emerald-600 text-xs">{Number(v) || 0}</span> },
+    { label: 'S', key: 'SAKIT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-amber-600 text-xs">{Number(v) || 0}</span> },
+    { label: 'I', key: 'IZIN', className: 'text-center', render: (v: unknown) => <span className="font-bold text-blue-600 text-xs">{Number(v) || 0}</span> },
+    { label: 'A', key: 'ALPA', className: 'text-center', render: (v: unknown) => <span className="font-bold text-rose-600 text-xs">{Number(v) || 0}</span> },
+    { label: 'T', key: 'TERLAMBAT', className: 'text-center', render: (v: unknown) => <span className="font-bold text-purple-600 text-xs">{Number(v) || 0}</span> },
+    { label: 'POIN', key: 'total_poin', className: 'text-center', render: (v: unknown) => <span className="font-bold text-slate-700 dark:text-slate-300 text-xs font-mono">{Number(v) || 0}</span> },
   ];
 }
