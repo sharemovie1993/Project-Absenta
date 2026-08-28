@@ -209,6 +209,36 @@ export function RekapBulananMapelContent() {
     return list;
   }, [taughtList, dropdownsQuery.data]);
 
+  // Query Mapel yang diajar di kelas terpilih (untuk Mode Kurikulum / ALL)
+  const { data: classMapelData } = useQuery({
+    queryKey: ['class-mapel-list', kelasId],
+    queryFn: async () => {
+      if (!kelasId) return [];
+      const res = await listGuruMapel({ kelas_id: kelasId }).catch(() => null);
+      if (res?.data && res.data.length > 0) {
+        const map = new Map<string, { mapelId: string; mapelName: string; guruName?: string }>();
+        res.data.forEach((a: any) => {
+          if (a.mapel_id && a.Mapel?.nama_mapel) {
+            map.set(a.mapel_id, {
+              mapelId: a.mapel_id,
+              mapelName: a.Mapel.nama_mapel,
+              guruName: a.Guru?.nama_guru,
+            });
+          }
+        });
+        if (map.size > 0) return Array.from(map.values());
+      }
+      const rawMapels = dropdownsQuery.data?.mapel || [];
+      return rawMapels.map(m => ({ mapelId: m.value, mapelName: m.label }));
+    },
+    enabled: !!kelasId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const classMapelList = useMemo(() => {
+    return classMapelData || [];
+  }, [classMapelData]);
+
   useEffect(() => {
     if (dropdownsQuery.data) {
       setTahunOptions(dropdownsQuery.data.tahun);
@@ -231,12 +261,19 @@ export function RekapBulananMapelContent() {
           setMapelId(mapelCards[0].mapelId);
           setKelasId(mapelCards[0].kelasId);
         }
+      } else if (isManagement && isAllSelected) {
+        if (!kelasId && rawKelas.length > 0) {
+          setKelasId(rawKelas[0].value);
+        }
+        if (classMapelList.length > 0 && (!mapelId || !classMapelList.some(m => m.mapelId === mapelId))) {
+          setMapelId(classMapelList[0].mapelId);
+        }
       } else {
         if (!mapelId && rawMapel.length > 0) setMapelId(rawMapel[0].value);
         if (!kelasId && rawKelas.length > 0) setKelasId(rawKelas[0].value);
       }
     }
-  }, [dropdownsQuery.data, mapelCards, tahunPelajaranId, kelasId, mapelId, isManagement, isAllSelected]);
+  }, [dropdownsQuery.data, mapelCards, classMapelList, tahunPelajaranId, kelasId, mapelId, isManagement, isAllSelected]);
 
   const handleSelectCard = useCallback((card: MapelClassCard) => {
     setIsAllSelected(false);
@@ -246,7 +283,11 @@ export function RekapBulananMapelContent() {
 
   const handleSelectAll = useCallback(() => {
     setIsAllSelected(true);
-  }, []);
+    const rawKelas = dropdownsQuery.data?.kelas || [];
+    if (!kelasId && rawKelas.length > 0) {
+      setKelasId(rawKelas[0].value);
+    }
+  }, [kelasId, dropdownsQuery.data]);
 
   // Kop Query
   const kopQuery = useQuery({
@@ -444,6 +485,7 @@ export function RekapBulananMapelContent() {
           isManagement={isManagement}
           isAllSelected={isAllSelected}
           cards={mapelCards}
+          classMapelList={classMapelList}
           kelasOptions={kelasOptions ?? []}
           mapelOptions={mapelOptions ?? []}
           tahunOptions={tahunOptions ?? []}
