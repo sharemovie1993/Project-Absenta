@@ -116,30 +116,30 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
 }: RekapBulananMapelToolbarProps) {
   return (
     <div className="space-y-4">
-      {/* ─── Tombol Pilihan Mode & Kartu Mapel Guru (App-Launcher Grid) ─────────── */}
-      <div className="space-y-1.5">
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
+      {/* ─── Tombol Pilihan Mode & Kartu Mapel Guru (Ultra-Compact App-Launcher) ─ */}
+      <div className="space-y-1">
+        <label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">
           Pilih Mata Pelajaran &amp; Kelas
         </label>
-        <div className="flex flex-wrap items-stretch gap-2">
+        <div className="flex flex-wrap items-stretch gap-1.5">
           {/* Tombol ALL untuk Manajemen (Kepsek/Kurikulum) */}
           {isManagement && (
             <button
               type="button"
               onClick={onSelectAll}
-              className={`group flex flex-col items-center justify-center p-2.5 w-24 sm:w-28 rounded-2xl border text-center transition-all ${
+              className={`group flex flex-col items-center justify-center py-2 px-1.5 w-[76px] sm:w-[84px] rounded-xl border text-center transition-all ${
                 isAllSelected
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/30'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm ring-1 ring-blue-400/40'
                   : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-800 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
               }`}
             >
-              <div className={`p-2 rounded-xl mb-1.5 transition-transform ${isAllSelected ? 'bg-white/20 text-white' : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 group-hover:scale-105'}`}>
-                <Layers className="w-5 h-5" />
+              <div className={`p-1.5 rounded-lg mb-1 transition-transform ${isAllSelected ? 'bg-white/20 text-white' : 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 group-hover:scale-105'}`}>
+                <Layers className="w-3.5 h-3.5" />
               </div>
-              <div className="text-[11px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
-                SEMUA MAPEL
+              <div className="text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+                SEMUA
               </div>
-              <div className={`text-[9px] font-bold mt-0.5 ${isAllSelected ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
+              <div className={`text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${isAllSelected ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
                 (Supervisi)
               </div>
             </button>
@@ -153,23 +153,23 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                 key={card.id}
                 type="button"
                 onClick={() => onSelectCard(card)}
-                className={`group flex flex-col items-center justify-center p-2.5 w-24 sm:w-28 rounded-2xl border text-center transition-all ${
+                className={`group flex flex-col items-center justify-center py-2 px-1.5 w-[76px] sm:w-[84px] rounded-xl border text-center transition-all ${
                   isActive
-                    ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/30 shadow-md shadow-indigo-500/10'
+                    ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500/40 shadow-sm'
                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
               >
-                <div className={`p-2 rounded-xl mb-1.5 transition-all ${
+                <div className={`p-1.5 rounded-lg mb-1 transition-all ${
                   isActive
-                    ? 'bg-indigo-600 text-white shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/50 group-hover:scale-105'
                 }`}>
-                  <BookOpen className="w-5 h-5" />
+                  <BookOpen className="w-3.5 h-3.5" />
                 </div>
-                <div className="text-[11px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+                <div className="text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
                   {card.mapelName}
                 </div>
-                <div className={`text-[10px] font-bold mt-0.5 line-clamp-1 ${
+                <div className={`text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${
                   isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
                 }`}>
                   ({card.kelasName})
@@ -182,13 +182,13 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
 
       {/* ─── Mode Manajemen / ALL: Pilih Kelas Terlebih Dahulu, Lalu Klik Tombol Mapel ─── */}
       {isManagement && isAllSelected && (
-        <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-3.5 shadow-sm">
+        <div className="p-3 sm:p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-2.5 shadow-xs">
           {/* Langkah 1: Pilih Kelas */}
-          <div className="max-w-md space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-black">1</span>
-              <label htmlFor="filter-kelas-mapel-select" className="text-xs font-black uppercase tracking-wider text-blue-950 dark:text-blue-200">
-                Langkah 1: Pilih Kelas yang Disupervisi
+          <div className="max-w-xs space-y-1">
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-black">1</span>
+              <label htmlFor="filter-kelas-mapel-select" className="text-[10px] font-black uppercase tracking-wider text-blue-950 dark:text-blue-200">
+                Langkah 1: Pilih Kelas
               </label>
             </div>
             <Suspense fallback={<SuspenseFallback />}>
@@ -199,21 +199,21 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                 onValueChange={setKelasId}
                 options={kelasOptions ?? []}
                 placeholder="Pilih Kelas..."
-                triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 text-xs font-bold shadow-sm"
+                triggerClassName="h-8.5 rounded-lg bg-white dark:bg-slate-900 border-blue-200 dark:border-blue-800 text-[11px] font-bold shadow-xs"
               />
             </Suspense>
           </div>
 
           {/* Langkah 2: Klik Tombol Mapel yang Ada di Kelas Tersebut (App-Launcher Grid) */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] font-black">2</span>
-              <label className="text-xs font-black uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
-                Langkah 2: Klik Mata Pelajaran di {selectedKelasLabel || 'Kelas Terpilih'}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center gap-1.5">
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-indigo-600 text-white text-[9px] font-black">2</span>
+              <label className="text-[10px] font-black uppercase tracking-wider text-indigo-950 dark:text-indigo-200">
+                Langkah 2: Klik Mapel di {selectedKelasLabel || 'Kelas Terpilih'}
               </label>
             </div>
             {classMapelList.length > 0 ? (
-              <div className="flex flex-wrap items-stretch gap-2 pt-1">
+              <div className="flex flex-wrap items-stretch gap-1.5 pt-0.5">
                 {classMapelList.map((m) => {
                   const isMapelActive = m.mapelId === mapelId;
                   return (
@@ -221,20 +221,20 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                       key={m.mapelId}
                       type="button"
                       onClick={() => setMapelId(m.mapelId)}
-                      className={`group flex flex-col items-center justify-center p-2 w-24 sm:w-28 rounded-2xl border text-center transition-all ${
+                      className={`group flex flex-col items-center justify-center py-2 px-1.5 w-[76px] sm:w-[84px] rounded-xl border text-center transition-all ${
                         isMapelActive
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25 ring-2 ring-indigo-400/30'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-1 ring-indigo-400/40'
                           : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/30'
                       }`}
                     >
-                      <div className={`p-1.5 rounded-xl mb-1 transition-transform ${isMapelActive ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 group-hover:scale-105'}`}>
-                        <BookOpen className="w-4 h-4" />
+                      <div className={`p-1 rounded-lg mb-1 transition-transform ${isMapelActive ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 group-hover:scale-105'}`}>
+                        <BookOpen className="w-3.5 h-3.5" />
                       </div>
-                      <div className="text-[10.5px] font-black uppercase tracking-tight line-clamp-2 leading-tight">
+                      <div className="text-[9.5px] font-black uppercase tracking-tight line-clamp-2 leading-tight">
                         {m.mapelName}
                       </div>
                       {m.guruName && (
-                        <div className={`text-[8.5px] font-semibold mt-0.5 line-clamp-1 ${isMapelActive ? 'text-indigo-100' : 'text-slate-400'}`}>
+                        <div className={`text-[7.5px] font-semibold mt-0.5 line-clamp-1 leading-tight ${isMapelActive ? 'text-indigo-100' : 'text-slate-400'}`}>
                           {m.guruName.split(',')[0]}
                         </div>
                       )}
@@ -243,7 +243,7 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
                 })}
               </div>
             ) : (
-              <div className="p-3 rounded-xl bg-white/60 dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+              <div className="p-2.5 rounded-lg bg-white/60 dark:bg-slate-900/60 border border-dashed border-slate-200 dark:border-slate-800 text-[11px] text-slate-400">
                 Silakan pilih kelas terlebih dahulu untuk melihat daftar mata pelajaran.
               </div>
             )}
