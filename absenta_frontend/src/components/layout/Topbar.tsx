@@ -19,6 +19,8 @@ import { cn, resolveProfilePhotoUrl } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
+import { AppLauncherDropdown } from './AppLauncherDropdown';
+import { getActiveApp } from '@/config/absentaAppsRegistry';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -174,24 +176,55 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
       .trim();
   };
 
+  const activeApp = React.useMemo(() => {
+    return getActiveApp(location.pathname);
+  }, [location.pathname]);
+
   return (
     <header className="topbar fixed top-0 left-0 right-0 z-30 h-16 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800/60 transition-all">
         <div className="w-full h-full flex items-center px-4 transition-all duration-500">
 
-        {/* Sisi Kiri: Branding */}
+        {/* Sisi Kiri: Branding & Nama Aplikasi Aktif */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
-            {/* Mobile Menu Toggle */}
+            {/* Hamburger Menu Toggle */}
             <button
               onClick={onMenuClick}
               aria-label="Buka Menu"
-              className="lg:hidden p-2 -ml-1 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+              className="p-2 -ml-1 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
             >
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
 
-            {/* Logo & Info Sekolah */}
-            <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
-                 {resolvedLogoUrl && !logoError ? (
+            {/* Logo & Judul Aplikasi Aktif */}
+            {activeApp ? (
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+                  {resolvedLogoUrl && !logoError ? (
+                    <img 
+                      src={resolvedLogoUrl} 
+                      alt="Logo" 
+                      className="w-8 h-8 rounded-lg object-contain shrink-0" 
+                      onError={() => setLogoError(true)}
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-md shrink-0 text-white font-black text-xs">
+                      A
+                    </div>
+                  )}
+                </Link>
+                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">/</span>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <activeApp.icon className={cn("h-4 w-4 shrink-0 hidden sm:inline-block", activeApp.color.text)} />
+                    <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight uppercase truncate">
+                      {activeApp.name}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <Link to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0">
+                {resolvedLogoUrl && !logoError ? (
                   <img 
                     src={resolvedLogoUrl} 
                     alt={systemConfig?.app_name || 'Logo App'} 
@@ -209,31 +242,21 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   <span className="text-sm font-black text-slate-900 dark:text-white tracking-tight leading-none uppercase truncate max-w-[150px] md:max-w-[220px]">
                     {systemConfig?.app_name || 'Sistem Absensi'}
                   </span>
-                  {(() => {
-                    const raw = String((tenantMode || '') || (subscription?.Plan?.absensi_mode));
-                    const norm = raw.trim().replace(/[\s-]+/g, '_').toUpperCase();
-                    if (!norm || isSystemSuperAdmin(user?.role?.name, user?.tenant_id)) return null;
-                    const isSimple = norm === 'SIMPLE';
-                    return (
-                      <div className="flex items-center gap-1 mt-1">
-                        <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse shrink-0", isSimple ? "bg-emerald-500" : "bg-blue-500")} />
-                        <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none truncate">
-                          {isSimple ? 'Mode Sederhana' : 'Multi Sesi'}
-                        </span>
-                      </div>
-                    );
-                  })()}
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Workspace Portal
+                  </span>
                 </div>
-            </Link>
+              </Link>
+            )}
 
             {isNotDashboard && (
               <Link
                 to="/dashboard"
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 border border-slate-200 dark:border-slate-700/60 transition-all shadow-2xs group ml-1 shrink-0"
-                title="Kembali ke Dashboard Staff Utama"
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-300 border border-slate-200 dark:border-slate-700/60 transition-all shadow-2xs group ml-1 shrink-0"
+                title="Kembali ke Beranda Portal"
               >
                 <ArrowLeft size={12} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
-                <span>Dashboard Staff</span>
+                <span>Beranda</span>
               </Link>
             )}
         </div>
@@ -443,6 +466,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
             <Calendar size={14} className="text-emerald-600 dark:text-emerald-400" />
             <span>{formattedToday}</span>
           </div>
+
+          {/* ⠶ Google 1:1 App Launcher (9-Dots) */}
+          <AppLauncherDropdown />
 
           <ThemeToggle />
 

@@ -22,8 +22,10 @@ import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 
 // Lazy load heavy layout components to improve TBT
 const Sidebar = React.lazy(() => import('./Sidebar').then(module => ({ default: module.Sidebar })));
+const InAppSidebar = React.lazy(() => import('./InAppSidebar').then(module => ({ default: module.InAppSidebar })));
 const CommandPalette = React.lazy(() => import('./CommandPalette').then(module => ({ default: module.CommandPalette })));
 const InstructionPanel = React.lazy(() => import('@/components/dashboard/shared/InstructionPanel').then(module => ({ default: module.InstructionPanel })));
+import { getActiveApp } from '@/config/absentaAppsRegistry';
 
 import FloatingMessenger from '@/components/common/FloatingMessenger';
 
@@ -70,10 +72,20 @@ function MainLayoutContent() {
   }, []);
 
   const isSiswa = typeof user?.role === 'string' ? user.role === 'SISWA' : ((user?.role as any)?.name === 'SISWA' || (user as any)?.roleName === 'SISWA');
-  const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/';
-  const isPortalMode = true;
-  // Nonaktifkan sidebar kiri secara penuh untuk beralih 100% ke mode Web Portal & App Launcher Hub
-  const isHideSidebarForPortal = true;
+  const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/' || location.pathname === '/apps';
+  const activeApp = getActiveApp(location.pathname);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem('absenta_sidebar_collapsed') === 'true';
+  });
+
+  const handleToggleSidebarCollapse = () => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('absenta_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const configQuery = useQuery({
     queryKey: ['system-config','active'],
@@ -126,7 +138,13 @@ function MainLayoutContent() {
         {/* Topbar fixed at top */}
         {!isTvMode && (
           <Topbar 
-            onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} 
+            onMenuClick={() => {
+              if (isMobile) {
+                setIsMobileMenuOpen(!isMobileMenuOpen);
+              } else if (activeApp) {
+                handleToggleSidebarCollapse();
+              }
+            }} 
             isSidebarOpen={isMobileMenuOpen} 
           />
         )}
@@ -153,12 +171,21 @@ function MainLayoutContent() {
               >
                 <div className="flex-1 overflow-y-auto overscroll-contain pb-24">
                   <Suspense fallback={<div className="flex items-center justify-center h-full"><Loader /></div>}>
-                    <Sidebar 
-                      isOpen={true} 
-                      onClose={() => setIsMobileMenuOpen(false)} 
-                      onToggle={() => {}} 
-                      isInline={true}
-                    />
+                    {activeApp ? (
+                      <InAppSidebar 
+                        isMobileDrawer={true} 
+                        onClose={() => setIsMobileMenuOpen(false)} 
+                        isCollapsed={false} 
+                        onToggleCollapse={() => {}} 
+                      />
+                    ) : (
+                      <Sidebar 
+                        isOpen={true} 
+                        onClose={() => setIsMobileMenuOpen(false)} 
+                        onToggle={() => {}} 
+                        isInline={true}
+                      />
+                    )}
                   </Suspense>
                 </div>
               </motion.aside>
@@ -173,22 +200,25 @@ function MainLayoutContent() {
         )}>
           <div className={cn(
             "w-full gap-4 items-start transition-all duration-500",
-            isTvMode || isHideSidebarForPortal
+            isTvMode || !activeApp || isDashboardPage
               ? "grid grid-cols-1"
-              : `grid grid-cols-1 lg:grid-cols-[320px_1fr] ${showInstruction ? 'xl:grid-cols-[320px_1fr_300px]' : 'xl:grid-cols-[320px_1fr_0px]'}`
+              : isSidebarCollapsed
+              ? `grid grid-cols-1 lg:grid-cols-[64px_1fr] ${showInstruction ? 'xl:grid-cols-[64px_1fr_300px]' : ''}`
+              : `grid grid-cols-1 lg:grid-cols-[256px_1fr] ${showInstruction ? 'xl:grid-cols-[256px_1fr_300px]' : ''}`
           )}>
             
-            {/* Sidebar Kiri (Grid-Integrated) - Sembunyikan Saat Portal Launcher Mode */}
-            {!isMobile && !isTvMode && !isHideSidebarForPortal && (
-              <aside className="hidden lg:block w-80 flex-shrink-0">
+            {/* Contextual In-App Sidebar (Desktop Grid-Integrated) */}
+            {!isMobile && !isTvMode && activeApp && !isDashboardPage && (
+              <aside className={cn(
+                "hidden lg:block flex-shrink-0 transition-all duration-300",
+                isSidebarCollapsed ? "w-16" : "w-64"
+              )}>
                 <div className="sticky top-20">
-                  <div className="rounded-xl border border-slate-100 dark:border-slate-800 shadow-[0_2px_20px_-5px_rgba(0,0,0,0.08)] bg-white dark:bg-slate-900 mb-8 flex flex-col min-h-[calc(100vh-160px)]">
-                    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader /></div>}>
-                      <Sidebar 
-                        isOpen={true} 
-                        onClose={() => {}} 
-                        onToggle={() => {}} 
-                        isInline={true}
+                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 mb-8 overflow-hidden min-h-[calc(100vh-120px)] flex flex-col">
+                    <Suspense fallback={<div className="flex-1 flex items-center justify-center p-8"><Loader /></div>}>
+                      <InAppSidebar 
+                        isCollapsed={isSidebarCollapsed} 
+                        onToggleCollapse={handleToggleSidebarCollapse} 
                       />
                     </Suspense>
                   </div>
