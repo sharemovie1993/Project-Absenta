@@ -247,6 +247,7 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
                   </span>
                 </div>
               </Link>
+            )}
         </div>
 
         {/* Kolom 3: Konten Topbar Lainnya (Right Section) */}
