@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, LayoutGrid } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnalyticsCard, MemoizedAnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { Loader } from '@/components/ui/Loader';
@@ -312,37 +312,15 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
         <div className="px-3 sm:px-0 flex items-center justify-between gap-2.5 flex-wrap animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
           <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
             {!isMainStaffDashboard && (
-              isModuleRootDashboard ? (
-                <Link
-                  to="/dashboard"
-                  className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
-                  title="Kembali ke Dashboard Staff Utama"
-                >
-                  <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
-                  <span className="tracking-tight">Dashboard Staff</span>
-                </Link>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleGoBack}
-                    className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
-                    title="Kembali ke halaman sebelumnya"
-                  >
-                    <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
-                    <span className="tracking-tight">Kembali</span>
-                  </button>
-
-                  <Link
-                    to="/dashboard"
-                    className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs select-none shrink-0"
-                    title="Langsung ke Dashboard Staff Utama"
-                  >
-                    <LayoutGrid size={13} className="text-indigo-600 dark:text-indigo-400" />
-                    <span className="tracking-tight">Dashboard Staff</span>
-                  </Link>
-                </>
-              )
+              <button
+                type="button"
+                onClick={handleGoBack}
+                className="sm:hidden group flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 hover:bg-indigo-600 hover:text-white dark:hover:bg-indigo-600 text-slate-700 dark:text-slate-200 text-xs font-black transition-all duration-200 border border-slate-200/80 dark:border-slate-800 cursor-pointer shadow-2xs hover:shadow-md hover:shadow-indigo-500/20 active:scale-95 select-none shrink-0"
+                title="Kembali ke halaman sebelumnya"
+              >
+                <ArrowLeft size={14} className="stroke-[3] group-hover:-translate-x-0.5 transition-transform" />
+                <span className="tracking-tight">Kembali</span>
+              </button>
             )}
 
             {/* Bilah Status Hardening Dev Audit */}
