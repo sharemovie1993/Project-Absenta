@@ -136,11 +136,41 @@ export function RekapBulananMapelContent() {
     return false;
   }, [user, can]);
 
+  const [isAllSelected, setIsAllSelected] = useState<boolean>(false);
+
   const taughtList = useMemo(() => {
     const fromGuru = Array.isArray(myGuruData?.GuruMapel) ? myGuruData.GuruMapel : [];
     const fromApi = Array.isArray(myGuruMapelData?.data) ? myGuruMapelData.data : [];
     return fromGuru.length > 0 ? fromGuru : fromApi;
   }, [myGuruData, myGuruMapelData]);
+
+  const mapelCards = useMemo<MapelClassCard[]>(() => {
+    const list: MapelClassCard[] = [];
+    const seen = new Set<string>();
+
+    taughtList.forEach((a: any) => {
+      const mId = a.mapel_id || a.Mapel?.id || a.mapel?.id;
+      const kId = a.kelas_id || a.Kelas?.id || a.kelas?.id;
+      const mName = a.Mapel?.nama_mapel || a.mapel?.nama_mapel || (dropdownsQuery.data?.mapel || []).find(m => m.value === mId)?.label || 'Mata Pelajaran';
+      const kName = a.Kelas?.nama_kelas || a.kelas?.nama_kelas || (dropdownsQuery.data?.kelas || []).find(k => k.value === kId)?.label || 'Kelas';
+
+      if (mId && kId) {
+        const key = `${mId}___${kId}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          list.push({
+            id: key,
+            mapelId: mId,
+            mapelName: mName,
+            kelasId: kId,
+            kelasName: kName,
+          });
+        }
+      }
+    });
+
+    return list;
+  }, [taughtList, dropdownsQuery.data]);
 
   useEffect(() => {
     if (dropdownsQuery.data) {
@@ -150,96 +180,36 @@ export function RekapBulananMapelContent() {
       const rawMapel = dropdownsQuery.data.mapel || [];
       const rawKelas = dropdownsQuery.data.kelas || [];
 
-      const taughtMapelMap = new Map<string, string>();
-      const taughtKelasMap = new Map<string, string>();
+      setMapelOptions(rawMapel);
+      setKelasOptions(rawKelas);
 
-      taughtList.forEach((a: any) => {
-        if (a.mapel_id) {
-          const name = a.Mapel?.nama_mapel || a.mapel?.nama_mapel;
-          taughtMapelMap.set(a.mapel_id, name || 'Mata Pelajaran');
+      // Inisialisasi kartu pertama untuk Guru
+      if (!isManagement && mapelCards.length > 0) {
+        if (!mapelId || !kelasId || !mapelCards.some(c => c.mapelId === mapelId && c.kelasId === kelasId)) {
+          setMapelId(mapelCards[0].mapelId);
+          setKelasId(mapelCards[0].kelasId);
         }
-        if (a.kelas_id) {
-          const name = a.Kelas?.nama_kelas || a.kelas?.nama_kelas;
-          taughtKelasMap.set(a.kelas_id, name || 'Kelas');
-        }
-      });
-
-      rawMapel.forEach(m => {
-        if (taughtMapelMap.has(m.value)) {
-          taughtMapelMap.set(m.value, m.label);
-        }
-      });
-      rawKelas.forEach(k => {
-        if (taughtKelasMap.has(k.value)) {
-          taughtKelasMap.set(k.value, k.label);
-        }
-      });
-
-      // ── Opsi Mapel (STRICT untuk Guru) ──
-      if (!isManagement) {
-        const strictlyMapel: DropdownOption[] = taughtMapelMap.size > 0
-          ? Array.from(taughtMapelMap.entries()).map(([val, lbl]) => ({ value: val, label: lbl }))
-          : rawMapel.filter(m => taughtMapelMap.has(m.value));
-
-        setMapelOptions(strictlyMapel.length > 0 ? strictlyMapel : (rawMapel.length > 0 ? [rawMapel[0]] : []));
-
-        if (!mapelId || !strictlyMapel.some(m => m.value === mapelId)) {
-          if (strictlyMapel.length > 0) setMapelId(strictlyMapel[0].value);
-          else if (rawMapel.length > 0) setMapelId(rawMapel[0].value);
+      } else if (isManagement && !isAllSelected && mapelCards.length > 0) {
+        if (!mapelId || !kelasId) {
+          setMapelId(mapelCards[0].mapelId);
+          setKelasId(mapelCards[0].kelasId);
         }
       } else {
-        // Manajemen: Tampilkan semua mapel
-        const sortedMapel = [...rawMapel].sort((a, b) => {
-          const aTaught = taughtMapelMap.has(a.value);
-          const bTaught = taughtMapelMap.has(b.value);
-          if (aTaught && !bTaught) return -1;
-          if (!aTaught && bTaught) return 1;
-          return 0;
-        }).map(m => taughtMapelMap.has(m.value) ? { ...m, label: `⭐ ${m.label} (Mapel Anda)` } : m);
-
-        setMapelOptions(sortedMapel);
-        if (!mapelId && sortedMapel.length > 0) setMapelId(sortedMapel[0].value);
-      }
-
-      // ── Opsi Kelas ──
-      if (!isManagement) {
-        // Khusus Guru: HANYA tampilkan kelas yang diajar pada mapel yang dipilih
-        const mapelClasses = taughtList.filter((a: any) => !mapelId || a.mapel_id === mapelId);
-        const mapelKelasMap = new Map<string, string>();
-        mapelClasses.forEach((a: any) => {
-          if (a.kelas_id) {
-            const name = a.Kelas?.nama_kelas || a.kelas?.nama_kelas;
-            mapelKelasMap.set(a.kelas_id, name || 'Kelas');
-          }
-        });
-
-        const targetKelasMap = mapelKelasMap.size > 0 ? mapelKelasMap : taughtKelasMap;
-
-        const strictlyKelas: DropdownOption[] = targetKelasMap.size > 0
-          ? Array.from(targetKelasMap.entries()).map(([val, lbl]) => ({ value: val, label: lbl }))
-          : rawKelas.filter(k => targetKelasMap.has(k.value));
-
-        setKelasOptions(strictlyKelas.length > 0 ? strictlyKelas : (rawKelas.length > 0 ? [rawKelas[0]] : []));
-
-        if (!kelasId || !strictlyKelas.some(k => k.value === kelasId)) {
-          if (strictlyKelas.length > 0) setKelasId(strictlyKelas[0].value);
-          else if (rawKelas.length > 0) setKelasId(rawKelas[0].value);
-        }
-      } else {
-        // Manajemen: Tampilkan semua kelas
-        const sortedKelas = [...rawKelas].sort((a, b) => {
-          const aTaught = taughtKelasMap.has(a.value);
-          const bTaught = taughtKelasMap.has(b.value);
-          if (aTaught && !bTaught) return -1;
-          if (!aTaught && bTaught) return 1;
-          return 0;
-        }).map(k => taughtKelasMap.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
-
-        setKelasOptions(sortedKelas);
-        if (!kelasId && sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
+        if (!mapelId && rawMapel.length > 0) setMapelId(rawMapel[0].value);
+        if (!kelasId && rawKelas.length > 0) setKelasId(rawKelas[0].value);
       }
     }
-  }, [dropdownsQuery.data, taughtList, tahunPelajaranId, kelasId, mapelId, isManagement]);
+  }, [dropdownsQuery.data, mapelCards, tahunPelajaranId, kelasId, mapelId, isManagement, isAllSelected]);
+
+  const handleSelectCard = useCallback((card: MapelClassCard) => {
+    setIsAllSelected(false);
+    setMapelId(card.mapelId);
+    setKelasId(card.kelasId);
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    setIsAllSelected(true);
+  }, []);
 
   // Kop Query
   const kopQuery = useQuery({
@@ -434,6 +404,9 @@ export function RekapBulananMapelContent() {
           bulan={bulan}
           tahunPelajaranId={tahunPelajaranId}
           viewMode={viewMode}
+          isManagement={isManagement}
+          isAllSelected={isAllSelected}
+          cards={mapelCards}
           kelasOptions={kelasOptions ?? []}
           mapelOptions={mapelOptions ?? []}
           tahunOptions={tahunOptions ?? []}
@@ -445,6 +418,8 @@ export function RekapBulananMapelContent() {
           setBulan={setBulan}
           setTahunPelajaranId={setTahunPelajaranId}
           setViewMode={setViewMode}
+          onSelectCard={handleSelectCard}
+          onSelectAll={handleSelectAll}
           onExportExcel={handleExportExcel}
           onExportPdf={handleExportPdf}
         />
