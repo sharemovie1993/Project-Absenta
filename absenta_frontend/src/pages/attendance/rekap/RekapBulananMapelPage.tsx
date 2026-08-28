@@ -100,10 +100,13 @@ export function RekapBulananMapelContent() {
 
   const myGuruId = (user?.guru_profile as any)?.id || (user as any)?.guru_id || myGuruData?.id;
 
-  // Query Penugasan GuruMapel Guru yang Login
+  // Query Penugasan GuruMapel Guru yang Login (strictly filtered by tahunPelajaranId)
   const { data: myGuruMapelData } = useQuery({
-    queryKey: ['my-guru-mapel-assignments', myGuruId],
-    queryFn: () => listGuruMapel({ guru_id: myGuruId }),
+    queryKey: ['my-guru-mapel-assignments', myGuruId, tahunPelajaranId],
+    queryFn: () => listGuruMapel({ 
+      guru_id: myGuruId,
+      ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {})
+    }),
     enabled: !!myGuruId,
     staleTime: 5 * 60 * 1000,
   });
@@ -158,10 +161,11 @@ export function RekapBulananMapelContent() {
   const [isAllSelected, setIsAllSelected] = useState<boolean>(false);
 
   const taughtList = useMemo(() => {
-    const fromGuru = Array.isArray(myGuruData?.GuruMapel) ? myGuruData.GuruMapel : [];
-    const fromApi = Array.isArray(myGuruMapelData?.data) ? myGuruMapelData.data : [];
-    return fromGuru.length > 0 ? fromGuru : fromApi;
-  }, [myGuruData, myGuruMapelData]);
+    if (myGuruMapelData?.data) {
+      return Array.isArray(myGuruMapelData.data) ? myGuruMapelData.data : [];
+    }
+    return [];
+  }, [myGuruMapelData]);
 
   const mapelCards = useMemo<MapelClassCard[]>(() => {
     const list: MapelClassCard[] = [];
@@ -231,8 +235,7 @@ export function RekapBulananMapelContent() {
         });
         if (map.size > 0) return Array.from(map.values());
       }
-      const rawMapels = dropdownsQuery.data?.mapel || [];
-      return rawMapels.map(m => ({ mapelId: m.value, mapelName: m.label }));
+      return [];
     },
     enabled: !!kelasId,
     staleTime: 5 * 60 * 1000,

@@ -180,37 +180,43 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
           )}
 
           {/* Kartu Tombol Guru Mapel Pribadi (App-Launcher Style) */}
-          {cards.map((card) => {
-            const isActive = !isAllSelected && card.mapelId === mapelId && card.kelasId === kelasId;
-            return (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => onSelectCard(card)}
-                className={`group flex flex-col items-center justify-center py-2 px-1.5 w-[76px] sm:w-[84px] rounded-xl border text-center transition-all ${
-                  isActive
-                    ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500/40 shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <div className={`p-1.5 rounded-lg mb-1 transition-all ${
-                  isActive
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/50 group-hover:scale-105'
-                }`}>
-                  <BookOpen className="w-3.5 h-3.5" />
-                </div>
-                <div className="text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
-                  {card.mapelName}
-                </div>
-                <div className={`text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${
-                  isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
-                }`}>
-                  ({card.kelasName})
-                </div>
-              </button>
-            );
-          })}
+          {cards.length > 0 ? (
+            cards.map((card) => {
+              const isActive = !isAllSelected && card.mapelId === mapelId && card.kelasId === kelasId;
+              return (
+                <button
+                  key={card.id}
+                  type="button"
+                  onClick={() => onSelectCard(card)}
+                  className={`group flex flex-col items-center justify-center py-2 px-1.5 w-[76px] sm:w-[84px] rounded-xl border text-center transition-all ${
+                    isActive
+                      ? 'bg-indigo-50/95 dark:bg-indigo-950/70 border-indigo-500 text-indigo-950 dark:text-indigo-100 ring-1 ring-indigo-500/40 shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`p-1.5 rounded-lg mb-1 transition-all ${
+                    isActive
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/50 group-hover:scale-105'
+                  }`}>
+                    <BookOpen className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="text-[9.5px] font-black uppercase tracking-tight line-clamp-1 leading-tight">
+                    {card.mapelName}
+                  </div>
+                  <div className={`text-[8px] font-bold mt-0.5 line-clamp-1 leading-tight ${
+                    isActive ? 'text-indigo-600 dark:text-indigo-300' : 'text-slate-400 dark:text-slate-500'
+                  }`}>
+                    ({card.kelasName})
+                  </div>
+                </button>
+              );
+            })
+          ) : !isManagement ? (
+            <div className="py-2 px-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/60 text-slate-400 text-xs font-medium">
+              Tidak ada jadwal mengajar pada tahun pelajaran ini.
+            </div>
+          ) : null}
         </div>
       </div>
 
