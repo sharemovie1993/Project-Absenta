@@ -95,7 +95,6 @@ export const RekapPage: React.FC<{ initialTab?: RekapTab }> = React.memo(({ init
           <AcademicPageLayout
             title="Laporan &amp; Rekap Presensi"
             description="Rekapitulasi data kehadiran siswa dalam format akumulasi dan detail harian per kelas maupun per mata pelajaran."
-            stats={memoStats}
             instruction={instructionData}
             breadcrumbs={memoBreadcrumbs}
             hardeningModuleKey="rekappage"

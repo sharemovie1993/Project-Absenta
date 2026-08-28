@@ -132,9 +132,28 @@ export function RekapBulananMapelContent() {
     const roleName = String(user?.role?.name || (user as any)?.role || '').toUpperCase();
     const managementRoles = ['SUPERADMIN', 'ADMINISTRATOR', 'ADMIN_SEKOLAH', 'KEPALA_SEKOLAH', 'KURIKULUM', 'STAFF_TU'];
     if (managementRoles.includes(roleName)) return true;
-    if (can('curriculum.schedules.manage') || can('academic.structures.manage') || can('superadmin.tenants.manage')) return true;
+
+    const jabatanList: string[] = Array.isArray(myGuruData?.jabatan_list)
+      ? myGuruData.jabatan_list
+      : Array.isArray((user as any)?.jabatan_list)
+        ? (user as any).jabatan_list
+        : [];
+    if (jabatanList.some(j => ['KURIKULUM', 'KEPALA_SEKOLAH', 'WAKA_KURIKULUM', 'STAFF_TU', 'KESISWAAN'].includes(j.toUpperCase()))) {
+      return true;
+    }
+
+    if (
+      can('dashboard.view.kurikulum') ||
+      can('dashboard.view.kepsek') ||
+      can('academic.schedules.manage') ||
+      can('academic.subjects.manage') ||
+      can('academic.manage.academic') ||
+      can('superadmin.tenants.manage')
+    ) {
+      return true;
+    }
     return false;
-  }, [user, can]);
+  }, [user, myGuruData, can]);
 
   const [isAllSelected, setIsAllSelected] = useState<boolean>(false);
 
@@ -148,11 +167,14 @@ export function RekapBulananMapelContent() {
     const list: MapelClassCard[] = [];
     const seen = new Set<string>();
 
+    const rawMapel = dropdownsQuery.data?.mapel || [];
+    const rawKelas = dropdownsQuery.data?.kelas || [];
+
     taughtList.forEach((a: any) => {
       const mId = a.mapel_id || a.Mapel?.id || a.mapel?.id;
       const kId = a.kelas_id || a.Kelas?.id || a.kelas?.id;
-      const mName = a.Mapel?.nama_mapel || a.mapel?.nama_mapel || (dropdownsQuery.data?.mapel || []).find(m => m.value === mId)?.label || 'Mata Pelajaran';
-      const kName = a.Kelas?.nama_kelas || a.kelas?.nama_kelas || (dropdownsQuery.data?.kelas || []).find(k => k.value === kId)?.label || 'Kelas';
+      const mName = a.Mapel?.nama_mapel || a.mapel?.nama_mapel || rawMapel.find(m => m.value === mId)?.label || 'Mata Pelajaran';
+      const kName = a.Kelas?.nama_kelas || a.kelas?.nama_kelas || rawKelas.find(k => k.value === kId)?.label || 'Kelas';
 
       if (mId && kId) {
         const key = `${mId}___${kId}`;
@@ -165,6 +187,21 @@ export function RekapBulananMapelContent() {
             kelasId: kId,
             kelasName: kName,
           });
+        }
+      } else if (mId && !kId) {
+        const defaultKelas = rawKelas[0];
+        if (defaultKelas) {
+          const key = `${mId}___${defaultKelas.value}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            list.push({
+              id: key,
+              mapelId: mId,
+              mapelName: mName,
+              kelasId: defaultKelas.value,
+              kelasName: defaultKelas.label,
+            });
+          }
         }
       }
     });
