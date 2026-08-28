@@ -175,8 +175,12 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 sm:w-72 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          {/* User Info Header */}
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-3">
+          {/* User Info Header (Clickable to /dashboard?tab=profil) */}
+          <div 
+            onClick={() => { setIsOpen(false); navigate('/dashboard?tab=profil'); }}
+            className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
+            title="Buka Profil Saya"
+          >
             {fotoUrl ? (
               <img 
                 src={fotoUrl} 
@@ -207,7 +211,7 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
           <div className="py-1.5 px-2 space-y-1">
             {/* Profil Saya */}
             <button
-              onClick={() => { setIsOpen(false); navigate('/profile'); }}
+              onClick={() => { setIsOpen(false); navigate('/dashboard?tab=profil'); }}
               className="flex items-center w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
             >
               <User className="w-4 h-4 mr-2.5 text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" />

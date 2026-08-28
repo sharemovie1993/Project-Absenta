@@ -103,13 +103,13 @@ export const ProfileSidebar: React.FC<ProfileSidebarProps> = ({
         {/* Tombol Aksi Profil */}
         <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 relative z-10">
           <button 
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate('/dashboard?tab=profil')}
             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-slate-700 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all active:scale-95"
           >
             <Eye size={12} /> Lihat
           </button>
           <button 
-            onClick={() => navigate('/profile?edit=true')}
+            onClick={() => navigate('/dashboard?tab=profil&edit=true')}
             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-slate-700 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 transition-all active:scale-95"
           >
             <Pencil size={12} /> Edit

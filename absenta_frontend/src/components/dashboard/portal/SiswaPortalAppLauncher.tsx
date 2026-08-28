@@ -227,7 +227,7 @@ export const SiswaPortalAppLauncher: React.FC<SiswaPortalAppLauncherProps> = ({
         iconComp: User,
         colorClass: 'text-indigo-600 dark:text-indigo-400',
         bgLightClass: 'bg-indigo-50 dark:bg-indigo-950/60',
-        path: '/profile',
+        path: '/dashboard?tab=profil',
       },
     ];
 
