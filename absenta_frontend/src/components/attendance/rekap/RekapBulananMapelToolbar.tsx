@@ -115,11 +115,45 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
   onExportPdf,
 }: RekapBulananMapelToolbarProps) {
   return (
-    <div className="space-y-4">
-      {/* ─── Tombol Pilihan Mode & Kartu Mapel Guru (Ultra-Compact App-Launcher) ─ */}
+    <div className="space-y-3.5">
+      {/* ─── 1. KONTEKS GLOBAL: Tahun Pelajaran & Bulan Laporan ───────────────── */}
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+        <div className="space-y-1">
+          <label htmlFor="filter-tahun-mapel-select" className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">
+            📅 1. Tahun Pelajaran (Konteks Induk)
+          </label>
+          <Suspense fallback={<SuspenseFallback />}>
+            <SearchableSelect
+              id="filter-tahun-mapel-select"
+              aria-label="Pilih Tahun Pelajaran"
+              value={tahunPelajaranId}
+              onValueChange={setTahunPelajaranId}
+              options={tahunOptions ?? []}
+              placeholder="Pilih Tahun Pelajaran..."
+              triggerClassName="h-9.5 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold shadow-2xs"
+            />
+          </Suspense>
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="filter-bulan-mapel-input" className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">
+            🗓️ 2. Bulan Laporan
+          </label>
+          <Input
+            id="filter-bulan-mapel-input"
+            aria-label="Pilih Bulan Laporan Mapel"
+            type="month"
+            value={bulan}
+            onChange={e => setBulan(e.target.value)}
+            className="h-9.5 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold shadow-2xs"
+          />
+        </div>
+      </div>
+
+      {/* ─── 2. OBJEK KBM: Pemilihan Mapel & Kelas ───────────────────────────── */}
       <div className="space-y-1">
         <label className="text-[9.5px] font-black uppercase tracking-widest text-slate-400 ml-1">
-          Pilih Mata Pelajaran &amp; Kelas
+          3. Pilih Mata Pelajaran &amp; Kelas
         </label>
         <div className="flex flex-wrap items-stretch gap-1.5">
           {/* Tombol ALL untuk Manajemen (Kepsek/Kurikulum) */}
@@ -180,7 +214,7 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
         </div>
       </div>
 
-      {/* ─── Mode Manajemen / ALL: Pilih Kelas Terlebih Dahulu, Lalu Klik Tombol Mapel ─── */}
+      {/* ─── Mode Supervisi ALL Kurikulum: Pilih Kelas ──► Klik Mapel ─────────── */}
       {isManagement && isAllSelected && (
         <div className="p-3 sm:p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60 space-y-2.5 shadow-xs">
           {/* Langkah 1: Pilih Kelas */}
@@ -251,81 +285,48 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
         </div>
       )}
 
-      {/* ─── Top Banner Info ─────────────────────────────────────────────────── */}
-      {(selectedMapelLabel || selectedKelasLabel) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/50 text-xs">
-          <div className="flex items-center gap-3">
-            <span className="font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-tight">
-              📚 {selectedMapelLabel || 'Mata Pelajaran'}
-            </span>
-            <span className="text-slate-400">•</span>
-            <span className="font-bold text-slate-700 dark:text-slate-300">
-              Kelas: {selectedKelasLabel || '—'}
+      {/* ─── 3. STATUS KBM & KONTROL OUTPUT / EKSPOR ─────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+        {/* Status Sesi KBM Terpilih */}
+        {(selectedMapelLabel || selectedKelasLabel) ? (
+          <div className="flex flex-wrap items-center gap-2.5 px-3.5 py-2 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50 text-xs flex-1">
+            <div className="flex items-center gap-2">
+              <span className="font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-tight">
+                📚 {selectedMapelLabel || 'Mata Pelajaran'}
+              </span>
+              <span className="text-slate-400">•</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                Kelas: {selectedKelasLabel || '—'}
+              </span>
+            </div>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 text-[11px] ml-auto">
+              {totalSesi} Sesi KBM Terlaksana
             </span>
           </div>
-          <span className="font-bold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900 px-2.5 py-0.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 text-[11px]">
-            {totalSesi} Sesi KBM Terlaksana
-          </span>
-        </div>
-      )}
+        ) : <div className="flex-1" />}
 
-      {/* ─── Filter Bulan, Tahun & Ekspor ────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-        <div className="space-y-1.5">
-          <label htmlFor="filter-bulan-mapel-input" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            Bulan Laporan
-          </label>
-          <Input
-            id="filter-bulan-mapel-input"
-            aria-label="Pilih Bulan Laporan Mapel"
-            type="month"
-            value={bulan}
-            onChange={e => setBulan(e.target.value)}
-            className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="filter-tahun-mapel-select" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            Tahun Pelajaran
-          </label>
-          <Suspense fallback={<SuspenseFallback />}>
-            <SearchableSelect
-              id="filter-tahun-mapel-select"
-              aria-label="Pilih Tahun Pelajaran"
-              value={tahunPelajaranId}
-              onValueChange={setTahunPelajaranId}
-              options={tahunOptions ?? []}
-              placeholder="Pilih Tahun..."
-              triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-            />
-          </Suspense>
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
-            Tampilan Tabel
-          </label>
+        {/* Format Tabel & Tombol Ekspor */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
-        </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            onClick={onExportExcel}
-            variant="outline"
-            size="sm"
-            className="h-10 flex-1 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-slate-200 dark:border-slate-800"
-          >
-            <FileText className="w-3.5 h-3.5 mr-1.5" /> Excel
-          </Button>
-          <Button
-            onClick={onExportPdf}
-            variant="outline"
-            size="sm"
-            className="h-10 flex-1 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-          >
-            <Printer className="w-3.5 h-3.5 mr-1.5" /> PDF
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              onClick={onExportExcel}
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-slate-200 dark:border-slate-800 shadow-2xs"
+            >
+              <FileText className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Excel
+            </Button>
+            <Button
+              onClick={onExportPdf}
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 shadow-2xs"
+            >
+              <Printer className="w-3.5 h-3.5 mr-1.5" /> PDF
+            </Button>
+          </div>
         </div>
       </div>
     </div>

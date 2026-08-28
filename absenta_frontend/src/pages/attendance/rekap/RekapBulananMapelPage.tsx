@@ -211,10 +211,13 @@ export function RekapBulananMapelContent() {
 
   // Query Mapel yang diajar di kelas terpilih (untuk Mode Kurikulum / ALL)
   const { data: classMapelData } = useQuery({
-    queryKey: ['class-mapel-list', kelasId],
+    queryKey: ['class-mapel-list', kelasId, tahunPelajaranId],
     queryFn: async () => {
       if (!kelasId) return [];
-      const res = await listGuruMapel({ kelas_id: kelasId }).catch(() => null);
+      const res = await listGuruMapel({ 
+        kelas_id: kelasId,
+        ...(tahunPelajaranId ? { tahun_pelajaran_id: tahunPelajaranId } : {})
+      }).catch(() => null);
       if (res?.data && res.data.length > 0) {
         const map = new Map<string, { mapelId: string; mapelName: string; guruName?: string }>();
         res.data.forEach((a: any) => {
