@@ -128,6 +128,14 @@ export function RekapBulananMapelContent() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const isManagement = useMemo(() => {
+    const roleName = String(user?.role?.name || (user as any)?.role || '').toUpperCase();
+    const managementRoles = ['SUPERADMIN', 'ADMINISTRATOR', 'ADMIN_SEKOLAH', 'KEPALA_SEKOLAH', 'KURIKULUM', 'STAFF_TU'];
+    if (managementRoles.includes(roleName)) return true;
+    if (can('curriculum.schedules.manage') || can('academic.structures.manage') || can('superadmin.tenants.manage')) return true;
+    return false;
+  }, [user, can]);
+
   useEffect(() => {
     if (dropdownsQuery.data) {
       setTahunOptions(dropdownsQuery.data.tahun);
@@ -140,8 +148,18 @@ export function RekapBulananMapelContent() {
       const taughtMapelIds = new Set(assignedList.map(a => a.mapel_id).filter(Boolean));
       const taughtKelasIds = new Set(assignedList.map(a => a.kelas_id).filter(Boolean));
 
-      // Prioritaskan Mapel yang diampu Guru
-      if (taughtMapelIds.size > 0) {
+      // ── Opsi Mapel ──
+      if (!isManagement && taughtMapelIds.size > 0) {
+        // Khusus Guru: HANYA tampilkan Mapel yang diampunya saja
+        const filteredMapel = rawMapel.filter(m => taughtMapelIds.has(m.value));
+        setMapelOptions(filteredMapel.length > 0 ? filteredMapel : rawMapel);
+
+        if (!mapelId || !filteredMapel.some(m => m.value === mapelId)) {
+          if (filteredMapel.length > 0) setMapelId(filteredMapel[0].value);
+          else if (rawMapel.length > 0) setMapelId(rawMapel[0].value);
+        }
+      } else if (isManagement && taughtMapelIds.size > 0) {
+        // Manajemen: Tampilkan semua mapel dengan mapel guru di-pin paling atas
         const sortedMapel = [...rawMapel].sort((a, b) => {
           const aTaught = taughtMapelIds.has(a.value);
           const bTaught = taughtMapelIds.has(b.value);
@@ -161,8 +179,18 @@ export function RekapBulananMapelContent() {
         if (!mapelId && rawMapel.length > 0) setMapelId(rawMapel[0].value);
       }
 
-      // Prioritaskan Kelas yang diampu Guru
-      if (taughtKelasIds.size > 0) {
+      // ── Opsi Kelas ──
+      if (!isManagement && taughtKelasIds.size > 0) {
+        // Khusus Guru: HANYA tampilkan Kelas yang diampunya saja
+        const filteredKelas = rawKelas.filter(k => taughtKelasIds.has(k.value));
+        setKelasOptions(filteredKelas.length > 0 ? filteredKelas : rawKelas);
+
+        if (!kelasId || !filteredKelas.some(k => k.value === kelasId)) {
+          if (filteredKelas.length > 0) setKelasId(filteredKelas[0].value);
+          else if (rawKelas.length > 0) setKelasId(rawKelas[0].value);
+        }
+      } else if (isManagement && taughtKelasIds.size > 0) {
+        // Manajemen: Tampilkan semua kelas dengan kelas guru di-pin paling atas
         const sortedKelas = [...rawKelas].sort((a, b) => {
           const aTaught = taughtKelasIds.has(a.value);
           const bTaught = taughtKelasIds.has(b.value);
@@ -182,7 +210,7 @@ export function RekapBulananMapelContent() {
         if (!kelasId && rawKelas.length > 0) setKelasId(rawKelas[0].value);
       }
     }
-  }, [dropdownsQuery.data, myGuruMapelData?.data, tahunPelajaranId, kelasId, mapelId]);
+  }, [dropdownsQuery.data, myGuruMapelData?.data, tahunPelajaranId, kelasId, mapelId, isManagement]);
 
   // Kop Query
   const kopQuery = useQuery({
