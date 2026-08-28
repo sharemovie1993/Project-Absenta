@@ -300,23 +300,6 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
         </div>
       )}
 
-      {/* ─── Baris 3: Status Sesi Terpilih Ringkas (1 Baris Tipis) ────────────── */}
-      {(selectedMapelLabel || selectedKelasLabel) && (
-        <div className="flex items-center justify-between gap-2 px-3 py-1 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100/80 dark:border-indigo-900/40 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-tight">
-              📚 {selectedMapelLabel || 'Mata Pelajaran'}
-            </span>
-            <span className="text-slate-300 dark:text-slate-600">•</span>
-            <span className="font-bold text-slate-600 dark:text-slate-300">
-              Kelas: {selectedKelasLabel || '—'}
-            </span>
-          </div>
-          <span className="font-extrabold text-indigo-600 dark:text-indigo-400 text-[11px]">
-            {totalSesi} Sesi KBM Terlaksana
-          </span>
-        </div>
-      )}
     </div>
   );
 });
