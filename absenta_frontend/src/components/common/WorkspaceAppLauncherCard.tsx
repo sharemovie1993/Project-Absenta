@@ -63,6 +63,10 @@ export interface WorkspaceAppLauncherCardProps {
    */
   hideIfEmpty?: boolean;
   /**
+   * Jika true, tetap tampilkan di desktop (default: false, hanya tampil di HP/tablet).
+   */
+  forceShowOnDesktop?: boolean;
+  /**
    * ClassName tambahan.
    */
   className?: string;
@@ -271,6 +275,7 @@ LauncherTile.displayName = 'LauncherTile';
 export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> = React.memo(({
   workspaceId: targetWorkspaceIdProp,
   hideIfEmpty = false,
+  forceShowOnDesktop = false,
   className
 }) => {
   const { user } = useAuthStore();
@@ -770,7 +775,7 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
   }
 
   return (
-    <div className={cn("w-full select-none", className)}>
+    <div className={cn("w-full select-none", !forceShowOnDesktop && "block lg:hidden", className)}>
       {/* ── BENTO KLASTER WORKFLOW (GoPay Agen Style: 4-Kolom, Kompak & Rapi) ── */}
       <div className={cn(
         "grid gap-3 sm:gap-4",
