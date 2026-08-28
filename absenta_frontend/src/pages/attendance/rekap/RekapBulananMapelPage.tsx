@@ -94,11 +94,11 @@ export function RekapBulananMapelContent() {
       const allRes = await guruApi.getAll({ limit: 1, ...({ user_id: user?.id } as any) }).catch(() => null);
       return allRes?.data?.[0] || null;
     },
-    enabled: !!user?.id && (user?.role?.name === 'GURU' || (user as any)?.role === 'GURU'),
+    enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
   });
 
-  const myGuruId = myGuruData?.id;
+  const myGuruId = (user?.guru_profile as any)?.id || (user as any)?.guru_id || myGuruData?.id;
 
   // Query Penugasan GuruMapel Guru yang Login
   const { data: myGuruMapelData } = useQuery({
