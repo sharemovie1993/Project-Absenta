@@ -38,6 +38,7 @@ interface RekapBulananMapelToolbarProps {
   selectedMapelLabel: string;
   selectedKelasLabel: string;
   totalSesi: number;
+  hasData?: boolean;
   setKelasId: (v: string) => void;
   setMapelId: (v: string) => void;
   setBulan: (v: string) => void;
@@ -114,6 +115,13 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
   onExportExcel,
   onExportPdf,
 }: RekapBulananMapelToolbarProps) {
+  const canExport = Boolean(mapelId && kelasId && hasData);
+  const exportTooltip = !mapelId || !kelasId
+    ? "Pilih mata pelajaran dan kelas terlebih dahulu untuk mengekspor"
+    : !hasData
+      ? "Tidak ada data presensi pada periode ini untuk diekspor"
+      : undefined;
+
   return (
     <div className="space-y-3.5">
       {/* ─── 1. KONTEKS GLOBAL: Tahun Pelajaran & Bulan Laporan ───────────────── */}
@@ -318,17 +326,29 @@ export const RekapBulananMapelToolbar = React.memo(function RekapBulananMapelToo
           <div className="flex items-center gap-1.5">
             <Button
               onClick={onExportExcel}
+              disabled={!canExport}
+              title={exportTooltip}
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-slate-200 dark:border-slate-800 shadow-2xs"
+              className={`h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 shadow-2xs transition-all ${
+                canExport
+                  ? 'border-slate-200 dark:border-slate-800 hover:border-emerald-300 dark:hover:border-emerald-800 cursor-pointer'
+                  : 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-850 text-slate-400'
+              }`}
             >
               <FileText className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Excel
             </Button>
             <Button
               onClick={onExportPdf}
+              disabled={!canExport}
+              title={exportTooltip}
               variant="outline"
               size="sm"
-              className="h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 shadow-2xs"
+              className={`h-10 rounded-xl font-bold text-[10px] uppercase tracking-widest px-3 shadow-2xs transition-all ${
+                canExport
+                  ? 'border-rose-200 dark:border-rose-900/50 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer'
+                  : 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-850 text-slate-400'
+              }`}
             >
               <Printer className="w-3.5 h-3.5 mr-1.5" /> PDF
             </Button>

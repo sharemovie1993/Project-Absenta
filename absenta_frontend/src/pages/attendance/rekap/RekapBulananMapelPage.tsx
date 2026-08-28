@@ -397,7 +397,11 @@ export function RekapBulananMapelContent() {
 
   // ─── Export Excel ────────────────────────────────────────────────────────────
   const handleExportExcel = useCallback(() => {
-    if (!rows?.length) { toast.error('Tidak ada data untuk diekspor'); return; }
+    if (!mapelId || !kelasId) {
+      toast.error('Silakan pilih mata pelajaran dan kelas terlebih dahulu');
+      return;
+    }
+    if (!rows?.length) { toast.error('Tidak ada data presensi untuk diekspor'); return; }
     try {
       const namaKelas = selectedKelasLabel || 'Kelas';
       const namaMapel = selectedMapelLabel || 'Mapel';
@@ -424,11 +428,15 @@ export function RekapBulananMapelContent() {
     } catch {
       toast.error('Gagal mengekspor ke Excel');
     }
-  }, [rows, selectedKelasLabel, selectedMapelLabel, bulan, dayNumbers]);
+  }, [rows, selectedKelasLabel, selectedMapelLabel, mapelId, kelasId, bulan, dayNumbers]);
 
   // ─── Export PDF ──────────────────────────────────────────────────────────────
   const handleExportPdf = useCallback(async () => {
-    if (!rows?.length) { toast.error('Tidak ada data untuk dicetak'); return; }
+    if (!mapelId || !kelasId) {
+      toast.error('Silakan pilih mata pelajaran dan kelas terlebih dahulu');
+      return;
+    }
+    if (!rows?.length) { toast.error('Tidak ada data presensi untuk dicetak'); return; }
     try {
       toast.loading('Menyiapkan dokumen PDF Rekap Mapel...', { id: 'pdf-toast' });
       const isMatrix = viewMode === 'MATRIX';
@@ -498,6 +506,7 @@ export function RekapBulananMapelContent() {
           selectedMapelLabel={selectedMapelLabel}
           selectedKelasLabel={selectedKelasLabel}
           totalSesi={totalSesi}
+          hasData={safeRows.length > 0}
           setKelasId={setKelasId}
           setMapelId={setMapelId}
           setBulan={setBulan}
