@@ -201,30 +201,21 @@ export function RekapBulananMapelContent() {
         if (!mapelId && sortedMapel.length > 0) setMapelId(sortedMapel[0].value);
       }
 
-      // ── Opsi Kelas (STRICT untuk Guru) ──
-      if (!isManagement) {
-        const strictlyKelas: DropdownOption[] = taughtKelasMap.size > 0
-          ? Array.from(taughtKelasMap.entries()).map(([val, lbl]) => ({ value: val, label: lbl }))
-          : rawKelas.filter(k => taughtKelasMap.has(k.value));
+      // ── Opsi Kelas (Tampilkan Semua Kelas dengan Prioritas Kelas Anda di Atas) ──
+      const sortedKelas = [...rawKelas].sort((a, b) => {
+        const aTaught = taughtKelasMap.has(a.value);
+        const bTaught = taughtKelasMap.has(b.value);
+        if (aTaught && !bTaught) return -1;
+        if (!aTaught && bTaught) return 1;
+        return 0;
+      }).map(k => taughtKelasMap.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
 
-        setKelasOptions(strictlyKelas.length > 0 ? strictlyKelas : (rawKelas.length > 0 ? [rawKelas[0]] : []));
+      setKelasOptions(sortedKelas);
 
-        if (!kelasId || !strictlyKelas.some(k => k.value === kelasId)) {
-          if (strictlyKelas.length > 0) setKelasId(strictlyKelas[0].value);
-          else if (rawKelas.length > 0) setKelasId(rawKelas[0].value);
-        }
-      } else {
-        // Manajemen: Tampilkan semua kelas
-        const sortedKelas = [...rawKelas].sort((a, b) => {
-          const aTaught = taughtKelasMap.has(a.value);
-          const bTaught = taughtKelasMap.has(b.value);
-          if (aTaught && !bTaught) return -1;
-          if (!aTaught && bTaught) return 1;
-          return 0;
-        }).map(k => taughtKelasMap.has(k.value) ? { ...k, label: `⭐ ${k.label} (Kelas Anda)` } : k);
-
-        setKelasOptions(sortedKelas);
-        if (!kelasId && sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
+      if (!kelasId || !rawKelas.some(k => k.value === kelasId)) {
+        const firstTaughtKelas = sortedKelas.find(k => taughtKelasMap.has(k.value));
+        if (firstTaughtKelas) setKelasId(firstTaughtKelas.value);
+        else if (sortedKelas.length > 0) setKelasId(sortedKelas[0].value);
       }
     }
   }, [dropdownsQuery.data, taughtList, tahunPelajaranId, kelasId, mapelId, isManagement]);
