@@ -148,7 +148,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const { data: rawGurusData, isLoading: loadingGurus } = useQuery<Guru[]>({
     queryKey: ['compliance-guru-list'],
     queryFn: async () => {
-      const res = await getGuruList(1, 300);
+      const res = await getGuruList(1, 1000);
       const items = Array.isArray(res) ? res : res?.data || [];
       return items;
     },
@@ -158,7 +158,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const { data: rawSiswaData, isLoading: loadingSiswa } = useQuery<Siswa[]>({
     queryKey: ['compliance-siswa-list'],
     queryFn: async () => {
-      const res = await getSiswaList(1, 300);
+      const res = await getSiswaList(1, 5000, '', '', 'AKTIF');
       const items = Array.isArray(res) ? res : res?.data || [];
       return items;
     },
