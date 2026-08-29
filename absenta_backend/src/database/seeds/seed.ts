@@ -324,7 +324,7 @@ async function main() {
         { label: 'Petugas Absensi', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.session, core.users.create' },
         { label: 'Perangkat & Mesin Absensi', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
         { label: 'Perekaman Wajah (Biometrik)', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.scan' },
-        { label: 'Pengaturan Jam Presensi', icon: 'Settings', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
+        { label: 'Kejadian Khusus (Dispensasi)', icon: 'CalendarDays', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
       ]
     },
 

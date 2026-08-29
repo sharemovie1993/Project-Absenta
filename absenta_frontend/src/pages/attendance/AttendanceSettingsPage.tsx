@@ -1,21 +1,14 @@
-import React, { useState, lazy, Suspense, useMemo, useCallback } from 'react';
-const TenantAttendanceForm = lazy(() => import('../../components/attendance/settings/TenantAttendanceForm').then(module => ({ default: module.TenantAttendanceForm })));
+import React, { lazy, Suspense, useMemo } from 'react';
 const KejadianKhususPanel = lazy(() => import('../../components/attendance/settings/KejadianKhususPanel').then(module => ({ default: module.KejadianKhususPanel })));
 import { 
-  Tabs, 
-  TabsContent, 
   Alert, 
   AlertDescription, 
-  Loader,
-  Card 
+  Loader 
 } from '../../components/ui';
-import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { 
-  Settings, 
-  Sliders,
-  Bell,
-  Fingerprint
+  Bell, 
+  Fingerprint 
 } from 'lucide-react';
 
 import { useAuthStore } from '../../store/authStore';
@@ -24,87 +17,52 @@ import PageLayout from '../../components/common/PageLayout';
 
 const stats = [
   {
-    title: "Konfigurasi",
-    value: "Modul Absensi",
-    icon: <Settings size={14} />,
-    gradient: "from-slate-700 to-slate-900",
-    subtitle: "Sistem Manajemen Kehadiran"
+    title: "Modul",
+    value: "Kejadian Khusus",
+    icon: <Bell size={14} />,
+    gradient: "from-purple-600 to-indigo-700",
+    subtitle: "Override & Dispensasi"
   },
   {
-    title: "Security",
-    value: "Enterprise",
+    title: "Keamanan",
+    value: "Proteksi Data",
     icon: <Fingerprint size={14} />,
     gradient: "from-blue-600 to-indigo-700",
-    subtitle: "Validasi IoT & Biometrik"
+    subtitle: "Validasi Log Presensi"
   }
 ];
 
 const instructionData = {
-  title: "Pengaturan Modul",
-  description: "Konfigurasikan aturan kehadiran dan jadwal operasional absensi sekolah.",
+  title: "Kejadian Khusus & Dispensasi",
+  description: "Konfigurasikan hari libur mendadak, dispensasi acara massal, dan override presensi insidental.",
   items: [
-    { text: "Atur toleransi keterlambatan dan poin kedisiplinan pada Pengaturan Umum." },
-    { text: "Gunakan Kejadian Khusus untuk hari libur atau acara sekolah mendadak." }
+    { text: "Tambahkan Kejadian Khusus jika terjadi kondisi darurat, bencana, atau kegiatan insidental sekolah." },
+    { text: "Mode LIBUR otomatis menonaktifkan deteksi alfa/terlambat pada tanggal yang ditentukan." },
+    { text: "Pengaturan jam operasional gerbang default sekolah dikelola terpusat di menu Setelan." }
   ]
 };
 
 const breadcrumbs = [
   { label: 'Presensi', path: '/attendance/ops' },
-  { label: 'Pengaturan Absensi', active: true }
+  { label: 'Kejadian Khusus', active: true }
 ];
 
 export const AttendanceSettingsPage: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
-  const { isAdmin, can } = useCapabilities();
-  const [activeTab, setActiveTab] = useState('general');
+  const { can } = useCapabilities();
 
   const memoStats = useMemo(() => stats, []);
   const memoBreadcrumbs = useMemo(() => breadcrumbs, []);
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-  }, []);
-
-  const tabOptions = useMemo(() => [
-    { id: 'general', label: 'Pengaturan Umum', icon: Sliders, colorClass: 'text-indigo-600 dark:text-indigo-400' },
-    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-600 dark:text-purple-400' }
-  ], []);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
   const isLocked = !Array.isArray(features) || !features.includes('ABSENSI');
 
   if (!can('attendance.gate.bypass')) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
-  const pageContent = (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <TabSwitcher
-          options={tabOptions}
-          activeTab={activeTab}
-          onChange={handleTabChange}
-          className="mb-8"
-        />
-
-        <TabsContent value="general" className="mt-0 focus-visible:outline-none">
-          <Card className="bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
-            <Suspense fallback={<Loader size="sm" />}>
-              <TenantAttendanceForm />
-            </Suspense>
-          </Card>
-        </TabsContent>
- 
-        <TabsContent value="events" className="mt-0 focus-visible:outline-none">
-          <Suspense fallback={<Loader size="sm" />}>
-            <KejadianKhususPanel />
-          </Suspense>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-
   return (
     <PageLayout
-      title="Pengaturan Absensi"
-      description="Atur aturan kehadiran, toleransi keterlambatan, dan jadwal operasional modul absensi."
+      title="Kejadian Khusus Presensi"
+      description="Kelola hari libur mendadak, dispensasi massal, dan penyesuaian aturan presensi insidental."
       stats={memoStats}
       instruction={instructionData}
       breadcrumbs={memoBreadcrumbs}
@@ -112,10 +70,14 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
     >
       <PremiumFeatureGate
         moduleName="ABSENSI"
-        featureName="Konfigurasi Modul Absensi"
-        description="Atur aturan kehadiran, toleransi keterlambatan, kejadian khusus, dan jadwal operasional sekolah Anda."
+        featureName="Kejadian Khusus Presensi"
+        description="Atur hari libur mendadak, dispensasi massal, dan penyesuaian aturan presensi insidental sekolah Anda."
       >
-        {pageContent}
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <Suspense fallback={<Loader size="lg" />}>
+            <KejadianKhususPanel />
+          </Suspense>
+        </div>
       </PremiumFeatureGate>
     </PageLayout>
   );
