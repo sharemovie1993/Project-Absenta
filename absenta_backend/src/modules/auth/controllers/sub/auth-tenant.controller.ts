@@ -1,24 +1,10 @@
-// @ts-nocheck
-import { authService } from '../../services/auth.service';
+// auth-tenant.controller.ts — Tenant Resolution & Multi-tenant Domain Operations
 import { authDb as prisma } from '../../services/repositories/auth.db';
-import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '../../types/auth.types';
-import { authorizationService } from '../../services/authorization.service';
+import { getDomainBases, getSmartFrontendBaseUrl } from '@/utils/url-helper';
 import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
-import { organizationalAuthorizationEngine } from '../../services/organizational-authorization.engine';
-import { getTenantCapabilities } from '@/utils/tenant-capabilities';
-import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
-import { VALID_ROLES } from '@/constants/enums';
-import { EmailService } from '@/modules/notification/services/email.service';
-import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
-import { systemConfigService } from '@/modules/system-config/services/system-config.service';
-import { activityLogService } from '@/modules/activity/services/activity-log.service';
-import bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
-import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@/utils/url-helper';
 import { WireguardManager } from '@/services/wireguardManager';
-import * as jwt from 'jsonwebtoken';
-
-export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+import { getJwtSecret } from '../../utils/auth-security.util';
+export { getJwtSecret };
 
 export const authTenantController = {
   extractSubdomain(host: string): string | null {

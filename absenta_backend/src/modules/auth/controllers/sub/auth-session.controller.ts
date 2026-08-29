@@ -44,13 +44,18 @@ export const authSessionController = {
       const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
       const allowLocalDevLogin = (isLocalHostRequest || isPrivateLanRequest) && (devAllowLocalLogin || !isProd);
 
+      let isDemoTenantRequest = false;
       if (request.body && typeof (request.body as any).tenant_id !== 'undefined') {
         const tenantIdFromBody = String((request.body as any).tenant_id || '').trim();
-        if (!allowLocalDevLogin) {
+        const isDemoTenant = tenantIdFromBody === '2acb7e12-d264-4784-8262-8f7369061542' || tenantIdFromBody === 'demo-tenant-absenta';
+        const isDemoHost = hostNoPortPre.includes('demo') || hostNoPortPre === 'demo.absenta.id';
+        isDemoTenantRequest = isDemoTenant || isDemoHost;
+
+        if (!allowLocalDevLogin && !isDemoTenantRequest) {
           const superUser = await prisma.user.findFirst({ where: { email, Role: { is: { name: 'SUPERADMIN' } } } });
           if (!superUser) {
             try {
-            await logLoginFailedOnce('TENANT_ID_NOT_ALLOWED', email, logDomain);
+              await logLoginFailedOnce('TENANT_ID_NOT_ALLOWED', email, logDomain);
             } catch {}
             reply.status(400);
             return {
@@ -58,14 +63,14 @@ export const authSessionController = {
               message: 'Invalid payload: tenant_id not allowed',
             };
           }
-        } else {
+        } else if (tenantIdFromBody) {
           const tenantRecord = await prisma.tenant.findUnique({ where: { id: tenantIdFromBody } });
           if (!tenantRecord) {
             try {
               await logLoginFailedOnce('INVALID_TENANT_ID_DEV_LOCALHOST', email, logDomain);
             } catch {}
             reply.status(400);
-            return { success: false, message: 'Invalid tenant_id in development localhost mode' };
+            return { success: false, message: 'Invalid tenant_id provided' };
           }
         }
       }
@@ -74,8 +79,8 @@ export const authSessionController = {
       let resolvedTenantId: string | null = null;
       let resolutionMethod: 'DOMAIN' | 'BODY' | 'EMAIL_FALLBACK' = 'DOMAIN';
 
-      // 1. Priority 1 (Dev / Localhost / Explicit Body Selection): Check body.tenant_id first
-      if (allowLocalDevLogin) {
+      // 1. Priority 1 (Dev / Localhost / Demo Switcher / Explicit Body Selection): Check body.tenant_id first
+      if (allowLocalDevLogin || isDemoTenantRequest) {
         const bodyTenantIdRaw = (request.body && (request.body as any).tenant_id) ? String((request.body as any).tenant_id).trim() : '';
         if (bodyTenantIdRaw) {
           const tenantRecord = await prisma.tenant.findUnique({ where: { id: bodyTenantIdRaw } });
