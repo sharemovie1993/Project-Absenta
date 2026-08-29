@@ -8,6 +8,7 @@ export const PRISMA_GURU_USER_SELECT = {
     full_name: true,
     status: true,
     no_hp: true,
+    last_login: true,
     Role: {
       select: {
         id: true,
@@ -25,6 +26,7 @@ export function enrichGuruWithUser(guru: any): any {
   if (guru.User) {
     guru.email = guru.email || guru.User.email || null;
     guru.no_hp = guru.no_hp || guru.User.no_hp || null;
+    guru.last_login = guru.last_login || guru.User.last_login || null;
   }
   return guru;
 }

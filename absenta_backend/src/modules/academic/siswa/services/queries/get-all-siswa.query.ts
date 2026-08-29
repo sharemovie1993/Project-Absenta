@@ -134,6 +134,8 @@ export async function getAllSiswaQuery(
           id: true,
           email: true,
           full_name: true,
+          status: true,
+          last_login: true,
         },
       },
       Jurusan: {

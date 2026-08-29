@@ -13,6 +13,7 @@ import { getSiswaList } from '@/api/academic/siswa.api';
 import type { Guru, Siswa } from '@/types/academic';
 import type { NudgeModalTarget } from '@/components/management/compliance/ComplianceNudgeModal';
 import { ComplianceStatsCards } from '@/components/management/compliance/ComplianceStatsCards';
+import { formatDate } from '@/utils/date.utils';
 
 const ComplianceTrendsView = lazy(() =>
   import('@/components/management/compliance/ComplianceTrendsView').then((m) => ({ default: m.ComplianceTrendsView }))
@@ -30,6 +31,7 @@ export interface TeacherComplianceItem {
   jabatan: string;
   rfidEnrolled: boolean;
   hasUserAccount: boolean;
+  lastLogin: string | null;
   complianceScore: number;
   issues: string[];
 }
@@ -42,8 +44,33 @@ export interface StudentComplianceItem {
   noWaOrtu: string;
   rfidEnrolled: boolean;
   hasUserAccount: boolean;
+  lastLogin: string | null;
   complianceScore: number;
   issues: string[];
+}
+
+export function formatLastLogin(dateStr?: string | Date | null): { text: string; isRecent: boolean } {
+  if (!dateStr) return { text: 'Belum Pernah', isRecent: false };
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { text: 'Belum Pernah', isRecent: false };
+
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  if (diffHours < 24) {
+    const hours = Math.max(1, Math.floor(diffHours));
+    return { text: `${hours} jam lalu`, isRecent: true };
+  }
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays <= 7) {
+    return { text: `${diffDays} hari lalu`, isRecent: true };
+  }
+
+  return {
+    text: formatDate(d),
+    isRecent: false
+  };
 }
 
 const filterSchema = z.object({
@@ -104,9 +131,10 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       const rfidEnrolled = Boolean(g.no_rfid || teacherRecord.rfid || teacherRecord.card_uid);
       const noWa = String(g.no_hp || g.telepon || teacherRecord.wa_phone || g.User?.phone || g.user?.phone || '').trim();
       const hasUserAccount = Boolean(g.user_id || g.user?.id || g.User?.id);
+      const lastLogin = (g.last_login || g.User?.last_login || teacherRecord.last_login || null) as string | null;
       
       const issues: string[] = [];
-      let score = 40;
+      let score = 30;
 
       if (rfidEnrolled) {
         score += 30;
@@ -126,6 +154,12 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         issues.push('Akun login portal mandiri belum aktif');
       }
 
+      if (lastLogin) {
+        score += 10;
+      } else {
+        issues.push('Belum pernah login ke sistem');
+      }
+
       return {
         id: g.id || `guru-${Math.random()}`,
         nama: displayName,
@@ -135,6 +169,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         jabatan: g.jenis_ptk || g.status_kepegawaian || 'Guru',
         rfidEnrolled,
         hasUserAccount,
+        lastLogin,
         complianceScore: Math.min(100, score),
         issues
       };
@@ -149,9 +184,10 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       const rfidEnrolled = Boolean(s.no_rfid || studentRecord.rfid || studentRecord.card_uid);
       const noWaOrtu = String(s.no_hp_ortu || s.telepon_ortu || studentRecord.no_hp_ayah || studentRecord.no_hp_ibu || s.no_hp || s.telepon || studentRecord.no_wa_wali || '').trim();
       const hasUserAccount = Boolean(s.user_id || s.user?.id || studentRecord.User);
+      const lastLogin = (s.last_login || s.User?.last_login || studentRecord.last_login || null) as string | null;
       
       const issues: string[] = [];
-      let score = 40;
+      let score = 30;
 
       if (rfidEnrolled) {
         score += 30;
@@ -171,6 +207,12 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         issues.push('Akses portal siswa mandiri belum aktif');
       }
 
+      if (lastLogin) {
+        score += 10;
+      } else {
+        issues.push('Belum pernah login ke sistem');
+      }
+
       return {
         id: s.id || `siswa-${Math.random()}`,
         nama: displayName,
@@ -179,6 +221,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         noWaOrtu,
         rfidEnrolled,
         hasUserAccount,
+        lastLogin,
         complianceScore: Math.min(100, score),
         issues
       };
@@ -317,6 +360,23 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       )
     },
     {
+      key: 'lastLogin',
+      label: 'Login Terakhir',
+      sortable: true,
+      render: (value: unknown) => {
+        const { text, isRecent } = formatLastLogin(value as string);
+        if (text === 'Belum Pernah') {
+          return <span className="text-amber-600 dark:text-amber-400 font-sans italic text-[11px]">Belum Pernah</span>;
+        }
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${isRecent ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+            <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{text}</span>
+          </div>
+        );
+      }
+    },
+    {
       key: 'complianceScore',
       label: 'Kelengkapan Data',
       sortable: true,
@@ -391,6 +451,23 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
           {value ? 'Aktif' : 'Belum'}
         </Badge>
       )
+    },
+    {
+      key: 'lastLogin',
+      label: 'Login Terakhir',
+      sortable: true,
+      render: (value: unknown) => {
+        const { text, isRecent } = formatLastLogin(value as string);
+        if (text === 'Belum Pernah') {
+          return <span className="text-amber-600 dark:text-amber-400 font-sans italic text-[11px]">Belum Pernah</span>;
+        }
+        return (
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${isRecent ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+            <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">{text}</span>
+          </div>
+        );
+      }
     },
     {
       key: 'complianceScore',
