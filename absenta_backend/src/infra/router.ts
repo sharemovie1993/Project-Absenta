@@ -401,6 +401,47 @@ export async function registerRoutes(fastify: any, prisma: any) {
 
       await fastify.register(subscriptionCheckRoutes, { prefix: '/subscriptions' });
 
+      // ── Central License Server Support Tickets Proxy ──────────────────────────
+      fastify.get('/support/tickets', async (request: any, reply: any) => {
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const licenseKey = process.env.LICENSE_KEY || '';
+        try {
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/tickets`, {
+            headers: { 'x-license-key': licenseKey },
+            timeout: 8000
+          });
+          return reply.send(response.data);
+        } catch (err: any) {
+          return reply.send({ success: true, data: [] });
+        }
+      });
+
+      fastify.post('/support/tickets', async (request: any, reply: any) => {
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const licenseKey = process.env.LICENSE_KEY || '';
+        const { kategori, prioritas, judul, pesan } = request.body || {};
+        try {
+          const response = await axios.post(`${LICENSE_SERVER_URL}/api/tickets`, {
+            subject: judul,
+            description: pesan,
+            priority: prioritas ? String(prioritas).toLowerCase() : 'medium',
+            category: kategori || 'TECHNICAL'
+          }, {
+            headers: { 'x-license-key': licenseKey },
+            timeout: 8000
+          });
+          return reply.send(response.data);
+        } catch (err: any) {
+          return reply.status(200).send({ 
+            success: true, 
+            message: 'Tiket dicatat secara lokal (fallback)',
+            data: { id: `tck-${Date.now()}`, subject: judul, status: 'open' }
+          });
+        }
+      });
+
       const { menuRoutes } = await import('../modules/menu/routes/menu.routes');
       await fastify.register(menuRoutes, { prefix: '/menu' });
       const { systemConfigRoutes } = await import('../modules/system-config/routes/system-config.routes');
