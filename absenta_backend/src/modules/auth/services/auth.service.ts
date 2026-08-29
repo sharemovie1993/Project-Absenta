@@ -11,6 +11,7 @@ import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '..
 import { emitDomainEvent } from '@/infra/event-bus';
 import { authorizationService } from './authorization.service';
 import { organizationalAuthorizationEngine } from './organizational-authorization.engine';
+import { organizationalContextCache } from './organizational-context-cache';
 import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
 import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
 
@@ -838,6 +839,9 @@ export class AuthService {
   }
 
   private async attachCapabilities(user: any, response: UserResponse) {
+    // ✅ Selalu invalidasi cache posisi jabatan saat login agar position_codes
+    // selalu mencerminkan data terbaru dari DB (bukan sisa cache sesi lama)
+    try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
     const orgCtx = await organizationalAuthorizationEngine.resolveOrganizationalContext(user.id);
     response.capabilities = await authorizationService.resolveUserCapabilities(user.id, { user });
     response.position_codes = orgCtx.positions.map(p => p.code);

@@ -5,6 +5,7 @@ import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '..
 import { authorizationService } from '../../services/authorization.service';
 import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
 import { organizationalAuthorizationEngine } from '../../services/organizational-authorization.engine';
+import { organizationalContextCache } from '../../services/organizational-context-cache';
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
 import { VALID_ROLES } from '@/constants/enums';
@@ -439,6 +440,12 @@ async logout(request: any, reply: any) {
         });
       } catch {}
       reply.status(200);
+      // ✅ Invalidasi cache posisi jabatan agar login berikutnya selalu ambil data terbaru dari DB
+      try {
+        if (user?.id) {
+          await organizationalContextCache.invalidateUser(String(user.id));
+        }
+      } catch {}
       return { success: true, message: 'Logout successful' };
     } catch (error) {
       reply.status(500);
