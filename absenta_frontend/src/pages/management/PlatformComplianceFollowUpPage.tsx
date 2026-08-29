@@ -544,14 +544,14 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         }}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-24">
-          <div className="space-y-6 w-full min-w-0 max-w-full">
+          <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full">
             
             {/* ── METRIC STATS SUMMARY CARDS ── */}
             <ComplianceStatsCards stats={stats} />
 
             {/* Filter Bar */}
-            <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl shadow-xs w-full min-w-0 max-w-full">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full min-w-0 max-w-full">
+            <Card className="p-3 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl shadow-xs w-full min-w-0 max-w-full">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0 max-w-full">
                 <div className="flex-1 max-w-sm w-full min-w-0">
                   <Input
                     id="compliance-search-input"
@@ -559,7 +559,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     placeholder="Cari nama, NIP, atau NISN..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="rounded-xl text-xs w-full h-10"
+                    className="rounded-xl text-xs w-full h-9 sm:h-10"
                   />
                 </div>
 

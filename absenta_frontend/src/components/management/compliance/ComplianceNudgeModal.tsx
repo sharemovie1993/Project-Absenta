@@ -123,14 +123,14 @@ export const ComplianceNudgeModal: React.FC<ComplianceNudgeModalProps> = React.m
   }, [target, template, getMessageContent, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-      <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
-        <div className="p-4 sm:p-5 bg-emerald-700 text-white flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+      <div className="bg-white dark:bg-slate-900 w-full max-w-lg max-h-[92vh] rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col">
+        <div className="p-3.5 sm:p-5 bg-emerald-700 text-white flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center text-lg">📲</div>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/20 flex items-center justify-center text-base sm:text-lg">📲</div>
             <div>
-              <h3 className="font-bold text-sm">Kirim Pengingat WhatsApp Resmi</h3>
-              <p className="text-[11px] text-emerald-100">
+              <h3 className="font-bold text-xs sm:text-sm">Kirim Pengingat WhatsApp Resmi</h3>
+              <p className="text-[10px] sm:text-[11px] text-emerald-100 truncate max-w-[220px] sm:max-w-xs">
                 Kepada: <strong>{target.nama}</strong> ({target.noWa || 'Tanpa No WA'})
               </p>
             </div>
@@ -138,14 +138,14 @@ export const ComplianceNudgeModal: React.FC<ComplianceNudgeModalProps> = React.m
           <button type="button" onClick={onClose} className="text-white hover:text-slate-200 text-sm font-bold cursor-pointer p-1">✕</button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-4 text-xs">
+        <div className="p-3.5 sm:p-6 space-y-3 sm:space-y-4 text-xs overflow-y-auto flex-1">
           {/* Detected Issues */}
           {(target.issues ?? []).length > 0 && (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-1">
-              <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300 flex items-center gap-1">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-1">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300 flex items-center gap-1">
                 <AlertTriangle size={12} /> Isu Kelengkapan Terdeteksi:
               </span>
-              <ul className="list-disc list-inside text-[11px] text-slate-700 dark:text-slate-300">
+              <ul className="list-disc list-inside text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-300">
                 {(target.issues ?? [])?.map((iss, i) => (
                   <li key={i}>{iss}</li>
                 ))}
@@ -157,13 +157,13 @@ export const ComplianceNudgeModal: React.FC<ComplianceNudgeModalProps> = React.m
             <label htmlFor="pilih-topik-pengingat" className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-1.5 uppercase tracking-wider">
               Pilih Topik Pengingat:
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
               {(TEMPLATE_OPTIONS ?? [])?.map((tpl) => (
                 <button
                   key={tpl.id}
                   type="button"
                   onClick={() => setTemplate(tpl.id)}
-                  className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
+                  className={`p-2 sm:p-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
                     template === tpl.id
                       ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs'
                       : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300'
@@ -177,43 +177,45 @@ export const ComplianceNudgeModal: React.FC<ComplianceNudgeModalProps> = React.m
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase text-slate-400">Preview Pesan WhatsApp:</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400">Preview Pesan WhatsApp:</span>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500 flex items-center gap-1 cursor-pointer"
+                className="text-[10px] sm:text-[11px] font-bold text-indigo-600 hover:text-indigo-500 flex items-center gap-1 cursor-pointer"
               >
                 {copied ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
                 {copied ? 'Tersalin' : 'Salin Teks'}
               </button>
             </div>
-            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-xs font-medium text-slate-800 dark:text-slate-200 space-y-2 whitespace-pre-line">
+            <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-[11px] sm:text-xs font-medium text-slate-800 dark:text-slate-200 space-y-1.5 whitespace-pre-line leading-relaxed">
               {getMessageContent(template)}
             </div>
           </div>
         </div>
 
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
-          <Button type="button" variant="toolbarOutline" size="toolbar" onClick={onClose} className="cursor-pointer">
-            Batal
-          </Button>
-          <Button
-            type="button"
-            size="toolbar"
-            variant="toolbarOutline"
-            disabled={sendingViaBot}
-            onClick={handleSendViaBot}
-            className="font-bold cursor-pointer flex items-center gap-1.5 text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50"
-          >
-            <Send size={12} />
-            {sendingViaBot ? 'Mengirim...' : 'Kirim via Server WA Bot'}
-          </Button>
+        <div className="p-3 sm:p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 shrink-0">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <Button type="button" variant="toolbarOutline" size="toolbar" onClick={onClose} className="flex-1 sm:flex-none cursor-pointer">
+              Batal
+            </Button>
+            <Button
+              type="button"
+              size="toolbar"
+              variant="toolbarOutline"
+              disabled={sendingViaBot}
+              onClick={handleSendViaBot}
+              className="flex-1 sm:flex-none font-bold cursor-pointer flex items-center justify-center gap-1.5 text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50"
+            >
+              <Send size={12} />
+              {sendingViaBot ? 'Mengirim...' : 'Via Server Bot'}
+            </Button>
+          </div>
           <Button
             type="button"
             size="toolbar"
             variant="toolbarPrimary"
             onClick={handleDirectWhatsApp}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
+            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer flex items-center justify-center gap-1.5"
           >
             <Smartphone size={12} />
             Buka di WhatsApp Saya
