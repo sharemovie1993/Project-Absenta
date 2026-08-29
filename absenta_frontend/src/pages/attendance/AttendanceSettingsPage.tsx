@@ -1,7 +1,6 @@
 import React, { useState, lazy, Suspense, useMemo, useCallback } from 'react';
 const TenantAttendanceForm = lazy(() => import('../../components/attendance/settings/TenantAttendanceForm').then(module => ({ default: module.TenantAttendanceForm })));
 const KejadianKhususPanel = lazy(() => import('../../components/attendance/settings/KejadianKhususPanel').then(module => ({ default: module.KejadianKhususPanel })));
-const KelasScheduleList = lazy(() => import('../../components/attendance/settings/KelasScheduleList').then(module => ({ default: module.KelasScheduleList })));
 import { 
   Tabs, 
   TabsContent, 
@@ -14,9 +13,6 @@ import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { 
   Settings, 
-  CalendarDays, 
-  Clock, 
-  ShieldAlert, 
   Sliders,
   Bell,
   Fingerprint
@@ -48,8 +44,7 @@ const instructionData = {
   description: "Konfigurasikan aturan kehadiran dan jadwal operasional absensi sekolah.",
   items: [
     { text: "Atur toleransi keterlambatan dan poin kedisiplinan pada Pengaturan Umum." },
-    { text: "Gunakan Kejadian Khusus untuk hari libur atau acara sekolah mendadak." },
-    { text: "Jadwal Kelas (Shift) mengatur waktu operasional gerbang untuk tiap kelas." }
+    { text: "Gunakan Kejadian Khusus untuk hari libur atau acara sekolah mendadak." }
   ]
 };
 
@@ -71,8 +66,7 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
 
   const tabOptions = useMemo(() => [
     { id: 'general', label: 'Pengaturan Umum', icon: Sliders, colorClass: 'text-indigo-600 dark:text-indigo-400' },
-    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-600 dark:text-purple-400' },
-    { id: 'classes', label: 'Jadwal Kelas (Shift)', icon: Clock, colorClass: 'text-emerald-600 dark:text-emerald-400' }
+    { id: 'events', label: 'Kejadian Khusus', icon: Bell, colorClass: 'text-purple-600 dark:text-purple-400' }
   ], []);
 
   const features = (subscription as unknown as Record<string, unknown>)?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
@@ -101,12 +95,6 @@ export const AttendanceSettingsPage: React.FC = React.memo(() => {
         <TabsContent value="events" className="mt-0 focus-visible:outline-none">
           <Suspense fallback={<Loader size="sm" />}>
             <KejadianKhususPanel />
-          </Suspense>
-        </TabsContent>
- 
-        <TabsContent value="classes" className="mt-0 focus-visible:outline-none">
-          <Suspense fallback={<Loader size="sm" />}>
-            <KelasScheduleList />
           </Suspense>
         </TabsContent>
       </Tabs>
