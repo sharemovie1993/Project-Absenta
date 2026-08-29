@@ -10,7 +10,9 @@ import {
   FileText,
   RefreshCw,
   Activity,
-  ChevronRight
+  ChevronRight,
+  CalendarDays,
+  Sliders
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
@@ -213,8 +215,12 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
     navigate('/attendance/rekap');
   }, [navigate]);
 
-  const handleNavigateSettings = useCallback(() => {
+  const handleNavigateKejadianKhusus = useCallback(() => {
     navigate('/attendance/settings');
+  }, [navigate]);
+
+  const handleNavigateAturan = useCallback(() => {
+    navigate('/settings?tab=attendance');
   }, [navigate]);
 
   if (isTvMode && !isSiswa) {
@@ -352,21 +358,21 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
                         </span>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </Button>
-                      <Button variant="toolbarOutline" className="w-full justify-between rounded-xl h-10" onClick={handleNavigateRekam}>
+                      <Button variant="toolbarOutline" className="w-full justify-between rounded-xl h-10" onClick={handleNavigateKejadianKhusus}>
                         <span className="flex items-center gap-2 text-xs font-bold">
-                          <Camera className="w-4 h-4 text-rose-600" /> Registrasi Biometrik
+                          <CalendarDays className="w-4 h-4 text-purple-600" /> Kejadian Khusus (Dispensasi)
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
+                      </Button>
+                      <Button variant="toolbarOutline" className="w-full justify-between rounded-xl h-10" onClick={handleNavigateAturan}>
+                        <span className="flex items-center gap-2 text-xs font-bold">
+                          <Sliders className="w-4 h-4 text-blue-600" /> Aturan Jam & Toleransi
                         </span>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </Button>
                       <Button variant="toolbarOutline" className="w-full justify-between rounded-xl h-10" onClick={handleNavigateRekap}>
                         <span className="flex items-center gap-2 text-xs font-bold">
                           <FileText className="w-4 h-4 text-indigo-600" /> Rekapitulasi Laporan
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </Button>
-                      <Button variant="toolbarOutline" className="w-full justify-between rounded-xl h-10" onClick={handleNavigateSettings}>
-                        <span className="flex items-center gap-2 text-xs font-bold">
-                          <Settings className="w-4 h-4 text-slate-600" /> Pengaturan Jam Kerja
                         </span>
                         <ChevronRight className="w-4 h-4 text-slate-400" />
                       </Button>

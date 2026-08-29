@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Clock, RefreshCw, ShieldAlert, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, RefreshCw, ShieldAlert, Settings, CalendarDays } from 'lucide-react';
 import { Switch } from '../../ui';
 import { GateScheduleConfigModal } from './GateScheduleConfigModal';
 import { useCapabilities } from '../../../hooks/useCapabilities';
@@ -37,9 +38,11 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
   onRefreshConfig,
   loadingConfig,
 }) => {
+  const navigate = useNavigate();
   const { tenantId } = useTenant();
-  const { isAdmin, isKurikulum, isKepsek } = useCapabilities();
+  const { isAdmin, isKurikulum, isKepsek, isKesiswaan, isPiket } = useCapabilities();
   const canEditSchedule = isAdmin || isKurikulum || isKepsek;
+  const canManageEvents = isAdmin || isKurikulum || isKepsek || isKesiswaan || isPiket;
   const [showConfigModal, setShowConfigModal] = useState(false);
 
   return (
@@ -130,11 +133,21 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
             />
           </div>
           <div className="flex items-center gap-1">
+            {canManageEvents && (
+              <button
+                onClick={() => navigate('/attendance/settings')}
+                className="p-2 hover:bg-purple-50 dark:hover:bg-purple-900/30 rounded-full text-purple-600 dark:text-purple-400 transition-colors cursor-pointer"
+                title="Kejadian Khusus & Dispensasi Darurat"
+                type="button"
+              >
+                <CalendarDays size={18} />
+              </button>
+            )}
             {canEditSchedule && (
               <button
-                onClick={() => setShowConfigModal(true)}
+                onClick={() => navigate('/settings?tab=attendance')}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
-                title="Pengaturan Jam Masuk & Pulang Gerbang"
+                title="Pengaturan Aturan Jam Presensi Sekolah"
                 type="button"
               >
                 <Settings size={18} />
