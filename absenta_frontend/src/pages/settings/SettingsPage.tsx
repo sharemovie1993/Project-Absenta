@@ -327,33 +327,33 @@ const SettingsPage: React.FC = () => {
           }}
         />
 
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
-          {!loadingConfig && !config.app_name && activeTab === 'general' ? (
-            <EmptyState icon={Settings} title="Konfigurasi Kosong" description="Belum ada data konfigurasi yang dimuat." />
-          ) : null}
+        {activeTab === 'attendance' && isTenantUser ? (
+          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+            <TenantAttendanceForm />
+          </Suspense>
+        ) : (
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+            {!loadingConfig && !config.app_name && activeTab === 'general' ? (
+              <EmptyState icon={Settings} title="Konfigurasi Kosong" description="Belum ada data konfigurasi yang dimuat." />
+            ) : null}
 
-          <React.Fragment>
-            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-              {activeTab === 'general' && <GeneralSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'branding' && <BrandingSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'company' && <CompanySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'payment' && <PaymentSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'attendance' && (
-                isTenantUser ? (
-                  <TenantAttendanceForm />
-                ) : (
-                  <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />
-                )
-              )}
-              {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'tenant_profile' && <TenantSettings />}
-              {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
-              {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
-            </Suspense>
-          </React.Fragment>
-        </SectionCard>
+            <React.Fragment>
+              <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+                {activeTab === 'general' && <GeneralSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'branding' && <BrandingSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'company' && <CompanySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'payment' && <PaymentSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+                {activeTab === 'tenant_profile' && <TenantSettings />}
+                {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
+                {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
+              </Suspense>
+            </React.Fragment>
+          </SectionCard>
+        )}
       </div>
     </AcademicPageLayout>
   );
