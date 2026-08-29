@@ -21,6 +21,7 @@ import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { toast } from 'react-hot-toast';
 import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
+import { sendWaGreeting } from '@/api/whatsapp.api';
 import type { Guru, Siswa } from '@/types/academic';
 
 export interface TeacherComplianceItem {
@@ -98,6 +99,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
 
   const [messageTemplate, setMessageTemplate] = useState<'JURNAL' | 'FACE_ID' | 'LOGIN_PORTAL' | 'RPP'>('JURNAL');
   const [copied, setCopied] = useState(false);
+  const [sendingViaBot, setSendingViaBot] = useState(false);
 
   const { data: rawGurusData, isLoading: loadingGurus } = useQuery<Guru[]>({
     queryKey: ['compliance-guru-list'],
@@ -311,6 +313,42 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     
     toast.success(`Membuka WhatsApp untuk mengirim pesan ke ${nudgeModalTarget.nama}`);
     setNudgeModalTarget(null);
+  }, [nudgeModalTarget, messageTemplate, getMessageContent]);
+
+  const handleSendViaBot = useCallback(async () => {
+    if (!nudgeModalTarget) return;
+    const parsed = nudgeSchema.safeParse({
+      nama: nudgeModalTarget.nama,
+      noWa: nudgeModalTarget.noWa,
+      template: messageTemplate,
+    });
+    if (!parsed.success) {
+      toast.error(parsed.error.errors[0]?.message || 'Nomor WhatsApp tidak valid');
+      return;
+    }
+    setSendingViaBot(true);
+    try {
+      const cleanPhone = cleanIndonesianPhone(nudgeModalTarget.noWa);
+      const message = getMessageContent(nudgeModalTarget, messageTemplate);
+      const res = await sendWaGreeting({
+        userType: nudgeModalTarget.role === 'GURU' ? 'GURU' : 'ORTU',
+        nama: nudgeModalTarget.nama,
+        no_hp: cleanPhone,
+        detailInfo: 'Pusat Kepatuhan Platform',
+        customMessage: message,
+      });
+      if (res && res.success) {
+        toast.success(`Pesan berhasil dikirim via WhatsApp Gateway ke ${nudgeModalTarget.nama}`);
+        setNudgeModalTarget(null);
+      } else {
+        toast.error(res?.message || 'Gagal mengirim via Gateway. Silakan gunakan tombol WhatsApp Langsung.');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gateway WhatsApp tidak aktif. Beralih ke WhatsApp langsung.';
+      toast.error(msg);
+    } finally {
+      setSendingViaBot(false);
+    }
   }, [nudgeModalTarget, messageTemplate, getMessageContent]);
 
   const handleCopyMessage = useCallback(() => {
@@ -758,9 +796,20 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-end gap-2">
                 <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setNudgeModalTarget(null)} className="cursor-pointer">
                   Batal
+                </Button>
+                <Button
+                  type="button"
+                  size="toolbar"
+                  variant="toolbarOutline"
+                  disabled={sendingViaBot}
+                  onClick={handleSendViaBot}
+                  className="font-bold cursor-pointer flex items-center gap-1.5 text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50"
+                >
+                  <Send size={12} />
+                  {sendingViaBot ? 'Mengirim...' : 'Kirim via Server WA Bot'}
                 </Button>
                 <Button
                   type="button"
@@ -769,8 +818,8 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                   onClick={handleSendWhatsAppNudge}
                   className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold cursor-pointer flex items-center gap-1.5"
                 >
-                  <Send size={12} />
-                  Kirim WhatsApp Langsung
+                  <Smartphone size={12} />
+                  Buka di WhatsApp Saya
                 </Button>
               </div>
             </div>
