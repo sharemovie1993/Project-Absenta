@@ -4,7 +4,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { getTenantById, updateTenant, type UpdateTenantRequest } from '../../../api/tenants.api';
 import { Button, Input, Label, ModalFooter, Loader, Alert, Switch } from '../../ui';
 import { toast } from 'react-hot-toast';
-import { Clock, Settings2, Save, RefreshCw, CalendarDays } from 'lucide-react';
+import { Clock, Settings2, Save, RefreshCw, CalendarDays, GraduationCap, Briefcase, BookOpen, AlertCircle } from 'lucide-react';
 
 import { HARI_LIST } from '../../../constants/day.constants';
 
@@ -15,9 +15,19 @@ const TenantAttendanceFormComponent: React.FC = () => {
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    // Siswa (Gerbang & KBM)
     jam_masuk_default: '07:00',
     jam_pulang_default: '14:00',
     toleransi_keterlambatan_menit: 15,
+    toleransi_kbm_siswa_menit: 10,
+
+    // Guru & Tendik (Gerbang & Inval KBM)
+    jam_masuk_guru_default: '06:45',
+    jam_pulang_guru_default: '15:30',
+    toleransi_keterlambatan_guru_menit: 5,
+    toleransi_kbm_guru_inval_menit: 10,
+
+    // Operasional
     hari_sekolah: ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
     allow_manual_hadir_gate: false
   });
@@ -34,7 +44,14 @@ const TenantAttendanceFormComponent: React.FC = () => {
       setFormData({
         jam_masuk_default: tenant.jam_masuk_default || '07:00',
         jam_pulang_default: tenant.jam_pulang_default || '14:00',
-        toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit || 15,
+        toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit ?? 15,
+        toleransi_kbm_siswa_menit: tenant.toleransi_kbm_siswa_menit ?? 10,
+
+        jam_masuk_guru_default: tenant.jam_masuk_guru_default || '06:45',
+        jam_pulang_guru_default: tenant.jam_pulang_guru_default || '15:30',
+        toleransi_keterlambatan_guru_menit: tenant.toleransi_keterlambatan_guru_menit ?? 5,
+        toleransi_kbm_guru_inval_menit: tenant.toleransi_kbm_guru_inval_menit ?? 10,
+
         hari_sekolah: tenant.hari_sekolah || ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT'],
         allow_manual_hadir_gate: !!tenant.allow_manual_hadir_gate
       });
@@ -61,16 +78,24 @@ const TenantAttendanceFormComponent: React.FC = () => {
         jam_masuk_default: formData.jam_masuk_default,
         jam_pulang_default: formData.jam_pulang_default,
         toleransi_keterlambatan_menit: Number(formData.toleransi_keterlambatan_menit),
+        toleransi_kbm_siswa_menit: Number(formData.toleransi_kbm_siswa_menit),
+
+        jam_masuk_guru_default: formData.jam_masuk_guru_default,
+        jam_pulang_guru_default: formData.jam_pulang_guru_default,
+        toleransi_keterlambatan_guru_menit: Number(formData.toleransi_keterlambatan_guru_menit),
+        toleransi_kbm_guru_inval_menit: Number(formData.toleransi_kbm_guru_inval_menit),
+
         hari_sekolah: formData.hari_sekolah,
         allow_manual_hadir_gate: formData.allow_manual_hadir_gate
       };
       
       const response = await updateTenant(user.tenant_id, updateData);
       if (response.success) {
-        toast.success('Pengaturan berhasil disimpan');
+        toast.success('Pengaturan aturan absensi berhasil disimpan');
         queryClient.invalidateQueries({ queryKey: ['attendance-config'] });
         queryClient.invalidateQueries({ queryKey: ['tenant-info'] });
         queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+        queryClient.invalidateQueries({ queryKey: ['monitoring-sesi-absensi'] });
       } else {
         toast.error(response.message || 'Gagal menyimpan pengaturan');
       }
@@ -81,7 +106,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.tenant_id, formData]);
+  }, [user?.tenant_id, formData, queryClient]);
 
   if (loadingData) {
     return (
@@ -96,21 +121,22 @@ const TenantAttendanceFormComponent: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && <Alert variant="destructive">{error}</Alert>}
 
+        {/* 1. ATURAN PRESENSI SISWA */}
         <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
-              <Clock size={20} />
+              <GraduationCap size={20} />
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Konfigurasi Waktu</h3>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Default Absensi Harian</p>
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Aturan Presensi Siswa</h3>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Jam Masuk Gerbang & Toleransi KBM Siswa</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-2 group">
               <Label htmlFor="jam-masuk-default-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                Jam Masuk Default <span className="text-rose-500">*</span>
+                Jam Masuk Siswa <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="jam-masuk-default-field"
@@ -120,25 +146,12 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 required
                 className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
               />
-            </div>
-
-            <div className="space-y-2 group">
-              <Label htmlFor="jam-pulang-default-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                Jam Pulang Default <span className="text-rose-500">*</span>
-              </Label>
-              <Input
-                id="jam-pulang-default-field"
-                type="time"
-                value={formData.jam_pulang_default}
-                onChange={(e) => setFormData(prev => ({ ...prev, jam_pulang_default: e.target.value }))}
-                required
-                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-955 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
-              />
+              <p className="text-[10px] text-slate-400 font-medium">Batas bel masuk gerbang sekolah.</p>
             </div>
 
             <div className="space-y-2 group">
               <Label htmlFor="toleransi-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                Toleransi (Menit) <span className="text-rose-500">*</span>
+                Toleransi Gerbang (Menit) <span className="text-rose-500">*</span>
               </Label>
               <Input
                 id="toleransi-field"
@@ -147,21 +160,122 @@ const TenantAttendanceFormComponent: React.FC = () => {
                 value={formData.toleransi_keterlambatan_menit}
                 onChange={(e) => setFormData(prev => ({ ...prev, toleransi_keterlambatan_menit: Number(e.target.value) }))}
                 required
-                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-955 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
               />
+              <p className="text-[10px] text-slate-400 font-medium">Toleransi tap sebelum masuk catatan piket.</p>
             </div>
-          </div>
 
-          <div className="pt-2">
-            <div className="flex items-center gap-2 p-3 bg-amber-50/50 dark:bg-amber-955/10 border border-amber-100/50 dark:border-amber-900/20 rounded-xl">
-              <Settings2 size={16} className="text-amber-600 dark:text-amber-500" />
-              <p className="text-[10px] font-medium text-amber-800/80 dark:text-amber-400/80 tracking-tight leading-relaxed">
-                Pengaturan ini akan menjadi acuan dasar untuk semua jadwal yang tidak memiliki ketentuan waktu khusus.
-              </p>
+            <div className="space-y-2 group">
+              <Label htmlFor="jam-pulang-default-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Jam Pulang Siswa <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="jam-pulang-default-field"
+                type="time"
+                value={formData.jam_pulang_default}
+                onChange={(e) => setFormData(prev => ({ ...prev, jam_pulang_default: e.target.value }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Waktu tap kepulangan siswa.</p>
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="toleransi-kbm-siswa-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Toleransi KBM Kelas (Menit) <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="toleransi-kbm-siswa-field"
+                type="number"
+                min="0"
+                value={formData.toleransi_kbm_siswa_menit}
+                onChange={(e) => setFormData(prev => ({ ...prev, toleransi_kbm_siswa_menit: Number(e.target.value) }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-indigo-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Batas siswa masuk kelas tanpa surat piket.</p>
             </div>
           </div>
         </div>
 
+        {/* 2. ATURAN PRESENSI GURU & TENDIK */}
+        <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
+          <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+              <Briefcase size={20} />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest">Aturan Presensi Guru & Pegawai</h3>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Jam Kedatangan Dinas & Pemicu Radar Inval KBM</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2 group">
+              <Label htmlFor="jam-masuk-guru-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Jam Datang Guru <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="jam-masuk-guru-field"
+                type="time"
+                value={formData.jam_masuk_guru_default}
+                onChange={(e) => setFormData(prev => ({ ...prev, jam_masuk_guru_default: e.target.value }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Batas kehadiran dinas/piket pagi.</p>
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="toleransi-guru-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Toleransi Gerbang Guru (Menit) <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="toleransi-guru-field"
+                type="number"
+                min="0"
+                value={formData.toleransi_keterlambatan_guru_menit}
+                onChange={(e) => setFormData(prev => ({ ...prev, toleransi_keterlambatan_guru_menit: Number(e.target.value) }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Toleransi kedatangan fingerprint dinas.</p>
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="jam-pulang-guru-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Jam Pulang Dinas <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="jam-pulang-guru-field"
+                type="time"
+                value={formData.jam_pulang_guru_default}
+                onChange={(e) => setFormData(prev => ({ ...prev, jam_pulang_guru_default: e.target.value }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Batas akhir jam operasional dinas.</p>
+            </div>
+
+            <div className="space-y-2 group">
+              <Label htmlFor="toleransi-guru-inval-field" className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+                Pemicu Radar Inval (Menit) <span className="text-rose-500">*</span>
+              </Label>
+              <Input
+                id="toleransi-guru-inval-field"
+                type="number"
+                min="0"
+                value={formData.toleransi_kbm_guru_inval_menit}
+                onChange={(e) => setFormData(prev => ({ ...prev, toleransi_kbm_guru_inval_menit: Number(e.target.value) }))}
+                required
+                className="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500/30 transition-all rounded-xl"
+              />
+              <p className="text-[10px] text-slate-400 font-medium">Batas waktu sebelum memicu guru pengganti.</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. KEBIJAKAN HARI OPERASIONAL */}
         <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">
@@ -206,6 +320,7 @@ const TenantAttendanceFormComponent: React.FC = () => {
           </p>
         </div>
 
+        {/* 4. VALIDASI KEHADIRAN */}
         <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800 p-6 space-y-6">
           <div className="flex items-center gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-sm">

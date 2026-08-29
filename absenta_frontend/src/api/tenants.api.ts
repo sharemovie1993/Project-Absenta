@@ -54,6 +54,11 @@ interface Tenant {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  jam_masuk_guru_default?: string;
+  jam_pulang_guru_default?: string;
+  toleransi_keterlambatan_guru_menit?: number;
+  toleransi_kbm_siswa_menit?: number;
+  toleransi_kbm_guru_inval_menit?: number;
   hari_sekolah?: string[];
   created_at: string;
   updated_at: string;
@@ -88,6 +93,11 @@ export interface CreateTenantRequest {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  jam_masuk_guru_default?: string;
+  jam_pulang_guru_default?: string;
+  toleransi_keterlambatan_guru_menit?: number;
+  toleransi_kbm_siswa_menit?: number;
+  toleransi_kbm_guru_inval_menit?: number;
   hari_sekolah?: string[];
   kepala_sekolah?: string;
   nip_kepala?: string;
@@ -119,6 +129,12 @@ export interface UpdateTenantRequest {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  jam_masuk_guru_default?: string;
+  jam_pulang_guru_default?: string;
+  toleransi_keterlambatan_guru_menit?: number;
+  toleransi_kbm_siswa_menit?: number;
+  toleransi_kbm_guru_inval_menit?: number;
+  hari_sekolah?: string[];
   kepala_sekolah?: string;
   nip_kepala?: string;
   allow_manual_hadir_gate?: boolean;

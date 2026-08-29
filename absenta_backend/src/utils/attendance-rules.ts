@@ -72,13 +72,30 @@ export function calculateAttendanceStatus(
 }
 
 /**
- * Helper untuk resolve konfigurasi final (Hierarchy: SpecialEvent -> Class -> Tenant)
+ * Helper untuk resolve konfigurasi final (Hierarchy: SpecialEvent -> UserType -> Class -> Tenant)
  */
 export function resolveAttendanceConfig(
-  tenant: { jam_masuk_default?: string | null; jam_pulang_default?: string | null; toleransi_keterlambatan_menit?: number | null } | null,
+  tenant: { 
+    jam_masuk_default?: string | null; 
+    jam_pulang_default?: string | null; 
+    toleransi_keterlambatan_menit?: number | null;
+    jam_masuk_guru_default?: string | null;
+    jam_pulang_guru_default?: string | null;
+    toleransi_keterlambatan_guru_menit?: number | null;
+  } | null,
   kelas: { jam_masuk?: string | null; jam_pulang?: string | null } | null,
-  specialEvent: { abaikan_terlambat?: boolean } | null
+  specialEvent: { abaikan_terlambat?: boolean } | null,
+  userType: 'SISWA' | 'GURU' = 'SISWA'
 ): AttendanceRuleConfig {
+  if (userType === 'GURU') {
+    return {
+      jamMasuk: tenant?.jam_masuk_guru_default || '06:45',
+      jamPulang: tenant?.jam_pulang_guru_default || '15:30',
+      toleransiMenit: tenant?.toleransi_keterlambatan_guru_menit ?? 5,
+      abaikanTerlambat: specialEvent?.abaikan_terlambat || false
+    };
+  }
+
   return {
     jamMasuk: kelas?.jam_masuk || tenant?.jam_masuk_default || '07:00',
     jamPulang: kelas?.jam_pulang || tenant?.jam_pulang_default || '14:00',

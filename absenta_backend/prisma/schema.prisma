@@ -13,12 +13,22 @@ model Tenant {
   name         String
   absensi_mode AbsensiMode @default(MULTI_SESI)
 
-  // Konfigurasi Absensi Default (Global)
-  jam_masuk_default             String @default("07:00") // Format HH:mm
-  jam_pulang_default            String @default("14:00") // Format HH:mm
-  toleransi_keterlambatan_menit Int    @default(15) // Durasi toleransi dalam menit
-  hari_sekolah                  Hari[] @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
-  durasi_smk                    String? @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
+  // Konfigurasi Absensi Siswa (Gerbang)
+  jam_masuk_default                  String  @default("07:00") // Format HH:mm
+  jam_pulang_default                 String  @default("14:00") // Format HH:mm
+  toleransi_keterlambatan_menit      Int     @default(15) // Durasi toleransi siswa gerbang dalam menit
+
+  // Konfigurasi Absensi Guru & Tendik (Gerbang)
+  jam_masuk_guru_default             String? @default("06:45") // Format HH:mm
+  jam_pulang_guru_default            String? @default("15:30") // Format HH:mm
+  toleransi_keterlambatan_guru_menit Int?    @default(5) // Durasi toleransi guru gerbang dalam menit
+
+  // Konfigurasi Sesi KBM Kelas
+  toleransi_kbm_siswa_menit          Int?    @default(10) // Toleransi keterlambatan siswa masuk kelas KBM (menit)
+  toleransi_kbm_guru_inval_menit     Int?    @default(10) // Batas toleransi guru masuk kelas sebelum pemicu Radar Inval (menit)
+
+  hari_sekolah                       Hari[]  @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
+  durasi_smk                         String? @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
 
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?

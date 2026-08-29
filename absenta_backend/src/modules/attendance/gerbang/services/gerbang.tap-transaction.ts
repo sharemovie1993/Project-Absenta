@@ -84,16 +84,25 @@ export async function processTapTransaction(params: {
 
     const today = new Date(`${dateStr}T00:00:00.000${offsetStr}`);
 
+    const userTypeStr = isGuru ? 'GURU' : 'SISWA';
+
     // Redis Multi-Tenant Config Caching (Zero-Query Lookup)
     const configCacheKey = CACHE_KEYS.ATTENDANCE.GATE_RULE_CONFIG(tenantId);
     const cachedConfig = await cacheService.getOrSet(
-      `${configCacheKey}:${dateStr}:${kelasId || 'all'}`,
+      `${configCacheKey}:${dateStr}:${userTypeStr}:${kelasId || 'all'}`,
       async () => {
         const [activeYr, tenantCfg, specEvent] = await Promise.all([
           (tx as any).tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
           (tx as any).tenant.findUnique({
             where: { id: tenantId },
-            select: { jam_masuk_default: true, jam_pulang_default: true, toleransi_keterlambatan_menit: true },
+            select: { 
+              jam_masuk_default: true, 
+              jam_pulang_default: true, 
+              toleransi_keterlambatan_menit: true,
+              jam_masuk_guru_default: true,
+              jam_pulang_guru_default: true,
+              toleransi_keterlambatan_guru_menit: true
+            },
           }),
           (tx as any).absensiKejadianKhusus.findFirst({
             where: { tenant_id: tenantId, tanggal: today },
@@ -103,6 +112,7 @@ export async function processTapTransaction(params: {
           tenantCfg || { jam_masuk_default: '07:00', jam_pulang_default: '14:00', toleransi_keterlambatan_menit: 15 },
           tingkatData ? { jam_masuk: tingkatData.jam_masuk, jam_pulang: tingkatData.jam_pulang } : null,
           specEvent,
+          isGuru ? 'GURU' : 'SISWA'
         );
         return { activeYr, ruleCfg };
       },

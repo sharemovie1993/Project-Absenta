@@ -28,6 +28,12 @@ export interface UpdateTenantInput {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  jam_masuk_guru_default?: string;
+  jam_pulang_guru_default?: string;
+  toleransi_keterlambatan_guru_menit?: number;
+  toleransi_kbm_siswa_menit?: number;
+  toleransi_kbm_guru_inval_menit?: number;
+  hari_sekolah?: any;
   print_header_lines?: string[];
   logo_daerah_url?: string;
   address?: string;
@@ -59,6 +65,12 @@ export interface TenantResponse {
   jam_masuk_default?: string;
   jam_pulang_default?: string;
   toleransi_keterlambatan_menit?: number;
+  jam_masuk_guru_default?: string | null;
+  jam_pulang_guru_default?: string | null;
+  toleransi_keterlambatan_guru_menit?: number | null;
+  toleransi_kbm_siswa_menit?: number | null;
+  toleransi_kbm_guru_inval_menit?: number | null;
+  hari_sekolah?: any;
   deletion_requested_at?: Date | null;
 }
 
@@ -293,6 +305,11 @@ export class TenantService {
       jam_masuk_default: tenant.jam_masuk_default,
       jam_pulang_default: tenant.jam_pulang_default,
       toleransi_keterlambatan_menit: tenant.toleransi_keterlambatan_menit,
+      jam_masuk_guru_default: tenant.jam_masuk_guru_default || '06:45',
+      jam_pulang_guru_default: tenant.jam_pulang_guru_default || '15:30',
+      toleransi_keterlambatan_guru_menit: tenant.toleransi_keterlambatan_guru_menit ?? 5,
+      toleransi_kbm_siswa_menit: tenant.toleransi_kbm_siswa_menit ?? 10,
+      toleransi_kbm_guru_inval_menit: tenant.toleransi_kbm_guru_inval_menit ?? 10,
       hari_sekolah: tenant.hari_sekolah,
       deletion_requested_at: tenant.deletion_requested_at,
       durasi_smk: sekolahDurasiSmk || tenant.durasi_smk || '3_TAHUN',
