@@ -302,7 +302,7 @@ export const HardeningInspector: React.FC<HardeningInspectorProps> = ({
                     </div>
                     <div className="space-y-1.5">
                       {displayedStandards.map((std) => (
-                        <PillarAuditCard key={std.id} standard={std} />
+                        <PillarAuditCard key={std.id} std={std} standard={std} />
                       ))}
                     </div>
                   </div>

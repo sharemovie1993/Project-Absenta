@@ -3,14 +3,18 @@ import { AlertTriangle, Check, X } from 'lucide-react';
 import type { HardeningStandard } from '../infra.types';
 
 interface PillarAuditCardProps {
-  std: HardeningStandard;
-  isCritical: boolean;
+  std?: HardeningStandard;
+  standard?: HardeningStandard;
+  isCritical?: boolean;
 }
 
-export const PillarAuditCard: React.FC<PillarAuditCardProps> = ({ std, isCritical }) => {
-  const isVerified = std.status === 'VERIFIED';
-  const isWarning  = std.status === 'WARNING';
-  const isFailed   = std.status === 'FAILED';
+export const PillarAuditCard: React.FC<PillarAuditCardProps> = ({ std: stdProp, standard: standardProp, isCritical = false }) => {
+  const item = stdProp || standardProp;
+  if (!item) return null;
+
+  const isVerified = item.status === 'VERIFIED';
+  const isWarning  = item.status === 'WARNING';
+  const isFailed   = item.status === 'FAILED';
 
   let cardClass = 'p-2 rounded-lg border transition-all space-y-1 ';
   let iconContainerClass = '';
@@ -43,7 +47,7 @@ export const PillarAuditCard: React.FC<PillarAuditCardProps> = ({ std, isCritica
           </div>
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] font-black text-slate-200 truncate flex items-center gap-1.5 font-sans">
-              {std.name}
+              {item.name}
               {isCritical && !isVerified && (
                 <span className="inline-flex text-[6.5px] font-extrabold px-1 rounded bg-red-950 text-red-400 border border-red-900/40 uppercase tracking-widest shrink-0 animate-pulse">
                   CRITICAL
@@ -58,11 +62,11 @@ export const PillarAuditCard: React.FC<PillarAuditCardProps> = ({ std, isCritica
           </div>
         </div>
         <span className={`inline-flex text-[7.5px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${statusBadgeClass}`}>
-          {std.status}
+          {item.status || 'UNKNOWN'}
         </span>
       </div>
       <p className="text-[9.5px] text-slate-400 font-medium font-sans leading-relaxed pl-7">
-        {std.details || std.description}
+        {item.details || item.description}
       </p>
     </div>
   );
