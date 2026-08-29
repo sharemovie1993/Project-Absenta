@@ -296,9 +296,18 @@ export class SesiTapEngineService {
           { skipHandover: true }
         );
 
-        if (effectiveStartTarget && effectiveTapTime > effectiveStartTarget) {
-          isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+        const tenantCfg = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { toleransi_kbm_siswa_menit: true }
+        });
+        const tolSiswaKbm = tenantCfg?.toleransi_kbm_siswa_menit ?? 10;
+
+        if (effectiveStartTarget) {
+          const diffMinutes = Math.floor((effectiveTapTime.getTime() - effectiveStartTarget.getTime()) / (60 * 1000));
+          if (diffMinutes > tolSiswaKbm) {
+            isTerlambat = true;
+            menitKeterlambatan = Math.max(0, diffMinutes);
+          }
         }
       }
     } else {
@@ -486,9 +495,18 @@ export class SesiTapEngineService {
           autoCatatan = auditNote;
         }
 
-        if (effectiveStartTarget && effectiveTapTime! > effectiveStartTarget) {
-          isTerlambat = true;
-          menitKeterlambatan = Math.max(0, Math.floor((effectiveTapTime!.getTime() - effectiveStartTarget.getTime()) / (60 * 1000)));
+        const tenantCfg = await prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { toleransi_kbm_guru_inval_menit: true }
+        });
+        const tolGuruKbmInval = tenantCfg?.toleransi_kbm_guru_inval_menit ?? 10;
+
+        if (effectiveStartTarget) {
+          const diffMinutes = Math.floor((effectiveTapTime!.getTime() - effectiveStartTarget.getTime()) / (60 * 1000));
+          if (diffMinutes > tolGuruKbmInval) {
+            isTerlambat = true;
+            menitKeterlambatan = Math.max(0, diffMinutes);
+          }
         }
       }
     } else {
