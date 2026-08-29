@@ -152,7 +152,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-emerald-600 to-green-600',
     },
     defaultPath: '/settings/whatsapp',
-    pathPrefixes: ['/settings/whatsapp', '/whatsapp', '/communication', '/notifications'],
+    pathPrefixes: ['/chatlog', '/whatsapp-health'],
     category: 'WHATSAPP',
   },
 

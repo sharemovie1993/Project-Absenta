@@ -237,8 +237,32 @@ const WhatsappSettingsPage: React.FC = () => {
       { label: 'Sistem', path: '/settings' },
       { label: 'WhatsApp', path: '/settings/whatsapp' },
     ],
-    [],
-  );
+  const waStats = useMemo(() => [
+    {
+      title: "Status Gateway",
+      value: config.is_enabled ? (localStatus === 'connected' ? 'TERHUBUNG' : 'AKTIF') : 'NONAKTIF',
+      icon: <ShieldCheck size={14} />,
+      gradient: config.is_enabled ? "from-emerald-500 to-teal-600" : "from-slate-500 to-zinc-600"
+    },
+    {
+      title: "Provider Gateway",
+      value: config.provider_name ? config.provider_name.toUpperCase() : 'FONNTE',
+      icon: <Send size={14} />,
+      gradient: "from-blue-500 to-indigo-600"
+    },
+    {
+      title: "Nomor Gateway",
+      value: connectedNumber || config.sender_number || 'Belum Terhubung',
+      icon: <History size={14} />,
+      gradient: "from-purple-500 to-indigo-600"
+    },
+    {
+      title: "Template Notifikasi",
+      value: "4 Format Siap",
+      icon: <FileText size={14} />,
+      gradient: "from-amber-500 to-orange-600"
+    }
+  ], [config, localStatus, connectedNumber]);
 
   const toolbar = useMemo(
     () => (
@@ -266,6 +290,7 @@ const WhatsappSettingsPage: React.FC = () => {
       description="Konfigurasi sistem notifikasi otomatis untuk orang tua dan wali siswa."
       hardeningModuleKey="whatsappsettings"
       breadcrumbs={breadcrumbs}
+      stats={waStats}
       toolbar={toolbar}
       instruction={{
         title: 'Konfigurasi WhatsApp Gateway',
