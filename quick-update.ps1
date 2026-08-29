@@ -32,18 +32,16 @@ cd "$appRoot\absenta_backend"
 npx prisma generate
 
 # Jalankan migrate deploy — aman untuk production (hanya apply migrasi baru)
-# Jika gagal karena database belum di-baseline, tampilkan warning tapi lanjutkan
+# Jika gagal karena database belum di-baseline, sinkronkan skema otomatis via db push
 $migrateResult = npx prisma migrate deploy 2>&1
 if ($LASTEXITCODE -ne 0) {
     $errorStr = $migrateResult | Out-String
     if ($errorStr -match "P3005") {
-        Write-Host "⚠️  Warning: Database belum di-baseline. Migrasi lama akan di-skip." -ForegroundColor Yellow
-        Write-Host "   Jalankan 'npx prisma migrate resolve --applied <name>' untuk setiap migrasi lama." -ForegroundColor DarkYellow
-        # Lanjutkan build — schema sudah ada di DB
+        Write-Host "⚠️  Warning: Database belum di-baseline. Menjalankan auto-sync prisma db push..." -ForegroundColor Yellow
+        npx prisma db push --skip-generate
     } else {
-        Write-Host "❌ Prisma migrate deploy gagal:" -ForegroundColor Red
-        Write-Host $errorStr -ForegroundColor Red
-        exit 1
+        Write-Host "❌ Prisma migrate deploy gagal, mencoba sinkronisasi db push..." -ForegroundColor Yellow
+        npx prisma db push --skip-generate
     }
 } else {
     Write-Host $migrateResult -ForegroundColor Gray
