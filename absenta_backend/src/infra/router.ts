@@ -402,7 +402,7 @@ export async function registerRoutes(fastify: any, prisma: any) {
       await fastify.register(subscriptionCheckRoutes, { prefix: '/subscriptions' });
 
       // ── Central License Server Support Tickets Proxy ──────────────────────────
-      fastify.get('/support/tickets', async (request: any, reply: any) => {
+      fastify.get('/support/tickets', async (_request: any, reply: any) => {
         const axios = require('axios');
         const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
         const licenseKey = process.env.LICENSE_KEY || '';
