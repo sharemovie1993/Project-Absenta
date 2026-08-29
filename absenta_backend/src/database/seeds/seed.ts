@@ -441,7 +441,7 @@ async function main() {
     {
       label: 'SISTEM', icon: 'Shield', path: null, required_features: ['CORE'], order: 50, children: [
         // Klaster 1: Identitas & Pengguna
-        { label: 'Profil Sekolah', icon: 'Building2', path: '/settings/tenant', required_capability: 'core.sekolah.view.profile, core.system.config.update' },
+        { label: 'Profil Sekolah', icon: 'Building2', path: '/settings', required_capability: 'core.sekolah.view.profile, core.system.config.update' },
         { label: 'Manajemen Pengguna', icon: 'UserCog', path: '/users', required_capability: 'core.users.create' },
         { label: 'Hak Akses & Role', icon: 'Shield', path: '/role-management', required_capability: 'core.users.create, core.system.config.update' },
         { label: 'Pengaturan Sistem', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update, core.sekolah.view.profile' },

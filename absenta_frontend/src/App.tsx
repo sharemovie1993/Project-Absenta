@@ -1452,6 +1452,7 @@ function App() {
                         <SettingsPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/settings/tenant" element={<Navigate to="/settings" replace />} />
                     <Route path="/settings/whatsapp" element={
                       <ProtectedRoute requiredCapability="core.tenants.update">
                         <WhatsappSettingsPage />
