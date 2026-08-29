@@ -337,8 +337,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
           </div>
 
           {toolbar && (
-            <div className="w-full sm:w-auto ml-auto">
-              {toolbar}
+            <div className="flex items-center gap-2 flex-wrap">
+              {React.isValidElement(toolbar) || typeof toolbar === 'string' || typeof toolbar === 'number' ? toolbar : null}
             </div>
           )}
         </div>

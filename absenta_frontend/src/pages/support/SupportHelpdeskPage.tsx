@@ -246,13 +246,17 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
             { text: 'Klik tombol Obrolan Baru untuk membuka topik kendala atau permohonan baru.' }
           ]
         }}
-        toolbar={{
-          primaryAction: {
-            label: 'Obrolan Baru',
-            onClick: () => setShowNewChatModal(true),
-            icon: PlusCircle
-          }
-        }}
+        toolbar={
+          <Button
+            type="button"
+            variant="toolbarPrimary"
+            size="toolbar"
+            onClick={() => setShowNewChatModal(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1 shadow-sm cursor-pointer"
+          >
+            <PlusCircle size={13} /> Obrolan Baru
+          </Button>
+        }
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-16">
           <div className="w-full min-w-0 max-w-full space-y-4">
