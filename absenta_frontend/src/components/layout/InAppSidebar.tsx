@@ -247,7 +247,11 @@ export function InAppSidebar({
             );
           }
 
-          const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+          const currentFullPath = `${location.pathname}${location.search || ''}`;
+          const isExactMatch = location.pathname === item.path || currentFullPath === item.path;
+          const hasSiblingExactMatch = subMenuItems.some(s => !s.isDivider && s.path !== item.path && (location.pathname === s.path || currentFullPath === s.path));
+          const isSubPathMatch = !hasSiblingExactMatch && item.path !== '/' && item.path !== '/settings' && location.pathname.startsWith(`${item.path}/`);
+          const isActive = isExactMatch || isSubPathMatch;
           const IconComp = item.icon;
 
           if (isCollapsed && !isMobileDrawer) {
