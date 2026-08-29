@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { z } from 'zod';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -8,6 +9,7 @@ import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { formatDate } from '@/utils/date.utils';
 import { DEFAULT_SUPPORT_PHONE, DEFAULT_LICENSE_SERVER_URL } from '@/config/env-config';
+import { supportApi, type SupportTicketItem } from '@/api/support.api';
 import { 
   LifeBuoy, 
   Send, 
@@ -31,18 +33,6 @@ const ticketFormSchema = z.object({
   pesan: z.string().min(15, 'Penjelasan kendala minimal 15 karakter'),
 });
 
-interface SupportTicketItem {
-  id: string;
-  nomorTiket: string;
-  kategori: string;
-  prioritas: 'NORMAL' | 'PENTING' | 'URGENT';
-  judul: string;
-  pesan: string;
-  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
-  createdAt: string;
-  adminReply?: string | null;
-}
-
 const CATEGORY_OPTIONS = [
   { value: 'LISENSI', label: '🔑 Aktivasi & Masa Aktif Lisensi' },
   { value: 'BUG', label: '🐛 Bug / Kendala Sistem Aplikasi' },
@@ -59,6 +49,7 @@ const PRIORITY_OPTIONS = [
 ];
 
 export const SupportHelpdeskPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<string>('BUAT_TIKET');
 
@@ -67,32 +58,35 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
   const [prioritas, setPrioritas] = useState<string>('NORMAL');
   const [judul, setJudul] = useState<string>('');
   const [pesan, setPesan] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Local storage backed ticket history for the tenant
-  const [tickets, setTickets] = useState<SupportTicketItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('absenta_support_tickets_history');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // ignore
+  // ── TanStack Query: Fetch Tickets List ────────────────────────────────────
+  const { 
+    data: rawTickets = [], 
+    isLoading: loadingTickets 
+  } = useQuery<SupportTicketItem[]>({
+    queryKey: ['support-tickets-list'],
+    queryFn: () => supportApi.getTickets(),
+    staleTime: 30 * 1000,
+  });
+
+  const tickets = useMemo(() => {
+    return Array.isArray(rawTickets) ? rawTickets : [];
+  }, [rawTickets]);
+
+  // ── TanStack Mutation: Create Ticket ──────────────────────────────────────
+  const createTicketMutation = useMutation({
+    mutationFn: supportApi.createTicket,
+    onSuccess: (newTicket) => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
+      toast.success(`Tiket ${newTicket.nomorTiket} berhasil diajukan ke Tim Server Lisensi!`, { duration: 5000 });
+      setJudul('');
+      setPesan('');
+      setActiveTab('RIWAYAT');
+    },
+    onError: () => {
+      toast.error('Gagal mengirimkan tiket ke Server Lisensi.');
     }
-    return [
-      {
-        id: 'tck-initial-demo',
-        nomorTiket: 'TCK-202608-001',
-        kategori: '🔑 Aktivasi & Masa Aktif Lisensi',
-        prioritas: 'NORMAL',
-        judul: 'Konfirmasi Sinkronisasi Lisensi Cloud Tenant',
-        pesan: 'Sistem telah berhasil terhubung ke Server Lisensi Pusat PT Baraya Teknologi Indonesia.',
-        status: 'RESOLVED',
-        createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-        adminReply: 'Lisensi sekolah Anda telah terverifikasi aktif penuh di server pusat.'
-      }
-    ];
   });
 
   const tenantName = user?.tenant_id ? 'SMKN 1 Plered' : 'Instansi Sekolah';
@@ -121,44 +115,19 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
+    const selectedCategoryObj = (CATEGORY_OPTIONS ?? [])?.find(c => c.value === kategori);
 
-      // Simulasikan pengiriman ke Server Lisensi Pusat
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const newTicketNumber = `TCK-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(100 + Math.random() * 900)}`;
-      const selectedCategoryObj = (CATEGORY_OPTIONS ?? [])?.find(c => c.value === kategori);
-
-      const newTicket: SupportTicketItem = {
-        id: `tck-${Date.now()}`,
-        nomorTiket: newTicketNumber,
-        kategori: selectedCategoryObj?.label || kategori,
-        prioritas: prioritas as 'NORMAL' | 'PENTING' | 'URGENT',
-        judul: judul.trim(),
-        pesan: pesan.trim(),
-        status: 'OPEN',
-        createdAt: new Date().toISOString(),
-      };
-
-      const updatedTickets = [newTicket, ...(tickets ?? [])];
-      setTickets(updatedTickets);
-      try {
-        localStorage.setItem('absenta_support_tickets_history', JSON.stringify(updatedTickets));
-      } catch {
-        // ignore
-      }
-
-      toast.success(`Tiket ${newTicketNumber} berhasil dikirim ke Tim Server Lisensi!`, { duration: 5000 });
-      setJudul('');
-      setPesan('');
-      setActiveTab('RIWAYAT');
-    } catch {
-      toast.error('Gagal mengirimkan tiket ke Server Lisensi.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [kategori, prioritas, judul, pesan, tickets]);
+    createTicketMutation.mutate({
+      kategori: selectedCategoryObj?.label || kategori,
+      prioritas: prioritas as 'NORMAL' | 'PENTING' | 'URGENT',
+      judul: judul.trim(),
+      pesan: pesan.trim(),
+      tenant_id: user?.tenant_id,
+      tenant_name: tenantName,
+      user_name: userDisplayName,
+      user_email: user?.email,
+    });
+  }, [kategori, prioritas, judul, pesan, createTicketMutation, user, tenantName, userDisplayName]);
 
   // ── 1-Click WhatsApp Hotline ──────────────────────────────────────────────
   const handleOpenWhatsappHotline = useCallback((topic?: string) => {
@@ -328,11 +297,11 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                       type="submit"
                       variant="toolbarPrimary"
                       size="toolbar"
-                      disabled={isSubmitting}
+                      disabled={createTicketMutation.isPending}
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                     >
-                      {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                      {isSubmitting ? 'Mengirimkan Tiket...' : 'Kirim Tiket ke Server Lisensi'}
+                      {createTicketMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {createTicketMutation.isPending ? 'Mengirimkan Tiket...' : 'Kirim Tiket ke Server Lisensi'}
                     </Button>
                   </div>
                 </form>
@@ -342,7 +311,12 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
             {/* ── TAB CONTENT: RIWAYAT TIKET ── */}
             {activeTab === 'RIWAYAT' && (
               <div className="space-y-4">
-                {(tickets ?? []).length === 0 ? (
+                {loadingTickets ? (
+                  <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
+                    <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-2" />
+                    <p className="text-xs text-slate-500">Memuat riwayat tiket...</p>
+                  </Card>
+                ) : (tickets ?? []).length === 0 ? (
                   <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
                     <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Belum Ada Riwayat Tiket</h4>
