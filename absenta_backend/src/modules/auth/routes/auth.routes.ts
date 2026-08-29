@@ -5,8 +5,12 @@ import { determineDataScope } from '@/middlewares/dataScope';
 export async function authRoutes(fastify: any) {
   // Register endpoint - no authentication required
   fastify.post('/register', {
-    preHandler: [ determineDataScope()], // Skip auth middleware for registration
-    config: { skipAuth: true, public: true },
+    preHandler: [ determineDataScope()],
+    config: {
+      skipAuth: true,
+      public: true,
+      rateLimit: { max: 5, timeWindow: '1 minute' }, // L5: anti mass-registration
+    },
     handler: authController.register.bind(authController),
   });
 
@@ -187,6 +191,12 @@ export async function authRoutes(fastify: any) {
   // Change Password - requires authentication
   fastify.post('/change-password', {
     preHandler: [determineDataScope()],
+    config: {
+      rateLimit: {
+        max: 5,
+        timeWindow: '1 minute'
+      }
+    },
     handler: authController.changePassword.bind(authController),
   });
 }

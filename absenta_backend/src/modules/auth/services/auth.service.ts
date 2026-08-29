@@ -14,6 +14,7 @@ import { organizationalAuthorizationEngine } from './organizational-authorizatio
 import { organizationalContextCache } from './organizational-context-cache';
 import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
 import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
+import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret, maskIdentifier } from '../utils/auth-security.util';
 
 export interface QuickLoginResult {
   success: boolean;
@@ -51,21 +52,21 @@ export class AuthService {
         success: false,
         name,
         email: user?.email,
-        message: `Akun pengguna web (${user?.email || 'User'}) dalam status non-aktif.`,
+        message: `Akun pengguna web (${maskIdentifier(user?.email) || 'User'}) dalam status non-aktif.`,
       };
     }
 
-    const secret = process.env.JWT_SECRET || 'absenta-secret-key';
     const payload = {
       id: user.id,
       email: user.email,
       tenantId: user.tenant_id,
       roleId: user.Role?.id || '',
       roleName: user.Role?.name || 'USER',
-      exp: Math.floor(Date.now() / 1000) + (24 * 60 * 60), // Berlaku 24 jam
+      scope: 'quick_login',
+      exp: Math.floor(Date.now() / 1000) + (4 * 60 * 60), // Berlaku 4 jam (L3 hardening)
     };
 
-    const token = jwt.sign(payload, secret);
+    const token = jwt.sign(payload, getJwtSecret());
 
     let baseUrl = getSmartParentAppUrl(user.Tenant, user.tenant_id);
     if (!baseUrl) {
@@ -113,7 +114,7 @@ export class AuthService {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Create user
     const user = await prisma.user.create({
@@ -162,8 +163,8 @@ export class AuthService {
   async login(input: LoginInput): Promise<{ user: UserResponse; needsToken: boolean }> {
     const { email, password, tenant_id } = input;
 
-    // Log login attempt (safe)
-    console.info(`[AUTH] Login Attempt | Input: ${email} | Tenant: ${tenant_id}`);
+    // Log login attempt (safe with maskIdentifier)
+    console.info(`[AUTH] Login Attempt | Input: ${maskIdentifier(email)} | Tenant: ${tenant_id}`);
 
     // Resolve NISN/NIS to Email or NIP to Email if the input does not look like an email address
     let targetEmail = email;
@@ -177,7 +178,7 @@ export class AuthService {
       });
       if (siswa && siswa.User?.email) {
         targetEmail = siswa.User.email;
-        console.info(`[AUTH] Resolved NISN ${email} to Email: ${targetEmail}`);
+        console.info(`[AUTH] Resolved NISN ${maskIdentifier(email)} to Email: ${maskIdentifier(targetEmail)}`);
       } else {
         const siswaByNis = await prisma.siswa.findFirst({
           where: {
@@ -188,7 +189,7 @@ export class AuthService {
         });
         if (siswaByNis && siswaByNis.User?.email) {
           targetEmail = siswaByNis.User.email;
-          console.info(`[AUTH] Resolved NIS ${email} to Email: ${targetEmail}`);
+          console.info(`[AUTH] Resolved NIS ${maskIdentifier(email)} to Email: ${maskIdentifier(targetEmail)}`);
         } else {
           // Try to resolve Guru/Staf NIP to Email
           const guru = await prisma.guru.findFirst({
@@ -200,7 +201,7 @@ export class AuthService {
           });
           if (guru && guru.User?.email) {
             targetEmail = guru.User.email;
-            console.info(`[AUTH] Resolved NIP ${email} to Email: ${targetEmail}`);
+            console.info(`[AUTH] Resolved NIP ${maskIdentifier(email)} to Email: ${maskIdentifier(targetEmail)}`);
           }
         }
       }
@@ -250,7 +251,7 @@ export class AuthService {
       if (regularUser?.Tenant) {
         const status = regularUser.Tenant.status;
         if (status === 'SUSPENDED' || status === 'DELETED') {
-          console.warn(`[AUTH] Login Rejected | Tenant ${status} | Email: ${targetEmail} | Tenant: ${tenant_id}`);
+          console.warn(`[AUTH] Login Rejected | Tenant ${status} | Email: ${maskIdentifier(targetEmail)} | Tenant: ${tenant_id}`);
           throw new Error('Tenant is suspended');
         }
       }
@@ -261,14 +262,14 @@ export class AuthService {
     if (!user) {
       const anyUser = await prisma.user.findFirst({ where: { email: targetEmail }, include: { Role: true } });
       if (anyUser && anyUser.Role?.name !== 'SUPERADMIN' && anyUser.tenant_id && anyUser.tenant_id !== tenant_id) {
-        console.warn(`[AUTH] Login Tenant Mismatch | Email: ${targetEmail} | ReqTenant: ${tenant_id} | ActualTenant: ${anyUser.tenant_id}`);
+        console.warn(`[AUTH] Login Tenant Mismatch | Email: ${maskIdentifier(targetEmail)} | ReqTenant: ${tenant_id} | ActualTenant: ${anyUser.tenant_id}`);
       }
-      console.warn(`[AUTH] User Not Found | Email: ${targetEmail}`);
+      console.warn(`[AUTH] User Not Found | Email: ${maskIdentifier(targetEmail)}`);
       throw new Error('Invalid credentials');
     }
 
     if (user.status === 'INACTIVE') {
-      console.warn(`[AUTH] Login Rejected | User Inactive | Email: ${targetEmail}`);
+      console.warn(`[AUTH] Login Rejected | User Inactive | Email: ${maskIdentifier(targetEmail)}`);
       throw new Error('Akun Anda dinonaktifkan. Silakan hubungi admin sekolah.');
     }
 
@@ -276,7 +277,7 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     
     if (!isPasswordValid) {
-      console.warn(`[AUTH] Invalid Password | Email: ${targetEmail}`);
+      console.warn(`[AUTH] Invalid Password | Email: ${maskIdentifier(targetEmail)}`);
       throw new Error('Invalid credentials');
     }
 
@@ -461,9 +462,9 @@ export class AuthService {
       throw new Error('Nomor telepon tidak valid. Gunakan format Indonesia (contoh: 08123456789).');
     }
 
-    // Hardening: Password strength
-    if (admin_password.length < 8) {
-        throw new Error('Password minimal 8 karakter.');
+    // Hardening: Password strength (MIN_PASSWORD_LENGTH)
+    if (admin_password.length < MIN_PASSWORD_LENGTH) {
+        throw new Error(`Password minimal ${MIN_PASSWORD_LENGTH} karakter.`);
     }
 
     const tier = String(academic_tier || 'MICRO').toUpperCase();
@@ -576,7 +577,7 @@ export class AuthService {
         });
       }
 
-      const hashedPassword = await bcrypt.hash(admin_password, 10);
+      const hashedPassword = await bcrypt.hash(admin_password, BCRYPT_ROUNDS);
 
       // Create Admin User
       const newAdmin = await tx.user.create({

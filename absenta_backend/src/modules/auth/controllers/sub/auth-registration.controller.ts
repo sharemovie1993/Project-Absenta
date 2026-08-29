@@ -1,26 +1,18 @@
-// @ts-nocheck
+// auth-registration.controller.ts — Registration and Password Reset Handler
 import { authService } from '../../services/auth.service';
 import { authDb as prisma } from '../../services/repositories/auth.db';
-import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '../../types/auth.types';
-import { authorizationService } from '../../services/authorization.service';
-import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
-import { organizationalAuthorizationEngine } from '../../services/organizational-authorization.engine';
-import { getTenantCapabilities } from '@/utils/tenant-capabilities';
-import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
+import { RegisterInput, RegisterTenantInput } from '../../types/auth.types';
+import { organizationalContextCache } from '../../services/organizational-context-cache';
 import { VALID_ROLES } from '@/constants/enums';
 import { EmailService } from '@/modules/notification/services/email.service';
 import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
-import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import bcrypt from 'bcryptjs';
 import { randomUUID } from 'crypto';
-import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@/utils/url-helper';
-import { WireguardManager } from '@/services/wireguardManager';
-import * as jwt from 'jsonwebtoken';
-
-export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
-
-import { authTenantController } from './auth-tenant.controller';
+import { getSmartFrontendBaseUrl, getSmartParentAppUrl } from '@/utils/url-helper';
+import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret } from '../../utils/auth-security.util';
+import { refreshTokenService } from '../../services/refresh-token.service';
+export { getJwtSecret };
 
 export const authRegistrationController = {
   async checkEmail(request: any, reply: any) {
@@ -671,9 +663,9 @@ async confirmPasswordReset(request: any, reply: any) {
         reply.status(400);
         return { success: false, message: 'Token is required' };
       }
-      if (!newPassword || newPassword.length < 8) {
+      if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
         reply.status(400);
-        return { success: false, message: 'Password minimal 8 karakter' };
+        return { success: false, message: `Password minimal ${MIN_PASSWORD_LENGTH} karakter` };
       }
 
       const user = await prisma.user.findFirst({ where: { reset_token: token } });
@@ -686,8 +678,12 @@ async confirmPasswordReset(request: any, reply: any) {
         return { success: false, message: 'Token kedaluwarsa' };
       }
 
-      const hashed = await bcrypt.hash(newPassword, 10);
+      const hashed = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
       await prisma.user.update({ where: { id: user.id }, data: { password: hashed, reset_token: null, reset_token_expires: null } });
+
+      // ✅ Security Fix: Invalidasi cache + Revoke SEMUA refresh token aktif user saat reset password
+      try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+      try { await refreshTokenService.revokeAllByUserId(String(user.id)); } catch {}
 
       // SA-IS AUDIT LOG: Password Reset Success
       try {

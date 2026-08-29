@@ -11,25 +11,8 @@ import { activityLogService } from '@/modules/activity/services/activity-log.ser
 import bcrypt from 'bcryptjs';
 import { getSmartParentAppUrl } from '@/utils/url-helper';
 import * as jwt from 'jsonwebtoken';
-
-/** 
- * ✅ Satu sumber kebenaran JWT secret. 
- * Fail-fast: throw jika JWT_SECRET tidak di-set atau terlalu pendek (< 32 char).
- */
-export const getJwtSecret = (): string => {
-  const secret = process.env.JWT_SECRET;
-  if (!secret || secret.length < 32) {
-    // Di dev/test boleh pakai fallback, di production wajib ada
-    if (String(process.env.NODE_ENV).toLowerCase() === 'production') {
-      throw new Error('[SECURITY] JWT_SECRET wajib diisi dan minimal 32 karakter di environment production!');
-    }
-    return 'absenta-dev-secret-key-32-chars!!';
-  }
-  return secret;
-};
-
-/** Konstanta kebijakan password minimum (digunakan di register, registerTenant, changePassword) */
-export const MIN_PASSWORD_LENGTH = 8;
+import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret } from '../../utils/auth-security.util';
+export { getJwtSecret, MIN_PASSWORD_LENGTH, BCRYPT_ROUNDS };
 
 import { authTenantController } from './auth-tenant.controller';
 import { refreshTokenService } from '../../services/refresh-token.service';
