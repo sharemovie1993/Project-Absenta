@@ -128,7 +128,7 @@ export const TahunPelajaranPage: React.FC = () => {
       permissionMessage="Anda tidak memiliki izin untuk mengakses halaman data tahun pelajaran."
       hardeningModuleKey="tahunpelajaranpage"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 pb-28 md:pb-8">
         {showEmptyStateWarning && (
           <div className="p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
             <span>⚠️ Perhatian: Belum ada Tahun Pelajaran aktif yang diatur di sistem. Silakan aktifkan salah satu periode di bawah ini.</span>
