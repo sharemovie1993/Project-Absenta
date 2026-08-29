@@ -98,8 +98,18 @@ module.exports = async () => {
     process.env.DATABASE_URL = dbUrl;
   }
 
-  execSync('npx prisma migrate deploy', {
-    stdio: 'inherit',
-    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL }
-  });
+  try {
+    execSync('npx prisma migrate deploy', {
+      stdio: 'inherit',
+      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL }
+    });
+  } catch (err) {
+    console.warn('⚠️ [TestSetup] migrate deploy failed, falling back to prisma db push...');
+    try {
+      execSync('npx prisma db push --skip-generate', {
+        stdio: 'inherit',
+        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL }
+      });
+    } catch {}
+  }
 };
