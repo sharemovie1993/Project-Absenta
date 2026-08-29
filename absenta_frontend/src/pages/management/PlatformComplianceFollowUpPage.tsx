@@ -127,6 +127,36 @@ function computeComplianceScore(params: {
   };
 }
 
+function sortComplianceItems<T extends TeacherComplianceItem | StudentComplianceItem>(
+  items: T[],
+  sortBy: string,
+  sortOrder: 'asc' | 'desc'
+): T[] {
+  return [...items].sort((a, b) => {
+    let result = 0;
+    if (sortBy === 'nama') {
+      result = a.nama.localeCompare(b.nama, 'id');
+    } else if (sortBy === 'complianceScore') {
+      result = a.complianceScore - b.complianceScore;
+    } else if (sortBy === 'rfidEnrolled') {
+      result = (a.rfidEnrolled ? 1 : 0) - (b.rfidEnrolled ? 1 : 0);
+    } else if (sortBy === 'hasUserAccount') {
+      result = (a.hasUserAccount ? 1 : 0) - (b.hasUserAccount ? 1 : 0);
+    } else if (sortBy === 'noWa' && 'noWa' in a && 'noWa' in b) {
+      result = ((a as TeacherComplianceItem).noWa || '').localeCompare((b as TeacherComplianceItem).noWa || '');
+    } else if (sortBy === 'noWaOrtu' && 'noWaOrtu' in a && 'noWaOrtu' in b) {
+      result = ((a as StudentComplianceItem).noWaOrtu || '').localeCompare((b as StudentComplianceItem).noWaOrtu || '');
+    } else if (sortBy === 'lastLogin') {
+      const timeA = a.lastLogin ? new Date(a.lastLogin).getTime() : 0;
+      const timeB = b.lastLogin ? new Date(b.lastLogin).getTime() : 0;
+      result = timeA - timeB;
+    } else {
+      result = a.nama.localeCompare(b.nama, 'id');
+    }
+    return sortOrder === 'desc' ? -result : result;
+  });
+}
+
 export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const [activeTab, setActiveTab] = useState<string>('GURU');
   const [searchTerm, setSearchTerm] = useState('');
@@ -275,15 +305,23 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     });
   }, [processedStudents, searchTerm, statusFilter, selectedIssueFilter]);
 
+  const sortedTeachers = useMemo(() => {
+    return sortComplianceItems(filteredTeachers, teacherSortBy, teacherSortOrder);
+  }, [filteredTeachers, teacherSortBy, teacherSortOrder]);
+
   const paginatedTeachers = useMemo(() => {
     const start = (teacherPage - 1) * teacherLimit;
-    return (filteredTeachers ?? []).slice(start, start + teacherLimit);
-  }, [filteredTeachers, teacherPage, teacherLimit]);
+    return (sortedTeachers ?? []).slice(start, start + teacherLimit);
+  }, [sortedTeachers, teacherPage, teacherLimit]);
+
+  const sortedStudents = useMemo(() => {
+    return sortComplianceItems(filteredStudents, studentSortBy, studentSortOrder);
+  }, [filteredStudents, studentSortBy, studentSortOrder]);
 
   const paginatedStudents = useMemo(() => {
     const start = (studentPage - 1) * studentLimit;
-    return (filteredStudents ?? []).slice(start, start + studentLimit);
-  }, [filteredStudents, studentPage, studentLimit]);
+    return (sortedStudents ?? []).slice(start, start + studentLimit);
+  }, [sortedStudents, studentPage, studentLimit]);
 
   const stats = useMemo(() => {
     const totalGuru = (processedTeachers ?? []).length;
