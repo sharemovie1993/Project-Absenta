@@ -1,45 +1,49 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { Card, Button, Input, SectionCard } from '@/components/ui';
-import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { formatDate } from '@/utils/date.utils';
 import { DEFAULT_SUPPORT_PHONE, DEFAULT_LICENSE_SERVER_URL } from '@/config/env-config';
-import { supportApi, type SupportTicketItem } from '@/api/support.api';
+import { supportApi, type SupportTicketItem, type TicketMessageItem } from '@/api/support.api';
 import { 
-  LifeBuoy, 
   Send, 
   Phone, 
   ShieldCheck, 
   Clock, 
   CheckCircle2, 
-  ExternalLink, 
-  Server,
-  RefreshCw,
-  HelpCircle,
+  RefreshCw, 
+  MessageSquare,
+  PlusCircle,
+  Headphones,
+  CheckCheck,
+  Bot,
+  User as UserIcon,
+  Search,
+  ArrowLeft,
   KeyRound,
-  MessageSquareReply,
-  ArrowDownCircle
+  FileQuestion,
+  HelpCircle,
+  Layers
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// ── Zod Validation Schema ───────────────────────────────────────────────────
-const ticketFormSchema = z.object({
+// ── Zod Validation Schema for New Conversation Modal ────────────────────────
+const newChatSchema = z.object({
   kategori: z.enum(['LISENSI', 'BUG', 'HARDWARE_RFID', 'KBM_ABSENSI', 'FITUR_BARU', 'LAINNYA']),
   prioritas: z.enum(['NORMAL', 'PENTING', 'URGENT']),
-  judul: z.string().min(5, 'Judul kendala minimal 5 karakter').max(150, 'Judul kendala maksimal 150 karakter'),
-  pesan: z.string().min(15, 'Penjelasan kendala minimal 15 karakter'),
+  judul: z.string().min(5, 'Subjek percakapan minimal 5 karakter').max(150, 'Maksimal 150 karakter'),
+  pesan: z.string().min(10, 'Jelaskan kendala minimal 10 karakter'),
 });
 
 const CATEGORY_OPTIONS = [
   { value: 'LISENSI', label: '🔑 Aktivasi & Masa Aktif Lisensi' },
   { value: 'BUG', label: '🐛 Bug / Kendala Sistem Aplikasi' },
   { value: 'HARDWARE_RFID', label: '💳 Mesin Presensi & Kartu RFID' },
-  { value: 'KBM_ABSENSI', label: '📖 Alur KBM & Perhitungan Jam Mengajar' },
+  { value: 'KBM_ABSENSI', label: '📖 Alur KBM & Jam Mengajar' },
   { value: 'FITUR_BARU', label: '✨ Permintaan Fitur / Kustomisasi' },
   { value: 'LAINNYA', label: '❓ Bantuan Umum & Konsultasi IT' },
 ];
@@ -47,94 +51,124 @@ const CATEGORY_OPTIONS = [
 const PRIORITY_OPTIONS = [
   { value: 'NORMAL', label: '🟢 Normal (Respon 1x24 Jam)' },
   { value: 'PENTING', label: '🟡 Penting (Respon < 6 Jam)' },
-  { value: 'URGENT', label: '🔴 Mendesak / Gangguan Operasional Sekolah' },
+  { value: 'URGENT', label: '🔴 Mendesak / Gangguan Operasional' },
 ];
 
 export const SupportHelpdeskPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<string>('BUAT_TIKET');
 
-  // Form State
-  const [kategori, setKategori] = useState<string>('LISENSI');
-  const [prioritas, setPrioritas] = useState<string>('NORMAL');
-  const [judul, setJudul] = useState<string>('');
-  const [pesan, setPesan] = useState<string>('');
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [chatInputText, setChatInputText] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false);
+
+  // New Chat Form State
+  const [newKategori, setNewKategori] = useState<string>('LISENSI');
+  const [newPrioritas, setNewPrioritas] = useState<string>('NORMAL');
+  const [newJudul, setNewJudul] = useState<string>('');
+  const [newPesan, setNewPesan] = useState<string>('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // Active reply thread state
-  const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
-  const [replyMessage, setReplyMessage] = useState<string>('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // ── TanStack Query: Fetch Tickets List (OUTBOUND PULL SYNC) ───────────────
+  // ── TanStack Query: Live Ticket Threads (Auto-Pull every 10s) ─────────────
   const { 
     data: rawTickets = [], 
     isLoading: loadingTickets,
-    isFetching: isPullingSync,
+    isFetching: isSyncing,
     refetch: refetchTickets
   } = useQuery<SupportTicketItem[]>({
     queryKey: ['support-tickets-list'],
     queryFn: () => supportApi.getTickets(),
-    staleTime: 10 * 1000,
-    refetchInterval: 15 * 1000, // Background Auto-Pull setiap 15 detik (Anti-CGNAT)
-    refetchOnWindowFocus: true, // Auto-Pull saat berpindah kembali ke tab browser
+    staleTime: 5 * 1000,
+    refetchInterval: 10 * 1000, // Live Chat Pull Sync
+    refetchOnWindowFocus: true,
   });
 
   const tickets = useMemo(() => {
     return Array.isArray(rawTickets) ? rawTickets : [];
   }, [rawTickets]);
 
-  // ── TanStack Mutation: Create Ticket ──────────────────────────────────────
-  const createTicketMutation = useMutation({
-    mutationFn: supportApi.createTicket,
-    onSuccess: (newTicket) => {
-      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
-      toast.success(`Tiket ${newTicket.nomorTiket} berhasil diajukan ke Tim Server Lisensi!`, { duration: 5000 });
-      setJudul('');
-      setPesan('');
-      setActiveTab('RIWAYAT');
-    },
-    onError: () => {
-      toast.error('Gagal mengirimkan tiket ke Server Lisensi.');
+  // Set default selected ticket
+  useEffect(() => {
+    if (tickets.length > 0 && !selectedTicketId) {
+      setSelectedTicketId(tickets[0].id);
     }
-  });
+  }, [tickets, selectedTicketId]);
 
-  // ── TanStack Mutation: Reply Ticket Message ───────────────────────────────
-  const replyMutation = useMutation({
-    mutationFn: ({ ticketId, message }: { ticketId: string; message: string }) => 
-      supportApi.replyTicket(ticketId, message),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
-      toast.success('Pesan balasan berhasil terkirim ke Tim Teknis Pusat!');
-      setReplyMessage('');
-      setReplyingTicketId(null);
-    },
-    onError: () => {
-      toast.error('Gagal mengirim balasan.');
-    }
-  });
+  const activeTicket = useMemo(() => {
+    return (tickets ?? []).find((t) => t.id === selectedTicketId) || tickets[0] || null;
+  }, [tickets, selectedTicketId]);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeTicket?.messages, selectedTicketId]);
+
+  // Filtered tickets
+  const filteredTickets = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return tickets;
+    return (tickets ?? []).filter(
+      (t) =>
+        t.judul.toLowerCase().includes(q) ||
+        t.nomorTiket.toLowerCase().includes(q) ||
+        t.kategori.toLowerCase().includes(q)
+    );
+  }, [tickets, searchQuery]);
 
   const tenantName = user?.tenant_id ? 'SMKN 1 Plered' : 'Instansi Sekolah';
   const userDisplayName = user?.full_name || 'Administrator Sekolah';
 
-  // ── Manual Pull Trigger Handler ───────────────────────────────────────────
-  const handleManualPullSync = useCallback(async () => {
-    const res = await refetchTickets();
-    if (res.isSuccess) {
-      toast.success('Pembaruan tiket & balasan terbaru berhasil ditarik dari Server Lisensi!', { id: 'pull-sync-toast' });
+  // ── TanStack Mutation: Send Chat Message ──────────────────────────────────
+  const sendReplyMutation = useMutation({
+    mutationFn: ({ ticketId, message }: { ticketId: string; message: string }) =>
+      supportApi.replyTicket(ticketId, message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
+      setChatInputText('');
+    },
+    onError: () => {
+      toast.error('Gagal mengirim pesan balasan.');
     }
-  }, [refetchTickets]);
+  });
 
-  // ── Submit Ticket Handler ─────────────────────────────────────────────────
-  const handleSubmitTicket = useCallback(async (e: React.FormEvent) => {
+  // ── TanStack Mutation: Create New Ticket Thread ───────────────────────────
+  const createTicketMutation = useMutation({
+    mutationFn: supportApi.createTicket,
+    onSuccess: (newTicket) => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
+      toast.success(`Percakapan ${newTicket.nomorTiket} berhasil dibuka!`);
+      setSelectedTicketId(newTicket.id);
+      setShowNewChatModal(false);
+      setNewJudul('');
+      setNewPesan('');
+    },
+    onError: () => {
+      toast.error('Gagal membuka percakapan baru.');
+    }
+  });
+
+  const handleSendMessage = useCallback((e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!chatInputText.trim() || !activeTicket || sendReplyMutation.isPending) return;
+
+    sendReplyMutation.mutate({
+      ticketId: activeTicket.id,
+      message: chatInputText.trim()
+    });
+  }, [chatInputText, activeTicket, sendReplyMutation]);
+
+  const handleCreateNewChat = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setFormErrors({});
 
-    const validationResult = ticketFormSchema.safeParse({
-      kategori,
-      prioritas,
-      judul: judul.trim(),
-      pesan: pesan.trim(),
+    const validationResult = newChatSchema.safeParse({
+      kategori: newKategori,
+      prioritas: newPrioritas,
+      judul: newJudul.trim(),
+      pesan: newPesan.trim(),
     });
 
     if (!validationResult.success) {
@@ -144,25 +178,24 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
         fieldErrors[fieldName] = issue.message;
       });
       setFormErrors(fieldErrors);
-      toast.error('Mohon lengkapi seluruh formulir tiket dengan benar.');
       return;
     }
 
-    const selectedCategoryObj = (CATEGORY_OPTIONS ?? [])?.find(c => c.value === kategori);
+    const selectedCategoryObj = (CATEGORY_OPTIONS ?? [])?.find(c => c.value === newKategori);
 
     createTicketMutation.mutate({
-      kategori: selectedCategoryObj?.label || kategori,
-      prioritas: prioritas as 'NORMAL' | 'PENTING' | 'URGENT',
-      judul: judul.trim(),
-      pesan: pesan.trim(),
+      kategori: selectedCategoryObj?.label || newKategori,
+      prioritas: newPrioritas as 'NORMAL' | 'PENTING' | 'URGENT',
+      judul: newJudul.trim(),
+      pesan: newPesan.trim(),
       tenant_id: user?.tenant_id,
       tenant_name: tenantName,
       user_name: userDisplayName,
       user_email: user?.email,
     });
-  }, [kategori, prioritas, judul, pesan, createTicketMutation, user, tenantName, userDisplayName]);
+  }, [newKategori, newPrioritas, newJudul, newPesan, createTicketMutation, user, tenantName, userDisplayName]);
 
-  // ── 1-Click WhatsApp Hotline ──────────────────────────────────────────────
+  // 1-Click WhatsApp Hotline
   const handleOpenWhatsappHotline = useCallback((topic?: string) => {
     const textMsg = `Halo Tim Support Server Lisensi Absenta (PT Baraya Teknologi Indonesia),\n\nSaya *${userDisplayName}* dari *${tenantName}*.\nSaya membutuhkan bantuan teknis mengenai: *${topic || 'Layanan Sistem Absenta'}*.\n\n_Mohon bantuannya, terima kasih!_`;
     const encoded = encodeURIComponent(textMsg);
@@ -170,408 +203,460 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
   }, [userDisplayName, tenantName]);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Pusat Bantuan & Dukungan' },
-    { label: 'Tiket Bantuan Server Lisensi' }
+    { label: 'Pusat Bantuan' },
+    { label: 'Live Chat Dukungan Lisensi' }
   ], []);
 
-  const tabOptions = useMemo(() => [
-    { id: 'BUAT_TIKET', label: 'Buat Tiket Bantuan Baru' },
-    { id: 'RIWAYAT', label: `Riwayat Tiket Saya (${(tickets ?? []).length})` },
-    { id: 'HOTLINE', label: 'Kontak & Saluran Bantuan' }
-  ], [(tickets ?? []).length]);
+  // Compute all messages for active conversation
+  const conversationMessages = useMemo(() => {
+    if (!activeTicket) return [];
+    
+    // Initial opening message from user/school
+    const openingMsg: TicketMessageItem = {
+      id: `initial-${activeTicket.id}`,
+      sender: 'tenant',
+      senderName: userDisplayName,
+      message: activeTicket.pesan,
+      createdAt: activeTicket.createdAt,
+    };
+
+    const extraMessages = Array.isArray(activeTicket.messages) ? activeTicket.messages : [];
+    
+    // Check if initial opening message is already in extraMessages
+    if (extraMessages.length > 0 && extraMessages[0].message === activeTicket.pesan) {
+      return extraMessages;
+    }
+
+    return [openingMsg, ...extraMessages];
+  }, [activeTicket, userDisplayName]);
 
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
-        title="Pusat Bantuan & Tiket Dukungan Teknis"
-        description="Layanan resmi kendala sistem, aktivasi lisensi, dan konsultasi teknis yang terhubung langsung ke Tim Pengembang Server Lisensi Pusat."
+        title="Pusat Bantuan & Live Chat Dukungan Teknis"
+        description="Saluran percakapan interaktif dua arah yang terhubung langsung ke Tim Teknis Server Lisensi Pusat PT Baraya Teknologi Indonesia."
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="support_helpdesk"
         instruction={{
-          title: 'Panduan Pusat Bantuan & Tiket Server Lisensi',
-          description: 'Halaman ini menggunakan mekanisme Outbound Pull Sync (Anti-CGNAT) untuk menyinkronkan tiket & balasan dengan Server Lisensi Pusat.',
+          title: 'Panduan Live Support Chat Server Lisensi',
+          description: 'Gunakan antarmuka Live Chat interaktif untuk berkomunikasi langsung dengan Tim Teknis Pusat.',
           items: [
-            { text: 'Buat tiket kendala baru untuk mendapatkan penanganan resmi dan riwayat terdata.' },
-            { text: 'Aplikasi otomatis menarik balasan terbaru setiap 15 detik atau melalui tombol Tarik Balasan Terbaru.' },
-            { text: 'Gunakan Hotline WhatsApp Cepat jika terjadi kendala mendesak pada saat jam operasional KBM/Presensi.' }
+            { text: 'Pilih percakapan dari daftar di sebelah kiri untuk melihat riwayat pesan.' },
+            { text: 'Ketik pesan balasan pada bilah input bawah untuk mengirim pesan langsung.' },
+            { text: 'Klik tombol Obrolan Baru untuk membuka topik kendala atau permohonan baru.' }
           ]
         }}
+        toolbar={{
+          primaryAction: {
+            label: 'Obrolan Baru',
+            onClick: () => setShowNewChatModal(true),
+            icon: PlusCircle
+          }
+        }}
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-24">
-          <div className="space-y-6 w-full min-w-0 max-w-full">
-            
-            {/* ── HEADER SERVER LISENSI STATUS BANNER ── */}
-            <Card className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 shadow-xl overflow-hidden relative">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                <div className="flex items-start sm:items-center gap-3.5">
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center text-indigo-300 shrink-0">
-                    <LifeBuoy className="w-6 h-6 animate-pulse" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm sm:text-base font-black">Helpdesk &amp; Support Server Lisensi</h3>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                        <CheckCircle2 size={10} /> Terhubung Cloud (Pull Sync Active)
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-300 mt-0.5">
-                      Instansi: <strong className="text-white">{tenantName}</strong> • Server Pusat: <span className="font-mono text-indigo-200">{DEFAULT_LICENSE_SERVER_URL}</span>
-                    </p>
-                  </div>
-                </div>
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-16">
+          <div className="w-full min-w-0 max-w-full space-y-4">
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    type="button"
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                    onClick={() => handleOpenWhatsappHotline('Kendala Darurat Sistem')}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-lg cursor-pointer"
-                  >
-                    <Phone size={13} />
-                    Hotline WA Bantuan Cepat
-                  </Button>
+            {/* ── TOPBAR STATUS & WHATSAPP HOTLINE BANNER ── */}
+            <Card className="p-3.5 sm:p-4 rounded-3xl bg-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Headphones className="w-5 h-5 animate-pulse" />
                 </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xs sm:text-sm font-black">Live Support Server Lisensi</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Online • Cloud Sync
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {tenantName} ↔ <span className="font-mono text-indigo-300">{DEFAULT_LICENSE_SERVER_URL}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  type="button"
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => refetchTickets()}
+                  disabled={isSyncing}
+                  className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer bg-slate-800 text-white border-slate-700"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
+                  <span className="hidden sm:inline">Sinkronkan</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="toolbarPrimary"
+                  size="toolbar"
+                  onClick={() => handleOpenWhatsappHotline('Live Chat Hotline')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Phone size={13} />
+                  <span>WhatsApp CS</span>
+                </Button>
               </div>
             </Card>
 
-            {/* ── TAB CONTROLS (Pilar 30) ── */}
-            <TabSwitcher
-              tabs={tabOptions}
-              activeTab={activeTab}
-              onChange={(tabId) => setActiveTab(tabId)}
-            />
-
-            {/* ── TAB CONTENT: BUAT TIKET BARU ── */}
-            {activeTab === 'BUAT_TIKET' && (
-              <Card className="p-4 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
-                <form onSubmit={handleSubmitTicket} className="space-y-4 max-w-3xl">
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <Send className="w-4 h-4 text-indigo-600" /> Formulir Pengajuan Tiket Dukungan Teknis
-                    </h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      Tiket Anda akan diteruskan ke antrean penanganan teknis Server Lisensi PT Baraya Teknologi Indonesia.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="kategori-tiket-select" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Kategori Kendala:
-                      </label>
-                      <SearchableSelect
-                        id="kategori-tiket-select"
-                        value={kategori}
-                        onValueChange={(val) => setKategori(val)}
-                        options={CATEGORY_OPTIONS}
-                        placeholder="Pilih Kategori"
-                      />
-                      {formErrors.kategori && (
-                        <p className="text-[11px] text-rose-500 mt-1">{formErrors.kategori}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label htmlFor="prioritas-tiket-select" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                        Tingkat Prioritas:
-                      </label>
-                      <SearchableSelect
-                        id="prioritas-tiket-select"
-                        value={prioritas}
-                        onValueChange={(val) => setPrioritas(val)}
-                        options={PRIORITY_OPTIONS}
-                        placeholder="Pilih Tingkat Prioritas"
-                      />
-                      {formErrors.prioritas && (
-                        <p className="text-[11px] text-rose-500 mt-1">{formErrors.prioritas}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="judul-tiket-input" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Judul / Ringkasan Kendala:
-                    </label>
-                    <Input
-                      id="judul-tiket-input"
-                      placeholder="Contoh: Sinkronisasi kartu RFID gerbang terputus saat jam tap pagi"
-                      value={judul}
-                      onChange={(e) => setJudul(e.target.value)}
-                      className="rounded-xl text-xs"
-                    />
-                    {formErrors.judul && (
-                      <p className="text-[11px] text-rose-500 mt-1">{formErrors.judul}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label htmlFor="pesan-tiket-textarea" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
-                      Deskripsi Rinci Kendala &amp; Langkah Terakhir yang Dilakukan:
-                    </label>
-                    <textarea
-                      id="pesan-tiket-textarea"
-                      rows={5}
-                      placeholder="Tuliskan penjelasan kendala secara lengkap agar tim teknis pusat dapat langsung melakukan diagnosis perbaikan..."
-                      value={pesan}
-                      onChange={(e) => setPesan(e.target.value)}
-                      className="w-full p-3 text-xs rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                    {formErrors.pesan && (
-                      <p className="text-[11px] text-rose-500 mt-1">{formErrors.pesan}</p>
-                    )}
-                  </div>
-
-                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-100 dark:border-slate-800">
-                    <p className="text-[11px] text-slate-400">
-                      🔒 Informasi tenant dan token otentikasi akan disertakan secara aman bersama tiket.
-                    </p>
+            {/* ── MAIN 2-COLUMN CHAT INTERFACE ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[650px] min-h-[550px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm overflow-hidden">
+              
+              {/* ── LEFT PANEL: CONVERSATION LIST (COL 4) ── */}
+              <div className="lg:col-span-4 flex flex-col h-full border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30">
+                
+                {/* List Header & New Chat Button */}
+                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                      Daftar Percakapan ({(tickets ?? []).length})
+                    </span>
                     <Button
-                      type="submit"
+                      type="button"
                       variant="toolbarPrimary"
                       size="toolbar"
-                      disabled={createTicketMutation.isPending}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                      onClick={() => setShowNewChatModal(true)}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1 shadow-sm cursor-pointer py-1 px-2.5 h-7"
                     >
-                      {createTicketMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                      {createTicketMutation.isPending ? 'Mengirimkan Tiket...' : 'Kirim Tiket ke Server Lisensi'}
+                      <PlusCircle size={12} /> Obrolan Baru
                     </Button>
                   </div>
-                </form>
-              </Card>
-            )}
 
-            {/* ── TAB CONTENT: RIWAYAT TIKET (WITH PULL SYNC CONTROLS) ── */}
-            {activeTab === 'RIWAYAT' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <ArrowDownCircle className="w-4 h-4 text-indigo-500" />
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Sinkronisasi Otomatis Setiap 15 Detik (Anti-CGNAT Pull Active)
-                    </span>
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      placeholder="Cari obrolan..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 text-xs h-8 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                    />
                   </div>
-                  <Button
-                    type="button"
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={handleManualPullSync}
-                    disabled={isPullingSync}
-                    className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isPullingSync ? 'animate-spin text-indigo-600' : ''}`} />
-                    {isPullingSync ? 'Menarik Data...' : 'Tarik Balasan Terbaru'}
-                  </Button>
                 </div>
 
-                {loadingTickets ? (
-                  <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
-                    <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-2" />
-                    <p className="text-xs text-slate-500">Menghubungi Server Lisensi &amp; memuat riwayat tiket...</p>
-                  </Card>
-                ) : (tickets ?? []).length === 0 ? (
-                  <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
-                    <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Belum Ada Riwayat Tiket</h4>
-                    <p className="text-xs text-slate-400 mt-1">Seluruh tiket kendala yang diajukan ke Server Lisensi akan tercatat di sini.</p>
-                  </Card>
-                ) : (
-                  (tickets ?? [])?.map((t) => (
-                    <Card key={t.id} className="p-4 sm:p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-xs font-black text-indigo-600 dark:text-indigo-400">
-                            {t.nomorTiket}
-                          </span>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {t.kategori}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold ${
-                            t.prioritas === 'URGENT' 
-                              ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 border border-rose-200' 
-                              : t.prioritas === 'PENTING'
-                                ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 border border-amber-200'
-                                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 border border-emerald-200'
+                {/* Scrollable Conversation List */}
+                <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/60 p-2 space-y-1">
+                  {loadingTickets ? (
+                    <div className="p-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2">
+                      <RefreshCw className="w-5 h-5 animate-spin text-indigo-500" />
+                      <span>Memuat percakapan...</span>
+                    </div>
+                  ) : (filteredTickets ?? []).length === 0 ? (
+                    <div className="p-8 text-center text-xs text-slate-400 space-y-2">
+                      <HelpCircle className="w-8 h-8 mx-auto text-slate-300" />
+                      <p>Belum ada percakapan tiket.</p>
+                      <Button
+                        type="button"
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={() => setShowNewChatModal(true)}
+                        className="text-xs rounded-xl font-bold text-indigo-600 mx-auto"
+                      >
+                        + Buat Obrolan Baru
+                      </Button>
+                    </div>
+                  ) : (
+                    (filteredTickets ?? [])?.map((t) => {
+                      const isSelected = activeTicket?.id === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setSelectedTicketId(t.id)}
+                          className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 ${
+                            isSelected
+                              ? 'bg-indigo-600 text-white shadow-md'
+                              : 'bg-white dark:bg-slate-900/60 hover:bg-indigo-50/50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800/40'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400'
                           }`}>
-                            {t.prioritas}
-                          </span>
-                        </div>
+                            <Bot className="w-4 h-4" />
+                          </div>
 
-                        <div className="flex items-center gap-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            t.status === 'RESOLVED'
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              : t.status === 'IN_PROGRESS'
-                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
-                                : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                          }`}>
-                            {t.status === 'RESOLVED' ? '✓ SELESAI' : t.status === 'IN_PROGRESS' ? '⏳ DIPROSES' : '📥 MENUNGGU RESPON'}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {formatDate(t.createdAt, 'dd MMM yyyy, HH:mm')}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-1 mb-0.5">
+                              <span className={`font-mono text-[10px] font-black truncate ${isSelected ? 'text-indigo-100' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                                {t.nomorTiket}
+                              </span>
+                              <span className={`text-[9px] shrink-0 ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                {formatDate(t.createdAt, 'dd MMM')}
+                              </span>
+                            </div>
+
+                            <h5 className={`text-xs font-bold truncate leading-tight ${isSelected ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+                              {t.judul}
+                            </h5>
+
+                            <p className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                              {t.pesan}
+                            </p>
+
+                            <div className="flex items-center gap-1.5 mt-2">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                                isSelected 
+                                  ? 'bg-white/20 text-white' 
+                                  : t.status === 'RESOLVED' 
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' 
+                                    : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                              }`}>
+                                {t.status === 'RESOLVED' ? '✓ SELESAI' : '⏳ AKTIF'}
+                              </span>
+                              <span className={`text-[9px] truncate ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                {t.kategori}
+                              </span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* ── RIGHT PANEL: LIVE CHAT WINDOW (COL 8) ── */}
+              <div className="lg:col-span-8 flex flex-col h-full bg-slate-50/30 dark:bg-slate-950/20">
+                {activeTicket ? (
+                  <>
+                    {/* Chat Header */}
+                    <div className="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 shrink-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-md shrink-0">
+                          <Bot className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                              {activeTicket.judul}
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                              {activeTicket.nomorTiket}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                            <span>{activeTicket.kategori}</span>
+                            <span>•</span>
+                            <span className={`font-bold ${activeTicket.prioritas === 'URGENT' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                              {activeTicket.prioritas}
+                            </span>
+                          </p>
                         </div>
                       </div>
 
-                      <div>
-                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">{t.judul}</h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 whitespace-pre-line leading-relaxed">
-                          {t.pesan}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider hidden sm:inline-block ${
+                          activeTicket.status === 'RESOLVED'
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                        }`}>
+                          {activeTicket.status === 'RESOLVED' ? '✓ SELESAI' : '💬 OBROLAN AKTIF'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Chat Messages Body (Scrollable Bubbles) */}
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
+                      {/* System Welcome Card */}
+                      <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-center text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto space-y-1">
+                        <span className="font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1">
+                          <ShieldCheck size={13} /> Jalur Dukungan Terenkripsi Server Lisensi
+                        </span>
+                        <p className="text-[11px] text-slate-400">
+                          Percakapan ini ditangani langsung oleh Tim Dukungan Teknis Pusat PT Baraya Teknologi Indonesia.
                         </p>
                       </div>
 
-                      {/* Utas Percakapan / Balasan Tim Teknis */}
-                      {Array.isArray(t.messages) && t.messages.length > 0 ? (
-                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                          {(t.messages ?? [])?.map((m) => (
-                            <div 
-                              key={m.id} 
-                              className={`p-3 rounded-2xl text-xs space-y-1 ${
-                                m.sender === 'agent'
-                                  ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-slate-800 dark:text-slate-200'
-                                  : 'bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-2 font-bold text-[10px] text-indigo-600 dark:text-indigo-400">
-                                <span className="flex items-center gap-1">
-                                  {m.sender === 'agent' ? <ShieldCheck size={11} /> : <MessageSquareReply size={11} />}
-                                  {m.senderName}
-                                </span>
-                                <span className="text-slate-400 font-normal">{formatDate(m.createdAt, 'dd MMM, HH:mm')}</span>
+                      {/* Render Messages */}
+                      {(conversationMessages ?? [])?.map((msg) => {
+                        const isMe = msg.sender === 'tenant';
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
+                          >
+                            {!isMe && (
+                              <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs mb-1">
+                                <Bot size={13} />
                               </div>
-                              <p className="whitespace-pre-line leading-relaxed">{m.message}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : t.adminReply ? (
-                        <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-1">
-                          <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1">
-                            <ShieldCheck size={12} /> Tanggapan Tim Teknis Server Lisensi Pusat:
-                          </span>
-                          <p className="text-xs text-slate-800 dark:text-slate-200 font-medium">
-                            {t.adminReply}
-                          </p>
-                        </div>
-                      ) : null}
+                            )}
 
-                      {/* Tombol Balas Pesan */}
-                      <div className="pt-2 flex flex-col gap-2">
-                        {replyingTicketId === t.id ? (
-                          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
-                            <textarea
-                              rows={3}
-                              placeholder="Tulis pesan balasan ke tim teknis Server Lisensi..."
-                              value={replyMessage}
-                              onChange={(e) => setReplyMessage(e.target.value)}
-                              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                type="button"
-                                variant="toolbarOutline"
-                                size="toolbar"
-                                onClick={() => { setReplyingTicketId(null); setReplyMessage(''); }}
-                                className="text-xs rounded-xl"
-                              >
-                                Batal
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="toolbarPrimary"
-                                size="toolbar"
-                                disabled={!replyMessage.trim() || replyMutation.isPending}
-                                onClick={() => replyMutation.mutate({ ticketId: t.id, message: replyMessage.trim() })}
-                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1"
-                              >
-                                <Send size={11} /> {replyMutation.isPending ? 'Mengirim...' : 'Kirim Balasan'}
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              variant="toolbarOutline"
-                              size="toolbar"
-                              onClick={() => setReplyingTicketId(t.id)}
-                              className="text-xs rounded-xl flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400"
-                            >
-                              <MessageSquareReply size={12} /> Balas Pesan Tim Teknis
-                            </Button>
-                          </div>
-                        )}
-                      </div>
+                            <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-3 sm:p-3.5 space-y-1 shadow-xs ${
+                              isMe
+                                ? 'bg-indigo-600 text-white rounded-br-xs'
+                                : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-bl-xs border border-slate-200/70 dark:border-slate-800'
+                            }`}>
+                              <div className={`flex items-center justify-between gap-2 text-[10px] font-bold ${
+                                isMe ? 'text-indigo-200' : 'text-indigo-600 dark:text-indigo-400'
+                              }`}>
+                                <span>{msg.senderName}</span>
+                                <span className="font-normal opacity-80">{formatDate(msg.createdAt, 'HH:mm')}</span>
+                              </div>
 
-                    </Card>
-                  ))
+                              <p className="text-xs whitespace-pre-line leading-relaxed">
+                                {msg.message}
+                              </p>
+
+                              <div className={`flex items-center justify-end gap-1 text-[9px] ${isMe ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                <CheckCheck size={11} className="text-emerald-300" />
+                              </div>
+                            </div>
+
+                            {isMe && (
+                              <div className="w-7 h-7 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-xs mb-1">
+                                <UserIcon size={13} />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Chat Input Bar */}
+                    <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                        <Input
+                          placeholder="Ketik pesan balasan ke Tim Dukungan Pusat..."
+                          value={chatInputText}
+                          onChange={(e) => setChatInputText(e.target.value)}
+                          className="flex-1 text-xs rounded-2xl bg-slate-50/70 dark:bg-slate-950 border-slate-200 dark:border-slate-800 h-10 px-3.5"
+                        />
+                        <Button
+                          type="submit"
+                          variant="toolbarPrimary"
+                          size="toolbar"
+                          disabled={!chatInputText.trim() || sendReplyMutation.isPending}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl flex items-center justify-center h-10 px-4 cursor-pointer shadow-md"
+                        >
+                          {sendReplyMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send size={14} />}
+                        </Button>
+                      </form>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                    <div className="w-14 h-14 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center">
+                      <MessageSquare className="w-7 h-7" />
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Pilih Obrolan untuk Memulai</h4>
+                    <p className="text-xs text-slate-400 max-w-sm">
+                      Pilih salah satu percakapan di bilah kiri atau buat obrolan tiket bantuan baru ke Server Lisensi.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="toolbarPrimary"
+                      size="toolbar"
+                      onClick={() => setShowNewChatModal(true)}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl"
+                    >
+                      + Buat Obrolan Baru
+                    </Button>
+                  </div>
                 )}
               </div>
-            )}
 
-            {/* ── TAB CONTENT: HOTLINE & SALURAN BANTUAN ── */}
-            {activeTab === 'HOTLINE' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 flex items-center justify-center">
-                      <Phone className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">Hotline WhatsApp CS</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Bantuan instan untuk kendala operasional darurat sekolah atau panduan langsung staf teknis.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                    onClick={() => handleOpenWhatsappHotline('Konsultasi CS')}
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ExternalLink size={12} /> Buka WhatsApp CS
-                  </Button>
-                </Card>
+            </div>
 
-                <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center">
-                      <KeyRound className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">Perpanjangan Lisensi</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Konsultasi pembaruan masa aktif langganan, penambahan kuota siswa/guru, atau aktivasi modul baru.
-                    </p>
+            {/* ── MODAL: BUAT OBROLAN / TIKET BARU ── */}
+            {showNewChatModal && (
+              <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+                <Card className="w-full max-w-lg p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <PlusCircle className="w-4 h-4 text-indigo-600" /> Buka Obrolan / Tiket Baru
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewChatModal(false)}
+                      className="text-xs font-bold text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      ✕ Tutup
+                    </button>
                   </div>
-                  <Button
-                    type="button"
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={() => handleOpenWhatsappHotline('Perpanjangan Lisensi')}
-                    className="w-full font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <KeyRound size={12} /> Hubungi Bagian Lisensi
-                  </Button>
-                </Card>
 
-                <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-3 flex flex-col justify-between">
-                  <div className="space-y-2">
-                    <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 flex items-center justify-center">
-                      <Server className="w-5 h-5" />
+                  <form onSubmit={handleCreateNewChat} className="space-y-3.5">
+                    <div>
+                      <label htmlFor="new-kategori-select" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Kategori Kendala:
+                      </label>
+                      <SearchableSelect
+                        id="new-kategori-select"
+                        value={newKategori}
+                        onValueChange={(val) => setNewKategori(val)}
+                        options={CATEGORY_OPTIONS}
+                        placeholder="Pilih Kategori"
+                      />
                     </div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">Dokumentasi &amp; Panduan</h4>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Panduan lengkap instalasi perangkat keras RFID tap, integrasi Dapodik/EMIS, dan tutorial modul.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="toolbarOutline"
-                    size="toolbar"
-                    onClick={() => window.open('https://absenta.id/docs', '_blank')}
-                    className="w-full font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <ExternalLink size={12} /> Buka Dokumentasi
-                  </Button>
+
+                    <div>
+                      <label htmlFor="new-prioritas-select" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Tingkat Prioritas:
+                      </label>
+                      <SearchableSelect
+                        id="new-prioritas-select"
+                        value={newPrioritas}
+                        onValueChange={(val) => setNewPrioritas(val)}
+                        options={PRIORITY_OPTIONS}
+                        placeholder="Pilih Prioritas"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="new-judul-input" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Subjek / Topik Obrolan:
+                      </label>
+                      <Input
+                        id="new-judul-input"
+                        placeholder="Contoh: Sinkronisasi RFID di Gate A lambat"
+                        value={newJudul}
+                        onChange={(e) => setNewJudul(e.target.value)}
+                        className="rounded-xl text-xs"
+                      />
+                      {formErrors.judul && <p className="text-[11px] text-rose-500 mt-1">{formErrors.judul}</p>}
+                    </div>
+
+                    <div>
+                      <label htmlFor="new-pesan-textarea" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                        Pesan Pembuka:
+                      </label>
+                      <textarea
+                        id="new-pesan-textarea"
+                        rows={4}
+                        placeholder="Jelaskan detail kendala Anda..."
+                        value={newPesan}
+                        onChange={(e) => setNewPesan(e.target.value)}
+                        className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                      />
+                      {formErrors.pesan && <p className="text-[11px] text-rose-500 mt-1">{formErrors.pesan}</p>}
+                    </div>
+
+                    <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                      <Button
+                        type="button"
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={() => setShowNewChatModal(false)}
+                        className="text-xs rounded-xl cursor-pointer"
+                      >
+                        Batal
+                      </Button>
+                      <Button
+                        type="submit"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        disabled={createTicketMutation.isPending}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
+                      >
+                        {createTicketMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send size={12} />}
+                        {createTicketMutation.isPending ? 'Membuka...' : 'Buka Percakapan'}
+                      </Button>
+                    </div>
+                  </form>
                 </Card>
               </div>
             )}
