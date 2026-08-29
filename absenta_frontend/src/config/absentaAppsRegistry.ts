@@ -228,7 +228,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-slate-600 to-zinc-700',
     },
     defaultPath: '/settings',
-    pathPrefixes: ['/settings', '/pengaturan', '/users', '/user-management', '/role-management', '/management', '/superadmin'],
+    pathPrefixes: ['/settings', '/pengaturan', '/users', '/user-management', '/service-center', '/services', '/support', '/management', '/superadmin'],
     category: 'SISTEM',
   },
 ];
