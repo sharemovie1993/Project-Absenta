@@ -32,10 +32,10 @@ const SettingsPage: React.FC = () => {
   const { user, isLoading, can } = useAuth();
   const { isAdmin } = useCapabilities();
   const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
-  const isTenantAdmin = isAdmin && !isSuperAdminUser;
+  const isTenantUser = !isSuperAdminUser;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = (searchParams.get('tab') || (isTenantAdmin || !can('core.sekolah.view.profile') ? 'tenant_profile' : 'general')).toLowerCase();
+  const initialTab = (searchParams.get('tab') || (isTenantUser ? 'tenant_profile' : 'general')).toLowerCase();
   const [activeTab, setActiveTab] = useState(initialTab);
 
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
@@ -61,8 +61,8 @@ const SettingsPage: React.FC = () => {
     { label: 'Pengaturan', path: '/settings' }
   ], []);
 
-  const canView = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.sekolah.view.profile') || can('core.sekolah.view.profile'), [isSuperAdminUser, isTenantAdmin, can]);
-  const canEdit = useMemo(() => isSuperAdminUser || isTenantAdmin || can('core.sekolah.update.profile'), [isSuperAdminUser, isTenantAdmin, can]);
+  const canView = useMemo(() => isSuperAdminUser || can('core.sekolah.view.profile') || isAdmin, [isSuperAdminUser, can, isAdmin]);
+  const canEdit = useMemo(() => isSuperAdminUser || can('core.sekolah.update.profile') || isAdmin, [isSuperAdminUser, can, isAdmin]);
 
   const [config, setConfig] = useState<SystemConfigPayload>({
     app_name: '',
@@ -234,28 +234,38 @@ const SettingsPage: React.FC = () => {
   }, []);
 
   const tabs = useMemo(() => {
-    const list = (isTenantAdmin || !can('core.sekolah.view.profile'))
-      ? [
-          { id: 'tenant_profile', label: 'Profil Sekolah' },
-          { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
-        ]
-      : [
-          { id: 'general', label: 'Umum' },
-          { id: 'branding', label: 'Branding' },
-          { id: 'payment', label: 'Pembayaran' },
-          { id: 'company', label: 'Perusahaan' },
-          { id: 'security', label: 'Keamanan' },
-          { id: 'notifications', label: 'Notifikasi' },
-          { id: 'attendance', label: 'Absensi' },
-          { id: 'parent_app', label: 'Parent App' },
-          { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }
-        ];
-
-    if (can('core.sekolah.update.profile') || isSuperAdminUser) {
-      list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
+    if (isTenantUser) {
+      const list = [
+        { id: 'tenant_profile', label: 'Profil Sekolah' },
+        { id: 'attendance', label: 'Aturan Absensi' },
+        { id: 'parent_app', label: 'Parent App' },
+        { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
+      ];
+      if (can('core.sekolah.update.profile') || isAdmin) {
+        list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
+      }
+      return list;
     }
+
+    const list = [
+      { id: 'general', label: 'Umum' },
+      { id: 'branding', label: 'Branding' },
+      { id: 'payment', label: 'Pembayaran' },
+      { id: 'company', label: 'Perusahaan' },
+      { id: 'security', label: 'Keamanan' },
+      { id: 'notifications', label: 'Notifikasi' },
+      { id: 'attendance', label: 'Absensi' },
+      { id: 'parent_app', label: 'Parent App' },
+      { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
+      { id: 'system_update', label: 'Pembaruan Sistem' },
+    ];
     return list;
-  }, [isTenantAdmin, can, isSuperAdminUser]);
+  }, [isTenantUser, can, isAdmin]);
+
+  const showSaveButton = canEdit && (
+    (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||
+    (isTenantUser && (activeTab === 'attendance' || activeTab === 'parent_app'))
+  );
 
   const toolbar = useMemo(() => (
     <div className="flex items-center gap-2">
@@ -264,14 +274,14 @@ const SettingsPage: React.FC = () => {
           {saveMessage}
         </span>
       )}
-      {canEdit && !isTenantAdmin && activeTab !== 'easy_tunnel' && (
+      {showSaveButton && (
         <Button onClick={handleSave} disabled={saving}>
             {saving ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
             Simpan Perubahan
         </Button>
       )}
     </div>
-  ), [saveMessage, canEdit, isTenantAdmin, handleSave, saving, activeTab]);
+  ), [saveMessage, showSaveButton, handleSave, saving]);
 
   if (isLoading) return <div className="flex justify-center items-center min-h-screen"><Loader size="lg" /></div>;
 
