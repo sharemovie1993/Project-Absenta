@@ -23,6 +23,7 @@ const PaymentSettingsForm = lazy(() => import('@/components/settings/PaymentSett
 const SecuritySettingsForm = lazy(() => import('@/components/settings/SecuritySettingsForm').then(m => ({ default: m.SecuritySettingsForm })));
 const NotificationSettingsForm = lazy(() => import('@/components/settings/NotificationSettingsForm').then(m => ({ default: m.NotificationSettingsForm })));
 const AttendanceSettingsForm = lazy(() => import('@/components/settings/AttendanceSettingsForm').then(m => ({ default: m.AttendanceSettingsForm })));
+const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm').then(m => ({ default: m.TenantAttendanceForm })));
 const ParentAppSettingsForm = lazy(() => import('@/components/settings/ParentAppSettingsForm').then(m => ({ default: m.ParentAppSettingsForm })));
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
@@ -339,7 +340,13 @@ const SettingsPage: React.FC = () => {
               {activeTab === 'payment' && <PaymentSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-              {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
+              {activeTab === 'attendance' && (
+                isTenantUser ? (
+                  <TenantAttendanceForm />
+                ) : (
+                  <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />
+                )
+              )}
               {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
               {activeTab === 'tenant_profile' && <TenantSettings />}
               {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
