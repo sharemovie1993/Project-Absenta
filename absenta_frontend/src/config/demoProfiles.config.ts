@@ -26,8 +26,38 @@ export const DEMO_CATEGORIES = [
 
 export const DEMO_ROLE_PROFILES: DemoRoleProfile[] = [
   // ═══════════════════════════════════════════════════════════════════
-  // 👑 LEVEL 4 & 5: PIMPINAN EKSEKUTIF SEKOLAH
+  // 👑 LEVEL 4 & 5: PIMPINAN EKSEKUTIF & ADMINISTRATOR
   // ═══════════════════════════════════════════════════════════════════
+  {
+    id: 'demo-admin',
+    category: 'LEADERSHIP',
+    roleCode: 'ADMIN',
+    title: 'Admin Sekolah',
+    simulatedName: 'Administrator Sekolah',
+    email: 'admin@absenta.id',
+    password: 'password123',
+    badge: 'Admin Sistem',
+    badgeColor: 'bg-red-500/15 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
+    description: 'Akses penuh konfigurasi sistem, manajemen pengguna, role RBAC, audit log & setelan sekolah',
+    iconName: 'ShieldCheck',
+    gradient: 'from-red-600 to-rose-700 text-white',
+    border: 'border-red-300 dark:border-red-700'
+  },
+  {
+    id: 'demo-superadmin',
+    category: 'LEADERSHIP',
+    roleCode: 'SUPERADMIN',
+    title: 'Super Admin',
+    simulatedName: 'Super Administrator',
+    email: 'superadmin@system.com',
+    password: 'password123',
+    badge: 'Owner SaaS',
+    badgeColor: 'bg-zinc-800/15 text-zinc-800 dark:text-zinc-200 border-zinc-300 dark:border-zinc-700',
+    description: 'Akses multi-tenant SaaS, billing langganan, manajemen lisensi sekolah & health check sistem',
+    iconName: 'ShieldCheck',
+    gradient: 'from-slate-800 to-zinc-900 text-white',
+    border: 'border-zinc-400 dark:border-zinc-600'
+  },
   {
     id: 'demo-kepsek',
     category: 'LEADERSHIP',
