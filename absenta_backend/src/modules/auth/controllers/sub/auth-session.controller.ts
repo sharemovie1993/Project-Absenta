@@ -1,22 +1,15 @@
-// @ts-nocheck
+// auth-session.controller.ts — Auth Session Handler (Login, Logout, Refresh, Me, Impersonate, ChangePassword)
 import { authService } from '../../services/auth.service';
 import { authDb as prisma } from '../../services/repositories/auth.db';
-import { RegisterInput, LoginInput, RegisterTenantInput, UserResponse } from '../../types/auth.types';
+import { LoginInput, UserResponse } from '../../types/auth.types';
 import { authorizationService } from '../../services/authorization.service';
-import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
 import { organizationalAuthorizationEngine } from '../../services/organizational-authorization.engine';
 import { organizationalContextCache } from '../../services/organizational-context-cache';
 import { getTenantCapabilities } from '@/utils/tenant-capabilities';
 import { getEffectiveAbsensiMode } from '@/utils/attendanceModeHelper';
-import { VALID_ROLES } from '@/constants/enums';
-import { EmailService } from '@/modules/notification/services/email.service';
-import { WhatsAppService } from '@/modules/notification/services/whatsapp.service';
-import { systemConfigService } from '@/modules/system-config/services/system-config.service';
 import { activityLogService } from '@/modules/activity/services/activity-log.service';
 import bcrypt from 'bcryptjs';
-import { randomUUID } from 'crypto';
-import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@/utils/url-helper';
-import { WireguardManager } from '@/services/wireguardManager';
+import { getSmartParentAppUrl } from '@/utils/url-helper';
 import * as jwt from 'jsonwebtoken';
 
 /** 
@@ -39,6 +32,7 @@ export const getJwtSecret = (): string => {
 export const MIN_PASSWORD_LENGTH = 8;
 
 import { authTenantController } from './auth-tenant.controller';
+import { refreshTokenService } from '../../services/refresh-token.service';
 
 export const authSessionController = {
   async login(request: any, reply: any) {
@@ -321,29 +315,24 @@ export const authSessionController = {
         }
       }
 
-      // Generate JWT tokens
+      // Generate JWT access token (short-lived: 15 menit)
       const tokenPayload = {
         id: user.id,
         email: user.email,
         tenantId: user.tenant_id,
         roleId: user.role.id,
         roleName: user.role.name,
-        // permissions: user.role.permissions, // EXCLUDED to reduce header size (prevents HTTP2 errors)
-        exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutes
+        exp: Math.floor(Date.now() / 1000) + (15 * 60),
       };
-
-      const refreshTokenPayload = {
-        id: user.id,
-        email: user.email,
-        tenantId: user.tenant_id,
-        roleId: user.role.id,
-        roleName: user.role.name,
-        // permissions: user.role.permissions, // EXCLUDED to reduce header size
-        exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days
-      };
-
       const token = jwt.sign(tokenPayload, getJwtSecret());
-      const refreshToken = jwt.sign(refreshTokenPayload, getJwtSecret());
+
+      // ✅ C1 Fix: Refresh token disimpan di DB (hash), bukan JWT — mendukung revokasi
+      const deviceHint = String(request.headers['user-agent'] || '').slice(0, 120);
+      const refreshToken = await refreshTokenService.createRefreshToken(
+        user.id,
+        user.tenant_id || 'system',
+        deviceHint
+      );
 
       try {
         const logTenantId = user.role.name === 'SUPERADMIN' ? 'system' : user.tenant_id;
@@ -457,10 +446,15 @@ async logout(request: any, reply: any) {
         });
       } catch {}
       reply.status(200);
-      // ✅ Invalidasi cache posisi jabatan agar login berikutnya selalu ambil data terbaru dari DB
+      // ✅ Invalidasi cache posisi jabatan
+      try { if (user?.id) await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+      // ✅ C1 Fix: Revoke refresh token dari DB (revoke token spesifik jika ada, fallback all)
       try {
-        if (user?.id) {
-          await organizationalContextCache.invalidateUser(String(user.id));
+        const { refreshToken: rawRefreshToken } = (request.body as any) || {};
+        if (rawRefreshToken) {
+          await refreshTokenService.revokeByRawToken(String(rawRefreshToken));
+        } else if (user?.id) {
+          await refreshTokenService.revokeAllByUserId(String(user.id));
         }
       } catch {}
       return { success: true, message: 'Logout successful' };
@@ -475,45 +469,46 @@ async refresh(request: any, reply: any) {
 
       if (!refreshToken) {
         reply.status(400);
-        return {
-          success: false,
-          error: 'BAD_REQUEST',
-          reason: 'REFRESH_TOKEN_REQUIRED',
-          message: 'Refresh token is required',
-        };
+        return { success: false, error: 'BAD_REQUEST', reason: 'REFRESH_TOKEN_REQUIRED', message: 'Refresh token is required' };
       }
 
-      // Verify the refresh token
-      const decoded = jwt.verify(refreshToken, getJwtSecret()) as any;
+      // ✅ C1 Fix: Verifikasi refresh token via DB (bukan jwt.verify) — mendukung revokasi
+      const verified = await refreshTokenService.verifyRefreshToken(String(refreshToken));
+      if (!verified) {
+        reply.status(401);
+        return { success: false, error: 'UNAUTHORIZED', reason: 'INVALID_REFRESH_TOKEN', message: 'Invalid or expired refresh token' };
+      }
 
-      // Generate new access token
+      // Ambil data user terbaru dari DB untuk payload token baru
+      const dbUser = await prisma.user.findUnique({
+        where: { id: verified.userId },
+        include: { Role: { include: { rolePermissions: { include: { Permission: true } } } } }
+      });
+      if (!dbUser || dbUser.status === 'INACTIVE') {
+        await refreshTokenService.revokeAllByUserId(verified.userId); // Revoke semua token jika user nonaktif
+        reply.status(401);
+        return { success: false, error: 'UNAUTHORIZED', reason: 'USER_INACTIVE', message: 'Akun tidak aktif' };
+      }
+
+      // Generate access token baru
       const newToken = jwt.sign({
-        id: decoded.id,
-        email: decoded.email,
-        tenantId: decoded.tenantId || (decoded as any).tenant_id,
-        tenant_id: (decoded as any).tenant_id || decoded.tenantId,
-        roleId: decoded.roleId,
-        roleName: decoded.roleName,
-        permissions: decoded.permissions, // Include permissions in refreshed token
-        exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 minutes
+        id: dbUser.id,
+        email: dbUser.email,
+        tenantId: dbUser.tenant_id,
+        roleId: dbUser.role_id,
+        roleName: dbUser.Role?.name,
+        exp: Math.floor(Date.now() / 1000) + (15 * 60), // 15 menit
       }, getJwtSecret());
 
       reply.status(200);
       return {
         success: true,
         message: 'Token refreshed successfully',
-        data: {
-          token: newToken,
-        },
+        data: { token: newToken },
       };
     } catch (error) {
       reply.status(401);
-      return {
-        success: false,
-        error: 'UNAUTHORIZED',
-        reason: 'INVALID_REFRESH_TOKEN',
-        message: 'Invalid refresh token',
-      };
+      return { success: false, error: 'UNAUTHORIZED', reason: 'INVALID_REFRESH_TOKEN', message: 'Invalid refresh token' };
     }
   },
 async me(request: any, reply: any) {
@@ -738,12 +733,14 @@ async changePassword(request: any, reply: any) {
         data: { password: hashedPassword }
       });
 
-      // ✅ H2 Fix: Invalidasi cache org context agar sesi lain tidak bisa pakai data stale
+      // ✅ H2+C1 Fix: Invalidasi cache + Revoke SEMUA refresh token aktif user
+      // agar jika akun diambil alih dan password diganti, semua sesi attacker langsung tidak valid
       try { await organizationalContextCache.invalidateUser(String(dbUser.id)); } catch {}
+      try { await refreshTokenService.revokeAllByUserId(String(dbUser.id)); } catch {}
 
       return reply.status(200).send({
         success: true,
-        message: 'Password berhasil diperbarui!'
+        message: 'Password berhasil diperbarui! Semua sesi lain telah diakhiri.'
       });
     } catch (error: any) {
       // ✅ M6 Fix: Jangan expose error.message internal ke client

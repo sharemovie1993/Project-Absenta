@@ -495,6 +495,7 @@ model User {
   permohonanIzinDiproses PermohonanIzinSiswa[] @relation("PermohonanIzinDiproses")
   permohonanIzinGuruDiajukan PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiajukan")
   permohonanIzinGuruDiproses PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiproses")
+  RefreshTokens              RefreshToken[]
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -4866,4 +4867,22 @@ model AtpTpTemplate {
   AtpTemplate AtpTemplate @relation(fields: [atp_template_id], references: [id], onDelete: Cascade)
 
   @@index([atp_template_id])
+}
+
+// --- C1 Audit Fix: Refresh Token Revocation Table ---------------------------
+model RefreshToken {
+  id          String    @id @default(uuid())
+  user_id     String
+  tenant_id   String    @default("system")
+  token_hash  String    @unique   // SHA-256 hash dari token (tidak simpan raw token)
+  expires_at  DateTime
+  revoked_at  DateTime?           // NULL = masih valid, NOT NULL = sudah di-revoke
+  created_at  DateTime  @default(now())
+  device_hint String?             // opsional: user agent / device info
+
+  User        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+  @@map("refresh_tokens")
 }

@@ -110,7 +110,7 @@ export async function registerPlugins(fastify: any) {
   });
 
   await fastify.register(require('@fastify/jwt'), {
-    secret: process.env['JWT_SECRET'] || 'your-super-secret-jwt-key-change-this-in-production'
+    secret: process.env['JWT_SECRET'] || 'absenta-dev-secret-key-32-chars!!'
   });
 
   const rateLimitOptions: any = {
