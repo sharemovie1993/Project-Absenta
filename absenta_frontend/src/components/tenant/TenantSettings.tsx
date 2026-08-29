@@ -448,24 +448,24 @@ export const TenantSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-16 px-4 animate-fadeIn">
+    <div className="space-y-6 max-w-5xl mx-auto pb-32 sm:pb-16 px-1 sm:px-4 animate-fadeIn">
       {/* Clean Minimal Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Pengaturan Sekolah</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Kelola identitas resmi, Kop Surat dinamis, dan alur kerja sistem.</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Pengaturan Sekolah</h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Kelola identitas resmi, Kop Surat dinamis, dan alur kerja sistem.</p>
         </div>
         <div>
           {!isEditing ? (
-            <Button onClick={() => setIsEditing(true)} className="flex items-center gap-1.5 transition-all">
+            <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto flex items-center justify-center gap-1.5 transition-all">
               <Edit2 className="h-4 w-4" /> Edit Profil & Kop
             </Button>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleCancelEdit} disabled={saving} className="flex items-center gap-1">
+              <Button variant="outline" onClick={handleCancelEdit} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-1">
                 <X className="h-4 w-4" /> Batal
               </Button>
-              <Button onClick={handleSaveProfile} disabled={saving} className="flex items-center gap-1">
+              <Button onClick={handleSaveProfile} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-1">
                 {saving ? <Loader className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
                 Simpan
               </Button>
@@ -475,30 +475,30 @@ export const TenantSettings: React.FC = () => {
       </div>
 
       {/* Profil Sekolah & Kop Surat Card */}
-      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
-          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 p-4 sm:p-6">
+          <CardTitle className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
               <School className="h-4 w-4" />
             </div>
             Profil Sekolah & Format Dokumen Resmi
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-4 sm:p-6 space-y-6">
           {isEditing ? (
             // ================= EDIT MODE =================
             <div className="space-y-6 animate-fadeIn">
               
               {/* ✨ LIVE PREVIEW KOP SURAT (Dinamis & Real-time) */}
-              <div className="p-6 border border-indigo-100 dark:border-indigo-950/60 bg-indigo-50/10 dark:bg-indigo-950/5 rounded-2xl space-y-4">
+              <div className="p-3.5 sm:p-6 border border-indigo-100 dark:border-indigo-950/60 bg-indigo-50/10 dark:bg-indigo-950/5 rounded-2xl space-y-3 sm:space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <span className="text-[11px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-indigo-500 animate-pulse" />
-                    Live Preview Kop Surat Dinamis (Cetak Dokumen)
+                    <Eye className="h-4 w-4 text-indigo-500 animate-pulse shrink-0" />
+                    Live Preview Kop Surat Dinamis
                   </span>
                   
                   {/* Preview Selector Tabs */}
-                  <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold">
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold self-start sm:self-auto overflow-x-auto max-w-full">
                     <button
                       type="button"
                       onClick={() => setPreviewVariant('portrait')}
@@ -523,9 +523,9 @@ export const TenantSettings: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Paper sheet replica */}
-                <div className="p-6 bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-none overflow-x-auto min-h-[140px] flex items-center justify-center border-dashed">
-                  <div className={`w-full max-w-full ${previewVariant === 'compact' ? 'max-w-[280px]' : 'min-w-[480px]'}`}>
+                {/* Paper sheet replica with horizontal scroll wrapper */}
+                <div className="p-3 sm:p-6 bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-none overflow-x-auto min-h-[140px] flex items-center justify-start sm:justify-center border-dashed">
+                  <div className={`w-full ${previewVariant === 'compact' ? 'max-w-[280px]' : 'min-w-[500px] sm:min-w-[640px]'}`}>
                     <PrintHeader variant={previewVariant} tenantInfo={liveTenantInfo} />
                   </div>
                 </div>
@@ -963,79 +963,77 @@ export const TenantSettings: React.FC = () => {
             </div>
           ) : (
             // ================= VIEW MODE =================
-            <div className="space-y-8 px-2">
+            <div className="space-y-6">
               
               {/* ✨ KOP PREVIEW (IN VIEW MODE) */}
-              <div className="p-6 border border-slate-100 dark:border-slate-900 bg-slate-50/30 dark:bg-slate-900/10 rounded-2xl shadow-inner">
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-                    <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-slate-400" />
-                      Pratinjau Kop Surat Resmi
-                    </span>
-                    
-                    <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewVariant('portrait')}
-                        className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        Portrait
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPreviewVariant('landscape')}
-                        className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
-                      >
-                        Landscape
-                      </button>
-                    </div>
-                  </div>
+              <div className="p-3.5 sm:p-6 border border-slate-100 dark:border-slate-900 bg-slate-50/40 dark:bg-slate-900/10 rounded-2xl shadow-inner space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Eye className="h-4 w-4 text-slate-400 shrink-0" />
+                    Pratinjau Kop Surat Resmi
+                  </span>
                   
-                  {/* Container replica */}
-                  <div className="flex justify-center bg-slate-100/50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200/40 dark:border-slate-800">
-                    <div className={`bg-white dark:bg-slate-950 shadow-xl p-8 border border-slate-200/60 dark:border-slate-800 transition-all duration-300 ${previewVariant === 'landscape' ? 'w-full' : 'w-[800px] max-w-full'}`}>
-                      <PrintHeader variant={previewVariant} tenantInfo={liveTenantInfo} />
-                    </div>
+                  <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 rounded-xl text-[10px] font-bold self-start sm:self-auto overflow-x-auto max-w-full">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVariant('portrait')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'portrait' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Portrait
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVariant('landscape')}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${previewVariant === 'landscape' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600 dark:text-indigo-400 font-black' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Landscape
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Paper sheet replica with horizontal scroll wrapper */}
+                <div className="p-3 sm:p-6 bg-white dark:bg-slate-950 border border-slate-200/40 dark:border-slate-800 rounded-2xl shadow-xl shadow-slate-100 dark:shadow-none overflow-x-auto min-h-[140px] flex items-center justify-start sm:justify-center border-dashed">
+                  <div className={`w-full ${previewVariant === 'compact' ? 'max-w-[280px]' : 'min-w-[500px] sm:min-w-[640px]'}`}>
+                    <PrintHeader variant={previewVariant} tenantInfo={liveTenantInfo} />
                   </div>
                 </div>
               </div>
 
               {/* Logo & Subscription Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {/* Logo Daerah */}
-                <div className="flex flex-col items-center justify-center p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden group">
+                <div className="flex flex-col items-center justify-center p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-xs relative overflow-hidden group">
                   <div className="absolute top-0 left-0 w-1 h-full bg-slate-300 dark:bg-slate-700"></div>
-                  <span className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-wider">Logo Pemda / Yayasan</span>
+                  <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Logo Pemda / Yayasan</span>
                   {logoDaerahUrl ? (
-                    <img src={logoDaerahUrl} alt="Logo Pemda" className="h-16 w-auto object-contain transition-transform group-hover:scale-105" />
+                    <img src={logoDaerahUrl} alt="Logo Pemda" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
-                    <div className="h-16 w-16 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
+                    <div className="h-14 w-14 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}
                 </div>
 
                 {/* Logo Sekolah */}
-                <div className="flex flex-col items-center justify-center p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden group">
+                <div className="flex flex-col items-center justify-center p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-xs relative overflow-hidden group">
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
-                  <span className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-wider">Logo Resmi Sekolah</span>
+                  <span className="text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Logo Resmi Sekolah</span>
                   {logoUrl ? (
-                    <img src={logoUrl} alt="Logo Sekolah" className="h-16 w-auto object-contain transition-transform group-hover:scale-105" />
+                    <img src={logoUrl} alt="Logo Sekolah" className="h-14 sm:h-16 w-auto object-contain transition-transform group-hover:scale-105" />
                   ) : (
-                    <div className="h-16 w-16 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
+                    <div className="h-14 w-14 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center rounded-xl font-bold text-[10px] text-slate-400">Belum Unggah</div>
                   )}
                 </div>
 
                 {/* Status Langganan info */}
-                <div className="flex flex-col justify-between p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-sm relative overflow-hidden">
+                <div className="flex flex-col justify-between p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-xs relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                   <div>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Paket Aktif</span>
-                    <p className="text-lg font-black text-slate-800 dark:text-slate-200">{tenant.subscription_plan || 'Free Plan'}</p>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Paket Aktif</span>
+                    <p className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">{tenant.subscription_plan || 'Free Plan'}</p>
                   </div>
-                  <div className="mt-3">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block mb-1">Status Lisensi</span>
+                  <div className="mt-2.5">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status Lisensi</span>
                     <div>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         tenant.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/30' :
                         tenant.status === 'SUSPENDED' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' :
                         isPendingDeletion ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' :
@@ -1050,7 +1048,7 @@ export const TenantSettings: React.FC = () => {
               </div>
 
               {/* Detail Sekolah View (Premium Info Cards) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 border-t border-slate-100 dark:border-slate-800 pt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 border-t border-slate-100 dark:border-slate-800 pt-6">
                 {/* Alamat */}
                 <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-900/30 border border-slate-100 dark:border-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
                   <div className="p-3 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl shrink-0">
@@ -1167,56 +1165,58 @@ export const TenantSettings: React.FC = () => {
       />
 
       {/* ⏰ SHIFT & JAM PELAJARAN KBM CARD */}
-      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
-          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
-            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400">
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 p-4 sm:p-6">
+          <CardTitle className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl text-indigo-600 dark:text-indigo-400 shrink-0">
               <Clock className="h-4 w-4" />
             </div>
             Konfigurasi Shift & Waktu Kegiatan Belajar Mengajar (KBM)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-6">
-            <div className="space-y-1.5 max-w-lg">
-              <Label className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-4 sm:gap-6">
+            <div className="space-y-1 max-w-lg">
+              <Label className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
                 Pengaturan Jam Pelajaran (KBM) & Shift
               </Label>
-              <p className="text-xs text-slate-500 leading-normal">
-                Konfigurasi pembagian shift (Pagi/Siang), pengaturan jam pelajaran per-slot, dan pemetaan kelas kini dikelola langsung secara terpusat oleh bagian **Kurikulum** untuk kemudahan pendelegasian tugas.
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Konfigurasi pembagian shift (Pagi/Siang), pengaturan jam pelajaran per-slot, dan pemetaan kelas dikelola langsung oleh tim **Kurikulum**.
               </p>
             </div>
             <Link
               to="/kurikulum/jam-kbm"
-              className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 text-xs font-black rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-center inline-block shrink-0 transition-colors"
+              className="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/50 text-indigo-650 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-indigo-900/40 text-center inline-block shrink-0 transition-colors"
             >
-              Buka Atur JP/Shift
+              Buka Atur JP / Shift
             </Link>
           </div>
         </CardContent>
       </Card>
 
       {/* ⚖️ PENGATURAN BIMBINGAN KONSELING (BK) CARD */}
-      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
-        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
-          <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
-            <div className="p-2 bg-violet-50 dark:bg-violet-950/40 rounded-xl text-violet-600 dark:text-violet-400">
+      <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+        <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 p-4 sm:p-6">
+          <CardTitle className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+            <div className="p-2 bg-violet-50 dark:bg-violet-950/40 rounded-xl text-violet-600 dark:text-violet-400 shrink-0">
               <Clock className="h-4 w-4" />
             </div>
             Konfigurasi Modul Bimbingan Konseling (BK)
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border border-slate-150 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-6">
-            <div className="space-y-1.5 max-w-lg">
-              <Label className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                Persetujuan Kepala Sekolah untuk Surat Panggilan
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start justify-between p-4 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl bg-slate-50/30 dark:bg-slate-900/10 gap-4">
+            <div className="space-y-1.5 max-w-lg pr-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Label className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Persetujuan Kepala Sekolah untuk Surat Panggilan
+                </Label>
                 <Badge variant={requireApproval ? 'warning' : 'success'} className="font-bold text-[9px] uppercase px-2 py-0.5">
-                  {requireApproval ? 'Wajib Persetujuan' : 'Langsung Terbit (Bypass)'}
+                  {requireApproval ? 'Wajib Persetujuan' : 'Bypass'}
                 </Badge>
-              </Label>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                Jika diaktifkan, draf surat panggilan yang dibuat oleh Guru BK wajib disetujui Kepala Sekolah melalui modul Surat Keluar sebelum aktif. Jika dinonaktifkan, surat langsung aktif/terbit.
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                Jika diaktifkan, draf surat panggilan dari Guru BK wajib disetujui Kepala Sekolah melalui modul Surat Keluar sebelum aktif.
               </p>
             </div>
             <Switch
@@ -1231,7 +1231,7 @@ export const TenantSettings: React.FC = () => {
                   toast.success('Pengaturan alur BK berhasil diperbarui!', { id: toastId });
                 } catch (err: any) {
                   toast.error(err.message || 'Gagal menyimpan pengaturan', { id: toastId });
-                  setRequireApproval(!checked); // rollback
+                  setRequireApproval(!checked);
                 }
               }}
             />
@@ -1240,16 +1240,16 @@ export const TenantSettings: React.FC = () => {
       </Card>
 
       {/* Danger Zone Card */}
-      <Card className="border-red-200 dark:border-red-950 bg-red-50/10 dark:bg-red-950/5 shadow-lg rounded-3xl overflow-hidden">
-        <CardHeader className="py-5 px-8 border-b border-red-100/50 dark:border-red-900/20 bg-red-50/30 dark:bg-red-950/10">
-          <CardTitle className="flex items-center text-base font-black text-red-700 dark:text-red-400 gap-2.5">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl text-red-600 dark:text-red-400">
-              <ShieldAlert className="h-4.5 w-4.5" />
+      <Card className="border-red-200 dark:border-red-950 bg-red-50/10 dark:bg-red-950/5 shadow-lg rounded-2xl sm:rounded-3xl overflow-hidden">
+        <CardHeader className="p-4 sm:p-6 border-b border-red-100/50 dark:border-red-900/20 bg-red-50/30 dark:bg-red-950/10">
+          <CardTitle className="flex items-center text-sm sm:text-base font-bold text-red-700 dark:text-red-400 gap-2.5">
+            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-xl text-red-600 dark:text-red-400 shrink-0">
+              <ShieldAlert className="h-4 w-4" />
             </div>
             Danger Zone
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-8">
+        <CardContent className="p-4 sm:p-6">
           {isPendingDeletion ? (
              <div className="space-y-4">
                 <Alert className="bg-white dark:bg-gray-800 border-red-200">
@@ -1263,7 +1263,7 @@ export const TenantSettings: React.FC = () => {
                 <div className="flex justify-end">
                     <Button 
                         variant="outline" 
-                        className="border-green-600 text-green-600 hover:bg-green-50 hover:text-green-700"
+                        className="w-full sm:w-auto border-green-600 text-green-600 hover:bg-green-50 hover:text-green-700"
                         onClick={handleCancelDeletion}
                     >
                         <XCircle className="h-4 w-4 mr-2" />
@@ -1282,6 +1282,7 @@ export const TenantSettings: React.FC = () => {
                     variant="danger" 
                     onClick={handleRequestDeletion}
                     disabled={isEditing}
+                    className="w-full sm:w-auto"
                 >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Ajukan Penghapusan Akun
@@ -1428,29 +1429,29 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
     : themeColors.accent_color;
 
   return (
-    <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
-      <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 py-5 px-8">
-        <CardTitle className="text-base font-black text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
-          <div className="p-2 bg-primary/10 rounded-xl text-primary">
+    <Card className="shadow-xl shadow-slate-100 dark:shadow-none border border-slate-200/60 dark:border-slate-800 rounded-2xl sm:rounded-3xl overflow-hidden bg-white dark:bg-slate-950">
+      <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/20 p-4 sm:p-6">
+        <CardTitle className="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2.5">
+          <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
             <Palette className="h-4 w-4" />
           </div>
           Tema Warna Aplikasi Sekolah
         </CardTitle>
       </CardHeader>
-      <CardContent className="p-6 sm:p-8 space-y-6">
+      <CardContent className="p-4 sm:p-6 space-y-5 sm:space-y-6">
 
         {/* Header row */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Pilih Preset Warna</p>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200">Pilih Preset Warna</p>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
               Warna ini akan diterapkan di seluruh tampilan aplikasi untuk sekolah Anda.
             </p>
           </div>
           <button
             type="button"
             onClick={applyRandom}
-            className="h-8 px-3 text-xs font-bold flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-solid hover:border-primary hover:text-primary transition-all text-slate-500"
+            className="h-8 px-3 text-xs font-bold flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 dark:border-slate-600 hover:border-solid hover:border-primary hover:text-primary transition-all text-slate-500 cursor-pointer"
           >
             <Shuffle size={13} />
             Acak Tema
@@ -1458,7 +1459,7 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
         </div>
 
         {/* Preset Grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 sm:gap-2.5">
           {THEME_PRESETS.map((preset) => {
             const isActive = activePresetId === preset.id;
             return (
@@ -1470,7 +1471,7 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
                 onMouseLeave={() => setHoveredPresetId(null)}
                 title={preset.name}
                 className={cn(
-                  'relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl border-2 text-[10px] font-bold transition-all duration-150 cursor-pointer select-none',
+                  'relative flex flex-col items-center gap-1.5 p-2 sm:p-2.5 rounded-xl border-2 text-[10px] font-bold transition-all duration-150 cursor-pointer select-none',
                   isActive
                     ? 'border-slate-800 dark:border-white shadow-md scale-105'
                     : 'border-transparent hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm'
@@ -1478,11 +1479,11 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
                 style={{ background: isActive ? preset.primary + '15' : undefined }}
               >
                 <div className="flex gap-0.5">
-                  <span className="w-5 h-5 rounded-l-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.primary }} />
-                  <span className="w-5 h-5 border-y border-white/30 shadow-sm"              style={{ backgroundColor: preset.secondary }} />
-                  <span className="w-5 h-5 rounded-r-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.accent }} />
+                  <span className="w-4 sm:w-5 h-4 sm:h-5 rounded-l-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.primary }} />
+                  <span className="w-4 sm:w-5 h-4 sm:h-5 border-y border-white/30 shadow-sm"              style={{ backgroundColor: preset.secondary }} />
+                  <span className="w-4 sm:w-5 h-4 sm:h-5 rounded-r-full border border-white/30 shadow-sm" style={{ backgroundColor: preset.accent }} />
                 </div>
-                <span className="text-slate-600 dark:text-slate-400 leading-tight text-center">
+                <span className="text-slate-600 dark:text-slate-400 leading-tight text-center truncate w-full">
                   {preset.emoji} {preset.name}
                 </span>
                 {isActive && (
@@ -1497,7 +1498,7 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
 
         {/* Live Preview Banner */}
         <div
-          className="rounded-2xl p-4 flex items-center justify-between gap-4 shadow-sm transition-all duration-300 overflow-hidden relative"
+          className="rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 sm:gap-4 shadow-sm transition-all duration-300 overflow-hidden relative"
           style={{ background: `linear-gradient(135deg, ${previewPrimary}, ${previewSecondary})` }}
         >
           <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-20 blur-2xl" style={{ backgroundColor: previewAccent }} />
@@ -1505,7 +1506,7 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
             <p className="text-xs font-black text-white/90 uppercase tracking-wider">Pratinjau Tema Sekolah</p>
             <p className="text-[10px] text-white/70 font-medium">Warna ini akan tampil di seluruh dashboard &amp; modul aplikasi</p>
           </div>
-          <div className="relative z-10 flex items-center gap-2">
+          <div className="relative z-10 flex items-center gap-2 shrink-0">
             <span
               className="px-2.5 py-1 rounded-full text-[10px] font-black border border-white/30"
               style={{ backgroundColor: previewAccent + '33', color: '#fff' }}
@@ -1522,12 +1523,12 @@ const TenantThemeCard: React.FC<TenantThemeCardProps> = ({
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <Button
             type="button"
             onClick={handleSaveTheme}
             disabled={savingTheme}
-            className="flex items-center gap-2 font-bold"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 font-bold cursor-pointer"
           >
             {savingTheme ? (
               <Loader2 size={15} className="animate-spin" />

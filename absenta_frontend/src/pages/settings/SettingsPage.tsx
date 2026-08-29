@@ -331,6 +331,10 @@ const SettingsPage: React.FC = () => {
           <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
             <TenantAttendanceForm />
           </Suspense>
+        ) : activeTab === 'tenant_profile' ? (
+          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+            <TenantSettings />
+          </Suspense>
         ) : (
           <SectionCard fullWidth className="flex flex-col w-full min-w-0">
             {!loadingConfig && !config.app_name && activeTab === 'general' ? (
@@ -347,7 +351,6 @@ const SettingsPage: React.FC = () => {
                 {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'tenant_profile' && <TenantSettings />}
                 {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
                 {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
               </Suspense>
