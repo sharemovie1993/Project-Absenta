@@ -6,11 +6,16 @@ export interface ComplianceStats {
   totalSiswa: number;
   teacherRfidPct: number;
   teacherWaPct: number;
+  teacherLoginPct?: number;
   studentRfidPct: number;
   studentWaPct: number;
+  studentLoginPct?: number;
   guruActiveCount: number;
   guruPassiveCount: number;
   guruDormantCount: number;
+  siswaActiveCount?: number;
+  siswaPassiveCount?: number;
+  siswaDormantCount?: number;
 }
 
 interface ComplianceStatsCardsProps {

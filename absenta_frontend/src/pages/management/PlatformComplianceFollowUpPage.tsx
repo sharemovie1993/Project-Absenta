@@ -281,6 +281,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     const totalGuru = (processedTeachers ?? []).length;
     const guruRfidCount = (processedTeachers ?? []).filter(t => t.rfidEnrolled).length;
     const guruWaCount = (processedTeachers ?? []).filter(t => t.noWa && t.noWa.length >= 8).length;
+    const guruLoginCount = (processedTeachers ?? []).filter(t => t.lastLogin).length;
     const guruActiveCount = (processedTeachers ?? []).filter(t => t.complianceScore >= 80).length;
     const guruPassiveCount = (processedTeachers ?? []).filter(t => t.complianceScore >= 50 && t.complianceScore < 80).length;
     const guruDormantCount = (processedTeachers ?? []).filter(t => t.complianceScore < 50).length;
@@ -288,22 +289,33 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     const totalSiswa = (processedStudents ?? []).length;
     const siswaRfidCount = (processedStudents ?? []).filter(s => s.rfidEnrolled).length;
     const siswaWaCount = (processedStudents ?? []).filter(s => s.noWaOrtu && s.noWaOrtu.length >= 8).length;
+    const siswaLoginCount = (processedStudents ?? []).filter(s => s.lastLogin).length;
+    const siswaActiveCount = (processedStudents ?? []).filter(s => s.complianceScore >= 80).length;
+    const siswaPassiveCount = (processedStudents ?? []).filter(s => s.complianceScore >= 50 && s.complianceScore < 80).length;
+    const siswaDormantCount = (processedStudents ?? []).filter(s => s.complianceScore < 50).length;
 
     const teacherRfidPct = totalGuru ? Math.round((guruRfidCount / totalGuru) * 100) : 0;
     const teacherWaPct = totalGuru ? Math.round((guruWaCount / totalGuru) * 100) : 0;
+    const teacherLoginPct = totalGuru ? Math.round((guruLoginCount / totalGuru) * 100) : 0;
     const studentRfidPct = totalSiswa ? Math.round((siswaRfidCount / totalSiswa) * 100) : 0;
     const studentWaPct = totalSiswa ? Math.round((siswaWaCount / totalSiswa) * 100) : 0;
+    const studentLoginPct = totalSiswa ? Math.round((siswaLoginCount / totalSiswa) * 100) : 0;
 
     return {
       totalGuru,
       totalSiswa,
       teacherRfidPct,
       teacherWaPct,
+      teacherLoginPct,
       studentRfidPct,
       studentWaPct,
+      studentLoginPct,
       guruActiveCount,
       guruPassiveCount,
-      guruDormantCount
+      guruDormantCount,
+      siswaActiveCount,
+      siswaPassiveCount,
+      siswaDormantCount
     };
   }, [processedTeachers, processedStudents]);
 
