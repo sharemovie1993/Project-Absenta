@@ -249,14 +249,13 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
   });
 
   const handleTestAlertForSession = async (targetSession: TimelineItem) => {
-    startFindDeviceAlarm();
     await requestNotificationPermission();
 
-    const { title: rawTitle, body, indicatorColor } = getSessionAlertDetails(targetSession as any);
+    const { title: rawTitle, body, phase, indicatorColor } = getSessionAlertDetails(targetSession as any);
     const title = `[TEST ALARM] ${rawTitle}`;
     const targetUrl = '/dashboard?tab=kbm';
 
-    notifySessionReady(title, body, targetUrl);
+    notifySessionPhase(phase, title, body, targetUrl);
 
     toast((t) => (
       React.createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm p-1' },
@@ -274,7 +273,7 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
               toast.dismiss(t.id);
             },
             className: 'px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer transition-all'
-          }, '🔇 Matikan Alarm'),
+          }, 'Tutup'),
           React.createElement('button', {
             onClick: () => {
               stopFindDeviceAlarm();
@@ -287,13 +286,13 @@ export const StaffKbmAbsenTab: React.FC<StaffKbmAbsenTabProps> = ({
       )
     ), {
       id: `session-test-alert-${targetSession.id}`,
-      duration: 15000,
+      duration: 12000,
       position: 'top-right',
       style: {
         background: '#090d16',
-        border: '1.5px solid rgba(239, 68, 68, 0.6)',
+        border: '1.5px solid rgba(99, 102, 241, 0.4)',
         color: '#f8fafc',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(239, 68, 68, 0.3)',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)',
         borderRadius: '16px',
         padding: '12px 16px',
       }

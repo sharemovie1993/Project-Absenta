@@ -184,45 +184,39 @@ const playFindDeviceBeepPulse = (ctx: AudioContext) => {
 };
 
 /**
- * Memulai Alarm Terus-Menerus (Looping "tit-tit-tit-tit") sampai dimatikan oleh user
+ * Memainkan nada peringatan 3-Beep tegas (1x siklus lembut, tidak looping berisik)
+ * Khusus untuk fase LATE (Toleransi Habis / Pemicu Inval)
  */
-export const startFindDeviceAlarm = () => {
-  stopFindDeviceAlarm(); // Reset instance sebelumnya jika ada
-
+export const playWarningBeeps = () => {
   try {
-    const AudioCtxClass = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtxClass) return;
+    const ctx = getAudioContext();
+    if (!ctx || ctx.state !== 'running') return;
 
-    if (!activeLoopAudioCtx || activeLoopAudioCtx.state === 'closed') {
-      activeLoopAudioCtx = new AudioCtxClass();
-    }
-    const ctx = activeLoopAudioCtx;
+    const beeps = [
+      { freq: 880.00, start: 0.00, dur: 0.10 }, // A5
+      { freq: 987.77, start: 0.14, dur: 0.10 }, // B5
+      { freq: 1174.66, start: 0.28, dur: 0.22 }, // D6
+    ];
 
-    const playCycle = () => {
-      if (!ctx || ctx.state === 'closed') return;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {});
-      }
-      playFindDeviceBeepPulse(ctx);
-    };
+    const now = ctx.currentTime;
+    beeps.forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    if (ctx.state === 'suspended') {
-      ctx.resume().then(() => playCycle()).catch(() => playCycle());
-    } else {
-      playCycle();
-    }
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + start);
 
-    // Set interval untuk mengulang suara setiap 850 milidetik
-    activeAlarmInterval = setInterval(playCycle, 850);
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.linearRampToValueAtTime(0.18, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
 
-    // Getar berulang di HP setiap 950 milidetik
-    const vibrateCycle = () => {
-      triggerVibration([150, 60, 150, 60, 150, 60, 200]);
-    };
-    vibrateCycle();
-    activeVibrationInterval = setInterval(vibrateCycle, 950);
+      osc.start(now + start);
+      osc.stop(now + start + dur + 0.04);
+    });
   } catch (err) {
-    console.error('[AudioUtils] startFindDeviceAlarm error:', err);
+    // Graceful fallback
   }
 };
 
@@ -264,12 +258,25 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
 };
 
+export type NotificationAlertPhase = 'PREPARE' | 'START' | 'LATE';
+
 /**
- * Mengirim notifikasi sistem lengkap dengan Suara, Getar, dan Banner OS
+ * 🎵 Mengirim notifikasi sistem ramah pengguna dengan nada proporsional sesuai fase (Tidak Rewel):
+ * - PREPARE (H-15): Nada lembut Chime 1x (Tanpa getar, tanpa alarm darurat)
+ * - START (Jam Masuk): Denting Bel Kalender 1x + Getar 1x pendek
+ * - LATE (Toleransi Habis): Nada Peringatan Tegas 1x + Getar perhatian 2x
  */
-export const notifySessionReady = (title: string, body: string, onClickUrl?: string) => {
-  // 1. Mulai Alarm Looping Find Device
-  startFindDeviceAlarm();
+export const notifySessionPhase = (phase: NotificationAlertPhase, title: string, body: string, onClickUrl?: string) => {
+  // 1. Putar audio yang proporsional (Single Play, tidak looping mengganggu)
+  if (phase === 'PREPARE') {
+    playNotificationSound();
+  } else if (phase === 'START') {
+    playSessionAlarmSound();
+    triggerVibration([200]);
+  } else {
+    playWarningBeeps();
+    triggerVibration([200, 100, 200]);
+  }
 
   // 2. Banner Notifikasi Browser / OS (Jika diizinkan)
   try {
@@ -278,8 +285,8 @@ export const notifySessionReady = (title: string, body: string, onClickUrl?: str
         body,
         icon: '/favicon.ico',
         badge: '/favicon.ico',
-        tag: 'session-ready-alert',
-        requireInteraction: true,
+        tag: `session-alert-${phase.toLowerCase()}`,
+        requireInteraction: phase === 'LATE',
       });
 
       if (onClickUrl) {
@@ -294,6 +301,13 @@ export const notifySessionReady = (title: string, body: string, onClickUrl?: str
   } catch (err) {
     // Graceful fallback
   }
+};
+
+/**
+ * Backward-compatible helper
+ */
+export const notifySessionReady = (title: string, body: string, onClickUrl?: string) => {
+  notifySessionPhase('START', title, body, onClickUrl);
 };
 
 

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { notifySessionReady, stopFindDeviceAlarm } from '@/utils/audioUtils';
+import { notifySessionPhase, stopFindDeviceAlarm, type NotificationAlertPhase } from '@/utils/audioUtils';
+import { useTenantSettings } from '@/hooks/useTenantSettings';
 
 export interface ScheduleAlertItem {
   id: string;
@@ -26,6 +27,7 @@ interface UseSessionWindowAlertOptions {
   enabled?: boolean;
   roleLabel?: 'guru' | 'petugas_kelas' | 'ops' | 'siswa' | 'general';
   onOpenSession?: (item: ScheduleAlertItem) => void;
+  customToleranceMinutes?: number;
 }
 
 export type AlertPhase = 'PREPARE' | 'START' | 'LATE';
@@ -33,10 +35,10 @@ export type AlertPhase = 'PREPARE' | 'START' | 'LATE';
 /**
  * Menghasilkan teks notifikasi, fase alarm & styling yang membedakan 3 kondisi:
  * 1. PREPARE: H-15 Menit s.d. Jam Mulai
- * 2. START: Jam Mulai Masuk s.d. +15 Menit
- * 3. LATE: > +15 Menit (Masa Terlambat)
+ * 2. START: Jam Mulai Masuk s.d. +Toleransi Menit (Default 10m dari Tenant)
+ * 3. LATE: > +Toleransi Menit (Masa Terlambat / Pemicu Inval)
  */
-export function getSessionAlertDetails(item: ScheduleAlertItem, currentMinutes?: number) {
+export function getSessionAlertDetails(item: ScheduleAlertItem, currentMinutes?: number, toleransiMenit: number = 10) {
   const now = new Date();
   const nowMin = currentMinutes ?? (now.getHours() * 60 + now.getMinutes());
   
@@ -45,7 +47,7 @@ export function getSessionAlertDetails(item: ScheduleAlertItem, currentMinutes?:
   if (item.jam_mulai && item.jam_mulai.includes(':')) {
     const [sH, sM] = item.jam_mulai.split(':').map(Number);
     const startMinutes = (sH || 0) * 60 + (sM || 0);
-    if (nowMin > startMinutes + 15) {
+    if (nowMin > startMinutes + toleransiMenit) {
       phase = 'LATE';
     } else if (nowMin >= startMinutes) {
       phase = 'START';
@@ -72,9 +74,9 @@ export function getSessionAlertDetails(item: ScheduleAlertItem, currentMinutes?:
     body = `${kelasLabel} • ${mapelLabel} : Jam pelajaran dimulai! Silakan buka sesi KBM.`;
     indicatorColor = 'bg-emerald-400';
   } else {
-    // 🔴 Alarm 3: Masa Terlambat
+    // 🔴 Alarm 3: Masa Terlambat / Pemicu Inval
     title = `⚠️ Peringatan KBM (${item.jam_mulai} WIB)`;
-    body = `${kelasLabel} • ${mapelLabel} : Melewati toleransi waktu! Segera buka sesi agar tidak terkena poin alpa/terlambat.`;
+    body = `${kelasLabel} • ${mapelLabel} : Melewati toleransi waktu (${toleransiMenit}m)! Segera buka sesi agar tidak dialihkan ke Guru Inval.`;
     indicatorColor = 'bg-rose-500';
   }
 
@@ -86,8 +88,15 @@ export function useSessionWindowAlert({
   enabled = true,
   roleLabel = 'guru',
   onOpenSession,
+  customToleranceMinutes,
 }: UseSessionWindowAlertOptions) {
   const navigate = useNavigate();
+  const { tenant } = useTenantSettings();
+  const toleransiMenit = useMemo(() => {
+    if (customToleranceMinutes !== undefined) return customToleranceMinutes;
+    return tenant?.toleransi_kbm_guru_inval_menit ?? 10;
+  }, [customToleranceMinutes, tenant?.toleransi_kbm_guru_inval_menit]);
+
   const schedulesRef = useRef(schedules);
   schedulesRef.current = schedules;
   const onOpenSessionRef = useRef(onOpenSession);
@@ -130,8 +139,8 @@ export function useSessionWindowAlert({
         const isFinished = item.is_finished || item.session?.status === 'SELESAI';
         if (isStarted || isFinished) return;
 
-        // Tentukan fase alarm aktif saat ini (PREPARE, START, LATE)
-        const { title, body, phase, indicatorColor } = getSessionAlertDetails(item, currentMinutes);
+        // Tentukan fase alarm aktif saat ini (PREPARE, START, LATE) dengan toleransi dinamis tenant
+        const { title, body, phase, indicatorColor } = getSessionAlertDetails(item, currentMinutes, toleransiMenit);
 
         // Kunci idempotency per fase alarm agar Alarm 1 (H-15), Alarm 2 (Jam Masuk), dan Alarm 3 (Terlambat)
         // masing-masing dapat berbunyi 1x pada fasenya jika sesi belum dibuka
@@ -157,10 +166,10 @@ export function useSessionWindowAlert({
           ? '📸 Buka Sesi KBM' 
           : '📋 Buka Presensi Ops';
 
-        // Picu Alarm Suara (Find My Device style), Getar Berulang, dan Push Banner OS
-        notifySessionReady(title, body, targetUrl);
+        // 🎵 Picu Notifikasi Ramah & Proporsional Sesuai Fase (Tidak Rewel)
+        notifySessionPhase(phase as NotificationAlertPhase, title, body, targetUrl);
 
-        // Toast interaktif (dengan id unik agar tidak menumpuk & auto-dismiss dalam 15 detik)
+        // Toast interaktif (dengan id unik agar tidak menumpuk & auto-dismiss dalam 12 detik)
         toast((t) => (
           React.createElement('div', { className: 'flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm p-1' },
             React.createElement('div', { className: 'space-y-1' },
@@ -177,7 +186,7 @@ export function useSessionWindowAlert({
                   toast.dismiss(t.id);
                 },
                 className: 'px-2.5 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 cursor-pointer transition-all'
-              }, '🔇 Matikan Alarm'),
+              }, 'Tutup'),
               React.createElement('button', {
                 onClick: () => {
                   stopFindDeviceAlarm();
@@ -193,13 +202,13 @@ export function useSessionWindowAlert({
           )
         ), {
           id: `session-window-alert-${item.id}`,
-          duration: 15000,
+          duration: 12000,
           position: 'top-right',
           style: {
             background: '#090d16',
-            border: '1.5px solid rgba(239, 68, 68, 0.6)',
+            border: phase === 'LATE' ? '1.5px solid rgba(239, 68, 68, 0.6)' : '1.5px solid rgba(99, 102, 241, 0.4)',
             color: '#f8fafc',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(239, 68, 68, 0.3)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7)',
             borderRadius: '16px',
             padding: '12px 16px',
           }
@@ -213,5 +222,5 @@ export function useSessionWindowAlert({
     return () => {
       clearInterval(interval);
     };
-  }, [enabled, roleLabel, navigate]);
+  }, [enabled, roleLabel, navigate, toleransiMenit]);
 }
