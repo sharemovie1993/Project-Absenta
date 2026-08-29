@@ -237,6 +237,9 @@ const WhatsappSettingsPage: React.FC = () => {
       { label: 'Sistem', path: '/settings' },
       { label: 'WhatsApp', path: '/settings/whatsapp' },
     ],
+    [],
+  );
+
   const waStats = useMemo(() => [
     {
       title: "Status Gateway",
