@@ -85,6 +85,48 @@ export function getComplianceBadge(score: number) {
   return { label: 'Non-Compliant', grade: '🔴 Belum Lengkap', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-950/50', border: 'border-rose-200 dark:border-rose-800' };
 }
 
+function computeComplianceScore(params: {
+  rfidEnrolled: boolean;
+  noWa: string;
+  hasUserAccount: boolean;
+  lastLogin: string | null;
+  rfidMissingMsg: string;
+  waMissingMsg: string;
+  accountMissingMsg: string;
+}): { complianceScore: number; issues: string[] } {
+  const issues: string[] = [];
+  let score = 30;
+
+  if (params.rfidEnrolled) {
+    score += 30;
+  } else {
+    issues.push(params.rfidMissingMsg);
+  }
+
+  if (params.noWa && params.noWa.length >= 8) {
+    score += 20;
+  } else {
+    issues.push(params.waMissingMsg);
+  }
+
+  if (params.hasUserAccount) {
+    score += 10;
+  } else {
+    issues.push(params.accountMissingMsg);
+  }
+
+  if (params.lastLogin) {
+    score += 10;
+  } else {
+    issues.push('Belum pernah login ke sistem');
+  }
+
+  return {
+    complianceScore: Math.min(100, score),
+    issues,
+  };
+}
+
 export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const [activeTab, setActiveTab] = useState<string>('GURU');
   const [searchTerm, setSearchTerm] = useState('');
@@ -133,32 +175,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       const hasUserAccount = Boolean(g.user_id || g.user?.id || g.User?.id);
       const lastLogin = (g.last_login || g.User?.last_login || teacherRecord.last_login || null) as string | null;
       
-      const issues: string[] = [];
-      let score = 30;
-
-      if (rfidEnrolled) {
-        score += 30;
-      } else {
-        issues.push('Kartu RFID Presensi belum terdaftar');
-      }
-
-      if (noWa && noWa.length >= 8) {
-        score += 20;
-      } else {
-        issues.push('Nomor WhatsApp belum terdata');
-      }
-
-      if (hasUserAccount) {
-        score += 10;
-      } else {
-        issues.push('Akun login portal mandiri belum aktif');
-      }
-
-      if (lastLogin) {
-        score += 10;
-      } else {
-        issues.push('Belum pernah login ke sistem');
-      }
+      const { complianceScore, issues } = computeComplianceScore({
+        rfidEnrolled,
+        noWa,
+        hasUserAccount,
+        lastLogin,
+        rfidMissingMsg: 'Kartu RFID Presensi belum terdaftar',
+        waMissingMsg: 'Nomor WhatsApp belum terdata',
+        accountMissingMsg: 'Akun login portal mandiri belum aktif',
+      });
 
       return {
         id: g.id || `guru-${Math.random()}`,
@@ -170,7 +195,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         rfidEnrolled,
         hasUserAccount,
         lastLogin,
-        complianceScore: Math.min(100, score),
+        complianceScore,
         issues
       };
     }) ?? [];
@@ -186,32 +211,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       const hasUserAccount = Boolean(s.user_id || s.user?.id || studentRecord.User);
       const lastLogin = (s.last_login || s.User?.last_login || studentRecord.last_login || null) as string | null;
       
-      const issues: string[] = [];
-      let score = 30;
-
-      if (rfidEnrolled) {
-        score += 30;
-      } else {
-        issues.push('Kartu RFID Siswa belum dipasangkan');
-      }
-
-      if (noWaOrtu && noWaOrtu.length >= 8) {
-        score += 20;
-      } else {
-        issues.push('Nomor WhatsApp orang tua belum terdaftar');
-      }
-
-      if (hasUserAccount) {
-        score += 10;
-      } else {
-        issues.push('Akses portal siswa mandiri belum aktif');
-      }
-
-      if (lastLogin) {
-        score += 10;
-      } else {
-        issues.push('Belum pernah login ke sistem');
-      }
+      const { complianceScore, issues } = computeComplianceScore({
+        rfidEnrolled,
+        noWa: noWaOrtu,
+        hasUserAccount,
+        lastLogin,
+        rfidMissingMsg: 'Kartu RFID Siswa belum dipasangkan',
+        waMissingMsg: 'Nomor WhatsApp orang tua belum terdaftar',
+        accountMissingMsg: 'Akses portal siswa mandiri belum aktif',
+      });
 
       return {
         id: s.id || `siswa-${Math.random()}`,
@@ -222,7 +230,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
         rfidEnrolled,
         hasUserAccount,
         lastLogin,
-        complianceScore: Math.min(100, score),
+        complianceScore,
         issues
       };
     }) ?? [];
