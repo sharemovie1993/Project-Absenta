@@ -24,7 +24,6 @@ const SecuritySettingsForm = lazy(() => import('@/components/settings/SecuritySe
 const NotificationSettingsForm = lazy(() => import('@/components/settings/NotificationSettingsForm').then(m => ({ default: m.NotificationSettingsForm })));
 const AttendanceSettingsForm = lazy(() => import('@/components/settings/AttendanceSettingsForm').then(m => ({ default: m.AttendanceSettingsForm })));
 const TenantAttendanceForm = lazy(() => import('@/components/attendance/settings/TenantAttendanceForm').then(m => ({ default: m.TenantAttendanceForm })));
-const ParentAppSettingsForm = lazy(() => import('@/components/settings/ParentAppSettingsForm').then(m => ({ default: m.ParentAppSettingsForm })));
 const EasyTunnelPage = lazy(() => import('../system/EasyTunnelPage'));
 const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 
@@ -239,7 +238,6 @@ const SettingsPage: React.FC = () => {
       const list = [
         { id: 'tenant_profile', label: 'Profil Sekolah' },
         { id: 'attendance', label: 'Aturan Absensi' },
-        { id: 'parent_app', label: 'Parent App' },
         { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
@@ -256,7 +254,6 @@ const SettingsPage: React.FC = () => {
       { id: 'security', label: 'Keamanan' },
       { id: 'notifications', label: 'Notifikasi' },
       { id: 'attendance', label: 'Absensi' },
-      { id: 'parent_app', label: 'Parent App' },
       { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
       { id: 'system_update', label: 'Pembaruan Sistem' },
     ];
@@ -265,7 +262,7 @@ const SettingsPage: React.FC = () => {
 
   const showSaveButton = canEdit && (
     (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||
-    (isTenantUser && (activeTab === 'attendance' || activeTab === 'parent_app'))
+    (isTenantUser && activeTab === 'attendance')
   );
 
   const toolbar = useMemo(() => (
@@ -350,7 +347,6 @@ const SettingsPage: React.FC = () => {
                 {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'parent_app' && <ParentAppSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'easy_tunnel' && <EasyTunnelPage />}
                 {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
               </Suspense>
