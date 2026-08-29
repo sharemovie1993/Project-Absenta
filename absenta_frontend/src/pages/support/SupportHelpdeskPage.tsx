@@ -16,18 +16,16 @@ import {
   Clock, 
   CheckCircle2, 
   RefreshCw, 
-  MessageSquare,
-  PlusCircle,
-  Headphones,
-  CheckCheck,
-  Bot,
-  User as UserIcon,
-  Search,
+  MessageSquare, 
+  PlusCircle, 
+  Headphones, 
+  CheckCheck, 
+  Bot, 
+  User as UserIcon, 
+  Search, 
   ArrowLeft,
-  KeyRound,
-  FileQuestion,
   HelpCircle,
-  Layers
+  Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -62,6 +60,9 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
   const [chatInputText, setChatInputText] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false);
+  
+  // Mobile View Navigation: 'list' (Daftar Obrolan) vs 'chat' (Ruang Obrolan)
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
 
   // New Chat Form State
   const [newKategori, setNewKategori] = useState<string>('LISENSI');
@@ -103,8 +104,10 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
 
   // Auto-scroll to bottom of chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeTicket?.messages, selectedTicketId]);
+    if (mobileView === 'chat') {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [activeTicket?.messages, selectedTicketId, mobileView]);
 
   // Filtered tickets
   const filteredTickets = useMemo(() => {
@@ -141,6 +144,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
       toast.success(`Percakapan ${newTicket.nomorTiket} berhasil dibuka!`);
       setSelectedTicketId(newTicket.id);
+      setMobileView('chat');
       setShowNewChatModal(false);
       setNewJudul('');
       setNewPesan('');
@@ -251,61 +255,64 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
           </Button>
         }
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-2">
-          <div className="w-full min-w-0 max-w-full space-y-3">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-1 sm:pb-4">
+          <div className="w-full min-w-0 max-w-full space-y-2.5 sm:space-y-3">
 
-            {/* ── TOPBAR STATUS & WHATSAPP HOTLINE BANNER ── */}
-            <Card className="p-3 sm:p-3.5 rounded-3xl bg-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+            {/* ── TOPBAR STATUS & WHATSAPP HOTLINE BANNER (COMPACT ON MOBILE) ── */}
+            <Card className="p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-slate-900 text-white border border-indigo-500/20 shadow-md flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
                   <Headphones className="w-4 h-4 animate-pulse" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xs sm:text-sm font-black">Live Support Server Lisensi</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Online • Cloud Sync
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="text-xs sm:text-sm font-black truncate">Live Support Lisensi</h3>
+                    <span className="px-1.5 py-0.2 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1 h-1 rounded-full bg-emerald-400 animate-ping" /> Online
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    {tenantName} ↔ <span className="font-mono text-indigo-300">{DEFAULT_LICENSE_SERVER_URL}</span>
+                  <p className="text-[9px] sm:text-[10px] text-slate-400 truncate">
+                    {tenantName} ↔ <span className="font-mono text-indigo-300">api.absenta.id</span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Button
                   type="button"
                   variant="toolbarOutline"
                   size="toolbar"
                   onClick={() => refetchTickets()}
                   disabled={isSyncing}
-                  className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer bg-slate-800 text-white border-slate-700 h-8"
+                  className="font-bold text-[11px] rounded-xl flex items-center gap-1 cursor-pointer bg-slate-800 text-white border-slate-700 h-7 sm:h-8 px-2 sm:px-3"
+                  title="Sinkronkan Pesan Terbaru"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
-                  <span className="hidden sm:inline">Sinkronkan</span>
+                  <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
+                  <span className="hidden md:inline">Sinkronkan</span>
                 </Button>
                 <Button
                   type="button"
                   variant="toolbarPrimary"
                   size="toolbar"
                   onClick={() => handleOpenWhatsappHotline('Live Chat Hotline')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer h-8"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-xl flex items-center gap-1 cursor-pointer h-7 sm:h-8 px-2.5 sm:px-3"
                 >
-                  <Phone size={12} />
-                  <span>WhatsApp CS</span>
+                  <Phone size={11} />
+                  <span>WhatsApp</span>
                 </Button>
               </div>
             </Card>
 
-            {/* ── MAIN 2-COLUMN CHAT INTERFACE ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-[calc(100vh-230px)] min-h-[500px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm overflow-hidden">
+            {/* ── RESPONSIVE CHAT CONTAINER (WHATSAPP-STYLE ON MOBILE) ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-3 h-[calc(100vh-210px)] min-h-[460px] bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm overflow-hidden">
               
-              {/* ── LEFT PANEL: CONVERSATION LIST (COL 4) ── */}
-              <div className="lg:col-span-4 flex flex-col h-full border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30">
+              {/* ── LEFT PANEL: CONVERSATION LIST (COL 4 / FULL-SCREEN ON MOBILE LIST VIEW) ── */}
+              <div className={`lg:col-span-4 flex flex-col h-full border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30 ${
+                mobileView === 'chat' ? 'hidden lg:flex' : 'flex'
+              }`}>
                 
                 {/* List Header & New Chat Button */}
-                <div className="p-3.5 border-b border-slate-100 dark:border-slate-800 space-y-2.5">
+                <div className="p-3 border-b border-slate-100 dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
@@ -329,7 +336,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                       placeholder="Cari obrolan..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 text-xs h-8 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                      className="pl-8 text-xs h-7 sm:h-8 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
                     />
                   </div>
                 </div>
@@ -362,14 +369,17 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                         <button
                           key={t.id}
                           type="button"
-                          onClick={() => setSelectedTicketId(t.id)}
-                          className={`w-full text-left p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-3 ${
+                          onClick={() => {
+                            setSelectedTicketId(t.id);
+                            setMobileView('chat'); // Switch to Chat Room on Mobile
+                          }}
+                          className={`w-full text-left p-2.5 sm:p-3 rounded-2xl transition-all cursor-pointer flex items-start gap-2.5 ${
                             isSelected
                               ? 'bg-indigo-600 text-white shadow-md'
                               : 'bg-white dark:bg-slate-900/60 hover:bg-indigo-50/50 dark:hover:bg-slate-800/50 text-slate-700 dark:text-slate-300 border border-slate-100 dark:border-slate-800/40'
                           }`}
                         >
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 ${
                             isSelected ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400'
                           }`}>
                             <Bot className="w-4 h-4" />
@@ -377,7 +387,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1 mb-0.5">
-                              <span className={`font-mono text-[10px] font-black truncate ${isSelected ? 'text-indigo-100' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                              <span className={`font-mono text-[9px] sm:text-[10px] font-black truncate ${isSelected ? 'text-indigo-100' : 'text-indigo-600 dark:text-indigo-400'}`}>
                                 {t.nomorTiket}
                               </span>
                               <span className={`text-[9px] shrink-0 ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
@@ -389,12 +399,12 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                               {t.judul}
                             </h5>
 
-                            <p className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                            <p className={`text-[10px] sm:text-[11px] truncate mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
                               {t.pesan}
                             </p>
 
-                            <div className="flex items-center gap-1.5 mt-2">
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className={`px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-extrabold uppercase ${
                                 isSelected 
                                   ? 'bg-white/20 text-white' 
                                   : t.status === 'RESOLVED' 
@@ -403,7 +413,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                               }`}>
                                 {t.status === 'RESOLVED' ? '✓ SELESAI' : '⏳ AKTIF'}
                               </span>
-                              <span className={`text-[9px] truncate ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
+                              <span className={`text-[8px] sm:text-[9px] truncate ${isSelected ? 'text-indigo-200' : 'text-slate-400'}`}>
                                 {t.kategori}
                               </span>
                             </div>
@@ -415,55 +425,69 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                 </div>
               </div>
 
-              {/* ── RIGHT PANEL: LIVE CHAT WINDOW (COL 8) ── */}
-              <div className="lg:col-span-8 flex flex-col h-full bg-slate-50/30 dark:bg-slate-950/20">
+              {/* ── RIGHT PANEL: LIVE CHAT WINDOW (COL 8 / FULL-SCREEN ON MOBILE CHAT VIEW) ── */}
+              <div className={`lg:col-span-8 flex flex-col h-full bg-slate-50/30 dark:bg-slate-950/20 ${
+                mobileView === 'list' ? 'hidden lg:flex' : 'flex'
+              }`}>
                 {activeTicket ? (
                   <>
-                    {/* Chat Header */}
-                    <div className="p-3.5 px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 shrink-0">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-md shrink-0">
-                          <Bot className="w-5 h-5" />
+                    {/* Chat Header with Mobile Back Button */}
+                    <div className="p-2.5 sm:p-3.5 px-3 sm:px-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-2 shrink-0">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                        
+                        {/* Mobile Back Button (< Kembali ke Daftar) */}
+                        <button
+                          type="button"
+                          onClick={() => setMobileView('list')}
+                          className="lg:hidden p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer shrink-0"
+                          title="Kembali ke Daftar Percakapan"
+                        >
+                          <ArrowLeft size={18} />
+                        </button>
+
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                          <Bot className="w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
+
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
                               {activeTicket.judul}
                             </h4>
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
                               {activeTicket.nomorTiket}
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                            <span>{activeTicket.kategori}</span>
+                          <p className="text-[9px] sm:text-[10px] text-slate-400 flex items-center gap-1 mt-0.5 truncate">
+                            <span className="truncate">{activeTicket.kategori}</span>
                             <span>•</span>
-                            <span className={`font-bold ${activeTicket.prioritas === 'URGENT' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                            <span className={`font-bold shrink-0 ${activeTicket.prioritas === 'URGENT' ? 'text-rose-500' : 'text-emerald-600'}`}>
                               {activeTicket.prioritas}
                             </span>
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider hidden sm:inline-block ${
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                           activeTicket.status === 'RESOLVED'
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
                         }`}>
-                          {activeTicket.status === 'RESOLVED' ? '✓ SELESAI' : '💬 OBROLAN AKTIF'}
+                          {activeTicket.status === 'RESOLVED' ? '✓ SELESAI' : '💬 AKTIF'}
                         </span>
                       </div>
                     </div>
 
                     {/* Chat Messages Body (Scrollable Bubbles) */}
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5">
-                      {/* System Welcome Card */}
-                      <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-center text-xs text-slate-600 dark:text-slate-300 max-w-md mx-auto space-y-1">
-                        <span className="font-black text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1">
-                          <ShieldCheck size={13} /> Jalur Dukungan Terenkripsi Server Lisensi
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3">
+                      {/* System Encryption Notice */}
+                      <div className="p-2.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-center text-xs text-slate-600 dark:text-slate-300 max-w-sm mx-auto space-y-0.5">
+                        <span className="font-black text-[10px] text-indigo-600 dark:text-indigo-400 flex items-center justify-center gap-1">
+                          <ShieldCheck size={12} /> Dukungan Terenkripsi Server Lisensi
                         </span>
-                        <p className="text-[11px] text-slate-400">
-                          Percakapan ini ditangani langsung oleh Tim Dukungan Teknis Pusat PT Baraya Teknologi Indonesia.
+                        <p className="text-[10px] text-slate-400">
+                          Ditangani langsung oleh Tim Teknis PT Baraya Teknologi Indonesia.
                         </p>
                       </div>
 
@@ -473,24 +497,24 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                         return (
                           <div
                             key={msg.id}
-                            className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
+                            className={`flex items-end gap-1.5 sm:gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
                           >
                             {!isMe && (
-                              <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs mb-1">
-                                <Bot size={13} />
+                              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs mb-1">
+                                <Bot size={12} />
                               </div>
                             )}
 
-                            <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-3 sm:p-3.5 space-y-1 shadow-xs ${
+                            <div className={`max-w-[88%] sm:max-w-[72%] rounded-2xl p-2.5 sm:p-3.5 space-y-1 shadow-xs ${
                               isMe
                                 ? 'bg-indigo-600 text-white rounded-br-xs'
                                 : 'bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 rounded-bl-xs border border-slate-200/70 dark:border-slate-800'
                             }`}>
-                              <div className={`flex items-center justify-between gap-2 text-[10px] font-bold ${
+                              <div className={`flex items-center justify-between gap-2 text-[9px] sm:text-[10px] font-bold ${
                                 isMe ? 'text-indigo-200' : 'text-indigo-600 dark:text-indigo-400'
                               }`}>
-                                <span>{msg.senderName}</span>
-                                <span className="font-normal opacity-80">{formatDate(msg.createdAt, 'HH:mm')}</span>
+                                <span className="truncate">{msg.senderName}</span>
+                                <span className="font-normal opacity-80 shrink-0">{formatDate(msg.createdAt, 'HH:mm')}</span>
                               </div>
 
                               <p className="text-xs whitespace-pre-line leading-relaxed">
@@ -503,8 +527,8 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                             </div>
 
                             {isMe && (
-                              <div className="w-7 h-7 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-xs mb-1">
-                                <UserIcon size={13} />
+                              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center shrink-0 shadow-xs mb-1">
+                                <UserIcon size={12} />
                               </div>
                             )}
                           </div>
@@ -514,31 +538,31 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                       <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Chat Input Bar */}
-                    <div className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
-                      <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                    {/* Chat Input Bar (Glued to Bottom) */}
+                    <div className="p-2 sm:p-3.5 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0">
+                      <form onSubmit={handleSendMessage} className="flex items-center gap-1.5 sm:gap-2">
                         <Input
-                          placeholder="Ketik pesan balasan ke Tim Dukungan Pusat..."
+                          placeholder="Ketik pesan balasan..."
                           value={chatInputText}
                           onChange={(e) => setChatInputText(e.target.value)}
-                          className="flex-1 text-xs rounded-2xl bg-slate-50/70 dark:bg-slate-950 border-slate-200 dark:border-slate-800 h-10 px-3.5"
+                          className="flex-1 text-xs rounded-2xl bg-slate-50/70 dark:bg-slate-950 border-slate-200 dark:border-slate-800 h-9 sm:h-10 px-3 sm:px-3.5"
                         />
                         <Button
                           type="submit"
                           variant="toolbarPrimary"
                           size="toolbar"
                           disabled={!chatInputText.trim() || sendReplyMutation.isPending}
-                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl flex items-center justify-center h-10 px-4 cursor-pointer shadow-md"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-2xl flex items-center justify-center h-9 sm:h-10 px-3.5 sm:px-4 cursor-pointer shadow-md shrink-0"
                         >
-                          {sendReplyMutation.isPending ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send size={14} />}
+                          {sendReplyMutation.isPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send size={13} />}
                         </Button>
                       </form>
                     </div>
                   </>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
-                    <div className="w-14 h-14 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center">
-                      <MessageSquare className="w-7 h-7" />
+                    <div className="w-12 h-12 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 flex items-center justify-center">
+                      <MessageSquare className="w-6 h-6" />
                     </div>
                     <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Pilih Obrolan untuk Memulai</h4>
                     <p className="text-xs text-slate-400 max-w-sm">
@@ -561,10 +585,10 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
 
             {/* ── MODAL: BUAT OBROLAN / TIKET BARU ── */}
             {showNewChatModal && (
-              <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-                <Card className="w-full max-w-lg p-5 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                    <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                <Card className="w-full max-w-lg p-4 sm:p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl space-y-3.5">
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                    <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5">
                       <PlusCircle className="w-4 h-4 text-indigo-600" /> Buka Obrolan / Tiket Baru
                     </h4>
                     <button
@@ -576,7 +600,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                     </button>
                   </div>
 
-                  <form onSubmit={handleCreateNewChat} className="space-y-3.5">
+                  <form onSubmit={handleCreateNewChat} className="space-y-3">
                     <div>
                       <label htmlFor="new-kategori-select" className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
                         Kategori Kendala:
@@ -612,9 +636,9 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                         placeholder="Contoh: Sinkronisasi RFID di Gate A lambat"
                         value={newJudul}
                         onChange={(e) => setNewJudul(e.target.value)}
-                        className="rounded-xl text-xs"
+                        className="rounded-xl text-xs h-8"
                       />
-                      {formErrors.judul && <p className="text-[11px] text-rose-500 mt-1">{formErrors.judul}</p>}
+                      {formErrors.judul && <p className="text-[10px] text-rose-500 mt-1">{formErrors.judul}</p>}
                     </div>
 
                     <div>
@@ -623,13 +647,13 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                       </label>
                       <textarea
                         id="new-pesan-textarea"
-                        rows={4}
+                        rows={3}
                         placeholder="Jelaskan detail kendala Anda..."
                         value={newPesan}
                         onChange={(e) => setNewPesan(e.target.value)}
                         className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
                       />
-                      {formErrors.pesan && <p className="text-[11px] text-rose-500 mt-1">{formErrors.pesan}</p>}
+                      {formErrors.pesan && <p className="text-[10px] text-rose-500 mt-1">{formErrors.pesan}</p>}
                     </div>
 
                     <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
