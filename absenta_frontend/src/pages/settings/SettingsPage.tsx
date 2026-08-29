@@ -143,7 +143,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     let isMounted = true;
     const canViewSystemConfig = can('core.sekolah.view.profile') || isSuperAdminUser;
-    if (canViewSystemConfig && !isTenantAdmin) {
+    if (canViewSystemConfig) {
         setLoadingConfig(true);
         fetchActiveSystemConfig()
         .then(d => {
@@ -182,7 +182,7 @@ const SettingsPage: React.FC = () => {
       setLoadingConfig(false);
     }
     return () => { isMounted = false; };
-  }, [can, isSuperAdminUser, isTenantAdmin]);
+  }, [can, isSuperAdminUser]);
 
   const handleSave = useCallback(async () => {
     if (!canEdit) {
