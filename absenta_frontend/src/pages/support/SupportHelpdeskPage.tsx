@@ -210,24 +210,17 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
   // Compute all messages for active conversation
   const conversationMessages = useMemo(() => {
     if (!activeTicket) return [];
-    
-    // Initial opening message from user/school
-    const openingMsg: TicketMessageItem = {
+    const extraMessages = Array.isArray(activeTicket.messages) ? activeTicket.messages : [];
+    if (extraMessages.length > 0) {
+      return extraMessages;
+    }
+    return [{
       id: `initial-${activeTicket.id}`,
-      sender: 'tenant',
+      sender: 'tenant' as const,
       senderName: userDisplayName,
       message: activeTicket.pesan,
       createdAt: activeTicket.createdAt,
-    };
-
-    const extraMessages = Array.isArray(activeTicket.messages) ? activeTicket.messages : [];
-    
-    // Check if initial opening message is already in extraMessages
-    if (extraMessages.length > 0 && extraMessages[0].message === activeTicket.pesan) {
-      return extraMessages;
-    }
-
-    return [openingMsg, ...extraMessages];
+    }];
   }, [activeTicket, userDisplayName]);
 
   return (
@@ -258,14 +251,14 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
           </Button>
         }
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-16">
-          <div className="w-full min-w-0 max-w-full space-y-4">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-2">
+          <div className="w-full min-w-0 max-w-full space-y-3">
 
             {/* ── TOPBAR STATUS & WHATSAPP HOTLINE BANNER ── */}
-            <Card className="p-3.5 sm:p-4 rounded-3xl bg-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <Card className="p-3 sm:p-3.5 rounded-3xl bg-slate-900 text-white border border-indigo-500/20 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
-                  <Headphones className="w-5 h-5 animate-pulse" />
+                <div className="w-9 h-9 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-300 shrink-0">
+                  <Headphones className="w-4 h-4 animate-pulse" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -274,7 +267,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Online • Cloud Sync
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[10px] text-slate-400 mt-0.5">
                     {tenantName} ↔ <span className="font-mono text-indigo-300">{DEFAULT_LICENSE_SERVER_URL}</span>
                   </p>
                 </div>
@@ -287,7 +280,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                   size="toolbar"
                   onClick={() => refetchTickets()}
                   disabled={isSyncing}
-                  className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer bg-slate-800 text-white border-slate-700"
+                  className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer bg-slate-800 text-white border-slate-700 h-8"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-400' : ''}`} />
                   <span className="hidden sm:inline">Sinkronkan</span>
@@ -297,16 +290,16 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                   variant="toolbarPrimary"
                   size="toolbar"
                   onClick={() => handleOpenWhatsappHotline('Live Chat Hotline')}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer h-8"
                 >
-                  <Phone size={13} />
+                  <Phone size={12} />
                   <span>WhatsApp CS</span>
                 </Button>
               </div>
             </Card>
 
             {/* ── MAIN 2-COLUMN CHAT INTERFACE ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[650px] min-h-[550px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 h-[calc(100vh-230px)] min-h-[500px] bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-sm overflow-hidden">
               
               {/* ── LEFT PANEL: CONVERSATION LIST (COL 4) ── */}
               <div className="lg:col-span-4 flex flex-col h-full border-r border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/30">
