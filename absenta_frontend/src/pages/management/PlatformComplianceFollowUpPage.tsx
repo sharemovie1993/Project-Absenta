@@ -6,7 +6,7 @@ import {
   BookOpen, Clock, Send, MessageSquare, Search, Filter,
   TrendingUp, Activity, UserCheck, ShieldCheck, Download,
   ExternalLink, Sparkles, RefreshCw, X, AlertCircle, Phone,
-  FileText, ScanFace, ChevronRight, HelpCircle, Layers, Copy, Check
+  FileText, CreditCard, ChevronRight, HelpCircle, Layers, Copy, Check
 } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell,
@@ -31,7 +31,7 @@ export interface TeacherComplianceItem {
   noWa: string;
   mapel: string;
   jabatan: string;
-  faceIdEnrolled: boolean;
+  rfidEnrolled: boolean;
   hasUserAccount: boolean;
   complianceScore: number;
   issues: string[];
@@ -43,7 +43,7 @@ export interface StudentComplianceItem {
   nisn: string;
   kelas: string;
   noWaOrtu: string;
-  faceIdEnrolled: boolean;
+  rfidEnrolled: boolean;
   hasUserAccount: boolean;
   complianceScore: number;
   issues: string[];
@@ -52,7 +52,7 @@ export interface StudentComplianceItem {
 const nudgeSchema = z.object({
   nama: z.string().min(1, 'Nama tujuan wajib ada'),
   noWa: z.string().min(6, 'Nomor WhatsApp belum terdata atau tidak valid'),
-  template: z.enum(['JURNAL', 'FACE_ID', 'LOGIN_PORTAL', 'RPP']),
+  template: z.enum(['RFID', 'LOGIN_PORTAL', 'JURNAL', 'KONTAK_WA']),
 });
 
 const filterSchema = z.object({
@@ -62,9 +62,9 @@ const filterSchema = z.object({
 });
 
 export function getComplianceBadge(score: number) {
-  if (score >= 80) return { label: 'Digital Native', grade: '🟢 Aktif', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
-  if (score >= 50) return { label: 'Perlu Pengingat', grade: '🟡 Pasif', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-800' };
-  return { label: 'Non-Compliant', grade: '🔴 Perlu Follow-up', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-950/50', border: 'border-rose-200 dark:border-rose-800' };
+  if (score >= 80) return { label: 'Digital Native', grade: '🟢 Lengkap', color: 'text-emerald-700 dark:text-emerald-300', bg: 'bg-emerald-50 dark:bg-emerald-950/50', border: 'border-emerald-200 dark:border-emerald-800' };
+  if (score >= 50) return { label: 'Perlu Pengingat', grade: '🟡 Sebagian', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-950/50', border: 'border-amber-200 dark:border-amber-800' };
+  return { label: 'Non-Compliant', grade: '🔴 Belum Lengkap', color: 'text-rose-700 dark:text-rose-300', bg: 'bg-rose-50 dark:bg-rose-950/50', border: 'border-rose-200 dark:border-rose-800' };
 }
 
 function cleanIndonesianPhone(phone: string): string {
@@ -97,7 +97,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     issues: string[];
   } | null>(null);
 
-  const [messageTemplate, setMessageTemplate] = useState<'JURNAL' | 'FACE_ID' | 'LOGIN_PORTAL' | 'RPP'>('JURNAL');
+  const [messageTemplate, setMessageTemplate] = useState<'RFID' | 'LOGIN_PORTAL' | 'JURNAL' | 'KONTAK_WA'>('RFID');
   const [copied, setCopied] = useState(false);
   const [sendingViaBot, setSendingViaBot] = useState(false);
 
@@ -124,30 +124,41 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const processedTeachers: TeacherComplianceItem[] = useMemo(() => {
     const list = Array.isArray(rawGurusData) ? rawGurusData : [];
     return (list ?? []).map((g: Guru) => {
-      const faceIdEnrolled = Boolean(g.face_embedding || g.foto);
-      const noWa = g.no_hp || g.telepon || (g as Record<string, unknown>).wa_phone || g.user?.phone || '';
-      const hasUserAccount = Boolean(g.user_id || g.user?.id);
+      const teacherRecord = g as Record<string, unknown>;
+      const displayName = String(g.nama_guru || g.nama || teacherRecord.nama_lengkap || g.User?.full_name || 'Guru');
+      const rfidEnrolled = Boolean(g.no_rfid || teacherRecord.rfid || teacherRecord.card_uid);
+      const noWa = String(g.no_hp || g.telepon || teacherRecord.wa_phone || g.User?.phone || g.user?.phone || '').trim();
+      const hasUserAccount = Boolean(g.user_id || g.user?.id || g.User?.id);
       
       const issues: string[] = [];
-      let score = 50;
+      let score = 40;
 
-      if (faceIdEnrolled) score += 30;
-      else issues.push('Belum rekam biometrik Wajah / Face ID');
+      if (rfidEnrolled) {
+        score += 30;
+      } else {
+        issues.push('Kartu RFID Presensi belum terdaftar');
+      }
 
-      if (typeof noWa === 'string' && noWa.length >= 8) score += 10;
-      else issues.push('Nomor WhatsApp belum terdata');
+      if (noWa && noWa.length >= 8) {
+        score += 20;
+      } else {
+        issues.push('Nomor WhatsApp belum terdata');
+      }
 
-      if (hasUserAccount) score += 10;
-      else issues.push('Belum aktivasi akun login sistem');
+      if (hasUserAccount) {
+        score += 10;
+      } else {
+        issues.push('Akun login portal mandiri belum aktif');
+      }
 
       return {
         id: g.id || `guru-${Math.random()}`,
-        nama: g.nama || 'Tanpa Nama',
+        nama: displayName,
         nip: g.nip || g.nik || g.nuptk || '-',
-        noWa: typeof noWa === 'string' ? noWa : '',
+        noWa,
         mapel: g.mapel?.nama_mapel || g.jabatan || 'Tenaga Pendidik',
         jabatan: g.jenis_ptk || g.status_kepegawaian || 'Guru',
-        faceIdEnrolled,
+        rfidEnrolled,
         hasUserAccount,
         complianceScore: Math.min(100, score),
         issues
@@ -158,29 +169,40 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   const processedStudents: StudentComplianceItem[] = useMemo(() => {
     const list = Array.isArray(rawSiswaData) ? rawSiswaData : [];
     return (list ?? []).map((s: Siswa) => {
-      const faceIdEnrolled = Boolean(s.face_embedding || s.foto);
-      const noWaOrtu = s.telepon_ortu || s.no_hp || s.telepon || (s as Record<string, unknown>).no_wa_wali || '';
-      const hasUserAccount = Boolean(s.user_id || s.user?.id);
+      const studentRecord = s as Record<string, unknown>;
+      const displayName = String(s.nama_siswa || s.nama || studentRecord.nama_lengkap || 'Siswa');
+      const rfidEnrolled = Boolean(s.no_rfid || studentRecord.rfid || studentRecord.card_uid);
+      const noWaOrtu = String(s.no_hp_ortu || s.telepon_ortu || studentRecord.no_hp_ayah || studentRecord.no_hp_ibu || s.no_hp || s.telepon || studentRecord.no_wa_wali || '').trim();
+      const hasUserAccount = Boolean(s.user_id || s.user?.id || studentRecord.User);
       
       const issues: string[] = [];
-      let score = 50;
+      let score = 40;
 
-      if (faceIdEnrolled) score += 30;
-      else issues.push('Belum rekam Face ID gerbang');
+      if (rfidEnrolled) {
+        score += 30;
+      } else {
+        issues.push('Kartu RFID Siswa belum dipasangkan');
+      }
 
-      if (typeof noWaOrtu === 'string' && noWaOrtu.length >= 8) score += 10;
-      else issues.push('Nomor WhatsApp orang tua belum terdaftar');
+      if (noWaOrtu && noWaOrtu.length >= 8) {
+        score += 20;
+      } else {
+        issues.push('Nomor WhatsApp orang tua belum terdaftar');
+      }
 
-      if (hasUserAccount) score += 10;
-      else issues.push('Belum pernah akses portal mandiri');
+      if (hasUserAccount) {
+        score += 10;
+      } else {
+        issues.push('Akses portal siswa mandiri belum aktif');
+      }
 
       return {
         id: s.id || `siswa-${Math.random()}`,
-        nama: s.nama || 'Tanpa Nama',
+        nama: displayName,
         nisn: s.nisn || s.nis || '-',
         kelas: s.kelas?.nama_kelas || s.rombel || 'Siswa',
-        noWaOrtu: typeof noWaOrtu === 'string' ? noWaOrtu : '',
-        faceIdEnrolled,
+        noWaOrtu,
+        rfidEnrolled,
         hasUserAccount,
         complianceScore: Math.min(100, score),
         issues
@@ -201,7 +223,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       else if (statusFilter === 'DORMANT') matchStatus = t.complianceScore < 50;
 
       let matchIssue = true;
-      if (selectedIssueFilter === 'NO_FACE') matchIssue = !t.faceIdEnrolled;
+      if (selectedIssueFilter === 'NO_RFID') matchIssue = !t.rfidEnrolled;
       else if (selectedIssueFilter === 'NO_WA') matchIssue = !t.noWa;
 
       return matchSearch && matchStatus && matchIssue;
@@ -220,7 +242,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       else if (statusFilter === 'DORMANT') matchStatus = s.complianceScore < 50;
 
       let matchIssue = true;
-      if (selectedIssueFilter === 'NO_FACE') matchIssue = !s.faceIdEnrolled;
+      if (selectedIssueFilter === 'NO_RFID') matchIssue = !s.rfidEnrolled;
       else if (selectedIssueFilter === 'NO_WA') matchIssue = !s.noWaOrtu;
 
       return matchSearch && matchStatus && matchIssue;
@@ -239,27 +261,27 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
 
   const stats = useMemo(() => {
     const totalGuru = processedTeachers.length;
-    const guruFaceIdCount = processedTeachers.filter(t => t.faceIdEnrolled).length;
+    const guruRfidCount = processedTeachers.filter(t => t.rfidEnrolled).length;
     const guruWaCount = processedTeachers.filter(t => t.noWa && t.noWa.length >= 8).length;
     const guruActiveCount = processedTeachers.filter(t => t.complianceScore >= 80).length;
     const guruPassiveCount = processedTeachers.filter(t => t.complianceScore >= 50 && t.complianceScore < 80).length;
     const guruDormantCount = processedTeachers.filter(t => t.complianceScore < 50).length;
 
     const totalSiswa = processedStudents.length;
-    const siswaFaceIdCount = processedStudents.filter(s => s.faceIdEnrolled).length;
+    const siswaRfidCount = processedStudents.filter(s => s.rfidEnrolled).length;
     const siswaWaCount = processedStudents.filter(s => s.noWaOrtu && s.noWaOrtu.length >= 8).length;
 
-    const teacherFaceIdPct = totalGuru ? Math.round((guruFaceIdCount / totalGuru) * 100) : 0;
+    const teacherRfidPct = totalGuru ? Math.round((guruRfidCount / totalGuru) * 100) : 0;
     const teacherWaPct = totalGuru ? Math.round((guruWaCount / totalGuru) * 100) : 0;
-    const studentFaceIdPct = totalSiswa ? Math.round((siswaFaceIdCount / totalSiswa) * 100) : 0;
+    const studentRfidPct = totalSiswa ? Math.round((siswaRfidCount / totalSiswa) * 100) : 0;
     const studentWaPct = totalSiswa ? Math.round((siswaWaCount / totalSiswa) * 100) : 0;
 
     return {
       totalGuru,
       totalSiswa,
-      teacherFaceIdPct,
+      teacherRfidPct,
       teacherWaPct,
-      studentFaceIdPct,
+      studentRfidPct,
       studentWaPct,
       guruActiveCount,
       guruPassiveCount,
@@ -280,17 +302,17 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
 
   const getMessageContent = useCallback((target: { nama: string }, tpl: string) => {
     let body = '';
-    if (tpl === 'JURNAL') {
-      body = 'Sistem mencatat Anda belum mengisi Jurnal KBM pada beberapa sesi mengajar minggu ini. Mohon segera mengakses platform untuk memutakhirkan jurnal kelas.';
-    } else if (tpl === 'FACE_ID') {
-      body = 'Sistem mencatat profil biometrik Wajah (Face ID) Anda belum terdaftar. Mohon segera melakukan perekaman mandiri untuk aktivasi presensi cepat di gerbang sekolah.';
-    } else if (tpl === 'RPP') {
-      body = 'Mengingatkan kembali bahwa batas pengunggahan Modul Ajar / RPP Kurikulum Merdeka akan segera ditutup. Silakan unggah dokumen Anda melalui menu Perangkat Ajar.';
+    if (tpl === 'RFID') {
+      body = 'Sistem mencatat Kartu RFID Presensi Anda belum terdaftar. Mohon segera melakukan pairing kartu ke bagian Tata Usaha / IT sekolah untuk kemudahan tap presensi.';
+    } else if (tpl === 'JURNAL') {
+      body = 'Mengingatkan untuk memeriksa dan melengkapi pengisian Jurnal KBM pada sesi mengajar Anda di sistem.';
+    } else if (tpl === 'LOGIN_PORTAL') {
+      body = 'Akun Portal mandiri Anda telah disiapkan. Silakan masuk ke aplikasi untuk mengakses jadwal dan informasi presensi.';
     } else {
-      body = 'Akun Portal Anda telah aktif. Silakan masuk ke aplikasi untuk melihat jadwal dan rekap presensi.';
+      body = 'Mengingatkan untuk melengkapi nomor kontak WhatsApp aktif agar notifikasi presensi dan akademik dapat diterima secara otomatis.';
     }
 
-    return `Halo Bpk/Ibu/Sdr *${target.nama}*,\n\n${body}\n\n_Pesan resmi dari Sistem Presensi Sekolah._`;
+    return `Halo Bpk/Ibu/Sdr *${target.nama}*,\n\n${body}\n\n_Pesan resmi dari Sistem Informasi Sekolah._`;
   }, []);
 
   const handleSendWhatsAppNudge = useCallback(() => {
@@ -383,18 +405,28 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       )
     },
     {
-      key: 'faceIdEnrolled',
-      label: 'Face ID Biometrik',
+      key: 'rfidEnrolled',
+      label: 'Kartu RFID Presensi',
       sortable: true,
       render: (value: unknown) => (
         <Badge variant={value ? 'success' : 'destructive'} className="text-[9px] font-bold">
-          {value ? 'Terdaftar' : 'Belum'}
+          {value ? 'Terdaftar' : 'Belum Ada'}
+        </Badge>
+      )
+    },
+    {
+      key: 'hasUserAccount',
+      label: 'Akun Portal',
+      sortable: true,
+      render: (value: unknown) => (
+        <Badge variant={value ? 'success' : 'outline'} className="text-[9px] font-bold">
+          {value ? 'Aktif' : 'Belum'}
         </Badge>
       )
     },
     {
       key: 'complianceScore',
-      label: 'Kesiapan Digital',
+      label: 'Kelengkapan Data',
       sortable: true,
       render: (value: unknown) => {
         const score = Number(value || 0);
@@ -449,18 +481,28 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
       )
     },
     {
-      key: 'faceIdEnrolled',
-      label: 'Face ID Gerbang',
+      key: 'rfidEnrolled',
+      label: 'Kartu RFID Siswa',
       sortable: true,
       render: (value: unknown) => (
         <Badge variant={value ? 'success' : 'destructive'} className="text-[9px] font-bold">
-          {value ? 'Terdaftar' : 'Belum'}
+          {value ? 'Terdaftar' : 'Belum Ada'}
+        </Badge>
+      )
+    },
+    {
+      key: 'hasUserAccount',
+      label: 'Akun Portal Siswa',
+      sortable: true,
+      render: (value: unknown) => (
+        <Badge variant={value ? 'success' : 'outline'} className="text-[9px] font-bold">
+          {value ? 'Aktif' : 'Belum'}
         </Badge>
       )
     },
     {
       key: 'complianceScore',
-      label: 'Kesiapan Digital',
+      label: 'Kelengkapan Data',
       sortable: true,
       render: (value: unknown) => {
         const score = Number(value || 0);
@@ -498,25 +540,25 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
   ], []);
 
   const tabs = useMemo(() => [
-    { id: 'GURU', label: `Kepatuhan Guru (${filteredTeachers.length})` },
-    { id: 'SISWA', label: `Kepatuhan Siswa (${filteredStudents.length})` },
+    { id: 'GURU', label: `Kelengkapan Guru (${filteredTeachers.length})` },
+    { id: 'SISWA', label: `Kelengkapan Siswa (${filteredStudents.length})` },
     { id: 'TREND', label: 'Tren Adopsi Platform' }
   ], [filteredTeachers.length, filteredStudents.length]);
 
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
-        title="Pusat Evaluasi Kepatuhan & Adopsi Platform"
-        description="Alat kendali IT & Pimpinan untuk memantau, mendeteksi guru/siswa yang pasif, serta melakukan follow-up instan via WhatsApp."
+        title="Pusat Evaluasi Kepatuhan & Kelengkapan Data"
+        description="Alat kendali IT & Pimpinan untuk memantau kelengkapan RFID, kontak WhatsApp, aktivasi akun, dan melakukan follow-up instan."
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="platform_compliance"
         instruction={{
-          title: 'Pusat Evaluasi Kepatuhan & Adopsi Platform',
-          description: 'Alat kendali IT & Pimpinan untuk memantau, mendeteksi guru/siswa yang pasif, serta melakukan follow-up instan via WhatsApp.',
+          title: 'Pusat Evaluasi Kepatuhan & Kelengkapan Data',
+          description: 'Alat kendali IT & Pimpinan untuk memantau kelengkapan RFID, kontak WhatsApp, aktivasi akun, dan melakukan follow-up instan.',
           items: [
-            { text: 'Pantau kelengkapan perekaman wajah Face ID, data kontak WA, dan akun login portal.' },
-            { text: 'Gunakan tombol [Nudge WA] untuk mengirimkan pesan pengingat personal langsung ke WhatsApp target.' },
-            { text: 'Lihat ringkasan adopsi digital sekolah pada tab Tren Adopsi Platform.' }
+            { text: 'Pantau kelengkapan registrasi Kartu RFID tap presensi, nomor kontak WhatsApp, dan akun login.' },
+            { text: 'Gunakan tombol [Nudge WA] untuk mengirimkan pesan pengingat langsung ke WhatsApp target.' },
+            { text: 'Tersedia pilihan kirim via Server WA Bot atau langsung membuka WhatsApp di perangkat Anda.' }
           ]
         }}
       >
@@ -526,8 +568,8 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
             {/* ── METRIC STATS SUMMARY CARDS ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               <Card className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Face ID Guru</span>
-                <p className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">{stats.teacherFaceIdPct}%</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Kartu RFID Guru</span>
+                <p className="text-lg sm:text-xl font-black text-indigo-600 dark:text-indigo-400">{stats.teacherRfidPct}%</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">Dari {stats.totalGuru} Guru Terdata</p>
               </Card>
 
@@ -538,15 +580,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
               </Card>
 
               <Card className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Face ID Siswa</span>
-                <p className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400">{stats.studentFaceIdPct}%</p>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Kartu RFID Siswa</span>
+                <p className="text-lg sm:text-xl font-black text-blue-600 dark:text-blue-400">{stats.studentRfidPct}%</p>
                 <p className="text-[10px] text-slate-500 mt-0.5">Dari {stats.totalSiswa} Siswa</p>
               </Card>
 
               <Card className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-xs">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">WA Wali Siswa</span>
                 <p className="text-lg sm:text-xl font-black text-teal-600 dark:text-teal-400">{stats.studentWaPct}%</p>
-                <p className="text-[10px] text-slate-500 mt-0.5">Terhubung Gateway</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Terhubung Notifikasi</p>
               </Card>
             </div>
 
@@ -568,14 +610,14 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                   <div className="w-full sm:w-48">
                     <SearchableSelect
                       id="status-filter-select"
-                      aria-label="Filter status kepatuhan"
+                      aria-label="Filter status kelengkapan"
                       value={statusFilter}
                       onValueChange={(val) => setStatusFilter(val as 'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT')}
                       options={[
-                        { value: 'ALL', label: 'Semua Kesiapan' },
-                        { value: 'ACTIVE', label: 'Aktif (≥80%)' },
-                        { value: 'PASSIVE', label: 'Pasif (50-79%)' },
-                        { value: 'DORMANT', label: 'Perlu Follow-up (<50%)' },
+                        { value: 'ALL', label: 'Semua Status' },
+                        { value: 'ACTIVE', label: 'Lengkap (≥80%)' },
+                        { value: 'PASSIVE', label: 'Sebagian (50-79%)' },
+                        { value: 'DORMANT', label: 'Belum Lengkap (<50%)' },
                       ]}
                       placeholder="Pilih Status"
                     />
@@ -605,11 +647,11 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     sortBy={teacherSortBy}
                     sortOrder={teacherSortOrder}
                     onSort={(col, dir) => { setTeacherSortBy(col); setTeacherSortOrder(dir); }}
-                    emptyMessage="Tidak ada data kepatuhan guru yang sesuai filter."
+                    emptyMessage="Tidak ada data guru yang sesuai filter."
                     toolbarLeft={
                       <div className="flex items-center gap-2 w-full max-w-full min-w-0">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Daftar Guru Real ({filteredTeachers.length})
+                          Daftar Guru ({filteredTeachers.length})
                         </span>
                       </div>
                     }
@@ -640,11 +682,11 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                     sortBy={studentSortBy}
                     sortOrder={studentSortOrder}
                     onSort={(col, dir) => { setStudentSortBy(col); setStudentSortOrder(dir); }}
-                    emptyMessage="Tidak ada data kepatuhan siswa yang sesuai filter."
+                    emptyMessage="Tidak ada data siswa yang sesuai filter."
                     toolbarLeft={
                       <div className="flex items-center gap-2 w-full max-w-full min-w-0">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                          Daftar Siswa Real ({filteredStudents.length})
+                          Daftar Siswa ({filteredStudents.length})
                         </span>
                       </div>
                     }
@@ -654,7 +696,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                       totalItems: filteredStudents.length,
                       itemsPerPage: studentLimit,
                       onPageChange: setStudentPage,
-                      onLimitChange: (limit) => { setTeacherLimit(limit); setTeacherPage(1); }
+                      onLimitChange: (limit) => { setStudentLimit(limit); setStudentPage(1); }
                     }}
                   />
                 )}
@@ -666,15 +708,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full min-w-0 max-w-full">
                 <Card className="p-4 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4 w-full min-w-0 max-w-full">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
-                    Tingkat Adopsi Biometrik &amp; WhatsApp Sekolah
+                    Tingkat Kesiapan Kartu RFID &amp; WhatsApp Sekolah
                   </h3>
                   <div className="h-64">
                     <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <BarChart
                         data={[
-                          { name: 'Face ID Guru', adopsi: stats.teacherFaceIdPct },
+                          { name: 'RFID Guru', adopsi: stats.teacherRfidPct },
                           { name: 'WA Guru', adopsi: stats.teacherWaPct },
-                          { name: 'Face ID Siswa', adopsi: stats.studentFaceIdPct },
+                          { name: 'RFID Siswa', adopsi: stats.studentRfidPct },
                           { name: 'WA Wali Siswa', adopsi: stats.studentWaPct },
                         ]}
                         margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
@@ -691,16 +733,16 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
 
                 <Card className="p-4 sm:p-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4 w-full min-w-0 max-w-full">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
-                    Distribusi Kesiapan Digital Guru
+                    Distribusi Kelengkapan Data Guru
                   </h3>
                   <div className="h-64 flex items-center justify-center">
                     <ResponsiveContainer minWidth={0} width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={[
-                            { name: '🟢 Digital Native (≥80%)', value: stats.guruActiveCount || 1, color: '#10b981' },
-                            { name: '🟡 Perlu Pengingat (50-79%)', value: stats.guruPassiveCount || 0, color: '#f59e0b' },
-                            { name: '🔴 Perlu Follow-up (<50%)', value: stats.guruDormantCount || 0, color: '#ef4444' },
+                            { name: '🟢 Lengkap (≥80%)', value: stats.guruActiveCount || 1, color: '#10b981' },
+                            { name: '🟡 Sebagian (50-79%)', value: stats.guruPassiveCount || 0, color: '#f59e0b' },
+                            { name: '🔴 Belum Lengkap (<50%)', value: stats.guruDormantCount || 0, color: '#ef4444' },
                           ]}
                           cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4}
                           dataKey="value"
@@ -741,7 +783,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                 {nudgeModalTarget.issues.length > 0 && (
                   <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 space-y-1">
                     <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                      <AlertTriangle size={12} /> Isu Kepatuhan Terdeteksi:
+                      <AlertTriangle size={12} /> Isu Kelengkapan Terdeteksi:
                     </span>
                     <ul className="list-disc list-inside text-[11px] text-slate-700 dark:text-slate-300">
                       {nudgeModalTarget.issues.map((iss, i) => (
@@ -757,15 +799,15 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {[
-                      { id: 'JURNAL', label: '📖 Isi Jurnal KBM' },
-                      { id: 'FACE_ID', label: '📸 Rekam Wajah Face ID' },
-                      { id: 'RPP', label: '📁 Upload Modul/RPP' },
-                      { id: 'LOGIN_PORTAL', label: '🔑 Panduan Login Portal' },
+                      { id: 'RFID', label: '💳 Pendaftaran Kartu RFID' },
+                      { id: 'LOGIN_PORTAL', label: '🔑 Aktivasi Login Portal' },
+                      { id: 'JURNAL', label: '📖 Pengisian Jurnal KBM' },
+                      { id: 'KONTAK_WA', label: '📱 Pembaruan Nomor WA' },
                     ]?.map((tpl) => (
                       <button
                         key={tpl.id}
                         type="button"
-                        onClick={() => setMessageTemplate(tpl.id as 'JURNAL' | 'FACE_ID' | 'LOGIN_PORTAL' | 'RPP')}
+                        onClick={() => setMessageTemplate(tpl.id as 'RFID' | 'LOGIN_PORTAL' | 'JURNAL' | 'KONTAK_WA')}
                         className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all cursor-pointer ${
                           messageTemplate === tpl.id
                             ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-xs'
