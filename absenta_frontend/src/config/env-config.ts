@@ -7,6 +7,8 @@
 export const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'localhost';
 export const APP_NAME = import.meta.env.VITE_APP_NAME || 'Absenta';
 export const DEFAULT_SUPPORT_EMAIL = 'support@' + MAIN_DOMAIN;
+export const DEFAULT_SUPPORT_PHONE = import.meta.env.VITE_SUPPORT_PHONE || '6281234567890';
+export const DEFAULT_LICENSE_SERVER_URL = import.meta.env.VITE_LICENSE_SERVER_URL || 'https://api.absenta.id';
 
 // API & Realtime URLs
 /**

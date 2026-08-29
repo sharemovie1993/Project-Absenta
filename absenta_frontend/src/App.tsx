@@ -83,6 +83,7 @@ const KurikulumStandardsPage = lazy(() => import('./pages/superadmin/KurikulumSt
 const JurusanPresetsPage = lazy(() => import('./pages/superadmin/JurusanPresetsPage'));
 const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
 const CommunicationCenterPage = lazy(() => import('./pages/communication/CommunicationCenterPage'));
+const SupportHelpdeskPage = lazy(() => import('./pages/support/SupportHelpdeskPage').then(m => ({ default: m.SupportHelpdeskPage })));
 const DocumentCenterPage = lazy(() => import('./pages/documents/DocumentCenterPage'));
 const DocumentActivityPage = lazy(() => import('./pages/documents/DocumentActivityPage'));
 const MemberDocsPage = lazy(() => import('./pages/documents/MemberDocsPage'));
@@ -1248,8 +1249,8 @@ function App() {
 
 
                     <Route path="/komunikasi" element={<CommunicationCenterPage />} />
-                    <Route path="/support" element={<Navigate to="/komunikasi" replace />} />
-                    <Route path="/superadmin/support" element={<Navigate to="/komunikasi" replace />} />
+                    <Route path="/support" element={<SupportHelpdeskPage />} />
+                    <Route path="/superadmin/support" element={<SupportHelpdeskPage />} />
                     {/* Services Catalog (Internal Admin Only) */}
                     {/* Unified Service Hub (Satu Pintu) */}
                     <Route path="/service-center" element={
