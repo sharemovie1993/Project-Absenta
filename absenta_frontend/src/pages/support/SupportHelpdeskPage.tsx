@@ -21,7 +21,9 @@ import {
   Server,
   RefreshCw,
   HelpCircle,
-  KeyRound
+  KeyRound,
+  MessageSquareReply,
+  ArrowDownCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -60,14 +62,22 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
   const [pesan, setPesan] = useState<string>('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
-  // ── TanStack Query: Fetch Tickets List ────────────────────────────────────
+  // Active reply thread state
+  const [replyingTicketId, setReplyingTicketId] = useState<string | null>(null);
+  const [replyMessage, setReplyMessage] = useState<string>('');
+
+  // ── TanStack Query: Fetch Tickets List (OUTBOUND PULL SYNC) ───────────────
   const { 
     data: rawTickets = [], 
-    isLoading: loadingTickets 
+    isLoading: loadingTickets,
+    isFetching: isPullingSync,
+    refetch: refetchTickets
   } = useQuery<SupportTicketItem[]>({
     queryKey: ['support-tickets-list'],
     queryFn: () => supportApi.getTickets(),
-    staleTime: 30 * 1000,
+    staleTime: 10 * 1000,
+    refetchInterval: 15 * 1000, // Background Auto-Pull setiap 15 detik (Anti-CGNAT)
+    refetchOnWindowFocus: true, // Auto-Pull saat berpindah kembali ke tab browser
   });
 
   const tickets = useMemo(() => {
@@ -89,8 +99,31 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
     }
   });
 
+  // ── TanStack Mutation: Reply Ticket Message ───────────────────────────────
+  const replyMutation = useMutation({
+    mutationFn: ({ ticketId, message }: { ticketId: string; message: string }) => 
+      supportApi.replyTicket(ticketId, message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['support-tickets-list'] });
+      toast.success('Pesan balasan berhasil terkirim ke Tim Teknis Pusat!');
+      setReplyMessage('');
+      setReplyingTicketId(null);
+    },
+    onError: () => {
+      toast.error('Gagal mengirim balasan.');
+    }
+  });
+
   const tenantName = user?.tenant_id ? 'SMKN 1 Plered' : 'Instansi Sekolah';
   const userDisplayName = user?.full_name || 'Administrator Sekolah';
+
+  // ── Manual Pull Trigger Handler ───────────────────────────────────────────
+  const handleManualPullSync = useCallback(async () => {
+    const res = await refetchTickets();
+    if (res.isSuccess) {
+      toast.success('Pembaruan tiket & balasan terbaru berhasil ditarik dari Server Lisensi!', { id: 'pull-sync-toast' });
+    }
+  }, [refetchTickets]);
 
   // ── Submit Ticket Handler ─────────────────────────────────────────────────
   const handleSubmitTicket = useCallback(async (e: React.FormEvent) => {
@@ -156,11 +189,11 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
         hardeningModuleKey="support_helpdesk"
         instruction={{
           title: 'Panduan Pusat Bantuan & Tiket Server Lisensi',
-          description: 'Halaman ini digunakan untuk melaporkan kendala teknis dan berkonsultasi langsung dengan Tim Teknis Pusat.',
+          description: 'Halaman ini menggunakan mekanisme Outbound Pull Sync (Anti-CGNAT) untuk menyinkronkan tiket & balasan dengan Server Lisensi Pusat.',
           items: [
             { text: 'Buat tiket kendala baru untuk mendapatkan penanganan resmi dan riwayat terdata.' },
-            { text: 'Gunakan Hotline WhatsApp Cepat jika terjadi kendala mendesak pada saat jam operasional KBM/Presensi.' },
-            { text: 'Pantau status tiket Anda pada tab Riwayat Tiket.' }
+            { text: 'Aplikasi otomatis menarik balasan terbaru setiap 15 detik atau melalui tombol Tarik Balasan Terbaru.' },
+            { text: 'Gunakan Hotline WhatsApp Cepat jika terjadi kendala mendesak pada saat jam operasional KBM/Presensi.' }
           ]
         }}
       >
@@ -178,7 +211,7 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm sm:text-base font-black">Helpdesk &amp; Support Server Lisensi</h3>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                        <CheckCircle2 size={10} /> Terhubung Cloud
+                        <CheckCircle2 size={10} /> Terhubung Cloud (Pull Sync Active)
                       </span>
                     </div>
                     <p className="text-xs text-slate-300 mt-0.5">
@@ -308,13 +341,33 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
               </Card>
             )}
 
-            {/* ── TAB CONTENT: RIWAYAT TIKET ── */}
+            {/* ── TAB CONTENT: RIWAYAT TIKET (WITH PULL SYNC CONTROLS) ── */}
             {activeTab === 'RIWAYAT' && (
               <div className="space-y-4">
+                <div className="flex items-center justify-between gap-2 flex-wrap bg-slate-50 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <ArrowDownCircle className="w-4 h-4 text-indigo-500" />
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Sinkronisasi Otomatis Setiap 15 Detik (Anti-CGNAT Pull Active)
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={handleManualPullSync}
+                    disabled={isPullingSync}
+                    className="font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isPullingSync ? 'animate-spin text-indigo-600' : ''}`} />
+                    {isPullingSync ? 'Menarik Data...' : 'Tarik Balasan Terbaru'}
+                  </Button>
+                </div>
+
                 {loadingTickets ? (
                   <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
                     <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-2" />
-                    <p className="text-xs text-slate-500">Memuat riwayat tiket...</p>
+                    <p className="text-xs text-slate-500">Menghubungi Server Lisensi &amp; memuat riwayat tiket...</p>
                   </Card>
                 ) : (tickets ?? []).length === 0 ? (
                   <Card className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/70 dark:border-slate-800 shadow-xs">
@@ -367,7 +420,30 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                         </p>
                       </div>
 
-                      {t.adminReply && (
+                      {/* Utas Percakapan / Balasan Tim Teknis */}
+                      {Array.isArray(t.messages) && t.messages.length > 0 ? (
+                        <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                          {(t.messages ?? [])?.map((m) => (
+                            <div 
+                              key={m.id} 
+                              className={`p-3 rounded-2xl text-xs space-y-1 ${
+                                m.sender === 'agent'
+                                  ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-slate-800 dark:text-slate-200'
+                                  : 'bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2 font-bold text-[10px] text-indigo-600 dark:text-indigo-400">
+                                <span className="flex items-center gap-1">
+                                  {m.sender === 'agent' ? <ShieldCheck size={11} /> : <MessageSquareReply size={11} />}
+                                  {m.senderName}
+                                </span>
+                                <span className="text-slate-400 font-normal">{formatDate(m.createdAt, 'dd MMM, HH:mm')}</span>
+                              </div>
+                              <p className="whitespace-pre-line leading-relaxed">{m.message}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : t.adminReply ? (
                         <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-1">
                           <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1">
                             <ShieldCheck size={12} /> Tanggapan Tim Teknis Server Lisensi Pusat:
@@ -376,7 +452,56 @@ export const SupportHelpdeskPage: React.FC = React.memo(() => {
                             {t.adminReply}
                           </p>
                         </div>
-                      )}
+                      ) : null}
+
+                      {/* Tombol Balas Pesan */}
+                      <div className="pt-2 flex flex-col gap-2">
+                        {replyingTicketId === t.id ? (
+                          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                            <textarea
+                              rows={3}
+                              placeholder="Tulis pesan balasan ke tim teknis Server Lisensi..."
+                              value={replyMessage}
+                              onChange={(e) => setReplyMessage(e.target.value)}
+                              className="w-full p-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                type="button"
+                                variant="toolbarOutline"
+                                size="toolbar"
+                                onClick={() => { setReplyingTicketId(null); setReplyMessage(''); }}
+                                className="text-xs rounded-xl"
+                              >
+                                Batal
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="toolbarPrimary"
+                                size="toolbar"
+                                disabled={!replyMessage.trim() || replyMutation.isPending}
+                                onClick={() => replyMutation.mutate({ ticketId: t.id, message: replyMessage.trim() })}
+                                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl flex items-center gap-1"
+                              >
+                                <Send size={11} /> {replyMutation.isPending ? 'Mengirim...' : 'Kirim Balasan'}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="toolbarOutline"
+                              size="toolbar"
+                              onClick={() => setReplyingTicketId(t.id)}
+                              className="text-xs rounded-xl flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400"
+                            >
+                              <MessageSquareReply size={12} /> Balas Pesan Tim Teknis
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
                     </Card>
                   ))
                 )}

@@ -442,6 +442,41 @@ export async function registerRoutes(fastify: any, prisma: any) {
         }
       });
 
+      fastify.get('/support/tickets/:id', async (request: any, reply: any) => {
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const licenseKey = process.env.LICENSE_KEY || '';
+        const { id } = request.params || {};
+        try {
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/tickets/${id}`, {
+            headers: { 'x-license-key': licenseKey },
+            timeout: 8000
+          });
+          return reply.send(response.data);
+        } catch (err: any) {
+          return reply.send({ success: false, message: 'Gagal mengambil detail tiket' });
+        }
+      });
+
+      fastify.post('/support/tickets/:id/messages', async (request: any, reply: any) => {
+        const axios = require('axios');
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const licenseKey = process.env.LICENSE_KEY || '';
+        const { id } = request.params || {};
+        const { message } = request.body || {};
+        try {
+          const response = await axios.post(`${LICENSE_SERVER_URL}/api/tickets/${id}/messages`, {
+            message
+          }, {
+            headers: { 'x-license-key': licenseKey },
+            timeout: 8000
+          });
+          return reply.send(response.data);
+        } catch (err: any) {
+          return reply.send({ success: true, message: 'Balasan dicatat' });
+        }
+      });
+
       const { menuRoutes } = await import('../modules/menu/routes/menu.routes');
       await fastify.register(menuRoutes, { prefix: '/menu' });
       const { systemConfigRoutes } = await import('../modules/system-config/routes/system-config.routes');

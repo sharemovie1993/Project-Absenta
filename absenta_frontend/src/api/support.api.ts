@@ -12,6 +12,14 @@ export interface CreateSupportTicketPayload {
   user_email?: string;
 }
 
+export interface TicketMessageItem {
+  id: string;
+  sender: 'tenant' | 'agent';
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface SupportTicketItem {
   id: string;
   nomorTiket: string;
@@ -22,6 +30,7 @@ export interface SupportTicketItem {
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
   createdAt: string;
   adminReply?: string | null;
+  messages?: TicketMessageItem[];
 }
 
 export const normalizeTicket = (item: Record<string, unknown>): SupportTicketItem => {
@@ -47,10 +56,22 @@ export const normalizeTicket = (item: Record<string, unknown>): SupportTicketIte
       : 'OPEN';
 
   let adminReply = (item.adminReply as string) || null;
-  if (!adminReply && Array.isArray(item.messages)) {
-    const messages = item.messages as Array<Record<string, unknown>>;
-    const lastAgentMsg = [...messages].reverse().find(m => m.sender === 'agent');
-    if (lastAgentMsg) adminReply = String(lastAgentMsg.message || '');
+  let parsedMessages: TicketMessageItem[] = [];
+
+  if (Array.isArray(item.messages)) {
+    const msgs = item.messages as Array<Record<string, unknown>>;
+    parsedMessages = msgs.map(m => ({
+      id: String(m.id || `msg-${Date.now()}`),
+      sender: (m.sender === 'agent' ? 'agent' : 'tenant') as 'tenant' | 'agent',
+      senderName: String(m.senderName || (m.sender === 'agent' ? 'Tim Dukungan Lisensi Pusat' : 'Pihak Sekolah')),
+      message: String(m.message || ''),
+      createdAt: String(m.createdAt || new Date().toISOString()),
+    }));
+
+    if (!adminReply) {
+      const lastAgentMsg = [...msgs].reverse().find(m => m.sender === 'agent');
+      if (lastAgentMsg) adminReply = String(lastAgentMsg.message || '');
+    }
   }
 
   return {
@@ -62,7 +83,8 @@ export const normalizeTicket = (item: Record<string, unknown>): SupportTicketIte
     pesan,
     status,
     createdAt: (item.createdAt as string) || new Date().toISOString(),
-    adminReply
+    adminReply,
+    messages: parsedMessages
   };
 };
 
@@ -147,6 +169,19 @@ export const supportApi = {
     }
 
     return normalized;
+  },
+
+  replyTicket: async (ticketId: string, message: string): Promise<boolean> => {
+    try {
+      const res = await requestWithFallback<{ success: boolean }>(
+        'post',
+        `/support/tickets/${ticketId}/messages`,
+        { data: { message } }
+      );
+      return res?.success ?? true;
+    } catch {
+      return false;
+    }
   },
 
   checkLicenseServerHealth: async (): Promise<{ isOnline: boolean; url: string }> => {
