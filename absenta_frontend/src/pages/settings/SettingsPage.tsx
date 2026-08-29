@@ -30,7 +30,8 @@ const SystemUpdatePage = lazy(() => import('./SystemUpdatePage'));
 const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { user, isLoading, can } = useAuth();
-  const { isAdmin } = useCapabilities();
+  const { isAdmin, caps } = useCapabilities();
+  const canManageAttendanceSettings = isAdmin || caps.isKepsek || caps.isTUKepala || caps.isKurikulum;
   const isSuperAdminUser = isSystemSuperAdmin(user?.role?.name, user?.tenant_id);
   const isTenantUser = !isSuperAdminUser;
 
@@ -237,7 +238,8 @@ const SettingsPage: React.FC = () => {
     if (isTenantUser) {
       const list = [
         { id: 'tenant_profile', label: 'Profil Sekolah' },
-        { id: 'attendance', label: 'Aturan Absensi' },
+        // Tab "Aturan Absensi" hanya ditampilkan untuk Admin, Kepsek, TU Kepala, dan Kurikulum
+        ...(canManageAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
         { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
@@ -325,9 +327,23 @@ const SettingsPage: React.FC = () => {
         />
 
         {activeTab === 'attendance' && isTenantUser ? (
-          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-            <TenantAttendanceForm />
-          </Suspense>
+          canManageAttendanceSettings ? (
+            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+              <TenantAttendanceForm />
+            </Suspense>
+          ) : (
+            <SectionCard fullWidth>
+              <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
+                <div className="w-14 h-14 rounded-3xl bg-rose-50 dark:bg-rose-950/50 flex items-center justify-center text-rose-500">
+                  <Settings className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Akses Tidak Diizinkan</h3>
+                <p className="text-xs text-slate-500 max-w-sm">
+                  Tab <strong>Aturan Absensi</strong> hanya dapat diakses oleh <strong>Admin, Kepala Sekolah, TU Kepala, dan Kurikulum</strong>. Hubungi admin sekolah jika Anda memerlukan perubahan pengaturan ini.
+                </p>
+              </div>
+            </SectionCard>
+          )
         ) : activeTab === 'tenant_profile' ? (
           <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
             <TenantSettings />
