@@ -55,11 +55,14 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
 
   // Transform contacts to SearchableSelectOption
   const contactOptions: SearchableSelectOption[] = useMemo(() => {
-    return contacts.map(c => ({
-      value: c.id,
-      label: `${c.name} • ${c.role_label || c.role}${c.sub_label ? ` (${c.sub_label})` : ''}`,
-      raw: c
-    }));
+    return contacts.map(c => {
+      const roleStr = c.role_label || (typeof c.role === 'object' ? (c.role as any)?.name : c.role) || '';
+      return {
+        value: c.id,
+        label: `${c.name}${roleStr ? ` • ${roleStr}` : ''}${c.sub_label ? ` (${c.sub_label})` : ''}`,
+        raw: c
+      };
+    });
   }, [contacts]);
 
   // Selected contact details from contacts directory
@@ -329,7 +332,7 @@ export const NewConversationModal: React.FC<NewConversationModalProps> = ({
                       {selectedContact.name}
                     </p>
                     <p className="text-[11px] font-medium text-blue-700 dark:text-blue-300 truncate">
-                      {selectedContact.role_label || selectedContact.role}
+                      {selectedContact.role_label || (typeof selectedContact.role === 'object' ? (selectedContact.role as any)?.name : selectedContact.role) || ''}
                       {selectedContact.sub_label && ` • ${selectedContact.sub_label}`}
                     </p>
                   </div>

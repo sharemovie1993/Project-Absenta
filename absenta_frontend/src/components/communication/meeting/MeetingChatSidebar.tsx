@@ -114,7 +114,7 @@ export const MeetingChatSidebar: React.FC<MeetingChatSidebarProps> = ({
                       isMe ? 'bg-[#004d3e] text-[#aebac1]' : 'bg-[#111b21] text-[#8696a0]'
                     }`}
                   >
-                    {c.role}
+                    {typeof c.role === 'object' ? (c.role as any)?.name : c.role}
                   </span>
                 )}
                 {isMe && <span className="text-[9px] text-emerald-200/70 font-normal">(Anda)</span>}

@@ -76,7 +76,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
             </span>
             {message.sender_role && (
               <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 font-medium">
-                {message.sender_role}
+                {typeof message.sender_role === 'object' ? (message.sender_role as any)?.name : message.sender_role}
               </span>
             )}
           </div>

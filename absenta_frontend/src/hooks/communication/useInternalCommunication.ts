@@ -39,11 +39,14 @@ export function useInternalCommunication(filters?: { type?: string; category?: s
   // 4. Transform kontak menjadi SearchableSelectOption
   const contactOptions: SearchableSelectOption[] = useMemo(() => {
     const contacts = contactsQuery.data || [];
-    return contacts.map(c => ({
-      value: c.id,
-      label: `${c.name} • ${c.role_label || c.role}${c.sub_label ? ` (${c.sub_label})` : ''}`,
-      raw: c
-    }));
+    return contacts.map(c => {
+      const roleStr = c.role_label || (typeof c.role === 'object' ? (c.role as any)?.name : c.role) || '';
+      return {
+        value: c.id,
+        label: `${c.name}${roleStr ? ` • ${roleStr}` : ''}${c.sub_label ? ` (${c.sub_label})` : ''}`,
+        raw: c
+      };
+    });
   }, [contactsQuery.data]);
 
   // 5. Mutasi: Buat Thread Baru

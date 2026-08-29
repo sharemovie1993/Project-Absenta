@@ -259,7 +259,7 @@ export function ActiveUsersSafetyCard() {
                               {u.name}
                             </h4>
                             <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                              {u.role}
+                              {typeof u.role === 'object' ? (u.role as any)?.name : (u.role || 'USER')}
                             </span>
                           </div>
                           <div className="flex items-center gap-3 mt-0.5">
