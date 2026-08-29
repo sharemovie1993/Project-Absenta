@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSystemConfig, saveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { getKelasForDropdown } from '@/api/dropdown.api';
+import axiosInstance from '@/lib/axiosInstance';
 
 /**
  * TenantSettings - Halaman Pengaturan & Profil Sekolah (Khusus Tenant Admin)
