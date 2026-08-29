@@ -1336,7 +1336,7 @@ function App() {
 
                     {/* Open to all authenticated (Role & capability inside page) */}
                     <Route path="/attendance/settings" element={
-                      <ProtectedRoute requiredCapability="attendance.gate.bypass">
+                      <ProtectedRoute requiredCapability="attendance.events.view.list">
                         <AttendanceSettingsPage />
                       </ProtectedRoute>
                     } />
