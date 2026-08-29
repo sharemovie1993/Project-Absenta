@@ -19,7 +19,24 @@ import { getSmartFrontendBaseUrl, getDomainBases, getSmartParentAppUrl } from '@
 import { WireguardManager } from '@/services/wireguardManager';
 import * as jwt from 'jsonwebtoken';
 
-export const getJwtSecret = () => process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
+/** 
+ * ✅ Satu sumber kebenaran JWT secret. 
+ * Fail-fast: throw jika JWT_SECRET tidak di-set atau terlalu pendek (< 32 char).
+ */
+export const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    // Di dev/test boleh pakai fallback, di production wajib ada
+    if (String(process.env.NODE_ENV).toLowerCase() === 'production') {
+      throw new Error('[SECURITY] JWT_SECRET wajib diisi dan minimal 32 karakter di environment production!');
+    }
+    return 'absenta-dev-secret-key-32-chars!!';
+  }
+  return secret;
+};
+
+/** Konstanta kebijakan password minimum (digunakan di register, registerTenant, changePassword) */
+export const MIN_PASSWORD_LENGTH = 8;
 
 import { authTenantController } from './auth-tenant.controller';
 
@@ -615,6 +632,8 @@ async impersonate(request: any, reply: any) {
       };
 
       // Tempelkan kapabilitas dan posisi organisasi
+      // ✅ H4 Fix: Invalidasi cache target user agar position_codes selalu fresh dari DB
+      try { await organizationalContextCache.invalidateUser(targetAdminUser.id); } catch {}
       const orgCtx = await organizationalAuthorizationEngine.resolveOrganizationalContext(targetAdminUser.id);
       userResponse.capabilities = await authorizationService.resolveUserCapabilities(targetAdminUser.id, { user: targetAdminUser });
       userResponse.position_codes = orgCtx.positions.map(p => p.code);
@@ -694,8 +713,9 @@ async changePassword(request: any, reply: any) {
         return reply.status(400).send({ success: false, message: 'Password lama dan password baru wajib diisi' });
       }
 
-      if (String(new_password).length < 6) {
-        return reply.status(400).send({ success: false, message: 'Password baru minimal 6 karakter' });
+      // ✅ H3 Fix: Gunakan MIN_PASSWORD_LENGTH terpusat (8 karakter)
+      if (String(new_password).length < MIN_PASSWORD_LENGTH) {
+        return reply.status(400).send({ success: false, message: `Password baru minimal ${MIN_PASSWORD_LENGTH} karakter` });
       }
 
       const dbUser = await prisma.user.findUnique({
@@ -711,19 +731,24 @@ async changePassword(request: any, reply: any) {
         return reply.status(400).send({ success: false, message: 'Password lama yang Anda masukkan salah' });
       }
 
-      const hashedPassword = await bcrypt.hash(new_password, 10);
+      // ✅ H2 Fix: gunakan bcrypt rounds 12 (konsisten)
+      const hashedPassword = await bcrypt.hash(new_password, 12);
       await prisma.user.update({
         where: { id: dbUser.id },
         data: { password: hashedPassword }
       });
+
+      // ✅ H2 Fix: Invalidasi cache org context agar sesi lain tidak bisa pakai data stale
+      try { await organizationalContextCache.invalidateUser(String(dbUser.id)); } catch {}
 
       return reply.status(200).send({
         success: true,
         message: 'Password berhasil diperbarui!'
       });
     } catch (error: any) {
+      // ✅ M6 Fix: Jangan expose error.message internal ke client
       console.error('Error in changePassword controller:', error);
-      return reply.status(500).send({ success: false, message: error.message || 'Gagal memperbarui password' });
+      return reply.status(500).send({ success: false, message: 'Gagal memperbarui password. Silakan coba lagi.' });
     }
   }
 };

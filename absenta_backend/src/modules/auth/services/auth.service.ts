@@ -309,6 +309,9 @@ export class AuthService {
       tenant: null,
     };
 
+    // ✅ Invalidasi cache posisi jabatan sebelum attachCapabilities agar login selalu dapat data terbaru dari DB
+    try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+
     // Attach capabilities using shared logic
     await this.attachCapabilities(user, userResponse);
 
@@ -839,9 +842,8 @@ export class AuthService {
   }
 
   private async attachCapabilities(user: any, response: UserResponse) {
-    // ✅ Selalu invalidasi cache posisi jabatan saat login agar position_codes
-    // selalu mencerminkan data terbaru dari DB (bukan sisa cache sesi lama)
-    try { await organizationalContextCache.invalidateUser(String(user.id)); } catch {}
+    // ℹ️ Cache sudah di-invalidate sebelum pemanggilan ini (saat login/logout).
+    // Tidak perlu invalidasi di sini agar /me tidak flush cache setiap request.
     const orgCtx = await organizationalAuthorizationEngine.resolveOrganizationalContext(user.id);
     response.capabilities = await authorizationService.resolveUserCapabilities(user.id, { user });
     response.position_codes = orgCtx.positions.map(p => p.code);
