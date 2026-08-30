@@ -104,5 +104,48 @@ export const correspondenceApi = {
   signSuratKeluar: async (id: string, data: { status: 'DIKIRIM' | 'DITOLAK' }): Promise<{ success: boolean; data: SuratKeluar }> => {
     const res = await api.post(`/correspondence/surat-keluar/${id}/sign`, data);
     return res.data;
+  },
+
+  // Template Surat
+  getTemplates: async (params?: any): Promise<{ success: boolean; data: { list: TemplateSurat[]; pagination: any } }> => {
+    const res = await api.get('/correspondence/template-surat', { params });
+    return res.data;
+  },
+  getTemplateById: async (id: string): Promise<{ success: boolean; data: TemplateSurat }> => {
+    const res = await api.get(`/correspondence/template-surat/${id}`);
+    return res.data;
+  },
+  createTemplate: async (data: any): Promise<{ success: boolean; data: TemplateSurat }> => {
+    const res = await api.post('/correspondence/template-surat', data);
+    return res.data;
+  },
+  updateTemplate: async (id: string, data: any): Promise<{ success: boolean; data: TemplateSurat }> => {
+    const res = await api.put(`/correspondence/template-surat/${id}`, data);
+    return res.data;
+  },
+  deleteTemplate: async (id: string): Promise<{ success: boolean }> => {
+    const res = await api.delete(`/correspondence/template-surat/${id}`);
+    return res.data;
+  },
+  getSystemVariables: async (): Promise<{ success: boolean; data: { key: string; label: string; example: string }[] }> => {
+    const res = await api.get('/correspondence/template-surat/system-variables');
+    return res.data;
+  },
+  renderTemplate: async (data: { template_id?: string; content?: string; student_id?: string; custom_vars?: Record<string, any> }): Promise<{ success: boolean; data: { html: string; variables_used: string[] } }> => {
+    const res = await api.post('/correspondence/template-surat/render', data);
+    return res.data;
   }
 };
+
+export interface TemplateSurat {
+  id: string;
+  nama_template: string;
+  kategori: string;
+  isi_template: string;
+  variabel_list?: string | null;
+  is_active: boolean;
+  created_by_id?: string | null;
+  CreatedBy?: { id: string; full_name: string } | null;
+  created_at: string;
+  updated_at: string;
+}

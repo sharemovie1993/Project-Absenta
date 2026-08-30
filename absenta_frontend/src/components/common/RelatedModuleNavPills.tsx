@@ -251,6 +251,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
     items: [
       { label: 'Surat Masuk', shortLabel: 'Masuk', path: '/correspondence/surat-masuk', icon: Mail },
       { label: 'Surat Keluar', shortLabel: 'Keluar', path: '/correspondence/surat-keluar', icon: Send },
+      { label: 'Buku Agenda & Template', shortLabel: 'Agenda & Template', path: '/correspondence/templates', icon: Archive },
     ]
   },
   // 12A. Grup Koperasi - Layanan Anggota Pribadi

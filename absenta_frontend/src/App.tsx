@@ -201,6 +201,7 @@ const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringK
 
 const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
 const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPage'));
+const BukuAgendaTemplatePage = lazy(() => import('./pages/correspondence/BukuAgendaTemplatePage'));
 const PiketPage = lazy(() => import('./pages/kesiswaan/PiketPage'));
 const PiketSecurityStandalonePage = lazy(() => import('./pages/kesiswaan/PiketSecurityStandalonePage'));
 const PrestasiPage = lazy(() => import('./pages/kesiswaan/PrestasiPage'));
@@ -654,6 +655,16 @@ function App() {
                     <Route path="/correspondence/surat-keluar" element={
                       <ProtectedRoute requiredCapability="correspondence.outbox.view">
                         <SuratKeluarPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/correspondence/templates" element={
+                      <ProtectedRoute requiredCapability="correspondence.inbox.view">
+                        <BukuAgendaTemplatePage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/correspondence/buku-agenda" element={
+                      <ProtectedRoute requiredCapability="correspondence.inbox.view">
+                        <BukuAgendaTemplatePage />
                       </ProtectedRoute>
                     } />
 
