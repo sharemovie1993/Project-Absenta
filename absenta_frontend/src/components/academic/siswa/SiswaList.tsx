@@ -850,21 +850,11 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               size="sm"
               variant="ghost"
               onClick={() => onView?.(siswa)}
-              aria-label="Lihat Detail Siswa"
-              className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              aria-label="Lihat & Kelola Siswa"
+              title="Lihat & Kelola Profil Siswa"
+              className="h-8 w-8 p-0 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
             >
               <Eye className="w-4 h-4" />
-            </Button>
-          )}
-          {canManage && (
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onEdit?.(siswa)}
-              aria-label="Edit Data Siswa"
-              className="h-8 w-8 p-0 text-slate-600 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-            >
-              <Edit className="w-4 h-4" />
             </Button>
           )}
           {canSendAccess && (

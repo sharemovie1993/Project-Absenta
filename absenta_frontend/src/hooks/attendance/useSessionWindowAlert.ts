@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { notifySessionPhase, stopFindDeviceAlarm, type NotificationAlertPhase } from '@/utils/audioUtils';
-import { useTenantSettings } from '@/hooks/useTenantSettings';
+import { notifySessionPhase, stopFindDeviceAlarm, type NotificationAlertPhase } from '../../utils/audioUtils';
+import { useTenantSettings } from '../useTenantSettings';
 
 export interface ScheduleAlertItem {
   id: string;

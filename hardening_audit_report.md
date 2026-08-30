@@ -8,9 +8,9 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **205 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **203 Halaman** | 99% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **2 Halaman** | 1% | **Butuh Sentuhan Ringan** |
+| **Total Halaman Utama** | **206 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **199 Halaman** | 97% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **7 Halaman** | 3% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **0 Halaman** | 0% | **Prioritas Utama Refaktor** |
 
 ---
@@ -19,11 +19,53 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halaman utama:
 
+### 📄 Halaman: `AttendanceSettingsPage.tsx`
+* **Lokasi File:** [AttendanceSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceSettingsPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
+
+---
+
+### 📄 Halaman: `RekapBulananKelasPage.tsx`
+* **Lokasi File:** [RekapBulananKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananKelasPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+
+---
+
+### 📄 Halaman: `RekapBulananMapelPage.tsx`
+* **Lokasi File:** [RekapBulananMapelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananMapelPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Halaman menggunakan Layout tetapi konten tidak dibungkus dalam kontainer SectionCard atau Card (Pelanggaran Konsistensi Visual Kontainer). Petunjuk Perbaikan: (1) Bungkus konten utama dengan <SectionCard> atau <Card>. (2) WAJIB gunakan prop fullWidth pada SectionCard untuk layout konten vertikal (tanpanya inner wrapper otomatis menjadi grid 2-kolom yang menyebabkan card terpotong ke kanan). (3) Tambahkan min-w-0 di className jika SectionCard berada di dalam flex atau grid parent agar card dapat menyusut dengan benar. Contoh: <SectionCard fullWidth className="flex flex-col w-full min-w-0">.
+
+---
+
+### 📄 Halaman: `RekapHarianKelasPage.tsx`
+* **Lokasi File:** [RekapHarianKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapHarianKelasPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+
+---
+
 ### 📄 Halaman: `RiwayatAjarPage.tsx`
 * **Lokasi File:** [RiwayatAjarPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/RiwayatAjarPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+
+---
+
+### 📄 Halaman: `CommunicationCenterPage.tsx`
+* **Lokasi File:** [CommunicationCenterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/communication/CommunicationCenterPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
 
 ---
@@ -164,13 +206,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `AttendanceSettingsPage.tsx`
-* **Lokasi File:** [AttendanceSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/AttendanceSettingsPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `CetakBerkasAbsensiPage.tsx`
 * **Lokasi File:** [CetakBerkasAbsensiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/CetakBerkasAbsensiPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -290,29 +325,8 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `RekapBulananKelasPage.tsx`
-* **Lokasi File:** [RekapBulananKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananKelasPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `RekapBulananMapelPage.tsx`
-* **Lokasi File:** [RekapBulananMapelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananMapelPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `RekapBulananSiswaPage.tsx`
 * **Lokasi File:** [RekapBulananSiswaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapBulananSiswaPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `RekapHarianKelasPage.tsx`
-* **Lokasi File:** [RekapHarianKelasPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/attendance/rekap/RekapHarianKelasPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -544,13 +558,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `SiswaKasusPage.tsx`
 * **Lokasi File:** [SiswaKasusPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/bpbk/SiswaKasusPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `CommunicationCenterPage.tsx`
-* **Lokasi File:** [CommunicationCenterPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/communication/CommunicationCenterPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
@@ -1412,6 +1419,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TopikPresetsPage.tsx`
 * **Lokasi File:** [TopikPresetsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/superadmin/TopikPresetsPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `SupportHelpdeskPage.tsx`
+* **Lokasi File:** [SupportHelpdeskPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/support/SupportHelpdeskPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

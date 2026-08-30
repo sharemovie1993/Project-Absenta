@@ -33,7 +33,7 @@ export default async function tahunPelajaranRoutes(fastify: any) {
     '/:id',
     {
       preHandler: [
-        requireCapability('academic.years.view.detail'),
+        requireCapability(['academic.years.view.detail', 'academic.years.view.list']),
         determineDataScope()
       ]
     },

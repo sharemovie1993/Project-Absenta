@@ -197,7 +197,7 @@ export function SearchableSelect({
     >
       <div
         className={cn(
-          'flex h-9 w-full items-center rounded-md border border-gray-300 bg-white text-sm ring-offset-white focus-within:ring-2 focus-within:ring-slate-400 focus-within:border-slate-400 focus-within:ring-offset-2 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:ring-offset-gray-950 dark:focus-within:ring-blue-600 dark:focus-within:border-blue-600 relative transition-all duration-200',
+          'flex h-10 w-full items-center rounded-xl border border-slate-200 bg-slate-50 text-xs sm:text-[13px] font-semibold ring-offset-white focus-within:ring-1 focus-within:ring-emerald-500/20 focus-within:border-emerald-500 focus-within:bg-white dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-100 dark:ring-offset-gray-950 dark:focus-within:ring-emerald-500/20 dark:focus-within:border-emerald-500 dark:focus-within:bg-slate-900 relative transition-all duration-200',
           disabled && 'cursor-not-allowed opacity-50',
           triggerClassName
         )}
@@ -209,7 +209,7 @@ export function SearchableSelect({
         }}
       >
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+          <Search className="h-4 w-4 text-slate-400 dark:text-slate-500" />
         </div>
         <input
           id={id}
@@ -224,7 +224,7 @@ export function SearchableSelect({
           placeholder={placeholder}
           aria-label={placeholder || searchPlaceholder || "Pilih opsi"}
           disabled={disabled}
-          className="flex-1 h-full bg-transparent outline-none placeholder:text-slate-500 dark:placeholder:text-slate-500 text-slate-900 dark:text-slate-100 min-w-0 text-sm pl-10 pr-10 truncate"
+          className="flex-1 h-full bg-transparent outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-800 dark:text-slate-100 min-w-0 text-xs sm:text-[13px] font-semibold pl-10 pr-10 truncate"
           style={{ color: (selectedOption as any)?.warna || undefined, fontWeight: (selectedOption as any)?.warna ? 'bold' : 'normal' }}
           autoComplete="off"
         />
@@ -234,12 +234,12 @@ export function SearchableSelect({
                 role="button"
                 onClick={handleClear}
                 aria-label="Bersihkan pilihan"
-                className="rounded-full p-0.5 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer pointer-events-auto"
+                className="rounded-full p-0.5 hover:bg-slate-200 dark:hover:bg-slate-800 cursor-pointer pointer-events-auto text-slate-400 hover:text-slate-600"
             >
-                <X className="h-3 w-3 text-slate-600 dark:text-slate-400" />
+                <X className="h-3 w-3" />
             </div>
           )}
-          <ChevronDown className={cn("h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform pointer-events-none", isOpen && "transform rotate-180")} />
+          <ChevronDown className={cn("h-4 w-4 text-slate-400 dark:text-slate-500 transition-transform pointer-events-none", isOpen && "transform rotate-180")} />
         </div>
       </div>
 
@@ -247,7 +247,7 @@ export function SearchableSelect({
         <div
           ref={dropdownRef}
           style={dropdownStyle}
-          className="rounded-md border border-gray-200 bg-white text-gray-900 shadow-2xl outline-none animate-in fade-in-0 zoom-in-95 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 max-h-[300px] overflow-y-auto"
+          className="rounded-2xl border border-slate-200/80 bg-white text-slate-900 shadow-2xl outline-none animate-in fade-in-0 zoom-in-95 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 max-h-[300px] overflow-y-auto p-1.5"
         >
           {isLoading && (
              <div className="p-2 flex items-center justify-center text-sm text-gray-500">

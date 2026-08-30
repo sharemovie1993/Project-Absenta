@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, SectionCard } from '../../ui';
+import { Button, SectionCard, Input, Label } from '../../ui';
 import { Percent, AlertCircle, Save } from 'lucide-react';
 import type { ShuConfig } from '../../../pages/cooperative/SHU';
 
@@ -39,40 +39,40 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
             <div className="grid grid-cols-2 gap-4">
               {/* Jasa Modal */}
               <div className="space-y-1">
-                <label htmlFor="config-jasa-modal" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-jasa-modal">
                   Porsi Jasa Modal (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-jasa-modal"
                   type="number"
                   value={config.porsiJasaModal}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiJasaModal: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Porsi Jasa Modal (%)"
+                  className="font-bold"
                 />
                 <span className="text-[9px] text-slate-400">Dibagi proposional berdasar simpanan modal anggota</span>
               </div>
 
               {/* Jasa Transaksi */}
               <div className="space-y-1">
-                <label htmlFor="config-jasa-transaksi" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-jasa-transaksi">
                   Porsi Jasa Transaksi (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-jasa-transaksi"
                   type="number"
                   value={config.porsiJasaTransaksi}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiJasaTransaksi: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Porsi Jasa Transaksi (%)"
+                  className="font-bold"
                 />
                 <span className="text-[9px] text-slate-400">Dibagi proposional berdasar belanja di POS koperasi</span>
               </div>
@@ -81,39 +81,39 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
             <div className="grid grid-cols-2 gap-4">
               {/* Dana Cadangan */}
               <div className="space-y-1">
-                <label htmlFor="config-cadangan" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-cadangan">
                   Dana Cadangan Koperasi (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-cadangan"
                   type="number"
                   value={config.porsiCadangan}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiCadangan: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={105}
                   required
                   disabled={!canManageShu}
                   aria-label="Dana Cadangan Koperasi (%)"
+                  className="font-bold"
                 />
               </div>
 
               {/* Dana Pengurus */}
               <div className="space-y-1">
-                <label htmlFor="config-pengurus" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-pengurus">
                   Dana Pengurus / Pengawas (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-pengurus"
                   type="number"
                   value={config.porsiPengurus}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiPengurus: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Dana Pengurus / Pengawas (%)"
+                  className="font-bold"
                 />
               </div>
             </div>
@@ -121,39 +121,39 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
             <div className="grid grid-cols-2 gap-4">
               {/* Dana Sosial */}
               <div className="space-y-1">
-                <label htmlFor="config-sosial" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-sosial">
                   Dana Sosial (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-sosial"
                   type="number"
                   value={config.porsiSosial}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiSosial: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Dana Sosial (%)"
+                  className="font-bold"
                 />
               </div>
 
               {/* Dana Pembangunan */}
               <div className="space-y-1">
-                <label htmlFor="config-pembangunan" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                <Label htmlFor="config-pembangunan">
                   Dana Pembangunan Daerah/Kerja (%)
-                </label>
-                <input
+                </Label>
+                <Input
                   id="config-pembangunan"
                   type="number"
                   value={config.porsiPembangunan}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiPembangunan: e.target.value }))}
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-bold"
                   min={0}
                   max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Dana Pembangunan Daerah/Kerja (%)"
+                  className="font-bold"
                 />
               </div>
             </div>

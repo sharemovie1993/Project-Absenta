@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { z } from 'zod';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Button, Modal, SectionCard } from '../../components/ui';
+import { Button, Modal, SectionCard, Loader } from '../../components/ui';
 import SiswaList from '../../components/academic/siswa/SiswaList';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -23,8 +23,8 @@ import toast from 'react-hot-toast';
 
 // Lazy load heavy components
 const SiswaForm = lazy(() => import('../../components/academic/siswa/SiswaForm').then(module => ({ default: module.SiswaForm })));
+const SiswaDetailView = lazy(() => import('../../components/academic/siswa/SiswaDetailView').then(module => ({ default: module.SiswaDetailView })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
-const Loader = lazy(() => import('../../components/ui/Loader').then(module => ({ default: module.Loader })));
 const SiswaHistory = lazy(() => import('../../components/academic/siswa/SiswaHistory').then(module => ({ default: module.SiswaHistory })));
 
 
@@ -60,6 +60,7 @@ const SiswaPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [selectedSiswaIdForDetail, setSelectedSiswaIdForDetail] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [importOpen, setImportOpen] = useState(false);
   const [importConfig, setImportConfig] = useState<ImportConfig>({ yearId: '', semesterId: '', useDefault: true, scenario: 'REGULAR' });
@@ -160,10 +161,18 @@ const SiswaPage: React.FC = () => {
   }, [stats, activeSiswaCount, registeredCount, navigate, calonSiswaCount]);
 
   const handleCreateSiswa = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
-  const handleEditSiswa = useCallback((s: Siswa) => setModalState({ mode: 'edit', siswaId: s.id, isOpen: true }), []);
-  const handleViewSiswa = useCallback((s: Siswa) => setModalState({ mode: 'view', siswaId: s.id, isOpen: true }), []);
+  const handleEditSiswa = useCallback((s: Siswa | string) => {
+    const id = typeof s === 'string' ? s : s.id;
+    setSelectedSiswaIdForDetail(id);
+  }, []);
+  const handleViewSiswa = useCallback((s: Siswa) => setSelectedSiswaIdForDetail(s.id), []);
   const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
   const handleFormSuccess = useCallback(() => { handleCloseModal(); setRefreshTrigger(prev => prev + 1); }, [handleCloseModal]);
+  const handleRefresh = useCallback(() => setRefreshTrigger(prev => prev + 1), []);
+  const handleHistory = useCallback((s: Siswa) => {
+    setHistorySiswaId(s.id);
+    setHistoryOpen(true);
+  }, []);
 
   const handleTemplateDownload = useCallback(async (selectedScenario?: string) => {
     try {
@@ -594,7 +603,7 @@ const SiswaPage: React.FC = () => {
       newParams.delete('edit');
       setSearchParams(newParams, { replace: true });
     } else if (viewId) {
-      setModalState({ mode: 'view', siswaId: viewId, isOpen: true });
+      setSelectedSiswaIdForDetail(viewId);
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('id');
       setSearchParams(newParams, { replace: true });
@@ -639,27 +648,35 @@ const SiswaPage: React.FC = () => {
       permissionMessage="Anda tidak memiliki izin untuk mengakses data siswa."
       hardeningModuleKey="academic_siswa"
     >
-      <div className="space-y-6">
-        <SectionCard 
-          fullWidth 
-          noPadding
-        >
-          <SiswaList
-            onEdit={canEdit ? handleEditSiswa : undefined}
-            onView={handleViewSiswa}
-            onAdd={canCreate ? handleCreateSiswa : undefined}
-            onImport={canCreate ? handleOpenImport : undefined}
-            onExport={handleExport}
-            isExporting={isExporting}
-            refreshTrigger={refreshTrigger}
-            onRefresh={useCallback(() => setRefreshTrigger(prev => prev + 1), [])}
-            onHistory={useCallback((siswa) => {
-              setHistorySiswaId(siswa.id);
-              setHistoryOpen(true);
-            }, [])}
+      {selectedSiswaIdForDetail ? (
+        <Suspense fallback={<div className="p-16 flex justify-center"><Loader size="lg" /></div>}>
+          <SiswaDetailView
+            siswaId={selectedSiswaIdForDetail}
+            onBack={() => setSelectedSiswaIdForDetail(null)}
+            onEdit={canEdit ? (id) => handleEditSiswa(id) : undefined}
+            canEdit={canEdit}
           />
-        </SectionCard>
-      </div>
+        </Suspense>
+      ) : (
+        <div className="space-y-6">
+          <SectionCard 
+            fullWidth 
+            noPadding
+          >
+            <SiswaList
+              onEdit={canEdit ? handleEditSiswa : undefined}
+              onView={handleViewSiswa}
+              onAdd={canCreate ? handleCreateSiswa : undefined}
+              onImport={canCreate ? handleOpenImport : undefined}
+              onExport={handleExport}
+              isExporting={isExporting}
+              refreshTrigger={refreshTrigger}
+              onRefresh={handleRefresh}
+              onHistory={handleHistory}
+            />
+          </SectionCard>
+        </div>
+      )}
 
       <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
         <ExcelImportModal
@@ -721,7 +738,7 @@ const SiswaPage: React.FC = () => {
       </Suspense>
 
       {/* Main Form Modal */}
-      <Modal isOpen={modalState.isOpen} onClose={handleCloseModal} title={modalState.mode === 'create' ? 'Tambah Siswa' : 'Data Siswa'} size="4xl">
+      <Modal isOpen={modalState.isOpen} onClose={handleCloseModal} title="Tambah Siswa Baru" size="4xl">
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
           {modalState.mode && (
             <SiswaForm siswaId={modalState.siswaId} mode={modalState.mode} onSuccess={handleFormSuccess} onCancel={handleCloseModal} />

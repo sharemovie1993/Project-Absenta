@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   User, Camera, Check, Edit3, Key, MapPin, Heart, Users, QrCode, Eye, EyeOff
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button, Input, Label } from '@/components/ui';
 import { SelfMemberDocsSection } from '@/components/documents/SelfMemberDocsSection';
 import { formatAlamatLengkap } from '@/lib/alamat.util';
 import type { SectionEditType } from '../SiswaOnboardingModal';
@@ -155,25 +155,27 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  <Label htmlFor="noHpSiswa">
                     Nomor Telepon WhatsApp Siswa
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="noHpSiswa"
                     type="text"
                     readOnly
                     value={siswaProfile?.no_hp || user?.phone || '-'}
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 font-mono text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="font-mono text-xs font-bold"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  <Label htmlFor="emailSiswa">
                     Email Pembelajaran
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="emailSiswa"
                     type="email"
                     readOnly
                     value={user?.email || siswaProfile?.email || '-'}
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-950/70 font-mono text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="font-mono text-xs font-bold"
                   />
                 </div>
               </div>
@@ -186,16 +188,17 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                   <div>
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    <Label htmlFor="oldPassword">
                       Password Lama
-                    </label>
+                    </Label>
                     <div className="relative">
-                      <input
+                      <Input
+                        id="oldPassword"
                         type={showOldPassword ? "text" : "password"}
                         value={oldPassword}
                         onChange={(e) => setOldPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full h-10 px-3.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="pr-10 font-medium"
                       />
                       <button
                         type="button"
@@ -208,16 +211,17 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    <Label htmlFor="newPassword">
                       Password Baru
-                    </label>
+                    </Label>
                     <div className="relative">
-                      <input
+                      <Input
+                        id="newPassword"
                         type={showNewPassword ? "text" : "password"}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full h-10 px-3.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="pr-10 font-medium"
                       />
                       <button
                         type="button"
@@ -230,16 +234,17 @@ export const SiswaProfileTab: React.FC<SiswaProfileTabProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    <Label htmlFor="confirmPassword">
                       Konfirmasi Password Baru
-                    </label>
+                    </Label>
                     <div className="relative">
-                      <input
+                      <Input
+                        id="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="••••••••"
-                        className="w-full h-10 px-3.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        className="pr-10 font-medium"
                       />
                       <button
                         type="button"

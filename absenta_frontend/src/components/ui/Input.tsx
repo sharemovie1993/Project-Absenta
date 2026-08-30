@@ -8,17 +8,17 @@ function cn(...inputs: ClassValue[]) {
 }
 
 const inputVariants = cva(
-  'w-full bg-white dark:bg-white/5 text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all duration-200 border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600',
+  'w-full bg-slate-50 dark:bg-slate-950/70 text-slate-800 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 outline-none transition-all duration-200 border border-slate-200 dark:border-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/20',
   {
     variants: {
       size: {
-        sm: 'h-8 text-xs px-2 rounded-lg',
-        md: 'h-10 text-sm px-3 rounded-xl border',
-        lg: 'h-12 text-base px-4 rounded-xl border',
+        sm: 'h-8 text-xs px-2.5 rounded-lg font-medium',
+        md: 'h-10 text-xs sm:text-[13px] px-3.5 rounded-xl font-semibold',
+        lg: 'h-12 text-sm px-4 rounded-xl font-semibold',
         auth: 'h-14 text-base px-5 rounded-xl border-2 font-medium',
       },
       error: {
-        true: 'border-red-500 focus:border-red-500 focus:ring-red-100',
+        true: 'border-red-500 focus:border-red-500 focus:ring-red-100 dark:focus:ring-red-950/30',
         false: '',
       }
     },
@@ -53,7 +53,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={props.id} className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+        <label htmlFor={props.id} className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 ml-0.5">
           {label}
         </label>
       )}

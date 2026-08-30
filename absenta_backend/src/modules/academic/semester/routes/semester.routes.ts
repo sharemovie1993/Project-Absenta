@@ -36,7 +36,7 @@ export default async function semesterRoutes(fastify: any) {
   fastify.get(
     '/:id',
     {
-      preHandler: [requireCapability('academic.semesters.view.detail'), determineDataScope()]
+      preHandler: [requireCapability(['academic.semesters.view.detail', 'academic.semesters.view.list']), determineDataScope()]
     },
     async (request: any, reply: any) => {
       return semesterController.getSemesterById(request, reply);

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Building, Phone, Mail, Globe, MapPin, FileText, Percent, Save, Upload, Loader2 } from 'lucide-react';
-import { Button, SectionCard } from '../../ui';
+import { Button, SectionCard, Input, Label, Textarea } from '../../ui';
 import type { CooperativeSettings } from './types';
 import axiosInstance from '@/lib/axiosInstance';
 
@@ -120,15 +120,15 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="cooperative_name" className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+        <div className="space-y-1.5">
+          <Label htmlFor="cooperative_name">
             Nama Koperasi <span className="text-red-500">*</span>
-          </label>
+          </Label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
               <Building size={16} />
             </span>
-            <input
+            <Input
               type="text"
               id="cooperative_name"
               name="cooperative_name"
@@ -137,20 +137,20 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               required
               disabled={!canEditProfile}
               placeholder="Contoh: KOPERASI KARYAWAN SEJAHTERA SMKN 1"
-              className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+              className="pl-10"
             />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="cooperative_legal_no" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <div className="space-y-1.5">
+          <Label htmlFor="cooperative_legal_no">
             Nomor Badan Hukum
-          </label>
+          </Label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
               <FileText size={16} />
             </span>
-            <input
+            <Input
               type="text"
               id="cooperative_legal_no"
               name="cooperative_legal_no"
@@ -158,20 +158,20 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               onChange={onInputChange}
               disabled={!canEditProfile}
               placeholder="Contoh: Nomor 123/BH/PAD/XX/2026"
-              className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+              className="pl-10"
             />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="cooperative_default_interest_rate" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <div className="space-y-1.5">
+          <Label htmlFor="cooperative_default_interest_rate">
             Suku Bunga Pinjaman Default (% / Bulan)
-          </label>
+          </Label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
               <Percent size={16} />
             </span>
-            <input
+            <Input
               type="number"
               step="0.1"
               id="cooperative_default_interest_rate"
@@ -180,21 +180,21 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               onChange={onInputChange}
               disabled={!canEditProfile}
               placeholder="Contoh: 1.5"
-              className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+              className="pl-10"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label htmlFor="cooperative_phone" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_phone">
               Nomor Telepon
-            </label>
+            </Label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
                 <Phone size={16} />
               </span>
-              <input
+              <Input
                 type="text"
                 id="cooperative_phone"
                 name="cooperative_phone"
@@ -202,20 +202,20 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
                 onChange={onInputChange}
                 disabled={!canEditProfile}
                 placeholder="Contoh: 021-xxxxxxx"
-                className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+                className="pl-10"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label htmlFor="cooperative_email" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_email">
               Email Koperasi
-            </label>
+            </Label>
             <div className="relative">
-              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
                 <Mail size={16} />
               </span>
-              <input
+              <Input
                 type="email"
                 id="cooperative_email"
                 name="cooperative_email"
@@ -223,21 +223,21 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
                 onChange={onInputChange}
                 disabled={!canEditProfile}
                 placeholder="Contoh: cooperative@school.sch.id"
-                className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+                className="pl-10"
               />
             </div>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="cooperative_website" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <div className="space-y-1.5">
+          <Label htmlFor="cooperative_website">
             Website Resmi
-          </label>
+          </Label>
           <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
               <Globe size={16} />
             </span>
-            <input
+            <Input
               type="text"
               id="cooperative_website"
               name="cooperative_website"
@@ -245,20 +245,20 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               onChange={onInputChange}
               disabled={!canEditProfile}
               placeholder="Contoh: www.cooperative.school.sch.id"
-              className="w-full h-10 pl-10 pr-4 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner"
+              className="pl-10"
             />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="cooperative_address" className="text-xs font-bold text-slate-500 dark:text-slate-400">
+        <div className="space-y-1.5">
+          <Label htmlFor="cooperative_address">
             Alamat Lengkap Koperasi
-          </label>
+          </Label>
           <div className="relative">
-            <span className="absolute top-3 left-3 flex items-center text-slate-400 pointer-events-none">
+            <span className="absolute top-3.5 left-3.5 flex items-center text-slate-400 pointer-events-none z-10">
               <MapPin size={16} />
             </span>
-            <textarea
+            <Textarea
               id="cooperative_address"
               name="cooperative_address"
               value={formData.cooperative_address || ''}
@@ -266,7 +266,7 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
               rows={3}
               disabled={!canEditProfile}
               placeholder="Jalan, RT/RW, Kecamatan, Kota/Kabupaten, Kode Pos"
-              className="w-full pl-10 pr-4 py-2 text-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-slate-800 dark:text-slate-200 shadow-inner resize-none"
+              className="pl-10 resize-none"
             />
           </div>
         </div>

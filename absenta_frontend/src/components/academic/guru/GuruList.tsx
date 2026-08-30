@@ -502,33 +502,23 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             size="sm"
             variant="ghost"
             onClick={() => onView?.(guru)}
-            aria-label="Lihat Detail Guru"
-            className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+            aria-label="Lihat & Kelola Guru"
+            title="Lihat & Kelola Profil Guru"
+            className="h-8 w-8 p-0 text-slate-600 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
           >
             <Eye className="w-4 h-4" aria-hidden="true" />
           </Button>
           {canManage && (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-slate-600 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                onClick={() => onEdit?.(guru)}
-                aria-label="Edit Data Guru"
-              >
-                <Edit className="w-4 h-4" aria-hidden="true" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 w-8 p-0 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                onClick={() => handleDelete(guru)}
-                aria-label="Hapus Data Guru"
-                disabled={deleting}
-              >
-                <Trash2 className="w-4 h-4" aria-hidden="true" />
-              </Button>
-            </>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0 text-slate-600 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+              onClick={() => handleDelete(guru)}
+              aria-label="Hapus Data Guru"
+              disabled={deleting}
+            >
+              <Trash2 className="w-4 h-4" aria-hidden="true" />
+            </Button>
           )}
         </div>
       )

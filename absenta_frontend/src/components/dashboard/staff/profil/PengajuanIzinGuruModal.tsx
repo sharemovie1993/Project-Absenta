@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { guruIzinApi, type ImpactPreviewResponse } from '../../../../api/guruIzin.api';
 import { useAuthStore } from '../../../../store/authStore';
 import { useGuruMe } from '../../../../hooks/useGuruMe';
+import { Input, Label, Textarea } from '@/components/ui';
 
 interface PengajuanIzinGuruModalProps {
   isOpen: boolean;
@@ -236,63 +237,65 @@ export const PengajuanIzinGuruModal: React.FC<PengajuanIzinGuruModalProps> = ({
           {/* Tanggal & Waktu */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              <Label htmlFor="tglMulaiIzin">
                 {tipeDurasi === 'SEHARIAN' || tipeDurasi === 'SEBAGIAN_SESI' ? 'Tanggal Izin' : 'Dari Tanggal'}
-              </label>
-              <input
+              </Label>
+              <Input
+                id="tglMulaiIzin"
                 type="date"
                 required
                 value={tglMulai}
                 onChange={e => setTglMulai(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium"
               />
             </div>
             
             {tipeDurasi === 'MULTI_HARI' ? (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <Label htmlFor="tglSelesaiIzin">
                   Sampai Tanggal
-                </label>
-                <input
+                </Label>
+                <Input
+                  id="tglSelesaiIzin"
                   type="date"
                   required
                   value={tglSelesai}
                   min={tglMulai}
                   onChange={e => setTglSelesai(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium"
                 />
               </div>
             ) : tipeDurasi === 'SEBAGIAN_SESI' ? (
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <Label htmlFor="jamMulaiIzin">
                     Jam Mulai
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="jamMulaiIzin"
                     type="time"
                     value={jamMulai}
                     onChange={e => setJamMulai(e.target.value)}
-                    className="w-full h-10 px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono text-center"
+                    className="font-mono text-center"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                  <Label htmlFor="jamSelesaiIzin">
                     Jam Selesai
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="jamSelesaiIzin"
                     type="time"
                     value={jamSelesai}
                     onChange={e => setJamSelesai(e.target.value)}
-                    className="w-full h-10 px-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono text-center"
+                    className="font-mono text-center"
                   />
                 </div>
               </div>
             ) : (
               <div className="space-y-1.5 opacity-60">
-                <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <Label>
                   Durasi
-                </label>
-                <div className="h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/60 flex items-center font-medium text-slate-600 dark:text-slate-400">
+                </Label>
+                <div className="h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 flex items-center text-xs font-semibold text-slate-600 dark:text-slate-400">
                   1 Hari Kerja Penuh
                 </div>
               </div>
@@ -461,27 +464,26 @@ export const PengajuanIzinGuruModal: React.FC<PengajuanIzinGuruModalProps> = ({
                 ))}
               </div>
             ) : (
-              <textarea
+              <Textarea
                 rows={2}
                 value={tugasInval}
                 onChange={e => setTugasInval(e.target.value)}
                 placeholder="Tuliskan petunjuk tugas mandiri (misal: 'Buka Bab 4 latihan 1-10') agar dapat disampaikan Guru Piket / Petugas Kelas..."
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             )}
           </div>
 
           {/* Link Lampiran Surat */}
           <div className="space-y-1.5">
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+            <Label htmlFor="attachmentUrl">
               Tautan / URL Lampiran Surat Tugas / Dokter (Opsional)
-            </label>
-            <input
+            </Label>
+            <Input
+              id="attachmentUrl"
               type="url"
               value={attachmentUrl}
               onChange={e => setAttachmentUrl(e.target.value)}
               placeholder="https://... (Foto Surat Tugas/Dokter atau Google Drive)"
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-medium"
             />
           </div>
 

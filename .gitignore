@@ -56,5 +56,6 @@ bin/
 
 # WireGuard Tunnels (Dynamic configurations per server)
 tunnels/*.conf
+*.dump
 
 

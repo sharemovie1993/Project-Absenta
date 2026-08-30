@@ -9,7 +9,7 @@ import {
   updateProgramKeahlian,
   deleteProgramKeahlian,
 } from '../../../api/academic/program-keahlian.api';
-import { Button } from '../../ui';
+import { Button, Input, Label } from '../../ui';
 import { SPEKTRUM_SMK_2024 } from '../../../utils/nomenklaturSMK';
 
 // Lazy load Table
@@ -421,7 +421,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
                 <select
                   value={form.nama}
                   onChange={e => handleProgramSelectChange(e.target.value)}
-                  className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 focus:outline-none focus:border-emerald-500"
                 >
                   {availablePrograms.map(p => (
                     <option key={p.nama} value={p.nama}>{p.nama}</option>
@@ -430,12 +430,11 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
                 </select>
               ) : (
                 <div className="relative">
-                  <input
+                  <Input
                     type="text"
                     value={form.nama}
                     onChange={e => setForm(f => ({ ...f, nama: e.target.value }))}
                     placeholder="Contoh: Teknik Kustom Daerah"
-                    className="w-full h-10 px-3 text-[12px] font-semibold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-400"
                   />
                   {form.bidang_keahlian && (
                     <button
@@ -452,31 +451,31 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
 
             {/* Kode */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+              <Label htmlFor="kodeProgram">
                 Kode Program
-              </label>
-              <input
+              </Label>
+              <Input
+                id="kodeProgram"
                 type="text"
                 value={form.kode}
                 onChange={e => setForm(f => ({ ...f, kode: e.target.value.toUpperCase() }))}
                 placeholder="Contoh: TE, TO, TKJ"
                 maxLength={10}
-                className="w-full h-10 px-3 text-[12px] font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
 
             {/* Singkatan */}
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+              <Label htmlFor="singkatanProgram">
                 Singkatan (opsional)
-              </label>
-              <input
+              </Label>
+              <Input
+                id="singkatanProgram"
                 type="text"
                 value={form.singkatan}
                 onChange={e => setForm(f => ({ ...f, singkatan: e.target.value.toUpperCase() }))}
                 placeholder="Opsional..."
                 maxLength={10}
-                className="w-full h-10 px-3 text-[12px] font-bold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-400"
               />
             </div>
           </div>

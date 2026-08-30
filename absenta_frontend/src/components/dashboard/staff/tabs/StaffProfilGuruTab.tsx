@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Edit3, Key, User, Users, MapPin, Award, QrCode, Save, Loader2, Camera, Upload, X, RotateCcw, AlertCircle, Briefcase, Shield, BookOpen } from 'lucide-react';
-import { Button, Modal, SearchableSelect } from '../../../ui';
+import { Button, Modal, SearchableSelect, Input, Label, Textarea } from '../../../ui';
 import { toast } from 'react-hot-toast';
 import { useGuruMe, useUpdateGuruMe } from '../../../../hooks/useGuruMe';
 import { useProvinsiOptions, useKabupatenOptions, useKecamatanOptions, useKelurahanOptions } from '../../../../hooks/useWilayahOptions';
@@ -597,27 +597,27 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             <form onSubmit={handleAccountSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="noHpGuru">
                     Nomor Telepon WhatsApp Guru
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="noHpGuru"
                     type="text"
                     value={noHp}
                     onChange={(e) => setNoHp(e.target.value)}
                     placeholder="628123456789"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="emailGuru">
                     Email Pembelajaran
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="emailGuru"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="guru@absenta.sch.id"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -629,27 +629,27 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="oldPassword">
                       Password Lama
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="oldPassword"
                       type="password"
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
                       placeholder="********"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-medium focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="newPassword">
                       Password Baru
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="newPassword"
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="********"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-medium focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
@@ -902,77 +902,78 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editNik">
                       NIK (KTP 16 Digit)
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editNik"
                       type="text"
                       value={editNik}
                       onChange={(e) => setEditNik(e.target.value)}
                       placeholder="3204xxxxxxxxxxxx"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editNoKk">
                       No. Kartu Keluarga (KK)
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editNoKk"
                       type="text"
                       value={editNoKk}
                       onChange={(e) => setEditNoKk(e.target.value)}
                       placeholder="16-digit No. KK"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="editNamaIbuKandung">
                     Nama Ibu Kandung (Sesuai Dapodik)
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="editNamaIbuKandung"
                     type="text"
                     value={editNamaIbuKandung}
                     onChange={(e) => setEditNamaIbuKandung(e.target.value)}
                     placeholder="Nama Ibu Kandung"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editTempatLahir">
                       Tempat Lahir
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editTempatLahir"
                       type="text"
                       value={editTempatLahir}
                       onChange={(e) => setEditTempatLahir(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editTanggalLahir">
                       Tanggal Lahir
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editTanggalLahir"
                       type="date"
                       value={editTanggalLahir}
                       onChange={(e) => setEditTanggalLahir(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editJenisKelamin">
                       Jenis Kelamin
-                    </label>
+                    </Label>
                     <select
+                      id="editJenisKelamin"
                       value={editJenisKelamin}
                       onChange={(e) => setEditJenisKelamin(e.target.value)}
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
@@ -983,10 +984,11 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editAgama">
                       Agama
-                    </label>
+                    </Label>
                     <select
+                      id="editAgama"
                       value={editAgama}
                       onChange={(e) => setEditAgama(e.target.value)}
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
@@ -1002,15 +1004,15 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="editPendidikanTerakhir">
                     Pendidikan Terakhir
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="editPendidikanTerakhir"
                     type="text"
                     value={editPendidikanTerakhir}
                     onChange={(e) => setEditPendidikanTerakhir(e.target.value)}
                     placeholder="S1 Pendidikan Komputer"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </>
@@ -1019,52 +1021,53 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
             {activeEditSection === 'kepegawaian' && (
               <>
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="editNip">
                     NIP (Nomor Induk Pegawai)
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="editNip"
                     type="text"
                     value={editNip}
                     onChange={(e) => setEditNip(e.target.value)}
                     placeholder="18-digit NIP ASN / NIP Sekolah"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editNuptk">
                       NUPTK
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editNuptk"
                       type="text"
                       value={editNuptk}
                       onChange={(e) => setEditNuptk(e.target.value)}
                       placeholder="16-digit NUPTK"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editNpwp">
                       NPWP
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editNpwp"
                       type="text"
                       value={editNpwp}
                       onChange={(e) => setEditNpwp(e.target.value)}
                       placeholder="Nomor NPWP Guru"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editStatusKepegawaian">
                       Status Kepegawaian
-                    </label>
+                    </Label>
                     <select
+                      id="editStatusKepegawaian"
                       value={editStatusKepegawaian}
                       onChange={(e) => setEditStatusKepegawaian(e.target.value)}
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
@@ -1078,25 +1081,26 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editPangkatGolongan">
                       Golongan / Pangkat
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editPangkatGolongan"
                       type="text"
                       value={editPangkatGolongan}
                       onChange={(e) => setEditPangkatGolongan(e.target.value)}
                       placeholder="IV/a - Pembina"
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editJenisPtk">
                       Jenis PTK
-                    </label>
+                    </Label>
                     <select
+                      id="editJenisPtk"
                       value={editJenisPtk}
                       onChange={(e) => setEditJenisPtk(e.target.value)}
                       className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
@@ -1107,14 +1111,14 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editTmtGuru">
                       TMT Guru (Terhitung Mulai Tanggal)
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editTmtGuru"
                       type="date"
                       value={editTmtGuru}
                       onChange={(e) => setEditTmtGuru(e.target.value)}
-                      className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
@@ -1125,9 +1129,9 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label>
                       1. Provinsi
-                    </label>
+                    </Label>
                     <SearchableSelect
                       value={editProvinsi}
                       onValueChange={(val) => {
@@ -1144,9 +1148,9 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label>
                       2. Kabupaten / Kota
-                    </label>
+                    </Label>
                     <SearchableSelect
                       value={editKabupaten}
                       onValueChange={(val) => {
@@ -1164,9 +1168,9 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label>
                       3. Kecamatan
-                    </label>
+                    </Label>
                     <SearchableSelect
                       value={editKecamatan}
                       onValueChange={(val) => {
@@ -1181,9 +1185,9 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label>
                       4. Kelurahan / Desa
-                    </label>
+                    </Label>
                     <SearchableSelect
                       value={editKelurahan}
                       onValueChange={(val) => setEditKelurahan(val)}
@@ -1197,68 +1201,68 @@ export const StaffProfilGuruTab: React.FC<StaffProfilGuruTabProps> = ({
 
                 <div className="grid grid-cols-3 gap-3.5">
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editRt">
                       RT
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editRt"
                       type="text"
                       value={editRt}
                       onChange={(e) => setEditRt(e.target.value)}
                       placeholder="001"
-                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editRw">
                       RW
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editRw"
                       type="text"
                       value={editRw}
                       onChange={(e) => setEditRw(e.target.value)}
                       placeholder="002"
-                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                    <Label htmlFor="editKodePos">
                       Kode Pos
-                    </label>
-                    <input
+                    </Label>
+                    <Input
+                      id="editKodePos"
                       type="text"
                       value={editKodePos}
                       onChange={(e) => setEditKodePos(e.target.value)}
                       placeholder="41162"
-                      className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 font-mono text-xs font-semibold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="editAlamat">
                     Alamat Jalan / Blok (Lengkap dengan Nomor Rumah / Gang)
-                  </label>
-                  <textarea
+                  </Label>
+                  <Textarea
+                    id="editAlamat"
                     rows={2}
                     value={editAlamat}
                     onChange={(e) => setEditAlamat(e.target.value)}
                     placeholder="Jl. Raya No. 123 / Gang Masjid"
-                    className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block">
+                  <Label htmlFor="editDusun">
                     Dusun / Kampung
-                  </label>
-                  <input
+                  </Label>
+                  <Input
+                    id="editDusun"
                     type="text"
                     value={editDusun}
                     onChange={(e) => setEditDusun(e.target.value)}
                     placeholder="Kampung Krajan / Dusun Mekar"
-                    className="w-full h-10 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70 text-xs font-semibold focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </>

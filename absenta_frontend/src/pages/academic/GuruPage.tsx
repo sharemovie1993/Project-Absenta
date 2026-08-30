@@ -22,6 +22,7 @@ import { lazy, Suspense } from 'react';
 
 // Lazy load heavy components to improve TBT and initial bundle size
 const GuruForm = lazy(() => import('../../components/academic/guru/GuruForm').then(module => ({ default: module.GuruForm })));
+const GuruDetailView = lazy(() => import('../../components/academic/guru/GuruDetailView').then(module => ({ default: module.GuruDetailView })));
 const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
 type ModalMode = 'create' | 'edit' | 'view' | null;
@@ -55,6 +56,7 @@ export const GuruPage: React.FC = () => {
 
   // Local UI state
   const [modalState, setModalState] = useState<ModalState>({ mode: null, isOpen: false });
+  const [selectedGuruIdForDetail, setSelectedGuruIdForDetail] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -78,9 +80,13 @@ export const GuruPage: React.FC = () => {
   ], [stats, navigate]);
 
   const handleCreateGuru = useCallback(() => setModalState({ mode: 'create', isOpen: true }), []);
-  const handleEditGuru = useCallback((g: Guru) => setModalState({ mode: 'edit', guruId: g.id, isOpen: true }), []);
-  const handleViewGuru = useCallback((g: Guru) => setModalState({ mode: 'view', guruId: g.id, isOpen: true }), []);
+  const handleEditGuru = useCallback((g: Guru | string) => {
+    const id = typeof g === 'string' ? g : g.id;
+    setSelectedGuruIdForDetail(id);
+  }, []);
+  const handleViewGuru = useCallback((g: Guru) => setSelectedGuruIdForDetail(g.id), []);
   const handleCloseModal = useCallback(() => setModalState({ mode: null, isOpen: false }), []);
+  const handleRefresh = useCallback(() => setRefreshTrigger(prev => prev + 1), []);
 
   const handleFormSuccess = useCallback(() => {
     handleCloseModal();
@@ -180,23 +186,34 @@ export const GuruPage: React.FC = () => {
       permissionMessage="Anda tidak memiliki izin untuk mengakses data guru."
       hardeningModuleKey="academic_guru"
     >
-      <div className="space-y-6">
-        <SectionCard
-          fullWidth
-          noPadding
-        >
-          <GuruList
-            onEdit={canEdit ? handleEditGuru : undefined}
-            onView={handleViewGuru}
-            onAdd={canCreate ? handleCreateGuru : undefined}
-            onImport={canCreate ? handleOpenImport : undefined}
-            onExport={handleExport}
-            isExporting={isExporting}
-            refreshTrigger={refreshTrigger}
-            onRefresh={useCallback(() => setRefreshTrigger(prev => prev + 1), [])}
+      {selectedGuruIdForDetail ? (
+        <Suspense fallback={<div className="p-16 flex justify-center"><Loader size="lg" /></div>}>
+          <GuruDetailView
+            guruId={selectedGuruIdForDetail}
+            onBack={() => setSelectedGuruIdForDetail(null)}
+            onEdit={canEdit ? (id) => handleEditGuru(id) : undefined}
+            canEdit={canEdit}
           />
-        </SectionCard>
-      </div>
+        </Suspense>
+      ) : (
+        <div className="space-y-6">
+          <SectionCard
+            fullWidth
+            noPadding
+          >
+            <GuruList
+              onEdit={canEdit ? handleEditGuru : undefined}
+              onView={handleViewGuru}
+              onAdd={canCreate ? handleCreateGuru : undefined}
+              onImport={canCreate ? handleOpenImport : undefined}
+              onExport={handleExport}
+              isExporting={isExporting}
+              refreshTrigger={refreshTrigger}
+              onRefresh={handleRefresh}
+            />
+          </SectionCard>
+        </div>
+      )}
 
       <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
         <ExcelImportModal
@@ -213,7 +230,7 @@ export const GuruPage: React.FC = () => {
       <Modal
         isOpen={modalState.isOpen}
         onClose={handleCloseModal}
-        title={modalState.mode === 'create' ? 'Tambah Guru' : 'Data Guru'}
+        title="Tambah Guru Baru"
         size="4xl"
       >
         <Suspense fallback={<div className="p-12 flex justify-center"><Loader /></div>}>
