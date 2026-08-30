@@ -8,6 +8,8 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { Table, type Column } from '@/components/ui/Table';
 import { Card, SectionCard, Button, SearchableSelect, Input, Badge } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
 import type { Guru, Siswa } from '@/types/academic';
@@ -561,6 +563,138 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     }
   ], [handleOpenNudgeModal]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileTeacherComplianceCard = useCallback((guru: TeacherComplianceItem) => {
+    const badge = getComplianceBadge(guru.complianceScore);
+    const loginInfo = formatLastLogin(guru.lastLogin);
+    return (
+      <div
+        key={guru.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{guru.nama}</h4>
+            <p className="text-[10px] text-slate-400 font-mono font-medium">NIP: {guru.nip || '-'}</p>
+          </div>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${badge.bg} ${badge.color} ${badge.border}`}>
+            {badge.grade} ({guru.complianceScore}%)
+          </span>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Jabatan / Mapel</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">{guru.jabatan || guru.mapel || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">No. WhatsApp</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">{guru.noWa || 'Belum Terdaftar'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kartu RFID</span>
+            <span className={`font-semibold ${guru.rfidEnrolled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+              {guru.rfidEnrolled ? 'Terpasang' : 'Belum Enrolled'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Login Terakhir</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{loginInfo.text}</span>
+          </div>
+          {guru.issues.length > 0 && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-rose-500 block font-bold mb-1">Catatan Kepatuhan:</span>
+              <ul className="text-[10px] text-rose-600 dark:text-rose-400 space-y-0.5 list-disc pl-4">
+                {guru.issues.map((issue, idx) => (
+                  <li key={idx}>{issue}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            type="button"
+            size="sm"
+            variant="toolbarPrimary"
+            onClick={() => handleOpenNudgeModal(guru, 'GURU')}
+            className="text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-xs"
+          >
+            <Phone size={12} />
+            Nudge WA
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleOpenNudgeModal]);
+
+  const renderMobileStudentComplianceCard = useCallback((siswa: StudentComplianceItem) => {
+    const badge = getComplianceBadge(siswa.complianceScore);
+    const loginInfo = formatLastLogin(siswa.lastLogin);
+    return (
+      <div
+        key={siswa.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{siswa.nama}</h4>
+            <p className="text-[10px] text-slate-400 font-mono font-medium">NISN: {siswa.nisn || '-'}</p>
+          </div>
+          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${badge.bg} ${badge.color} ${badge.border}`}>
+            {badge.grade} ({siswa.complianceScore}%)
+          </span>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kelas</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{siswa.kelas || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">WA Orang Tua</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">{siswa.noWaOrtu || 'Belum Terdaftar'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kartu RFID</span>
+            <span className={`font-semibold ${siswa.rfidEnrolled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+              {siswa.rfidEnrolled ? 'Terpasang' : 'Belum Enrolled'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Login Terakhir</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{loginInfo.text}</span>
+          </div>
+          {siswa.issues.length > 0 && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-rose-500 block font-bold mb-1">Catatan Kepatuhan:</span>
+              <ul className="text-[10px] text-rose-600 dark:text-rose-400 space-y-0.5 list-disc pl-4">
+                {siswa.issues.map((issue, idx) => (
+                  <li key={idx}>{issue}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            type="button"
+            size="sm"
+            variant="toolbarPrimary"
+            onClick={() => handleOpenNudgeModal(siswa, 'SISWA')}
+            className="text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-none shadow-xs"
+          >
+            <Phone size={12} />
+            WA Ortu
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleOpenNudgeModal]);
+
   const breadcrumbs = useMemo(() => [
     { label: 'System Utilities' },
     { label: 'Evaluasi Kepatuhan Platform' }
@@ -643,6 +777,25 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                   <div className="flex justify-center items-center py-16">
                     <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
                   </div>
+                ) : isMobile ? (
+                  <div className="p-4 space-y-4">
+                    <MobileAcademicList
+                      title="Kelengkapan Data Guru"
+                      data={paginatedTeachers}
+                      loading={loadingGurus}
+                      totalItems={filteredTeachers.length}
+                      emptyMessage="Tidak ada data guru yang sesuai filter."
+                      pagination={{
+                        currentPage: teacherPage,
+                        totalPages: Math.max(1, Math.ceil(filteredTeachers.length / teacherLimit)),
+                        totalItems: filteredTeachers.length,
+                        itemsPerPage: teacherLimit,
+                        onPageChange: setTeacherPage,
+                        onLimitChange: (limit) => { setTeacherLimit(limit); setTeacherPage(1); }
+                      }}
+                      renderCard={renderMobileTeacherComplianceCard}
+                    />
+                  </div>
                 ) : (
                   <Table
                     columns={teacherColumns}
@@ -677,6 +830,25 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
                 {loadingSiswa ? (
                   <div className="flex justify-center items-center py-16">
                     <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                  </div>
+                ) : isMobile ? (
+                  <div className="p-4 space-y-4">
+                    <MobileAcademicList
+                      title="Kelengkapan Data Siswa"
+                      data={paginatedStudents}
+                      loading={loadingSiswa}
+                      totalItems={filteredStudents.length}
+                      emptyMessage="Tidak ada data siswa yang sesuai filter."
+                      pagination={{
+                        currentPage: studentPage,
+                        totalPages: Math.max(1, Math.ceil(filteredStudents.length / studentLimit)),
+                        totalItems: filteredStudents.length,
+                        itemsPerPage: studentLimit,
+                        onPageChange: setStudentPage,
+                        onLimitChange: (limit) => { setTeacherLimit(limit); setTeacherPage(1); }
+                      }}
+                      renderCard={renderMobileStudentComplianceCard}
+                    />
                   </div>
                 ) : (
                   <Table

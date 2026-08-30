@@ -9,6 +9,8 @@ import type { ApprovalRequest, ApprovalStatus } from '@/types/approvals';
 import { CheckCircle, XCircle, RefreshCw, Search } from 'lucide-react';
 import useConfirm from '@/hooks/useConfirm';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { toast } from 'react-hot-toast';
 import { formatDate } from '@/utils/layoutUtils';
 
@@ -194,9 +196,72 @@ const ApprovalsPage: React.FC = React.memo(() => {
         ) : (
           <span className="text-gray-400 text-xs font-mono">-</span>
         )
-      ),
-    },
+      )
+    }
   ], [handleApprove, handleOpenReject]);
+
+  const isMobile = useIsMobile();
+
+  const renderMobileApprovalCard = useCallback((row: ApprovalRequest) => {
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-slate-500 block truncate">{row.action_type}</span>
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 mt-0.5">{row.requested_by_name || 'Pemohon'}</h4>
+          </div>
+          <div className="shrink-0">
+            <StatusBadge status={row.status.toLowerCase()} />
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Target ID</span>
+            <span className="font-mono text-slate-700 dark:text-slate-200 text-[11px] truncate block">{row.target_id || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Pengajuan</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {formatDate(row.created_at)}
+            </span>
+          </div>
+          {row.reason && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium">Alasan</span>
+              <p className="text-slate-600 dark:text-slate-400 text-xs italic">{row.reason}</p>
+            </div>
+          )}
+        </div>
+
+        {row.status === 'PENDING' && (
+          <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleApprove(row.id)}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
+              className="text-xs text-emerald-600 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 font-bold"
+            >
+              <CheckCircle size={13} className="mr-1" /> Setujui
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleOpenReject(row.id)}
+              disabled={approveMutation.isPending || rejectMutation.isPending}
+              className="text-xs text-rose-600 border-rose-200 dark:border-rose-800 hover:bg-rose-50 font-bold"
+            >
+              <XCircle size={13} className="mr-1" /> Tolak
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }, [handleApprove, handleOpenReject, approveMutation.isPending, rejectMutation.isPending]);
 
   const totalPages = Math.ceil(filteredApprovals.length / itemsPerPage);
 
@@ -243,7 +308,7 @@ const ApprovalsPage: React.FC = React.memo(() => {
             </div>
 
             {/* Filter Bar placed ABOVE Table */}
-            <div className="flex items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                 <Input
@@ -256,7 +321,7 @@ const ApprovalsPage: React.FC = React.memo(() => {
                   className="pl-10 text-xs"
                 />
               </div>
-              <div className="relative w-52">
+              <div className="relative w-full sm:w-52">
                 <Suspense fallback={<div className="h-9 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />}>
                   <SearchableSelect
                     id="filter-approval-status"
@@ -278,6 +343,23 @@ const ApprovalsPage: React.FC = React.memo(() => {
             {loading ? (
               <div className="flex items-center justify-center h-64">
                 <Loader size="lg" />
+              </div>
+            ) : isMobile ? (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm p-4">
+                <MobileAcademicList
+                  title="Daftar Persetujuan"
+                  data={filteredApprovals}
+                  emptyMessage="Tidak ada request untuk ditampilkan"
+                  pagination={{
+                    currentPage,
+                    totalPages,
+                    totalItems: filteredApprovals.length,
+                    itemsPerPage,
+                    onPageChange: setCurrentPage,
+                    onLimitChange: setItemsPerPage
+                  }}
+                  renderCard={renderMobileApprovalCard}
+                />
               </div>
             ) : (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-x-auto max-w-full">

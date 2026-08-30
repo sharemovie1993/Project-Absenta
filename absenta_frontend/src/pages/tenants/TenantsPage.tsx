@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Eye, Edit, Trash2, Calendar, CheckCircle, Clock, Search, Plus, ShieldCheck, XCircle, Building2, Users, Layers, Shield } from 'lucide-react';
+import { Eye, Edit, Trash2, Calendar, CheckCircle, Clock, Search, Plus, ShieldCheck, XCircle, Building2, Users, Layers, Shield, RefreshCw } from 'lucide-react';
 import { Button, Table, SectionCard, Badge } from '../../components/ui';
 import { getAllTenants, deleteTenant, requestDeletion, cancelDeletion, type Tenant } from '../../api/tenants.api';
 import { getTenantDetail } from '../../api/tenant-detail.api';
@@ -15,6 +15,8 @@ import { isSystemSuperAdmin } from '../../utils/rbac';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import type { Column } from '../../components/ui/Table';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const TenantForm = lazy(() => import('../../components/tenant/TenantForm').then(m => ({ default: m.default })));
 const DeleteTenantModal = lazy(() => import('../../components/tenant/DeleteTenantModal').then(m => ({ default: m.DeleteTenantModal })));
@@ -335,6 +337,110 @@ export const TenantsPage: React.FC = React.memo(() => {
     ]
   }), []);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileTenantCard = useCallback((row: Tenant) => {
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+              <Building2 size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{row.name}</h4>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">{row.domain || '-'}</p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            {row.status === 'DELETION_PENDING' ? (
+              <Badge variant="destructive" className="flex items-center gap-1 text-[9px]">
+                <Clock size={10} /> Pending Hapus
+              </Badge>
+            ) : row.is_active ? (
+              <Badge variant="success" className="flex items-center gap-1 text-[9px]">
+                <CheckCircle size={10} /> Aktif
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="flex items-center gap-1 text-[9px]">
+                <XCircle size={10} /> Nonaktif
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Paket Langganan</span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">{row.subscription_plan || 'Free Trial'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Masa Berlaku</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {row.subscription_expires_at ? new Date(row.subscription_expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Selamanya'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kontak Email</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">{row.email || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Mode KBM</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{row.is_multi_session ? 'Multi Sesi' : 'Standar'}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div>
+            {isSuperAdmin && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => handleAssistLogin(row)}
+                className="text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 font-bold"
+              >
+                <ShieldCheck size={13} className="mr-1" /> Assist Login
+              </Button>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewTenant(row)}
+              className="text-xs text-slate-600 dark:text-slate-300 font-bold"
+            >
+              <Eye size={13} className="mr-1" /> Detail
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEditTenant(row)}
+              className="text-xs text-indigo-600 font-bold"
+            >
+              <Edit size={13} className="mr-1" /> Edit
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenDeleteModal(row)}
+              className="text-xs text-rose-600 font-bold"
+            >
+              <Trash2 size={13} className="mr-1" /> Hapus
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [handleAssistLogin, handleViewTenant, handleEditTenant, handleOpenDeleteModal, isSuperAdmin]);
+
   return (
     <InfraErrorBoundary>
       <SuperAdminPageLayout
@@ -349,28 +455,11 @@ export const TenantsPage: React.FC = React.memo(() => {
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
           <div className="w-full min-w-0 max-w-full">
             <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
-              <Table
-                columns={columns}
-                data={tenants}
-                loading={loading}
-                emptyMessage="Tidak ada tenant sekolah ditemukan."
-                pagination={{
-                  currentPage,
-                  totalPages,
-                  totalItems: statistics.totalTenants,
-                  itemsPerPage,
-                  onPageChange: (page) => {
-                    setCurrentPage(page);
-                  },
-                  onLimitChange: (limit) => {
-                    setItemsPerPage(limit);
-                    setCurrentPage(1);
-                  }
-                }}
-                toolbarLeft={
-                  <div className="flex flex-wrap items-center gap-3">
-                    <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
-                      <div className="relative w-64">
+              {isMobile ? (
+                <div className="p-4 space-y-4">
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                    <form onSubmit={handleSearchSubmit} className="flex items-center gap-2 flex-1">
+                      <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
                         <input
                           type="text"
@@ -385,33 +474,115 @@ export const TenantsPage: React.FC = React.memo(() => {
                         Cari
                       </Button>
                     </form>
+                    <div className="flex items-center gap-2 justify-end">
+                      <Button
+                        type="button"
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={() => refetch()}
+                        disabled={loading}
+                        className="rounded-xl"
+                      >
+                        <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={handleCreateTenant}
+                        className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                      >
+                        <Plus size={14} className="mr-1.5" />
+                        Tambah
+                      </Button>
+                    </div>
                   </div>
-                }
-                toolbarRight={
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={() => refetch()}
-                      disabled={loading}
-                      className="rounded-xl"
-                    >
-                      <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="toolbarPrimary"
-                      size="toolbar"
-                      onClick={handleCreateTenant}
-                      className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
-                    >
-                      <Plus size={14} className="mr-1.5" />
-                      Tambah Tenant
-                    </Button>
-                  </div>
-                }
-              />
+
+                  <MobileAcademicList
+                    title="Daftar Tenant Sekolah"
+                    data={tenants}
+                    loading={loading}
+                    totalItems={statistics.totalTenants}
+                    emptyMessage="Tidak ada tenant sekolah ditemukan."
+                    pagination={{
+                      currentPage,
+                      totalPages,
+                      totalItems: statistics.totalTenants,
+                      itemsPerPage,
+                      onPageChange: (page) => setCurrentPage(page),
+                      onLimitChange: (limit) => {
+                        setItemsPerPage(limit);
+                        setCurrentPage(1);
+                      }
+                    }}
+                    renderCard={renderMobileTenantCard}
+                  />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={tenants}
+                  loading={loading}
+                  emptyMessage="Tidak ada tenant sekolah ditemukan."
+                  pagination={{
+                    currentPage,
+                    totalPages,
+                    totalItems: statistics.totalTenants,
+                    itemsPerPage,
+                    onPageChange: (page) => {
+                      setCurrentPage(page);
+                    },
+                    onLimitChange: (limit) => {
+                      setItemsPerPage(limit);
+                      setCurrentPage(1);
+                    }
+                  }}
+                  toolbarLeft={
+                    <div className="flex flex-wrap items-center gap-3">
+                      <form onSubmit={handleSearchSubmit} className="flex items-center gap-2">
+                        <div className="relative w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                          <input
+                            type="text"
+                            placeholder="Cari nama atau domain..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            aria-label="Cari tenant berdasarkan nama atau domain"
+                            className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-800 rounded-xl bg-slate-50 dark:bg-slate-950 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                          />
+                        </div>
+                        <Button type="submit" variant="toolbarOutline" size="toolbar" className="rounded-xl">
+                          Cari
+                        </Button>
+                      </form>
+                    </div>
+                  }
+                  toolbarRight={
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={() => refetch()}
+                        disabled={loading}
+                        className="rounded-xl"
+                      >
+                        <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={handleCreateTenant}
+                        className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white"
+                      >
+                        <Plus size={14} className="mr-1.5" />
+                        Tambah Tenant
+                      </Button>
+                    </div>
+                  }
+                />
+              )}
             </div>
           </div>
         </SectionCard>

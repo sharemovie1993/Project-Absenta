@@ -13,6 +13,8 @@ import {
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { 
   Plus, 
   Edit, 
@@ -285,6 +287,96 @@ export const PlansPage: React.FC = React.memo(() => {
     }
   ], [handleEdit, getFeatureList]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobilePlanCard = useCallback((plan: Plan) => {
+    const features = getFeatureList(plan);
+    return (
+      <div
+        key={plan.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+              <TrendingUp size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{plan.name}</h4>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">{plan.slug || '-'}</p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <StatusBadge status={plan.is_active ? 'active' : 'inactive'} />
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Harga Bulanan</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">
+              {formatCurrency(plan.price_monthly || plan.price || 0)} /bln
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Harga Tahunan</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">
+              {formatCurrency(plan.price_yearly || 0)} /thn
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Maksimal Staf</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {plan.max_staff ? `${plan.max_staff} Akun` : 'Unlimited'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Maksimal Siswa</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {plan.max_students ? `${plan.max_students} Siswa` : 'Unlimited'}
+            </span>
+          </div>
+          {features.length > 0 && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium mb-1">Fitur Unggulan</span>
+              <div className="flex flex-wrap gap-1">
+                {features.slice(0, 3).map((f, idx) => (
+                  <span key={idx} className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-bold rounded">
+                    {f}
+                  </span>
+                ))}
+                {features.length > 3 && (
+                  <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[9px] font-bold rounded">
+                    +{features.length - 3} lainnya
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleEdit(plan)}
+            className="text-xs text-slate-700 dark:text-slate-300 font-bold"
+          >
+            <Edit size={13} className="mr-1" /> Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDeletePlanId(plan.id)}
+            className="text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold"
+          >
+            <Trash2 size={13} className="mr-1" /> Nonaktifkan
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleEdit, getFeatureList]);
+
   const breadcrumbs = useMemo(() => [
     { label: 'Billing', path: '/billing' },
     { label: 'Master Paket & Layanan' }
@@ -417,13 +509,27 @@ export const PlansPage: React.FC = React.memo(() => {
 
             {/* Plans Master Table */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              <Table
-                columns={columns}
-                data={paginatedPlans}
-                isLoading={loadingPlans}
-                pagination={paginationProp}
-                emptyMessage="Tidak ada paket layanan yang sesuai dengan kriteria filter."
-              />
+              {isMobile ? (
+                <div className="p-4 space-y-4">
+                  <MobileAcademicList
+                    title="Katalog Paket Layanan"
+                    data={paginatedPlans}
+                    loading={loadingPlans}
+                    totalItems={totalItems}
+                    emptyMessage="Tidak ada paket layanan yang sesuai dengan kriteria filter."
+                    pagination={paginationProp}
+                    renderCard={renderMobilePlanCard}
+                  />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={paginatedPlans}
+                  isLoading={loadingPlans}
+                  pagination={paginationProp}
+                  emptyMessage="Tidak ada paket layanan yang sesuai dengan kriteria filter."
+                />
+              )}
             </div>
           </div>
         </SectionCard>

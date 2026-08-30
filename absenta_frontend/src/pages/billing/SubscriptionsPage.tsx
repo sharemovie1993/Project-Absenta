@@ -15,6 +15,8 @@ import {
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { getAllPlans, getPublicPlans, formatCurrency as formatCurrencyPlan } from '@/api/plans.api';
 import {
   getAllSubscriptions,
@@ -317,6 +319,86 @@ export const SubscriptionsPage: React.FC = React.memo(() => {
     }
   ], [handleOpenHistory]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileSubscriptionCard = useCallback((row: SubscriptionRow) => {
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+              <Users size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{row.Tenant?.name || 'Tenant Sekolah'}</h4>
+              <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider">{row.Plan?.name || 'Paket'}</p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <Badge
+              variant={row.status === 'ACTIVE' ? 'success' : row.status === 'TRIAL' ? 'warning' : 'destructive'}
+              className="px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase"
+            >
+              {row.status}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Biaya Paket</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">
+              {row.Plan?.price ? formatCurrencyPlan(Number(row.Plan.price)) : 'Gratis'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Auto Renew</span>
+            <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase inline-block ${
+              row.auto_renew 
+                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
+            }`}>
+              {row.auto_renew ? 'ON' : 'OFF'}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-[10px] text-slate-400 block font-medium">Masa Aktif</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {formatDate(row.start_date)} s.d {formatDate(row.end_date)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleOpenHistory(row.id)}
+            className="text-xs text-indigo-600 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 font-bold"
+          >
+            <HistoryIcon size={13} className="mr-1" /> Riwayat
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setSelectedItem(row);
+              setEditStatus(row.status || 'ACTIVE');
+              setEditAutoRenew(!!row.auto_renew);
+              setShowEditModal(true);
+            }}
+            className="text-xs text-slate-700 dark:text-slate-300 font-bold"
+          >
+            <Edit size={13} className="mr-1" /> Edit
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleOpenHistory]);
+
   const breadcrumbs = useMemo(() => [
     { label: 'Billing', path: '/billing' },
     { label: 'Langganan Tenant' }
@@ -492,13 +574,27 @@ export const SubscriptionsPage: React.FC = React.memo(() => {
 
             {/* Subscriptions Table */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              <Table
-                columns={columns}
-                data={items}
-                isLoading={loadingSubs}
-                pagination={paginationProp}
-                emptyMessage="Tidak ada data langganan yang sesuai dengan filter."
-              />
+              {isMobile ? (
+                <div className="p-4 space-y-4">
+                  <MobileAcademicList
+                    title="Daftar Langganan Tenant"
+                    data={items}
+                    loading={loadingSubs}
+                    totalItems={totalItems}
+                    emptyMessage="Tidak ada data langganan yang sesuai dengan filter."
+                    pagination={paginationProp}
+                    renderCard={renderMobileSubscriptionCard}
+                  />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={items}
+                  isLoading={loadingSubs}
+                  pagination={paginationProp}
+                  emptyMessage="Tidak ada data langganan yang sesuai dengan filter."
+                />
+              )}
             </div>
           </div>
         </SectionCard>
