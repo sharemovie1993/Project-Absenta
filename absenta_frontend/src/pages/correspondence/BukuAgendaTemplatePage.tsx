@@ -280,10 +280,11 @@ export default function BukuAgendaTemplatePage() {
   ], []);
 
   // Columns for Agenda Masuk
-  const columnsMasuk: Column<SuratMasuk>[] = useMemo(() => [
+  const columnsMasuk: Column[] = useMemo(() => [
     {
-      header: 'No. Agenda',
-      render: (_, idx) => (
+      key: 'agenda_no',
+      label: 'No. Agenda',
+      render: (_val, _row, idx) => (
         <span className="font-mono font-bold text-xs text-indigo-600 dark:text-indigo-400">
           AGM-{String(idx + 1).padStart(4, '0')}
         </span>
@@ -291,63 +292,64 @@ export default function BukuAgendaTemplatePage() {
       className: 'w-28'
     },
     {
-      header: 'No. & Tanggal Surat',
-      accessor: 'nomor_surat',
-      render: (s) => (
+      key: 'nomor_surat',
+      label: 'No. & Tanggal Surat',
+      render: (_val, s: SuratMasuk) => (
         <div>
-          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">{s.nomor_surat}</span>
-          <span className="text-[11px] text-slate-400">Tgl Surat: {formatDate(s.tanggal_surat)}</span>
+          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">{s?.nomor_surat}</span>
+          <span className="text-[11px] text-slate-400">Tgl Surat: {formatDate(s?.tanggal_surat)}</span>
         </div>
       )
     },
     {
-      header: 'Tanggal Diterima',
-      accessor: 'tanggal_terima',
-      render: (s) => (
+      key: 'tanggal_terima',
+      label: 'Tanggal Diterima',
+      render: (val) => (
         <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-          {formatDate(s.tanggal_terima)}
+          {formatDate(val)}
         </span>
       )
     },
     {
-      header: 'Pengirim / Asal',
-      accessor: 'asal_surat',
-      render: (s) => (
+      key: 'asal_surat',
+      label: 'Pengirim / Asal',
+      render: (val) => (
         <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-          {s.asal_surat || '-'}
+          {val || '-'}
         </span>
       )
     },
     {
-      header: 'Perihal & Ringkasan',
-      accessor: 'judul',
-      render: (s) => (
+      key: 'judul',
+      label: 'Perihal & Ringkasan',
+      render: (_val, s: SuratMasuk) => (
         <div className="max-w-xs">
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{s.judul}</span>
-          {s.ringkasan && <span className="text-[10px] text-slate-400 line-clamp-1">{s.ringkasan}</span>}
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{s?.judul}</span>
+          {s?.ringkasan && <span className="text-[10px] text-slate-400 line-clamp-1">{s.ringkasan}</span>}
         </div>
       )
     },
     {
-      header: 'Disposisi / Status',
-      accessor: 'status',
-      render: (s) => (
+      key: 'status',
+      label: 'Disposisi / Status',
+      render: (status) => (
         <Badge
-          variant={s.status === 'DISETUJUI' ? 'success' : s.status === 'DIPROSES' ? 'info' : 'secondary'}
+          variant={status === 'DISETUJUI' ? 'success' : status === 'DIPROSES' ? 'info' : 'secondary'}
           size="sm"
           className="text-[10px] font-bold"
         >
-          {s.status}
+          {status}
         </Badge>
       )
     }
   ], []);
 
   // Columns for Agenda Keluar
-  const columnsKeluar: Column<SuratKeluar>[] = useMemo(() => [
+  const columnsKeluar: Column[] = useMemo(() => [
     {
-      header: 'No. Agenda',
-      render: (_, idx) => (
+      key: 'agenda_no',
+      label: 'No. Agenda',
+      render: (_val, _row, idx) => (
         <span className="font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
           AGK-{String(idx + 1).padStart(4, '0')}
         </span>
@@ -355,53 +357,53 @@ export default function BukuAgendaTemplatePage() {
       className: 'w-28'
     },
     {
-      header: 'No. Surat & Kategori',
-      accessor: 'nomor_surat',
-      render: (s) => (
+      key: 'nomor_surat',
+      label: 'No. Surat & Kategori',
+      render: (_val, s: SuratKeluar) => (
         <div>
-          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">{s.nomor_surat}</span>
-          <span className="text-[10px] uppercase font-bold text-blue-500">{s.kategori_surat || 'Umum'}</span>
+          <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">{s?.nomor_surat}</span>
+          <span className="text-[10px] uppercase font-bold text-blue-500">{s?.kategori_surat || 'Umum'}</span>
         </div>
       )
     },
     {
-      header: 'Tanggal Kirim',
-      accessor: 'tanggal_surat',
-      render: (s) => (
+      key: 'tanggal_surat',
+      label: 'Tanggal Kirim',
+      render: (val) => (
         <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-          {formatDate(s.tanggal_surat)}
+          {formatDate(val)}
         </span>
       )
     },
     {
-      header: 'Tujuan Surat',
-      accessor: 'tujuan_surat',
-      render: (s) => (
+      key: 'tujuan_surat',
+      label: 'Tujuan Surat',
+      render: (val) => (
         <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-          {s.tujuan_surat || '-'}
+          {val || '-'}
         </span>
       )
     },
     {
-      header: 'Perihal Surat',
-      accessor: 'judul',
-      render: (s) => (
+      key: 'judul',
+      label: 'Perihal Surat',
+      render: (_val, s: SuratKeluar) => (
         <div className="max-w-xs">
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{s.judul}</span>
-          {s.isi_ringkas && <span className="text-[10px] text-slate-400 line-clamp-1">{s.isi_ringkas}</span>}
+          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block truncate">{s?.judul}</span>
+          {s?.isi_ringkas && <span className="text-[10px] text-slate-400 line-clamp-1">{s.isi_ringkas}</span>}
         </div>
       )
     },
     {
-      header: 'Status',
-      accessor: 'status',
-      render: (s) => (
+      key: 'status',
+      label: 'Status',
+      render: (status) => (
         <Badge
-          variant={s.status === 'DIKIRIM' ? 'success' : s.status === 'MENUNGGU_TTD' ? 'warning' : 'secondary'}
+          variant={status === 'DIKIRIM' ? 'success' : status === 'MENUNGGU_TTD' ? 'warning' : 'secondary'}
           size="sm"
           className="text-[10px] font-bold"
         >
-          {s.status}
+          {status}
         </Badge>
       )
     }
