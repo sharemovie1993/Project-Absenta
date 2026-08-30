@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 // Zod validation schema for TEFA Order Form (Pillar 25)
 const tefaOrderSchema = z.object({
@@ -193,48 +195,151 @@ export const TefaSection: React.FC = React.memo(() => {
     value: m.id,
     label: m.nama
   })) || [], [mitras]);
+  const isMobile = useIsMobile();
 
-  return (
-    <div className="space-y-6">
-      
-      {/* Search and Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <Input
-            type="text"
-            placeholder="Cari nama proyek TEFA..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 text-xs rounded-xl"
-            aria-label="Cari nama proyek TEFA"
-          />
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-slate-200 dark:border-slate-800 bg-transparent rounded-xl p-2 text-xs text-slate-700 dark:text-slate-300 outline-hidden"
-            aria-label="Filter status proyek"
+  const renderMobileCard = (order: HubinTefaOrder) => {
+    return (
+      <div
+        key={order.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5 min-w-0">
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+              {order.nama_proyek}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400">
+              {order.Mitra?.nama || 'Umum / Tanpa Mitra'}
+            </p>
+          </div>
+          <Badge
+            variant={
+              order.status_proyek === 'SELESAI' ? 'success' :
+              order.status_proyek === 'BERJALAN' ? 'info' :
+              order.status_proyek === 'BATAL' ? 'destructive' : 'secondary'
+            }
+            className="font-bold text-[9px] uppercase"
           >
-            <option value="">Semua Status Proyek</option>
-            <option value="PERENCANAAN">PERENCANAAN</option>
-            <option value="BERJALAN">BERJALAN</option>
-            <option value="SELESAI">SELESAI</option>
-            <option value="BATAL">BATAL</option>
-          </select>
+            {order.status_proyek}
+          </Badge>
+        </div>
+
+        {order.deskripsi && (
+          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">
+            {order.deskripsi}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800/40 rounded-xl text-xs">
+          <span className="text-[10px] font-bold text-slate-400">Nilai Kontrak:</span>
+          <span className="font-black text-indigo-600 dark:text-indigo-400">
+            {formatRupiah(order.nilai_kontrak)}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+          <span>
+            {order.tanggal_mulai ? (
+              `${formatDate(order.tanggal_mulai, { day: '2-digit', month: 'short' })} - ${order.tanggal_target ? formatDate(order.tanggal_target, { day: '2-digit', month: 'short', year: 'numeric' }) : 'Selesai'}`
+            ) : '-'}
+          </span>
+
           {isHubin && (
-            <Button onClick={() => { setEditingOrder(null); setIsModalOpen(true); }} className="flex items-center gap-1.5 text-xs py-2 rounded-xl">
-              <Plus size={14} />
-              Catat Order TEFA
-            </Button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { setEditingOrder(order); setIsModalOpen(true); }}
+                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300 rounded-lg"
+              >
+                <Edit size={12} />
+              </button>
+              <button
+                onClick={() => handleDelete(order.id)}
+                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400 rounded-lg"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
           )}
         </div>
       </div>
+    );
+  };
 
-      {/* Database Table */}
-      <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900/50 p-5 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
+  return (
+    <div className="space-y-6">
+      {/* Overview Metric Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-indigo-600 text-white rounded-xl shadow-md">
+            <Coins size={20} />
+          </div>
+          <div>
+            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest block">Total Nilai Kontrak</span>
+            <span className="text-lg font-black text-slate-800 dark:text-slate-100">{formatRupiah(totalRealisasi)}</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-emerald-600 text-white rounded-xl shadow-md">
+            <Hammer size={20} />
+          </div>
+          <div>
+            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest block">Proyek Aktif (On Progress)</span>
+            <span className="text-lg font-black text-slate-800 dark:text-slate-100">{proyekBerjalan} Proyek</span>
+          </div>
+        </div>
+
+        <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl flex items-center gap-3">
+          <div className="p-3 bg-blue-600 text-white rounded-xl shadow-md">
+            <Building size={20} />
+          </div>
+          <div>
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Total Order Diterima</span>
+            <span className="text-lg font-black text-slate-800 dark:text-slate-100">{listData?.length || 0} Order</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Order Data Card */}
+      <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                type="text"
+                placeholder="Cari nama proyek/order..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 text-xs rounded-xl"
+              />
+            </div>
+            <div className="w-40 z-20">
+              <SearchableSelect
+                id="filterStatus"
+                value={filterStatus}
+                onValueChange={(val) => setFilterStatus(val)}
+                options={statusOptions}
+                placeholder="Semua Status"
+              />
+            </div>
+          </div>
+
+          {isHubin && (
+            <Button
+              onClick={() => { resetForm(); setIsModalOpen(true); }}
+              variant="toolbarPrimary"
+              size="toolbar"
+              className="flex items-center gap-1.5 shrink-0"
+            >
+              <Plus size={14} />
+              Catat Order TEFA Baru
+            </Button>
+          )}
+        </div>
+
+        {/* Sync Indicator */}
+        <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800">
           <div className="p-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 rounded-xl">
             <Hammer size={16} />
           </div>
@@ -246,6 +351,17 @@ export const TefaSection: React.FC = React.memo(() => {
 
         {isLoading ? (
           <div className="py-12 flex justify-center"><Loader /></div>
+        ) : isMobile ? (
+          <div className="space-y-4">
+            <MobileAcademicList
+              title="Daftar Proyek TEFA"
+              data={listData || []}
+              loading={isLoading}
+              totalItems={listData?.length || 0}
+              emptyMessage="Belum ada proyek TEFA terdaftar."
+              renderCard={renderMobileCard}
+            />
+          </div>
         ) : listData?.length === 0 ? (
           <div className="py-12 text-center text-slate-400 text-xs font-bold">
             Belum ada proyek TEFA terdaftar.

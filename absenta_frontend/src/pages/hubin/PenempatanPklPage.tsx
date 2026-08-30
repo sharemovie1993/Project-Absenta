@@ -37,6 +37,8 @@ import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { usePembimbingPklOptions } from '../../hooks/usePembimbingPklOptions';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 import type {
   SiswaData,
@@ -560,6 +562,191 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     )
   ], [isGuru]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (row: SiswaPkl) => {
+    const fullMitra = rawMitra.find((m: MitraData) => m.id === row.mitra_id);
+    const siswaPhone = row.Siswa?.no_hp || '';
+    const mitraPhone = row.Mitra?.kontak || fullMitra?.kontak || '';
+
+    const formatWhatsAppLink = (phone: string, text: string) => {
+      if (!phone) return '';
+      let cleaned = phone.replace(/\D/g, '');
+      if (cleaned.startsWith('0')) cleaned = '62' + cleaned.slice(1);
+      else if (cleaned.startsWith('8')) cleaned = '62' + cleaned;
+      return `https://wa.me/${cleaned}?text=${encodeURIComponent(text)}`;
+    };
+
+    const siswaMsg = `Halo ${row.Siswa?.nama_siswa || 'Siswa'}, saya pembimbing PKL Anda dari sekolah. Bagaimana perkembangan praktik Anda hari ini?`;
+    const mitraMsg = `Halo Bapak/Ibu dari ${row.Mitra?.nama || 'Mitra'}, saya pembimbing PKL dari sekolah untuk siswa ${row.Siswa?.nama_siswa || 'Siswa'}. Bagaimana progres magang siswa kami di sana?`;
+
+    const siswaWaLink = formatWhatsAppLink(siswaPhone, siswaMsg);
+    const mitraWaLink = formatWhatsAppLink(mitraPhone, mitraMsg);
+
+    const kunjunganList = Array.isArray(row.kunjungan_json) ? row.kunjungan_json : [];
+    const visitCount = kunjunganList.length;
+    const targetVisits = 3;
+    const percentage = Math.min(100, Math.round((visitCount / targetVisits) * 100));
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0">
+              <User size={18} />
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                {row.Siswa?.nama_siswa}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 font-mono">
+                NIS: {row.Siswa?.nis || '-'}
+              </p>
+            </div>
+          </div>
+          <PklStatusBadge status={row.status} />
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 min-w-0">
+              <Building2 size={13} className="text-indigo-500 shrink-0" />
+              <span className="truncate">{row.Mitra?.nama}</span>
+            </div>
+            <span className="text-[10px] font-bold text-slate-500 shrink-0">
+              Pmb: {row.Pembimbing?.nama_guru || 'Belum ada'}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-200/50 dark:border-slate-800 pt-1.5">
+            <span>Periode: {formatDate(row.tanggal_mulai, { day: '2-digit', month: 'short' })} - {row.tanggal_selesai ? formatDate(row.tanggal_selesai, { day: '2-digit', month: 'short', year: 'numeric' }) : 'Selesai'}</span>
+            <span className="font-bold">{visitCount}/{targetVisits} Visit ({percentage}%)</span>
+          </div>
+
+          {/* Contact WA Links */}
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-[10px] font-bold text-slate-400">Kontak WA:</span>
+            {siswaPhone && (
+              <a
+                href={siswaWaLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full"
+              >
+                <MessageCircle size={10} /> Siswa
+              </a>
+            )}
+            {mitraPhone && (
+              <a
+                href={mitraWaLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-0.5 rounded-full"
+              >
+                <Building2 size={10} /> HRD
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 bg-blue-50/20"
+            onClick={() => {
+              setSelectedPkl(row);
+              setIsNilaiOpen(true);
+            }}
+          >
+            <Award size={12} className="mr-1" /> Nilai
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 bg-emerald-50/20"
+            onClick={() => {
+              setSelectedPkl(row);
+              setIsKunjunganOpen(true);
+            }}
+          >
+            <MapPin size={12} className="mr-1" /> Kunjungan
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 border-purple-200 bg-purple-50/20"
+            onClick={() => {
+              setSelectedPkl(row);
+              setIsReviewJurnalOpen(true);
+            }}
+          >
+            <FileText size={12} className="mr-1" /> Jurnal
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2.5 text-[11px] font-bold text-slate-600 border-slate-200"
+            onClick={() => {
+              setPrintKolektifMitraId(null);
+              setPrintData(row);
+              printTimerRef.current = setTimeout(() => {
+                window.print();
+              }, 250);
+            }}
+          >
+            <Printer size={12} className="mr-1" /> Cetak
+          </Button>
+
+          {canManage && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-indigo-600 hover:bg-indigo-50"
+                onClick={() => {
+                  setSelectedPkl(row);
+                  setSelectedSiswaId(row.siswa_id);
+                  setSelectedMitraId(row.mitra_id);
+                  setSelectedPembimbingId(row.pembimbing_id || '');
+                  setIsPlottingOpen(true);
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                onClick={async () => {
+                  const isConfirmed = await confirm({
+                    title: 'Hapus Penempatan PKL',
+                    description: `Apakah Anda yakin ingin membatalkan plotting penempatan PKL untuk ${row.Siswa?.nama_siswa} di ${row.Mitra?.nama}?`,
+                    confirmText: 'Ya, Hapus',
+                    cancelText: 'Batal',
+                    style: 'danger'
+                  });
+                  if (isConfirmed) {
+                    deleteMutation.mutate(row.id);
+                  }
+                }}
+              >
+                <Trash2 size={13} />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const content = (
     <>
       <SectionCard title="Data Penempatan PKL Siswa" icon={ClipboardList} fullWidth noPadding>
@@ -587,15 +774,32 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
         </div>
 
         <div className="bg-transparent overflow-hidden">
-          <Table
-            columns={columns}
-            data={filteredData}
-            loading={isLoading}
-            emptyMessage="Belum ada data penempatan siswa PKL"
-            compact={true}
-            pagination={paginationProps}
-            toolbarRight={toolbar}
-          />
+          {isMobile ? (
+            <div className="p-4 space-y-4">
+              <div className="flex justify-end mb-2">
+                {toolbar}
+              </div>
+              <MobileAcademicList
+                title="Daftar Siswa PKL"
+                data={filteredData}
+                loading={isLoading}
+                totalItems={paginationProps?.totalItems || filteredData.length}
+                emptyMessage="Belum ada data penempatan siswa PKL"
+                pagination={paginationProps}
+                renderCard={renderMobileCard}
+              />
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={filteredData}
+              loading={isLoading}
+              emptyMessage="Belum ada data penempatan siswa PKL"
+              compact={true}
+              pagination={paginationProps}
+              toolbarRight={toolbar}
+            />
+          )}
         </div>
       </SectionCard>
 

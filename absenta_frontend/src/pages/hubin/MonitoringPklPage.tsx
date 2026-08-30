@@ -30,6 +30,8 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { SectionCard, Table, Button, Input } from '../../components/ui';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Real lazy-loaded detail modal for future monitoring drill-down expansion
 const MonitoringDetailModal = lazy(() => import('../../components/hubin/MitraDetailModal').then(m => ({ default: m.MitraDetailModal })));
@@ -316,6 +318,56 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
     }
   ], []);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (row: MonitoringItem) => {
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5 min-w-0">
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+              {row.siswa}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400 font-mono">
+              Kelas: {row.kelas}
+            </p>
+          </div>
+          <PklStatusBadge status={row.status} />
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+          <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+            <Building2 size={13} className="text-indigo-500 shrink-0" />
+            <span className="truncate">{row.perusahaan}</span>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50 dark:border-slate-800">
+            <span className="flex items-center gap-1">
+              <Clock size={12} className="text-slate-400" />
+              Tap: <strong className="font-mono text-slate-700 dark:text-slate-300">{row.lastSync}</strong>
+            </span>
+            {row.koordinat ? (
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${row.koordinat}`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full"
+              >
+                <MapPin size={10} className="text-red-500" />
+                <span>Peta</span>
+              </a>
+            ) : (
+              <span className="text-[10px] text-slate-400">Non-Geoloc</span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (hideLayout) {
     return (
       <div className="space-y-6">
@@ -380,14 +432,28 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
           </div>
 
           <div className="bg-transparent overflow-hidden">
-            <Table
-              columns={columns}
-              data={monitoringItems}
-              loading={isLoading}
-              emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
-              compact={true}
-              pagination={paginationProps}
-            />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <MobileAcademicList
+                  title="Aktivitas Monitoring PKL"
+                  data={monitoringItems}
+                  loading={isLoading}
+                  totalItems={paginationProps?.totalItems || monitoringItems.length}
+                  emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
+                  pagination={paginationProps}
+                  renderCard={renderMobileCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={monitoringItems}
+                loading={isLoading}
+                emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
+                compact={true}
+                pagination={paginationProps}
+              />
+            )}
           </div>
         </SectionCard>
       </div>
@@ -472,14 +538,28 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
           </div>
 
           <div className="bg-transparent overflow-hidden">
-            <Table
-              columns={columns}
-              data={monitoringItems}
-              loading={isLoading}
-              emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
-              compact={true}
-              pagination={paginationProps}
-            />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <MobileAcademicList
+                  title="Aktivitas Monitoring PKL"
+                  data={monitoringItems}
+                  loading={isLoading}
+                  totalItems={paginationProps?.totalItems || monitoringItems.length}
+                  emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
+                  pagination={paginationProps}
+                  renderCard={renderMobileCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={monitoringItems}
+                loading={isLoading}
+                emptyMessage="Tidak ada aktivitas presensi PKL yang terdeteksi hari ini."
+                compact={true}
+                pagination={paginationProps}
+              />
+            )}
           </div>
         </SectionCard>
       </AcademicPageLayout>

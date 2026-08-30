@@ -34,6 +34,8 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { SectionCard, Table, Button, Input } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
 import useConfirm from '../../hooks/useConfirm';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Lazy load heavy form component
 const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(module => ({ default: module.MitraFormModal })));
@@ -423,6 +425,129 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     return cols;
   }, [isHubin, isPembimbing, handleDelete]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (row: MitraIndustri) => {
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold uppercase shrink-0">
+              {row.nama?.substring(0, 2) || 'MI'}
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                {row.nama}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                <Building2 size={11} />
+                {row.bidang || 'Tanpa Bidang'}
+              </p>
+            </div>
+          </div>
+          {row.latitude && row.longitude ? (
+            <span className="flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200/50">
+              <Navigation size={10} /> Geofenced
+            </span>
+          ) : null}
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+          {row.alamat && (
+            <div className="flex items-start gap-1 text-slate-600 dark:text-slate-400 text-[11px]">
+              <MapPin size={13} className="mt-0.5 text-slate-400 shrink-0" />
+              <span className="line-clamp-2">{row.alamat}</span>
+            </div>
+          )}
+          {row.kontak && (
+            <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 text-[11px]">
+              <Phone size={12} className="text-slate-400 shrink-0" />
+              <span>{row.kontak}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] font-bold text-slate-400">Status Dokumen:</span>
+            {row.mou_url ? (
+              <a
+                href={row.mou_url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full"
+              >
+                <FileText size={11} /> VIEW MOU <ExternalLink size={9} />
+              </a>
+            ) : (
+              <span className="text-[10px] text-slate-400 italic">Belum Ada MoU</span>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 px-2.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-[11px] font-bold"
+            onClick={() => setSelectedDetailMitra(row)}
+          >
+            <Eye size={13} className="mr-1" /> Detail
+          </Button>
+
+          {isHubin && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[11px] font-bold"
+                onClick={() => {
+                  setEditingMitra(row);
+                  setIsModalOpen(true);
+                }}
+              >
+                <Edit size={13} className="mr-1" /> Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-[11px] font-bold"
+                onClick={() => setSelectedMoUMitra(row)}
+              >
+                <History size={13} className="mr-1" /> MoU
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                onClick={() => handleDelete(row)}
+                title="Hapus"
+              >
+                <Trash2 size={13} />
+              </Button>
+            </>
+          )}
+
+          {isPembimbing && !isHubin && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 flex items-center gap-1 text-[11px] font-bold rounded-lg border border-amber-200/50"
+              onClick={() => {
+                setEditingMitra(row);
+                setIsModalOpen(true);
+              }}
+            >
+              <Phone size={12} />
+              Update Kontak
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const SectionCardTitle = (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between w-full pr-4">
       <div className="flex items-center gap-2">
@@ -499,16 +624,34 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       <div className="space-y-6">
         <SectionCard title={SectionCardTitle} icon={Building2} fullWidth noPadding>
           <div className="bg-transparent overflow-hidden">
-            <Table
-              columns={columns}
-              data={rawList}
-              loading={isLoading}
-              emptyMessage="Tidak ada data mitra industri ditemukan"
-              compact={true}
-              pagination={paginationProps}
-              toolbarLeft={tableToolbarLeft}
-              toolbarRight={tableToolbarRight}
-            />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch justify-between mb-4">
+                  {tableToolbarLeft}
+                  {tableToolbarRight}
+                </div>
+                <MobileAcademicList
+                  title="Daftar Mitra Industri"
+                  data={rawList}
+                  loading={isLoading}
+                  totalItems={pagination?.total || 0}
+                  emptyMessage="Tidak ada data mitra industri ditemukan"
+                  pagination={paginationProps}
+                  renderCard={renderMobileCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={rawList}
+                loading={isLoading}
+                emptyMessage="Tidak ada data mitra industri ditemukan"
+                compact={true}
+                pagination={paginationProps}
+                toolbarLeft={tableToolbarLeft}
+                toolbarRight={tableToolbarRight}
+              />
+            )}
           </div>
         </SectionCard>
 
@@ -558,16 +701,34 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       >
         <SectionCard title={SectionCardTitle} icon={Building2} fullWidth noPadding>
           <div className="bg-transparent overflow-hidden">
-            <Table
-              columns={columns}
-              data={rawList}
-              loading={isLoading}
-              emptyMessage="Tidak ada data mitra industri ditemukan"
-              compact={true}
-              pagination={paginationProps}
-              toolbarLeft={tableToolbarLeft}
-              toolbarRight={tableToolbarRight}
-            />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch justify-between mb-4">
+                  {tableToolbarLeft}
+                  {tableToolbarRight}
+                </div>
+                <MobileAcademicList
+                  title="Daftar Mitra Industri"
+                  data={rawList}
+                  loading={isLoading}
+                  totalItems={pagination?.total || 0}
+                  emptyMessage="Tidak ada data mitra industri ditemukan"
+                  pagination={paginationProps}
+                  renderCard={renderMobileCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={rawList}
+                loading={isLoading}
+                emptyMessage="Tidak ada data mitra industri ditemukan"
+                compact={true}
+                pagination={paginationProps}
+                toolbarLeft={tableToolbarLeft}
+                toolbarRight={tableToolbarRight}
+              />
+            )}
           </div>
         </SectionCard>
 

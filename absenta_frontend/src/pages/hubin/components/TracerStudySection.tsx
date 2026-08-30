@@ -27,6 +27,8 @@ import {
   FileWarning
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 // Zod validation schema for Tracer Study Alumni Survey (Pillar 25)
 const tracerSurveySchema = z.object({
@@ -197,6 +199,64 @@ export const TracerStudySection: React.FC = React.memo(() => {
     { value: '> 7 Juta', label: '> Rp 7.000.000' }
   ], []);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (study: HubinTracerStudy) => {
+    return (
+      <div
+        key={study.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5 min-w-0">
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+              {study.Siswa?.nama_siswa}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400 font-mono">
+              NIS: {study.Siswa?.nis || '-'} • Lulus: {study.tahun_lulus}
+            </p>
+          </div>
+          <Badge
+            variant={
+              study.status_alumni === 'BEKERJA' ? 'success' :
+              study.status_alumni === 'KULIAH' ? 'info' :
+              study.status_alumni === 'WIRAUSAHA' ? 'warning' : 'secondary'
+            }
+            className="font-bold text-[9px] uppercase"
+          >
+            {study.status_alumni}
+          </Badge>
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase block">Detail Penempatan:</span>
+          {study.status_alumni === 'BEKERJA' && (
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              {study.posisi} di <strong>{study.perusahaan_nama}</strong>
+            </p>
+          )}
+          {study.status_alumni === 'KULIAH' && (
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              {study.program_studi} di <strong>{study.universitas_nama}</strong>
+            </p>
+          )}
+          {study.status_alumni === 'WIRAUSAHA' && (
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Usaha <strong>{study.usaha_nama}</strong> ({study.usaha_bidang})
+            </p>
+          )}
+          {study.status_alumni === 'MENCARI_KERJA' && (
+            <p className="text-xs text-slate-400 italic">Mencari Lowongan Kerja</p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+          <span>Submit: {formatDate(study.created_at || '', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       
@@ -271,10 +331,21 @@ export const TracerStudySection: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* Tracer Study Database Table */}
+          {/* Tracer Study Database Table / Mobile Cards */}
           <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900/50 p-5 rounded-2xl shadow-sm">
             {loadingTracerList ? (
               <div className="py-12 flex justify-center"><Loader /></div>
+            ) : isMobile ? (
+              <div className="space-y-4">
+                <MobileAcademicList
+                  title="Daftar Alumni"
+                  data={listData || []}
+                  loading={loadingTracerList}
+                  totalItems={listData?.length || 0}
+                  emptyMessage="Tidak ada data tracer study ditemukan."
+                  renderCard={renderMobileCard}
+                />
+              </div>
             ) : listData?.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-xs font-bold">
                 Tidak ada data tracer study ditemukan.

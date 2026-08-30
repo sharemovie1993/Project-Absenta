@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **206 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **196 Halaman** | 95% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **10 Halaman** | 5% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **194 Halaman** | 94% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **12 Halaman** | 6% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **0 Halaman** | 0% | **Prioritas Utama Refaktor** |
 
 ---
@@ -96,6 +96,22 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 527 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [ProductFormModal.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/components/ProductFormModal.tsx) (527 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `TefaSection.tsx`
+* **Lokasi File:** [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 550 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx) (550 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `PenempatanPklPage.tsx`
+* **Lokasi File:** [PenempatanPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/PenempatanPklPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 948 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [PenempatanPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/PenempatanPklPage.tsx) (948 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -828,13 +844,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ---
 
-### 📄 Halaman: `TefaSection.tsx`
-* **Lokasi File:** [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
 ### 📄 Halaman: `TracerFormSubfields.tsx`
 * **Lokasi File:** [TracerFormSubfields.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/tracer/TracerFormSubfields.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
@@ -879,13 +888,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `MonitoringPklPage.tsx`
 * **Lokasi File:** [MonitoringPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/MonitoringPklPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `PenempatanPklPage.tsx`
-* **Lokasi File:** [PenempatanPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/PenempatanPklPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
