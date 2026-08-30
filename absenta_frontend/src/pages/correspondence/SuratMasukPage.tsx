@@ -16,6 +16,8 @@ import { correspondenceApi, type SuratMasuk } from '../../api/correspondence.api
 import { getAllUsersForDropdown, type DropdownOption } from '../../api/dropdown.api';
 import { useDebounce } from '../../hooks/useDebounce';
 import useConfirm from '../../hooks/useConfirm';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import toast from 'react-hot-toast';
 import { Search, Plus, Edit2, Trash2, Mail, FileText, CheckSquare, Clock } from 'lucide-react';
 
@@ -300,6 +302,84 @@ export default function SuratMasukPage() {
     return { total, baru, dispo };
   }, [data]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileSuratMasukCard = useCallback((item: SuratMasuk) => {
+    let variant: 'primary' | 'success' | 'warning' | 'secondary' | 'info' | 'destructive' = 'info';
+    if (item.status === 'BARU') variant = 'info';
+    else if (item.status === 'DISPOSISI') variant = 'warning';
+    else if (item.status === 'PROSES') variant = 'primary';
+    else if (item.status === 'SELESAI') variant = 'success';
+
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-slate-500 block truncate">{item.nomor_surat}</span>
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 mt-0.5">{item.judul}</h4>
+          </div>
+          <Badge variant={variant} className="font-black text-[9px] uppercase tracking-wider px-2.5 py-0.5 rounded-full shrink-0">
+            {item.status}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Asal Surat</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{item.asal_surat}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Surat</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {new Date(item.tanggal_surat).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-[10px] text-slate-400 block font-medium">Status Disposisi</span>
+            {item.PenerimaDisposisi ? (
+              <div>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400 text-xs">{item.PenerimaDisposisi.full_name}</span>
+                <p className="text-[10px] text-slate-400 mt-0.5 italic truncate">{item.disposisi_instruksi}</p>
+              </div>
+            ) : (
+              <span className="text-slate-400 italic text-[11px]">Belum Ada Disposisi</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleOpenDisposisi(item)}
+            className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/20 font-bold"
+          >
+            <CheckSquare size={13} className="mr-1" /> Disposisi
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(item)}
+            className="text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
+          >
+            <Edit2 size={13} className="mr-1" /> Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(item.id)}
+            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-bold"
+          >
+            <Trash2 size={13} className="mr-1" /> Hapus
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleEdit, handleDelete, handleOpenDisposisi]);
+
   return (
     <AcademicPageLayout
       title="Surat Masuk Sekolah"
@@ -387,6 +467,26 @@ export default function SuratMasukPage() {
             <Loader className="mb-4" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Server Surat...</p>
           </div>
+        ) : isMobile ? (
+          <MobileAcademicList
+            title="Daftar Surat Masuk"
+            data={data}
+            loading={loading}
+            totalItems={totalItems}
+            emptyMessage="Belum ada surat masuk yang tercatat."
+            pagination={{
+              currentPage: page,
+              itemsPerPage: limit,
+              totalItems: totalItems,
+              totalPages,
+              onPageChange: setPage,
+              onLimitChange: (limitVal) => {
+                setLimit(limitVal);
+                setPage(1);
+              }
+            }}
+            renderCard={renderMobileSuratMasukCard}
+          />
         ) : (
           <Table
             sortBy={sortBy}

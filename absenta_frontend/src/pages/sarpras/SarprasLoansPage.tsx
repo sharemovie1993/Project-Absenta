@@ -29,6 +29,8 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { formatDate } from '../../utils/layoutUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const LoanRequestForm = lazy(() => import('../../components/sarpras/LoanRequestForm'));
 const LoanStatusActions = lazy(() => import('../../components/sarpras/LoanStatusActions'));
@@ -358,6 +360,69 @@ const SarprasLoansPage: React.FC = React.memo(() => {
     setPage(1);
   }, []);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileLoanCard = useCallback((loan: LoanRecord) => {
+    const config = STATUS_CONFIG[loan.status] || { label: loan.status, color: 'bg-gray-100 text-gray-600', icon: null };
+    return (
+      <div
+        key={loan.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+              <Package size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{loan.Asset?.nama || 'Aset Tanpa Nama'}</h4>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">{loan.Asset?.kode || '-'}</p>
+            </div>
+          </div>
+          <Badge className={`${config.color} flex items-center gap-1 w-fit text-[10px] shrink-0`}>
+            {config.icon}
+            {config.label}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          {!isPersonalTeacherMode && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium">Peminjam</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{loan.Peminjam?.full_name || '-'}</span>
+            </div>
+          )}
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tgl Pinjam</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {formatDate(loan.tanggal_pinjam, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Rencana Kembali</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {loan.tanggal_kembali_plan ? formatDate(loan.tanggal_kembali_plan, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+            </span>
+          </div>
+          {loan.tanggal_kembali_real && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium">Tgl Kembali Real</span>
+              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                {formatDate(loan.tanggal_kembali_real, { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Suspense fallback={null}>
+            <LoanStatusActions loan={loan} />
+          </Suspense>
+        </div>
+      </div>
+    );
+  }, [isPersonalTeacherMode]);
+
   return (
     <PremiumFeatureGate
       moduleName="SARPRAS"
@@ -413,42 +478,82 @@ const SarprasLoansPage: React.FC = React.memo(() => {
 
           {/* Table wrapped in SectionCard */}
           <SectionCard title={isPersonalTeacherMode ? "Daftar Peminjaman Saya" : "Daftar Laporan Peminjaman"} icon={ClipboardList} fullWidth noPadding>
-            <Table
-              columns={columns}
-              data={loans}
-              loading={isLoading}
-              emptyMessage={isPersonalTeacherMode ? "Anda belum memiliki data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang." : "Belum ada data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang."}
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              toolbarRight={
-                <div className="flex gap-2">
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="flex flex-wrap gap-2 justify-end">
                   {!isPersonalTeacherMode && (
                     <Button
                       onClick={handleOpenScan}
                       variant="outline"
+                      size="sm"
                       className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm font-semibold"
                     >
-                      <ScanLine className="h-4 w-4 mr-2" /> Peminjaman Scan Barcode
+                      <ScanLine className="h-4 w-4 mr-2" /> Scan Barcode
                     </Button>
                   )}
                   <Button
                     onClick={handleOpenRequest}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
+                    size="sm"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none"
                   >
                     <Plus className="h-4 w-4 mr-2" /> Ajukan Manual
                   </Button>
                 </div>
-              }
-              pagination={{
-                currentPage: page,
-                totalPages: totalPages,
-                totalItems: total,
-                itemsPerPage: limit,
-                onPageChange: handlePageChange,
-                onLimitChange: handleLimitChange
-              }}
-            />
+                <MobileAcademicList
+                  title="Daftar Peminjaman"
+                  data={loans}
+                  loading={isLoading}
+                  totalItems={total}
+                  emptyMessage={isPersonalTeacherMode ? "Anda belum memiliki data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang." : "Belum ada data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang."}
+                  pagination={{
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalItems: total,
+                    itemsPerPage: limit,
+                    onPageChange: handlePageChange,
+                    onLimitChange: handleLimitChange
+                  }}
+                  renderCard={renderMobileLoanCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={loans}
+                loading={isLoading}
+                emptyMessage={isPersonalTeacherMode ? "Anda belum memiliki data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang." : "Belum ada data peminjaman. Klik 'Ajukan Manual' untuk meminjam barang."}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                toolbarRight={
+                  <div className="flex gap-2">
+                    {!isPersonalTeacherMode && (
+                      <Button
+                        onClick={handleOpenScan}
+                        variant="outline"
+                        className="border-indigo-200 text-indigo-700 hover:bg-indigo-50 shadow-sm font-semibold"
+                      >
+                        <ScanLine className="h-4 w-4 mr-2" /> Peminjaman Scan Barcode
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleOpenRequest}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white border-none shadow-md shadow-indigo-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
+                    >
+                      <Plus className="h-4 w-4 mr-2" /> Ajukan Manual
+                    </Button>
+                  </div>
+                }
+                pagination={{
+                  currentPage: page,
+                  totalPages: totalPages,
+                  totalItems: total,
+                  itemsPerPage: limit,
+                  onPageChange: handlePageChange,
+                  onLimitChange: handleLimitChange
+                }}
+              />
+            )}
           </SectionCard>
 
           {/* Suspense wrapper for modal components */}

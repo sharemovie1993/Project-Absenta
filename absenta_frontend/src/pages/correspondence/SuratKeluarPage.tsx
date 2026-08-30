@@ -19,6 +19,8 @@ import { useAuthStore } from '../../store/authStore';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { useDebounce } from '../../hooks/useDebounce';
 import useConfirm from '../../hooks/useConfirm';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import toast from 'react-hot-toast';
 import { Search, Plus, Edit2, Trash2, Send, CheckSquare, Clock, Award, ShieldAlert, Printer, Eye } from 'lucide-react';
 
@@ -390,6 +392,88 @@ export default function SuratKeluarPage() {
     }
   ], [handleEdit, handleDelete, handleOpenSign, handlePrintPdf]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileSuratKeluarCard = useCallback((item: SuratKeluar) => {
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <span className="text-[10px] font-mono font-bold text-slate-500 block truncate">{item.nomor_surat}</span>
+            <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 mt-0.5">{item.judul}</h4>
+          </div>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge variant="outline" className="text-[9px] font-black uppercase">
+              {item.kategori_surat}
+            </Badge>
+            {statusBadge(item.status)}
+          </div>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tujuan / Penerima</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{item.tujuan_surat}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Surat</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {new Date(item.tanggal_surat).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          {item.Siswa && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium">Kaitan Siswa</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200 text-xs">
+                {item.Siswa.nama_siswa} ({item.Siswa.Kelas?.nama_kelas || '-'})
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {(item.status === 'DRAFT' || item.status === 'MENUNGGU_TTD') && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenSign(item)}
+              className="text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 font-bold"
+            >
+              <Award size={13} className="mr-1" /> TTD Digital
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePrintPdf(item)}
+            className="text-xs text-teal-600 hover:text-teal-700 hover:bg-teal-50 dark:hover:bg-teal-950/20 font-bold"
+          >
+            <Printer size={13} className="mr-1" /> Cetak PDF
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(item)}
+            className="text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
+          >
+            <Edit2 size={13} className="mr-1" /> Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(item.id)}
+            className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 font-bold"
+          >
+            <Trash2 size={13} className="mr-1" /> Hapus
+          </Button>
+        </div>
+      </div>
+    );
+  }, [handleEdit, handleDelete, handleOpenSign, handlePrintPdf, statusBadge]);
+
   return (
     <AcademicPageLayout
       title="Surat Keluar Sekolah"
@@ -458,11 +542,12 @@ export default function SuratKeluarPage() {
       value={statusFilter}
       onValueChange={setStatusFilter}
       options={[
-        { value: 'all', label: 'Semua Status' },
-        { value: 'draft', label: 'Draft' },
-        { value: 'pending', label: 'Menunggu Persetujuan' },
-        { value: 'approved', label: 'Disetujui' },
-        { value: 'rejected', label: 'Ditolak' }
+        { value: '', label: 'Semua Status' },
+        { value: 'DRAFT', label: 'Draft' },
+        { value: 'MENUNGGU_TTD', label: 'Menunggu TTD' },
+        { value: 'DISETUJUI', label: 'Disetujui' },
+        { value: 'DITOLAK', label: 'Ditolak' },
+        { value: 'DIKIRIM', label: 'Dikirim' }
       ]}
       placeholder="Pilih Status..."
       triggerClassName="w-44 h-9"
@@ -473,7 +558,7 @@ export default function SuratKeluarPage() {
       value={kategoriFilter}
       onValueChange={setKategoriFilter}
       options={[
-        { value: 'all', label: 'Semua Kategori' },
+        { value: '', label: 'Semua Kategori' },
         { value: 'Undangan', label: 'Undangan' },
         { value: 'Pemberitahuan', label: 'Pemberitahuan' },
         { value: 'Tugas', label: 'Surat Tugas' },
@@ -498,6 +583,26 @@ export default function SuratKeluarPage() {
             <Loader className="mb-4" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Server Surat...</p>
           </div>
+        ) : isMobile ? (
+          <MobileAcademicList
+            title="Daftar Surat Keluar"
+            data={data}
+            loading={loading}
+            totalItems={totalItems}
+            emptyMessage="Belum ada surat keluar yang tercatat."
+            pagination={{
+              currentPage: page,
+              itemsPerPage: limit,
+              totalItems: totalItems,
+              totalPages,
+              onPageChange: setPage,
+              onLimitChange: (limitVal) => {
+                setLimit(limitVal);
+                setPage(1);
+              }
+            }}
+            renderCard={renderMobileSuratKeluarCard}
+          />
         ) : (
           <Table
             columns={columns}

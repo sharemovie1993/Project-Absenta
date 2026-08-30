@@ -19,6 +19,8 @@ import { PrintLoanAgreement } from '../../components/cooperative/loans/PrintLoan
 import { PrintLoanReceipt } from '../../components/cooperative/loans/PrintLoanReceipt';
 import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoanRepayment';
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const LoanDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -226,6 +228,79 @@ const LoanDetail: React.FC = React.memo(() => {
 
     return cols;
   }, [isOperator, loan]);
+
+  const isMobile = useIsMobile();
+
+  const renderMobileInstallmentCard = useCallback((row: Installment, index: number) => {
+    const isPaid = row.status === 'PAID';
+    const isUnpaid = row.status === 'UNPAID';
+    const installmentNumber = (installmentPage - 1) * installmentLimit + index + 1;
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Angsuran Ke-{installmentNumber}</span>
+            <div className="text-base font-extrabold text-slate-800 dark:text-slate-100 mt-0.5">
+              Rp {Math.round(parseFloat(row.amount)).toLocaleString('id-ID')}
+            </div>
+          </div>
+          <Badge
+            variant={isPaid ? 'success' : 'destructive'}
+            className="font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border shrink-0"
+          >
+            {isPaid ? 'Lunas' : 'Belum Lunas'}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Jatuh Tempo</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {formatDate(row.dueDate, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Bayar</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {row.paidDate ? formatDate(row.paidDate, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          {isPaid && (
+            <Button
+              size="xs"
+              variant="outline"
+              className="text-slate-600 dark:text-slate-400 font-bold border-slate-200 dark:border-slate-700 rounded-lg text-[10px] px-3 py-1 inline-flex items-center gap-1"
+              onClick={() => {
+                setSelectedRepayment({ installment: row, index });
+                setPrintTarget('REPAYMENT');
+              }}
+            >
+              <Printer size={10} /> Cetak Bukti
+            </Button>
+          )}
+
+          {isUnpaid && (loan?.status === 'APPROVED' || loan?.status === 'PAID') && isOperator && (
+            <Button
+              size="xs"
+              variant="success"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] px-3.5 py-1"
+              onClick={() => handlePayInstallment(row.id, installmentNumber)}
+              disabled={payInstallmentMutation.isPending}
+            >
+              {payInstallmentMutation.isPending ? 'Memproses...' : 'Bayar Angsuran'}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }, [installmentPage, installmentLimit, loan?.status, isOperator, payInstallmentMutation.isPending, handlePayInstallment]);
 
   // Breadcrumbs
   const breadcrumbs = useMemo(() => {
@@ -559,20 +634,39 @@ const LoanDetail: React.FC = React.memo(() => {
                 <p className="text-[10px] text-slate-400">Daftar kartu kendali angsuran bulanan yang harus dibayar anggota</p>
               </div>
 
-              <Table 
-                data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
-                columns={installmentColumns}
-                rowKey="id"
-                emptyMessage="Tidak ada data jadwal angsuran terdaftar."
-                pagination={{
-                  currentPage: installmentPage,
-                  itemsPerPage: installmentLimit,
-                  totalItems: loan.installments.length,
-                  totalPages: Math.ceil(loan.installments.length / installmentLimit),
-                  onPageChange: (newPage) => setInstallmentPage(newPage),
-                  onLimitChange: () => {}
-                }}
-              />
+              {isMobile ? (
+                <MobileAcademicList
+                  title="Daftar Jadwal Angsuran"
+                  data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
+                  loading={false}
+                  totalItems={loan.installments.length}
+                  emptyMessage="Tidak ada data jadwal angsuran terdaftar."
+                  pagination={{
+                    currentPage: installmentPage,
+                    itemsPerPage: installmentLimit,
+                    totalItems: loan.installments.length,
+                    totalPages: Math.ceil(loan.installments.length / installmentLimit),
+                    onPageChange: (newPage) => setInstallmentPage(newPage),
+                    onLimitChange: () => {}
+                  }}
+                  renderCard={(item, index) => renderMobileInstallmentCard(item, index)}
+                />
+              ) : (
+                <Table 
+                  data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
+                  columns={installmentColumns}
+                  rowKey="id"
+                  emptyMessage="Tidak ada data jadwal angsuran terdaftar."
+                  pagination={{
+                    currentPage: installmentPage,
+                    itemsPerPage: installmentLimit,
+                    totalItems: loan.installments.length,
+                    totalPages: Math.ceil(loan.installments.length / installmentLimit),
+                    onPageChange: (newPage) => setInstallmentPage(newPage),
+                    onLimitChange: () => {}
+                  }}
+                />
+              )}
             </SectionCard>
           </div>
 

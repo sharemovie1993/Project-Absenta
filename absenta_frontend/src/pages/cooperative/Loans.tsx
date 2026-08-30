@@ -18,6 +18,8 @@ import { cn } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
 import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -402,6 +404,106 @@ const Loans: React.FC = React.memo(() => {
     return baseCols;
   }, [isStudent, canApprove, canReject, handleChangeLoanStatus]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((row: Loan) => {
+    let variant: 'primary' | 'success' | 'warning' | 'destructive' | 'info' | 'secondary' = 'warning';
+    if (row.status === 'APPROVED') variant = 'info';
+    else if (row.status === 'PAID') variant = 'success';
+    else if (row.status === 'REJECTED') variant = 'destructive';
+
+    const totalIns = row.installments?.length || Number(row.duration) || 0;
+    const paidIns = row.installments?.filter(ins => ins.status === 'PAID').length || 0;
+    const percent = totalIns > 0 ? Math.round((paidIns / totalIns) * 100) : 0;
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            {!isStudent && (
+              <>
+                <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">{row.member.name}</h4>
+                <p className="text-[10px] text-slate-400 font-mono">{row.member.memberNo}</p>
+              </>
+            )}
+            <div className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
+              {formatCurrency(row.amount)}
+            </div>
+          </div>
+          <Badge variant={variant} className="font-black uppercase tracking-wider text-[9px] rounded-full px-2.5 py-0.5 border shrink-0">
+            {row.status}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Total Pengembalian</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(row.totalAmount)}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tenor / Bunga</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{row.duration} Bln ({row.interestRate}%)</span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Pengajuan</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress bar cicilan */}
+        <div className="space-y-1">
+          <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
+            <span>Progress Cicilan: {paidIns}/{totalIns}</span>
+            <span>{percent}%</span>
+          </div>
+          <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/20">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500" 
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Link to={`/cooperative/loans/${row.id}`}>
+            <Button size="sm" variant="outline" className="font-bold text-[11px] inline-flex items-center gap-1">
+              <Eye size={12} /> Detail
+            </Button>
+          </Link>
+
+          {(canApprove || canReject) && row.status === 'PENDING' && (
+            <>
+              {canApprove && (
+                <Button 
+                  size="sm" 
+                  variant="success" 
+                  className="font-bold text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-3"
+                  onClick={() => handleChangeLoanStatus(row.id, 'APPROVED')}
+                >
+                  Setuju
+                </Button>
+              )}
+              {canReject && (
+                <Button 
+                  size="sm" 
+                  className="font-bold text-[11px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-3"
+                  onClick={() => handleChangeLoanStatus(row.id, 'REJECTED')}
+                >
+                  Tolak
+                </Button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }, [isStudent, canApprove, canReject, handleChangeLoanStatus]);
+
   const breadcrumbs = useMemo(() => {
     return [
       { label: 'Koperasi', path: '/cooperative/dashboard' },
@@ -506,20 +608,41 @@ const Loans: React.FC = React.memo(() => {
 
             {/* Loans Table Master */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              <Table
-                columns={columns}
-                data={loans}
-                isLoading={loansQuery.isLoading}
-                emptyMessage="Belum ada data pinjaman yang tercatat."
-                pagination={{
-                  currentPage: page,
-                  totalPages,
-                  totalItems,
-                  itemsPerPage: limit,
-                  onPageChange: setPage,
-                  onLimitChange: setLimit,
-                }}
-              />
+              {isMobile ? (
+                <div className="p-4">
+                  <MobileAcademicList
+                    title="Daftar Pinjaman Koperasi"
+                    data={loans}
+                    loading={loansQuery.isLoading}
+                    totalItems={totalItems}
+                    emptyMessage="Belum ada data pinjaman yang tercatat."
+                    pagination={{
+                      currentPage: page,
+                      totalPages,
+                      totalItems,
+                      itemsPerPage: limit,
+                      onPageChange: setPage,
+                      onLimitChange: setLimit,
+                    }}
+                    renderCard={renderMobileCard}
+                  />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={loans}
+                  isLoading={loansQuery.isLoading}
+                  emptyMessage="Belum ada data pinjaman yang tercatat."
+                  pagination={{
+                    currentPage: page,
+                    totalPages,
+                    totalItems,
+                    itemsPerPage: limit,
+                    onPageChange: setPage,
+                    onLimitChange: setLimit,
+                  }}
+                />
+              )}
             </div>
           </div>
         </SectionCard>

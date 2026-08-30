@@ -34,6 +34,8 @@ import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useSarprasAsetOptions } from '../../hooks/useSarprasAsetOptions';
 import useConfirm from '../../hooks/useConfirm';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { z } from 'zod';
 
 // Lazy load heavy Modal component (Pillar 11)
@@ -374,6 +376,102 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
     ]
   }), []);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileRepairCard = useCallback((repair: RepairRecord) => {
+    const config = STATUS_MAP[repair.status] || { label: repair.status, color: 'bg-gray-100 text-gray-600', icon: null };
+    return (
+      <div
+        key={repair.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center font-black text-sm shrink-0">
+              <Wrench size={18} />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{repair.Asset?.nama || 'Aset Tanpa Nama'}</h4>
+              <p className="text-[10px] text-slate-400 font-mono font-medium">{repair.Asset?.kode || '-'}</p>
+            </div>
+          </div>
+          <Badge className={`${config.color} flex items-center gap-1 w-fit text-[10px] shrink-0`}>
+            {config.icon}
+            {config.label}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Teknisi</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{repair.teknisi || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal Mulai</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {repair.tanggal_mulai ? new Date(repair.tanggal_mulai).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+            </span>
+          </div>
+          <div className="col-span-2">
+            <span className="text-[10px] text-slate-400 block font-medium">Biaya Perbaikan</span>
+            <span className="font-bold text-slate-800 dark:text-slate-100">
+              {repair.biaya ? formatCurrency(Number(repair.biaya)) : '-'}
+            </span>
+          </div>
+          {repair.deskripsi && (
+            <div className="col-span-2">
+              <span className="text-[10px] text-slate-400 block font-medium">Deskripsi</span>
+              <p className="text-slate-600 dark:text-slate-400 text-xs italic">{repair.deskripsi}</p>
+            </div>
+          )}
+        </div>
+
+        {repair.status === 'PROSES' && (
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              size="sm"
+              className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white border-none rounded-lg px-3 py-1.5 cursor-pointer"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Selesaikan Perbaikan',
+                  description: 'Apakah Anda yakin perbaikan aset ini telah selesai dilakukan?',
+                  confirmText: 'Ya, Selesai',
+                  cancelText: 'Batal',
+                  style: 'success'
+                });
+                if (ok) {
+                  updateMutation.mutate({ id: repair.id, data: { status: 'SELESAI' } });
+                }
+              }}
+              disabled={updateMutation.isPending}
+            >
+              <CheckCircle size={14} className="mr-1" /> Selesai
+            </Button>
+            <Button
+              size="sm"
+              className="text-xs bg-red-500 hover:bg-red-600 text-white border-none rounded-lg px-3 py-1.5 cursor-pointer"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Batalkan Perbaikan',
+                  description: 'Apakah Anda yakin ingin membatalkan laporan perbaikan aset ini?',
+                  confirmText: 'Ya, Batal',
+                  cancelText: 'Batal',
+                  style: 'danger'
+                });
+                if (ok) {
+                  updateMutation.mutate({ id: repair.id, data: { status: 'BATAL' } });
+                }
+              }}
+              disabled={updateMutation.isPending}
+            >
+              <XCircle size={14} className="mr-1" /> Batal
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }, [formatCurrency, updateMutation, confirm]);
+
   return (
     <PremiumFeatureGate
       moduleName="SARPRAS"
@@ -429,33 +527,64 @@ const SarprasMaintenancePage: React.FC = React.memo(() => {
 
           {/* Table wrapped in SectionCard */}
           <SectionCard title="Daftar Laporan Perbaikan" icon={Wrench} fullWidth noPadding>
-            <Table
-              columns={columns}
-              data={repairs}
-              loading={isLoading}
-              emptyMessage="Belum ada data perbaikan. Klik 'Buat Laporan Perbaikan' untuk memulai."
-              sortBy={sortBy}
-              sortOrder={sortOrder}
-              onSort={handleSort}
-              toolbarRight={
-                <Button
-                  variant="toolbarPrimary"
-                  size="toolbar"
-                  onClick={handleOpenCreateModal}
-                  className="bg-orange-500 hover:bg-orange-600 text-white border-none shadow-md shadow-orange-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
-                >
-                  <Plus className="h-4 w-4 mr-2" /> Buat Laporan Perbaikan
-                </Button>
-              }
-              pagination={{
-                currentPage: page,
-                totalPages: totalPages,
-                totalItems: total,
-                itemsPerPage: limit,
-                onPageChange: handlePageChange,
-                onLimitChange: handleLimitChange
-              }}
-            />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    onClick={handleOpenCreateModal}
+                    className="bg-orange-500 hover:bg-orange-600 text-white border-none shadow-md shadow-orange-200 dark:shadow-none"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Buat Laporan Perbaikan
+                  </Button>
+                </div>
+                <MobileAcademicList
+                  title="Daftar Perbaikan Aset"
+                  data={repairs}
+                  loading={isLoading}
+                  totalItems={total}
+                  emptyMessage="Belum ada data perbaikan. Klik 'Buat Laporan Perbaikan' untuk memulai."
+                  pagination={{
+                    currentPage: page,
+                    totalPages: totalPages,
+                    totalItems: total,
+                    itemsPerPage: limit,
+                    onPageChange: handlePageChange,
+                    onLimitChange: handleLimitChange
+                  }}
+                  renderCard={renderMobileRepairCard}
+                />
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={repairs}
+                loading={isLoading}
+                emptyMessage="Belum ada data perbaikan. Klik 'Buat Laporan Perbaikan' untuk memulai."
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                toolbarRight={
+                  <Button
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    onClick={handleOpenCreateModal}
+                    className="bg-orange-500 hover:bg-orange-600 text-white border-none shadow-md shadow-orange-200 dark:shadow-none transition-all duration-200 hover:translate-y-[-2px]"
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Buat Laporan Perbaikan
+                  </Button>
+                }
+                pagination={{
+                  currentPage: page,
+                  totalPages: totalPages,
+                  totalItems: total,
+                  itemsPerPage: limit,
+                  onPageChange: handlePageChange,
+                  onLimitChange: handleLimitChange
+                }}
+              />
+            )}
           </SectionCard>
 
           {/* Create Repair Modal */}
