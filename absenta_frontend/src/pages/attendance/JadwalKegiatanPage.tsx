@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getJadwalKegiatan,
   createJadwalKegiatan,
@@ -91,9 +91,9 @@ export default React.memo(function JadwalKegiatanPage() {
   const activeTahunPelajaranId = (activeTpData as { id?: string })?.id || activeTpFromList?.id || '';
   const activeTahunPelajaranName = (activeTpData as { tahun?: string })?.tahun || activeTpFromList?.tahun || 'Tahun Ajaran Aktif';
 
-  const { data: jadwalItems = [], isLoading: loadingJadwal } = useJadwalKegiatan(activeTahunPelajaranId);
-  const { data: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
-  const { data: classes = [], isLoading: loadingClasses } = useKelasOptions();
+  const { rawList: jadwalItems = [], isLoading: loadingJadwal } = useJadwalKegiatan();
+  const { rawList: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
+  const { rawList: classes = [], isLoading: loadingClasses } = useKelasOptions();
 
   // Mutations
   const createMutation = useMutation({
@@ -204,7 +204,8 @@ export default React.memo(function JadwalKegiatanPage() {
   }, [handleOpenCreateFromMaster, queryClient, activeTahunPelajaranId]);
 
   const filteredMasters = useMemo(() => {
-    return (masterKegiatans ?? []).filter(m => {
+    const list = Array.isArray(masterKegiatans) ? masterKegiatans : [];
+    return list.filter(m => {
       if (m.tipe === 'KBM') return false;
       if (activeTab === 'ALL') return true;
       return m.tipe === activeTab;
@@ -212,8 +213,11 @@ export default React.memo(function JadwalKegiatanPage() {
   }, [masterKegiatans, activeTab]);
 
   const cards = useMemo<CardItem[]>(() => {
-    const list: CardItem[] = (filteredMasters ?? [])?.map(master => {
-      const match = (jadwalItems ?? []).find(j => 
+    const safeJadwal = Array.isArray(jadwalItems) ? jadwalItems : [];
+    const safeFilteredMasters = Array.isArray(filteredMasters) ? filteredMasters : [];
+
+    const list: CardItem[] = safeFilteredMasters.map(master => {
+      const match = safeJadwal.find(j => 
         j.jenis_kegiatan_id === master.id ||
         j.nama?.toLowerCase().trim() === master.nama.toLowerCase().trim()
       );
@@ -226,7 +230,7 @@ export default React.memo(function JadwalKegiatanPage() {
       };
     });
 
-    (jadwalItems ?? []).forEach(j => {
+    safeJadwal.forEach(j => {
       const existsInList = list.some(item => 
         (item.master && item.master.id === j.jenis_kegiatan_id) ||
         item.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
