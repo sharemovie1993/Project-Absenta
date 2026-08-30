@@ -646,7 +646,8 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
             )
           }
         />
-      </div>
+       )}
+     </div>
 
       <MethodPickerModal
         isOpen={selectionOpen}
