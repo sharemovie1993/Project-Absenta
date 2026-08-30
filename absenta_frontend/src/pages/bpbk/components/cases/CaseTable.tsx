@@ -3,6 +3,8 @@ import { Eye, Edit2, RotateCcw, RefreshCw, CheckCircle, Trash2 } from 'lucide-re
 import { Table, Button, Badge } from '@/components/ui';
 import type { Column } from '@/components/ui/Table';
 import { type KasusBK } from '@/api/bpbk.api';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 
 interface CaseTableProps {
   data: KasusBK[];
@@ -190,6 +192,140 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       )
     }
   ], [showDeleted, canRestore, onViewDetail, onRestore, onEdit, onReopen, onDelete, onCloseCase, getKategoriColor, getStatusColor, getPrioritasColor, getVisibilityColor]);
+
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (item: KasusBK) => {
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              {new Date(item.tanggal_kasus).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight">
+              {item.Siswa?.nama_siswa}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-500 font-mono">
+              Kelas: {item.Siswa?.Kelas?.nama_kelas || '-'}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <Badge variant="outline" className={`text-[8px] font-black uppercase ${getStatusColor(item.status)}`}>
+              {item.status}
+            </Badge>
+            <Badge variant="outline" className={`text-[8px] font-black uppercase ${getPrioritasColor(item.prioritas)}`}>
+              {item.prioritas}
+            </Badge>
+          </div>
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+          <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+            {item.judul}
+          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge className={`text-[8px] font-black uppercase px-1.5 border ${getKategoriColor(item.kategori)}`}>
+              {item.kategori}
+            </Badge>
+            <Badge variant="outline" className={`text-[8px] font-black uppercase ${getVisibilityColor(item.visibility)}`}>
+              {item.visibility}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onViewDetail(item)}
+            className="h-8 px-2.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50 text-[11px] font-bold"
+          >
+            <Eye size={13} className="mr-1" /> Detail
+          </Button>
+
+          {showDeleted ? (
+            canRestore && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onRestore(item.id)}
+                className="h-8 px-2.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-[11px] font-bold"
+              >
+                <RotateCcw size={13} className="mr-1" /> Pulihkan
+              </Button>
+            )
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(item)}
+                className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold"
+              >
+                <Edit2 size={13} className="mr-1" /> Edit
+              </Button>
+              {item.status === 'SELESAI' ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onReopen(item.id)}
+                  className="h-8 px-2.5 text-amber-600 hover:text-amber-700 hover:bg-amber-50 text-[11px] font-bold"
+                >
+                  <RefreshCw size={13} className="mr-1" /> Buka
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onCloseCase(item.id)}
+                  className="h-8 px-2.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 text-[11px] font-bold"
+                >
+                  <CheckCircle size={13} className="mr-1" /> Selesai
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDelete(item.id)}
+                className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+                title="Hapus Kasus"
+              >
+                <Trash2 size={13} />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        <MobileAcademicList
+          title="Daftar Kasus Siswa"
+          data={data}
+          loading={loading}
+          totalItems={totalItems}
+          emptyMessage="Tidak ada catatan kasus BK yang ditemukan."
+          pagination={{
+            currentPage: page,
+            itemsPerPage: limit,
+            totalItems,
+            totalPages,
+            onPageChange,
+            onLimitChange
+          }}
+          renderCard={renderMobileCard}
+        />
+      </div>
+    );
+  }
 
   return (
     <Table

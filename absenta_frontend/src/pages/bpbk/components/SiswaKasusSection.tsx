@@ -14,6 +14,8 @@ import { Badge } from '../../../components/ui/Badge';
 import { Search, Info, Plus } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { formatDate } from '../../../utils/layoutUtils';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 const siswaKasusFilterSchema = z.object({
   search: z.string().optional(),
@@ -156,6 +158,61 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
     }
   ], [onViewSiswaDetail]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (row: Siswa) => {
+    const net = (row.poin_pelanggaran || 0) - (row.poin_prestasi || 0);
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-500 shrink-0">
+              {row.nama_siswa?.charAt(0)}
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
+                {row.nama_siswa}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 font-mono">
+                NIS: {row.nis || '-'} • {row.Kelas?.nama_kelas || '-'}
+              </p>
+            </div>
+          </div>
+          <Badge variant={net > 75 ? "error" : net > 30 ? "warning" : "success"} className="text-[10px] font-black uppercase shrink-0">
+            {net} Poin
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400">Pelanggaran:</span>
+            <span className="font-black text-rose-500 font-mono">+{row.poin_pelanggaran || 0}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400">Prestasi:</span>
+            <span className="font-black text-emerald-500 font-mono">-{row.poin_prestasi || 0}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            variant="toolbarOutline"
+            size="sm"
+            onClick={() => onViewSiswaDetail?.(row.id)}
+            className="text-[10px] h-8 font-bold w-full sm:w-auto"
+          >
+            <Info className="w-3.5 h-3.5 mr-1" />
+            Detail & Linimasa
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -202,11 +259,33 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
         </div>
       </div>
 
-      {/* Roster Table */}
+      {/* Roster Table / Mobile Cards */}
       {loading && siswa.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <Loader className="mb-4" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Siswa...</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          <MobileAcademicList
+            title="Daftar Siswa"
+            data={siswa}
+            loading={loading}
+            totalItems={totalPages * limit}
+            emptyMessage="Tidak ada data siswa yang sesuai filter."
+            pagination={{
+              currentPage: page,
+              itemsPerPage: limit,
+              totalItems: totalPages * limit,
+              totalPages,
+              onPageChange: setPage,
+              onLimitChange: (limitVal) => {
+                setLimit(limitVal);
+                setPage(1);
+              }
+            }}
+            renderCard={renderMobileCard}
+          />
         </div>
       ) : (
         <div className="space-y-4">

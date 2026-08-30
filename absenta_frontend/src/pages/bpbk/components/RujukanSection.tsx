@@ -15,6 +15,8 @@ import { Label } from '../../../components/ui/Label';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -218,6 +220,67 @@ export const RujukanSection: React.FC = React.memo(() => {
     }
   ], [handleEdit, handleDelete]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = (item: RujukanKasus) => {
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+              {formatDate(item.tanggal)}
+            </span>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight">
+              {item.Siswa?.nama_siswa}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-500 font-mono">
+              Kelas: {item.Siswa?.Kelas?.nama_kelas || '-'} • NIS: {item.Siswa?.nis || '-'}
+            </p>
+          </div>
+          <Badge
+            variant={item.status === 'SELESAI' ? 'success' : item.status === 'DISETUJUI' ? 'info' : 'warning'}
+            className="text-[9px] font-black uppercase"
+          >
+            {item.status}
+          </Badge>
+        </div>
+
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+            <span>Rujukan ke:</span>
+            <span>{item.rujukan_ke}</span>
+          </div>
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+            {item.alasan}
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(item)}
+            className="h-8 px-2.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 text-[11px] font-bold"
+          >
+            <Edit2 size={13} className="mr-1" /> Edit
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => handleDelete(item.id)}
+            className="w-8 h-8 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+            title="Hapus Rujukan"
+          >
+            <Trash2 size={13} />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -235,11 +298,33 @@ export const RujukanSection: React.FC = React.memo(() => {
         </Button>
       </div>
 
-      {/* Table */}
+      {/* Table / Mobile Cards */}
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <Loader className="mb-4" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Rujukan...</p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-4">
+          <MobileAcademicList
+            title="Daftar Rujukan Kasus"
+            data={data}
+            loading={loading}
+            totalItems={totalPages * limit}
+            emptyMessage="Belum ada catatan rujukan kasus siswa."
+            pagination={{
+              currentPage: page,
+              itemsPerPage: limit,
+              totalItems: totalPages * limit,
+              totalPages,
+              onPageChange: setPage,
+              onLimitChange: (limitVal) => {
+                setLimit(limitVal);
+                setPage(1);
+              }
+            }}
+            renderCard={renderMobileCard}
+          />
         </div>
       ) : (
         <Table

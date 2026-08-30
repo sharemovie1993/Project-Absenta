@@ -15,6 +15,8 @@ import { Search, Plus, RotateCcw, Eye, Printer, Edit2, Trash2 } from 'lucide-rea
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/layoutUtils';
 import { PemanggilanCard } from '@/components/bpbk/pemanggilan/PemanggilanCard';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 
 const Modal = lazy(() => import('@/components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('@/components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -165,6 +167,30 @@ export const PemanggilanSection: React.FC = React.memo(() => {
     }
   ], [navigate]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((item: PemanggilanOrangTua) => {
+    return (
+      <PemanggilanCard
+        key={item.id}
+        item={item}
+        onViewDetail={(i) => navigate(`/bpbk/cases/${i.siswa_id}`)}
+        onEdit={(i) => {
+          setFormData({
+            siswa_id: i.siswa_id,
+            alasan: i.alasan,
+            tanggal_pemanggilan: new Date(i.tanggal_pemanggilan).toISOString().split('T')[0],
+            jam_pemanggilan: '09:00',
+            ruangan: 'Ruang BK',
+          });
+          setModalOpen(true);
+        }}
+        onDelete={(id) => setDeleteId(id)}
+        onPrint={(i) => navigate(`/bpbk/pemanggilan/${i.id}/print`)}
+      />
+    );
+  }, [navigate]);
+
   return (
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900 p-6 rounded-2xl space-y-6">
       {/* Top Header & Filter Bar */}
@@ -209,22 +235,43 @@ export const PemanggilanSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Table Data Master */}
+      {/* Table Data Master / Mobile Cards */}
       <div className="overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
-        <Table
-          columns={columns}
-          data={list}
-          loading={isLoading}
-          emptyMessage="Tidak ada data pemanggilan yang sesuai."
-          pagination={{
-            currentPage: page,
-            totalPages,
-            totalItems,
-            itemsPerPage: limit,
-            onPageChange: setPage,
-            onLimitChange: setLimit,
-          }}
-        />
+        {isMobile ? (
+          <div className="p-2 space-y-4">
+            <MobileAcademicList
+              title="Daftar Surat Pemanggilan"
+              data={list}
+              loading={isLoading}
+              totalItems={totalItems}
+              emptyMessage="Tidak ada data pemanggilan yang sesuai."
+              pagination={{
+                currentPage: page,
+                totalPages,
+                totalItems,
+                itemsPerPage: limit,
+                onPageChange: setPage,
+                onLimitChange: setLimit,
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            data={list}
+            loading={isLoading}
+            emptyMessage="Tidak ada data pemanggilan yang sesuai."
+            pagination={{
+              currentPage: page,
+              totalPages,
+              totalItems,
+              itemsPerPage: limit,
+              onPageChange: setPage,
+              onLimitChange: setLimit,
+            }}
+          />
+        )}
       </div>
 
       {/* Create Modal */}
