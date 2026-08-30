@@ -30,7 +30,7 @@ export function SearchableSelect({
   id,
   value,
   onValueChange,
-  options,
+  options = [],
   placeholder = 'Select option...',
   searchPlaceholder = 'Search...',
   emptyMessage = 'No options found.',
@@ -48,6 +48,8 @@ export function SearchableSelect({
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const safeOptions = useMemo(() => Array.isArray(options) ? options : [], [options]);
 
   const getSafeLabel = (opt: any): string => {
     if (!opt) return '';
@@ -72,22 +74,22 @@ export function SearchableSelect({
   const selectedOption = useMemo(() => {
     if (!value) return null;
     const targetVal = String(value).toLowerCase();
-    const found = options.find((opt) => String(opt.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal);
+    const found = safeOptions.find((opt) => String(opt?.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal);
     if (found) return found;
     return null;
-  }, [options, value]);
+  }, [safeOptions, value]);
 
   const selectedLabel = selectedOption ? getSafeLabel(selectedOption) : '';
 
   // Reset searchQuery when options change or value is cleared
   useEffect(() => {
     const targetVal = String(value || '').toLowerCase();
-    if (!value || (options.length > 0 && !options.some(opt => String(opt.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal))) {
+    if (!value || (safeOptions.length > 0 && !safeOptions.some(opt => String(opt?.value).toLowerCase() === targetVal || getSafeLabel(opt).toLowerCase() === targetVal))) {
       setSearchQuery('');
     } else if (!isOpen) {
       setSearchQuery(selectedLabel);
     }
-  }, [options, value, selectedLabel, isOpen]);
+  }, [safeOptions, value, selectedLabel, isOpen]);
 
   // Sync searchQuery with selection when dropdown closes
   useEffect(() => {
@@ -98,17 +100,17 @@ export function SearchableSelect({
 
   // Filter options internally
   const filteredOptions = useMemo(() => {
-    if (onSearch) return options;
-    if (!searchQuery) return options;
+    if (onSearch) return safeOptions;
+    if (!searchQuery) return safeOptions;
     
     const isExactMatch = selectedOption && searchQuery === selectedLabel;
-    if (isOpen && isExactMatch) return options;
+    if (isOpen && isExactMatch) return safeOptions;
 
     const query = searchQuery.toLowerCase();
-    return options.filter((opt) =>
+    return safeOptions.filter((opt) =>
       getSafeLabel(opt).toLowerCase().includes(query)
     );
-  }, [options, searchQuery, onSearch, isOpen, selectedOption, selectedLabel]);
+  }, [safeOptions, searchQuery, onSearch, isOpen, selectedOption, selectedLabel]);
 
   // Click outside & Escape key to auto-close dropdown
   useEffect(() => {
@@ -150,7 +152,7 @@ export function SearchableSelect({
       if (!rect) return;
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
-      const dropHeight = Math.min(300, filteredOptions.length * 38 + 50);
+      const dropHeight = Math.min(300, (filteredOptions?.length || 0) * 38 + 50);
       const openUpward = spaceBelow < dropHeight && spaceAbove > spaceBelow;
       setDropdownStyle({
         position: 'fixed',
@@ -171,7 +173,7 @@ export function SearchableSelect({
       window.removeEventListener('scroll', updatePos, true);
       window.removeEventListener('resize', updatePos);
     };
-  }, [isOpen, filteredOptions.length]);
+  }, [isOpen, filteredOptions?.length]);
 
 
   const handleSelect = (val: string, label: string) => {
