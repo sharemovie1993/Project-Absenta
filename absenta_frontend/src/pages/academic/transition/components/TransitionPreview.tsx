@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SectionCard, Button, Alert, AlertDescription, Badge } from '../../../../components/ui';
 import { SearchableSelect } from '../../../../components/ui/SearchableSelect';
 import { Users, GraduationCap, ArrowUpRight, School, UserMinus, AlertTriangle, CheckCircle2, History } from 'lucide-react';
+import { useIsMobile } from '../../../../hooks/useIsMobile';
 
 interface PreviewData {
   total: number;
@@ -28,6 +29,7 @@ const getStatusVariant = (status: string) => {
 };
 
 const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
+  const isMobile = useIsMobile();
   const [items, setItems] = useState(data.items);
 
   useEffect(() => {
@@ -117,60 +119,127 @@ const TransitionPreview: React.FC<Props> = React.memo(({ data, onNext }) => {
            </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-[13px]">
-            <thead>
-              <tr className="text-left bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800">
-                <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Identitas Siswa</th>
-                <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Periode Asal</th>
-                <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Target Baru</th>
-                <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Status Keputusan</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {items?.map((item) => (
-                <tr key={item.siswaId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
-                  <td className="py-4 px-6">
-                    <div className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">{item.namaSiswa}</div>
+        {isMobile ? (
+          <div className="p-4 space-y-3">
+            {items?.map((item) => (
+              <div
+                key={item.siswaId}
+                className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-black text-xs text-slate-900 dark:text-slate-100 uppercase tracking-tight">
+                      {item.namaSiswa}
+                    </h4>
                     {isModified(item.siswaId, item.status) && (
-                      <Badge variant="warning" className="text-[9px] h-4 px-1.5 font-black mt-1 uppercase tracking-widest rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30">Modified</Badge>
+                      <Badge variant="warning" className="text-[9px] h-4 px-1.5 font-black mt-1 uppercase tracking-widest rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30">
+                        Modified
+                      </Badge>
                     )}
-                  </td>
-                  <td className="py-4 px-6">
-                    <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 font-bold text-[11px] px-2.5">{item.fromKelas}</Badge>
-                  </td>
-                  <td className="py-4 px-6">
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Kelas Asal</span>
+                    <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 font-bold text-[11px] px-2 mt-0.5">
+                      {item.fromKelas}
+                    </Badge>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-slate-400 shrink-0" />
+                  <div className="text-right">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Target Baru</span>
                     {item.toKelas ? (
-                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-tight">
-                         <ArrowUpRight className="w-4 h-4" />
-                         {item.toKelas}
-                      </div>
+                      <Badge variant="success" className="font-bold text-[11px] px-2 mt-0.5">
+                        {item.toKelas}
+                      </Badge>
                     ) : (
-                      <span className="text-slate-400 italic text-[11px] font-medium uppercase tracking-tight">No Class Change</span>
+                      <span className="text-slate-400 italic text-[10px] font-medium uppercase tracking-tight">
+                        Tetap / Lulus
+                      </span>
                     )}
-                  </td>
-                  <td className="py-4 px-6">
-                    <SearchableSelect aria-label="Pilih opsi transisi" value={item.status}
-                      onValueChange={(val: any) => handleStatusChange(item.siswaId, val)}
-                      options={[
-                        { label: 'Naik Kelas', value: 'NAIK' },
-                        { label: 'Tinggal Kelas', value: 'TINGGAL' },
-                        { label: 'Lulus', value: 'LULUS' },
-                        { label: 'Pindah', value: 'PINDAH' }
-                      ]}
-                      placeholder="Pilih Status"
-                      triggerClassName={`h-10 w-[160px] font-black text-[10px] uppercase tracking-widest rounded-xl transition-all ${
-                        isModified(item.siswaId, item.status) 
-                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/50' 
-                          : 'border-slate-200 dark:border-slate-800 dark:bg-slate-950 shadow-inner'
-                      }`}
-                    />
-                  </td>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Keputusan Status:</span>
+                  <SearchableSelect 
+                    aria-label="Pilih opsi transisi" 
+                    value={item.status}
+                    onValueChange={(val: any) => handleStatusChange(item.siswaId, val)}
+                    options={[
+                      { label: 'Naik Kelas', value: 'NAIK' },
+                      { label: 'Tinggal Kelas', value: 'TINGGAL' },
+                      { label: 'Lulus', value: 'LULUS' },
+                      { label: 'Pindah', value: 'PINDAH' }
+                    ]}
+                    placeholder="Pilih Status"
+                    triggerClassName={`h-10 w-full font-black text-[10px] uppercase tracking-widest rounded-xl transition-all ${
+                      isModified(item.siswaId, item.status) 
+                        ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/50' 
+                        : 'border-slate-200 dark:border-slate-800 dark:bg-slate-950 shadow-inner'
+                    }`}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-[13px]">
+              <thead>
+                <tr className="text-left bg-slate-50/50 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800">
+                  <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Identitas Siswa</th>
+                  <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Periode Asal</th>
+                  <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Target Baru</th>
+                  <th className="py-4 px-6 text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest text-[10px]">Status Keputusan</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {items?.map((item) => (
+                  <tr key={item.siswaId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                    <td className="py-4 px-6">
+                      <div className="font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">{item.namaSiswa}</div>
+                      {isModified(item.siswaId, item.status) && (
+                        <Badge variant="warning" className="text-[9px] h-4 px-1.5 font-black mt-1 uppercase tracking-widest rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-900/30">Modified</Badge>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <Badge variant="secondary" className="bg-slate-100 dark:bg-slate-800 font-bold text-[11px] px-2.5">{item.fromKelas}</Badge>
+                    </td>
+                    <td className="py-4 px-6">
+                      {item.toKelas ? (
+                        <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-xs uppercase tracking-tight">
+                           <ArrowUpRight className="w-4 h-4" />
+                           {item.toKelas}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic text-[11px] font-medium uppercase tracking-tight">No Class Change</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      <SearchableSelect aria-label="Pilih opsi transisi" value={item.status}
+                        onValueChange={(val: any) => handleStatusChange(item.siswaId, val)}
+                        options={[
+                          { label: 'Naik Kelas', value: 'NAIK' },
+                          { label: 'Tinggal Kelas', value: 'TINGGAL' },
+                          { label: 'Lulus', value: 'LULUS' },
+                          { label: 'Pindah', value: 'PINDAH' }
+                        ]}
+                        placeholder="Pilih Status"
+                        triggerClassName={`h-10 w-[160px] font-black text-[10px] uppercase tracking-widest rounded-xl transition-all ${
+                          isModified(item.siswaId, item.status) 
+                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/50' 
+                            : 'border-slate-200 dark:border-slate-800 dark:bg-slate-950 shadow-inner'
+                        }`}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </SectionCard>
 
       <div className="flex justify-center pt-8 animate-in fade-in zoom-in duration-700">

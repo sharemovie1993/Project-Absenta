@@ -11,6 +11,9 @@ import { Input } from '../../../components/ui/Input';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
 import { Loader } from '../../../components/ui/Loader';
 import { Label } from '../../../components/ui/Label';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Plus, Edit2, Trash2, ShieldAlert, Trophy } from 'lucide-react';
@@ -31,6 +34,7 @@ const achievementSchema = z.object({
 });
 
 export const SettingsSection: React.FC = React.memo(() => {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'pelanggaran' | 'prestasi'>('pelanggaran');
   const confirm = useConfirm();
@@ -99,12 +103,11 @@ export const SettingsSection: React.FC = React.memo(() => {
     return (achievements ?? []).slice(start, start + aLimit);
   }, [achievements, aPage, aLimit]);
 
-  // Actions
-  const handleVSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleVSave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = violationSchema.safeParse(vForm);
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data belum lengkap');
+    const result = violationSchema.safeParse(vForm);
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message || 'Data form tidak valid');
       return;
     }
     try {
@@ -116,43 +119,38 @@ export const SettingsSection: React.FC = React.memo(() => {
         toast.success('Kategori pelanggaran baru berhasil ditambahkan');
       }
       setViolationModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.jenisPelanggaran() });
       refetchV();
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
-      toast.error(errorMsg);
+    } catch {
+      toast.error('Gagal menyimpan kategori pelanggaran');
     }
   }, [vId, vForm, queryClient, refetchV]);
 
   const handleVDelete = useCallback(async (id: string) => {
     const ok = await confirm({
       title: 'Hapus Kategori Pelanggaran',
-      description: 'Apakah Anda yakin ingin menghapus kategori pelanggaran ini?',
+      description: 'Apakah Anda yakin ingin menghapus kategori ini? Data yang sudah tersambung mungkin terpengaruh.',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       style: 'danger'
     });
     if (!ok) return;
+
     try {
       await kesiswaanApi.deleteJenisPelanggaran(id);
       toast.success('Kategori pelanggaran berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['jenis-pelanggaran-options-list'] });
-      queryClient.invalidateQueries({ queryKey: ['kesiswaan-monitoring-violations'] });
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.jenisPelanggaran() });
       refetchV();
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
-      toast.error(errorMsg);
+    } catch {
+      toast.error('Gagal menghapus kategori pelanggaran');
     }
   }, [confirm, queryClient, refetchV]);
 
-  const handleASubmit = useCallback(async (e: React.FormEvent) => {
+  const handleASave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    const parsed = achievementSchema.safeParse(aForm);
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data belum lengkap');
+    const result = achievementSchema.safeParse(aForm);
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message || 'Data form tidak valid');
       return;
     }
     try {
@@ -164,35 +162,139 @@ export const SettingsSection: React.FC = React.memo(() => {
         toast.success('Kategori prestasi baru berhasil ditambahkan');
       }
       setAchievementModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.jenisPrestasi() });
       refetchA();
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Gagal menyimpan';
-      toast.error(errorMsg);
+    } catch {
+      toast.error('Gagal menyimpan kategori prestasi');
     }
   }, [aId, aForm, queryClient, refetchA]);
 
   const handleADelete = useCallback(async (id: string) => {
     const ok = await confirm({
       title: 'Hapus Kategori Prestasi',
-      description: 'Apakah Anda yakin ingin menghapus kategori prestasi ini?',
+      description: 'Apakah Anda yakin ingin menghapus kategori penghargaan ini?',
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
       style: 'danger'
     });
     if (!ok) return;
+
     try {
       await kesiswaanApi.deleteJenisPrestasi(id);
       toast.success('Kategori prestasi berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['jenis-prestasi-list'] });
+      queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.jenisPrestasi() });
       refetchA();
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : 'Gagal menghapus';
-      toast.error(errorMsg);
+    } catch {
+      toast.error('Gagal menghapus kategori prestasi');
     }
   }, [confirm, queryClient, refetchA]);
+
+  const renderViolationCard = useCallback((item: JenisPelanggaran) => (
+    <div
+      key={item.id}
+      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-rose-500/10 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400 border border-rose-500/20">
+            <ShieldAlert size={15} />
+          </div>
+          <div>
+            <Badge variant="outline" className="text-[9px] font-bold uppercase">
+              {item.kategori}
+            </Badge>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white mt-1">
+              {item.nama_pelanggaran}
+            </h4>
+          </div>
+        </div>
+        <span className={cn(
+          "px-2.5 py-1 text-xs font-black rounded-xl border shrink-0",
+          item.poin >= 50
+            ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-500/20"
+            : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border-amber-500/20"
+        )}>
+          +{item.poin} Poin
+        </span>
+      </div>
+
+      <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setVId(item.id);
+            setVForm({ kategori: item.kategori, nama_pelanggaran: item.nama_pelanggaran, poin: item.poin });
+            setViolationModalOpen(true);
+          }}
+          className="h-8 px-2.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleVDelete(item.id)}
+          className="h-8 px-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+        >
+          <Trash2 size={13} />
+          <span>Hapus</span>
+        </Button>
+      </div>
+    </div>
+  ), [handleVDelete]);
+
+  const renderAchievementCard = useCallback((item: JenisPrestasi) => (
+    <div
+      key={item.id}
+      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <Trophy size={15} />
+          </div>
+          <div>
+            <Badge variant="outline" className="text-[9px] font-bold uppercase">
+              {item.kategori}
+            </Badge>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white mt-1">
+              {item.nama_prestasi}
+            </h4>
+          </div>
+        </div>
+        <span className="px-2.5 py-1 text-xs font-black bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
+          +{item.poin} Poin
+        </span>
+      </div>
+
+      <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            setAId(item.id);
+            setAForm({ kategori: item.kategori, nama_prestasi: item.nama_prestasi, poin: item.poin });
+            setAchievementModalOpen(true);
+          }}
+          className="h-8 px-2.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleADelete(item.id)}
+          className="h-8 px-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+        >
+          <Trash2 size={13} />
+          <span>Hapus</span>
+        </Button>
+      </div>
+    </div>
+  ), [handleADelete]);
 
   const violationColumns: Column[] = useMemo(() => [
     {
@@ -362,41 +464,79 @@ export const SettingsSection: React.FC = React.memo(() => {
 
       {activeTab === 'pelanggaran' ? (
         <div className="space-y-4">
-          <Table
-            columns={violationColumns}
-            data={paginatedViolations}
-            sortBy={vSortBy}
-            sortOrder={vSortOrder}
-            onSort={(col, dir) => { setVSortBy(col); setVSortOrder(dir); }}
-            emptyMessage="Belum ada kategori pelanggaran yang didaftarkan."
-            pagination={{
-              currentPage: vPage,
-              totalPages: Math.max(1, Math.ceil(violations.length / vLimit)),
-              totalItems: violations.length,
-              itemsPerPage: vLimit,
-              onPageChange: setVPage,
-              onLimitChange: (limit) => { setVLimit(limit); setVPage(1); }
-            }}
-          />
+          {isMobile ? (
+            <MobileAcademicList
+              title="Daftar Kategori Pelanggaran"
+              data={paginatedViolations}
+              loading={loadingV}
+              totalItems={violations.length}
+              emptyMessage="Belum ada kategori pelanggaran yang didaftarkan."
+              pagination={{
+                currentPage: vPage,
+                totalPages: Math.max(1, Math.ceil(violations.length / vLimit)),
+                totalItems: violations.length,
+                itemsPerPage: vLimit,
+                onPageChange: setVPage,
+                onLimitChange: (limit) => { setVLimit(limit); setVPage(1); }
+              }}
+              renderCard={renderViolationCard}
+            />
+          ) : (
+            <Table
+              columns={violationColumns}
+              data={paginatedViolations}
+              sortBy={vSortBy}
+              sortOrder={vSortOrder}
+              onSort={(col, dir) => { setVSortBy(col); setVSortOrder(dir); }}
+              emptyMessage="Belum ada kategori pelanggaran yang didaftarkan."
+              pagination={{
+                currentPage: vPage,
+                totalPages: Math.max(1, Math.ceil(violations.length / vLimit)),
+                totalItems: violations.length,
+                itemsPerPage: vLimit,
+                onPageChange: setVPage,
+                onLimitChange: (limit) => { setVLimit(limit); setVPage(1); }
+              }}
+            />
+          )}
         </div>
       ) : (
         <div className="space-y-4">
-          <Table
-            columns={achievementColumns}
-            data={paginatedAchievements}
-            sortBy={aSortBy}
-            sortOrder={aSortOrder}
-            onSort={(col, dir) => { setASortBy(col); setASortOrder(dir); }}
-            emptyMessage="Belum ada kategori prestasi yang didaftarkan."
-            pagination={{
-              currentPage: aPage,
-              totalPages: Math.max(1, Math.ceil(achievements.length / aLimit)),
-              totalItems: achievements.length,
-              itemsPerPage: aLimit,
-              onPageChange: setAPage,
-              onLimitChange: (limit) => { setALLimit(limit); setAPage(1); }
-            }}
-          />
+          {isMobile ? (
+            <MobileAcademicList
+              title="Daftar Kategori Prestasi"
+              data={paginatedAchievements}
+              loading={loadingA}
+              totalItems={achievements.length}
+              emptyMessage="Belum ada kategori prestasi yang didaftarkan."
+              pagination={{
+                currentPage: aPage,
+                totalPages: Math.max(1, Math.ceil(achievements.length / aLimit)),
+                totalItems: achievements.length,
+                itemsPerPage: aLimit,
+                onPageChange: setAPage,
+                onLimitChange: (limit) => { setALimit(limit); setAPage(1); }
+              }}
+              renderCard={renderAchievementCard}
+            />
+          ) : (
+            <Table
+              columns={achievementColumns}
+              data={paginatedAchievements}
+              sortBy={aSortBy}
+              sortOrder={aSortOrder}
+              onSort={(col, dir) => { setASortBy(col); setASortOrder(dir); }}
+              emptyMessage="Belum ada kategori prestasi yang didaftarkan."
+              pagination={{
+                currentPage: aPage,
+                totalPages: Math.max(1, Math.ceil(achievements.length / aLimit)),
+                totalItems: achievements.length,
+                itemsPerPage: aLimit,
+                onPageChange: setAPage,
+                onLimitChange: (limit) => { setALimit(limit); setAPage(1); }
+              }}
+            />
+          )}
         </div>
       )}
 

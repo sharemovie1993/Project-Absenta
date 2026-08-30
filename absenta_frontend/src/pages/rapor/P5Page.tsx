@@ -18,6 +18,9 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { Card, SectionCard, Button, Badge, SearchableSelect, Input } from '../../components/ui';
 import { Table, type Column } from '../../components/ui/Table';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 import { raporApi } from '../../api/rapor.api';
 import { kelasApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
 import useConfirm from '@/hooks/useConfirm';
@@ -286,6 +289,67 @@ export const P5Page: React.FC = React.memo(() => {
     }
   ], [handleScoreChange]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileScoreCard = useCallback((row: ScoreItem) => (
+    <div
+      key={row.siswa_id}
+      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight">
+            {row.nama_siswa}
+          </h4>
+          <p className="text-[10px] font-bold text-slate-400 font-mono">
+            NIS: {row.nis || '-'}
+          </p>
+        </div>
+        {row.kualifikasi && (
+          <Badge variant="outline" className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+            {row.kualifikasi}
+          </Badge>
+        )}
+      </div>
+
+      <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+        <div className="space-y-1">
+          <label htmlFor={`mobile-kualifikasi-${row.siswa_id}`} className="text-[10px] font-bold text-slate-400 uppercase">
+            Kualifikasi Capaian
+          </label>
+          <SearchableSelect
+            id={`mobile-kualifikasi-${row.siswa_id}`}
+            aria-label={`Kualifikasi capaian ${row.nama_siswa}`}
+            value={row.kualifikasi}
+            onValueChange={(val) => handleScoreChange(row.siswa_id, 'kualifikasi', val)}
+            options={[
+              { value: 'BB', label: 'BB (Belum Berkembang)' },
+              { value: 'MB', label: 'MB (Mulai Berkembang)' },
+              { value: 'BSH', label: 'BSH (Berkembang Sesuai Harapan)' },
+              { value: 'SB', label: 'SB (Sangat Berkembang)' },
+            ]}
+            placeholder="Pilih Capaian"
+            triggerClassName="h-9 text-xs rounded-xl"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor={`mobile-catatan-${row.siswa_id}`} className="text-[10px] font-bold text-slate-400 uppercase">
+            Catatan Karakter
+          </label>
+          <Input
+            id={`mobile-catatan-${row.siswa_id}`}
+            aria-label={`Catatan proses ${row.nama_siswa}`}
+            placeholder="Tulis catatan perkembangan spesifik..."
+            value={row.catatan_proses}
+            onChange={(e) => handleScoreChange(row.siswa_id, 'catatan_proses', e.target.value)}
+            className="rounded-xl text-xs w-full h-9"
+          />
+        </div>
+      </div>
+    </div>
+  ), [handleScoreChange]);
+
   const paginatedScores = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return (scores ?? []).slice(start, start + itemsPerPage);
@@ -480,48 +544,91 @@ export const P5Page: React.FC = React.memo(() => {
                   </div>
                 </Card>
 
-                {/* Scores Table */}
+                {/* Scores Table / Mobile Cards */}
                 {selectedProjek && selectedKelas && selectedDimensi && selectedSubElemen && (
                   <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
-                    <Table
-                      columns={tableColumns}
-                      data={paginatedScores}
-                      sortBy={sortBy}
-                      sortOrder={sortOrder}
-                      onSort={(col, dir) => { setSortBy(col); setSortOrder(dir); }}
-                      emptyMessage="Kelas kosong atau tidak ditemukan data siswa."
-                      toolbarLeft={
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                            Matriks Penilaian Karakter P5 ({scores.length} Siswa)
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Dimensi: {selectedDimensi} • Sub: {selectedSubElemen}
-                          </span>
+                    {isMobile ? (
+                      <div className="p-4 space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                              Penilaian Karakter P5 ({scores.length} Siswa)
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Dimensi: {selectedDimensi} • Sub: {selectedSubElemen}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="toolbarPrimary"
+                            size="toolbar"
+                            onClick={handleSaveScores}
+                            disabled={saveP5BulkMutation.isPending}
+                            className="font-bold rounded-xl shadow-md w-full sm:w-auto"
+                          >
+                            {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                            Simpan Nilai P5
+                          </Button>
                         </div>
-                      }
-                      toolbarRight={
-                        <Button
-                          type="button"
-                          variant="toolbarPrimary"
-                          size="toolbar"
-                          onClick={handleSaveScores}
-                          disabled={saveP5BulkMutation.isPending}
-                          className="font-bold rounded-xl shadow-md"
-                        >
-                          {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
-                          Simpan Nilai P5
-                        </Button>
-                      }
-                      pagination={{
-                        currentPage,
-                        totalPages: Math.max(1, Math.ceil(scores.length / itemsPerPage)),
-                        totalItems: scores.length,
-                        itemsPerPage,
-                        onPageChange: setCurrentPage,
-                        onLimitChange: (limit) => { setItemsPerPage(limit); setCurrentPage(1); }
-                      }}
-                    />
+
+                        <MobileAcademicList
+                          title="Daftar Siswa & Penilaian P5"
+                          data={paginatedScores}
+                          loading={isLoadingStudents}
+                          totalItems={scores.length}
+                          emptyMessage="Kelas kosong atau tidak ditemukan data siswa."
+                          pagination={{
+                            currentPage,
+                            totalPages: Math.max(1, Math.ceil(scores.length / itemsPerPage)),
+                            totalItems: scores.length,
+                            itemsPerPage,
+                            onPageChange: setCurrentPage,
+                            onLimitChange: (limit) => { setItemsPerPage(limit); setCurrentPage(1); }
+                          }}
+                          renderCard={renderMobileScoreCard}
+                        />
+                      </div>
+                    ) : (
+                      <Table
+                        columns={tableColumns}
+                        data={paginatedScores}
+                        sortBy={sortBy}
+                        sortOrder={sortOrder}
+                        onSort={(col, dir) => { setSortBy(col); setSortOrder(dir); }}
+                        emptyMessage="Kelas kosong atau tidak ditemukan data siswa."
+                        toolbarLeft={
+                          <div className="flex flex-col">
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Matriks Penilaian Karakter P5 ({scores.length} Siswa)
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Dimensi: {selectedDimensi} • Sub: {selectedSubElemen}
+                            </span>
+                          </div>
+                        }
+                        toolbarRight={
+                          <Button
+                            type="button"
+                            variant="toolbarPrimary"
+                            size="toolbar"
+                            onClick={handleSaveScores}
+                            disabled={saveP5BulkMutation.isPending}
+                            className="font-bold rounded-xl shadow-md"
+                          >
+                            {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                            Simpan Nilai P5
+                          </Button>
+                        }
+                        pagination={{
+                          currentPage,
+                          totalPages: Math.max(1, Math.ceil(scores.length / itemsPerPage)),
+                          totalItems: scores.length,
+                          itemsPerPage,
+                          onPageChange: setCurrentPage,
+                          onLimitChange: (limit) => { setItemsPerPage(limit); setCurrentPage(1); }
+                        }}
+                      />
+                    )}
                   </div>
                 )}
               </div>

@@ -38,6 +38,8 @@ import toast from 'react-hot-toast';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { useJenjang } from '../../../hooks/useJenjang';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../shared/MobileAcademicList';
 
 interface KelasListProps {
   onEdit?: (kelas: Kelas) => void;
@@ -448,6 +450,123 @@ const KelasList = React.memo<KelasListProps>(({
     return cols.filter(Boolean) as any;
   }, [canManage, onEdit, onView, confirm, handleDelete, allVisibleSelected, selectedIds, kelasList, togglingId, hasJurusan]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((kelas: Kelas) => {
+    const isToggling = togglingId === kelas.id;
+    const count = kelas.jumlah_siswa || 0;
+    const waliKelasNama = (kelas.WaliKelas as any)?.[0]?.Guru?.nama_guru;
+
+    return (
+      <div
+        key={kelas.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-extrabold text-sm border border-indigo-500/20">
+              <School size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                  {kelas.nama_kelas}
+                </h4>
+                <Badge variant="outline" className="text-[9px] font-black px-1.5 py-0">
+                  Tk. {kelas.tingkat}
+                </Badge>
+              </div>
+              {hasJurusan && (kelas.Jurusan as any)?.nama && (
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                  {(kelas.Jurusan as any).nama}
+                </p>
+              )}
+            </div>
+          </div>
+          <Badge variant={kelas.is_active ? 'success' : 'error'} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg">
+            {kelas.is_active ? 'Aktif' : 'Nonaktif'}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Wali Kelas</span>
+            <span className="font-extrabold text-slate-800 dark:text-slate-200">
+              {waliKelasNama || <span className="text-slate-400 font-normal italic">Belum ditentukan</span>}
+            </span>
+          </div>
+          <div className="flex items-center justify-between pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Jumlah Siswa</span>
+            <div className={cn(
+              "flex items-center gap-1 font-black text-xs",
+              count === 0 ? "text-rose-500" : "text-slate-700 dark:text-slate-300"
+            )}>
+              <Users size={12} />
+              <span>{count} Siswa</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+          <div className="flex items-center gap-2">
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => handleToggleActive(kelas)}
+                disabled={isToggling}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${kelas.is_active ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-750'} ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
+                title="Ubah Status Aktif"
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${kelas.is_active ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+              </button>
+            )}
+            <span className="text-[10px] font-bold text-slate-400 uppercase">
+              {kelas.is_active ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onView?.(kelas)}
+              className="h-8 px-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              title="Lihat Detail Siswa"
+            >
+              <Eye size={13} />
+              <span className="ml-1 text-xs font-bold">Detail</span>
+            </Button>
+            {canManage && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onEdit?.(kelas)}
+                  className="h-8 px-2 rounded-lg text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                  title="Edit Kelas"
+                >
+                  <Edit size={13} />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDelete(kelas)}
+                  disabled={deleting}
+                  className="h-8 px-2 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  title="Hapus Kelas"
+                >
+                  <Trash2 size={13} />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [togglingId, hasJurusan, canManage, onView, onEdit, handleDelete, deleting, handleToggleActive]);
+
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
@@ -624,138 +743,206 @@ const KelasList = React.memo<KelasListProps>(({
         </div>
       ) : (
         <div className="bg-transparent overflow-hidden">
-          <Table
-            columns={columns}
-            data={mappedKelasList}
-            loading={loading}
-            emptyMessage="Tidak ada data kelas ditemukan"
-            compact={true}
-            pagination={{
-              currentPage,
-              totalPages,
-              totalItems,
-              itemsPerPage,
-              onPageChange: handlePageChange,
-              onLimitChange: (limit) => {
-                setItemsPerPage(limit);
-                setCurrentPage(1);
-              }
-            }}
-            selectedRowKeys={selectedIds}
-            onSelectedRowKeysChange={setSelectedIds}
-            toolbarLeft={
-              <div className="flex flex-wrap items-center gap-2">
-                 {/* View Switcher Segmented Control */}
-                 <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 border border-slate-200/40 dark:border-slate-700/30 gap-0.5 mr-2">
-                   <button
-                     type="button"
-                     onClick={() => setViewMode('tree')}
-                     className={cn(
-                       "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
-                       (viewMode as string) === 'tree'
-                         ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                         : "text-slate-500 hover:text-slate-755 dark:hover:text-slate-300"
-                     )}
-                     title="Model Pohon"
-                   >
-                     <LayoutGrid className="w-3.5 h-3.5" />
-                     <span>Pohon</span>
-                   </button>
-                   <button
-                     type="button"
-                     onClick={() => setViewMode('table')}
-                     className={cn(
-                       "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
-                       (viewMode as string) === 'table'
-                         ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                         : "text-slate-500 hover:text-slate-755 dark:hover:text-slate-300"
-                     )}
-                     title="Mode Tabel"
-                   >
-                     <List className="w-3.5 h-3.5" />
-                     <span>Tabel</span>
-                   </button>
-                 </div>
-
-                 {canManage && onAdd && (
-                    <Button 
-                      onClick={() => onAdd()}
-                      variant="toolbarPrimary"
-                      size="toolbar"
-                    >
-                      <Plus className="w-4 h-4 mr-1.5" />
-                      Tambah Kelas
-                    </Button>
-                 )}
-    
-                 {canManage && onImport && (
-                    <Button
-                      variant="toolbarOutline"
-                      size="toolbar"
-                      onClick={onImport}
-                      className="rounded-xl"
-                    >
-                      <Upload className="w-3.5 h-3.5 mr-1.5" />
-                      Import
-                    </Button>
-                 )}
-                 
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbar"
-                   onClick={onExport}
-                   disabled={isExporting}
-                   className="rounded-xl"
-                 >
-                    {isExporting ? (
-                      <>
-                        <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                        Exporting...
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-3.5 h-3.5 mr-1.5" />
-                        Export
-                      </>
+          {isMobile ? (
+            <div className="p-4 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 border border-slate-200/40 dark:border-slate-700/30 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('tree')}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                      (viewMode as string) === 'tree'
+                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     )}
-                 </Button>
-    
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbarIcon"
-                   onClick={() => refetch()}
-                   aria-label="Refresh Data"
-                   className="rounded-xl"
-                   disabled={loading}
-                 >
-                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                 </Button>
+                    title="Model Pohon"
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Pohon</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={cn(
+                      "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                      (viewMode as string) === 'table'
+                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    )}
+                    title="Mode Tabel"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Tabel</span>
+                  </button>
+                </div>
+
+                {canManage && onAdd && (
+                  <Button 
+                    onClick={() => onAdd()}
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Tambah Kelas
+                  </Button>
+                )}
               </div>
-            }
-            toolbarRight={
-                 selectedIds.size > 0 && canManage && (
-                 <Button
-                   variant="toolbarDanger"
-                   size="toolbar"
-                   onClick={async () => {
-                     const ok = await confirm({
-                       title: 'Hapus Kelas Terpilih',
-                       description: `Anda yakin ingin menghapus ${selectedIds.size} kelas terpilih?`,
-                       confirmText: 'Hapus',
-                       cancelText: 'Batal',
-                       style: 'danger',
-                       withProgress: true,
-                       progressLabel: `Menghapus ${selectedIds.size} kelas...`,
-                     });
-                     if (ok) await handleBulkDelete();
-                   }}
-                 >
-                   <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                   Hapus Terpilih ({selectedIds.size})
-                 </Button>
-              )
-            }
-          />
+
+              <MobileAcademicList
+                title="Daftar Rombongan Belajar (Kelas)"
+                data={mappedKelasList}
+                loading={loading}
+                totalItems={totalItems}
+                emptyMessage="Tidak ada data kelas ditemukan"
+                pagination={{
+                  currentPage,
+                  totalPages,
+                  totalItems,
+                  itemsPerPage,
+                  onPageChange: handlePageChange,
+                  onLimitChange: (limit) => {
+                    setItemsPerPage(limit);
+                    setCurrentPage(1);
+                  }
+                }}
+                renderCard={renderMobileCard}
+              />
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={mappedKelasList}
+              loading={loading}
+              emptyMessage="Tidak ada data kelas ditemukan"
+              compact={true}
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              selectedRowKeys={selectedIds}
+              onSelectedRowKeysChange={setSelectedIds}
+              toolbarLeft={
+                <div className="flex flex-wrap items-center gap-2">
+                   {/* View Switcher Segmented Control */}
+                   <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 border border-slate-200/40 dark:border-slate-700/30 gap-0.5 mr-2">
+                     <button
+                       type="button"
+                       onClick={() => setViewMode('tree')}
+                       className={cn(
+                         "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                         (viewMode as string) === 'tree'
+                           ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                           : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                       )}
+                       title="Model Pohon"
+                     >
+                       <LayoutGrid className="w-3.5 h-3.5" />
+                       <span>Pohon</span>
+                     </button>
+                     <button
+                       type="button"
+                       onClick={() => setViewMode('table')}
+                       className={cn(
+                         "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
+                         (viewMode as string) === 'table'
+                           ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                           : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                       )}
+                       title="Mode Tabel"
+                     >
+                       <List className="w-3.5 h-3.5" />
+                       <span>Tabel</span>
+                     </button>
+                   </div>
+
+                   {canManage && onAdd && (
+                      <Button 
+                        onClick={() => onAdd()}
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" />
+                        Tambah Kelas
+                      </Button>
+                   )}
+      
+                   {canManage && onImport && (
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
+                        onClick={onImport}
+                        className="rounded-xl"
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                        Import
+                      </Button>
+                   )}
+                   
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbar"
+                     onClick={onExport}
+                     disabled={isExporting}
+                     className="rounded-xl"
+                   >
+                      {isExporting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Exporting...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-3.5 h-3.5 mr-1.5" />
+                          Export
+                        </>
+                      )}
+                   </Button>
+      
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbarIcon"
+                     onClick={() => refetch()}
+                     aria-label="Refresh Data"
+                     className="rounded-xl"
+                     disabled={loading}
+                   >
+                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                   </Button>
+                </div>
+              }
+              toolbarRight={
+                   selectedIds.size > 0 && canManage && (
+                   <Button
+                     variant="toolbarDanger"
+                     size="toolbar"
+                     onClick={async () => {
+                       const ok = await confirm({
+                         title: 'Hapus Kelas Terpilih',
+                         description: `Anda yakin ingin menghapus ${selectedIds.size} kelas terpilih?`,
+                         confirmText: 'Hapus',
+                         cancelText: 'Batal',
+                         style: 'danger',
+                         withProgress: true,
+                         progressLabel: `Menghapus ${selectedIds.size} kelas...`,
+                       });
+                       if (ok) await handleBulkDelete();
+                     }}
+                   >
+                     <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                     Hapus Terpilih ({selectedIds.size})
+                   </Button>
+                )
+              }
+            />
+          )}
         </div>
       )}
 

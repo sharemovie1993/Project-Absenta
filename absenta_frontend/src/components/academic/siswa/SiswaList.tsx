@@ -1684,6 +1684,31 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Kualitas Data Sempurna!</p>
                         <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Semua siswa aktif sudah memiliki NIS.</p>
                       </div>
+                    ) : isMobile ? (
+                      <div className="max-h-[260px] overflow-y-auto space-y-2 scrollbar-thin">
+                        {analysisResults.missingNis.map(siswa => (
+                          <div key={siswa.id} className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-100/80 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">{siswa.nama_siswa}</span>
+                              <span className="text-[9px] text-slate-400 font-semibold uppercase">{siswa.Kelas?.nama_kelas || '-'}</span>
+                              <p className="text-[10px] text-rose-500 font-black mt-0.5">
+                                {siswa.nis ? (siswa.nis.startsWith('1111') ? 'NIS SEMENTARA (1111)' : `"${siswa.nis}"`) : 'KOSONG'}
+                              </p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="xs" 
+                              className="h-7 px-2 text-[10px] font-bold rounded-lg text-indigo-600 dark:text-indigo-400 shrink-0"
+                              onClick={() => {
+                                setShowAnalysisModal(false);
+                                if (onEdit) onEdit(siswa);
+                              }}
+                            >
+                              <Edit size={11} className="mr-1" /> Edit
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
                     ) : (
                       <div className="max-h-[260px] overflow-y-auto border border-slate-100/60 dark:border-slate-800/80 rounded-xl bg-white dark:bg-slate-950 scrollbar-thin">
                         <table className="w-full text-xs text-left">
@@ -1743,6 +1768,31 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
                         <CheckCircle2 size={36} className="text-emerald-500" />
                         <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-tight">Format NISN Bersih!</p>
                         <p className="text-[9px] text-slate-400 uppercase tracking-tight font-bold">Semua siswa aktif sudah memiliki NISN 10-digit valid.</p>
+                      </div>
+                    ) : isMobile ? (
+                      <div className="max-h-[260px] overflow-y-auto space-y-2 scrollbar-thin">
+                        {analysisResults.missingNisn.map(siswa => (
+                          <div key={siswa.id} className="p-3 bg-white dark:bg-slate-950 rounded-xl border border-slate-100/80 dark:border-slate-800 flex items-center justify-between gap-2">
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">{siswa.nama_siswa}</span>
+                              <span className="text-[9px] text-slate-400 font-semibold uppercase">{siswa.Kelas?.nama_kelas || '-'}</span>
+                              <p className="text-[10px] text-rose-500 font-black mt-0.5">
+                                {siswa.nisn ? (siswa.nisn.startsWith('9999') ? 'NISN SEMENTARA (9999)' : `"${siswa.nisn}" (Bukan 10 Digit)`) : 'KOSONG'}
+                              </p>
+                            </div>
+                            <Button 
+                              variant="ghost" 
+                              size="xs" 
+                              className="h-7 px-2 text-[10px] font-bold rounded-lg text-indigo-600 dark:text-indigo-400 shrink-0"
+                              onClick={() => {
+                                setShowAnalysisModal(false);
+                                if (onEdit) onEdit(siswa);
+                              }}
+                            >
+                              <Edit size={11} className="mr-1" /> Edit
+                            </Button>
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="max-h-[260px] overflow-y-auto border border-slate-100/60 dark:border-slate-800/80 rounded-xl bg-white dark:bg-slate-950 scrollbar-thin">

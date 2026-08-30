@@ -15,6 +15,8 @@ import { kesiswaanApi, kesiswaanQueryKeys } from '../../api/kesiswaan.api';
 import type { Pelanggaran, JenisPelanggaran } from '../../api/kesiswaan.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import {
   AlertCircle,
   Clock,
@@ -85,6 +87,7 @@ const pelanggaranSchema = z.object({
 });
 
 export default React.memo(function PelanggaranPage() {
+  const isMobile = useIsMobile();
   const { user } = useAuthStore();
   const guruProfile = (user as { guru_profile?: GuruProfileType } | null)?.guru_profile;
   const queryClient = useQueryClient();
@@ -280,6 +283,27 @@ export default React.memo(function PelanggaranPage() {
     setModalOpen(true);
   }, []);
 
+  const handleDelete = useCallback(async (item: Pelanggaran) => {
+    const ok = await confirm({
+      title: 'Hapus Catatan',
+      description: 'Apakah Anda yakin ingin menghapus catatan perkembangan ini? Tindakan ini tidak dapat dibatalkan.',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      style: 'danger'
+    });
+    if (ok) {
+      try {
+        await kesiswaanApi.deletePelanggaran(item.id);
+        toast.success('Catatan perkembangan berhasil dihapus');
+        invalidateAllPelanggaranCaches();
+        queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
+        refetch();
+      } catch {
+        toast.error('Gagal menghapus catatan perkembangan');
+      }
+    }
+  }, [confirm, invalidateAllPelanggaranCaches, queryClient, refetch]);
+
   const statusConfig: Record<string, StatusConfig> = useMemo(() => ({
     'BARU': {
       variant: 'error',
@@ -323,6 +347,85 @@ export default React.memo(function PelanggaranPage() {
       </Badge>
     );
   }, [statusConfig]);
+
+  const renderMobileCard = useCallback((item: Pelanggaran) => {
+    const statusInfo = statusConfig[item.status] || { variant: 'outline', label: item.status, icon: null };
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-sm text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
+              {item.Siswa?.nama_siswa?.charAt(0) || 'S'}
+            </div>
+            <div>
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight line-clamp-1">
+                {item.Siswa?.nama_siswa || '-'}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {item.Siswa?.Kelas?.nama_kelas || '-'}
+              </p>
+            </div>
+          </div>
+          <Badge variant={statusInfo.variant} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg flex items-center gap-1">
+            {statusInfo.icon}
+            <span>{statusInfo.label}</span>
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase">Kategori Perilaku</span>
+            <span className={cn(
+              "font-black text-xs px-2 py-0.5 rounded-md",
+              (Number(item.poin) || 0) >= 50 
+                ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400" 
+                : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+            )}>
+              +{item.poin} Poin
+            </span>
+          </div>
+          <p className="font-extrabold text-slate-800 dark:text-slate-200">
+            {item.jenis_pelanggaran || '-'}
+          </p>
+          {item.keterangan && (
+            <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+              "{item.keterangan}"
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+          <div className="flex items-center gap-1 font-bold">
+            <Calendar size={12} className="text-slate-400" />
+            <span>{item.tanggal ? formatDate(item.tanggal, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleEdit(item)}
+              className="h-8 px-2.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1"
+            >
+              <Edit2 size={13} />
+              <span>Edit</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDelete(item)}
+              className="h-8 px-2.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+            >
+              <Trash2 size={13} />
+              <span>Hapus</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [statusConfig, handleEdit, handleDelete]);
 
   const columns: Column[] = useMemo(() => [
     {
@@ -391,23 +494,7 @@ export default React.memo(function PelanggaranPage() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={async () => {
-              const ok = await confirm({
-                title: 'Hapus Catatan',
-                description: 'Apakah Anda yakin ingin menghapus catatan perkembangan ini? Tindakan ini tidak dapat dibatalkan.',
-                confirmText: 'Ya, Hapus',
-                cancelText: 'Batal',
-                style: 'danger'
-              });
-              if (ok) {
-                kesiswaanApi.deletePelanggaran(item.id).then(() => {
-                  toast.success('Catatan perkembangan berhasil dihapus');
-                  invalidateAllPelanggaranCaches();
-                  queryClient.invalidateQueries({ queryKey: kesiswaanQueryKeys.all });
-                  refetch();
-                }).catch(() => toast.error('Gagal menghapus catatan perkembangan'));
-              }
-            }}
+            onClick={() => handleDelete(item)}
             className="w-8 h-8 rounded-lg text-rose-600 hover:text-rose-700 hover:bg-rose-50"
             aria-label="Hapus catatan"
           >
@@ -416,7 +503,7 @@ export default React.memo(function PelanggaranPage() {
         </div>
       )
     }
-  ], [getStatusDisplay, handleEdit, queryClient, refetch, invalidateAllPelanggaranCaches]);
+  ], [getStatusDisplay, handleEdit, handleDelete]);
 
   const pageStats = useMemo(() => {
     const total = data?.length || 0;
@@ -555,24 +642,53 @@ export default React.memo(function PelanggaranPage() {
       }}
     >
       <Card className="rounded-2xl border-none shadow-sm overflow-hidden mb-6">
-        <Table
-          columns={columns}
-          data={data}
-          loading={loading}
-          emptyMessage="Belum ada data perkembangan tercatat"
-          toolbarLeft={toolbar}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalItems,
-            itemsPerPage,
-            onPageChange: handlePageChange,
-            onLimitChange: (limit) => {
-              setItemsPerPage(limit);
-              setCurrentPage(1);
-            }
-          }}
-        />
+        {isMobile ? (
+          <div className="p-4 space-y-4">
+            {/* Mobile Filter & Action Header */}
+            <div className="space-y-2.5">
+              {toolbar}
+            </div>
+
+            <MobileAcademicList
+              title="Catatan Perkembangan & Pelanggaran"
+              data={data}
+              loading={loading}
+              totalItems={totalItems}
+              emptyMessage="Belum ada data perkembangan tercatat"
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            data={data}
+            loading={loading}
+            emptyMessage="Belum ada data perkembangan tercatat"
+            toolbarLeft={toolbar}
+            pagination={{
+              currentPage,
+              totalPages,
+              totalItems,
+              itemsPerPage,
+              onPageChange: handlePageChange,
+              onLimitChange: (limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }
+            }}
+          />
+        )}
       </Card>
 
       <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>

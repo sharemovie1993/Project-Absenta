@@ -4,6 +4,7 @@ import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { LegerStudent, TranskripNilaiData } from '../../../types/cetakRapor.types';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface TranskripModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
   transkripData,
   isLoading,
 }) => {
+  const isMobile = useIsMobile();
   if (!isOpen || !selectedStudent) return null;
 
   const data = transkripData;
@@ -90,35 +92,61 @@ export const TranskripModal: React.FC<TranskripModalProps> = React.memo(({
               </div>
             </div>
 
-            {/* Tabel Transkrip Nilai */}
-            <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
-                    <th className="p-2.5 text-center">No</th>
-                    <th className="p-2.5">Mata Pelajaran</th>
-                    <th className="p-2.5 text-center">Kelompok</th>
-                    <th className="p-2.5 text-center">Nilai Kumulatif</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {(data.transkrip ?? []).map((t, idx) => (
-                    <tr key={t.mapel_id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="p-2.5 text-center font-bold text-slate-400">{idx + 1}</td>
-                      <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{t.mapel_name}</td>
-                      <td className="p-2.5 text-center">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
-                          {t.kelompok_mapel || 'UMUM'}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center font-black text-indigo-600 dark:text-indigo-400 text-sm">
+            {/* Tabel / Kartu Transkrip Nilai */}
+            {isMobile ? (
+              <div className="space-y-2 max-h-[350px] overflow-y-auto scrollbar-thin">
+                {(data.transkrip ?? []).map((t, idx) => (
+                  <div
+                    key={t.mapel_id || idx}
+                    className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3"
+                  >
+                    <div className="space-y-1">
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">
+                        {t.mapel_name}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[9px] font-bold uppercase tracking-wider">
+                        {t.kelompok_mapel || 'UMUM'}
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase block">Nilai</span>
+                      <span className="font-black text-indigo-600 dark:text-indigo-400 text-sm font-mono">
                         {t.rata_rata_mapel}
-                      </td>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">
+                      <th className="p-2.5 text-center">No</th>
+                      <th className="p-2.5">Mata Pelajaran</th>
+                      <th className="p-2.5 text-center">Kelompok</th>
+                      <th className="p-2.5 text-center">Nilai Kumulatif</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {(data.transkrip ?? []).map((t, idx) => (
+                      <tr key={t.mapel_id || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="p-2.5 text-center font-bold text-slate-400">{idx + 1}</td>
+                        <td className="p-2.5 font-bold text-slate-800 dark:text-slate-200">{t.mapel_name}</td>
+                        <td className="p-2.5 text-center">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold">
+                            {t.kelompok_mapel || 'UMUM'}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                          {t.rata_rata_mapel}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         ) : (
           <p className="text-xs text-slate-400 text-center py-6">Data transkrip nilai belum tersedia untuk siswa ini.</p>

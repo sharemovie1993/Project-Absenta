@@ -14,7 +14,10 @@ import type { JenisPelanggaran } from '../../api/kesiswaan.api';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Loader } from '../../components/ui/Loader';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
 // Lazy load heavy components
@@ -28,6 +31,7 @@ const jenisPelanggaranSchema = z.object({
 });
 
 export default React.memo(function JenisPelanggaranPage() {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
@@ -67,7 +71,6 @@ export default React.memo(function JenisPelanggaranPage() {
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
     setSortBy(key);
     setSortOrder(order);
-    // In a real scenario, we would refetch with sort params
   }, []);
 
   const resetForm = useCallback(() => {
@@ -143,6 +146,58 @@ export default React.memo(function JenisPelanggaranPage() {
     }
   }, [queryClient, refetch, confirm]);
 
+  const renderMobileCard = useCallback((item: JenisPelanggaran) => (
+    <div
+      key={item.id}
+      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-rose-500/10 dark:bg-rose-950/40 flex items-center justify-center text-rose-600 dark:text-rose-400 border border-rose-500/20">
+            <AlertTriangle size={15} />
+          </div>
+          <div>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">
+              {item.kategori}
+            </span>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white mt-0.5">
+              {item.nama_pelanggaran}
+            </h4>
+          </div>
+        </div>
+        <span className={cn(
+          "px-2.5 py-1 text-xs font-black rounded-xl border shrink-0",
+          item.poin >= 50
+            ? "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border-rose-500/20"
+            : "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 border-amber-500/20"
+        )}>
+          +{item.poin} Poin
+        </span>
+      </div>
+
+      <div className="flex items-center justify-end gap-1 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleEdit(item)}
+          className="h-8 px-2.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleDelete(item.id)}
+          className="h-8 px-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+        >
+          <Trash2 size={13} />
+          <span>Hapus</span>
+        </Button>
+      </div>
+    </div>
+  ), [handleEdit, handleDelete]);
+
   const columns: Column[] = useMemo(() => [
     { 
       key: 'kategori', 
@@ -206,38 +261,74 @@ export default React.memo(function JenisPelanggaranPage() {
       }}
     >
       <Card className="rounded-2xl border-none shadow-sm overflow-hidden">
-        <Table
-          columns={columns}
-          data={data}
-          loading={loading}
-          emptyMessage="Belum ada data. Tambah baru atau data akan di-seed otomatis saat membuka halaman Pelanggaran."
-          sortBy={sortBy}
-          sortOrder={sortOrder}
-          onSort={handleSort}
-          toolbarLeft={
-            <div className="p-4">
+        {isMobile ? (
+          <div className="p-4 space-y-4">
+            <div className="flex justify-between items-center">
               <Button 
                 variant="toolbarPrimary"
                 size="toolbar"
                 onClick={() => { resetForm(); setModalOpen(true); }}
+                className="w-full sm:w-auto"
               >
                 <Plus className="w-3.5 h-3.5 mr-1.5" />
-                Tambah Data
+                Tambah Kategori Pelanggaran
               </Button>
             </div>
-          }
-          pagination={{
-            currentPage,
-            totalPages,
-            totalItems,
-            itemsPerPage,
-            onPageChange: handlePageChange,
-            onLimitChange: (limit) => {
-              setItemsPerPage(limit);
-              setCurrentPage(1);
+
+            <MobileAcademicList
+              title="Daftar Jenis Pelanggaran"
+              data={data}
+              loading={loading}
+              totalItems={totalItems}
+              emptyMessage="Belum ada data jenis pelanggaran"
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            data={data}
+            loading={loading}
+            emptyMessage="Belum ada data. Tambah baru atau data akan di-seed otomatis saat membuka halaman Pelanggaran."
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            toolbarLeft={
+              <div className="p-4">
+                <Button 
+                  variant="toolbarPrimary"
+                  size="toolbar"
+                  onClick={() => { resetForm(); setModalOpen(true); }}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Tambah Data
+                </Button>
+              </div>
             }
-          }}
-        />
+            pagination={{
+              currentPage,
+              totalPages,
+              totalItems,
+              itemsPerPage,
+              onPageChange: handlePageChange,
+              onLimitChange: (limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }
+            }}
+          />
+        )}
       </Card>
 
       <Suspense fallback={<div className="flex justify-center p-8"><Loader /></div>}>

@@ -12,6 +12,8 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useDebounce } from '../../../hooks/useDebounce';
 import { exportDataToExcel } from '../../../utils/export.utils';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../shared/MobileAcademicList';
 import WaliKelasForm from './WaliKelasForm';
 import SKWaliKelasWordEditorModal, { SKWaliKelasData } from '../guru/SKWaliKelasWordEditorModal';
 import SKWaliKelasTemplateMasterModal from '../guru/SKWaliKelasTemplateMasterModal';
@@ -347,6 +349,117 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
     return base;
   }, [assigning, canManage, handleAktifkan, handleNonaktif, openAssignModal]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((item: WaliKelasStrukturAssignment) => {
+    const start = item.start_date ? new Date(item.start_date).toLocaleDateString('id-ID') : '-';
+    const end = item.end_date ? new Date(item.end_date).toLocaleDateString('id-ID') : '-';
+    const namaKelas = item.StrukturOrganisasi?.Kelas?.nama_kelas || item.StrukturOrganisasi?.nama || 'Kelas';
+
+    return (
+      <div
+        key={item.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-950/40 flex items-center justify-center text-blue-600 dark:text-blue-400 font-extrabold text-sm border border-blue-500/20">
+              <School size={18} />
+            </div>
+            <div>
+              <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest block">
+                ROMBEL KELAS
+              </span>
+              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white">
+                {namaKelas}
+              </h4>
+            </div>
+          </div>
+          <Badge variant={item.is_active ? 'success' : 'secondary'} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg">
+            {item.is_active ? 'Aktif' : 'Nonaktif'}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Guru Wali Kelas</span>
+          <div className="flex items-center gap-2">
+            <User size={13} className="text-slate-400 shrink-0" />
+            <p className="font-extrabold text-slate-800 dark:text-slate-200">
+              {item.Guru?.nama_guru || '-'}
+            </p>
+          </div>
+          {item.Guru?.nip && (
+            <p className="text-[10px] text-slate-400 font-mono pl-5">
+              NIP: {item.Guru.nip}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+          <span className="font-mono text-[10px] font-bold">
+            {start} - {end}
+          </span>
+          {canManage && (
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 rounded-lg text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                onClick={() => {
+                  setSkWaliKelasData({
+                    guruId: item.Guru?.id,
+                    namaGuru: item.Guru?.nama_guru || '',
+                    nipGuru: item.Guru?.nip || '',
+                    namaKelas: item.StrukturOrganisasi?.Kelas?.nama_kelas,
+                    jabatan: `WALI KELAS ${item.StrukturOrganisasi?.Kelas?.nama_kelas || ''}`,
+                    tmt: item.start_date ? new Date(item.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '',
+                  });
+                  setSkWaliKelasOpen(true);
+                }}
+                title="Cetak SK Wali Kelas"
+              >
+                <Printer size={13} />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2 rounded-lg text-blue-600 dark:text-blue-400"
+                onClick={() => openAssignModal({ guru_id: item.Guru?.id, kelas_id: item.StrukturOrganisasi?.Kelas?.id })}
+                disabled={assigning}
+                title="Ubah Penugasan"
+              >
+                <Edit size={13} />
+              </Button>
+              {item.is_active ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                  onClick={() => handleNonaktif(item)}
+                  disabled={assigning}
+                  title="Nonaktifkan"
+                >
+                  <Power size={13} />
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 rounded-lg text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                  onClick={() => handleAktifkan(item)}
+                  disabled={assigning}
+                  title="Aktifkan"
+                >
+                  <CheckCircle2 size={13} />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [canManage, assigning, openAssignModal, handleNonaktif, handleAktifkan]);
+
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
@@ -368,97 +481,157 @@ const WaliKelasList = React.memo<Props>(({ refreshTrigger = 0 }) => {
       </div>
 
       <div className="bg-transparent overflow-hidden">
-        <Table 
-          columns={columns} 
-          data={items} 
-          loading={loading}
-          emptyMessage="Tidak ada data wali kelas"
-          compact={true}
-          pagination={{
-            currentPage,
-            totalPages,
-            totalItems,
-            itemsPerPage,
-            onPageChange: handlePageChange,
-            onLimitChange: (limit) => {
-              setItemsPerPage(limit);
-              setCurrentPage(1);
-            }
-          }}
-          selectedRowKeys={selectedIds}
-          onSelectedRowKeysChange={setSelectedIds}
-          toolbarLeft={
+        {isMobile ? (
+          <div className="p-4 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
-               {canManage && (
-                  <Button 
-                    onClick={() => setSelectionOpen(true)}
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                  >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Tambah Penugasan
-                  </Button>
-               )}
+              {canManage && (
+                <Button 
+                  onClick={() => setSelectionOpen(true)}
+                  variant="toolbarPrimary"
+                  size="toolbar"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Tambah Penugasan
+                </Button>
+              )}
 
-               {canManage && (
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbar"
-                   onClick={() => setBulkGenerateOpen(true)}
-                   className="rounded-xl border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 font-extrabold"
-                   title="Generate & Ekspor PDF SK Wali Kelas secara Massal (ZIP)"
-                 >
-                   <Zip className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
-                   Cetak SK Massal (ZIP)
-                 </Button>
-               )}
+              {canManage && (
+                <Button
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => setBulkGenerateOpen(true)}
+                  className="rounded-xl border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 font-extrabold"
+                  title="Generate & Ekspor PDF SK Wali Kelas secara Massal (ZIP)"
+                >
+                  <Zip className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                  Cetak SK (ZIP)
+                </Button>
+              )}
 
-               {canManage && (
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbar"
-                   onClick={() => setTemplateMasterOpen(true)}
-                   className="rounded-xl border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50"
-                   title="Pengaturan Template Master SK Wali Kelas"
-                 >
-                   <FileCode className="w-3.5 h-3.5 mr-1.5" />
-                   Template SK
-                 </Button>
-               )}
-
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbar"
-                 onClick={() => setArsipOpen(true)}
-                 className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
-                 title="Daftar Arsip SK yang Pernah Dicetak"
-               >
-                 <FolderArchive className="w-3.5 h-3.5 mr-1.5" />
-                 Arsip SK
-               </Button>
-               
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbar"
-                 onClick={handleExport}
-                 className="rounded-xl"
-               >
-                 <Download className="w-3.5 h-3.5 mr-1.5" />
-                 Export
-               </Button>
-   
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbarIcon"
-                 onClick={() => fetchData(currentPage, searchTerm, includeInactive)}
-                 aria-label="Refresh Data"
-                 className="rounded-xl"
-                 disabled={loading}
-               >
-                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-               </Button>
+              <Button
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => setArsipOpen(true)}
+                className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
+                title="Daftar Arsip SK yang Pernah Dicetak"
+              >
+                <FolderArchive className="w-3.5 h-3.5 mr-1.5" />
+                Arsip SK
+              </Button>
             </div>
-          }
+
+            <MobileAcademicList
+              title="Daftar Penugasan Wali Kelas"
+              data={items}
+              loading={loading}
+              totalItems={totalItems}
+              emptyMessage="Tidak ada data wali kelas"
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
+          <Table 
+            columns={columns} 
+            data={items} 
+            loading={loading}
+            emptyMessage="Tidak ada data wali kelas"
+            compact={true}
+            pagination={{
+              currentPage,
+              totalPages,
+              totalItems,
+              itemsPerPage,
+              onPageChange: handlePageChange,
+              onLimitChange: (limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }
+            }}
+            selectedRowKeys={selectedIds}
+            onSelectedRowKeysChange={setSelectedIds}
+            toolbarLeft={
+              <div className="flex flex-wrap items-center gap-2">
+                 {canManage && (
+                    <Button 
+                      onClick={() => setSelectionOpen(true)}
+                      variant="toolbarPrimary"
+                      size="toolbar"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      Tambah Penugasan
+                    </Button>
+                 )}
+
+                 {canManage && (
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbar"
+                     onClick={() => setBulkGenerateOpen(true)}
+                     className="rounded-xl border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 hover:bg-amber-100 font-extrabold"
+                     title="Generate & Ekspor PDF SK Wali Kelas secara Massal (ZIP)"
+                   >
+                     <Zip className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+                     Cetak SK Massal (ZIP)
+                   </Button>
+                 )}
+
+                 {canManage && (
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbar"
+                     onClick={() => setTemplateMasterOpen(true)}
+                     className="rounded-xl border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50"
+                     title="Pengaturan Template Master SK Wali Kelas"
+                   >
+                     <FileCode className="w-3.5 h-3.5 mr-1.5" />
+                     Template SK
+                   </Button>
+                 )}
+
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbar"
+                   onClick={() => setArsipOpen(true)}
+                   className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50"
+                   title="Daftar Arsip SK yang Pernah Dicetak"
+                 >
+                   <FolderArchive className="w-3.5 h-3.5 mr-1.5" />
+                   Arsip SK
+                 </Button>
+                 
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbar"
+                   onClick={handleExport}
+                   className="rounded-xl"
+                 >
+                   <Download className="w-3.5 h-3.5 mr-1.5" />
+                   Export
+                 </Button>
+
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbarIcon"
+                   onClick={() => fetchData(currentPage, searchTerm, includeInactive)}
+                   aria-label="Refresh Data"
+                   className="rounded-xl"
+                   disabled={loading}
+                 >
+                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                 </Button>
+              </div>
+            }
           toolbarRight={
             selectedIds.size > 0 && canManage && (
                <Button

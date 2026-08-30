@@ -14,6 +14,9 @@ import toast from 'react-hot-toast';
 import useConfirm from '../../../hooks/useConfirm';
 import { Search, Plus, Edit2, Trash2, Trophy, X } from 'lucide-react';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -28,6 +31,7 @@ interface Student {
 }
 
 export const PrestasiSection: React.FC = React.memo(() => {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 500);
@@ -37,7 +41,6 @@ export const PrestasiSection: React.FC = React.memo(() => {
 
   const [sortBy, setSortBy] = useState<string | undefined>(undefined);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
 
   const confirm = useConfirm();
 
@@ -133,8 +136,8 @@ export const PrestasiSection: React.FC = React.memo(() => {
       } else {
         toast.error(res.message || 'Gagal menghapus catatan');
       }
-    } catch (err: unknown) {
-      toast.error(err.message || 'Koneksi bermasalah');
+    } catch (err: any) {
+      toast.error(err?.message || 'Koneksi bermasalah');
     }
   }, [confirm, queryClient, refetch]);
 
@@ -169,8 +172,8 @@ export const PrestasiSection: React.FC = React.memo(() => {
       setModalOpen(false);
       resetForm();
       refetch();
-    } catch (err: unknown) {
-      toast.error(err.message || 'Gagal menyimpan catatan prestasi');
+    } catch (err: any) {
+      toast.error(err?.message || 'Gagal menyimpan catatan prestasi');
     }
   }, [selectedId, formData, queryClient, refetch, resetForm]);
 
@@ -193,6 +196,75 @@ export const PrestasiSection: React.FC = React.memo(() => {
     resetForm();
     setModalOpen(false);
   }, [resetForm]);
+
+  const renderMobileCard = useCallback((item: PrestasiSiswa) => (
+    <div
+      key={item.id}
+      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <Trophy size={18} />
+          </div>
+          <div>
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight line-clamp-1">
+              {item.Siswa?.nama_siswa || '-'}
+            </h4>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              {item.Siswa?.Kelas?.nama_kelas || '-'}
+            </p>
+          </div>
+        </div>
+        <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-xs font-black rounded-xl border border-emerald-500/20">
+          +{item.poin} Poin
+        </span>
+      </div>
+
+      <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1 text-xs">
+        <span className="text-[10px] font-bold text-slate-400 uppercase">Nama Prestasi &amp; Penghargaan</span>
+        <p className="font-extrabold text-slate-800 dark:text-slate-200">
+          {item.nama_prestasi}
+        </p>
+        {item.Jenis?.kategori && (
+          <span className="inline-block text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+            Kategori: {item.Jenis.kategori}
+          </span>
+        )}
+        {item.keterangan && (
+          <p className="text-[11px] text-slate-500 italic pt-1 border-t border-slate-200/40 dark:border-slate-700/40">
+            "{item.keterangan}"
+          </p>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+        <span className="font-bold">
+          {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(item)}
+            className="h-8 px-2.5 rounded-lg text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1"
+          >
+            <Edit2 size={13} />
+            <span>Edit</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(item.id)}
+            className="h-8 px-2.5 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-1"
+          >
+            <Trash2 size={13} />
+            <span>Hapus</span>
+          </Button>
+        </div>
+      </div>
+    </div>
+  ), [handleEdit, handleDelete]);
 
   const columns: Column[] = useMemo(() => [
     {
@@ -274,7 +346,7 @@ export const PrestasiSection: React.FC = React.memo(() => {
     <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 p-6 rounded-2xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Catatan Prestasi & Penghargaan Siswa</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">Catatan Prestasi &amp; Penghargaan Siswa</h3>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Pendataan penghargaan akademik/non-akademik siswa yang memberikan poin positif</p>
         </div>
         <Button
@@ -282,7 +354,7 @@ export const PrestasiSection: React.FC = React.memo(() => {
           size="toolbar"
           onClick={() => { resetForm(); setModalOpen(true); }}
         >
-          <Plus className="w-3.5 h-3.5 mr-1/5" />
+          <Plus className="w-3.5 h-3.5 mr-1.5" />
           Catat Prestasi
         </Button>
       </div>
@@ -300,12 +372,32 @@ export const PrestasiSection: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table / Mobile Cards */}
       {loading && data.length === 0 ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <Loader className="mb-4" />
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Prestasi...</p>
         </div>
+      ) : isMobile ? (
+        <MobileAcademicList
+          title="Daftar Prestasi Siswa"
+          data={data}
+          loading={loading}
+          totalItems={totalItems}
+          emptyMessage="Belum ada data prestasi tercatat"
+          pagination={{
+            currentPage: page,
+            itemsPerPage: limit,
+            totalItems: totalItems,
+            totalPages,
+            onPageChange: setPage,
+            onLimitChange: (limitVal) => {
+              setLimit(limitVal);
+              setPage(1);
+            }
+          }}
+          renderCard={renderMobileCard}
+        />
       ) : (
         <Table
           columns={columns}
