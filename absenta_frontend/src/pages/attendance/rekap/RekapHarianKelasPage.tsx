@@ -40,6 +40,8 @@ import {
 
 import { useAuthStore } from '../../../store/authStore';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 // Lazy loading heavy components with Suspense
 const SearchableSelect = lazy(() => import('../../../components/ui/SearchableSelect').then(module => ({ default: module.SearchableSelect })));
@@ -342,6 +344,67 @@ export function RekapHarianKelasContent({
     }
   ], [navigate]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((row: RekapHarianKelasRow) => {
+    const studentName = row.nama || row.nama_siswa || '-';
+    const statusVal = String(row.status || '').toUpperCase();
+    
+    let variant: any = 'secondary';
+    let icon = <Clock className="w-3 h-3 mr-1" />;
+    
+    if (statusVal === 'HADIR') {
+      variant = 'emerald';
+      icon = <CheckCircle2 className="w-3 h-3 mr-1" />;
+    } else if (statusVal === 'TERLAMBAT') {
+      variant = 'purple';
+      icon = <AlertTriangle className="w-3 h-3 mr-1" />;
+    } else if (statusVal === 'SAKIT') {
+      variant = 'amber';
+    } else if (statusVal === 'IZIN' || statusVal === 'DISPEN') {
+      variant = 'blue';
+    } else if (statusVal === 'ALPA') {
+      variant = 'rose';
+      icon = <X className="w-3 h-3 mr-1" />;
+    }
+
+    return (
+      <div
+        key={row.id || row.siswa_id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <button
+              onClick={() => {
+                if (row.siswa_id || row.id) {
+                  navigate(`/academic/siswa/${row.siswa_id || row.id}`);
+                }
+              }}
+              className="font-extrabold text-xs text-left text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-tight"
+            >
+              {studentName}
+            </button>
+            <p className="text-[10px] font-bold text-slate-400 font-mono">
+              NIS: {row.nis || '-'}
+            </p>
+          </div>
+          <Badge variant={variant} className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg flex items-center">
+            {icon}
+            {statusVal || 'BELUM ABSEN'}
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Poin Kehadiran</span>
+          <span className="font-mono font-black text-slate-700 dark:text-slate-200 text-xs">
+            {Number(row.poin) || 0}
+          </span>
+        </div>
+      </div>
+    );
+  }, [navigate]);
+
   // Paginated rows
   const pagedRows = useMemo(() => {
     const start = (page - 1) * limit;
@@ -592,38 +655,62 @@ export function RekapHarianKelasContent({
           </div>
         )}
 
-        {/* ─── Table Section ────────────────────────────────────────── */}
-        <Suspense fallback={
-          <div className="p-8 text-center">
-            <Loader size="md" />
-            <p className="text-xs text-slate-400 mt-2 font-medium">Memuat komponen tabel...</p>
+        {/* ─── Table Section / Mobile Cards ────────────────────────── */}
+        {isMobile ? (
+          <div className="p-4 space-y-4">
+            <MobileAcademicList
+              title="Daftar Presensi Siswa"
+              data={pagedRows}
+              loading={loading}
+              totalItems={filteredRows.length}
+              emptyMessage={kelasId ? "Tidak ada data presensi harian untuk tanggal ini." : "Silakan pilih kelas dan tanggal laporan."}
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(filteredRows.length / limit) || 1,
+                itemsPerPage: limit,
+                totalItems: filteredRows.length,
+                onPageChange: (newPage: number) => setPage(newPage),
+                onLimitChange: (newLimit: number) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }
+              }}
+              renderCard={renderMobileCard}
+            />
           </div>
-        }>
-          <Table 
-            columns={columns} 
-            data={pagedRows} 
-            loading={loading} 
-            emptyMessage={kelasId ? "Tidak ada data presensi harian untuk tanggal ini." : "Silakan pilih kelas dan tanggal laporan."} 
-            compact={true} 
-            className="border-none" 
-            pagination={{
-              currentPage: page,
-              totalPages: Math.ceil(filteredRows.length / limit) || 1,
-              itemsPerPage: limit,
-              pageSize: limit,
-              totalItems: filteredRows.length,
-              onPageChange: (newPage: number) => setPage(newPage),
-              onLimitChange: (newLimit: number) => {
-                setLimit(newLimit);
-                setPage(1);
-              },
-              onPageSizeChange: (newLimit: number) => {
-                setLimit(newLimit);
-                setPage(1);
-              }
-            }}
-          />
-        </Suspense>
+        ) : (
+          <Suspense fallback={
+            <div className="p-8 text-center">
+              <Loader size="md" />
+              <p className="text-xs text-slate-400 mt-2 font-medium">Memuat komponen tabel...</p>
+            </div>
+          }>
+            <Table 
+              columns={columns} 
+              data={pagedRows} 
+              loading={loading} 
+              emptyMessage={kelasId ? "Tidak ada data presensi harian untuk tanggal ini." : "Silakan pilih kelas dan tanggal laporan."} 
+              compact={true} 
+              className="border-none" 
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(filteredRows.length / limit) || 1,
+                itemsPerPage: limit,
+                pageSize: limit,
+                totalItems: filteredRows.length,
+                onPageChange: (newPage: number) => setPage(newPage),
+                onLimitChange: (newLimit: number) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                },
+                onPageSizeChange: (newLimit: number) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }
+              }}
+            />
+          </Suspense>
+        )}
       </SectionCard>
 
       {/* ─── Built-in PDF Preview Modal ────────────────────────────── */}

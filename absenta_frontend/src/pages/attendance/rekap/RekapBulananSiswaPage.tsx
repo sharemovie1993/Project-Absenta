@@ -27,6 +27,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
 
@@ -124,6 +126,57 @@ export const RekapBulananSiswaPage: React.FC = React.memo(() => {
 
   const stats = rekapData?.statistik || rekapData?.summary || {};
   const details: RekapDetailItem[] = rekapData?.detail || [];
+
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((item: RekapDetailItem, idx: number) => {
+    const status = String(item.status || '').toUpperCase();
+    const isHadir = status === 'HADIR';
+    const isTerlambat = status === 'TERLAMBAT';
+    const isIzinSakit = status === 'IZIN' || status === 'SAKIT';
+
+    return (
+      <div
+        key={idx}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-xs">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            <span>
+              {item.tanggal ? formatDate(new Date(item.tanggal)) : '-'}
+            </span>
+          </div>
+          <Badge
+            variant={
+              isHadir
+                ? 'success'
+                : isTerlambat
+                ? 'warning'
+                : isIzinSakit
+                ? 'info'
+                : 'danger'
+            }
+            className="font-bold text-[10px]"
+          >
+            {status || 'ALPA'}
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-500 font-mono text-[11px]">
+            <Clock className="w-3 h-3 text-slate-400" />
+            <span>Jam Masuk: {item.jam_masuk || item.waktu || '-'}</span>
+          </div>
+          {item.keterangan && (
+            <span className="text-[10px] text-slate-400 font-semibold italic">
+              {item.keterangan}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  }, []);
 
   const handlePrint = useCallback(() => {
     window.print();
@@ -285,6 +338,17 @@ export const RekapBulananSiswaPage: React.FC = React.memo(() => {
                     <div className="p-16 text-center text-slate-400 space-y-2">
                       <FileText className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
                       <p className="text-xs font-bold">Belum ada catatan presensi pada bulan ini.</p>
+                    </div>
+                  ) : isMobile ? (
+                    <div className="p-4 space-y-4">
+                      <MobileAcademicList
+                        title="Rincian Presensi Harian Bulan Ini"
+                        data={details}
+                        loading={isLoading}
+                        totalItems={details.length}
+                        emptyMessage="Belum ada catatan presensi pada bulan ini."
+                        renderCard={renderMobileCard}
+                      />
                     </div>
                   ) : (
                     <div className="overflow-x-auto w-full min-w-0 max-w-full">

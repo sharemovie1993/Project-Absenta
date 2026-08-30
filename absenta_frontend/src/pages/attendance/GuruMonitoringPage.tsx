@@ -31,6 +31,8 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const guruMonitoringFilterSchema = z.object({
   tanggal: z.string().optional(),
@@ -277,6 +279,50 @@ export default React.memo(function GuruMonitoringPage() {
     },
   ], [kelasMap, guruMap]);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((row: SesiMonitoringData) => {
+    const kName = (row.kelas_id ? kelasMap[row.kelas_id] : '') || row.kelas_nama || 'Kelas';
+    const gName = (row.guru_id ? guruMap[row.guru_id] : '') || row.guru_nama || 'Guru Pengajar';
+    const statusStr = String(row.status || '').toUpperCase();
+    const hadir = Number(row?.summary?.HADIR || 0);
+    const total = Number(row?.total_siswa_kelas || 0);
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight">
+              {kName}
+            </h4>
+            <p className="text-[11px] font-bold text-slate-500">
+              {gName}
+            </p>
+          </div>
+          <Badge 
+            variant={statusStr === 'SELESAI' ? 'success' : 'info'} 
+            className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5"
+          >
+            {statusStr || 'DRAFT'}
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+            {row.jenis_kegiatan || 'KBM'}
+          </Badge>
+          <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-200 text-xs">
+            <Users size={13} className="text-slate-400" />
+            <span>{hadir} / {total} Siswa Hadir</span>
+          </div>
+        </div>
+      </div>
+    );
+  }, [kelasMap, guruMap]);
+
   // Paginate sessions
   const pagedSessions = useMemo(() => {
     const start = (page - 1) * limit;
@@ -334,22 +380,43 @@ export default React.memo(function GuruMonitoringPage() {
 
       <SectionCard title="Live Monitoring Sesi" icon={Activity} fullWidth noPadding>
         <div className="bg-white dark:bg-slate-950 overflow-hidden">
-          <Table 
-            columns={columns} 
-            data={pagedSessions} 
-            loading={loading} 
-            emptyMessage="Tidak ada aktivitas sesi belajar mengajar untuk filter saat ini." 
-            compact={true}
-            className="border-none"
-            pagination={{
-              currentPage: page,
-              totalPages: Math.ceil(sessions.length / limit),
-              totalItems: sessions.length,
-              itemsPerPage: limit,
-              onPageChange: handlePageChange,
-              onLimitChange: handleLimitChange
-            }}
-          />
+          {isMobile ? (
+            <div className="p-4 space-y-4">
+              <MobileAcademicList
+                title="Daftar Sesi Mengajar"
+                data={pagedSessions}
+                loading={loading}
+                totalItems={sessions.length}
+                emptyMessage="Tidak ada aktivitas sesi belajar mengajar untuk filter saat ini."
+                pagination={{
+                  currentPage: page,
+                  totalPages: Math.ceil(sessions.length / limit),
+                  totalItems: sessions.length,
+                  itemsPerPage: limit,
+                  onPageChange: handlePageChange,
+                  onLimitChange: handleLimitChange
+                }}
+                renderCard={renderMobileCard}
+              />
+            </div>
+          ) : (
+            <Table 
+              columns={columns} 
+              data={pagedSessions} 
+              loading={loading} 
+              emptyMessage="Tidak ada aktivitas sesi belajar mengajar untuk filter saat ini." 
+              compact={true}
+              className="border-none"
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(sessions.length / limit),
+                totalItems: sessions.length,
+                itemsPerPage: limit,
+                onPageChange: handlePageChange,
+                onLimitChange: handleLimitChange
+              }}
+            />
+          )}
         </div>
       </SectionCard>
     </div>

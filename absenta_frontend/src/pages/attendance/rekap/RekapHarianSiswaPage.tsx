@@ -12,6 +12,8 @@ import { toLocalDate, getTimezone } from '../../../utils/attendance/time';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { Search, RefreshCw, User, Clock, FileText, Filter } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 const PremiumFeatureGate = lazy(() => import('../../../components/auth/PremiumFeatureGate'));
 const rekapHarianFormSchema = z.object({
   siswaId: z.string().min(1, 'Siswa wajib dipilih'),
@@ -209,6 +211,42 @@ export default React.memo(function RekapHarianSiswaPage() {
         <AlertDescription>Anda tidak memiliki hak untuk melihat halaman ini.</AlertDescription>
       </Alert>;
   }
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((item: RekapHarianRincianItem, index: number) => {
+    const statusStr = String(item.status || '');
+    const isHadir = (statusStr.toUpperCase().includes('HADIR') || statusStr.toUpperCase().includes('MASUK')) && !statusStr.toUpperCase().includes('BELUM');
+    const isPulang = statusStr.toUpperCase().includes('PULANG');
+
+    return (
+      <div
+        key={index}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-2"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-bold text-xs">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>
+              {item.waktu ? formatDate(String(item.waktu), {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: getTimezone()
+              }) : '-'}
+            </span>
+          </div>
+          <Badge variant={isHadir ? 'success' : isPulang ? 'info' : 'outline'} className="text-[9px] font-black uppercase tracking-widest px-2.5">
+            {statusStr || '-'}
+          </Badge>
+        </div>
+
+        <div className="pt-1 text-[11px] font-semibold text-slate-500 uppercase tracking-tight">
+          {item.keterangan ? String(item.keterangan) : item.status || '-'}
+        </div>
+      </div>
+    );
+  }, []);
+
   const totalPages = Math.ceil(sortedData.length / limit);
   const pageContent = <div className="space-y-6">
       <SectionCard title="Filter Laporan Harian" icon={Filter} fullWidth>
@@ -269,16 +307,42 @@ export default React.memo(function RekapHarianSiswaPage() {
           </div>
 
           <div className="bg-white dark:bg-slate-950 overflow-hidden">
-            <Table columns={columns} data={paginatedData} loading={loading} emptyMessage="Tidak ada rincian transaksi absensi untuk tanggal ini." compact={true} className="border-none" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} pagination={{
-          currentPage: page,
-          itemsPerPage: limit,
-          totalItems: sortedData.length,
-          totalPages,
-          onPageChange: setPage,
-          onLimitChange: setLimit
-        }} toolbarRight={<Button variant="toolbarOutline" size="toolbar" onClick={() => window.print()} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
-                  Cetak Rincian
-                </Button>} />
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="flex justify-end">
+                  <Button variant="toolbarOutline" size="toolbar" onClick={() => window.print()} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                    Cetak Rincian
+                  </Button>
+                </div>
+                <MobileAcademicList
+                  title="Rincian Transaksi Presensi"
+                  data={paginatedData}
+                  loading={loading}
+                  totalItems={sortedData.length}
+                  emptyMessage="Tidak ada rincian transaksi absensi untuk tanggal ini."
+                  pagination={{
+                    currentPage: page,
+                    itemsPerPage: limit,
+                    totalItems: sortedData.length,
+                    totalPages,
+                    onPageChange: setPage,
+                    onLimitChange: setLimit
+                  }}
+                  renderCard={renderMobileCard}
+                />
+              </div>
+            ) : (
+              <Table columns={columns} data={paginatedData} loading={loading} emptyMessage="Tidak ada rincian transaksi absensi untuk tanggal ini." compact={true} className="border-none" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} pagination={{
+                currentPage: page,
+                itemsPerPage: limit,
+                totalItems: sortedData.length,
+                totalPages,
+                onPageChange: setPage,
+                onLimitChange: setLimit
+              }} toolbarRight={<Button variant="toolbarOutline" size="toolbar" onClick={() => window.print()} className="h-8 px-4 text-[10px] font-bold uppercase tracking-widest">
+                    Cetak Rincian
+                  </Button>} />
+            )}
           </div>
         </SectionCard>}
     </div>;

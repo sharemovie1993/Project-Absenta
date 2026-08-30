@@ -26,6 +26,7 @@ import { Button, SectionCard, TabSwitcher, Loader } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import useConfirm from '@/hooks/useConfirm';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 // Modular Lazy Loaded Modals
 const MethodChoiceModal = lazy(() => import('@/components/attendance/eskul/MethodChoiceModal').then(m => ({ default: m.MethodChoiceModal })));
@@ -40,6 +41,7 @@ const eskulAssignmentSchema = z.object({
 });
 
 export default React.memo(function AnggotaKegiatanEskulPage() {
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -486,6 +488,33 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
                             <div className="px-5 py-6 text-center text-xs text-slate-400">
                               Belum ada anggota siswa yang terdaftar di kegiatan ini.
                             </div>
+                          ) : isMobile ? (
+                            <div className="p-3 space-y-2">
+                              {group.items.map((item) => (
+                                <div key={item.id} className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                                  <div className="space-y-0.5 min-w-0">
+                                    <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 block truncate">
+                                      {item.nama_siswa}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-mono text-slate-400">NIS: {item.nis || '-'}</span>
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+                                        {item.nama_kelas || '-'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    aria-label={`Hapus ${item.nama_siswa}`}
+                                    onClick={() => handleDeleteAnggota(item)}
+                                    className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+                                    title="Hapus dari eskul"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
                           ) : (
                             <div className="overflow-x-auto">
                               <table className="w-full text-xs text-left">
@@ -600,6 +629,28 @@ export default React.memo(function AnggotaKegiatanEskulPage() {
                           {group.items.length === 0 ? (
                             <div className="px-5 py-6 text-center text-xs text-slate-400">
                               Belum ada pembina guru yang terdaftar di kegiatan ini.
+                            </div>
+                          ) : isMobile ? (
+                            <div className="p-3 space-y-2">
+                              {group.items.map((item) => (
+                                <div key={item.id} className="p-3 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                                  <div className="space-y-0.5 min-w-0">
+                                    <span className="font-extrabold text-xs text-slate-800 dark:text-slate-100 block truncate">
+                                      {item.nama_guru}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-400">NIP: {item.nip || '-'}</span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    aria-label={`Hapus pembina ${item.nama_guru}`}
+                                    onClick={() => handleDeletePembina(item)}
+                                    className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+                                    title="Hapus pembina"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
                             </div>
                           ) : (
                             <div className="overflow-x-auto">

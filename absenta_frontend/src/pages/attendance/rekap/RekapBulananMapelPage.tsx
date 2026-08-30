@@ -22,6 +22,8 @@ import { BookOpen } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import PremiumFeatureGate from '../../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 
 // ─── Subkomponen ─────────────────────────────────────────────────────────────
 import { RekapBulananMapelToolbar } from '../../../components/attendance/rekap/RekapBulananMapelToolbar';
@@ -382,6 +384,74 @@ export function RekapBulananMapelContent() {
   const dayNumbers = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
   const columns = useRekapBulananMapelColumns(viewMode, dayNumbers);
 
+  const isMobile = useIsMobile();
+
+  const renderMobileCard = useCallback((row: RekapBulananKelasRow) => {
+    const total = (row.HADIR ?? 0) + (row.IZIN ?? 0) + (row.SAKIT ?? 0) + (row.ALPA ?? 0) + (row.TERLAMBAT ?? 0);
+    const pct = total === 0 ? 0 : Math.round((((row.HADIR ?? 0) + (row.TERLAMBAT ?? 0)) / total) * 100);
+
+    return (
+      <div
+        key={row.siswa_id || row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <button
+              onClick={() => {
+                if (row.siswa_id || row.id) {
+                  navigate(`/academic/siswa/${row.siswa_id || row.id}`);
+                }
+              }}
+              className="font-extrabold text-xs text-left text-slate-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors uppercase tracking-tight"
+            >
+              {row.nama_siswa}
+            </button>
+            <p className="text-[10px] font-bold text-slate-400 font-mono">
+              NIS: {row.nis || '-'}
+            </p>
+          </div>
+          <Badge
+            variant={pct >= 85 ? 'success' : pct >= 75 ? 'warning' : 'destructive'}
+            className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg"
+          >
+            {pct}% Hadir
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-5 gap-1.5 p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 block uppercase">H</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{row.HADIR ?? 0}</span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-black text-purple-600 dark:text-purple-400 block uppercase">T</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{row.TERLAMBAT ?? 0}</span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 block uppercase">S</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{row.SAKIT ?? 0}</span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 block uppercase">I</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{row.IZIN ?? 0}</span>
+          </div>
+          <div className="space-y-0.5">
+            <span className="text-[9px] font-black text-rose-600 dark:text-rose-400 block uppercase">A</span>
+            <span className="text-xs font-black text-slate-800 dark:text-slate-200">{row.ALPA ?? 0}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between pt-1 text-xs">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Poin</span>
+          <span className="font-mono font-black text-slate-700 dark:text-slate-200 text-xs">
+            {row.total_poin ?? 0}
+          </span>
+        </div>
+      </div>
+    );
+  }, [navigate]);
+
   const pagedRows = useMemo(() => {
     const list = Array.isArray(rows) ? rows : [];
     return list.slice((page - 1) * limit, page * limit);
@@ -524,26 +594,47 @@ export function RekapBulananMapelContent() {
         />
       </div>
 
-      {/* TABEL */}
+      {/* TABEL / MOBILE CARDS */}
       <div className="bg-white dark:bg-slate-900 overflow-x-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 p-2 shadow-2xs">
-        <Suspense fallback={<div className="p-8 text-center"><Loader size="lg" /></div>}>
-          <Table
-            columns={columns}
-            data={pagedRows}
-            loading={loading}
-            emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi mapel pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran.'}
-            compact
-            className="border-none"
-            pagination={{
-              currentPage: page,
-              totalPages: Math.ceil(safeRows.length / limit),
-              totalItems: safeRows.length,
-              itemsPerPage: limit,
-              onPageChange: setPage,
-              onLimitChange: (l) => { setLimit(l); setPage(1); },
-            }}
-          />
-        </Suspense>
+        {isMobile ? (
+          <div className="p-2 space-y-4">
+            <MobileAcademicList
+              title="Daftar Rekap Siswa"
+              data={pagedRows}
+              loading={loading}
+              totalItems={safeRows.length}
+              emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi mapel pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran.'}
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(safeRows.length / limit),
+                totalItems: safeRows.length,
+                itemsPerPage: limit,
+                onPageChange: setPage,
+                onLimitChange: (l) => { setLimit(l); setPage(1); },
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
+          <Suspense fallback={<div className="p-8 text-center"><Loader size="lg" /></div>}>
+            <Table
+              columns={columns}
+              data={pagedRows}
+              loading={loading}
+              emptyMessage={kelasId && mapelId ? 'Tidak ada catatan presensi mapel pada bulan ini.' : 'Silakan pilih kelas dan mata pelajaran.'}
+              compact
+              className="border-none"
+              pagination={{
+                currentPage: page,
+                totalPages: Math.ceil(safeRows.length / limit),
+                totalItems: safeRows.length,
+                itemsPerPage: limit,
+                onPageChange: setPage,
+                onLimitChange: (l) => { setLimit(l); setPage(1); },
+              }}
+            />
+          </Suspense>
+        )}
       </div>
 
       {/* PDF PREVIEW MODAL */}
