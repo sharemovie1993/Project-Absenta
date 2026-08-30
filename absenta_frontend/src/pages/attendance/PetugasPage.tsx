@@ -64,7 +64,7 @@ export const PetugasPage: React.FC = React.memo(() => {
         featureName="Manajemen Petugas Absensi"
         description="Kelola hak akses petugas (guru/siswa) yang berwenang mencatat kehadiran di gerbang or kelas."
       >
-        <Card className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-8">
+        <Card className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl shadow-slate-200/50 dark:shadow-none border border-slate-100 dark:border-slate-800 p-4 sm:p-8">
           <Suspense fallback={<div className="flex justify-center py-20"><Loader /></div>}>
             <PetugasList />
           </Suspense>

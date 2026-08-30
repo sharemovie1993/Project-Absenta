@@ -3,7 +3,7 @@ import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { Button, Modal, ModalFooter, Table, Pagination, Badge, Input } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { Plus, Trash2, Search } from 'lucide-react';
+import { Plus, Trash2, Search, ShieldCheck } from 'lucide-react';
 import useConfirm from '../../../hooks/useConfirm';
 import { toast } from 'react-hot-toast';
 import { getPetugasList, assignPetugas, unassignPetugas } from '../../../api/attendance/petugas.api';
@@ -13,6 +13,9 @@ import { getKelasList } from '../../../api/academic/kelas.api';
 import type { Siswa } from '../../../types/academic';
 import type { Column } from '../../ui/Table';
 import { useDebounce } from '../../../hooks/useDebounce';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 
 export default React.memo(function PetugasList() {
   const { user } = useAuthStore();
@@ -223,7 +226,88 @@ export default React.memo(function PetugasList() {
       });
     }
     return cols;
-  }, [canManage]);
+  }, [canManage, handleUnassign]);
+
+  const isMobile = useIsMobile();
+
+  const renderPetugasMobileCard = useCallback((item: PetugasResponse) => {
+    const siswa = item.Siswa;
+    const kelas = siswa?.Kelas?.nama_kelas || '-';
+    const isActive = item.is_active;
+
+    return (
+      <div
+        key={item.id}
+        className={cn(
+          "relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all duration-200 space-y-3",
+          isActive 
+            ? "bg-gradient-to-br from-emerald-500/5 via-white to-emerald-500/10 dark:from-emerald-950/30 dark:via-slate-900 dark:to-emerald-950/20 border-emerald-300/80 dark:border-emerald-700/60 ring-1 ring-emerald-500/20"
+            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+        )}
+      >
+        {/* Top Accent Strip for Active */}
+        {isActive && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
+        )}
+
+        {/* Header: Icon + Siswa Name + Status Badge */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs",
+              isActive 
+                ? "bg-emerald-500 text-white shadow-emerald-500/30" 
+                : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
+            )}>
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+                {siswa?.nama_siswa || '-'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium font-mono mt-0.5">
+                NIS: {siswa?.nis || '-'} {siswa?.nisn ? `(${siswa.nisn})` : ''}
+              </p>
+            </div>
+          </div>
+
+          <Badge variant={isActive ? 'success' : 'secondary'} className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+            {isActive ? 'Aktif' : 'Non-Aktif'}
+          </Badge>
+        </div>
+
+        {/* Details: Kelas & Penugasan */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kelas / Rombel</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">
+              {kelas}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Peran Petugas</span>
+            <span className="font-bold text-indigo-600 dark:text-indigo-400">
+              Petugas Presensi
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {canManage && (
+          <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleUnassign(item.id, siswa?.nama_siswa || '')}
+              className="text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Hapus Penugasan
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }, [canManage, handleUnassign]);
 
   return (
     <div className="space-y-6">
@@ -254,21 +338,44 @@ export default React.memo(function PetugasList() {
         </div>
       </div>
 
-      <div className="border rounded-lg overflow-hidden dark:border-gray-700">
-        <Table
-          columns={columns}
-          data={petugas}
-          loading={loading}
-          emptyMessage="Belum ada petugas kelas."
-        />
-      </div>
+      {isMobile ? (
+        <div className="space-y-4">
+          <MobileAcademicList
+            title="Daftar Petugas"
+            data={petugas}
+            loading={loading}
+            totalItems={petugas.length}
+            onRefresh={fetchPetugas}
+            onAdd={canManage ? () => setIsModalOpen(true) : undefined}
+            canManage={canManage}
+            emptyMessage="Belum ada petugas kelas."
+            pagination={{
+              currentPage: page,
+              totalPages: totalPages,
+              onPageChange: setPage
+            }}
+            renderCard={renderPetugasMobileCard}
+          />
+        </div>
+      ) : (
+        <>
+          <div className="border rounded-lg overflow-hidden dark:border-gray-700">
+            <Table
+              columns={columns}
+              data={petugas}
+              loading={loading}
+              emptyMessage="Belum ada petugas kelas."
+            />
+          </div>
 
-      {totalPages > 1 && (
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={setPage}
-        />
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </>
       )}
 
       {/* Assign Modal */}
