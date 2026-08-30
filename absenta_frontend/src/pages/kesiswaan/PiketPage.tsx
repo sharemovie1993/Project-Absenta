@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { z } from 'zod';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+import { Button } from '../../components/ui/Button';
 import { Tabs, TabsContent } from '../../components/ui/Tabs';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import {
@@ -19,7 +20,8 @@ import {
   UserCheck,
   UserX,
   Calendar,
-  Briefcase
+  Briefcase,
+  Bell
 } from 'lucide-react';
 import { piketApi, piketQueryKeys } from '../../api/piket.api';
 import type { IzinKeluarSiswa } from '../../api/piket.api';
@@ -48,6 +50,8 @@ import { PiketTeacherLeavePanel } from '../../components/piket/PiketTeacherLeave
 import { guruIzinApi } from '../../api/guruIzin.api';
 import { PiketPrintSlip } from '../../components/piket/PiketPrintSlip';
 import { PiketPrintRecap } from '../../components/piket/PiketPrintRecap';
+
+const PiketNotifModal = React.lazy(() => import('../../components/piket/PiketNotifModal').then(m => ({ default: m.PiketNotifModal })));
 
 // ── ZOD VALIDATION SCHEMA FOR HARDENING ──────────────────────────────────────
 export const piketPersonaConfigSchema = z.object({
@@ -135,6 +139,7 @@ export default function PiketPage() {
   // Active persona mode state (Piket Utama vs Piket Jurusan/Lab)
   const [personaMode, setPersonaMode] = useState<PiketPersonaMode>('UTAMA');
   const [selectedJurusanNama, setSelectedJurusanNama] = useState<string>('');
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
 
   // Handler input nama/kode jurusan dengan Zod Validation Guard
   const handleJurusanNamaChange = useCallback((value: string) => {
@@ -428,6 +433,31 @@ export default function PiketPage() {
       stats={[]}
       hardeningModuleKey="kesiswaan_piket"
       instruction={piketInstruction}
+      topSlot={
+        isManagement || isKurikulum || isKesiswaan || isAdmin ? (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => setIsNotifModalOpen(true)}
+              className="flex items-center gap-1.5 font-bold rounded-xl text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Pengingat Piket
+            </Button>
+            <Link to="/kurikulum/piket">
+              <Button
+                variant="toolbarOutline"
+                size="toolbar"
+                className="flex items-center gap-1.5 font-bold rounded-xl"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Jadwal Piket Guru
+              </Button>
+            </Link>
+          </div>
+        ) : null
+      }
     >
       <div className="space-y-6 pb-12 relative">
         {!canOperatePiket ? (
@@ -725,6 +755,14 @@ export default function PiketPage() {
         }
       `}</style>
           </>
+        )}
+        {isNotifModalOpen && (
+          <React.Suspense fallback={null}>
+            <PiketNotifModal
+              isOpen={isNotifModalOpen}
+              onClose={() => setIsNotifModalOpen(false)}
+            />
+          </React.Suspense>
         )}
       </div>
     </AcademicPageLayout>

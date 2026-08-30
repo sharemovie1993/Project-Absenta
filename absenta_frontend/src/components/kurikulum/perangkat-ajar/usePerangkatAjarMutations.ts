@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { kurikulumApi, type PerangkatAjar } from '@/api/kurikulum.api';
 import { toast } from 'sonner';
@@ -84,16 +85,11 @@ export const usePerangkatAjarMutations = (params: any) => {
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedRowKeys.size === 0) return;
-    const ok = await confirm({
-      title: 'Hapus Masal Perangkat Ajar',
-      message: `Apakah Anda yakin ingin menghapus ${selectedRowKeys.size} dokumen terpilih? Tindakan ini tidak dapat dibatalkan.`,
-      confirmText: `Hapus ${selectedRowKeys.size} Dokumen`,
-      style: 'danger'
-    });
+    const ok = typeof window !== 'undefined' ? window.confirm(`Apakah Anda yakin ingin menghapus ${selectedRowKeys.size} dokumen terpilih? Tindakan ini tidak dapat dibatalkan.`) : true;
     if (ok) {
       bulkDeleteMutation.mutate(Array.from(selectedRowKeys));
     }
-  }, [selectedRowKeys, confirm, bulkDeleteMutation]);
+  }, [selectedRowKeys, bulkDeleteMutation]);
 
   const claimMutation = useMutation({
     mutationFn: (payload: { library_id: string; mapel_id: string; tahun_pelajaran_id: string; semester_id: string; guru_id: string }) =>
@@ -166,14 +162,12 @@ export const usePerangkatAjarMutations = (params: any) => {
     }
   });
 
-
-
-
   return {
     uploadMutation,
     reviewMutation,
     deleteMutation,
     bulkDeleteMutation,
+    handleBulkDelete,
     claimMutation,
     generateAIMutation,
     saveAIMutation

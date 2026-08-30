@@ -169,6 +169,15 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
               <Button
                 variant="toolbarOutline"
                 size="toolbar"
+                onClick={() => setIsNotifModalOpen(true)}
+                className="flex items-center gap-1.5 font-bold rounded-xl text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                Pengingat Piket
+              </Button>
+              <Button
+                variant="toolbarOutline"
+                size="toolbar"
                 onClick={() => setIsBulkModalOpen(true)}
                 className="flex items-center gap-1.5 font-bold rounded-xl"
               >
@@ -356,6 +365,13 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
               onSuccess={fetchSchedules}
               getSlotStartTime={getSlotStartTime}
               getSlotEndTime={getSlotEndTime}
+            />
+          )}
+
+          {isNotifModalOpen && (
+            <PiketNotifModal
+              isOpen={isNotifModalOpen}
+              onClose={() => setIsNotifModalOpen(false)}
             />
           )}
 
