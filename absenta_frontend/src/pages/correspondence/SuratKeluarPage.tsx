@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input';
 import { Label } from '../../components/ui/Label';
 import { Loader } from '../../components/ui/Loader';
 import { Badge } from '../../components/ui/Badge';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { correspondenceApi, type SuratKeluar } from '../../api/correspondence.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
 import { getStrukturList, type StrukturOrganisasi } from '../../api/academic/strukturOrganisasi.api';
