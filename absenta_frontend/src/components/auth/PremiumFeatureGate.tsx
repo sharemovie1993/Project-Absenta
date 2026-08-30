@@ -10,20 +10,20 @@ import { toast } from 'react-hot-toast';
 export const PremiumFeatureGateContext = createContext<boolean>(false);
 
 interface PremiumFeatureGateProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   isLocked?: boolean;
-  featureName: string;
-  moduleName: string;
+  featureName?: string;
+  moduleName?: string;
+  feature?: string;
   description?: string;
 }
-
-console.log('--- PremiumFeatureGate imports ---', { Button });
 
 export default function PremiumFeatureGate({
   children,
   isLocked: propIsLocked,
   featureName,
   moduleName,
+  feature,
   description = 'Upgrade paket Anda untuk mulai menggunakan fitur ini secara penuh.',
 }: PremiumFeatureGateProps) {
   const navigate = useNavigate();
@@ -31,6 +31,10 @@ export default function PremiumFeatureGate({
   const { isAdmin } = useCapabilities();
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const hasParentGate = useContext(PremiumFeatureGateContext);
+
+  const targetModule = String(moduleName || feature || '').toUpperCase();
+  const displayModuleName = moduleName || feature || 'PREMIUM';
+  const displayFeatureName = featureName || moduleName || feature || 'Fitur';
 
   const features =
     user?.features ||
@@ -55,16 +59,24 @@ export default function PremiumFeatureGate({
     (subscription as any)?.subscriptions ??
     (user as any)?.subscriptions ??
     [];
-  const hasExpiredChildSub = subs.some((s: any) => {
-    const planFeatures: string[] =
-      s?.Plan?.features_json ?? s?.plan?.features_json ?? [];
-    return (
-      planFeatures.includes(moduleName.toUpperCase()) &&
-      expiredStatuses.includes((s?.status ?? '').toUpperCase())
-    );
-  });
+  const hasExpiredChildSub = Boolean(
+    targetModule &&
+    subs.some((s: any) => {
+      const planFeatures: string[] =
+        s?.Plan?.features_json ?? s?.plan?.features_json ?? [];
+      const planFeaturesUpper = Array.isArray(planFeatures)
+        ? planFeatures.map(f => String(f).toUpperCase())
+        : [];
+      return (
+        planFeaturesUpper.includes(targetModule) &&
+        expiredStatuses.includes(String(s?.status ?? '').toUpperCase())
+      );
+    })
+  );
 
-  const isModuleAllowed = Array.isArray(features) && features.includes(moduleName.toUpperCase());
+  const isModuleAllowed = targetModule
+    ? Array.isArray(features) && features.some(f => String(f).toUpperCase() === targetModule)
+    : true;
 
   // isLocked jika modul tidak ada di paket ATAU status langganan sudah kedaluwarsa/tidak aktif
   const isLocked =
@@ -91,7 +103,7 @@ export default function PremiumFeatureGate({
   };
 
   const handleUpgradeClick = () => {
-    const categoryParam = moduleName ? `&cat=${moduleName.toUpperCase()}` : '';
+    const categoryParam = targetModule ? `&cat=${targetModule}` : '';
     navigate(`/service-center?tab=catalog${categoryParam}`);
   };
 
@@ -131,11 +143,11 @@ export default function PremiumFeatureGate({
                       Langganan Berakhir
                     </span>
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      • {moduleName}
+                      • {displayModuleName}
                     </span>
                   </div>
                   <h3 className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
-                    Modul {featureName} Tidak Aktif
+                    Modul {displayFeatureName} Tidak Aktif
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     {isAdmin
@@ -198,11 +210,11 @@ export default function PremiumFeatureGate({
                     Preview Mode
                   </span>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    • {moduleName}
+                    • {displayModuleName}
                   </span>
                 </div>
                 <h3 className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
-                  Uji Coba: Fitur {featureName}
+                  Uji Coba: Fitur {displayFeatureName}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   {isAdmin
