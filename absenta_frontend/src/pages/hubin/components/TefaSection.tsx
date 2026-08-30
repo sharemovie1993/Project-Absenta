@@ -190,6 +190,13 @@ export const TefaSection: React.FC = React.memo(() => {
   }, []);
 
   const listData = useMemo(() => tefaData?.data || [], [tefaData]);
+  const { totalRealisasi, proyekBerjalan } = useMemo(() => {
+    const list: HubinTefaOrder[] = Array.isArray(listData) ? listData : [];
+    const total = list.reduce((acc, curr) => acc + (Number(curr.nilai_kontrak) || 0), 0);
+    const berjalan = list.filter(o => o.status_proyek === 'BERJALAN').length;
+    return { totalRealisasi: total, proyekBerjalan: berjalan };
+  }, [listData]);
+
   const mitras = useMemo(() => mitraData?.data || [], [mitraData]);
   const mitraOptions = useMemo(() => mitras?.map((m: MitraIndustri) => ({
     value: m.id,
