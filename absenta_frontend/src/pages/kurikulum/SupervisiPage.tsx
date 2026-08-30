@@ -21,6 +21,8 @@ import { SupervisiSelfAssessmentModal } from '../../components/kurikulum/Supervi
 import { SupervisiAnalyticsDashboard } from '@/components/kurikulum/supervisi/SupervisiAnalyticsDashboard';
 import type { SupervisiFormState, RecommendationSlot } from '../../components/kurikulum/SupervisiFormModal';
 import { useGuruOptions, useKelasOptions, useMapelOptions } from '../../components/common';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // ─── Lazy-loaded heavy subcomponents (Pilar 11 – Lazy Loading) ────────────────
 const Table          = lazy(() => import('../../components/ui/Table').then(m => ({ default: m.Table })));
@@ -375,13 +377,15 @@ export default function SupervisiPage() {
     ];
   }, [data]);
 
+  const isMobile = useIsMobile();
+
   // ── Toolbar slots ─────────────────────────────────────────────────────────
   const toolbarLeft = (
     <Input
       placeholder="Cari supervisi..."
       value={searchTerm}
       onChange={(e) => setSearchTerm(e.target.value)}
-      className="w-64"
+      className="w-full sm:w-64"
       aria-label="Cari jadwal supervisi"
     />
   );
@@ -395,6 +399,90 @@ export default function SupervisiPage() {
       <Plus size={14} className="mr-1" /> Tambah Jadwal
     </Button>
   ) : null;
+
+  const renderMobileCard = (item: Supervisi) => {
+    const isMySupervisi = currentGuru && item.guru_id === currentGuru.id;
+    const isSelected = selectedSupervisi?.id === item.id;
+    return (
+      <div
+        key={item.id}
+        onClick={() => setSelectedSupervisiId(item.id)}
+        className={cn(
+          "p-4 bg-white dark:bg-slate-900 rounded-2xl border transition-all duration-200 shadow-xs space-y-3 cursor-pointer",
+          isSelected ? "border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-50/20 dark:bg-indigo-950/20" : "border-slate-200/80 dark:border-slate-800"
+        )}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm shrink-0">
+              {item.Guru?.nama_guru?.substring(0, 2).toUpperCase() || 'GU'}
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">{item.Guru?.nama_guru}</h4>
+              <p className="text-[10px] text-slate-400 font-medium">NIP: {item.Guru?.nip || '-'}</p>
+            </div>
+          </div>
+          <Badge variant={item.status === 'COMPLETED' ? 'success' : 'default'} className="shrink-0 text-[10px]">
+            {item.status === 'COMPLETED' ? 'SELESAI' : 'TERJADWAL'}
+          </Badge>
+        </div>
+
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Mapel</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{item.mapel || '-'}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kelas / Jam</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{item.kelas || '-'} (Jam {item.jam_ke})</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Tanggal</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">{new Date(item.tanggal).toLocaleDateString('id-ID')}</span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Supervisor / Nilai</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-200">
+              {item.nilai != null && item.status === 'COMPLETED' ? `Skor: ${item.nilai}` : (item.Supervisor?.nama_guru || '-')}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+          {isMySupervisi && item.status === 'SCHEDULED' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => { e.stopPropagation(); setSelfAssessmentSupervisiId(item.id); setSelfAssessmentModalOpen(true); }}
+              className="text-xs text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold"
+            >
+              Evaluasi Diri
+            </Button>
+          )}
+          {canManage && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleEdit(item); }}
+                className="text-xs hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Edit
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50/10 dark:hover:bg-rose-950/20"
+              >
+                Hapus
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -429,12 +517,149 @@ export default function SupervisiPage() {
         </div>
       )}
 
-      <div className="p-6 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {activeTab === 'ANALYTICS' && canViewAnalytics ? (
           <SupervisiAnalyticsDashboard />
+        ) : isMobile ? (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1">{toolbarLeft}</div>
+              {toolbarRight}
+            </div>
+
+            <MobileAcademicList
+              title="Daftar Supervisi"
+              data={data ?? []}
+              loading={loading}
+              totalItems={totalData}
+              emptyMessage="Belum ada jadwal supervisi"
+              pagination={{
+                currentPage,
+                totalPages: Math.ceil(totalData / pageLimit),
+                totalItems: totalData,
+                itemsPerPage: pageLimit,
+                onPageChange: setCurrentPage,
+                onLimitChange: setPageLimit,
+              }}
+              renderCard={renderMobileCard}
+            />
+
+            {/* Detail / Coaching panel for selected supervisi on mobile */}
+            {selectedSupervisi && (
+              <div className="space-y-3 pt-2">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Detail & Hasil Observasi</h3>
+                <SectionCard fullWidth className="flex flex-col justify-between w-full min-w-0 p-4 sm:p-6">
+                  <div className="space-y-6">
+                    {/* Teacher profile header */}
+                    <div className="flex items-center gap-4 pb-4 border-b border-slate-50 dark:border-slate-800">
+                      <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-lg shadow-inner">
+                        {selectedSupervisi.Guru?.nama_guru?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <h3 className="font-black text-base text-slate-800 dark:text-white uppercase leading-none">{selectedSupervisi.Guru?.nama_guru}</h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">NIP: {selectedSupervisi.Guru?.nip || '-'}</p>
+                      </div>
+                    </div>
+
+                    {/* Observasi details */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Detail Observasi</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {[
+                          { icon: <BookOpen size={10} />, label: 'Mapel', value: selectedSupervisi.mapel || '-' },
+                          { icon: <User size={10} />,     label: 'Kelas', value: selectedSupervisi.kelas || '-' },
+                          { icon: <Calendar size={10} />, label: 'Tanggal', value: new Date(selectedSupervisi.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) },
+                          { icon: <Clock size={10} />,    label: 'Jam Ke-', value: selectedSupervisi.jam_ke || '-' },
+                        ]?.map(item => (
+                          <div key={item.label} className="p-3 bg-slate-50/50 dark:bg-slate-900/50 rounded-xl space-y-1">
+                            <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">{item.icon} {item.label}</span>
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-200">{item.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Score & evaluation */}
+                    <div className="space-y-4">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hasil Kinerja Observasi</h4>
+                      {selectedSupervisi.status === 'COMPLETED' ? (
+                        <div className="flex items-center gap-5 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <div className={cn(
+                            'w-16 h-16 rounded-full flex flex-col items-center justify-center font-black text-xl border-4 shadow-inner shrink-0',
+                            (selectedSupervisi.nilai ?? 0) >= 85 ? 'border-emerald-500 bg-emerald-50/10 text-emerald-600' :
+                            (selectedSupervisi.nilai ?? 0) >= 70 ? 'border-blue-500 bg-blue-50/10 text-blue-600' :
+                            (selectedSupervisi.nilai ?? 0) >= 55 ? 'border-amber-500 bg-amber-50/10 text-amber-600' :
+                                                                   'border-rose-500 bg-rose-50/10 text-rose-600',
+                          )}>
+                            {selectedSupervisi.nilai ?? '-'}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-200">
+                              {(selectedSupervisi.nilai ?? 0) >= 85 ? 'SANGAT BAIK' :
+                               (selectedSupervisi.nilai ?? 0) >= 70 ? 'BAIK' :
+                               (selectedSupervisi.nilai ?? 0) >= 55 ? 'CUKUP' : 'PERLU PEMBINAAN'}
+                            </p>
+                            <p className="text-[10px] text-gray-400 leading-relaxed">
+                              {(selectedSupervisi.nilai ?? 0) >= 85 ? 'Guru menunjukkan kompetensi profesional yang luar biasa dalam pengelolaan kelas.' :
+                               (selectedSupervisi.nilai ?? 0) >= 70 ? 'Kombinasi instruksi dan penyampaian materi sudah berjalan baik dan terstruktur.' :
+                               (selectedSupervisi.nilai ?? 0) >= 55 ? 'Beberapa aspek pedagogis seperti interaksi siswa dan asesmen masih dapat ditingkatkan.' :
+                               'Membutuhkan pendampingan intensif (coaching) guna menyelaraskan kembali modul ajar dengan implementasi kelas.'}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl text-center border-2 border-dashed border-slate-100 dark:border-slate-800">
+                          <Clock size={24} className="mx-auto text-slate-400 mb-2" />
+                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Supervisi Belum Terlaksana</p>
+                          <p className="text-[9px] text-gray-400 mt-0.5">Nilai dan rekomendasi tindak lanjut akan tampil setelah status diubah menjadi SELESAI.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Self-assessment summary */}
+                    {(selectedSupervisi.is_self_evaluated || selectedSupervisi.target_pembelajaran) && (
+                      <div className="space-y-2 border-t border-slate-50 dark:border-slate-800 pt-4">
+                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                          <Award size={10} className="text-indigo-500" />
+                          Evaluasi Diri Guru (Pra-Observasi)
+                        </h4>
+                        <div className="p-3 bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-50 dark:border-indigo-900/20 rounded-xl space-y-2">
+                          <div>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase">Target Pembelajaran</p>
+                            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">{selectedSupervisi.target_pembelajaran || '-'}</p>
+                          </div>
+                          {selectedSupervisi.nilai_self != null && (
+                            <div>
+                              <p className="text-[9px] font-bold text-gray-400 uppercase">Skor Evaluasi Mandiri</p>
+                              <p className="text-xs text-indigo-600 dark:text-indigo-400 font-black">{selectedSupervisi.nilai_self}/100</p>
+                            </div>
+                          )}
+                          {selectedSupervisi.catatan_self && (
+                            <div>
+                              <p className="text-[9px] font-bold text-gray-400 uppercase">Catatan Guru</p>
+                              <p className="text-xs text-slate-600 dark:text-slate-400 italic">"{selectedSupervisi.catatan_self}"</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Catatan penilai */}
+                    <div className="space-y-2">
+                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Catatan Penilai (Supervisor)</h4>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100/50 dark:border-slate-800 min-h-[80px]">
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap italic">
+                          {selectedSupervisi.catatan ? `"${selectedSupervisi.catatan}"` : 'Tidak ada catatan tambahan.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </SectionCard>
+              </div>
+            )}
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-
             {/* ── Table (kiri) ─────────────────────────────────────────── */}
             <div className="lg:col-span-7 flex">
               <SectionCard fullWidth className="flex flex-col justify-between w-full min-w-0">

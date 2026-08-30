@@ -12,6 +12,7 @@ import { JadwalNavPill } from '@/components/kurikulum/JadwalNavPill';
 import { useJadwalKontrakKbm } from '../../hooks/kurikulum/useJadwalKontrakKbm';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import type { JadwalKontrakKbmItem } from '../../api/kurikulum/jadwal-kontrak-kbm.api';
 import {
   BookOpen, Users, School, FileText, Trash2, Search, RefreshCw,
@@ -315,48 +316,137 @@ interface KelasKontrakGroupProps {
 
 const KelasKontrakGroup: React.FC<KelasKontrakGroupProps> = React.memo(({
   kelasNama, items, canManage, onDelete,
-}) => (
-  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-    {/* Kelas Header */}
-    <div className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-b border-slate-200 dark:border-slate-800">
-      <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-      <span className="font-bold text-indigo-900 dark:text-indigo-200 text-sm uppercase tracking-wide">
-        {kelasNama}
-      </span>
-      <span className="ml-auto text-xs text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full">
-        {items.length} kontrak
-      </span>
-    </div>
+}) => {
+  const isMobile = useIsMobile();
 
-    {/* Table */}
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wide">
-            <th className="py-2.5 px-4 text-left">Mata Pelajaran</th>
-            <th className="py-2.5 px-4 text-left">Guru Pengampu</th>
-            <th className="py-2.5 px-4 text-center">Total JP</th>
-            <th className="py-2.5 px-4 text-center">Durasi / Kartu</th>
-            <th className="py-2.5 px-4 text-center">Blok</th>
-            <th className="py-2.5 px-4 text-center">Jml Kartu</th>
-            <th className="py-2.5 px-4 text-center">Tipe</th>
-            {canManage && <th className="py-2.5 px-4 text-center w-12">Aksi</th>}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+      {/* Kelas Header */}
+      <div className="flex items-center gap-3 px-4 sm:px-5 py-3 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border-b border-slate-200 dark:border-slate-800">
+        <School className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+        <span className="font-bold text-indigo-900 dark:text-indigo-200 text-sm uppercase tracking-wide">
+          {kelasNama}
+        </span>
+        <span className="ml-auto text-xs text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-full">
+          {items.length} kontrak
+        </span>
+      </div>
+
+      {/* Content */}
+      {isMobile ? (
+        <div className="p-3 space-y-3">
           {items?.map((item) => (
-            <KontrakRow
+            <div
               key={item.id}
-              item={item}
-              canManage={canManage}
-              onDelete={onDelete}
-            />
+              className="p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <BookOpen className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <h5 className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
+                      {item.Mapel?.nama_mapel || <span className="text-rose-400 italic">Mapel tidak diset</span>}
+                    </h5>
+                    {item.Mapel?.kode_mapel && (
+                      <span className="text-[10px] text-slate-400">{item.Mapel.kode_mapel}</span>
+                    )}
+                  </div>
+                </div>
+                {item.is_pembiasaan ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 shrink-0">
+                    Pembiasaan
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                    <CheckCircle2 className="w-2.5 h-2.5" /> KBM
+                  </span>
+                )}
+              </div>
+
+              <div className="p-2.5 bg-white dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
+                <div className="col-span-2 flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-medium shrink-0">Guru:</span>
+                  {item.Guru ? (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white text-[8px] font-bold shrink-0">
+                        {item.Guru.nama_guru.charAt(0)}
+                      </div>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate">
+                        {item.Guru.nama_guru}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-amber-500 italic text-[10px] flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> Belum diset
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Total JP</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{item.total_jp} JP</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Durasi / Kartu</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300">{item.durasi_jp} JP ({item.jumlah_kartu}x)</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-[10px] text-slate-400 block font-medium mb-0.5">Aturan Blok</span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold',
+                      ATURAN_BLOK_COLOR[item.aturan_blok] || 'bg-slate-100 text-slate-600'
+                    )}
+                  >
+                    <Clock className="w-2.5 h-2.5" />
+                    {ATURAN_BLOK_LABEL[item.aturan_blok] || item.aturan_blok}
+                  </span>
+                </div>
+              </div>
+
+              {canManage && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => onDelete(item.id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors font-medium"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Hapus
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wide">
+                <th className="py-2.5 px-4 text-left">Mata Pelajaran</th>
+                <th className="py-2.5 px-4 text-left">Guru Pengampu</th>
+                <th className="py-2.5 px-4 text-center">Total JP</th>
+                <th className="py-2.5 px-4 text-center">Durasi / Kartu</th>
+                <th className="py-2.5 px-4 text-center">Blok</th>
+                <th className="py-2.5 px-4 text-center">Jml Kartu</th>
+                <th className="py-2.5 px-4 text-center">Tipe</th>
+                {canManage && <th className="py-2.5 px-4 text-center w-12">Aksi</th>}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              {items?.map((item) => (
+                <KontrakRow
+                  key={item.id}
+                  item={item}
+                  canManage={canManage}
+                  onDelete={onDelete}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
-  </div>
-));
+  );
+});
 
 // === Sub-component: Baris Kontrak ===
 interface KontrakRowProps {

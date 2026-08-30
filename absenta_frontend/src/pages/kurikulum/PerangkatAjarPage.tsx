@@ -42,6 +42,8 @@ import {
 } from '../../components/kurikulum/perangkat-ajar/perangkatAjarSchemas';
 
 import { PerangkatAjarGridCard } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarGridCard';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Subcomponents Lazy Loading
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
@@ -63,6 +65,7 @@ export default function PerangkatAjarPage() {
   const confirm = useConfirm();
   const { user, subscription } = useAuthStore();
   const { isKurikulum, isAdmin, can } = useCapabilities();
+  const isMobile = useIsMobile();
 
   const isKurikulumOrAdmin = useMemo(() => {
     return isAdmin || isKurikulum || (typeof can === 'function' && can('academic.manage.academic'));
@@ -527,7 +530,7 @@ export default function PerangkatAjarPage() {
             teacherOptions={teacherOptions}
             isKurikulumOrAdmin={isKurikulumOrAdmin}
           />
-          <div className={viewMode === 'table' ? 'p-0' : 'p-6'}>
+          <div className={isMobile ? 'p-4' : viewMode === 'table' ? 'p-0' : 'p-6'}>
             {isLoading ? (
               <div className="text-center py-20 text-slate-400 text-xs italic">Memuat berkas perangkat ajar...</div>
             ) : !listPerangkat?.data || listPerangkat.data.length === 0 ? (
@@ -536,6 +539,43 @@ export default function PerangkatAjarPage() {
                 <h4 className="font-bold text-slate-700 dark:text-slate-300">Belum Ada Dokumen</h4>
                 <p className="text-xs text-slate-400 max-w-sm">Guru belum mengunggah perangkat ajar pada semester aktif ini.</p>
               </div>
+            ) : isMobile ? (
+              <MobileAcademicList
+                title="Daftar Perangkat Ajar"
+                data={listPerangkat?.data ?? []}
+                loading={isLoading}
+                totalItems={listPerangkat?.meta?.total || (listPerangkat?.data?.length ?? 0)}
+                emptyMessage="Belum ada berkas perangkat ajar"
+                pagination={{
+                  currentPage: page,
+                  totalPages: listPerangkat?.meta?.last_page || 1,
+                  totalItems: listPerangkat?.meta?.total || (listPerangkat?.data?.length ?? 0),
+                  itemsPerPage: limit,
+                  onPageChange: (newPage) => setPage(newPage),
+                  onLimitChange: (newLimit) => {
+                    setLimit(newLimit);
+                    setPage(1);
+                  }
+                }}
+                renderCard={(item: PerangkatAjar) => (
+                  <PerangkatAjarGridCard
+                    key={item.id}
+                    item={item}
+                    jenisLabels={JENIS_LABELS}
+                    isKurikulumOrAdmin={isKurikulumOrAdmin}
+                    currentGuruId={currentGuru?.id}
+                    onOpenPdf={undefined}
+                    onOpenStudio={handleOpenStudio}
+                    onOpenReader={handleOpenReader}
+                    onReview={(id) => {
+                      setSelectedPerangkatId(id);
+                      setIsReviewModalOpen(true);
+                    }}
+                    onDelete={handleDelete}
+                    onEdit={handleOpenWordEditor}
+                  />
+                )}
+              />
             ) : viewMode === 'table' ? (
               <Table
                 columns={tableColumns}
