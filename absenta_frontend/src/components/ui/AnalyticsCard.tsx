@@ -170,7 +170,11 @@ export function AnalyticsCardBase({
                     ? "bg-white/20 text-white shadow-sm"
                     : cn("text-white shadow-md bg-gradient-to-br", gradient)
                 )}>
-                  {icon}
+                  {React.isValidElement(icon)
+                    ? icon
+                    : typeof icon === 'function' || (typeof icon === 'object' && (icon as any)?.$$typeof)
+                    ? React.createElement(icon as any, { className: "w-3.5 h-3.5 sm:w-5 sm:h-5" })
+                    : icon}
                 </div>
               )}
             </div>

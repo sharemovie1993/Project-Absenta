@@ -35,7 +35,11 @@ export const SectionCard = React.memo(({
               "w-7 h-7 rounded-lg flex items-center justify-center transition-colors",
               isActive ? "bg-blue-600 text-white" : "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
             )}>
-               <Icon size={14} aria-hidden="true" />
+              {React.isValidElement(Icon)
+                ? Icon
+                : typeof Icon === 'function' || (typeof Icon === 'object' && (Icon as any)?.$$typeof)
+                ? React.createElement(Icon as any, { size: 14, 'aria-hidden': 'true' })
+                : null}
             </div>
           )}
           <h3 className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">{title}</h3>

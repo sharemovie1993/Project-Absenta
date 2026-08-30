@@ -49,7 +49,13 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             )}
           >
-            {Icon && <Icon className="w-3.5 h-3.5" />}
+            {Icon && (
+              React.isValidElement(Icon)
+                ? Icon
+                : typeof Icon === 'function' || (typeof Icon === 'object' && (Icon as any)?.$$typeof)
+                ? React.createElement(Icon as any, { className: "w-3.5 h-3.5" })
+                : null
+            )}
             {opt.label}
           </button>
         );
