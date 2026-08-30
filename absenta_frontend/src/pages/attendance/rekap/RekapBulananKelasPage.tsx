@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
 
-import { SectionCard, Loader, Alert, AlertDescription } from '../../../components/ui';
+import { SectionCard, Loader, Alert, AlertDescription, Badge } from '../../../components/ui';
 import { dropdownApi, type DropdownOption } from '../../../api/dropdown.api';
 import { getRekapBulananKelas } from '../../../api/attendanceGerbang.api';
 import { guruApi } from '../../../api/academic.api';
