@@ -165,7 +165,7 @@ const CoopSuppliers = lazy(() => import('./pages/cooperative/Suppliers'));
 const KurikulumDashboard = lazy(() => import('./pages/kurikulum/Dashboard'));
 const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashboard'));
 const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
-const EvaluasiKinerjaGuruMockupPage = lazy(() => import('./pages/kurikulum/EvaluasiKinerjaGuruMockupPage'));
+const EvaluasiKinerjaGuruPage = lazy(() => import('./pages/kurikulum/EvaluasiKinerjaGuruPage').then(m => ({ default: m.EvaluasiKinerjaGuruPage })));
 const PerangkatAjarPage = lazy(() => import('./pages/kurikulum/PerangkatAjarPage'));
 const AtpBuilderPage = lazy(() => import('./pages/kurikulum/AtpBuilderPage').then(m => ({ default: m.AtpBuilderPage })));
 const AtpTemplatePage = lazy(() => import('./pages/kurikulum/AtpTemplatePage').then(m => ({ default: m.AtpTemplatePage })));
@@ -1616,7 +1616,7 @@ function App() {
                             <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
                           </div>
                         }>
-                          <EvaluasiKinerjaGuruMockupPage />
+                          <EvaluasiKinerjaGuruPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />

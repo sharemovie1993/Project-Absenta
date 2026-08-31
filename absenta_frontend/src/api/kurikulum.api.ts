@@ -273,6 +273,34 @@ export const kurikulumApi = {
     return response.data;
   },
 
+  // Evaluasi Kinerja Guru
+  getEvaluasiKinerja: async (params?: {
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    search?: string;
+    predikat?: string;
+    status_kepegawaian?: string;
+    guru_id?: string;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.tahun_pelajaran_id) qs.set('tahun_pelajaran_id', params.tahun_pelajaran_id);
+    if (params?.semester_id) qs.set('semester_id', params.semester_id);
+    if (params?.search) qs.set('search', params.search);
+    if (params?.predikat) qs.set('predikat', params.predikat);
+    if (params?.status_kepegawaian) qs.set('status_kepegawaian', params.status_kepegawaian);
+    if (params?.guru_id) qs.set('guru_id', params.guru_id);
+    const response = await api.get(`/kurikulum/evaluasi-kinerja${qs.toString() ? '?' + qs.toString() : ''}`);
+    return response.data;
+  },
+
+  getEvaluasiKinerjaGuruDetail: async (guruId: string, params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.tahun_pelajaran_id) qs.set('tahun_pelajaran_id', params.tahun_pelajaran_id);
+    if (params?.semester_id) qs.set('semester_id', params.semester_id);
+    const response = await api.get(`/kurikulum/evaluasi-kinerja/${guruId}${qs.toString() ? '?' + qs.toString() : ''}`);
+    return response.data;
+  },
+
   // Calendar Presets
   getCalendarPresets: async (jenjang?: string) => {
     const response = await api.get('/kurikulum/kalender/presets', { params: { jenjang } });

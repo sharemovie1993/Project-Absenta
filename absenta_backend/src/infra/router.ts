@@ -567,6 +567,10 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { rekapKBMRoutes } = await import('../modules/kurikulum/routes/rekap-kbm.routes');
       await fastify.register(rekapKBMRoutes, { prefix: '/kurikulum/rekap-kbm' });
 
+      // Evaluasi Kinerja Guru (Kurikulum)
+      const { evaluasiKinerjaRoutes } = await import('../modules/kurikulum/routes/evaluasi-kinerja.routes');
+      await fastify.register(evaluasiKinerjaRoutes, { prefix: '/kurikulum/evaluasi-kinerja' });
+
       // Jadwal Pelajaran (Kurikulum) — Supports both /kurikulum/jadwal-kbm & /kurikulum/jadwal prefixes
       const { jadwalKBMRoutes } = await import('../modules/kurikulum/jadwal-kbm/routes/jadwal-kbm.routes');
       await fastify.register(jadwalKBMRoutes, { prefix: '/kurikulum/jadwal-kbm' });
