@@ -35,6 +35,7 @@ interface Announcement {
 
 const Announcements: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const { subscription } = useAuthStore();
   const confirm = useConfirm();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
