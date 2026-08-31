@@ -46,6 +46,7 @@ import { getPerangkatAjarTableColumns } from '../../components/kurikulum/perangk
 import { PerangkatAjarFilterBar } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarFilterBar';
 import { PerangkatAjarModals } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarModals';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useDebounce } from '../../hooks/useDebounce';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const hardeningModuleKey = 'perangkat_ajar_page';
@@ -120,12 +121,16 @@ export default function PerangkatAjarPage() {
   // View & Pagination States
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
+  const [search, setSearch] = useState<string>('');
+  const debouncedSearch = useDebounce(search, 400);
+  const [selectedTahun, setSelectedTahun] = useState<string>('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
+  const [selectedGuru, setSelectedGuru] = useState<string>('');
   const [filterJenis, setFilterJenis] = useState<string>('');
   const [filterMapel, setFilterMapel] = useState<string>('');
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(10);
   const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
-
 
   // Library Katalog Filter States
   const [librarySearch, setLibrarySearch] = useState('');
@@ -167,10 +172,10 @@ export default function PerangkatAjarPage() {
   });
 
   // Canonical Reference Options Hooks
-  const { rawList: tahunPelajaranList, activeYear } = useTahunPelajaranOptions();
-  const { rawList: semesterList, activeSemester } = useSemesterOptions({ tahunPelajaranId: activeYear?.id });
+  const { options: tahunOptions, rawList: tahunPelajaranList, activeYear } = useTahunPelajaranOptions();
+  const { options: semesterOptions, rawList: semesterList, activeSemester } = useSemesterOptions({ tahunPelajaranId: selectedTahun || activeYear?.id });
   const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
-  const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: teacherOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
   const currentGuru = useMemo(() => {
     return (guruRawList || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id);
@@ -192,10 +197,12 @@ export default function PerangkatAjarPage() {
   }, [activeTab]);
 
   const { data: listPerangkat, isLoading } = useQuery({
-    queryKey: ['perangkat-ajar-list', activeYear?.id, activeSemester?.id, filterStatus, filterJenis, filterMapel, page, limit],
+    queryKey: ['perangkat-ajar-list', selectedTahun || activeYear?.id, selectedSemester || activeSemester?.id, selectedGuru, filterStatus, filterJenis, filterMapel, debouncedSearch, page, limit],
     queryFn: () => kurikulumApi.getPerangkatAjar({
-      tahun_pelajaran_id: activeYear?.id,
-      semester_id: activeSemester?.id,
+      tahun_pelajaran_id: selectedTahun || activeYear?.id,
+      semester_id: selectedSemester || activeSemester?.id,
+      guru_id: selectedGuru || undefined,
+      search: debouncedSearch || undefined,
       status: filterStatus || undefined,
       jenis: filterJenis || undefined,
       mapel_id: filterMapel || undefined,
