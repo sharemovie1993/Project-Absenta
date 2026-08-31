@@ -11,6 +11,8 @@ import {
 } from '../../../api/academic/program-keahlian.api';
 import { Button, Input, Label } from '../../ui';
 import { SPEKTRUM_SMK_2024 } from '../../../utils/nomenklaturSMK';
+import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 // Lazy load Table
 const Table = lazy(() => import('../../ui/Table').then(module => ({ default: module.Table })));
@@ -55,6 +57,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const isMobile = useIsMobile();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -313,6 +316,53 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
     },
   ], [canEdit, deletingId]);
 
+  const renderProgramKeahlianMobileCard = useCallback((pk: ProgramKeahlian) => {
+    const totalKonsentrasi = pk._count?.Jurusan || 0;
+    const subText = [
+      `${totalKonsentrasi} Konsentrasi Keahlian`,
+      pk.bidang_keahlian
+    ].filter(Boolean).join(' • ');
+
+    return (
+      <div 
+        key={pk.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => openEdit(pk)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openEdit(pk);
+          }
+        }}
+        aria-label={`Detail program keahlian ${pk.nama}`}
+        className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
+      >
+        <div className="min-w-0 flex-1">
+          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+            {pk.nama}
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+            {subText}
+          </p>
+        </div>
+
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            openEdit(pk);
+          }}
+          aria-label={`Detail ${pk.nama}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
+      </div>
+    );
+  }, []);
+
   return (
     <div className="space-y-4">
       {/* Header bar */}
@@ -512,16 +562,17 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
         </div>
       ) : (
         <div className="bg-transparent overflow-hidden">
-          <div className="hidden md:block">
-            <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin text-violet-400" /></div>}>
-              <Table
-                columns={columns}
+          {isMobile ? (
+            <div className="space-y-4">
+              <MobileAcademicList
+                title="Daftar Program Keahlian"
                 data={paginatedData}
                 loading={loading}
+                totalItems={filtered.length}
+                onRefresh={load}
+                onAdd={canEdit ? openAdd : undefined}
+                canManage={canEdit}
                 emptyMessage="Tidak ada data program keahlian ditemukan"
-                className="border-none"
-                selectedRowKeys={selectedIds}
-                onSelectedRowKeysChange={setSelectedIds}
                 pagination={{
                   currentPage,
                   totalPages: totalPages || 1,
@@ -533,97 +584,35 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
                     setCurrentPage(1);
                   }
                 }}
+                renderCard={renderProgramKeahlianMobileCard}
               />
-            </Suspense>
-          </div>
-
-          <div className="md:hidden space-y-2">
-            {paginatedData.map(pk => {
-              const isSelected = selectedIds.has(pk.id);
-              return (
-                <div
-                  key={pk.id}
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-violet-300 dark:hover:border-violet-700 transition"
-                >
-                  {/* Checkbox for selection */}
-                  {canEdit && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedIds(prev => {
-                          const next = new Set(prev);
-                          if (next.has(pk.id)) {
-                            next.delete(pk.id);
-                          } else {
-                            next.add(pk.id);
-                          }
-                          return next;
-                        });
-                      }}
-                      className="text-slate-400 hover:text-violet-600 transition-colors"
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-                      ) : (
-                        <Square className="w-5 h-5 text-slate-300 dark:text-slate-750" />
-                      )}
-                    </button>
-                  )}
-
-                  {/* Icon */}
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="w-5 h-5 text-white" />
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate">{pk.nama}</p>
-                      {pk.kode && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-violet-100 dark:bg-violet-950 text-violet-700 dark:text-violet-300">
-                          {pk.kode}
-                        </span>
-                      )}
-                    </div>
-                    {pk.bidang_keahlian && (
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{pk.bidang_keahlian}</p>
-                    )}
-                  </div>
-
-                  {/* Badge count */}
-                  <div className="text-center flex-shrink-0">
-                    <p className="text-[18px] font-black text-violet-600 dark:text-violet-400">{pk._count?.Jurusan || 0}</p>
-                    <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Konsentrasi</p>
-                  </div>
-                </div>
-              );
-            })}
-
-            {totalPages > 1 && (
-              <div className="flex justify-between items-center p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 mt-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                >
-                  Prev
-                </Button>
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  Halaman {currentPage} dari {totalPages}
-                </span>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div className="hidden md:block">
+              <Suspense fallback={<div className="p-8 flex justify-center"><Loader2 className="animate-spin text-violet-400" /></div>}>
+                <Table
+                  columns={columns}
+                  data={paginatedData}
+                  loading={loading}
+                  emptyMessage="Tidak ada data program keahlian ditemukan"
+                  className="border-none"
+                  selectedRowKeys={selectedIds}
+                  onSelectedRowKeysChange={setSelectedIds}
+                  pagination={{
+                    currentPage,
+                    totalPages: totalPages || 1,
+                    totalItems: filtered.length,
+                    itemsPerPage,
+                    onPageChange: (page) => setCurrentPage(page),
+                    onLimitChange: (limit) => {
+                      setItemsPerPage(limit);
+                      setCurrentPage(1);
+                    }
+                  }}
+                />
+              </Suspense>
+            </div>
+          )}
         </div>
       )}
     </div>
