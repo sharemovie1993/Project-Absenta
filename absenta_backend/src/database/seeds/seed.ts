@@ -228,28 +228,28 @@ async function main() {
     {
       label: 'DATA MASTER', icon: 'Database', path: null, required_features: ['CORE'], order: 10, children: [
         // Klaster 1: Master Data Pokok
-        { label: 'Dashboard Akademik', icon: 'LayoutDashboard', path: '/academic', required_capability: 'academic.students.view.list' },
-        { label: 'Tahun Pelajaran', icon: 'Calendar', path: '/academic/tahun-pelajaran', required_capability: 'academic.years.view.list' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/academic', required_capability: 'academic.students.view.list' },
+        { label: 'Tahun Ajaran', icon: 'Calendar', path: '/academic/tahun-pelajaran', required_capability: 'academic.years.view.list' },
         { label: 'Semester', icon: 'Clock', path: '/academic/semester', required_capability: 'academic.semesters.view.list' },
-        { label: 'Jurusan / Konsentrasi', icon: 'Briefcase', path: '/academic/jurusan', required_capability: 'academic.structures.view.list' },
-        { label: 'Rombongan Belajar (Kelas)', icon: 'Users', path: '/academic/kelas', required_capability: 'academic.structures.view.list' },
+        { label: 'Jurusan', icon: 'Briefcase', path: '/academic/jurusan', required_capability: 'academic.structures.view.list' },
+        { label: 'Daftar Kelas', icon: 'Users', path: '/academic/kelas', required_capability: 'academic.structures.view.list' },
         { label: 'Mata Pelajaran', icon: 'BookOpen', path: '/academic/mapel', required_capability: 'academic.subjects.view.list' },
-        { label: 'Data Guru & Staf', icon: 'UserCog', path: '/academic/guru', required_capability: 'academic.teachers.view.list' },
+        { label: 'Guru & Staf', icon: 'UserCog', path: '/academic/guru', required_capability: 'academic.teachers.view.list' },
         { label: 'Data Siswa', icon: 'GraduationCap', path: '/academic/siswa', required_capability: 'academic.students.view.list' },
-        { label: 'Dokumen Sekolah', icon: 'FileText', path: '/documents', required_capability: 'documents.view.list' },
+        { label: 'Dokumen', icon: 'FileText', path: '/documents', required_capability: 'documents.view.list' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Persiapan & Tata Kelola
-        { label: 'Arsip Kepegawaian', icon: 'Archive', path: '/documents/member-docs', required_capability: 'academic.students.view.detail' },
+        { label: 'Berkas PTK', icon: 'Archive', path: '/documents/member-docs', required_capability: 'academic.students.view.detail' },
         { label: 'Jenis Kegiatan', icon: 'Activity', path: '/academic/jenis-kegiatan', required_capability: 'academic.activities.types.manage' },
         { label: 'Struktur Organisasi', icon: 'Network', path: '/academic/struktur-organisasi', required_capability: 'academic.structures.view.list' },
-        { label: 'Kelulusan & Kenaikan', icon: 'Move', path: '/academic/transition', required_capability: 'academic.students.manage, academic.structures.view.list' },
+        { label: 'Kenaikan Kelas', icon: 'Move', path: '/academic/transition', required_capability: 'academic.students.manage, academic.structures.view.list' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Sistem & Log Aktivitas
-        { label: 'Backup Sistem', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
-        { label: 'Log Aktivitas Staf', icon: 'History', path: '/academic/staff-logs', required_capability: 'core.sekolah.view.profile' },
+        { label: 'Cadangan Data', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
+        { label: 'Log Aktivitas', icon: 'History', path: '/academic/staff-logs', required_capability: 'core.sekolah.view.profile' },
       ]
     },
 
@@ -257,29 +257,29 @@ async function main() {
     {
       label: 'KURIKULUM', icon: 'Layout', path: null, required_features: ['CORE'], order: 12, children: [
         // Klaster 1: Master & Struktur KBM
-        { label: 'Dashboard Kurikulum', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.manage.academic, academic.teaching.view' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/kurikulum/dashboard', required_capability: 'academic.manage.academic, academic.teaching.view' },
         { label: 'Struktur Kurikulum', icon: 'Layout', path: '/kurikulum/struktur', required_capability: 'academic.manage.academic, academic.structures.view.list' },
-        { label: 'Penugasan Guru Mapel', icon: 'ListChecks', path: '/kurikulum/guru-mapel', required_capability: 'academic.teaching.manage, academic.teaching.view' },
-        { label: 'Kontrak Jam KBM', icon: 'Layers', path: '/kurikulum/jadwal-kontrak-kbm', required_capability: 'academic.teaching.view, academic.manage.academic' },
-        { label: 'Penetapan Wali Kelas', icon: 'UserCheck', path: '/kurikulum/wali-kelas', required_capability: 'academic.homeroom.manage' },
-        { label: 'Kalender Pendidikan', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },
+        { label: 'Ploting Guru', icon: 'ListChecks', path: '/kurikulum/guru-mapel', required_capability: 'academic.teaching.manage, academic.teaching.view' },
+        { label: 'Beban Mengajar', icon: 'Layers', path: '/kurikulum/jadwal-kontrak-kbm', required_capability: 'academic.teaching.view, academic.manage.academic' },
+        { label: 'Wali Kelas', icon: 'UserCheck', path: '/kurikulum/wali-kelas', required_capability: 'academic.homeroom.manage' },
+        { label: 'Kalender Akademik', icon: 'CalendarDays', path: '/kurikulum/kalender', required_capability: 'academic.years.view.list, academic.manage.academic, academic.teaching.view' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Manajemen Jadwal Pelajaran
-        { label: 'Jam Pelajaran (KBM)', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },
-        { label: 'Jadwal Pelajaran', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
-        { label: 'Jadwal Piket Guru', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, attendance.piket.view' },
+        { label: 'Jam Pelajaran', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },
+        { label: 'Jadwal KBM', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
+        { label: 'Jadwal Piket', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, attendance.piket.view' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Pembelajaran & Perangkat
-        { label: 'Perangkat Ajar (RPP)', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
-        { label: 'Realisasi JP Mengajar', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
-        { label: 'Generator Dokumen KOSP', icon: 'Sparkles', path: '/kurikulum/kosp-builder', required_capability: 'academic.manage.academic, academic.structures.view.list' },
+        { label: 'Perangkat Ajar', icon: 'FileText', path: '/kurikulum/perangkat', required_capability: 'academic.teaching.view, academic.manage.academic' },
+        { label: 'Rekap KBM', icon: 'BarChart2', path: '/kurikulum/rekap-kbm', required_capability: 'academic.teaching.rekap, academic.manage.academic' },
+        { label: 'Dokumen KOSP', icon: 'Sparkles', path: '/kurikulum/kosp-builder', required_capability: 'academic.manage.academic, academic.structures.view.list' },
         // Divider 3
         { label: 'divider', icon: null, path: null },
         // Klaster 4: Supervisi & Evaluasi
-        { label: 'Supervisi Pembelajaran', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
-        { label: 'Evaluasi Kinerja Guru', icon: 'Award', path: '/kurikulum/evaluasi-kinerja', required_capability: 'academic.teaching.view, academic.manage.academic, curriculum.supervision.manage' },
+        { label: 'Supervisi Guru', icon: 'ShieldCheck', path: '/kurikulum/supervisi', required_capability: 'curriculum.supervision.manage, curriculum.supervision.view.schedule' },
+        { label: 'Evaluasi Kinerja', icon: 'Award', path: '/kurikulum/evaluasi-kinerja', required_capability: 'academic.teaching.view, academic.manage.academic, curriculum.supervision.manage' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kurikulum/cetak-berkas', required_capability: 'academic.manage.academic' },
       ]
     },
@@ -288,16 +288,16 @@ async function main() {
     {
       label: 'KESISWAAN', icon: 'Users', path: null, required_features: ['CORE'], order: 15, children: [
         // Klaster 1: Pencatatan Siswa Harian
-        { label: 'Dashboard Kesiswaan', icon: 'LayoutDashboard', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.kesiswaan' },
-        { label: 'Piket & Izin Keluar', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, attendance.piket.manage' },
-        { label: 'Buku Pelanggaran & Tata Tertib', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, affairs.violations.manage' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/kesiswaan/monitoring', required_capability: 'dashboard.view.kesiswaan' },
+        { label: 'Meja Piket', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, attendance.piket.manage' },
+        { label: 'Pelanggaran Siswa', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, affairs.violations.manage' },
         { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'affairs.achievements.view.list, affairs.achievements.create' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Agenda & Kebijakan Poin
-        { label: 'Jadwal Kegiatan Kesiswaan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'attendance.schedules.view.list, dashboard.view.kesiswaan' },
-        { label: 'Kategori & Poin Pelanggaran', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
-        { label: 'Pengaturan Kesiswaan', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
+        { label: 'Agenda Kesiswaan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'attendance.schedules.view.list, dashboard.view.kesiswaan' },
+        { label: 'Master Poin', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
+        { label: 'Pengaturan', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'dashboard.view.kesiswaan' },
       ]
     },
@@ -306,35 +306,35 @@ async function main() {
     {
       label: 'ABSENSI', icon: 'Clock', path: null, required_features: ['ABSENSI'], order: 20, children: [
         // Klaster 1: Operasional Presensi & Monitoring Real-Time
-        { label: 'Dashboard Presensi', icon: 'LayoutDashboard', path: '/attendance/dashboard', required_capability: 'attendance.manage.session, attendance.sessions.create' },
-        { label: 'Operasional Presensi (Gerbang & KBM)', icon: 'Scan', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
-        { label: 'Monitoring KBM Kelas', icon: 'Activity', path: '/attendance/monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
-        { label: 'Monitoring Mengajar Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
-        { label: 'Riwayat Presensi Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/attendance/dashboard', required_capability: 'attendance.manage.session, attendance.sessions.create' },
+        { label: 'Ruang Operasional', icon: 'Scan', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
+        { label: 'Pantau Kelas', icon: 'Activity', path: '/attendance/monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
+        { label: 'Pantau Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
+        { label: 'Presensi Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Rekapitulasi & Berkas
-        { label: 'Rekapitulasi Presensi', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
+        { label: 'Rekap Presensi', icon: 'Calendar', path: '/attendance/rekap', required_capability: 'attendance.recap.view.daily, attendance.recap.view.monthly, attendance.recap.view.global' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/attendance/cetak-berkas', required_capability: 'attendance.sessions.view.list' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Infrastruktur & Jam Kerja
-        { label: 'Petugas Absensi', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.session, core.users.create' },
-        { label: 'Perangkat & Mesin Absensi', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
-        { label: 'Perekaman Wajah (Biometrik)', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.face.verify' },
-        { label: 'Kejadian Khusus (Dispensasi)', icon: 'CalendarDays', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
+        { label: 'Petugas Absen', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.session, core.users.create' },
+        { label: 'Mesin Scanner', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
+        { label: 'Perekaman Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.face.verify' },
+        { label: 'Dispensasi', icon: 'CalendarDays', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
       ]
     },
 
     // --- PERSURATAN ---
     {
       label: 'PERSURATAN', icon: 'Mail', path: null, required_features: ['CORE'], order: 22, children: [
-        { label: 'Dashboard Persuratan', icon: 'LayoutDashboard', path: '/correspondence/dashboard', required_capability: 'correspondence.inbox.view' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/correspondence/dashboard', required_capability: 'correspondence.inbox.view' },
         { label: 'divider', icon: null, path: null },
-        { label: 'Surat Masuk & Disposisi', icon: 'Inbox', path: '/correspondence/surat-masuk', required_capability: 'correspondence.inbox.view' },
+        { label: 'Surat Masuk', icon: 'Inbox', path: '/correspondence/surat-masuk', required_capability: 'correspondence.inbox.view' },
         { label: 'Surat Keluar', icon: 'Send', path: '/correspondence/surat-keluar', required_capability: 'correspondence.outbox.view' },
         { label: 'divider', icon: null, path: null },
-        { label: 'Buku Agenda & Template', icon: 'Archive', path: '/correspondence/templates', required_capability: 'correspondence.inbox.view' },
+        { label: 'Buku Agenda', icon: 'Archive', path: '/correspondence/templates', required_capability: 'correspondence.inbox.view' },
       ]
     },
 
@@ -342,22 +342,22 @@ async function main() {
     {
       label: 'BP/BK', icon: 'HeartHandshake', path: null, required_features: ['BPBK'], order: 25, children: [
         // Klaster 1: Layanan Konseling & Kasus
-        { label: 'Dashboard Konseling', icon: 'LayoutDashboard', path: '/bpbk/dashboard', required_capability: 'bk.cases.view.list, bk.counseling.view.list' },
-        { label: 'Rekam Kasus Siswa', icon: 'Folder', path: '/bpbk/siswa', required_capability: 'bk.cases.view.list' },
-        { label: 'Early Warning System (EWS)', icon: 'AlertTriangle', path: '/bpbk/cases', required_capability: 'bk.cases.view.list' },
-        { label: 'Layanan Konseling', icon: 'HeartHandshake', path: '/bpbk/konseling', required_capability: 'bk.counseling.view.list' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/bpbk/dashboard', required_capability: 'bk.cases.view.list, bk.counseling.view.list' },
+        { label: 'Buku Kasus', icon: 'Folder', path: '/bpbk/siswa', required_capability: 'bk.cases.view.list' },
+        { label: 'Deteksi Dini', icon: 'AlertTriangle', path: '/bpbk/cases', required_capability: 'bk.cases.view.list' },
+        { label: 'Konseling Siswa', icon: 'HeartHandshake', path: '/bpbk/konseling', required_capability: 'bk.counseling.view.list' },
         { label: 'Rujukan Kasus', icon: 'Send', path: '/bpbk/rujukan', required_capability: 'bk.referrals.view.list, bk.referrals.create' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Intervensi & Home Visit
-        { label: 'Pemanggilan Orang Tua', icon: 'Mail', path: '/bpbk/pemanggilan', required_capability: 'bk.summons.view.list, bk.summons.manage' },
-        { label: 'Kunjungan Rumah (Home Visit)', icon: 'Home', path: '/bpbk/homevisit', required_capability: 'bk.homevisit.view.list, bk.homevisit.manage' },
-        { label: 'Asesmen Minat & Bakat', icon: 'ClipboardList', path: '/bpbk/asesmen', required_capability: 'bk.assessment.view.list' },
+        { label: 'Panggilan Ortu', icon: 'Mail', path: '/bpbk/pemanggilan', required_capability: 'bk.summons.view.list, bk.summons.manage' },
+        { label: 'Home Visit', icon: 'Home', path: '/bpbk/homevisit', required_capability: 'bk.homevisit.view.list, bk.homevisit.manage' },
+        { label: 'Minat & Bakat', icon: 'ClipboardList', path: '/bpbk/asesmen', required_capability: 'bk.assessment.view.list' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Laporan & Dokumentasi
-        { label: 'Laporan & Statistik BK', icon: 'BarChart3', path: '/bpbk/reports', required_capability: 'bk.reports.view' },
-        { label: 'Log Audit BK', icon: 'History', path: '/bpbk/audit', required_capability: 'bk.audit.view' },
+        { label: 'Laporan BK', icon: 'BarChart3', path: '/bpbk/reports', required_capability: 'bk.reports.view' },
+        { label: 'Log Aktivitas', icon: 'History', path: '/bpbk/audit', required_capability: 'bk.audit.view' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/bpbk/cetak-berkas', required_capability: 'bk.reports.view' },
       ]
     },
@@ -366,17 +366,17 @@ async function main() {
     {
       label: 'HUBIN', icon: 'Handshake', path: null, required_features: ['HUBIN'], order: 30, children: [
         // Klaster 1: Magang & PKL DU/DI
-        { label: 'Dashboard Hubin', icon: 'LayoutDashboard', path: '/hubin/dashboard', required_capability: 'dashboard.view.hubin' },
-        { label: 'Kemitraan Industri (MoU)', icon: 'Building2', path: '/hubin/mitra', required_capability: 'hubin.partners.manage, hubin.mou.view.list' },
-        { label: 'Penempatan & Monitoring PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list' },
-        { label: 'Presensi PKL Siswa', icon: 'Clock', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.absensi.view.history, hubin.pkl.view.list' },
-        { label: 'Nilai & Sertifikat PKL', icon: 'Award', path: '/hubin/nilai-pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/hubin/dashboard', required_capability: 'dashboard.view.hubin' },
+        { label: 'Mitra Industri', icon: 'Building2', path: '/hubin/mitra', required_capability: 'hubin.partners.manage, hubin.mou.view.list' },
+        { label: 'Plot & Pantau PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list' },
+        { label: 'Presensi PKL', icon: 'Clock', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.absensi.view.history, hubin.pkl.view.list' },
+        { label: 'Nilai PKL', icon: 'Award', path: '/hubin/nilai-pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Karir, BKK, Alumni & TEFA
-        { label: 'Bursa Kerja Khusus (BKK)', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
-        { label: 'Tracer Study (Alumni)', icon: 'GraduationCap', path: '/hubin/tracer', required_capability: 'hubin.self.tracer, hubin.tracer.view, hubin.partners.manage' },
-        { label: 'Teaching Factory (TEFA)', icon: 'Hammer', path: '/hubin/tefa', required_capability: 'hubin.tefa.manage' },
+        { label: 'Bursa Kerja (BKK)', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
+        { label: 'Tracer Study', icon: 'GraduationCap', path: '/hubin/tracer', required_capability: 'hubin.self.tracer, hubin.tracer.view, hubin.partners.manage' },
+        { label: 'Teaching Factory', icon: 'Hammer', path: '/hubin/tefa', required_capability: 'hubin.tefa.manage' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/hubin/cetak-berkas', required_capability: 'hubin.pkl.view.list' },
       ]
     },
@@ -384,11 +384,11 @@ async function main() {
     // --- SARPRAS ---
     {
       label: 'SARPRAS', icon: 'Package', path: null, required_features: ['SARPRAS'], order: 35, children: [
-        { label: 'Dashboard Sarpras', icon: 'LayoutDashboard', path: '/sarpras/dashboard', required_capability: 'sarpras.inventory.view.list, dashboard.view.sarpras' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/sarpras/dashboard', required_capability: 'sarpras.inventory.view.list, dashboard.view.sarpras' },
         { label: 'divider', icon: null, path: null },
-        { label: 'Inventaris Aset & Barang', icon: 'Archive', path: '/sarpras/inventory', required_capability: 'sarpras.inventory.view.list' },
-        { label: 'Peminjaman Fasilitas', icon: 'ArrowUpCircle', path: '/sarpras/loans', required_capability: 'sarpras.loans.view.list' },
-        { label: 'Pemeliharaan & Perbaikan', icon: 'Wrench', path: '/sarpras/maintenance', required_capability: 'sarpras.repairs.view.list' },
+        { label: 'Inventaris Barang', icon: 'Archive', path: '/sarpras/inventory', required_capability: 'sarpras.inventory.view.list' },
+        { label: 'Peminjaman Alat', icon: 'ArrowUpCircle', path: '/sarpras/loans', required_capability: 'sarpras.loans.view.list' },
+        { label: 'Perbaikan Alat', icon: 'Wrench', path: '/sarpras/maintenance', required_capability: 'sarpras.repairs.view.list' },
         { label: 'divider', icon: null, path: null },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/sarpras/cetak-berkas', required_capability: 'sarpras.inventory.view.list' },
       ]
@@ -397,10 +397,10 @@ async function main() {
     // --- RAPOR ---
     {
       label: 'RAPOR', icon: 'BookOpen', path: null, required_features: ['CORE'], order: 38, children: [
-        { label: 'Dashboard Rapor', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.homeroom.manage, dashboard.view.walikelas, academic.manage.academic' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/rapor/dashboard', required_capability: 'academic.homeroom.manage, dashboard.view.walikelas, academic.manage.academic' },
         { label: 'divider', icon: null, path: null },
         { label: 'Input Nilai', icon: 'Award', path: '/rapor/nilai', required_capability: 'academic.teaching.view, academic.homeroom.manage' },
-        { label: 'Cetak Rapor & Wali', icon: 'Printer', path: '/rapor/cetak', required_capability: 'dashboard.view.walikelas, academic.homeroom.manage' },
+        { label: 'Cetak Rapor', icon: 'Printer', path: '/rapor/cetak', required_capability: 'dashboard.view.walikelas, academic.homeroom.manage' },
         { label: 'Projek P5', icon: 'Layers', path: '/rapor/p5', required_capability: 'academic.teaching.view, academic.manage.academic' },
       ]
     },
@@ -408,7 +408,7 @@ async function main() {
     // --- CBT ---
     {
       label: 'CBT', icon: 'Laptop', path: null, required_features: ['CORE'], order: 39, children: [
-        { label: 'Dashboard CBT', icon: 'LayoutDashboard', path: '/cbt/dashboard', required_capability: 'academic.students.view.list' }
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cbt/dashboard', required_capability: 'academic.students.view.list' }
       ]
     },
 
@@ -416,22 +416,22 @@ async function main() {
     {
       label: 'KOPERASI', icon: 'ShoppingCart', path: null, required_features: ['KOPERASI'], order: 40, children: [
         // Klaster 1: Layanan Anggota Pribadi
-        { label: 'Dashboard Koperasi', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.members.view.list, cooperative.reports.view.financial, cooperative.store.orders.manage' },
-        { label: 'Simpanan & Tabungan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.history, cooperative.savings.deposit' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.members.view.list, cooperative.reports.view.financial, cooperative.store.orders.manage' },
+        { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.history, cooperative.savings.deposit' },
         { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.apply, cooperative.loans.approve' },
-        { label: 'Sisa Hasil Usaha (SHU)', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.savings.view.history, cooperative.shu.view.report' },
+        { label: 'Laba SHU', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.savings.view.history, cooperative.shu.view.report' },
         { label: 'Pengumuman', icon: 'Bell', path: '/cooperative/announcements', required_capability: 'cooperative.announcements.view.list, cooperative.announcements.create' },
-        { label: 'Pusat Bantuan & Aduan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.create, cooperative.tickets.view.list' },
+        { label: 'Pusat Aduan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.create, cooperative.tickets.view.list' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Toko, Kantin & Kasir POS
-        { label: 'Katalog Produk', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
-        { label: 'Kasir (POS)', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage, cooperative.store.transactions.view' },
-        { label: 'Layanan PPOB', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products' },
+        { label: 'Katalog Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
+        { label: 'Kasir Toko', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage, cooperative.store.transactions.view' },
+        { label: 'PPOB & Pulsa', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Manajemen & Pengaturan
-        { label: 'Laporan & Pengaturan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial, cooperative.settings.view' },
+        { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial, cooperative.settings.view' },
       ]
     },
 
@@ -440,15 +440,15 @@ async function main() {
       label: 'SISTEM', icon: 'Shield', path: null, required_features: ['CORE'], order: 50, children: [
         // Klaster 1: Identitas & Pengguna
         { label: 'Profil Sekolah', icon: 'Building2', path: '/settings', required_capability: 'core.sekolah.view.profile, core.system.config.update' },
-        { label: 'Manajemen Pengguna', icon: 'UserCog', path: '/users', required_capability: 'core.users.create' },
-        { label: 'Pengaturan Sistem', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
-        { label: 'WhatsApp Settings', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'whatsapp.manage.config', required_features: ['WHATSAPP'] },
+        { label: 'Daftar Pengguna', icon: 'UserCog', path: '/users', required_capability: 'core.users.create' },
+        { label: 'Pengaturan', icon: 'Settings', path: '/settings', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
+        { label: 'Gateway WhatsApp', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'whatsapp.manage.config', required_features: ['WHATSAPP'] },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Layanan & Bantuan
-        { label: 'Paket & Langganan', icon: 'Crown', path: '/service-center', required_capability: 'billing.subscriptions.view.active' },
-        { label: 'Kepatuhan & Adopsi Platform', icon: 'Smartphone', path: '/management/platform-compliance', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
-        { label: 'Tiket Bantuan', icon: 'HelpCircle', path: '/support', required_capability: 'support.tickets.view, core.sekolah.view.profile' },
+        { label: 'Langganan', icon: 'Crown', path: '/service-center', required_capability: 'billing.subscriptions.view.active' },
+        { label: 'Kepatuhan Sistem', icon: 'Smartphone', path: '/management/platform-compliance', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
+        { label: 'Bantuan Teknis', icon: 'HelpCircle', path: '/support', required_capability: 'support.tickets.view, core.sekolah.view.profile' },
       ]
     },
   ];
@@ -462,7 +462,7 @@ async function main() {
       required_capability: null,
       order: 105,
       children: [
-        { label: 'Tiket Bantuan (CS)', icon: 'MessageSquare', path: '/superadmin/support', required_capability: 'admin.tickets.view.list' },
+        { label: 'Tiket Bantuan', icon: 'MessageSquare', path: '/superadmin/support', required_capability: 'admin.tickets.view.list' },
       ],
     },
     {
@@ -472,13 +472,13 @@ async function main() {
       required_capability: null,
       order: 108,
       children: [
-        { label: 'Katalog Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Preset Topik', icon: 'Sparkles', path: '/superadmin/topik-presets', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Bank Katalog Library', icon: 'Library', path: '/superadmin/library-templates', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Preset Kalender', icon: 'Calendar', path: '/superadmin/calendar-presets', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
-        { label: 'Katalog Aset Global', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Preset Topik', icon: 'Sparkles', path: '/superadmin/topik-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Modul', icon: 'Library', path: '/superadmin/library-templates', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Preset Jurusan', icon: 'Briefcase', path: '/superadmin/jurusan-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Preset Kalender', icon: 'Calendar', path: '/superadmin/calendar-presets', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
+        { label: 'Katalog Aset', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
 
     },
@@ -490,13 +490,13 @@ async function main() {
       required_capability: null,
       order: 110,
       children: [
-        { label: 'Laporan Revenue', icon: 'TrendingUp', path: '/superadmin/revenue', required_capability: 'superadmin.revenue.view.overview' },
-        { label: 'Dashboard Billing', icon: 'LayoutDashboard', path: '/billing/dashboard', required_capability: "billing.subscriptions.view.list" },
-        { label: 'Paket Layanan (Plans)', icon: 'Package', path: '/billing/plans', required_capability: 'billing.plans.view.list' },
+        { label: 'Laporan Omset', icon: 'TrendingUp', path: '/superadmin/revenue', required_capability: 'superadmin.revenue.view.overview' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/billing/dashboard', required_capability: "billing.subscriptions.view.list" },
+        { label: 'Paket Layanan', icon: 'Package', path: '/billing/plans', required_capability: 'billing.plans.view.list' },
         { label: 'Langganan Tenant', icon: 'CreditCard', path: '/billing/subscriptions', required_capability: 'billing.subscriptions.view.active' },
-        { label: 'Invoice & Tagihan', icon: 'FileText', path: '/billing/invoices', required_capability: 'billing.invoices.view.list' },
+        { label: 'Tagihan Invoice', icon: 'FileText', path: '/billing/invoices', required_capability: 'billing.invoices.view.list' },
         { label: 'Laporan Billing', icon: 'BarChart3', path: '/billing/reports', required_capability: 'billing.subscriptions.view.list' },
-        { label: 'Pengaturan Billing', icon: 'Settings', path: '/billing/settings', required_capability: 'core.system.config.view' },
+        { label: 'Pengaturan', icon: 'Settings', path: '/billing/settings', required_capability: 'core.system.config.view' },
         { label: 'Simulator Tripay', icon: 'TestTube', path: '/superadmin/infra/tripay-simulator', required_capability: 'payments.test.simulate' },
       ],
     },
@@ -507,11 +507,11 @@ async function main() {
       required_capability: null,
       order: 120,
       children: [
-        { label: 'Overview Platform', icon: 'LayoutDashboard', path: '/superadmin/intelligence', required_capability: 'superadmin.platform.intelligence.view' },
-        { label: 'Revenue Analytics', icon: 'TrendingUp', path: '/superadmin/intelligence/revenue', required_capability: 'superadmin.platform.intelligence.view' },
-        { label: 'Upgrade Analytics', icon: 'Sparkles', path: '/superadmin/intelligence/upgrade', required_capability: 'superadmin.upgrade.intelligence.view' },
-        { label: 'Live System Monitor', icon: 'Activity', path: '/superadmin/infra/monitoring', required_capability: "superadmin.infra.monitoring.view" },
-        { label: 'Tripay Health Status', icon: 'Activity', path: '/superadmin/infra/tripay-health', required_capability: "superadmin.infra.monitoring.view" },
+        { label: 'Ringkasan', icon: 'LayoutDashboard', path: '/superadmin/intelligence', required_capability: 'superadmin.platform.intelligence.view' },
+        { label: 'Analisis Omset', icon: 'TrendingUp', path: '/superadmin/intelligence/revenue', required_capability: 'superadmin.platform.intelligence.view' },
+        { label: 'Analisis Upgrade', icon: 'Sparkles', path: '/superadmin/intelligence/upgrade', required_capability: 'superadmin.upgrade.intelligence.view' },
+        { label: 'Monitor Server', icon: 'Activity', path: '/superadmin/infra/monitoring', required_capability: "superadmin.infra.monitoring.view" },
+        { label: 'Status Tripay', icon: 'Activity', path: '/superadmin/infra/tripay-health', required_capability: "superadmin.infra.monitoring.view" },
       ],
     },
     {
@@ -521,9 +521,9 @@ async function main() {
       required_capability: null,
       order: 130,
       children: [
-        { label: 'Status Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
-        { label: 'Job & Scheduler Control', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
-        { label: 'Arsip & Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'academic.backups.view.list' },
+        { label: 'Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
+        { label: 'Job Scheduler', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
+        { label: 'Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'academic.backups.view.list' },
       ],
     },
     {
@@ -533,8 +533,8 @@ async function main() {
       required_capability: null,
       order: 140,
       children: [
-        { label: 'Manajemen Hak Akses (Roles)', icon: 'UserCog', path: '/management/roles', required_capability: 'superadmin.security.roles.view' },
-        { label: 'Manajemen Menu', icon: 'Sliders', path: '/management/menus', required_capability: 'core.menu.view.list' },
+        { label: 'Hak Akses', icon: 'UserCog', path: '/management/roles', required_capability: 'superadmin.security.roles.view' },
+        { label: 'Kelola Menu', icon: 'Sliders', path: '/management/menus', required_capability: 'core.menu.view.list' },
       ],
     }
   ];
