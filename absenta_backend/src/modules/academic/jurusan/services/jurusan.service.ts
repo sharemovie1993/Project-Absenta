@@ -94,7 +94,9 @@ export class JurusanService {
       include: {
         _count: {
           select: {
-            Kelas: true,
+            Kelas: {
+              where: { is_active: true }
+            },
           },
         },
         ProgramKeahlian: {
@@ -134,7 +136,9 @@ export class JurusanService {
       include: {
         _count: {
           select: {
-            Kelas: true,
+            Kelas: {
+              where: { is_active: true }
+            },
           },
         },
         ProgramKeahlian: {

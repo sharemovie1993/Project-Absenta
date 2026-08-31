@@ -299,7 +299,7 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
     const totalRombel = (jurusan as any)._count?.Kelas ?? jurusan.Kelas?.length ?? 0;
     const programKeahlian = jurusan.ProgramKeahlian?.nama || jurusan.keterangan;
     const subText = [
-      `${totalRombel} Rombel / Kelas`,
+      `${totalRombel} Kelas Aktif`,
       programKeahlian
     ].filter(Boolean).join(' • ');
 
