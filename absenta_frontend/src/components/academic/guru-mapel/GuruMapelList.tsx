@@ -179,6 +179,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     } finally {
       setLoading(false);
     }
+  }, [debouncedSearch, selectedGuruId, selectedMapelId, selectedTahunPelajaranId, selectedSemesterId, fetchBebanData]);
+
   const filteredItems = useMemo(() => {
     if (!debouncedSearch) return items;
     const q = debouncedSearch.toLowerCase();
