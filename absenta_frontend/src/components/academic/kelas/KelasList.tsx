@@ -68,6 +68,7 @@ const KelasList = React.memo<KelasListProps>(({
 }) => {
   const confirm = useConfirm();
   const { can } = useCapabilities();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const invalidateKelasCache = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
@@ -75,7 +76,14 @@ const KelasList = React.memo<KelasListProps>(({
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
   }, [queryClient]);
 
-  const [viewMode, setViewMode] = useState<'tree' | 'table'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'table'>(() => (typeof window !== 'undefined' && window.innerWidth < 768 ? 'table' : 'tree'));
+
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode(prev => (prev === 'tree' ? 'table' : prev));
+    }
+  }, [isMobile]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const [currentPage, setCurrentPage] = useState(1);
@@ -449,8 +457,6 @@ const KelasList = React.memo<KelasListProps>(({
 
     return cols.filter(Boolean) as any;
   }, [canManage, onEdit, onView, confirm, handleDelete, allVisibleSelected, selectedIds, kelasList, togglingId, hasJurusan]);
-
-  const isMobile = useIsMobile();
 
   const renderMobileCard = useCallback((kelas: Kelas) => {
     const isToggling = togglingId === kelas.id;
