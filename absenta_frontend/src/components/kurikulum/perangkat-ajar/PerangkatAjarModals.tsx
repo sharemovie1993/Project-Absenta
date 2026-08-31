@@ -89,9 +89,8 @@ export const PerangkatAjarModals: React.FC<PerangkatAjarModalsProps> = React.mem
   } = props;
 
   return (
-    {/* Subcomponents Loaded via Lazy & Suspense */}
-        <Suspense fallback={null}>
-          {isUploadModalOpen && (
+    <Suspense fallback={null}>
+      {isUploadModalOpen && (
             <PerangkatAjarUploadModal
               isOpen={isUploadModalOpen}
               onClose={() => setIsUploadModalOpen(false)}
