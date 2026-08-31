@@ -1,28 +1,38 @@
 import { prisma } from '@/utils/prisma';
 
 export interface EvaluasiPillarScores {
-  presensi: number;      // 0 - 100
-  kbmJam: number;        // 0 - 100
-  jurnalKbm: number;     // 0 - 100
-  perangkatAjar: number; // 0 - 100
-  supervisi: number;     // 0 - 100
+  presensi: number;      // 0 - 100 (Bobot 20%)
+  kbmJam: number;        // 0 - 100 (Bobot 25%)
+  jurnalKbm: number;     // 0 - 100 (Bobot 20%)
+  perangkatAjar: number; // 0 - 100 (Bobot 15%)
+  supervisi: number;     // 0 - 100 (Bobot 20%)
   tugasTambahan: number; // 0 - 100
 }
 
 export interface EvaluasiMetrics {
+  totalHariKerja: number;
+  hariHadir: number;
+  hariTerlambat: number;
   kehadiranPct: number;
   keterlambatanMenit: number;
   izinSakitCount: number;
   alpaCount: number;
+  jamMengajarMingguan: number;
   jamMengajarTotal: number;
   jamMengajarRealisasi: number;
+  kbmRealisasiPct: number;
+  jurnalTotalSesi: number;
+  jurnalTerisiCount: number;
   jurnalTerisiPct: number;
+  perangkatExpected: number;
   perangkatTotal: number;
   perangkatApproved: number;
   perangkatStatus: 'LENGKAP' | 'REVIEW' | 'KURANG';
   supervisiSkor: number;
+  supervisiStatus: 'SELESAI' | 'TERJADWAL' | 'BELUM_ADA';
   supervisiTanggal: string | null;
   catatanPenilai: string | null;
+  tugasTambahanList: string[];
 }
 
 export interface TeacherEvaluationRecord {
@@ -40,6 +50,8 @@ export interface TeacherEvaluationRecord {
   metrics: EvaluasiMetrics;
   rekomendasi: string;
   pembinaanKhusus?: string | null;
+  keunggulan: string[];
+  areaPerbaikan: string[];
 }
 
 export interface EvaluasiSummary {
@@ -51,8 +63,15 @@ export interface EvaluasiSummary {
     C: number;
     D: number;
   };
-  topPerformers: Array<{ id: string; nama: string; score: number; predikat: string }>;
+  topPerformers: Array<{ id: string; nama: string; score: number; predikat: string; mapel: string }>;
   needsAttentionCount: number;
+  pillarAverages: {
+    presensi: number;
+    kbmJam: number;
+    jurnalKbm: number;
+    perangkatAjar: number;
+    supervisi: number;
+  };
 }
 
 export interface EvaluasiKinerjaResponse {
@@ -62,7 +81,7 @@ export interface EvaluasiKinerjaResponse {
 
 export class EvaluasiKinerjaService {
   /**
-   * Menghasilkan laporan Evaluasi Kinerja Guru komprehensif lintas 5 pilar
+   * Menghasilkan laporan Evaluasi Kinerja Guru komprehensif 5 pilar standar industri
    */
   static async getEvaluasiList(tenantId: string, filters?: {
     tahun_pelajaran_id?: string;
@@ -88,6 +107,7 @@ export class EvaluasiKinerjaService {
       where: guruWhere,
       select: {
         id: true,
+        user_id: true,
         nama_guru: true,
         nip: true,
         foto: true,
@@ -99,6 +119,8 @@ export class EvaluasiKinerjaService {
     });
 
     const guruIds = gurus.map(g => g.id);
+    const userIds = gurus.map(g => g.user_id).filter(Boolean);
+
     if (guruIds.length === 0) {
       return {
         summary: {
@@ -107,12 +129,19 @@ export class EvaluasiKinerjaService {
           predikatDist: { A: 0, B: 0, C: 0, D: 0 },
           topPerformers: [],
           needsAttentionCount: 0,
+          pillarAverages: {
+            presensi: 0,
+            kbmJam: 0,
+            jurnalKbm: 0,
+            perangkatAjar: 0,
+            supervisi: 0,
+          },
         },
         data: [],
       };
     }
 
-    // 2. Ambil Presensi Gerbang & Presensi Kelas Guru
+    // 2. Query Data Presensi Gerbang Guru
     const absenGerbangList = await prisma.absenGerbangGuru.findMany({
       where: {
         tenant_id: tenantId,
@@ -124,9 +153,11 @@ export class EvaluasiKinerjaService {
         status: true,
         is_terlambat: true,
         menit_keterlambatan: true,
+        waktu_tap: true,
       },
     });
 
+    // 3. Query Data Presensi Sesi Kelas Guru
     const absenSesiGuruList = await prisma.absenGuru.findMany({
       where: {
         tenant_id: tenantId,
@@ -142,7 +173,7 @@ export class EvaluasiKinerjaService {
       },
     });
 
-    // 3. Ambil Perencanaan Beban Mengajar (JadwalKBM & StrukturKurikulum)
+    // 4. Query Perencanaan Beban Mengajar (JadwalKBM)
     const templates = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
@@ -151,11 +182,26 @@ export class EvaluasiKinerjaService {
         semester_id: semester_id || undefined,
       },
       include: {
-        Mapel: { select: { nama_mapel: true } },
-        Kelas: { select: { tingkat: true } },
+        Mapel: { select: { id: true, nama_mapel: true } },
+        Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
       },
     });
 
+    // 5. Query Ploting Guru Mapel
+    const guruMapelList = await prisma.guruMapel.findMany({
+      where: {
+        tenant_id: tenantId,
+        guru_id: { in: guruIds },
+        tahun_pelajaran_id: tahun_pelajaran_id || undefined,
+        semester_id: semester_id || undefined,
+      },
+      include: {
+        Mapel: { select: { id: true, nama_mapel: true } },
+        Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+      },
+    });
+
+    // 6. Query Struktur Kurikulum (Alokasi JP Standar)
     const strukturList = await prisma.strukturKurikulum.findMany({
       where: {
         tenant_id: tenantId,
@@ -173,7 +219,7 @@ export class EvaluasiKinerjaService {
       strukturMap.set(`${st.mapel_id}_${st.tingkat}`, st.jp_per_minggu);
     }
 
-    // 4. Ambil Realisasi Sesi KBM & Jurnal
+    // 7. Query Realisasi Sesi KBM & Jurnal Materi & Absensi Siswa
     const sesiList = await prisma.sesiAbsensi.findMany({
       where: {
         tenant_id: tenantId,
@@ -182,6 +228,7 @@ export class EvaluasiKinerjaService {
         semester_id: semester_id || undefined,
       },
       select: {
+        id: true,
         guru_id: true,
         status: true,
         slot_kbm: true,
@@ -193,10 +240,15 @@ export class EvaluasiKinerjaService {
             pencapaian_persen: true,
           },
         },
+        _count: {
+          select: {
+            AbsenSiswa: true,
+          },
+        },
       },
     });
 
-    // 5. Ambil Perangkat Ajar
+    // 8. Query Dokumen Perangkat Ajar
     const perangkatList = await prisma.perangkatAjar.findMany({
       where: {
         tenant_id: tenantId,
@@ -208,10 +260,12 @@ export class EvaluasiKinerjaService {
         guru_id: true,
         status: true,
         jenis: true,
+        judul: true,
+        mapel_id: true,
       },
     });
 
-    // 6. Ambil Supervisi Akademik Guru
+    // 9. Query Supervisi Akademik Guru
     const supervisiList = await prisma.supervisiGuru.findMany({
       where: {
         tenant_id: tenantId,
@@ -224,94 +278,251 @@ export class EvaluasiKinerjaService {
         guru_id: true,
         status: true,
         nilai: true,
+        nilai_self: true,
         catatan: true,
         tanggal: true,
       },
     });
 
-    // ── Agregasi Lintas Pilar per Guru ──
+    // 10. Query Penugasan Organisasi (Tugas Tambahan)
+    const assignmentsList = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        user_id: { in: userIds },
+        is_active: true,
+      },
+      include: {
+        Position: { select: { name: true, code: true } },
+        Kelas: { select: { nama_kelas: true } },
+      },
+    });
+
+    // Hitung total hari kerja aktif sekolah yang terekam (sebagai baseline riil)
+    const allUniqueDates = new Set<string>();
+    absenGerbangList.forEach(a => {
+      if (a.waktu_tap) allUniqueDates.add(new Date(a.waktu_tap).toISOString().slice(0, 10));
+    });
+    const baselineHariKerja = Math.max(1, allUniqueDates.size);
+
+    // Hitung jumlah minggu efektif semester (standar 18 minggu per semester)
+    const WEEKS_PER_SEMESTER = 18;
+
+    // ── Agregasi Lintas 5 Pilar per Guru ──
     const results: TeacherEvaluationRecord[] = [];
 
     for (const guru of gurus) {
-      // Pilar 1: Presensi & Kedisiplinan
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 1: PRESENSI & KEDISIPLINAN KERJA (BOBOT 20%)
+      // ─────────────────────────────────────────────────────────────
       const myGerbang = absenGerbangList.filter(a => a.guru_id === guru.id);
       const mySesiAbsen = absenSesiGuruList.filter(a => a.guru_id === guru.id);
-      
-      const hadirCount = myGerbang.filter(a => a.status === 'HADIR' || a.status === 'TEPAT_WAKTU').length +
-        mySesiAbsen.filter(a => a.status === 'HADIR' || a.status === 'TEPAT_WAKTU').length;
-      const lateCount = myGerbang.filter(a => a.is_terlambat || a.status === 'TERLAMBAT').length +
-        mySesiAbsen.filter(a => a.is_terlambat || a.status === 'TERLAMBAT').length;
-      const izinSakitCount = myGerbang.filter(a => a.status === 'IZIN' || a.status === 'SAKIT').length +
-        mySesiAbsen.filter(a => a.status === 'IZIN' || a.status === 'SAKIT').length;
-      const alpaCount = myGerbang.filter(a => a.status === 'ALPA').length +
-        mySesiAbsen.filter(a => a.status === 'ALPA').length;
-      
+
+      const distinctPresenceDates = new Set<string>();
+      myGerbang.forEach(a => {
+        if (a.waktu_tap) distinctPresenceDates.add(new Date(a.waktu_tap).toISOString().slice(0, 10));
+      });
+
+      const totalTeacherDays = Math.max(distinctPresenceDates.size, myGerbang.length, 1);
+      const totalExpectedDays = Math.max(totalTeacherDays, baselineHariKerja);
+
+      const hadirCount = myGerbang.filter(a => a.status === 'HADIR' || a.status === 'TEPAT_WAKTU').length;
+      const lateCount = myGerbang.filter(a => a.is_terlambat || a.status === 'TERLAMBAT').length;
+      const izinSakitCount = myGerbang.filter(a => a.status === 'IZIN' || a.status === 'SAKIT').length;
+      const alpaCount = myGerbang.filter(a => a.status === 'ALPA').length;
+
       const totalLateMinutes = myGerbang.reduce((sum, a) => sum + (a.menit_keterlambatan || 0), 0) +
         mySesiAbsen.reduce((sum, a) => sum + (a.menit_keterlambatan || 0), 0);
 
-      const effectiveTotalPresensi = (myGerbang.length + mySesiAbsen.length) || 1;
-      const kehadiranPct = Math.min(100, Math.round(((hadirCount + lateCount) / effectiveTotalPresensi) * 100)) || 100;
-      
-      // Hitung skor presensi: mulai dari kehadiran %, dikurangi penalti keterlambatan & alpa
-      const presensiDeduction = (alpaCount * 15) + (lateCount * 3) + Math.floor(totalLateMinutes / 30);
-      const presensiScore = Math.max(0, Math.min(100, kehadiranPct - presensiDeduction));
+      // Tingkat kehadiran aktual (%)
+      const totalHadirFisik = hadirCount + lateCount;
+      const kehadiranPct = Math.min(100, Math.round(((totalHadirFisik + izinSakitCount) / totalExpectedDays) * 100));
 
-      // Pilar 2: Beban & Realisasi Jam Mengajar (KBM)
+      // Rumus Skor Presensi:
+      // Hadir tepat waktu bernilai 100%, Terlambat bernilai 75%, Izin/Sakit bernilai 80%, Alpa -100%.
+      // Ditambah pinalti menit keterlambatan (2 poin per 60 menit telat).
+      let presensiScore = 100;
+      if (myGerbang.length > 0) {
+        const weightedPresence = (hadirCount * 100) + (lateCount * 75) + (izinSakitCount * 80) - (alpaCount * 100);
+        const rawScore = weightedPresence / totalExpectedDays;
+        const latePenalty = Math.floor(totalLateMinutes / 60) * 2;
+        presensiScore = Math.max(0, Math.min(100, Math.round(rawScore - latePenalty)));
+      } else {
+        // Jika belum ada data tap gerbang, evaluasi dari absensi KBM sesi
+        if (mySesiAbsen.length > 0) {
+          const sesiHadir = mySesiAbsen.filter(s => s.status === 'HADIR' || s.status === 'TEPAT_WAKTU').length;
+          const sesiTelat = mySesiAbsen.filter(s => s.status === 'TERLAMBAT' || s.is_terlambat).length;
+          presensiScore = Math.min(100, Math.round(((sesiHadir * 100 + sesiTelat * 75) / mySesiAbsen.length)));
+        } else {
+          presensiScore = 80; // Baseline netral
+        }
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 2: BEBAN & REALISASI JAM MENGAJAR / KBM (BOBOT 25%)
+      // ─────────────────────────────────────────────────────────────
       const myTemplates = templates.filter(t => t.guru_id === guru.id);
-      const mapelNames = Array.from(new Set(myTemplates.map(t => t.Mapel?.nama_mapel).filter(Boolean)));
-      const mapelStr = mapelNames.join(', ') || 'Semua Mata Pelajaran';
+      const myPloting = guruMapelList.filter(gm => gm.guru_id === guru.id);
 
-      const totalJpRencana = myTemplates.length || 24; // Default beban standar 24 JP jika baru
+      // Kumpulkan seluruh mapel yang diampu
+      const mapelSet = new Set<string>();
+      myTemplates.forEach(t => { if (t.Mapel?.nama_mapel) mapelSet.add(t.Mapel.nama_mapel); });
+      myPloting.forEach(gm => { if (gm.Mapel?.nama_mapel) mapelSet.add(gm.Mapel.nama_mapel); });
+      const mapelStr = Array.from(mapelSet).join(', ') || 'Guru Mata Pelajaran';
+
+      // Hitung JP mingguan rencana dari Struktur Kurikulum
+      let weeklyPlannedJp = 0;
+      const uniqueAssignments = new Set<string>();
+
+      myTemplates.forEach(t => {
+        if (!t.mapel_id || !t.Kelas) return;
+        const key = `${t.mapel_id}_${t.Kelas.id}`;
+        if (!uniqueAssignments.has(key)) {
+          uniqueAssignments.add(key);
+          const jp = strukturMap.get(`${t.mapel_id}_${t.Kelas.tingkat}`) ?? 2;
+          weeklyPlannedJp += jp;
+        }
+      });
+
+      myPloting.forEach(gm => {
+        if (!gm.mapel_id || !gm.Kelas) return;
+        const key = `${gm.mapel_id}_${gm.Kelas.id}`;
+        if (!uniqueAssignments.has(key)) {
+          uniqueAssignments.add(key);
+          const jp = strukturMap.get(`${gm.mapel_id}_${gm.Kelas.tingkat}`) ?? 2;
+          weeklyPlannedJp += jp;
+        }
+      });
+
+      if (weeklyPlannedJp === 0 && myTemplates.length > 0) {
+        weeklyPlannedJp = myTemplates.length;
+      }
+      if (weeklyPlannedJp === 0) {
+        weeklyPlannedJp = 24; // Beban standar sertifikasi guru 24 JP/minggu
+      }
+
+      const totalJpRencanaSemester = weeklyPlannedJp * WEEKS_PER_SEMESTER;
+
+      // Realisasi JP dari sesi KBM berstatus 'CLOSED'
       const mySesi = sesiList.filter(s => s.guru_id === guru.id);
       const closedSesi = mySesi.filter(s => s.status === 'CLOSED');
       const totalJpRealisasi = closedSesi.reduce((sum, s) => sum + (s.slot_kbm || 1), 0);
 
-      const kbmScore = totalJpRencana > 0 
-        ? Math.min(100, Math.round((totalJpRealisasi / totalJpRencana) * 100))
-        : 85;
+      // Hitung persentase ketercapaian jam mengajar
+      const kbmRealisasiPct = totalJpRencanaSemester > 0
+        ? Math.min(100, Math.round((totalJpRealisasi / totalJpRencanaSemester) * 100))
+        : 0;
 
-      // Pilar 3: Jurnal KBM & Administrasi Materi
-      const sesiWithJournal = closedSesi.filter(s => {
-        const hasText = Boolean(s.keterangan);
-        const hasProgres = Boolean(s.ProgresMateri?.judul_materi || s.ProgresMateri?.deskripsi);
-        return hasText || hasProgres;
-      });
-      const jurnalTerisiPct = closedSesi.length > 0
-        ? Math.round((sesiWithJournal.length / closedSesi.length) * 100)
-        : (mySesi.length > 0 ? 80 : 90);
-      const jurnalScore = jurnalTerisiPct;
-
-      // Pilar 4: Perangkat Ajar (RPP / Modul)
-      const myPerangkat = perangkatList.filter(p => p.guru_id === guru.id);
-      const approvedPerangkat = myPerangkat.filter(p => p.status === 'APPROVED' || p.status === 'DISETUJUI');
-      let perangkatStatus: 'LENGKAP' | 'REVIEW' | 'KURANG' = 'KURANG';
-      let perangkatScore = 70;
-
-      if (myPerangkat.length >= 4 && approvedPerangkat.length >= 3) {
-        perangkatStatus = 'LENGKAP';
-        perangkatScore = 95;
-      } else if (myPerangkat.length >= 2) {
-        perangkatStatus = 'REVIEW';
-        perangkatScore = 80;
-      } else if (myPerangkat.length > 0) {
-        perangkatStatus = 'KURANG';
-        perangkatScore = 65;
+      // Skor KBM: dihitung proporsional terhadap target sesi yang telah berjalan
+      let kbmScore = 80;
+      if (closedSesi.length > 0) {
+        kbmScore = Math.min(100, Math.round((totalJpRealisasi / (weeklyPlannedJp * Math.max(1, Math.ceil(baselineHariKerja / 5)))) * 100));
+        kbmScore = Math.min(100, Math.max(20, kbmScore));
+      } else if (mySesi.length > 0) {
+        kbmScore = 50; // Ada sesi tapi belum ada yang diselesaikan (CLOSED)
       } else {
-        perangkatScore = 75; // Baseline netral jika modul belum wajib upload
+        kbmScore = 75; // Sesi semester belum dimulai
       }
 
-      // Pilar 5: Supervisi Akademik
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 3: JURNAL KBM & ADMINISTRASI MATERI (BOBOT 20%)
+      // ─────────────────────────────────────────────────────────────
+      // Sesi sah terisi jurnal bila: memiliki judul/deskripsi materi AND telah melakukan absensi siswa
+      const sesiWithJournalAndAbsen = closedSesi.filter(s => {
+        const hasMateri = Boolean(s.ProgresMateri?.judul_materi || s.ProgresMateri?.deskripsi || s.keterangan);
+        const hasAbsenSiswa = (s._count?.AbsenSiswa || 0) > 0;
+        return hasMateri && hasAbsenSiswa;
+      });
+
+      const jurnalTerisiPct = closedSesi.length > 0
+        ? Math.round((sesiWithJournalAndAbsen.length / closedSesi.length) * 100)
+        : (mySesi.length > 0 ? 60 : 85);
+      const jurnalScore = jurnalTerisiPct;
+
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 4: PERANGKAT AJAR / MODUL AJAR (BOBOT 15%)
+      // ─────────────────────────────────────────────────────────────
+      const myPerangkat = perangkatList.filter(p => p.guru_id === guru.id);
+      const approvedPerangkat = myPerangkat.filter(p => p.status === 'APPROVED' || p.status === 'DISETUJUI');
+      const reviewPerangkat = myPerangkat.filter(p => p.status === 'PENDING' || p.status === 'REVIEW');
+
+      // Standar dokumen per mapel yang diampu: 4 dokumen (Modul Ajar, ATP, Prota, Promes)
+      const expectedPerangkat = Math.max(4, mapelSet.size * 4);
+
+      let perangkatScore = 70;
+      let perangkatStatus: 'LENGKAP' | 'REVIEW' | 'KURANG' = 'KURANG';
+
+      if (approvedPerangkat.length >= expectedPerangkat) {
+        perangkatScore = 100;
+        perangkatStatus = 'LENGKAP';
+      } else if (approvedPerangkat.length + reviewPerangkat.length >= expectedPerangkat) {
+        perangkatScore = Math.round(((approvedPerangkat.length * 1.0 + reviewPerangkat.length * 0.7) / expectedPerangkat) * 100);
+        perangkatStatus = 'REVIEW';
+      } else if (myPerangkat.length > 0) {
+        perangkatScore = Math.min(85, Math.round(((approvedPerangkat.length * 1.0 + reviewPerangkat.length * 0.6) / expectedPerangkat) * 100));
+        perangkatStatus = 'REVIEW';
+      } else {
+        perangkatScore = 60;
+        perangkatStatus = 'KURANG';
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 5: SUPERVISI AKADEMIK & OBSERVASI KELAS (BOBOT 20%)
+      // ─────────────────────────────────────────────────────────────
       const mySupervisi = supervisiList.filter(s => s.guru_id === guru.id);
-      const latestSupervisi = mySupervisi[0] || null;
-      const supervisiSkor = latestSupervisi?.nilai || 85;
-      const supervisiTanggal = latestSupervisi ? new Date(latestSupervisi.tanggal).toISOString().slice(0, 10) : null;
-      const catatanPenilai = latestSupervisi?.catatan || null;
+      const completedSupervisi = mySupervisi.filter(s => s.status === 'COMPLETED' || s.status === 'SELESAI');
+      const latestSupervisi = completedSupervisi[0] || mySupervisi[0] || null;
 
-      // Pilar 6: Tugas Tambahan (Wali Kelas / Piket / Jabatan)
-      const tugasTambahanScore = guru.jabatan ? 90 : 80;
+      let supervisiSkor = 80;
+      let supervisiStatus: 'SELESAI' | 'TERJADWAL' | 'BELUM_ADA' = 'BELUM_ADA';
+      let supervisiTanggal: string | null = null;
+      let catatanPenilai: string | null = null;
 
-      // ── Skor Komposit (Weighted 5 Pillars) ──
-      // Bobot: Presensi 20%, Realisasi KBM 25%, Jurnal 20%, Perangkat 15%, Supervisi 20%
+      if (latestSupervisi) {
+        supervisiTanggal = new Date(latestSupervisi.tanggal).toISOString().slice(0, 10);
+        catatanPenilai = latestSupervisi.catatan || null;
+
+        if (latestSupervisi.nilai !== null && latestSupervisi.nilai !== undefined) {
+          supervisiSkor = latestSupervisi.nilai;
+          supervisiStatus = 'SELESAI';
+        } else if (latestSupervisi.nilai_self !== null && latestSupervisi.nilai_self !== undefined) {
+          supervisiSkor = latestSupervisi.nilai_self;
+          supervisiStatus = 'TERJADWAL';
+        } else {
+          supervisiSkor = 80;
+          supervisiStatus = 'TERJADWAL';
+        }
+      } else {
+        supervisiStatus = 'BELUM_ADA';
+        supervisiSkor = 80; // Baseline netral bila belum dijadwalkan supervisi
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // PILAR 6: TUGAS TAMBAHAN / KONTRIBUSI KELEMBAGAAN
+      // ─────────────────────────────────────────────────────────────
+      const myAssignments = assignmentsList.filter(a => a.user_id === guru.user_id);
+      const tugasTambahanNames: string[] = [];
+      myAssignments.forEach(a => {
+        const posName = a.Position?.name || a.Position?.code || 'Tugas Tambahan';
+        const kelasName = a.Kelas?.nama_kelas ? ` (${a.Kelas.nama_kelas})` : '';
+        tugasTambahanNames.push(`${posName}${kelasName}`);
+      });
+      if (guru.jabatan && !tugasTambahanNames.some(t => t.toLowerCase().includes(guru.jabatan!.toLowerCase()))) {
+        tugasTambahanNames.push(guru.jabatan);
+      }
+
+      let tugasTambahanScore = 80;
+      if (tugasTambahanNames.length >= 2) {
+        tugasTambahanScore = 95;
+      } else if (tugasTambahanNames.length === 1) {
+        tugasTambahanScore = 90;
+      } else {
+        tugasTambahanScore = 80;
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // PERHITUNGAN SKOR KOMPOSIT 5 PILAR
+      // Presensi 20%, Realisasi KBM 25%, Jurnal 20%, Perangkat 15%, Supervisi 20%
+      // ─────────────────────────────────────────────────────────────
       const compositeScore = Math.round(
         (presensiScore * 0.20) +
         (kbmScore * 0.25) +
@@ -337,26 +548,38 @@ export class EvaluasiKinerjaService {
         predikatLabel = 'Kurang (Perlu Tindakan Khusus)';
       }
 
-      // ── AI/Rule-based Prescriptive Recommendations ──
+      // ─────────────────────────────────────────────────────────────
+      // DIAGNOSTIK KEUNGGULAN, AREA PERBAIKAN, & REKOMENDASI
+      // ─────────────────────────────────────────────────────────────
+      const keunggulan: string[] = [];
+      const areaPerbaikan: string[] = [];
+
+      if (presensiScore >= 90) keunggulan.push(`Kedisiplinan presensi & ketepatan jam kerja sangat prima (${kehadiranPct}%).`);
+      else if (presensiScore < 75) areaPerbaikan.push(`Tingkat kehadiran/keterlambatan jam masuk perlu perbaikan (${totalLateMinutes} menit telat).`);
+
+      if (kbmScore >= 90) keunggulan.push(`Realisasi tatap muka KBM sangat tinggi (${totalJpRealisasi} JP terlaksana).`);
+      else if (kbmScore < 75) areaPerbaikan.push(`Realisasi jam mengajar KBM belum mencapai target proporsional semester.`);
+
+      if (jurnalScore >= 90) keunggulan.push(`Kepatuhan pengisian jurnal materi & absensi siswa tertib 100%.`);
+      else if (jurnalScore < 75) areaPerbaikan.push(`Pengisian resume materi & absensi siswa pada jurnal KBM sering tertunda.`);
+
+      if (perangkatScore >= 90) keunggulan.push(`Perangkat ajar (Modul/RPP, ATP, Prota, Promes) lengkap dan telah disetujui.`);
+      else if (perangkatScore < 75) areaPerbaikan.push(`Unggahan modul ajar semester masih berstatus review/kurang.`);
+
+      if (supervisiSkor >= 90) keunggulan.push(`Skor observasi klinis supervisi akademik sangat memuaskan (${supervisiSkor}/100).`);
+      else if (supervisiSkor < 75) areaPerbaikan.push(`Penerapan diferensiasi belajar dan interaksi kelas perlu bimbingan supervisi.`);
+
+      // Rekomendasi Utama
       let rekomendasi = '';
       let pembinaanKhusus: string | null = null;
 
       if (compositeScore >= 90) {
-        rekomendasi = `Kinerja unggul dan sangat memuaskan di seluruh pilar. Pertahankan kepatuhan administrasi dan jadikan teladan bagi rekan pendidik.`;
-      } else if (presensiScore < 75) {
-        rekomendasi = `Tingkatkan kedisiplinan kehadiran gerbang & jam masuk kelas untuk meminimalkan akumulasi menit keterlambatan.`;
-        pembinaanKhusus = `Evaluasi jadwal piket dan toleransi jam masuk dengan Waka Kurikulum.`;
-      } else if (jurnalScore < 75) {
-        rekomendasi = `Kepatuhan pengisian ringkasan materi & absensi siswa pada jurnal KBM perlu ditingkatkan setiap kali selesai sesi.`;
-        pembinaanKhusus = `Bimbingan teknis pengisian jurnal KBM mandiri via aplikasi.`;
-      } else if (perangkatScore < 75) {
-        rekomendasi = `Segera lengkapi unggahan modul ajar/RPP dan perangkat kurikulum semester untuk proses verifikasi.`;
-        pembinaanKhusus = `Pendampingan penyusunan perangkat pembelajaran bersama MGMPS.`;
-      } else if (supervisiSkor < 75) {
-        rekomendasi = `Fokus pada variasi model pembelajaran interaktif dan diferensiasi kelas sesuai masukan supervisi.`;
-        pembinaanKhusus = `Observasi klinis lanjutan bersama Kepala Sekolah/Pengawas.`;
+        rekomendasi = `Kinerja unggul dan teladan di seluruh pilar. Direkomendasikan sebagai Guru Penggerak/Pembina MGMPS.`;
+      } else if (areaPerbaikan.length > 0) {
+        rekomendasi = `Prioritas perbaikan: ${areaPerbaikan[0]}`;
+        pembinaanKhusus = areaPerbaikan.slice(0, 2).join(' Serta ');
       } else {
-        rekomendasi = `Kinerja telah memenuhi standar regulasi kurikulum dengan baik. Tingkatkan realisasi jam mengajar.`;
+        rekomendasi = `Kinerja telah memenuhi regulasi kurikulum dengan baik. Tingkatkan konsistensi administrasi KBM.`;
       }
 
       results.push({
@@ -379,26 +602,38 @@ export class EvaluasiKinerjaService {
           tugasTambahan: tugasTambahanScore,
         },
         metrics: {
+          totalHariKerja: totalExpectedDays,
+          hariHadir: totalHadirFisik,
+          hariTerlambat: lateCount,
           kehadiranPct,
           keterlambatanMenit: totalLateMinutes,
           izinSakitCount,
           alpaCount,
-          jamMengajarTotal: totalJpRencana,
+          jamMengajarMingguan: weeklyPlannedJp,
+          jamMengajarTotal: totalJpRencanaSemester,
           jamMengajarRealisasi: totalJpRealisasi,
+          kbmRealisasiPct,
+          jurnalTotalSesi: closedSesi.length,
+          jurnalTerisiCount: sesiWithJournalAndAbsen.length,
           jurnalTerisiPct,
+          perangkatExpected: expectedPerangkat,
           perangkatTotal: myPerangkat.length,
           perangkatApproved: approvedPerangkat.length,
           perangkatStatus,
           supervisiSkor,
+          supervisiStatus,
           supervisiTanggal,
           catatanPenilai,
+          tugasTambahanList: tugasTambahanNames,
         },
         rekomendasi,
         pembinaanKhusus,
+        keunggulan,
+        areaPerbaikan,
       });
     }
 
-    // Filter results berdasarkan search dan predikat jika diminta
+    // Filter results berdasarkan pencarian dan predikat bila diminta
     let filteredResults = results;
     if (search && search.trim()) {
       const q = search.toLowerCase();
@@ -427,8 +662,16 @@ export class EvaluasiKinerjaService {
     };
     const topPerformers = results
       .slice(0, 3)
-      .map(r => ({ id: r.id, nama: r.nama, score: r.compositeScore, predikat: r.predikat }));
+      .map(r => ({ id: r.id, nama: r.nama, score: r.compositeScore, predikat: r.predikat, mapel: r.mapel }));
     const needsAttentionCount = predikatDist.C + predikatDist.D;
+
+    const pillarAverages = {
+      presensi: totalGuru > 0 ? Math.round(results.reduce((s, r) => s + r.pillarScores.presensi, 0) / totalGuru) : 0,
+      kbmJam: totalGuru > 0 ? Math.round(results.reduce((s, r) => s + r.pillarScores.kbmJam, 0) / totalGuru) : 0,
+      jurnalKbm: totalGuru > 0 ? Math.round(results.reduce((s, r) => s + r.pillarScores.jurnalKbm, 0) / totalGuru) : 0,
+      perangkatAjar: totalGuru > 0 ? Math.round(results.reduce((s, r) => s + r.pillarScores.perangkatAjar, 0) / totalGuru) : 0,
+      supervisi: totalGuru > 0 ? Math.round(results.reduce((s, r) => s + r.pillarScores.supervisi, 0) / totalGuru) : 0,
+    };
 
     return {
       summary: {
@@ -437,6 +680,7 @@ export class EvaluasiKinerjaService {
         predikatDist,
         topPerformers,
         needsAttentionCount,
+        pillarAverages,
       },
       data: filteredResults,
     };

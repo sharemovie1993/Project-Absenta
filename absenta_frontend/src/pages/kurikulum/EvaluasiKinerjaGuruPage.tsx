@@ -653,6 +653,43 @@ export const EvaluasiKinerjaGuruPage: React.FC = React.memo(() => {
                 </div>
               </div>
 
+              {/* Keunggulan & Area Perbaikan Badges */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {selectedGuruDetail.keunggulan && selectedGuruDetail.keunggulan.length > 0 && (
+                  <div className="p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 space-y-1.5">
+                    <h6 className="text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 size={13} className="text-emerald-600" />
+                      <span>Keunggulan Utama</span>
+                    </h6>
+                    <ul className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
+                      {selectedGuruDetail.keunggulan.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-emerald-500 font-bold">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {selectedGuruDetail.areaPerbaikan && selectedGuruDetail.areaPerbaikan.length > 0 && (
+                  <div className="p-3 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 space-y-1.5">
+                    <h6 className="text-[11px] font-extrabold text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertTriangle size={13} className="text-amber-600" />
+                      <span>Area Perbaikan &amp; Bimbingan</span>
+                    </h6>
+                    <ul className="space-y-1 text-xs text-slate-700 dark:text-slate-300">
+                      {selectedGuruDetail.areaPerbaikan.map((item, idx) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-amber-500 font-bold">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
               {/* Recommendations & Coaching */}
               <div className="space-y-2 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                 <h5 className="font-extrabold text-xs text-slate-900 dark:text-slate-100 uppercase tracking-wider">
