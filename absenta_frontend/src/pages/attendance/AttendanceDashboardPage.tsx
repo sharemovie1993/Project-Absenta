@@ -34,6 +34,7 @@ import {
   getRekapBulananSiswaMe,
   type GerbangStats
 } from '@/api/attendanceGerbang.api';
+import { getDevices } from '@/api/attendance/device.api';
 
 // Lazy Loaded Subcomponents (Pilar 13)
 const AttendanceTvModeLayout = lazy(() => import('./components/AttendanceTvModeLayout').then(m => ({ default: m.AttendanceTvModeLayout })));
@@ -74,19 +75,22 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
           myAttendance: dailyRes?.data || null,
           stats: monthlyRes?.data || null,
           feed: [],
-          statistikHarian: []
+          statistikHarian: [],
+          devices: []
         };
       } else {
-        const [statsRes, feedRes, harianRes] = await Promise.all([
+        const [statsRes, feedRes, harianRes, devicesRes] = await Promise.all([
           getGerbangStats().catch(() => null),
           getAttendanceFeed().catch(() => null),
-          getStatistikHarian().catch(() => null)
+          getStatistikHarian().catch(() => null),
+          getDevices(1, 10).catch(() => null)
         ]);
         return {
           myAttendance: null,
           stats: statsRes?.data || null,
           feed: feedRes?.data || [],
-          statistikHarian: (harianRes?.data || []) as DailyStatItem[]
+          statistikHarian: (harianRes?.data || []) as DailyStatItem[],
+          devices: (devicesRes?.data || [])
         };
       }
     },
@@ -133,11 +137,23 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
     }));
   }, [statistikHarian]);
 
-  const terminalDevices = useMemo(() => [
-    { id: 'gate-1', name: 'RFID Gate 01 (Utama)', status: 'online', type: 'rfid', location: 'Pintu Gerbang Depan' },
-    { id: 'gate-2', name: 'Face AI Camera 01', status: 'online', type: 'camera', location: 'Lobi Gedung Utama' },
-    { id: 'gate-3', name: 'RFID Gate 02 (Timur)', status: 'offline', type: 'rfid', location: 'Pintu Gerbang Samping' },
-  ], []);
+  const terminalDevices = useMemo(() => {
+    const dbDevices = dashboardData?.devices || [];
+    if (dbDevices.length > 0) {
+      return dbDevices.map((d: any) => ({
+        id: d.id || d.device_id,
+        name: d.name || `Perangkat ${d.device_id}`,
+        status: String(d.status || '').toLowerCase() === 'online' ? 'online' : 'offline',
+        type: (d.type || (d.name?.toLowerCase().includes('cam') ? 'camera' : 'rfid')).toLowerCase(),
+        location: d.location || (d.Kelas ? `Kelas ${d.Kelas.nama_kelas}` : 'Terminal Presensi'),
+      }));
+    }
+    return [
+      { id: 'gate-1', name: 'RFID Gate 01 (Utama)', status: 'online', type: 'rfid', location: 'Pintu Gerbang Depan' },
+      { id: 'gate-2', name: 'Face AI Camera 01', status: 'online', type: 'camera', location: 'Lobi Gedung Utama' },
+      { id: 'gate-3', name: 'RFID Gate 02 (Timur)', status: 'offline', type: 'rfid', location: 'Pintu Gerbang Samping' },
+    ];
+  }, [dashboardData?.devices]);
 
   const headerStats = useMemo(() => [
     {
