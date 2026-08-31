@@ -24,9 +24,15 @@ export const documentsController = {
       return reply.status(400).send({ success: false, message: 'File wajib diupload' });
     }
 
-    const title = String(file.fields?.title?.value || '').trim();
-    const category = file.fields?.category?.value;
-    const description = file.fields?.description?.value;
+    const getFieldValue = (field: any) => {
+      if (!field) return undefined;
+      if (typeof field === 'object' && 'value' in field) return field.value;
+      return field;
+    };
+
+    const title = String(getFieldValue(file.fields?.title) || file.filename || 'Dokumen').trim();
+    const category = getFieldValue(file.fields?.category) || 'LEGAL';
+    const description = getFieldValue(file.fields?.description);
 
     const document = await documentsService.upload({
       tenantId: request.tenantId,

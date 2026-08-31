@@ -140,10 +140,10 @@ export async function uploadDocument(payload: {
   onProgress?: (percent: number) => void;
 }): Promise<DocumentUploadResponse> {
   const formData = new FormData();
-  formData.append('file', payload.file);
   formData.append('title', payload.title);
   formData.append('category', payload.category);
   if (typeof payload.description !== 'undefined') formData.append('description', payload.description);
+  formData.append('file', payload.file);
 
   return requestWithFallback<DocumentUploadResponse>('post', '/documents', {
     data: formData,
