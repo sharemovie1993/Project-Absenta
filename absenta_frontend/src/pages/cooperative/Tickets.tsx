@@ -61,7 +61,7 @@ export const Tickets: React.FC = React.memo(() => {
       const response = await api.get('/cooperative/tickets');
       return (response.data.data ?? []) as Ticket[];
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -86,7 +86,6 @@ export const Tickets: React.FC = React.memo(() => {
   });
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    if (isLocked) return;
     e.preventDefault();
     const parsed = ticketFormSchema.safeParse(formData);
     if (!parsed.success) {

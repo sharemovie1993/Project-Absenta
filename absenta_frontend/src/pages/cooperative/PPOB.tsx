@@ -71,7 +71,7 @@ const PPOB: React.FC = React.memo(() => {
       const response = await api.get('/cooperative/ppob');
       return (response.data.data ?? []) as PPOBProduct[];
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 

@@ -206,7 +206,7 @@ export const usePOSState = () => {
       const res = await api.get('/cooperative/toko');
       return (Array.isArray(res.data) ? res.data : []) as Product[];
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
   const products = productsQuery.data || [];
@@ -221,7 +221,7 @@ export const usePOSState = () => {
       const res = await api.get('/cooperative/toko/categories');
       return (Array.isArray(res.data) ? res.data : []) as ProductCategory[];
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
   const categories = categoriesQuery.data || [];
@@ -235,7 +235,7 @@ export const usePOSState = () => {
       const data = await fetchCoopSettings();
       return data;
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
   const coopSettings = coopSettingsQuery.data || null;

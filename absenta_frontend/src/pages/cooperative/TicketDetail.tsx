@@ -54,7 +54,7 @@ export const TicketDetail: React.FC = React.memo(() => {
       const response = await api.get(`/cooperative/tickets/${id}`);
       return (response.data.data ?? null) as TicketDetailData;
     },
-    enabled: !isLocked && !!id,
+    enabled: !!id,
     staleTime: 5 * 60 * 1000,
   });
 

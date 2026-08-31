@@ -149,7 +149,7 @@ const Vouchers: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/vouchers');
       return (res.data.data || []) as Voucher[];
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -168,7 +168,7 @@ const Vouchers: React.FC = React.memo(() => {
         history: (res.data?.data || []) as PointTransaction[]
       };
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -186,7 +186,7 @@ const Vouchers: React.FC = React.memo(() => {
         return 0;
       }
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 

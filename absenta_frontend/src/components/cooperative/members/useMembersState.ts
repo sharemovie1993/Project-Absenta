@@ -166,7 +166,7 @@ export const useMembersState = (subscription: any) => {
       const response = await api.get('/cooperative/members');
       return (Array.isArray(response.data) ? response.data : []) as Member[];
     },
-    enabled: !isLocked && subscription !== undefined,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
   const members = membersQuery.data || [];

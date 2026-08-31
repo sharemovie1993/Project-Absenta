@@ -104,7 +104,7 @@ const Accounting: React.FC = React.memo(() => {
             const res = await api.get('/cooperative/reports/journals');
             return (res.data as JournalEntry[]) || [];
         },
-        enabled: activeTab === 'journal' && !isLocked && subscription !== undefined,
+        enabled: activeTab === 'journal' && subscription !== undefined,
         staleTime: 5 * 60 * 1000,
     });
     const journals = journalsQuery.data || [];
@@ -118,7 +118,7 @@ const Accounting: React.FC = React.memo(() => {
             const res = await api.get('/cooperative/reports/balance-sheet');
             return (res.data as BalanceSheetItem[]) || [];
         },
-        enabled: activeTab === 'balance' && !isLocked && subscription !== undefined,
+        enabled: activeTab === 'balance' && subscription !== undefined,
         staleTime: 5 * 60 * 1000,
     });
     const balanceSheet = balanceSheetQuery.data || [];
@@ -132,7 +132,7 @@ const Accounting: React.FC = React.memo(() => {
             const res = await api.get(`/cooperative/reports/payroll-deductions?month=${selectedMonth}&year=${selectedYear}`);
             return res.data;
         },
-        enabled: activeTab === 'payroll' && !isLocked && subscription !== undefined,
+        enabled: activeTab === 'payroll' && subscription !== undefined,
         staleTime: 5 * 60 * 1000,
     });
 

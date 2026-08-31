@@ -54,7 +54,7 @@ const Announcements: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/announcements');
       return (res.data.data ?? []) as Announcement[];
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
 

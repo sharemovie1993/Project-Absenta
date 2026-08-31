@@ -11,6 +11,53 @@ function getRouteConfig(request: any): any {
   );
 }
 
+async function checkCooperativeTrialLimit(
+  tenantId: string,
+  path: string
+): Promise<{ allowed: boolean; count: number; limit: number; entityName: string }> {
+  const limit = 10;
+  const p = path.toLowerCase();
+
+  try {
+    if (p.includes('/announcements')) {
+      const count = await prisma.announcement.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Pengumuman' };
+    }
+    if (p.includes('/members')) {
+      const count = await prisma.member.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Anggota Koperasi' };
+    }
+    if (p.includes('/savings') && !p.includes('/saving-categories')) {
+      const count = await prisma.saving.count({ where: { member: { tenantId } } });
+      return { allowed: count < limit, count, limit, entityName: 'Akun Simpanan' };
+    }
+    if (p.includes('/loans')) {
+      const count = await prisma.loan.count({ where: { member: { tenantId } } });
+      return { allowed: count < limit, count, limit, entityName: 'Pengajuan Pinjaman' };
+    }
+    if (p.includes('/products') || p.includes('/toko')) {
+      const count = await prisma.product.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Barang Toko' };
+    }
+    if (p.includes('/tickets')) {
+      const count = await prisma.ticket.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Tiket Bantuan' };
+    }
+    if (p.includes('/suppliers')) {
+      const count = await prisma.coopSupplier.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Pemasok/Supplier' };
+    }
+    if (p.includes('/vouchers')) {
+      const count = await prisma.voucher.count({ where: { tenantId } });
+      return { allowed: count < limit, count, limit, entityName: 'Voucher' };
+    }
+  } catch (err) {
+    console.error('[Trial Quota Check Warning]', err);
+  }
+
+  return { allowed: true, count: 0, limit, entityName: 'Data' };
+}
+
 export async function subscriptionGuard(
   request: any,
   reply: any
@@ -140,6 +187,27 @@ export async function subscriptionGuard(
       });
 
       if (!isValidSubscription(svc)) {
+        // TRIAL EVALUATION POLICY:
+        // Allows tenants to evaluate modules (Maksimal 10 Record CRUD).
+        const method = String(request.method || 'GET').toUpperCase();
+        
+        if (requiredServiceCode === 'KOPERASI') {
+          if (method === 'POST') {
+            const quota = await checkCooperativeTrialLimit(tenantId, path);
+            if (!quota.allowed) {
+              return reply.status(403).send({
+                error: 'Trial Quota Exceeded',
+                reason: `TRIAL_LIMIT_EXCEEDED_${requiredServiceCode}`,
+                message: `Batas kuota percobaan tercapai (${quota.count}/${quota.limit} ${quota.entityName}). Anda telah mencapai batas maksimal 10 data untuk mode uji coba. Silakan berlangganan modul Koperasi untuk pencatatan tanpa batas.`,
+              });
+            }
+          }
+          // Permit evaluation GET, PUT, PATCH, DELETE, and POST under quota limit
+          request.isTrialMode = true;
+          request.trialServiceCode = requiredServiceCode;
+          return;
+        }
+
         return reply.status(403).send({
           error: 'Subscription Required',
           reason: `SUBSCRIPTION_REQUIRED_${requiredServiceCode}`,

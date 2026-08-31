@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 
 /**
  * 🛡️ Helper to extract human-readable error messages from API responses,
@@ -13,6 +13,16 @@ export function getApiErrorMessage(error: unknown, fallback: string = 'Terjadi k
     const data = axiosErr.response?.data;
     const message = data?.message || data?.error || axiosErr.message;
     const reason = data?.reason || data?.code;
+
+    // 0. Specific Trial Quota Exceeded handling
+    if (
+      status === 403 &&
+      (reason?.includes('TRIAL_LIMIT') ||
+        message?.toLowerCase().includes('batas kuota percobaan') ||
+        message?.toLowerCase().includes('batas percobaan'))
+    ) {
+      return data?.message || 'Batas kuota percobaan tercapai (Maksimal 10 data untuk mode evaluasi). Silakan aktifkan langganan modul untuk pencatatan tanpa batas.';
+    }
 
     // 1. Specific Subscription / Entitlement handling
     if (

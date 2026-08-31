@@ -89,7 +89,7 @@ const Dashboard: React.FC = React.memo(() => {
         return null;
       }
     },
-    enabled: isGuruOrSiswa && !isLocked,
+    enabled: isGuruOrSiswa,
   });
 
   const memberStatus = useMemo<'loading' | 'member' | 'non-member'>(() => {
@@ -110,7 +110,7 @@ const Dashboard: React.FC = React.memo(() => {
         dueInstallments: Number(raw.dueInstallments) || 0,
       };
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     refetchInterval: isTvMode ? 60000 : false,
   });
 
@@ -125,7 +125,7 @@ const Dashboard: React.FC = React.memo(() => {
         return [];
       }
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
   });
 
   const { data: criticalStock = [], isLoading: criticalStockLoading } = useQuery<CriticalStockItem[]>({
@@ -135,7 +135,7 @@ const Dashboard: React.FC = React.memo(() => {
       const items = res.data?.items || [];
       return items.filter((item: CriticalStockItem) => item.status === 'HABIS' || item.status === 'RENDAH');
     },
-    enabled: !isLocked && !isGuruOrSiswa,
+    enabled: !isGuruOrSiswa,
     refetchInterval: isTvMode ? 60000 : false,
   });
 

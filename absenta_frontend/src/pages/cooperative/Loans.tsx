@@ -138,7 +138,7 @@ const Loans: React.FC = React.memo(() => {
       });
       return res.data;
     },
-    enabled: !isLocked,
+    enabled: subscription !== undefined,
     staleTime: 60 * 1000,
   });
 
@@ -157,7 +157,7 @@ const Loans: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/loans/student-metrics');
       return res.data?.data;
     },
-    enabled: !isLocked && isStudent,
+    enabled: isStudent,
     staleTime: 60 * 1000,
   });
   const studentMetrics = studentMetricsQuery.data;
@@ -168,7 +168,7 @@ const Loans: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/loans/operator-metrics');
       return res.data?.data;
     },
-    enabled: !isLocked && isOperatorMode,
+    enabled: isOperatorMode,
     staleTime: 60 * 1000,
   });
   const operatorMetrics = operatorMetricsQuery.data;
@@ -180,7 +180,7 @@ const Loans: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/members?limit=1000&status=ACTIVE');
       return res.data?.data?.members || [];
     },
-    enabled: !isLocked && isModalOpen && isOperatorMode,
+    enabled: isModalOpen && isOperatorMode,
     staleTime: 5 * 60 * 1000,
   });
   const members = membersQuery.data || [];
