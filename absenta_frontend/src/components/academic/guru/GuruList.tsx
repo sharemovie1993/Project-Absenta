@@ -675,7 +675,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                     )}
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'} • {guru.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Tendik' : 'Tenaga Pendidik'}
+                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'}
                   </p>
                 </div>
 
