@@ -80,7 +80,7 @@ const MonitoringKbmPage: React.FC = React.memo(() => {
         description="Dapatkan pandangan menyeluruh terhadap seluruh aktivitas belajar mengajar yang sedang berlangsung di sekolah Anda."
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 p-0 border-0 shadow-none bg-transparent">
-          <MonitoringKbmWidget isExecutive={false} />
+          <MonitoringKbmWidget isExecutive={false} defaultTeacherFilter="BELUM_MASUK" />
         </SectionCard>
       </PremiumFeatureGate>
     </PageLayout>

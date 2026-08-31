@@ -31,9 +31,16 @@ export interface MonitoringKbmWidgetProps {
    * Mode eksekutif analitik + spotlight masalah (default: true).
    */
   isExecutive?: boolean;
+  /**
+   * Default filter status guru (misal: 'BELUM_MASUK', 'ALL', dll.)
+   */
+  defaultTeacherFilter?: string;
 }
 
-export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExecutive = true }) => {
+export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ 
+  isExecutive = true,
+  defaultTeacherFilter
+}) => {
   const queryClient = useQueryClient();
   const { isConnected, subscribe, unsubscribe } = useSocket();
   const { tenantMode, user } = useAuthStore();
@@ -75,8 +82,8 @@ export const MonitoringKbmWidget: React.FC<MonitoringKbmWidgetProps> = ({ isExec
   const initialTeacherFilter = useMemo(() => {
     const p = searchParams.get('teacher_status') || searchParams.get('filter') || searchParams.get('status_guru');
     if (p) return p.toUpperCase();
-    return 'ALL';
-  }, [searchParams]);
+    return defaultTeacherFilter || (isExecutive ? 'ALL' : 'BELUM_MASUK');
+  }, [searchParams, defaultTeacherFilter, isExecutive]);
 
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'LIVE' | 'FINISHED' | 'UPCOMING' | 'JURNAL'>('ALL');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST' | 'TABLE'>('LIST');
