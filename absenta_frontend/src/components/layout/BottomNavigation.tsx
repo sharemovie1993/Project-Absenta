@@ -7,7 +7,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useExecutivePillarStore, type ExecutivePillar } from '@/store/executivePillarStore';
 import { getUserPositions } from '@/config/navigation.config';
-import { RelatedModuleNavPills } from '@/components/common/RelatedModuleNavPills';
 export interface MobileBottomSubItem {
   id: string;
   label: string;
@@ -474,12 +473,9 @@ export const BottomNavigation: React.FC = React.memo(() => {
           </>}
       </AnimatePresence>
 
-      {/* ── 2-LEVEL CONTEXTUAL MOBILE BOTTOM NAVIGATION ── */}
+      {/* ── MOBILE BOTTOM NAVIGATION ── */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex flex-col pointer-events-auto">
-        {/* LEVEL 2: Contextual Sub-Module Related Nav (Hanya tampil saat di sub-halaman terkait) */}
-        <RelatedModuleNavPills variant="bottombar" />
-
-        {/* LEVEL 1: Root Bottom Navigation Bar */}
+        {/* Root Bottom Navigation Bar */}
         <nav aria-label="Navigasi Bawah Seluler" className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 px-1 pt-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom))] flex items-center shadow-2xl overflow-x-auto no-scrollbar">
           <div className="flex items-center justify-around w-full min-w-max gap-1 px-1">
             {activeTabsList.map(item => {
