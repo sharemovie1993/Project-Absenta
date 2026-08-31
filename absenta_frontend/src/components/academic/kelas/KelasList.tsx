@@ -514,8 +514,8 @@ const KelasList = React.memo<KelasListProps>(({
 
   return (
     <div className="flex flex-col">
-      {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+      {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
+      <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
@@ -690,48 +690,136 @@ const KelasList = React.memo<KelasListProps>(({
         <div className="bg-transparent overflow-hidden">
           {isMobile ? (
             <div className="p-4 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 border border-slate-200/40 dark:border-slate-700/30 gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('tree')}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
-                      (viewMode as string) === 'tree'
-                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                    title="Model Pohon"
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    <span>Pohon</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('table')}
-                    className={cn(
-                      "px-2.5 py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-[11px] font-black uppercase tracking-wider transition-all",
-                      (viewMode as string) === 'table'
-                        ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
-                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                    )}
-                    title="Mode Tabel"
-                  >
-                    <List className="w-3.5 h-3.5" />
-                    <span>Tabel</span>
-                  </button>
+              {/* Mobile Search & Filter Section */}
+              <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    type="text"
+                    placeholder="Cari kelas (Nama, Tingkat, Jurusan)..."
+                    aria-label="Cari kelas"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
                 </div>
 
-                {canManage && onAdd && (
-                  <Button 
-                    onClick={() => onAdd()}
-                    variant="toolbarPrimary"
+                <div className="grid grid-cols-2 gap-2">
+                  <SearchableSelect 
+                    value={filterTingkat}
+                    onValueChange={setFilterTingkat}
+                    options={[
+                      { label: "Semua Tingkat", value: "" },
+                      ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
+                    ]}
+                    placeholder="Tingkat"
+                    searchPlaceholder="Cari Tingkat..."
+                    triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+
+                  {hasJurusan && (
+                    <SearchableSelect 
+                      value={filterJurusan}
+                      onValueChange={setFilterJurusan}
+                      options={[
+                        { label: "Semua Jurusan", value: "" },
+                        ...(jurusanList || [])?.map(j => ({ label: j.nama, value: j.id }))
+                      ]}
+                      placeholder="Jurusan"
+                      searchPlaceholder="Cari Jurusan..."
+                      triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                    />
+                  )}
+
+                  <SearchableSelect 
+                    value={filterStatus}
+                    onValueChange={setFilterStatus}
+                    options={[
+                      { label: "Semua Status", value: "" },
+                      { label: "Aktif", value: "true" },
+                      { label: "Nonaktif", value: "false" }
+                    ]}
+                    placeholder="Status"
+                    searchPlaceholder="Cari Status..."
+                    triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                  />
+
+                  <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-0.5 border border-slate-200/40 dark:border-slate-700/30 gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('tree')}
+                      className={cn(
+                        "flex-1 py-1 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wider transition-all",
+                        (viewMode as string) === 'tree'
+                          ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                          : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      )}
+                      title="Model Pohon"
+                    >
+                      <LayoutGrid className="w-3 h-3" />
+                      <span>Pohon</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('table')}
+                      className={cn(
+                        "flex-1 py-1 rounded-lg flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wider transition-all",
+                        (viewMode as string) === 'table'
+                          ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                          : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                      )}
+                      title="Mode Tabel"
+                    >
+                      <List className="w-3 h-3" />
+                      <span>Tabel</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action Buttons on Mobile */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  {canManage && onAdd && (
+                    <Button 
+                      onClick={() => onAdd()}
+                      variant="toolbarPrimary"
+                      size="toolbar"
+                      className="flex-1"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      Tambah Kelas
+                    </Button>
+                  )}
+                  {canManage && onImport && (
+                    <Button
+                      onClick={onImport}
+                      variant="toolbarOutline"
+                      size="toolbar"
+                    >
+                      <Upload className="w-4 h-4 mr-1.5" />
+                      Import
+                    </Button>
+                  )}
+                  {onExport && (
+                    <Button
+                      onClick={onExport}
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      disabled={isExporting}
+                    >
+                      <Download className="w-4 h-4 mr-1.5" />
+                      Export
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => fetchKelas(currentPage, debouncedSearchTerm)}
+                    variant="toolbarGhost"
                     size="toolbar"
+                    className="p-2"
+                    aria-label="Refresh data"
                   >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Tambah Kelas
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                   </Button>
-                )}
+                </div>
               </div>
 
               <MobileAcademicList

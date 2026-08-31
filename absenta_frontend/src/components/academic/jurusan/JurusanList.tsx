@@ -345,8 +345,8 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
 
   return (
     <div className="flex flex-col">
-      {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+      {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
+      <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
           <Input
@@ -362,6 +362,59 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
           <div className="p-4 space-y-4">
+            {/* Mobile Search & Filter Section */}
+            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari jurusan / konsentrasi keahlian..."
+                  aria-label="Cari jurusan"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              {/* Action Buttons on Mobile */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {canManage && onAdd && (
+                  <Button 
+                    onClick={onAdd}
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    className="flex-1"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Tambah Jurusan
+                  </Button>
+                )}
+                {onExport && (
+                  <Button
+                    onClick={onExport}
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    disabled={isExporting}
+                  >
+                    <Download className="w-4 h-4 mr-1.5" />
+                    Export
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    refetch();
+                    onRefresh?.();
+                  }}
+                  variant="toolbarGhost"
+                  size="toolbar"
+                  className="p-2"
+                  aria-label="Refresh data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
             <MobileAcademicList
               title="Daftar Jurusan"
               data={jurusans}

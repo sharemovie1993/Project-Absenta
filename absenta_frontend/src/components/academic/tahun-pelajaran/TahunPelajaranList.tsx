@@ -378,8 +378,8 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
 
   return (
     <div className="flex flex-col">
-      {/* Search & Filter Section */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+      {/* Search & Filter Section (Desktop Only) */}
+      <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         {/* Search Box */}
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -413,27 +413,83 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
       {/* List Content - Hybrid View */}
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
-          <MobileAcademicList
-            title="Daftar Tahun Pelajaran"
-            data={tahunPelajarans}
-            loading={loading}
-            totalItems={totalItems}
-            onRefresh={handleRefresh}
-            onAdd={onAdd}
-            canManage={canManage}
-            pagination={{
-              currentPage,
-              totalPages,
-              totalItems,
-              itemsPerPage,
-              onPageChange: handlePageChange,
-              onLimitChange: (limit) => {
-                setItemsPerPage(limit);
-                setCurrentPage(1);
-              }
-            }}
-            renderCard={renderMobileCard}
-          />
+          <div className="p-4 space-y-4">
+            {/* Mobile Search & Filter Section */}
+            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari tahun pelajaran (misal: 2024/2025)..."
+                  aria-label="Cari tahun pelajaran"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                <SearchableSelect
+                  value={filterStatus}
+                  onValueChange={(val) => setFilterStatus(val)}
+                  options={[
+                    { label: 'Semua Status', value: 'ALL' },
+                    { label: 'Aktif', value: 'active' },
+                    { label: 'Tidak Aktif', value: 'inactive' }
+                  ]}
+                  placeholder="Status"
+                  searchPlaceholder="Cari Status..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              {/* Action Buttons on Mobile */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {canManage && onAdd && (
+                  <Button 
+                    onClick={onAdd}
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    className="flex-1"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Tambah Tahun
+                  </Button>
+                )}
+                <Button
+                  onClick={handleRefresh}
+                  variant="toolbarGhost"
+                  size="toolbar"
+                  className="p-2"
+                  aria-label="Refresh data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <MobileAcademicList
+              title="Daftar Tahun Pelajaran"
+              data={tahunPelajarans}
+              loading={loading}
+              totalItems={totalItems}
+              onRefresh={handleRefresh}
+              onAdd={onAdd}
+              canManage={canManage}
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              renderCard={renderMobileCard}
+            />
+          </div>
         ) : (
           <Table
             columns={columns}

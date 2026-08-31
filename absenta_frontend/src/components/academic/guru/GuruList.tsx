@@ -571,8 +571,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
 
   return (
     <div className="flex flex-col">
-      {/* Toolbar Baris Kedua - Filter & Search */}
-      <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
+      {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
+      <div className="hidden md:flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
         <div className="flex-1 relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
           <Input
@@ -629,25 +629,119 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       {/* Guru List Content - Hybrid View */}
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
-          <MobileAcademicList
-            title="Direktori Guru"
-            data={gurus}
-            loading={isListLoading || loading}
-            totalItems={totalItems}
-            onRefresh={() => refetch()}
-            onAdd={onAdd}
-            canManage={canManage}
-            pagination={{
-              currentPage,
-              totalPages,
-              totalItems,
-              itemsPerPage,
-              onPageChange: handlePageChange,
-              onLimitChange: (limit) => {
-                setItemsPerPage(limit);
-                setCurrentPage(1);
-              }
-            }}
+          <div className="p-4 space-y-4">
+            {/* Mobile Search & Filter Section */}
+            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari guru (NIP, Nama, RFID)..."
+                  aria-label="Cari guru"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <SearchableSelect
+                  value={filterStatusKepegawaian}
+                  onValueChange={setFilterStatusKepegawaian}
+                  options={[
+                    { label: 'Semua Status', value: 'ALL' },
+                    { label: 'PNS', value: 'PNS' },
+                    { label: 'GTT', value: 'GTT' },
+                    { label: 'GTY', value: 'GTY' },
+                    { label: 'Honorer', value: 'HONORER' }
+                  ]}
+                  placeholder="Status"
+                  searchPlaceholder="Cari Status..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+
+                <SearchableSelect
+                  value={filterGender}
+                  onValueChange={setFilterGender}
+                  options={[
+                    { label: 'Semua Gender', value: 'ALL' },
+                    { label: 'Laki-laki', value: 'L' },
+                    { label: 'Perempuan', value: 'P' }
+                  ]}
+                  placeholder="Gender"
+                  searchPlaceholder="Cari Gender..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              {/* Action Buttons on Mobile */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {canManage && onAdd && (
+                  <Button 
+                    onClick={onAdd}
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    className="flex-1"
+                  >
+                    <Plus className="w-4 h-4 mr-1.5" />
+                    Tambah Guru
+                  </Button>
+                )}
+                {onImport && (
+                  <Button
+                    onClick={onImport}
+                    variant="toolbarOutline"
+                    size="toolbar"
+                  >
+                    <Upload className="w-4 h-4 mr-1.5" />
+                    Import
+                  </Button>
+                )}
+                {onExport && (
+                  <Button
+                    onClick={onExport}
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    disabled={isExporting}
+                  >
+                    <Download className="w-4 h-4 mr-1.5" />
+                    Export
+                  </Button>
+                )}
+                <Button
+                  onClick={() => {
+                    refetch();
+                    onRefresh?.();
+                  }}
+                  variant="toolbarGhost"
+                  size="toolbar"
+                  className="p-2"
+                  aria-label="Refresh data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <MobileAcademicList
+              title="Direktori Guru"
+              data={gurus}
+              loading={isListLoading || loading}
+              totalItems={totalItems}
+              onRefresh={() => refetch()}
+              onAdd={onAdd}
+              canManage={canManage}
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
             renderCard={useCallback((guru: Guru) => (
               <div 
                 key={guru.id}
