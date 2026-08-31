@@ -116,13 +116,6 @@ export const mapelService = {
       // Get paginated data
       const mapel = await prisma.mapel.findMany({
         where: whereClause,
-        include: {
-          _count: {
-            select: {
-              GuruMapel: true,
-            },
-          },
-        },
         orderBy: [
           { tingkat: 'asc' },
           { nama_mapel: 'asc' },
@@ -133,8 +126,39 @@ export const mapelService = {
 
       const totalPages = Math.ceil(total / limit);
 
+      // Compute distinct active teachers count per mapel from GuruMapel
+      const mapelIds = mapel.map((m) => m.id);
+      const distinctGuruMapel = mapelIds.length > 0
+        ? await prisma.guruMapel.findMany({
+            where: {
+              mapel_id: { in: mapelIds },
+              ...(requestingUserTenantId && !isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)
+                ? { tenant_id: requestingUserTenantId }
+                : {}),
+              Guru: { User: { status: 'ACTIVE' } },
+            },
+            select: {
+              mapel_id: true,
+              guru_id: true,
+            },
+            distinct: ['mapel_id', 'guru_id'],
+          })
+        : [];
+
+      const guruCountMap = new Map<string, number>();
+      for (const gm of distinctGuruMapel) {
+        guruCountMap.set(gm.mapel_id, (guruCountMap.get(gm.mapel_id) || 0) + 1);
+      }
+
+      const formattedData: MapelResponse[] = mapel.map((m) => ({
+        ...m,
+        _count: {
+          GuruMapel: guruCountMap.get(m.id) || 0,
+        },
+      }));
+
       return {
-        data: mapel as MapelResponse[],
+        data: formattedData,
         pagination: {
           page,
           limit,
@@ -158,16 +182,30 @@ export const mapelService = {
 
     const mapel = await prisma.mapel.findFirst({
       where: whereClause,
-      include: {
-        _count: {
-          select: {
-            GuruMapel: true,
-          },
-        },
-      },
     });
 
-    return mapel as MapelResponse | null;
+    if (!mapel) return null;
+
+    const distinctGuru = await prisma.guruMapel.findMany({
+      where: {
+        mapel_id: mapelId,
+        ...(requestingUserTenantId && !isSystemSuperAdmin(requestingUserRole, requestingUserTenantId)
+          ? { tenant_id: requestingUserTenantId }
+          : {}),
+        Guru: { User: { status: 'ACTIVE' } },
+      },
+      select: {
+        guru_id: true,
+      },
+      distinct: ['guru_id'],
+    });
+
+    return {
+      ...mapel,
+      _count: {
+        GuruMapel: distinctGuru.length,
+      },
+    } as MapelResponse;
   },
 
   async createMapel(input: CreateMapelInput, tenantId: string): Promise<MapelResponse> {

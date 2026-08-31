@@ -330,7 +330,6 @@ const MapelList = React.memo<MapelListProps>(({
     };
 
     const guruCount = mapel._count?.GuruMapel ?? mapel.GuruMapel?.length ?? 0;
-    const tingkatText = mapel.tingkat ? `Kelas ${mapel.tingkat}` : 'Semua Tingkat';
 
     return (
       <CleanDeckCard
@@ -339,10 +338,14 @@ const MapelList = React.memo<MapelListProps>(({
         subtitle={
           <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
             <span>{guruCount} Guru Pengampu</span>
-            <span>•</span>
-            <span className="font-semibold text-blue-600 dark:text-blue-400">
-              {tingkatText}
-            </span>
+            {mapel.tingkat ? (
+              <>
+                <span>•</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">
+                  Kelas {mapel.tingkat}
+                </span>
+              </>
+            ) : null}
           </div>
         }
         selected={selectedIds.has(mapel.id)}
