@@ -175,7 +175,7 @@ export default function PerangkatAjarPage() {
   const { options: tahunOptions, rawList: tahunPelajaranList, activeYear } = useTahunPelajaranOptions();
   const { options: semesterOptions, rawList: semesterList, activeSemester } = useSemesterOptions({ tahunPelajaranId: selectedTahun || activeYear?.id });
   const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
-  const { options: teacherOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
+  const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 
   const currentGuru = useMemo(() => {
     return (guruRawList || [])?.find((g) => g.user_id === user?.id || g.id === (user?.guru_profile as { id?: string })?.id);
