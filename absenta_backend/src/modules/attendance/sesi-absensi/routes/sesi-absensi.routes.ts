@@ -12,7 +12,7 @@ export async function sesiAbsensiRoutes(fastify: any) {
   fastify.post('/', {
     preHandler: [
         requireMultiSesiMode,
-        requireCapability('attendance.sessions.create', { exemptRoles: [RoleName.GURU, RoleName.ADMIN] }), 
+        requireCapability('attendance.sessions.create', { exemptRoles: [RoleName.GURU, RoleName.ADMIN, RoleName.SISWA] }), 
         organizationalScopeMiddleware,
         determineDataScope(),
         SesiGuard.validateCreate
@@ -152,7 +152,7 @@ export async function sesiAbsensiRoutes(fastify: any) {
   fastify.post('/generate-from-template', {
     preHandler: [
         requireMultiSesiMode,
-        requireCapability('attendance.sessions.create'),
+        requireCapability('attendance.sessions.create', { exemptRoles: [RoleName.GURU, RoleName.ADMIN, RoleName.SISWA] }),
         organizationalScopeMiddleware,
         determineDataScope()
     ],

@@ -2,7 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { sesiService } from '../services/sesi.service';
 import { createSesiAbsensiSchema, updateSesiAbsensiSchema, updateSesiStatusSchema, updateAbsenGuruSchema, tapSiswaSchema } from '../services/sesi-absensi.schema';
 import { systemConfigService } from '@/modules/system-config/services/system-config.service';
-import { getTenantLocalTime, generateSessionsForTenant } from '@/jobs/attendanceAutoSession.job';
+import { getTenantLocalTime, generateSessionsForTenant, generateSessionsForTenantDirect } from '@/jobs/attendanceAutoSession.job';
 import { sesiReminderService } from '../services/sesi-reminder.service';
 import { TeacherLocatorService } from '../services/teacher-locator.service';
 
@@ -377,8 +377,13 @@ export const sesiAbsensiController = {
       const cfg = await systemConfigService.getActive(tenantId);
       const { dateStr, timeZone } = getTenantLocalTime(cfg?.timezone, new Date());
 
-      // Trigger automatic generation logic for this specific tenant and today
-      const result = await generateSessionsForTenant(tenantId, dateStr, timeZone);
+      // Trigger direct generation first for instantaneous response
+      let result;
+      try {
+        result = await generateSessionsForTenantDirect(tenantId, dateStr, timeZone);
+      } catch (directErr) {
+        result = await generateSessionsForTenant(tenantId, dateStr, timeZone);
+      }
 
       if (!result.success) {
         reply.status(400);

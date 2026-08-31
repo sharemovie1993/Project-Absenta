@@ -10,18 +10,34 @@ export class SesiGuard {
     // 0. Bypass for System/Admin
     if (roleName === RoleName.SUPERADMIN || roleName === RoleName.ADMIN) return;
 
-    // 1. Check Active Petugas Assignment (Siswa or designated officers)
+    // 1. Check Active Petugas Assignment / Siswa Petugas Kelas
     const org = request.organizationalScope;
     const positions = org?.positions || [];
-    const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS');
+    const isPetugasSesi = positions.some((p: any) => p.code === 'PETUGAS_KELAS' || p.code === 'PETUGAS_ABSENSI' || p.code === 'PETUGAS_PIKET');
     
-    if (isPetugasSesi) {
+    if (roleName === RoleName.SISWA || isPetugasSesi) {
+      const siswa = await prisma.siswa.findFirst({
+        where: { user_id: request.user?.id, tenant_id: tenantId },
+        select: { id: true, kelas_id: true }
+      });
+      
       const kelasIds = Array.isArray(org?.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-      if (!kelas_id || !kelasIds.includes(String(kelas_id))) {
-        reply.status(403).send({ success: false, message: 'Forbidden: not active Petugas for this class' });
+      if (siswa?.kelas_id && !kelasIds.includes(String(siswa.kelas_id))) {
+        kelasIds.push(String(siswa.kelas_id));
+      }
+
+      const targetKelasId = String(kelas_id || siswa?.kelas_id || '');
+
+      if (!targetKelasId || !kelasIds.includes(targetKelasId)) {
+        reply.status(403).send({ success: false, message: 'Forbidden: Petugas hanya dapat membuka sesi untuk kelasnya sendiri.' });
         return;
       }
-      return; // Allowed
+
+      if (!request.body) request.body = {};
+      if (!request.body.kelas_id && targetKelasId) {
+        request.body.kelas_id = targetKelasId;
+      }
+      return; // Allowed for Petugas Kelas
     }
 
     // 2. Check if user is a Guru (GURU biasa)
@@ -41,7 +57,7 @@ export class SesiGuard {
       }
     }
 
-    // Default: Forbidden for Guru (even if Wali Kelas) or anyone else to create session
+    // Default: Forbidden for unauthorized users
     reply.status(403).send({ 
         success: false, 
         message: 'Forbidden: Pembuatan sesi hanya dapat dilakukan oleh Petugas Absensi aktif atau Admin.' 
