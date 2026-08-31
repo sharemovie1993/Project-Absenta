@@ -411,8 +411,8 @@ export const SettingsSection: React.FC = React.memo(() => {
   ], [handleADelete]);
 
   const tabs = useMemo(() => [
-    { id: 'pelanggaran', label: 'Kategori Pelanggaran & Poin' },
-    { id: 'prestasi', label: 'Kategori Prestasi & Poin' }
+    { id: 'pelanggaran', label: 'Pelanggaran' },
+    { id: 'prestasi', label: 'Prestasi' }
   ], []);
 
   if (loading) {
