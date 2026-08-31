@@ -1536,6 +1536,9 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/sesi" element={<Navigate to="/attendance/ops?tab=sesi" replace />} />
+                    <Route path="/attendance/gate" element={<Navigate to="/attendance/ops" replace />} />
+                    <Route path="/attendance/live-status" element={<Navigate to="/attendance/monitoring" replace />} />
+                    <Route path="/attendance/face-templates" element={<Navigate to="/attendance/rekam-wajah" replace />} />
                     <Route path="/attendance/ops" element={
                       <ProtectedRoute requiredCapability={['attendance.sessions.view.list', 'attendance.gate.tap.exit', 'attendance.sessions.create']}>
                         <Suspense fallback={

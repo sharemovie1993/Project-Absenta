@@ -307,9 +307,7 @@ async function main() {
       label: 'ABSENSI', icon: 'Clock', path: null, required_features: ['ABSENSI'], order: 20, children: [
         // Klaster 1: Operasional Presensi & Monitoring Real-Time
         { label: 'Dashboard Presensi', icon: 'LayoutDashboard', path: '/attendance/dashboard', required_capability: 'attendance.manage.session, attendance.sessions.create' },
-        { label: 'Operasional Presensi KBM', icon: 'Activity', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
-        { label: 'Presensi Gerbang', icon: 'Scan', path: '/attendance/gate', required_capability: 'attendance.gate.scan, attendance.gate.tap.entry' },
-        { label: 'Live Monitoring Gerbang', icon: 'Monitor', path: '/attendance/live-status', required_capability: 'attendance.gate.scan, attendance.gate.tap.entry' },
+        { label: 'Operasional Presensi (Gerbang & KBM)', icon: 'Scan', path: '/attendance/ops', required_capability: 'attendance.gate.tap.entry, attendance.sessions.create' },
         { label: 'Monitoring KBM Kelas', icon: 'Activity', path: '/attendance/monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
         { label: 'Monitoring Mengajar Guru', icon: 'UserCheck', path: '/attendance/guru-monitoring', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
         { label: 'Riwayat Presensi Saya', icon: 'User', path: '/attendance/my-attendance', required_capability: 'attendance.sessions.view.list, academic.teaching.view' },
@@ -323,7 +321,7 @@ async function main() {
         // Klaster 3: Infrastruktur & Jam Kerja
         { label: 'Petugas Absensi', icon: 'UserCheck', path: '/attendance/petugas', required_capability: 'attendance.manage.session, core.users.create' },
         { label: 'Perangkat & Mesin Absensi', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
-        { label: 'Perekaman Wajah (Biometrik)', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.scan' },
+        { label: 'Perekaman Wajah (Biometrik)', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.face.verify' },
         { label: 'Kejadian Khusus (Dispensasi)', icon: 'CalendarDays', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
       ]
     },

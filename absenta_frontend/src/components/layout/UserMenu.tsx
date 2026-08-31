@@ -225,7 +225,7 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
                 if (onOpenTeacherLocator) {
                   onOpenTeacherLocator();
                 } else {
-                  navigate('/attendance/live-status');
+                  navigate('/attendance/guru-monitoring');
                 }
               }}
               className="flex items-center justify-between w-full px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors group cursor-pointer"
