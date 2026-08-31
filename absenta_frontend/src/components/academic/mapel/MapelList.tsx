@@ -329,16 +329,19 @@ const MapelList = React.memo<MapelListProps>(({
       else if (onEdit) onEdit(mapel);
     };
 
+    const guruCount = mapel._count?.GuruMapel ?? mapel.GuruMapel?.length ?? 0;
+    const tingkatText = mapel.tingkat ? `Kelas ${mapel.tingkat}` : 'Semua Tingkat';
+
     return (
       <CleanDeckCard
         key={mapel.id}
         title={mapel.nama_mapel}
         subtitle={
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <span>{mapel.kode_mapel ? `Kode: ${mapel.kode_mapel}` : 'Tanpa Kode'}</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+            <span>{guruCount} Guru Pengampu</span>
             <span>•</span>
-            <span className="font-bold text-blue-600 dark:text-blue-400">
-              {mapel.tingkat ? `Kelas ${mapel.tingkat}` : 'Semua Tingkat'}
+            <span className="font-semibold text-blue-600 dark:text-blue-400">
+              {tingkatText}
             </span>
           </div>
         }
