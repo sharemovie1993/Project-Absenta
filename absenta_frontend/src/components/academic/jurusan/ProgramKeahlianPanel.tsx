@@ -318,10 +318,6 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
 
   const renderProgramKeahlianMobileCard = useCallback((pk: ProgramKeahlian) => {
     const totalKonsentrasi = pk._count?.Jurusan || 0;
-    const subText = [
-      `${totalKonsentrasi} Konsentrasi Keahlian`,
-      pk.bidang_keahlian
-    ].filter(Boolean).join(' • ');
 
     return (
       <div 
@@ -343,7 +339,7 @@ export const ProgramKeahlianPanel: React.FC<{ canEdit: boolean }> = ({ canEdit }
             {pk.nama}
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-            {subText}
+            {totalKonsentrasi} Konsentrasi Keahlian
           </p>
         </div>
 

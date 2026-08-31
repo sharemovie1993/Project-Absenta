@@ -74,6 +74,76 @@ export class ProgramKeahlianService {
     const limit = params?.limit || 50;
     const skip = (page - 1) * limit;
 
+    // Auto-link any unlinked Jurusan in the tenant to matching ProgramKeahlian
+    if (requestingUserTenantId) {
+      try {
+        const unlinkedJurusans = await prisma.jurusan.findMany({
+          where: { tenant_id: requestingUserTenantId, program_keahlian_id: null },
+          select: { id: true, nama: true, kode: true, singkatan: true }
+        });
+
+        if (unlinkedJurusans.length > 0) {
+          const allPrograms = await prisma.programKeahlian.findMany({
+            where: { tenant_id: requestingUserTenantId },
+            select: { id: true, nama: true, kode: true, singkatan: true }
+          });
+
+          const MAPPING_RULES: { keywords: string[]; programKodeOrName: string[] }[] = [
+            { keywords: ['AKL', 'AKUNTANSI'], programKodeOrName: ['AKL', 'AKUNTANSI DAN KEUANGAN LEMBAGA'] },
+            { keywords: ['KUL', 'KLN', 'KULINER', 'TATA BOGA'], programKodeOrName: ['KLN', 'KUL', 'KULINER'] },
+            { keywords: ['PH', 'PHT', 'PERHOTELAN', 'TATA HIDANG'], programKodeOrName: ['PH', 'PHT', 'PERHOTELAN'] },
+            { keywords: ['TOI', 'TAV', 'ELEKTRONIKA', 'AUDIO VIDEO', 'OTOMASI'], programKodeOrName: ['TE', 'TEKNIK ELEKTRONIKA'] },
+            { keywords: ['TKR', 'TSM', 'OTOMOTIF', 'KENDARAAN RINGAN', 'SEPEDA MOTOR', 'TBSM'], programKodeOrName: ['TO', 'TEKNIK OTOMOTIF'] },
+            { keywords: ['TKJ', 'TJKT', 'JARINGAN', 'KOMPUTER', 'RPL', 'PPLG', 'PERANGKAT LUNAK'], programKodeOrName: ['TJKT', 'PPLG', 'TEKNIK JARINGAN KOMPUTER DAN TELEKOMUNIKASI', 'PENGEMBANGAN PERANGKAT LUNAK DAN GIM'] },
+            { keywords: ['TP', 'MESIN', 'PEMESINAN', 'BUBUT', 'FRAIS'], programKodeOrName: ['TM', 'TEKNIK MESIN'] },
+            { keywords: ['TITL', 'LISTRIK', 'KETENAGALISTRIKAN', 'INSTALASI'], programKodeOrName: ['TKL', 'TEKNIK KETENAGALISTRIKAN'] },
+            { keywords: ['DKV', 'DESAIN KOMUNIKASI VISUAL', 'MULTIMEDIA', 'ANIMASI'], programKodeOrName: ['DKV', 'DESAIN KOMUNIKASI VISUAL', 'ANIMASI'] },
+            { keywords: ['BDP', 'PEMASARAN', 'BISNIS DIGITAL'], programKodeOrName: ['PM', 'PEMASARAN'] },
+            { keywords: ['OTKP', 'MPLB', 'PERKANTORAN'], programKodeOrName: ['MPLB', 'MANAJEMEN PERKANTORAN DAN LAYANAN BISNIS'] },
+            { keywords: ['TKP', 'DPIB', 'BANGUNAN', 'ARSITEKTUR', 'KONSTRUKSI'], programKodeOrName: ['TKP', 'DPIB', 'TEKNIK KONSTRUKSI DAN PERUMAHAN'] },
+            { keywords: ['BUSANA', 'TATA BUSANA'], programKodeOrName: ['BSN', 'BUSANA'] }
+          ];
+
+          for (const jur of unlinkedJurusans) {
+            const jurStr = `${jur.nama} ${jur.kode || ''} ${jur.singkatan || ''}`.toUpperCase();
+            
+            let matchedProg = allPrograms.find(p => {
+              const pCode = (p.kode || '').toUpperCase();
+              const pName = p.nama.toUpperCase();
+              const jCode = (jur.kode || '').toUpperCase();
+              const jSingkatan = (jur.singkatan || '').toUpperCase();
+              return (pCode && (jCode === pCode || jSingkatan === pCode)) ||
+                     (jur.nama && pName.includes(jur.nama.toUpperCase())) ||
+                     (jur.nama && jur.nama.toUpperCase().includes(pName));
+            });
+
+            if (!matchedProg) {
+              for (const rule of MAPPING_RULES) {
+                const matchesJur = rule.keywords.some(kw => jurStr.includes(kw));
+                if (matchesJur) {
+                  matchedProg = allPrograms.find(p => {
+                    const pCode = (p.kode || '').toUpperCase();
+                    const pName = p.nama.toUpperCase();
+                    return rule.programKodeOrName.some(target => pCode === target || pName.includes(target) || target.includes(pName));
+                  });
+                  if (matchedProg) break;
+                }
+              }
+            }
+
+            if (matchedProg) {
+              await prisma.jurusan.update({
+                where: { id: jur.id },
+                data: { program_keahlian_id: matchedProg.id }
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Auto-link Jurusan to ProgramKeahlian skipped:', err);
+      }
+    }
+
     // Get total count
     const total = await prisma.programKeahlian.count({ where: whereClause });
 
