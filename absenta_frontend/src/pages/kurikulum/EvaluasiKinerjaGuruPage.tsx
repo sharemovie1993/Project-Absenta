@@ -167,6 +167,14 @@ export const EvaluasiKinerjaGuruPage: React.FC = React.memo(() => {
     };
   }, [evaluasiData, teachersList]);
 
+  const [page, setPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(12);
+
+  // Reset pagination on filter changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchTerm, predikatFilter, statusKepegawaianFilter, tahunPelajaranId, semesterId]);
+
   // Client-side search filtering
   const filteredTeachers = useMemo(() => {
     if (!searchTerm.trim()) return teachersList;
@@ -178,6 +186,12 @@ export const EvaluasiKinerjaGuruPage: React.FC = React.memo(() => {
       t.jabatan.toLowerCase().includes(q)
     );
   }, [teachersList, searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTeachers.length / pageSize));
+  const paginatedTeachers = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredTeachers.slice(start, start + pageSize);
+  }, [filteredTeachers, page, pageSize]);
 
   // Data Radar Chart Rata-rata 5 Pilar Sekolah
   const schoolRadarData = useMemo(() => {
@@ -456,104 +470,183 @@ export const EvaluasiKinerjaGuruPage: React.FC = React.memo(() => {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredTeachers.map((teacher: TeacherEvaluationRecord) => {
-              const avatar = getAvatarColor(teacher.nama);
-              const predStyle = PREDIKAT_COLORS[teacher.predikat] || PREDIKAT_COLORS.B;
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {paginatedTeachers.map((teacher: TeacherEvaluationRecord) => {
+                const avatar = getAvatarColor(teacher.nama);
+                const predStyle = PREDIKAT_COLORS[teacher.predikat] || PREDIKAT_COLORS.B;
 
-              return (
-                <div
-                  key={teacher.id}
-                  className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between gap-3.5"
-                >
-                  {/* Top Profile Header */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className={cn(
-                        "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border",
-                        avatar.bg, avatar.text, avatar.border
-                      )}>
-                        {getInitials(teacher.nama)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
-                          {teacher.nama}
-                        </h4>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
-                          {teacher.nip ? `NIP: ${teacher.nip}` : teacher.jabatan}
-                        </p>
-                        <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block truncate mt-0.5">
-                          {teacher.mapel}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Predikat & Score Badge */}
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className={cn(
-                        "text-xs font-black px-2.5 py-0.5 rounded-lg border whitespace-nowrap",
-                        predStyle.badge, predStyle.text
-                      )}>
-                        Predikat {teacher.predikat}
-                      </span>
-                      <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
-                        {teacher.compositeScore}<span className="text-[10px] text-slate-400">/100</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 5-Pillar Score Indicators */}
-                  <div className="space-y-1.5 bg-slate-50/70 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
-                    <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
-                      <span>Capaian 5 Pilar Kinerja</span>
-                      <span className="text-slate-400 font-medium">Bobot 100%</span>
-                    </div>
-
-                    {[
-                      { label: 'Presensi (20%)', val: teacher.pillarScores.presensi, color: '#10B981' },
-                      { label: 'KBM Jam (25%)', val: teacher.pillarScores.kbmJam, color: '#6366F1' },
-                      { label: 'Jurnal KBM (20%)', val: teacher.pillarScores.jurnalKbm, color: '#3B82F6' },
-                      { label: 'Perangkat (15%)', val: teacher.pillarScores.perangkatAjar, color: '#8B5CF6' },
-                      { label: 'Supervisi (20%)', val: teacher.pillarScores.supervisi, color: '#F59E0B' },
-                    ].map(pilar => (
-                      <div key={pilar.label} className="flex items-center gap-2 text-xs">
-                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 w-24 truncate">
-                          {pilar.label}
-                        </span>
-                        <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            style={{ width: `${pilar.val}%`, backgroundColor: pilar.color }}
-                            className="h-full rounded-full transition-all duration-500"
-                          />
-                        </div>
-                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 w-7 text-right">
-                          {pilar.val}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Recommendations Banner */}
-                  <div className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-xs flex items-start gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
-                      {teacher.rekomendasi}
-                    </p>
-                  </div>
-
-                  {/* Detail Action */}
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    onClick={() => setSelectedGuruDetail(teacher)}
-                    className="w-full rounded-xl font-bold text-xs py-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5"
+                return (
+                  <div
+                    key={teacher.id}
+                    className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col justify-between gap-3.5"
                   >
-                    <span>Rapor Evaluasi Lengkap</span>
-                    <ChevronRight size={13} />
+                    {/* Top Profile Header */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={cn(
+                          "w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border",
+                          avatar.bg, avatar.text, avatar.border
+                        )}>
+                          {getInitials(teacher.nama)}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
+                            {teacher.nama}
+                          </h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
+                            {teacher.nip ? `NIP: ${teacher.nip}` : teacher.jabatan}
+                          </p>
+                          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 block truncate mt-0.5">
+                            {teacher.mapel}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Predikat & Score Badge */}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className={cn(
+                          "text-xs font-black px-2.5 py-0.5 rounded-lg border whitespace-nowrap",
+                          predStyle.badge, predStyle.text
+                        )}>
+                          Predikat {teacher.predikat}
+                        </span>
+                        <span className="text-xs font-extrabold text-slate-700 dark:text-slate-300">
+                          {teacher.compositeScore}<span className="text-[10px] text-slate-400">/100</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 5-Pillar Score Indicators */}
+                    <div className="space-y-1.5 bg-slate-50/70 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                      <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                        <span>Capaian 5 Pilar Kinerja</span>
+                        <span className="text-slate-400 font-medium">Bobot 100%</span>
+                      </div>
+
+                      {[
+                        { label: 'Presensi (20%)', val: teacher.pillarScores.presensi, color: '#10B981' },
+                        { label: 'KBM Jam (25%)', val: teacher.pillarScores.kbmJam, color: '#6366F1' },
+                        { label: 'Jurnal KBM (20%)', val: teacher.pillarScores.jurnalKbm, color: '#3B82F6' },
+                        { label: 'Perangkat (15%)', val: teacher.pillarScores.perangkatAjar, color: '#8B5CF6' },
+                        { label: 'Supervisi (20%)', val: teacher.pillarScores.supervisi, color: '#F59E0B' },
+                      ].map(pilar => (
+                        <div key={pilar.label} className="flex items-center gap-2 text-xs">
+                          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 w-24 truncate">
+                            {pilar.label}
+                          </span>
+                          <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              style={{ width: `${pilar.val}%`, backgroundColor: pilar.color }}
+                              className="h-full rounded-full transition-all duration-500"
+                            />
+                          </div>
+                          <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 w-7 text-right">
+                            {pilar.val}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Recommendations Banner */}
+                    <div className="p-2.5 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/30 text-xs flex items-start gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed line-clamp-2">
+                        {teacher.rekomendasi}
+                      </p>
+                    </div>
+
+                    {/* Detail Action */}
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      onClick={() => setSelectedGuruDetail(teacher)}
+                      className="w-full rounded-xl font-bold text-xs py-2 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center gap-1.5"
+                    >
+                      <span>Rapor Evaluasi Lengkap</span>
+                      <ChevronRight size={13} />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls Deck */}
+            {filteredTeachers.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
+                  <span>
+                    Menampilkan <strong className="text-slate-900 dark:text-slate-100 font-bold">{Math.min((page - 1) * pageSize + 1, filteredTeachers.length)}</strong> - <strong className="text-slate-900 dark:text-slate-100 font-bold">{Math.min(page * pageSize, filteredTeachers.length)}</strong> dari <strong className="text-slate-900 dark:text-slate-100 font-bold">{filteredTeachers.length}</strong> guru
+                  </span>
+                  <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
+                  <div className="flex items-center gap-1">
+                    <span className="text-[11px]">Baris:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="h-7 px-2 text-xs font-bold rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200"
+                    >
+                      <option value={6}>6</option>
+                      <option value={12}>12</option>
+                      <option value={24}>24</option>
+                      <option value={48}>48</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={page <= 1}
+                    onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                    className="rounded-xl px-3 h-8 text-xs font-bold"
+                  >
+                    Sebelumnya
+                  </Button>
+
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => {
+                        const prevP = arr[idx - 1];
+                        return (
+                          <React.Fragment key={p}>
+                            {prevP && p - prevP > 1 && (
+                              <span className="px-1 text-slate-400 text-xs">...</span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setPage(p)}
+                              className={cn(
+                                "w-8 h-8 rounded-xl text-xs font-bold transition-all",
+                                page === p
+                                  ? "bg-indigo-600 text-white shadow-xs"
+                                  : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              {p}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                    className="rounded-xl px-3 h-8 text-xs font-bold"
+                  >
+                    Selanjutnya
                   </Button>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         )}
 
