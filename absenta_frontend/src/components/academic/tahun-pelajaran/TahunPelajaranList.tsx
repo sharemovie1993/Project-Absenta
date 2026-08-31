@@ -316,7 +316,6 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
   ], [canManage, onEdit, onView, confirm, handleActivate, handleDelete]);
 
 
-  const renderTahunPelajaranMobileCard = useCallback((tp: TahunPelajaran) => {
   const renderMobileCard = useCallback((tp: TahunPelajaran) => {
     const isActive = tp.is_active;
     const semesterCount = tp._count?.Semester ?? 0;
