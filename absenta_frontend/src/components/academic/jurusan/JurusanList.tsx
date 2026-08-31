@@ -296,6 +296,13 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
   }, [currentPage, totalItems, itemsPerPage]);
 
   const renderJurusanMobileCard = useCallback((jurusan: Jurusan) => {
+    const totalRombel = (jurusan as any)._count?.Kelas ?? jurusan.Kelas?.length ?? 0;
+    const programKeahlian = jurusan.ProgramKeahlian?.nama || jurusan.keterangan;
+    const subText = [
+      `${totalRombel} Rombel / Kelas`,
+      programKeahlian
+    ].filter(Boolean).join(' • ');
+
     return (
       <div 
         key={jurusan.id}
@@ -312,16 +319,11 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
         className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
       >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
-              {jurusan.nama}
-            </h4>
-            <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
-              {jurusan.kode}
-            </span>
-          </div>
+          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+            {jurusan.nama}
+          </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-            Kode: {jurusan.kode || '-'} {jurusan.bidang_keahlian ? `• ${jurusan.bidang_keahlian}` : jurusan.keterangan ? `• ${jurusan.keterangan}` : ''}
+            {subText}
           </p>
         </div>
 
