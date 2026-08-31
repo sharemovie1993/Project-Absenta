@@ -317,193 +317,61 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
 
 
   const renderTahunPelajaranMobileCard = useCallback((tp: TahunPelajaran) => {
+  const renderMobileCard = useCallback((tp: TahunPelajaran) => {
     const isActive = tp.is_active;
-    const siswaAktif = (tp as any)._count?.SiswaAktif ?? (isActive ? (tp._count?.Siswa || 0) : 0);
-    const historiSiswa = (tp as any)._count?.HistoriSiswa ?? (tp as any)._count?.SiswaAkademik ?? tp._count?.Siswa ?? 0;
     const semesterCount = tp._count?.Semester ?? 0;
-    const hasAcademicData = (tp._count?.Siswa || 0) > 0 || (tp._count?.Semester || 0) > 0;
+    const siswaAktif = (tp as any)._count?.SiswaAktif ?? (isActive ? (tp._count?.Siswa || 0) : 0);
 
     return (
       <div
         key={tp.id}
+        role="button"
+        tabIndex={0}
         onClick={() => onView?.(tp)}
-        className={cn(
-          "relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.99]",
-          isActive 
-            ? "bg-gradient-to-br from-emerald-500/5 via-white to-emerald-500/10 dark:from-emerald-950/30 dark:via-slate-900 dark:to-emerald-950/20 border-emerald-300/80 dark:border-emerald-700/60 ring-1 ring-emerald-500/20"
-            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-        )}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onView?.(tp);
+          }
+        }}
+        aria-label={`Detail tahun pelajaran ${tp.tahun}`}
+        className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
       >
-        {/* Top Accent Strip for Active */}
-        {isActive && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
-        )}
-
-        {/* Header: Icon + Year + Status Badge + Toggle Switch */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs",
-              isActive 
-                ? "bg-emerald-500 text-white shadow-emerald-500/30" 
-                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-            )}>
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                  {tp.tahun}
-                </h3>
-                {isActive ? (
-                  <Badge variant="success" className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide">
-                    Sistem Berjalan
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="px-2 py-0.5 text-[10px] font-semibold">
-                    Nonaktif
-                  </Badge>
-                )}
-              </div>
-              {(tp.tanggal_mulai || tp.tanggal_selesai) && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">
-                  {tp.tanggal_mulai ? new Date(tp.tanggal_mulai).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : ''}
-                  {tp.tanggal_selesai ? ` - ${new Date(tp.tanggal_selesai).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' })}` : ''}
-                </p>
-              )}
-            </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {tp.tahun}
+            </h4>
+            {isActive ? (
+              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-md">
+                Sistem Berjalan
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+                Nonaktif
+              </span>
+            )}
           </div>
-
-          {/* Toggle Switch */}
-          {canManage && (
-            <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={async () => {
-                  if (isActive) {
-                    toast.error('Tahun pelajaran aktif tidak dapat dinonaktifkan secara langsung. Silakan aktifkan tahun pelajaran lainnya.');
-                    return;
-                  }
-                  const ok = await confirm({
-                    title: 'Konfirmasi Aktivasi Tahun Pelajaran',
-                    description: `Apakah Anda yakin ingin mengaktifkan tahun pelajaran "${tp.tahun}"?\nTindakan ini akan:\n• Menonaktifkan tahun pelajaran aktif sebelumnya\n• Mengubah konteks seluruh data akademik (absensi, nilai, laporan)`,
-                    confirmText: 'Aktifkan',
-                    cancelText: 'Batal',
-                    style: 'success',
-                  });
-                  if (ok) {
-                    await handleActivate(tp.id);
-                  }
-                }}
-                disabled={activateMutation.isPending}
-                className={cn(
-                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                  isActive ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700',
-                  activateMutation.isPending && 'opacity-50 cursor-not-allowed'
-                )}
-                aria-label={`Toggle status ${tp.tahun}`}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
-                    isActive ? 'translate-x-5' : 'translate-x-0'
-                  )}
-                />
-              </button>
-            </div>
-          )}
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            {semesterCount} Semester • {Number(siswaAktif).toLocaleString('id-ID')} Siswa
+          </p>
         </div>
 
-        {/* Mini Stats Grid (3 Col) */}
-        <div className="grid grid-cols-3 gap-2 py-2.5 px-3 rounded-xl bg-slate-50/80 dark:bg-slate-850/60 border border-slate-100 dark:border-slate-800/80 mb-3">
-          <div className="flex flex-col">
-            <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Siswa Aktif
-            </span>
-            <span className={cn(
-              "text-sm font-black mt-0.5",
-              isActive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-700 dark:text-slate-300"
-            )}>
-              {Number(siswaAktif).toLocaleString('id-ID')}
-            </span>
-          </div>
-          
-          <div className="flex flex-col border-l border-slate-200/60 dark:border-slate-700/60 pl-2.5">
-            <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Histori
-            </span>
-            <span className="text-sm font-black text-slate-700 dark:text-slate-300 mt-0.5">
-              {Number(historiSiswa).toLocaleString('id-ID')}
-            </span>
-          </div>
-
-          <div className="flex flex-col border-l border-slate-200/60 dark:border-slate-700/60 pl-2.5">
-            <span className="text-[9.5px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              Semester
-            </span>
-            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400 mt-0.5">
-              {semesterCount} Smt
-            </span>
-          </div>
-        </div>
-
-        {/* Action Footer */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80 gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onView?.(tp)}
-            className="h-8.5 text-xs font-bold rounded-xl flex-1 justify-center gap-1.5 border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Detail Semester</span>
-          </Button>
-
-          {canManage && (
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={isActive}
-                onClick={() => onEdit?.(tp)}
-                title={isActive ? "Tahun aktif tidak dapat diedit" : "Edit"}
-                className="h-8.5 px-2.5 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-40"
-              >
-                <Edit className="w-3.5 h-3.5" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={isActive || hasAcademicData}
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: 'Konfirmasi Hapus Tahun Pelajaran',
-                    description: `Apakah Anda yakin ingin menghapus tahun pelajaran "${tp.tahun}"? Tindakan ini tidak dapat dibatalkan.`,
-                    confirmText: 'Hapus',
-                    cancelText: 'Batal',
-                    style: 'danger',
-                  });
-                  if (ok) {
-                    await handleDelete(tp.id);
-                  }
-                }}
-                title={
-                  isActive 
-                    ? "Tahun aktif tidak dapat dihapus" 
-                    : hasAcademicData 
-                      ? "Tidak dapat dihapus karena memiliki data akademik" 
-                      : "Hapus"
-                }
-                className="h-8.5 px-2.5 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 disabled:opacity-40"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(tp);
+          }}
+          aria-label={`Detail ${tp.tahun}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
       </div>
     );
-  }, [canManage, activateMutation.isPending, handleActivate, handleDelete, onEdit, onView, confirm]);
+  }, [onView]);
 
   if (!canManage && !onView) {
     return null;
@@ -557,9 +425,15 @@ const TahunPelajaranList: React.FC<TahunPelajaranListProps> = React.memo(({
             pagination={{
               currentPage,
               totalPages,
-              onPageChange: handlePageChange
+              totalItems,
+              itemsPerPage,
+              onPageChange: handlePageChange,
+              onLimitChange: (limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }
             }}
-            renderCard={renderTahunPelajaranMobileCard}
+            renderCard={renderMobileCard}
           />
         ) : (
           <Table

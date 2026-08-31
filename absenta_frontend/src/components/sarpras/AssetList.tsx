@@ -199,79 +199,55 @@ const AssetList: React.FC<AssetListProps> = React.memo(({ onEdit, onView, onAdd,
   ], [onView, onEdit, getConditionColor]);
 
   const renderMobileCard = useCallback((asset: Asset) => {
+    const handleDetail = () => {
+      if (onView) onView(asset);
+      else setDetailModal({ isOpen: true, assetId: asset.id });
+    };
+
     return (
-      <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="h-10 w-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-              <Package size={20} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
-                {asset.nama}
-              </h4>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
-                {asset.kode || 'NO_CODE'} {asset.brand ? `• ${asset.brand}` : ''}
-              </p>
-            </div>
+      <div
+        key={asset.id}
+        role="button"
+        tabIndex={0}
+        onClick={handleDetail}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleDetail();
+          }
+        }}
+        aria-label={`Detail aset ${asset.nama}`}
+        className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {asset.nama}
+            </h4>
+            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-md", getConditionColor(asset.kondisi))}>
+              {asset.kondisi}
+            </span>
           </div>
-          <Badge className={`text-[10px] font-black shrink-0 ${getConditionColor(asset.kondisi)}`}>
-            {asset.kondisi}
-          </Badge>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            {asset.kode || 'NO_CODE'} • {asset.Category?.nama || 'Uncategorized'} • {asset.Location?.nama || 'Gudang'}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700/50 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <Tag size={13} className="text-indigo-500 shrink-0" />
-            <span className="truncate">{asset.Category?.nama || 'Uncategorized'}</span>
-          </div>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-            <MapPin size={13} className="text-rose-500 shrink-0" />
-            <span className="truncate">{asset.Location?.nama || 'Gudang'}</span>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/50">
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => {
-              if (onView) onView(asset);
-              else setDetailModal({ isOpen: true, assetId: asset.id });
-            }}
-            className="font-bold text-[11px] flex items-center gap-1"
-          >
-            <FileText size={12} /> Detail
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => setPrintModal({ isOpen: true, assets: [asset] })}
-            className="font-bold text-[11px] text-emerald-600 border-emerald-200 hover:bg-emerald-50 flex items-center gap-1"
-          >
-            <Printer size={12} /> Label
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            onClick={() => onEdit?.(asset)}
-            className="font-bold text-[11px] text-blue-600 border-blue-200 hover:bg-blue-50 flex items-center gap-1"
-          >
-            <Edit size={12} /> Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="xs"
-            onClick={() => setDeleteModal({ isOpen: true, assetId: asset.id })}
-            className="text-rose-500 hover:bg-rose-50 p-1.5"
-            aria-label={`Hapus ${asset.nama}`}
-          >
-            <Trash2 size={13} />
-          </Button>
-        </div>
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDetail();
+          }}
+          aria-label={`Detail ${asset.nama}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
       </div>
     );
-  }, [getConditionColor, onEdit, onView]);
+  }, [getConditionColor, onView]);
 
   const categoriesOptions = useMemo(() => {
     return [{ value: '', label: 'Semua Kategori' }, ...(categoryOptions || [])];
