@@ -26,6 +26,9 @@ import { useGuruOptions } from '../../../hooks/useGuruOptions';
 import { useMapelOptions } from '../../../hooks/useMapelOptions';
 import { TahunPelajaranSelect } from '../../common/TahunPelajaranSelect';
 import { SemesterSelect } from '../../common/SemesterSelect';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 
 interface Props {
   refreshTrigger?: number;
@@ -591,6 +594,162 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     }
   ], [canManage, handleDelete, onOpenTimeOff, jurusanDropdown, kelasDropdown, updatingScopeId, handleScopeChange, bebanGuruMap]);
 
+  const isMobile = useIsMobile();
+
+  const renderGuruMapelMobileCard = useCallback((gm: GuruMapel) => {
+    const guru = gm.Guru;
+    const mapel = gm.Mapel;
+    const beban = bebanGuruMap.get(gm.guru_id);
+    const colorStyle = getMapelColor(mapel?.nama_mapel || '');
+
+    const currentValue = gm.kelas_id
+      ? `KELAS:${gm.kelas_id}`
+      : gm.jurusan_id
+      ? `JURUSAN:${gm.jurusan_id}`
+      : 'GLOBAL';
+
+    const isUpdating = updatingScopeId === gm.id;
+
+    return (
+      <div
+        key={gm.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3.5"
+      >
+        {/* Header: Guru & Mapel Info */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs font-bold text-sm">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+                {guru?.nama_guru || '-'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                NIP: {guru?.nip || '-'}
+              </p>
+            </div>
+          </div>
+
+          <span
+            className="text-[10px] font-extrabold px-2.5 py-1 rounded-lg shrink-0 border uppercase tracking-wider"
+            style={{
+              backgroundColor: colorStyle.bg || undefined,
+              color: colorStyle.text || undefined,
+              borderColor: colorStyle.border || undefined,
+            }}
+          >
+            {mapel?.kode_mapel || 'MAPEL'}
+          </span>
+        </div>
+
+        {/* Mapel Detail Card */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Mata Pelajaran</span>
+            <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{mapel?.nama_mapel || '-'}</span>
+          </div>
+
+          {/* Beban Mengajar JP */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Beban Mengajar</span>
+            <div className="flex items-center gap-1.5 font-bold">
+              <span className="text-indigo-600 dark:text-indigo-400">
+                {beban?.current_jp || 0} JP
+              </span>
+              <span className="text-slate-400">/</span>
+              <span className="text-slate-500">
+                {beban?.max_jp || 24} Max JP
+              </span>
+            </div>
+          </div>
+
+          {/* Scope / Cakupan Plotting */}
+          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cakupan Plotting</span>
+            <div>
+              {!canManage ? (
+                gm.Kelas?.nama_kelas ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                    Kelas {gm.Kelas.nama_kelas}
+                  </span>
+                ) : gm.Jurusan?.nama ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                    Jurusan {gm.Jurusan.nama}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    Global (Semua Kelas)
+                  </span>
+                )
+              ) : (
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={currentValue}
+                    disabled={isUpdating}
+                    onChange={(e) => handleScopeChange(gm, e.target.value)}
+                    className={`text-[10px] font-extrabold px-2 py-1 rounded-lg border appearance-none pr-5 cursor-pointer transition-all focus:outline-none focus:ring-2 disabled:opacity-50 ${
+                      gm.kelas_id
+                        ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800 focus:ring-purple-500/50'
+                        : gm.jurusan_id
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800 focus:ring-indigo-500/50'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700 focus:ring-slate-400/50'
+                    }`}
+                  >
+                    <option value="GLOBAL">🌐 Global (Semua Kelas)</option>
+                    {jurusanDropdown.length > 0 && (
+                      <optgroup label="── Khusus Jurusan ──">
+                        {jurusanDropdown.map((j) => (
+                          <option key={j.value} value={`JURUSAN:${j.value}`}>
+                            🎓 Jurusan {j.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {kelasDropdown.length > 0 && (
+                      <optgroup label="── Khusus Kelas/Rombel ──">
+                        {kelasDropdown.map((k) => (
+                          <option key={k.value} value={`KELAS:${k.value}`}>
+                            🏫 Kelas {k.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                  <ChevronDown className="w-3 h-3 absolute right-1 pointer-events-none opacity-60 text-current" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {canManage && (
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onOpenTimeOff?.(gm.guru_id, guru?.nama_guru)}
+              className="h-8 text-xs font-bold text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl gap-1.5"
+            >
+              <Calendar className="w-3.5 h-3.5 text-amber-500" />
+              Time-Off
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleDelete(gm)}
+              className="h-8 text-xs font-bold text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl gap-1"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Hapus
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }, [bebanGuruMap, canManage, handleDelete, handleScopeChange, jurusanDropdown, kelasDropdown, onOpenTimeOff, updatingScopeId]);
+
   // Handle export to Excel
   const handleExport = useCallback(() => {
     try {
@@ -659,76 +818,92 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         </div>
       </div>
       
-      <div className="bg-transparent overflow-hidden">
-        <Table 
-          columns={columns} 
-          data={items} 
-          loading={loading}
-          emptyMessage="Belum ada pengampu" 
-          compact={true}
-          selectedRowKeys={selectedIds}
-          onSelectedRowKeysChange={setSelectedIds}
-          rowKey="id"
-          toolbarLeft={
-            <div className="flex flex-wrap items-center gap-2">
-               {canManage && onAdd && (
-                  <Button 
-                    onClick={onAdd}
-                    variant="toolbarPrimary"
-                    size="toolbar"
-                  >
-                    <Plus className="w-4 h-4 mr-1.5" />
-                    Tambah Pengampu
-                  </Button>
-               )}
-               
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbar"
-                 onClick={handleExport}
-                 className="rounded-xl"
-               >
-                 <Download className="w-3.5 h-3.5 mr-1.5" />
-                 Export
-               </Button>
-  
-               <Button
-                 variant="toolbarOutline"
-                 size="toolbarIcon"
-                 onClick={() => fetchData()}
-                 title="Refresh Data"
-                 className="rounded-xl"
-                 disabled={loading}
-               >
-                 <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-               </Button>
-            </div>
-          }
-          toolbarRight={
-            selectedIds.size > 0 && canManage && (
-              <Button
-                variant="toolbarDanger"
-                size="toolbar"
-                onClick={async () => {
-                  const ok = await confirm({
-                    title: 'Hapus Pengampu Terpilih',
-                    description: `Anda yakin ingin menghapus ${selectedIds.size} penugasan guru pengampu terpilih?`,
-                    confirmText: 'Hapus',
-                    cancelText: 'Batal',
-                    style: 'danger',
-                    withProgress: true,
-                    progressLabel: `Menghapus ${selectedIds.size} pengampu...`,
-                  });
-                  if (ok) await handleBulkDelete();
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                Hapus Terpilih ({selectedIds.size})
-              </Button>
-            )
-          }
-        />
-      </div>
+      {isMobile ? (
+        <div className="p-4 space-y-4">
+          <MobileAcademicList
+            title="Daftar Guru Pengampu"
+            data={items}
+            loading={loading}
+            totalItems={items.length}
+            onRefresh={() => fetchData()}
+            onAdd={canManage && onAdd ? onAdd : undefined}
+            canManage={canManage}
+            emptyMessage="Belum ada pengampu"
+            renderCard={renderGuruMapelMobileCard}
+          />
+        </div>
+      ) : (
+        <div className="bg-transparent overflow-hidden">
+          <Table 
+            columns={columns} 
+            data={items} 
+            loading={loading}
+            emptyMessage="Belum ada pengampu" 
+            compact={true}
+            selectedRowKeys={selectedIds}
+            onSelectedRowKeysChange={setSelectedIds}
+            rowKey="id"
+            toolbarLeft={
+              <div className="flex flex-wrap items-center gap-2">
+                 {canManage && onAdd && (
+                    <Button 
+                      onClick={onAdd}
+                      variant="toolbarPrimary"
+                      size="toolbar"
+                    >
+                      <Plus className="w-4 h-4 mr-1.5" />
+                      Tambah Pengampu
+                    </Button>
+                 )}
+                 
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbar"
+                   onClick={handleExport}
+                   className="rounded-xl"
+                 >
+                   <Download className="w-3.5 h-3.5 mr-1.5" />
+                   Export
+                 </Button>
+    
+                 <Button
+                   variant="toolbarOutline"
+                   size="toolbarIcon"
+                   onClick={() => fetchData()}
+                   title="Refresh Data"
+                   className="rounded-xl"
+                   disabled={loading}
+                 >
+                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                 </Button>
+              </div>
+            }
+            toolbarRight={
+              selectedIds.size > 0 && canManage && (
+                <Button
+                  variant="toolbarDanger"
+                  size="toolbar"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: 'Hapus Pengampu Terpilih',
+                      description: `Anda yakin ingin menghapus ${selectedIds.size} penugasan guru pengampu terpilih?`,
+                      confirmText: 'Hapus',
+                      cancelText: 'Batal',
+                      style: 'danger',
+                      withProgress: true,
+                      progressLabel: `Menghapus ${selectedIds.size} pengampu...`,
+                    });
+                    if (ok) await handleBulkDelete();
+                  }}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                  Hapus Terpilih ({selectedIds.size})
+                </Button>
+              )
+            }
+          />
+        </div>
+      )}
     </div>
   );
 });

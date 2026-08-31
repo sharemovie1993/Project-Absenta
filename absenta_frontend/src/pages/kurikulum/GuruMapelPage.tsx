@@ -182,7 +182,7 @@ const GuruMapelPage: React.FC = () => {
           fullWidth
           noPadding
           actions={
-            <div className="flex items-center gap-2 px-4 py-2">
+            <div className="flex flex-wrap items-center gap-2 px-4 py-2">
               <Link
                 to="/kurikulum/jadwal-kontrak-kbm"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 dark:hover:bg-indigo-900 transition-colors shadow-sm"
