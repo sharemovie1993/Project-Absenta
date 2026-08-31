@@ -69,6 +69,7 @@ export default function SupervisiPage() {
     queryClient.invalidateQueries({ queryKey: ['supervisi-analytics'] });
     queryClient.invalidateQueries({ queryKey: ['supervisi-recommendations'] });
     queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
   }, [queryClient]);
 
   // ── Tab state ──────────────────────────────────────────────────────────────

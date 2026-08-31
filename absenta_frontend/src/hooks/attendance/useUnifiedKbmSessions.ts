@@ -138,6 +138,8 @@ export function useUnifiedKbmSessions(options: UnifiedKbmSessionQueryOptions = {
       queryClient.invalidateQueries({ queryKey: ['presensi-terpadu-sesi'] });
       queryClient.invalidateQueries({ queryKey: ['today-kbm-schedule'] });
       queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-today'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
+      queryClient.invalidateQueries({ queryKey: ['rekap-kbm-list'] });
     };
 
     subscribe('SESI_CREATED', handleRealtimeUpdate);

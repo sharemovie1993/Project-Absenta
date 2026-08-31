@@ -24,6 +24,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
       queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal mengunggah berkas';
@@ -43,6 +44,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
       queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal memperbarui status verifikasi';
@@ -59,6 +61,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
       queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen';
@@ -76,6 +79,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
       queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menghapus dokumen terpilih';
@@ -103,6 +107,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       queryClient.invalidateQueries({ queryKey: ['global-topik-presets'] });
       queryClient.invalidateQueries({ queryKey: ['global-perangkat-library'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal mengklaim template';
@@ -155,6 +160,7 @@ export const usePerangkatAjarMutations = (params: any) => {
       setPage(1);
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-list'] });
       queryClient.invalidateQueries({ queryKey: ['perangkat-ajar-stats-all'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal menyimpan berkas editor';

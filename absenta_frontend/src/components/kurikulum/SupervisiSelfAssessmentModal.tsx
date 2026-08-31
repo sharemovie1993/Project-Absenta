@@ -53,6 +53,7 @@ export const SupervisiSelfAssessmentModal: React.FC<SupervisiSelfAssessmentModal
       queryClient.invalidateQueries({ queryKey: ['supervisi-list'] });
       queryClient.invalidateQueries({ queryKey: ['supervisi-analytics'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
       onSuccess();
       onClose();
     } catch (err: any) {

@@ -85,6 +85,7 @@ export const GuruMapelForm = React.memo<Props>(({ onSuccess, onCancel }) => {
         queryClient.invalidateQueries({ queryKey: ['beban-guru-list'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-kbm-grid'] });
         queryClient.invalidateQueries({ queryKey: ['jadwal-guru-timeline'] });
+        queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
 
         toast.success('Penugasan berhasil disimpan');
         onSuccess?.();

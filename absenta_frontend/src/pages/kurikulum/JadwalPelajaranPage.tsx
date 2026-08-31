@@ -483,6 +483,8 @@ export default function JadwalPelajaranPage() {
     queryClient.invalidateQueries({ queryKey: ['struktur-kurikulum-builder-jp'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kontrak-kbm'] });
     queryClient.invalidateQueries({ queryKey: ['jadwal-kontrak-kbm-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['evaluasi-kinerja-guru'] });
+    queryClient.invalidateQueries({ queryKey: ['rekap-kbm-list'] });
     queryClient.invalidateQueries({ queryKey: ['unified-jadwal-kbm-all'] });
   }, [queryClient]);
 
