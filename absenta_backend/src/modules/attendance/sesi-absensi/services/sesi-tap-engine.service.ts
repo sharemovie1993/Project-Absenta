@@ -101,15 +101,43 @@ export class SesiTapEngineService {
             ? (activeLeave.status === 'DISETUJUI' ? (activeLeave.GuruInval ? 'PENUGASAN' : (activeLeave.tipe_izin === 'DINAS_LUAR' ? 'DINAS_LUAR' : (activeLeave.tipe_izin === 'SAKIT' ? 'SAKIT' : 'IZIN'))) : 'PENDING_IZIN')
             : 'MENDATANG';
 
+          // 🛡️ Safely resolve foreign keys
+          let validGuruRecord: { id: string } | null = null;
+          const candidateGuruId = activeLeave?.guru_inval_id || jadwal.guru_id;
+          if (candidateGuruId && candidateGuruId !== 'default-guru') {
+            validGuruRecord = await prisma.guru.findFirst({
+              where: {
+                tenant_id: tenantId,
+                OR: [
+                  { id: candidateGuruId },
+                  { user_id: candidateGuruId }
+                ]
+              },
+              select: { id: true }
+            });
+          }
+          const validGuruId = validGuruRecord?.id || null;
+
+          let targetTpId = jadwal.tahun_pelajaran_id;
+          let targetSemId = jadwal.semester_id;
+          if (!targetTpId || targetTpId === 'default-tp') {
+            const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } });
+            targetTpId = activeTp?.id || (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }))?.id || 'default-tp';
+          }
+          if (!targetSemId || targetSemId === 'default-sem') {
+            const activeSem = await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } });
+            targetSemId = activeSem?.id || (await prisma.semester.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }))?.id || 'default-sem';
+          }
+
           const createdSesi = await prisma.sesiAbsensi.create({
             data: {
               tenant_id: tenantId,
               jadwal_kbm_id: jadwal.id,
               kelas_id: jadwal.kelas_id,
               mapel_id: jadwal.mapel_id,
-              guru_id: activeLeave?.guru_inval_id || jadwal.guru_id || 'default-guru',
-              tahun_pelajaran_id: jadwal.tahun_pelajaran_id || 'default-tp',
-              semester_id: jadwal.semester_id || 'default-sem',
+              guru_id: validGuruId,
+              tahun_pelajaran_id: targetTpId,
+              semester_id: targetSemId,
               jenis_kegiatan: 'KBM',
               sumber_sesi: 'TEMPLATE',
               tanggal: today,
@@ -124,16 +152,16 @@ export class SesiTapEngineService {
           sesi = { ...createdSesi, JadwalKBM: { id: jadwal.id, jam_mulai: jadwal.jam_mulai, jam_selesai: jadwal.jam_selesai } };
 
           // Create AbsenGuru record for leave if applicable
-          if (activeLeave && jadwal.guru_id) {
+          if (activeLeave && validGuruId) {
             await prisma.absenGuru.create({
               data: {
                 tenant_id: tenantId,
                 sesi_id: createdSesi.id,
-                guru_id: jadwal.guru_id,
+                guru_id: validGuruId,
                 status: initialGuruStatus === 'DINAS_LUAR' || initialGuruStatus === 'PENUGASAN' ? 'PENUGASAN' : (initialGuruStatus === 'SAKIT' ? 'SAKIT' : (initialGuruStatus === 'IZIN' ? 'IZIN' : 'PENUGASAN')),
                 catatan: `Izin Disetujui: ${activeLeave.alasan}`,
-                tahun_pelajaran_id: createdSesi.tahun_pelajaran_id || jadwal.tahun_pelajaran_id || 'default-tp',
-                semester_id: createdSesi.semester_id || jadwal.semester_id || 'default-sem'
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId
               }
             });
           }
@@ -404,6 +432,40 @@ export class SesiTapEngineService {
         if (existingForJadwal) {
           sesi = existingForJadwal;
         } else {
+          // 🛡️ Safely resolve foreign keys
+          let validGuruRecord: { id: string } | null = null;
+          const candidateGuruId = guruId || jadwal.guru_id;
+          if (candidateGuruId && candidateGuruId !== 'default-guru') {
+            validGuruRecord = await prisma.guru.findFirst({
+              where: {
+                tenant_id: tenantId,
+                OR: [
+                  { id: candidateGuruId },
+                  { user_id: candidateGuruId }
+                ]
+              },
+              select: { id: true }
+            });
+          }
+          if (!validGuruRecord && jadwal.guru_id) {
+            validGuruRecord = await prisma.guru.findFirst({
+              where: { id: jadwal.guru_id, tenant_id: tenantId },
+              select: { id: true }
+            });
+          }
+          const validGuruId = validGuruRecord?.id || null;
+
+          let targetTpId = jadwal.tahun_pelajaran_id;
+          let targetSemId = jadwal.semester_id;
+          if (!targetTpId || targetTpId === 'default-tp') {
+            const activeTp = await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } });
+            targetTpId = activeTp?.id || (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }))?.id || 'default-tp';
+          }
+          if (!targetSemId || targetSemId === 'default-sem') {
+            const activeSem = await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true }, select: { id: true } });
+            targetSemId = activeSem?.id || (await prisma.semester.findFirst({ where: { tenant_id: tenantId }, select: { id: true } }))?.id || 'default-sem';
+          }
+
           // Materialize physical session
           sesi = await prisma.sesiAbsensi.create({
             data: {
@@ -411,9 +473,9 @@ export class SesiTapEngineService {
               jadwal_kbm_id: jadwal.id,
               kelas_id: jadwal.kelas_id,
               mapel_id: jadwal.mapel_id,
-              guru_id: guruId || jadwal.guru_id,
-              tahun_pelajaran_id: jadwal.tahun_pelajaran_id || 'default-tp',
-              semester_id: jadwal.semester_id || 'default-sem',
+              guru_id: validGuruId,
+              tahun_pelajaran_id: targetTpId,
+              semester_id: targetSemId,
               jenis_kegiatan: 'KBM',
               sumber_sesi: 'TEMPLATE',
               tanggal: today,
@@ -448,8 +510,25 @@ export class SesiTapEngineService {
       }
     }
 
-    const effectiveGuruId = guruId || sesi.guru_id;
-    if (!effectiveGuruId) throw new Error('Guru ID tidak ditemukan untuk sesi ini');
+    // Resolve valid effective guru ID for AbsenGuru record
+    let effectiveGuruRecord: { id: string } | null = null;
+    const candidateEffectiveId = guruId || sesi.guru_id;
+    if (candidateEffectiveId && candidateEffectiveId !== 'default-guru') {
+      effectiveGuruRecord = await prisma.guru.findFirst({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { id: candidateEffectiveId },
+            { user_id: candidateEffectiveId }
+          ]
+        },
+        select: { id: true }
+      });
+    }
+    const effectiveGuruId = effectiveGuruRecord?.id || sesi.guru_id;
+    if (!effectiveGuruId) {
+      return { success: true, message: 'Tidak ada guru yang terikat dengan sesi ini', data: sesi };
+    }
 
     const existing = await prisma.absenGuru.findFirst({
       where: {

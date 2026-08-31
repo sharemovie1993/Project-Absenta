@@ -368,6 +368,24 @@ export class SesiCreatorService {
 
     const resolvedSumberSesi = payload.sumber_sesi || (validJadwalKbmId || payload.jadwal_kegiatan_id ? 'TEMPLATE' : 'MANUAL');
 
+    // 🛡️ Safely resolve guru_id foreign key
+    let validGuruId: string | null = null;
+    if (guru_id && guru_id !== 'default-guru') {
+      const guruExists = await prisma.guru.findFirst({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { id: guru_id },
+            { user_id: guru_id }
+          ]
+        },
+        select: { id: true }
+      });
+      if (guruExists) {
+        validGuruId = guruExists.id;
+      }
+    }
+
     const sesi = await (prisma.sesiAbsensi as any).create({
       data: {
         tenant_id: tenantId,
@@ -375,7 +393,7 @@ export class SesiCreatorService {
         jadwal_kegiatan_id: payload.jadwal_kegiatan_id || null,
         kelas_id,
         mapel_id: mapel_id || null,
-        guru_id: guru_id || null,
+        guru_id: validGuruId,
         tahun_pelajaran_id: targetTpId || 'default-tp',
         semester_id: targetSemId || 'default-sem',
         jenis_kegiatan,
@@ -389,7 +407,7 @@ export class SesiCreatorService {
       }
     });
 
-    if (guru_id && finalFotoUrl) {
+    if (validGuruId && finalFotoUrl) {
       // ⚖️ Aturan KERAS: Guru dievaluasi dari jam jadwal resmi (JadwalKBM.jam_mulai),
       // BUKAN dari parsedStart (waktu fisik guru buka sesi).
       let teacherScheduledStart: Date = parsedStart;
@@ -403,7 +421,7 @@ export class SesiCreatorService {
       await upsertTeacherAttendanceOnOpen(
         tenantId,
         sesi.id,
-        guru_id,
+        validGuruId,
         teacherScheduledStart,
         targetTpId || 'default-tp',
         targetSemId || 'default-sem',
