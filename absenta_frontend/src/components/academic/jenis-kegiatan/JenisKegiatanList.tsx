@@ -177,127 +177,52 @@ export const JenisKegiatanList: React.FC<JenisKegiatanListProps> = React.memo(({
     return (
       <div
         key={item.id}
+        role="button"
+        tabIndex={0}
         onClick={() => onView(item)}
-        className={cn(
-          "relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all duration-200 cursor-pointer active:scale-[0.99] space-y-3",
-          item.aktif 
-            ? "bg-gradient-to-br from-emerald-500/5 via-white to-emerald-500/10 dark:from-emerald-950/30 dark:via-slate-900 dark:to-emerald-950/20 border-emerald-300/80 dark:border-emerald-700/60 ring-1 ring-emerald-500/20"
-            : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
-        )}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onView(item);
+          }
+        }}
+        aria-label={`Detail jenis kegiatan ${item.nama}`}
+        className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
       >
-        {/* Top Accent Strip for Active */}
-        {item.aktif && (
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600" />
-        )}
-
-        {/* Header: Icon + Name + Type Badge + Toggle Switch */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className={cn(
-              "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs",
-              item.aktif 
-                ? "bg-emerald-500 text-white shadow-emerald-500/30" 
-                : "bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400"
-            )}>
-              <ListChecks className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight leading-none">
-                  {item.nama}
-                </h3>
-                <Badge variant={variants[item.tipe] || 'outline'} className="text-[9px] px-1.5 py-0 font-bold">
-                  {item.tipe}
-                </Badge>
-              </div>
-              <p className="text-[11px] text-slate-400 font-medium mt-1">
-                Kategori Aktivitas Sekolah
-              </p>
-            </div>
-          </div>
-
-          {/* Toggle Switch */}
-          {canManage && (
-            <div className="flex items-center shrink-0" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    setTogglingId(item.id);
-                    await onToggleActive?.(item);
-                  } finally {
-                    setTogglingId(null);
-                  }
-                }}
-                disabled={isToggling}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none",
-                  item.aktif ? "bg-emerald-500 hover:bg-emerald-600" : "bg-slate-300 dark:bg-slate-750",
-                  isToggling && "opacity-50 cursor-not-allowed"
-                )}
-                aria-label={`Toggle status ${item.nama}`}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out",
-                    item.aktif ? "translate-x-4" : "translate-x-0"
-                  )}
-                />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Details: Urutan & Status */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <span className="text-[10px] text-slate-400 block font-medium">Urutan Tampilan</span>
-            <span className="font-bold text-slate-700 dark:text-slate-200">
-              {item.urutan ?? '-'}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {item.nama}
+            </h4>
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
+              {item.tipe}
             </span>
+            {!item.aktif && (
+              <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded-md">
+                Nonaktif
+              </span>
+            )}
           </div>
-          <div>
-            <span className="text-[10px] text-slate-400 block font-medium">Status</span>
-            <Badge variant={item.aktif ? 'success' : 'secondary'} className="text-[9px] py-0.5 px-2 rounded-full font-bold inline-block">
-              {item.aktif ? 'Aktif' : 'Nonaktif'}
-            </Badge>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            Urutan: {item.urutan ?? '-'}
+          </p>
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onView(item)}
-            className="text-xs text-slate-700 dark:text-slate-300 font-bold"
-          >
-            <Eye className="w-3.5 h-3.5 mr-1 text-slate-500" /> Detail
-          </Button>
-          {canManage && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onEdit(item)}
-                className="text-xs text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-800 font-bold"
-              >
-                <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onDelete(item.id)}
-                className="text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 font-bold"
-              >
-                <Trash2 className="w-3.5 h-3.5 mr-1" /> Hapus
-              </Button>
-            </>
-          )}
-        </div>
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView(item);
+          }}
+          aria-label={`Detail ${item.nama}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
       </div>
     );
-  }, [canManage, onView, onEdit, onDelete, onToggleActive, togglingId]);
+  }, [onView]);
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">

@@ -329,39 +329,46 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
             renderCard={useCallback((jurusan: Jurusan) => (
               <div 
                 key={jurusan.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                role="button"
+                tabIndex={0}
                 onClick={() => onEdit?.(jurusan)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onEdit?.(jurusan);
+                  }
+                }}
+                aria-label={`Detail jurusan ${jurusan.nama}`}
+                className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{jurusan.nama}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="success" className="font-mono text-[9px] px-1.5 py-0.5">
-                        {jurusan.kode}
-                      </Badge>
-                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight">
-                        ID: {jurusan.id.substring(0, 8)}
-                      </span>
-                    </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                      {jurusan.nama}
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
+                      {jurusan.kode}
+                    </span>
                   </div>
-                  <Badge variant="info" className="text-[9px] px-2 py-0.5 rounded-full">
-                    Jurusan
-                  </Badge>
+                  {jurusan.keterangan && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+                      {jurusan.keterangan}
+                    </p>
+                  )}
                 </div>
-                
-                <div className="flex items-center justify-end pt-3 border-t border-slate-100 dark:border-slate-800/50">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit?.(jurusan);
-                    }}
-                    className="h-10 px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
-                  >
-                    Detail & Edit
-                  </Button>
-                </div>
+
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit?.(jurusan);
+                  }}
+                  aria-label={`Detail ${jurusan.nama}`}
+                  className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                >
+                  Detail
+                </Button>
               </div>
             ), [onEdit])}
           />

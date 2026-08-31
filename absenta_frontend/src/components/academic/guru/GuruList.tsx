@@ -645,50 +645,46 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             renderCard={useCallback((guru: Guru) => (
               <div 
                 key={guru.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => onView?.(guru)}
-                className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onView?.(guru);
+                  }
+                }}
+                aria-label={`Lihat detail ${guru.nama_guru}`}
+                className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="font-bold text-slate-900 dark:text-slate-100 leading-tight text-base">{guru.nama_guru}</div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight mt-0.5">
-                      {guru.nip || 'Tanpa NIP'} • {guru.status_kepegawaian || 'Guru'}
-                    </p>
-                  </div>
-                  <Badge variant="info" className="text-[9px] px-2 py-0.5 rounded-full">
-                    {guru.User?.role?.name || 'N/A'}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800/50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">RFID</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono tracking-tighter">
-                        {guru.no_rfid || '-'}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                      {guru.nama_guru}
+                    </h4>
+                    {guru.status_kepegawaian && (
+                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
+                        {guru.status_kepegawaian}
                       </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Email</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
-                        {guru.User?.email || '-'}
-                      </span>
-                    </div>
+                    )}
                   </div>
-                  
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onView?.(guru);
-                    }}
-                    aria-label={`Lihat detail ${guru.nama_guru}`}
-                    className="h-11 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 font-bold text-[11px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
-                  >
-                    Detail
-                  </Button>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'} {guru.User?.email ? `• ${guru.User.email}` : ''}
+                  </p>
                 </div>
+
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onView?.(guru);
+                  }}
+                  aria-label={`Detail ${guru.nama_guru}`}
+                  className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+                >
+                  Detail
+                </Button>
               </div>
             ), [onView])}
           />
