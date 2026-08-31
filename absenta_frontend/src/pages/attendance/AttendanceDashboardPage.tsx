@@ -30,6 +30,7 @@ import {
   getGerbangStats, 
   getAttendanceFeed, 
   getStatistikHarian, 
+  getSesiAbsensiList,
   getRekapHarianSiswaMe, 
   getRekapBulananSiswaMe,
   type GerbangStats
@@ -64,8 +65,8 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
   const { data: dashboardData, isLoading, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['attendance-dashboard-live', isSiswa],
     queryFn: async () => {
+      const todayStr = new Date().toISOString().slice(0, 10);
       if (isSiswa) {
-        const todayStr = new Date().toISOString().slice(0, 10);
         const thisMonthStr = todayStr.slice(0, 7);
         const [dailyRes, monthlyRes] = await Promise.all([
           getRekapHarianSiswaMe({ tanggal: todayStr }).catch(() => null),
@@ -79,16 +80,34 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
           devices: []
         };
       } else {
-        const [statsRes, feedRes, harianRes, devicesRes] = await Promise.all([
+        const [statsRes, feedRes, harianRes, devicesRes, sesiRes] = await Promise.all([
           getGerbangStats().catch(() => null),
           getAttendanceFeed().catch(() => null),
-          getStatistikHarian().catch(() => null),
-          getDevices(1, 10).catch(() => null)
+          getStatistikHarian({ tanggal: todayStr }).catch(() => null),
+          getDevices(1, 10).catch(() => null),
+          getSesiAbsensiList({ tanggal: todayStr }).catch(() => null)
         ]);
+
+        const rawSesiList = Array.isArray(sesiRes?.data) ? sesiRes.data : (sesiRes?.data?.sessions || []);
+        const formattedKbmFeed = rawSesiList.map((s: any) => ({
+          title: `${s.Kelas?.nama_kelas || s.kelas_nama || 'Kelas'}: ${s.Mapel?.nama_mapel || s.mapel_nama || s.jenis_kegiatan || 'KBM'}`,
+          status: s.status,
+          guru: s.Guru?.nama_guru || s.guru_nama || 'Guru Pengampu',
+          message: s.waktu_mulai ? `Jam: ${s.waktu_mulai.slice(11, 16)}` : '',
+          counts: s.summary || {
+            HADIR: s._count?.AbsenSiswa || 0,
+            TERLAMBAT: 0,
+            IZIN: 0,
+            ALPA: 0
+          }
+        }));
+
+        const finalFeed = formattedKbmFeed.length > 0 ? formattedKbmFeed : (feedRes?.data || []);
+
         return {
           myAttendance: null,
           stats: statsRes?.data || null,
-          feed: feedRes?.data || [],
+          feed: finalFeed,
           statistikHarian: (harianRes?.data || []) as DailyStatItem[],
           devices: (devicesRes?.data || [])
         };
@@ -103,38 +122,60 @@ export const AttendanceDashboardPage: React.FC = React.memo(() => {
   const statistikHarian = useMemo(() => dashboardData?.statistikHarian || [], [dashboardData]);
 
   const computedStats = useMemo(() => {
+    if (statistikHarian && statistikHarian.length > 0) {
+      let hadir = 0;
+      let terlambat = 0;
+      let sakitIzin = 0;
+      let alpa = 0;
+
+      for (const item of statistikHarian) {
+        hadir += (item.HADIR || 0);
+        terlambat += (item.TERLAMBAT || 0);
+        sakitIzin += (item.SAKIT || 0) + (item.IZIN || 0);
+        alpa += (item.ALPA || 0);
+      }
+
+      if (hadir > 0 || terlambat > 0 || sakitIzin > 0) {
+        return { hadir, terlambat, sakitIzin, alpa };
+      }
+    }
+
     return {
       hadir: stats?.summary?.hadir || stats?.hadir || 0,
       terlambat: stats?.summary?.terlambat || stats?.terlambat || 0,
       sakitIzin: (stats?.summary?.sakit || 0) + (stats?.summary?.izin || 0) || (stats?.sakit || 0) + (stats?.izin || 0),
       alpa: stats?.summary?.alpa || stats?.alpa || 0,
     };
-  }, [stats]);
+  }, [stats, statistikHarian]);
 
   const chartData = useMemo(() => {
-    return (statistikHarian ?? [])?.map(item => ({
-      kelas: item.kelas,
-      HADIR: item.HADIR || 0,
-      TERLAMBAT: item.TERLAMBAT || 0,
-      ALPA: item.ALPA || 0
-    }));
+    return (statistikHarian ?? [])
+      .filter(item => (item.HADIR || 0) + (item.TERLAMBAT || 0) + (item.ALPA || 0) + (item.IZIN || 0) + (item.SAKIT || 0) > 0)
+      .map(item => ({
+        kelas: item.kelas,
+        HADIR: item.HADIR || 0,
+        TERLAMBAT: item.TERLAMBAT || 0,
+        ALPA: item.ALPA || 0
+      }));
   }, [statistikHarian]);
 
   const statsBySector = useMemo(() => {
     const sectors: Record<string, { hadir: number; total: number }> = {};
     (statistikHarian ?? []).forEach(item => {
-      const parts = item.kelas.split(' ');
+      const parts = (item.kelas || '').split(' ');
       const sector = parts[0] || 'Umum';
       if (!sectors[sector]) sectors[sector] = { hadir: 0, total: 0 };
       sectors[sector].hadir += item.HADIR || 0;
       sectors[sector].total += (item.HADIR || 0) + (item.TERLAMBAT || 0) + (item.ALPA || 0) + (item.IZIN || 0) + (item.SAKIT || 0);
     });
-    return Object.entries(sectors)?.map(([name, data]) => ({
-      nama: name,
-      persentase: data.total > 0 ? Math.round((data.hadir / data.total) * 100) : 0,
-      hadir: data.hadir,
-      total: data.total
-    }));
+    return Object.entries(sectors)
+      .filter(([_, data]) => data.total > 0)
+      .map(([name, data]) => ({
+        name: name,
+        percentage: data.total > 0 ? Math.round((data.hadir / data.total) * 100) : 0,
+        hadir: data.hadir,
+        total: data.total
+      }));
   }, [statistikHarian]);
 
   const terminalDevices = useMemo(() => {
