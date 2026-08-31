@@ -983,37 +983,36 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       aria-label={`Lihat detail ${siswa.nama_siswa}`}
       className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
     >
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black text-sm flex items-center justify-center shrink-0 border border-blue-500/20">
-          {siswa.nama_siswa?.charAt(0)?.toUpperCase() || 'S'}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
             {siswa.nama_siswa}
           </h3>
-          <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
-            {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} {siswa.nis ? `• ${siswa.nis}` : ''}
-          </p>
+          {siswa.status && siswa.status !== 'AKTIF' && (
+            <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md">
+              {siswa.status}
+            </span>
+          )}
         </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+          {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} {siswa.nis ? `• NIS: ${siswa.nis}` : ''} {siswa.jenis_kelamin ? `• ${siswa.jenis_kelamin === 'L' ? 'L' : 'P'}` : ''}
+        </p>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {getStatusBadge(siswa.status)}
-        <Button
-          size="xs"
-          variant="outline"
-          onClick={(e) => {
-            e.stopPropagation();
-            onView?.(siswa);
-          }}
-          aria-label={`Lihat detail ${siswa.nama_siswa}`}
-          className="rounded-xl px-3 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-        >
-          Detail
-        </Button>
-      </div>
+      <Button
+        size="xs"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          onView?.(siswa);
+        }}
+        aria-label={`Lihat detail ${siswa.nama_siswa}`}
+        className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+      >
+        Detail
+      </Button>
     </div>
-  ), [onView, getStatusBadge]);
+  ), [onView]);
 
   if (isListLoading) {
     return (

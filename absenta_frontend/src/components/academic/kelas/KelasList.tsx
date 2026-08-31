@@ -477,42 +477,37 @@ const KelasList = React.memo<KelasListProps>(({
         aria-label={`Lihat detail ${kelas.nama_kelas}`}
         className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
       >
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-extrabold text-sm flex items-center justify-center shrink-0 border border-indigo-500/20">
-            <School size={18} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {kelas.nama_kelas}
+            </h4>
+            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">
+              Tk. {kelas.tingkat}
+            </span>
+            {!kelas.is_active && (
+              <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/40 px-1.5 py-0.5 rounded-md">
+                Nonaktif
+              </span>
+            )}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
-                {kelas.nama_kelas}
-              </h4>
-              <Badge variant="outline" className="text-[9px] font-black px-1.5 py-0 shrink-0">
-                Tk. {kelas.tingkat}
-              </Badge>
-            </div>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
-              {waliKelasNama ? `Walas: ${waliKelasNama}` : 'Walas: -'} • {count} Siswa
-            </p>
-          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+            {waliKelasNama ? `Walas: ${waliKelasNama}` : 'Walas: -'} • {count} Siswa
+          </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant={kelas.is_active ? 'success' : 'error'} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg">
-            {kelas.is_active ? 'Aktif' : 'Nonaktif'}
-          </Badge>
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
-              onView?.(kelas);
-            }}
-            aria-label={`Lihat detail ${kelas.nama_kelas}`}
-            className="rounded-xl px-3 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
-          >
-            Detail
-          </Button>
-        </div>
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView?.(kelas);
+          }}
+          aria-label={`Lihat detail ${kelas.nama_kelas}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
       </div>
     );
   }, [onView]);
