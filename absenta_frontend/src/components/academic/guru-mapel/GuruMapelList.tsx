@@ -6,7 +6,7 @@ import { Loader } from '../../ui/Loader';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Input } from '../../ui/Input';
 import { SectionCard } from '../../ui/SectionCard';
-import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock } from 'lucide-react';
+import { Trash2, Plus, Search, RefreshCw, Users, BookOpen, FileSpreadsheet, Download, Layers, Calendar, ChevronDown, Clock, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { listGuruMapel, removeGuruMapel, assignGuruMapel } from '../../../api/kurikulum/guru-mapel.api';
 import { kurikulumApi } from '../../../api/kurikulum.api';
 import type { GuruMapel } from '../../../types/academic';
@@ -66,6 +66,9 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
+  const [viewMode, setViewMode] = useState<'by_mapel' | 'table'>('by_mapel');
+  const [mapelPage, setMapelPage] = useState(1);
+  const mapelLimit = 8;
 
   const { isKurikulum, isAdmin, can } = useCapabilities();
   const canManage = useMemo(() => {
@@ -196,8 +199,44 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     return filteredItems.slice(start, start + limit);
   }, [filteredItems, page, limit]);
 
+  const mapelGroups = useMemo(() => {
+    const groupMap = new Map<string, {
+      mapel_id: string;
+      nama_mapel: string;
+      kode_mapel: string;
+      assignments: GuruMapel[];
+    }>();
+
+    filteredItems.forEach((gm) => {
+      const mapelId = gm.mapel_id || 'UNKNOWN';
+      const namaMapel = gm.Mapel?.nama_mapel || 'Tanpa Mapel';
+      const kodeMapel = gm.Mapel?.kode_mapel || '-';
+
+      if (!groupMap.has(mapelId)) {
+        groupMap.set(mapelId, {
+          mapel_id: mapelId,
+          nama_mapel: namaMapel,
+          kode_mapel: kodeMapel,
+          assignments: [],
+        });
+      }
+      groupMap.get(mapelId)!.assignments.push(gm);
+    });
+
+    return Array.from(groupMap.values()).sort((a, b) => 
+      a.nama_mapel.localeCompare(b.nama_mapel)
+    );
+  }, [filteredItems]);
+
+  const totalMapelPages = Math.ceil(mapelGroups.length / mapelLimit) || 1;
+  const paginatedMapelGroups = useMemo(() => {
+    const start = (mapelPage - 1) * mapelLimit;
+    return mapelGroups.slice(start, start + mapelLimit);
+  }, [mapelGroups, mapelPage, mapelLimit]);
+
   useEffect(() => {
     setPage(1);
+    setMapelPage(1);
   }, [debouncedSearch, selectedGuruId, selectedMapelId, selectedTahunPelajaranId, selectedSemesterId]);
 
   useEffect(() => {
@@ -840,109 +879,401 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
+
+        {/* View Mode Toggle: Per Mapel vs Tabel */}
+        <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl shrink-0 w-full md:w-auto justify-center">
+          <button
+            type="button"
+            onClick={() => setViewMode('by_mapel')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+              viewMode === 'by_mapel'
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            <span>Per Mapel</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer",
+              viewMode === 'table'
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            <ListIcon className="w-3.5 h-3.5" />
+            <span>Tabel</span>
+          </button>
+        </div>
       </div>
       
-      {isMobile ? (
-        <div className="p-4 space-y-4">
-          <MobileAcademicList
-            title="Daftar Guru Pengampu"
-            data={paginatedItems}
-            loading={loading}
-            totalItems={filteredItems.length}
-            onRefresh={() => fetchData()}
-            onAdd={canManage && onAdd ? onAdd : undefined}
-            canManage={canManage}
-            emptyMessage="Belum ada pengampu"
-            pagination={{
-              currentPage: page,
-              totalPages: totalPages,
-              onPageChange: setPage
-            }}
-            renderCard={renderGuruMapelMobileCard}
-          />
+      {/* ── MODE 1: Pengelompokan Berdasarkan Mapel ────────────────────────── */}
+      {viewMode === 'by_mapel' ? (
+        <div className="p-4 sm:p-6 space-y-6">
+          {/* Header Action Bar */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                Pengelompokan Berdasarkan Mata Pelajaran
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Ditemukan {mapelGroups.length} mata pelajaran dengan total {filteredItems.length} penugasan guru
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {canManage && onAdd && (
+                <Button
+                  onClick={onAdd}
+                  size="sm"
+                  className="rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Pengampu
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                className="rounded-xl font-bold text-xs gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fetchData()}
+                disabled={loading}
+                className="h-8 w-8 rounded-xl"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-20">
+              <Loader />
+            </div>
+          ) : paginatedMapelGroups.length === 0 ? (
+            <div className="text-center py-16 text-slate-400 text-sm font-medium">
+              Belum ada data pengampu mata pelajaran yang sesuai dengan filter.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-6">
+              {paginatedMapelGroups.map((group) => {
+                const colorStyle = getMapelColor(group.nama_mapel);
+
+                return (
+                  <div
+                    key={group.mapel_id}
+                    className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs overflow-hidden transition-all duration-200 hover:shadow-md"
+                  >
+                    {/* Mapel Header Strip */}
+                    <div
+                      className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800/80 flex flex-wrap items-center justify-between gap-3"
+                      style={{
+                        backgroundColor: colorStyle.bg ? `${colorStyle.bg}15` : undefined,
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border shadow-xs"
+                          style={{
+                            backgroundColor: colorStyle.bg || undefined,
+                            color: colorStyle.text || undefined,
+                            borderColor: colorStyle.border || undefined,
+                          }}
+                        >
+                          <BookOpen className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight">
+                              {group.nama_mapel}
+                            </h4>
+                            <span
+                              className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md border"
+                              style={{
+                                backgroundColor: colorStyle.bg || undefined,
+                                color: colorStyle.text || undefined,
+                                borderColor: colorStyle.border || undefined,
+                              }}
+                            >
+                              {group.kode_mapel}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                            {group.assignments.length} Guru Pengampu Terdaftar
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-[11px] font-extrabold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {group.assignments.length} Penugasan
+                      </span>
+                    </div>
+
+                    {/* Teachers Sub-List Grid */}
+                    <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                      {group.assignments.map((gm) => {
+                        const guru = gm.Guru;
+                        const beban = bebanGuruMap.get(gm.guru_id);
+                        const currentValue = gm.kelas_id
+                          ? `KELAS:${gm.kelas_id}`
+                          : gm.jurusan_id
+                          ? `JURUSAN:${gm.jurusan_id}`
+                          : 'GLOBAL';
+                        const isUpdating = updatingScopeId === gm.id;
+
+                        return (
+                          <div
+                            key={gm.id}
+                            className="p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-950/40 hover:bg-white dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all space-y-3 flex flex-col justify-between"
+                          >
+                            <div>
+                              {/* Teacher Name & NIP */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0 font-bold text-xs">
+                                    <Users className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h5 className="font-extrabold text-xs text-slate-800 dark:text-slate-100 truncate">
+                                      {guru?.nama_guru || '-'}
+                                    </h5>
+                                    <p className="text-[10px] text-slate-400 font-mono truncate">
+                                      NIP: {guru?.nip || '-'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Beban JP & Scope */}
+                              <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[11px] space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] text-slate-400 font-semibold">Beban Mengajar</span>
+                                  <span className="font-bold text-indigo-600 dark:text-indigo-400">
+                                    {beban?.current_jp || 0} / {beban?.max_jp || 24} JP
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-slate-400 font-semibold">Cakupan</span>
+                                  <div>
+                                    {!canManage ? (
+                                      gm.Kelas?.nama_kelas ? (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800">
+                                          Kelas {gm.Kelas.nama_kelas}
+                                        </span>
+                                      ) : gm.Jurusan?.nama ? (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                                          Jurusan {gm.Jurusan.nama}
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                          Global
+                                        </span>
+                                      )
+                                    ) : (
+                                      <div className="relative inline-flex items-center">
+                                        <select
+                                          value={currentValue}
+                                          disabled={isUpdating}
+                                          onChange={(e) => handleScopeChange(gm, e.target.value)}
+                                          className="text-[10px] font-bold px-2 py-0.5 rounded border bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 appearance-none pr-4 cursor-pointer"
+                                        >
+                                          <option value="GLOBAL">🌐 Global</option>
+                                          {jurusanDropdown.map((j) => (
+                                            <option key={j.value} value={`JURUSAN:${j.value}`}>
+                                              🎓 {j.label}
+                                            </option>
+                                          ))}
+                                          {kelasDropdown.map((k) => (
+                                            <option key={k.value} value={`KELAS:${k.value}`}>
+                                              🏫 {k.label}
+                                            </option>
+                                          ))}
+                                        </select>
+                                        <ChevronDown className="w-2.5 h-2.5 absolute right-1 pointer-events-none opacity-50" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            {canManage && (
+                              <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => onOpenTimeOff?.(gm.guru_id, guru?.nama_guru)}
+                                  className="h-7 px-2 text-[10px] font-bold text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg gap-1"
+                                >
+                                  <Calendar className="w-3 h-3 text-amber-500" />
+                                  Time-Off
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDelete(gm)}
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Pagination for Grouped View */}
+          {totalMapelPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-slate-400 font-medium">
+                Halaman {mapelPage} dari {totalMapelPages} ({mapelGroups.length} Mata Pelajaran)
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={mapelPage <= 1}
+                  onClick={() => setMapelPage(prev => Math.max(prev - 1, 1))}
+                  className="rounded-xl text-xs"
+                >
+                  Sebelumnya
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={mapelPage >= totalMapelPages}
+                  onClick={() => setMapelPage(prev => Math.min(prev + 1, totalMapelPages))}
+                  className="rounded-xl text-xs"
+                >
+                  Selanjutnya
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="bg-transparent overflow-hidden">
-          <Table 
-            columns={columns} 
-            data={paginatedItems} 
-            loading={loading}
-            emptyMessage="Belum ada pengampu" 
-            compact={true}
-            selectedRowKeys={selectedIds}
-            onSelectedRowKeysChange={setSelectedIds}
-            rowKey="id"
-            pagination={{
-              currentPage: page,
-              totalPages: totalPages,
-              totalItems: filteredItems.length,
-              itemsPerPage: limit,
-              onPageChange: setPage,
-              onLimitChange: (newLimit) => {
-                setLimit(newLimit);
-                setPage(1);
+        /* ── MODE 2: Tabel / Mobile List View ──────────────────────────────── */
+        isMobile ? (
+          <div className="p-4 space-y-4">
+            <MobileAcademicList
+              title="Daftar Guru Pengampu"
+              data={paginatedItems}
+              loading={loading}
+              totalItems={filteredItems.length}
+              onRefresh={() => fetchData()}
+              onAdd={canManage && onAdd ? onAdd : undefined}
+              canManage={canManage}
+              emptyMessage="Belum ada pengampu"
+              pagination={{
+                currentPage: page,
+                totalPages: totalPages,
+                onPageChange: setPage
+              }}
+              renderCard={renderGuruMapelMobileCard}
+            />
+          </div>
+        ) : (
+          <div className="bg-transparent overflow-hidden">
+            <Table 
+              columns={columns} 
+              data={paginatedItems} 
+              loading={loading}
+              emptyMessage="Belum ada pengampu" 
+              compact={true}
+              selectedRowKeys={selectedIds}
+              onSelectedRowKeysChange={setSelectedIds}
+              rowKey="id"
+              pagination={{
+                currentPage: page,
+                totalPages: totalPages,
+                totalItems: filteredItems.length,
+                itemsPerPage: limit,
+                onPageChange: setPage,
+                onLimitChange: (newLimit) => {
+                  setLimit(newLimit);
+                  setPage(1);
+                }
+              }}
+              toolbarLeft={
+                <div className="flex flex-wrap items-center gap-2">
+                   {canManage && onAdd && (
+                      <Button 
+                        onClick={onAdd}
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                      >
+                        <Plus className="w-4 h-4 mr-1.5" />
+                        Tambah Pengampu
+                      </Button>
+                   )}
+                   
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbar"
+                     onClick={handleExport}
+                     className="rounded-xl"
+                   >
+                     <Download className="w-3.5 h-3.5 mr-1.5" />
+                     Export
+                   </Button>
+      
+                   <Button
+                     variant="toolbarOutline"
+                     size="toolbarIcon"
+                     onClick={() => fetchData()}
+                     title="Refresh Data"
+                     className="rounded-xl"
+                     disabled={loading}
+                   >
+                     <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                   </Button>
+                </div>
               }
-            }}
-            toolbarLeft={
-              <div className="flex flex-wrap items-center gap-2">
-                 {canManage && onAdd && (
-                    <Button 
-                      onClick={onAdd}
-                      variant="toolbarPrimary"
-                      size="toolbar"
-                    >
-                      <Plus className="w-4 h-4 mr-1.5" />
-                      Tambah Pengampu
-                    </Button>
-                 )}
-                 
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbar"
-                   onClick={handleExport}
-                   className="rounded-xl"
-                 >
-                   <Download className="w-3.5 h-3.5 mr-1.5" />
-                   Export
-                 </Button>
-    
-                 <Button
-                   variant="toolbarOutline"
-                   size="toolbarIcon"
-                   onClick={() => fetchData()}
-                   title="Refresh Data"
-                   className="rounded-xl"
-                   disabled={loading}
-                 >
-                   <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-                 </Button>
-              </div>
-            }
-            toolbarRight={
-              selectedIds.size > 0 && canManage && (
-                <Button
-                  variant="toolbarDanger"
-                  size="toolbar"
-                  onClick={async () => {
-                    const ok = await confirm({
-                      title: 'Hapus Pengampu Terpilih',
-                      description: `Anda yakin ingin menghapus ${selectedIds.size} penugasan guru pengampu terpilih?`,
-                      confirmText: 'Hapus',
-                      cancelText: 'Batal',
-                      style: 'danger',
-                      withProgress: true,
-                      progressLabel: `Menghapus ${selectedIds.size} pengampu...`,
-                    });
-                    if (ok) await handleBulkDelete();
-                  }}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  Hapus Terpilih ({selectedIds.size})
-                </Button>
-              )
-            }
-          />
-        </div>
+              toolbarRight={
+                selectedIds.size > 0 && canManage && (
+                  <Button
+                    variant="toolbarDanger"
+                    size="toolbar"
+                    onClick={async () => {
+                      const ok = await confirm({
+                        title: 'Hapus Pengampu Terpilih',
+                        description: `Anda yakin ingin menghapus ${selectedIds.size} penugasan guru pengampu terpilih?`,
+                        confirmText: 'Hapus',
+                        cancelText: 'Batal',
+                        style: 'danger',
+                        withProgress: true,
+                        progressLabel: `Menghapus ${selectedIds.size} pengampu...`,
+                      });
+                      if (ok) await handleBulkDelete();
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    Hapus Terpilih ({selectedIds.size})
+                  </Button>
+                )
+              }
+            />
+          </div>
+        )
       )}
     </div>
   );
