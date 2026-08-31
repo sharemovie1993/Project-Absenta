@@ -2,6 +2,8 @@ import React from 'react';
 import { RefreshCw, Plus } from 'lucide-react';
 import { Button } from './Button';
 import { Skeleton } from './Skeleton';
+import Badge from './Badge';
+import { CleanDeckCard } from './CleanDeckCard';
 import { cn } from '@/lib/utils';
 
 export interface MobileDataListProps<T> {
@@ -12,7 +14,8 @@ export interface MobileDataListProps<T> {
   onAdd?: () => void;
   canManage?: boolean;
   totalItems?: number;
-  renderCard: (item: T, index: number) => React.ReactNode;
+  renderCard?: (item: T, index: number) => React.ReactNode;
+  onView?: (item: T) => void;
   pagination?: {
     currentPage: number;
     totalPages: number;
@@ -139,12 +142,32 @@ export function MobileDataList<T>({
           )}
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {(data || []).slice(0, visibleCount).map((item, index) => (
-            <React.Fragment key={index}>
-              {renderCard(item, index)}
-            </React.Fragment>
-          ))}
+        <div className="flex flex-col gap-2.5">
+          {(data || []).slice(0, visibleCount).map((item, index) => {
+            if (renderCard) {
+              return (
+                <React.Fragment key={index}>
+                  {renderCard(item, index)}
+                </React.Fragment>
+              );
+            }
+
+            const itemObj = (item || {}) as Record<string, any>;
+            const title = itemObj.nama || itemObj.nama_siswa || itemObj.nama_guru || itemObj.nama_kelas || itemObj.title || itemObj.judul || itemObj.name || `Item #${index + 1}`;
+            const subtitle = itemObj.nis || itemObj.nip || itemObj.kode || itemObj.tingkat || itemObj.kelas || itemObj.keterangan || itemObj.description || itemObj.email || itemObj.category;
+            const badge = itemObj.status ? <Badge>{String(itemObj.status)}</Badge> : undefined;
+
+            return (
+              <CleanDeckCard
+                key={index}
+                title={title}
+                subtitle={subtitle}
+                badge={badge}
+                onClick={onView ? () => onView(item) : undefined}
+                onDetail={onView ? () => onView(item) : undefined}
+              />
+            );
+          })}
           
           {(data || []).length > visibleCount && (
             <div className="flex justify-center py-3">

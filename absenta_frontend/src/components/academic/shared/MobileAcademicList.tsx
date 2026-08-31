@@ -6,7 +6,7 @@ export interface MobileAcademicListProps<T> extends Omit<MobileDataListProps<T>,
   data: T[];
   loading: boolean;
   totalItems: number;
-  renderCard: (item: T) => React.ReactNode;
+  renderCard?: (item: T) => React.ReactNode;
 }
 
 export const MobileAcademicList = React.memo(function MobileAcademicList<T>({
@@ -19,7 +19,7 @@ export const MobileAcademicList = React.memo(function MobileAcademicList<T>({
       <MobileDataList
         {...props}
         className={className}
-        renderCard={(item) => renderCard(item)}
+        renderCard={renderCard ? (item) => renderCard(item) : undefined}
       />
     </div>
   );

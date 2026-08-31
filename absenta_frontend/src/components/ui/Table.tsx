@@ -3,6 +3,10 @@ import { cn } from '@/lib/utils';
 import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import { Checkbox } from './Checkbox';
 import { Loader } from './Loader';
+import { Button } from './Button';
+import Badge from './Badge';
+import { CleanDeckCard } from './CleanDeckCard';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 export interface Column {
   key: string;
@@ -12,7 +16,7 @@ export interface Column {
   className?: string;
 }
 
-interface TableProps {
+export interface TableProps {
   columns: Column[];
   data: unknown[];
   loading?: boolean;
@@ -20,8 +24,11 @@ interface TableProps {
   className?: string;
   striped?: boolean;
   hoverable?: boolean;
-  onRowClick?: (row: unknown, index: number) => void;
-  rowClassName?: (row: unknown, index: number) => string;
+  onRowClick?: (row: any, index: number) => void;
+  onView?: (row: any) => void;
+  renderMobileCard?: (row: any, index: number) => React.ReactNode;
+  enableMobileDeck?: boolean;
+  rowClassName?: (row: any, index: number) => string;
   headerTitle?: React.ReactNode;
   headerActions?: React.ReactNode;
   toolbarLeft?: React.ReactNode;
@@ -56,6 +63,9 @@ export function Table({
   striped = false,
   hoverable = true,
   onRowClick,
+  onView,
+  renderMobileCard,
+  enableMobileDeck = true,
   rowClassName,
   headerTitle,
   headerActions,
@@ -71,6 +81,7 @@ export function Table({
   selectedRowKeys,
   onSelectedRowKeysChange,
 }: TableProps) {
+  const isMobile = useIsMobile();
   // Sorting state
   const [internalSortBy, setInternalSortBy] = React.useState<string | undefined>(sortBy);
   const [internalSortOrder, setInternalSortOrder] = React.useState<'asc' | 'desc' | undefined>(sortOrder);
@@ -149,6 +160,163 @@ export function Table({
     }
     onSelectedRowKeysChange(next);
   };
+
+  if (isMobile && enableMobileDeck) {
+    // Determine Title, Subtitle, Status columns for smart deck rendering
+    const titleColumn = columns.find(c => /nama|title|judul|name|label/i.test(c.key)) || 
+      columns.find(c => !['select', 'checkbox', 'actions', 'action', 'no', 'index'].includes(c.key.toLowerCase()));
+
+    const subtitleColumn = columns.find(c => c !== titleColumn && /nis|nip|kode|tingkat|jurusan|kelas|category|kategori|email|role|phone|no_hp/i.test(c.key)) ||
+      columns.find(c => c !== titleColumn && !['select', 'checkbox', 'actions', 'action', 'no', 'index', 'status', 'is_active'].includes(c.key.toLowerCase()));
+
+    const statusColumn = columns.find(c => /status|is_active|aktif|state/i.test(c.key));
+
+    return (
+      <div className={cn("w-full flex flex-col gap-3", className)}>
+        {/* Header & Toolbars */}
+        {(headerTitle || headerActions || toolbarLeft || toolbarRight) && (
+          <div className="flex flex-col gap-2 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
+            {(headerTitle || headerActions) && (
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                {headerTitle && (
+                  <div className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white">
+                    {headerTitle}
+                  </div>
+                )}
+                {headerActions && <div>{headerActions}</div>}
+              </div>
+            )}
+            {(toolbarLeft || toolbarRight) && (
+              <div className="flex flex-col gap-2">
+                {toolbarLeft}
+                {toolbarRight}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Card Deck List */}
+        {loading && data.length === 0 ? (
+          <div className="flex flex-col gap-2.5">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-3 animate-pulse" />
+            ))}
+          </div>
+        ) : sortedData.length === 0 ? (
+          <div className="py-12 bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-center">
+            <p className="font-bold text-sm text-slate-400">{emptyMessage}</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2.5">
+            {sortedData.map((row, rowIndex) => {
+              const rowId = getRowId(row, rowIndex);
+              const isRowSelected = selectedRowKeys?.has(rowId) || false;
+
+              if (renderMobileCard) {
+                return (
+                  <React.Fragment key={rowId}>
+                    {renderMobileCard(row, rowIndex)}
+                  </React.Fragment>
+                );
+              }
+
+              const rowObj = (row || {}) as Record<string, any>;
+              
+              const titleVal = titleColumn
+                ? (titleColumn.render ? titleColumn.render(rowObj[titleColumn.key], row, rowIndex) : rowObj[titleColumn.key])
+                : (rowObj.nama || rowObj.title || `Item #${rowIndex + 1}`);
+
+              const subVal = subtitleColumn
+                ? (subtitleColumn.render ? subtitleColumn.render(rowObj[subtitleColumn.key], row, rowIndex) : rowObj[subtitleColumn.key])
+                : undefined;
+
+              const badgeVal = statusColumn
+                ? (statusColumn.render ? statusColumn.render(rowObj[statusColumn.key], row, rowIndex) : (rowObj[statusColumn.key] ? <Badge>{String(rowObj[statusColumn.key])}</Badge> : undefined))
+                : undefined;
+
+              const handleItemDetail = () => {
+                if (onView) onView(row);
+                else if (onRowClick) onRowClick(row, rowIndex);
+              };
+
+              return (
+                <CleanDeckCard
+                  key={rowId}
+                  title={titleVal}
+                  subtitle={subVal}
+                  badge={badgeVal}
+                  selected={isRowSelected}
+                  onSelect={showCheckbox ? (checked) => {
+                    if (!onSelectedRowKeysChange || !selectedRowKeys) return;
+                    const next = new Set<string>(selectedRowKeys);
+                    if (checked) next.add(rowId); else next.delete(rowId);
+                    onSelectedRowKeysChange(next);
+                  } : undefined}
+                  onDetail={Boolean(onView || onRowClick) ? handleItemDetail : undefined}
+                  onClick={Boolean(onView || onRowClick) ? handleItemDetail : undefined}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Mobile Pagination with Limit Control */}
+        {pagination && (
+          <div className="flex flex-col gap-3 pt-3 pb-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-between px-1 text-xs">
+              <span className="font-bold text-slate-500 dark:text-slate-400">
+                Total: {pagination.totalItems || data.length} Data
+              </span>
+
+              {pagination.onLimitChange && (
+                <div className="flex items-center gap-2">
+                  <label htmlFor="table-mobile-limit" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Baris:
+                  </label>
+                  <select
+                    id="table-mobile-limit"
+                    value={pagination.itemsPerPage || 10}
+                    onChange={(e) => pagination.onLimitChange?.(Number(e.target.value))}
+                    className="h-8 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  >
+                    {[10, 25, 50, 100].map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt} / hal
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {pagination.totalPages > 1 && (
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="ghost"
+                  disabled={pagination.currentPage <= 1 || loading}
+                  onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                  className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Sebelumnya
+                </Button>
+                <span className="text-xs font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-2xs font-mono">
+                  {pagination.currentPage} / {pagination.totalPages}
+                </span>
+                <Button
+                  variant="ghost"
+                  disabled={pagination.currentPage >= pagination.totalPages || loading}
+                  onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                  className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                >
+                  Berikutnya
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={cn('w-full overflow-hidden rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm bg-white dark:bg-slate-900 relative transition-all duration-300 flex flex-col', className)}>
