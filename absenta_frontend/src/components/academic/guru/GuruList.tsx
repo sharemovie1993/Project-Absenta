@@ -788,7 +788,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
               </div>
             ), [onView])}
           />
-        ) : (
+        </div>
+      ) : (
           <div className="hidden md:block">
             <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
               <Table
