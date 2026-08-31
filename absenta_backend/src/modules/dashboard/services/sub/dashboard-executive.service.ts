@@ -5,6 +5,7 @@ import { formatTenantTime, getTenantTimezone, getTenantOffsetString, getTenantDa
 import { sesiLifecycleService, SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { cacheService } from '@/utils/cache.service';
+import { applyDataScope } from '@/utils/applyDataScope';
 import { DashboardCommonHelper } from './dashboard-common.helper';
 
 export class DashboardExecutiveService {

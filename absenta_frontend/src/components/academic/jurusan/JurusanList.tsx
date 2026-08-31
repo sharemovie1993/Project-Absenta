@@ -295,6 +295,52 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
     return `Menampilkan ${start}-${end} dari ${totalItems} data`;
   }, [currentPage, totalItems, itemsPerPage]);
 
+  const renderJurusanMobileCard = useCallback((jurusan: Jurusan) => {
+    return (
+      <div 
+        key={jurusan.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => onEdit?.(jurusan)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onEdit?.(jurusan);
+          }
+        }}
+        aria-label={`Detail jurusan ${jurusan.nama}`}
+        className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+              {jurusan.nama}
+            </h4>
+            <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
+              {jurusan.kode}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+            Kode: {jurusan.kode || '-'} {jurusan.bidang_keahlian ? `• ${jurusan.bidang_keahlian}` : jurusan.keterangan ? `• ${jurusan.keterangan}` : ''}
+          </p>
+        </div>
+
+        <Button
+          size="xs"
+          variant="outline"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit?.(jurusan);
+          }}
+          aria-label={`Detail ${jurusan.nama}`}
+          className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+        >
+          Detail
+        </Button>
+      </div>
+    );
+  }, [onEdit]);
+
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search */}
@@ -313,65 +359,30 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
-          <MobileAcademicList
-            title="Daftar Jurusan"
-            data={jurusans}
-            loading={loading}
-            totalItems={totalItems}
-            onRefresh={() => fetchJurusans(currentPage, debouncedSearchTerm)}
-            onAdd={onAdd}
-            canManage={canManage}
-            pagination={{
-              currentPage,
-              totalPages,
-              onPageChange: handlePageChange
-            }}
-            renderCard={useCallback((jurusan: Jurusan) => (
-              <div 
-                key={jurusan.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onEdit?.(jurusan)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onEdit?.(jurusan);
-                  }
-                }}
-                aria-label={`Detail jurusan ${jurusan.nama}`}
-                className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
-                      {jurusan.nama}
-                    </h4>
-                    <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
-                      {jurusan.kode}
-                    </span>
-                  </div>
-                  {jurusan.keterangan && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-                      {jurusan.keterangan}
-                    </p>
-                  )}
-                </div>
-
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit?.(jurusan);
-                  }}
-                  aria-label={`Detail ${jurusan.nama}`}
-                  className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-                >
-                  Detail
-                </Button>
-              </div>
-            ), [onEdit])}
-          />
+          <div className="p-4 space-y-4">
+            <MobileAcademicList
+              title="Daftar Jurusan"
+              data={jurusans}
+              loading={loading}
+              totalItems={totalItems}
+              onRefresh={() => refetch()}
+              onAdd={onAdd}
+              canManage={canManage}
+              emptyMessage="Tidak ada data jurusan ditemukan"
+              pagination={{
+                currentPage,
+                totalPages,
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
+              }}
+              renderCard={renderJurusanMobileCard}
+            />
+          </div>
         ) : (
           <div className="hidden md:block">
             <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>

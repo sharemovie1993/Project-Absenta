@@ -3,6 +3,7 @@ import { prisma } from '@/utils/prisma';
 import { AbsensiMode } from '@/constants/enums';
 import { formatTenantTime, getTenantTimezone, getTenantOffsetString, getTenantDayRange } from '@/utils/timezone.utils';
 import { sesiLifecycleService, SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
+import { applyDataScope } from '@/utils/applyDataScope';
 import { DashboardCommonHelper } from './dashboard-common.helper';
 
 export class DashboardAttendanceStatsService {
