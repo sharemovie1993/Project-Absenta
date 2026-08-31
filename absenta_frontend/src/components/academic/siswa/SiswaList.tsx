@@ -981,47 +981,33 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
         }
       }}
       aria-label={`Lihat detail ${siswa.nama_siswa}`}
-      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-transform cursor-pointer"
+      className="bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
     >
-      <div className="flex justify-between items-start mb-3">
-        <div className="flex-1">
-          <h3 className="font-bold text-slate-900 dark:text-slate-100 leading-tight">{siswa.nama_siswa}</h3>
-          <p className="text-[11px] text-slate-600 dark:text-slate-400 font-medium uppercase tracking-tight mt-0.5">
-            {siswa.nis || 'Tanpa NIS'} {siswa.nisn ? `(${siswa.nisn})` : ''} • {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'}
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black text-sm flex items-center justify-center shrink-0 border border-blue-500/20">
+          {siswa.nama_siswa?.charAt(0)?.toUpperCase() || 'S'}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug truncate">
+            {siswa.nama_siswa}
+          </h3>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
+            {siswa.Kelas?.nama_kelas || 'Tanpa Kelas'} {siswa.nis ? `• ${siswa.nis}` : ''}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          {getStatusBadge(siswa.status)}
-        </div>
       </div>
-      
-      <div className="flex items-center justify-between pt-3 border-t border-slate-50 dark:border-slate-800/50">
-        <div className="flex items-center gap-3">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gender</span>
-            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-              {siswa.jenis_kelamin === 'L' ? 'Laki-laki' : 'Perempuan'}
-            </span>
-          </div>
-          {siswa.no_rfid && (
-            <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RFID</span>
-              <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono tracking-tighter">
-                {siswa.no_rfid}
-              </span>
-            </div>
-          )}
-        </div>
-        
+
+      <div className="flex items-center gap-2 shrink-0">
+        {getStatusBadge(siswa.status)}
         <Button
-          size="sm"
-          variant="ghost"
+          size="xs"
+          variant="outline"
           onClick={(e) => {
             e.stopPropagation();
             onView?.(siswa);
           }}
           aria-label={`Lihat detail ${siswa.nama_siswa}`}
-          className="h-11 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 font-bold text-[11px] uppercase tracking-wider active:bg-slate-200 dark:active:bg-slate-700"
+          className="rounded-xl px-3 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           Detail
         </Button>
