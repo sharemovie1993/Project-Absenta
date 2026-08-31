@@ -93,10 +93,24 @@ export class EvaluasiKinerjaService {
   }): Promise<EvaluasiKinerjaResponse> {
     const { tahun_pelajaran_id, semester_id, search, predikat, status_kepegawaian, guru_id } = filters || {};
 
-    // 1. Ambil daftar Guru
+    // 1. Ambil daftar Guru yang memenuhi kualifikasi evaluasi:
+    // - Semua Guru / Pendidik / Kepsek / jenis_ptk null (default)
+    // - DAN Tenaga Kependidikan / TU yang memiliki penugasan mengajar (JadwalKBM / GuruMapel / SesiAbsensi > 0)
     const guruWhere: any = {
       tenant_id: tenantId,
-      jenis_ptk: { in: ['PENDIDIK', 'GURU', 'KEPALA_SEKOLAH'] },
+      OR: [
+        { jenis_ptk: { in: ['PENDIDIK', 'GURU', 'KEPALA_SEKOLAH'] } },
+        { jenis_ptk: null },
+        {
+          jenis_ptk: 'TENAGA_KEPENDIDIKAN',
+          OR: [
+            { JadwalKBM: { some: { tenant_id: tenantId } } },
+            { GuruMapel: { some: { tenant_id: tenantId } } },
+            { SesiAbsensi: { some: { tenant_id: tenantId } } },
+            { AbsenGuru: { some: { tenant_id: tenantId } } },
+          ]
+        }
+      ]
     };
     if (guru_id) guruWhere.id = guru_id;
     if (status_kepegawaian && status_kepegawaian !== 'ALL') {
