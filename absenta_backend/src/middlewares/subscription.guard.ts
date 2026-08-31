@@ -1,5 +1,6 @@
 import { prisma } from '../utils/prisma';
 import { isSystemSuperAdmin } from '../utils/rbac';
+import { tenantEntitlementService } from '../modules/billing/services/tenant-entitlement.service';
 
 function getRouteConfig(request: any): any {
   return (
@@ -112,18 +113,39 @@ export async function subscriptionGuard(
   }
 
   if (requiredServiceCode) {
-    const svc = await prisma.subscription.findFirst({
-      where: { tenant_id: tenantId, service_code: requiredServiceCode },
-      orderBy: { created_at: 'desc' },
-      select: { id: true, status: true, end_date: true },
-    });
+    // 1. Check resolved tenant features from active plans and entitlements
+    const features = await tenantEntitlementService.resolveTenantFeatures(tenantId);
+    const upperFeatures = features.map(f => f.toUpperCase());
 
-    if (!isValidSubscription(svc)) {
-      return reply.status(403).send({
-        error: 'Subscription Required',
-        reason: `SUBSCRIPTION_REQUIRED_${requiredServiceCode}`,
-        message: `Subscription for service ${requiredServiceCode} is required or not active.`,
+    const SERVICE_ALIASES: Record<string, string[]> = {
+      KOPERASI: ['KOPERASI', 'COOPERATIVE', 'COOP'],
+      ABSENSI: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
+      HUBIN: ['HUBIN', 'BKK', 'PRAKERIN'],
+      SARPRAS: ['SARPRAS', 'ASSET'],
+      RAPOR: ['RAPOR', 'REPORTING', 'NILAI'],
+    };
+
+    const targetAliases = SERVICE_ALIASES[requiredServiceCode] || [requiredServiceCode];
+    const isEntitled = targetAliases.some(alias => upperFeatures.includes(alias));
+
+    if (!isEntitled) {
+      // 2. Fallback check for direct subscription record by service_code
+      const svc = await prisma.subscription.findFirst({
+        where: { 
+          tenant_id: tenantId, 
+          service_code: { in: targetAliases as any } 
+        },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, status: true, end_date: true },
       });
+
+      if (!isValidSubscription(svc)) {
+        return reply.status(403).send({
+          error: 'Subscription Required',
+          reason: `SUBSCRIPTION_REQUIRED_${requiredServiceCode}`,
+          message: `Subscription for service ${requiredServiceCode} is required or not active.`,
+        });
+      }
     }
   }
 
