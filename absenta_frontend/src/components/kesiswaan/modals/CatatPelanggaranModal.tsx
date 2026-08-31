@@ -259,7 +259,7 @@ export const CatatPelanggaranModal: React.FC<CatatPelanggaranModalProps> = React
                   <SearchableSelect
                     options={jenisOptions}
                     value={formData.jenis_pelanggaran}
-                    onChange={(val) => handleSelectJenis(String(val))}
+                    onValueChange={(val) => handleSelectJenis(String(val))}
                     placeholder={loadingJenis ? "Memuat opsi..." : "-- Pilih Jenis Pelanggaran --"}
                   />
                 </div>

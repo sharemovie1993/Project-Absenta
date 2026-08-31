@@ -5,10 +5,11 @@ import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
 export interface UseJenisPelanggaranOptionsParams {
   kategori?: string;
+  valueMode?: 'name' | 'id';
 }
 
 export function useJenisPelanggaranOptions(params: UseJenisPelanggaranOptionsParams = {}) {
-  const { kategori } = params;
+  const { kategori, valueMode = 'name' } = params;
 
   const query = useQuery({
     queryKey: ['jenis-pelanggaran-options-list', kategori],
@@ -30,11 +31,11 @@ export function useJenisPelanggaranOptions(params: UseJenisPelanggaranOptionsPar
 
   const options: SearchableSelectOption[] = useMemo(() => {
     return filteredList.map((p) => ({
-      value: p.id,
+      value: valueMode === 'id' ? p.id : p.nama_pelanggaran,
       label: `${p.nama_pelanggaran} - [${p.poin} Poin]`,
       raw: p
     }));
-  }, [filteredList]);
+  }, [filteredList, valueMode]);
 
   return {
     options,

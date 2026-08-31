@@ -210,7 +210,7 @@ export default React.memo(function PelanggaranPage() {
   const totalItems = pelanggaranRes?.pagination?.total || data.length;
 
   // Hook Kanonikal Jenis Pelanggaran (Query Caching & Auto-sync)
-  const { rawList: jenisPelanggaranList, options: jenisPelanggaranSelectOptions } = useJenisPelanggaranOptions();
+  const { rawList: jenisPelanggaranList, options: jenisPelanggaranSelectOptions } = useJenisPelanggaranOptions({ valueMode: 'name' });
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -751,7 +751,7 @@ export default React.memo(function PelanggaranPage() {
                 id="jenis-pelanggaran-select"
                 value={formData.jenis_pelanggaran}
                 onValueChange={(val) => {
-                  const selectedItem = jenisPelanggaranList.find(i => i.id === val || i.nama_pelanggaran === val);
+                  const selectedItem = (jenisPelanggaranList || []).find(i => i.nama_pelanggaran === val || i.id === val);
                   setFormData(prev => ({
                     ...prev,
                     jenis_pelanggaran: selectedItem ? selectedItem.nama_pelanggaran : val,
