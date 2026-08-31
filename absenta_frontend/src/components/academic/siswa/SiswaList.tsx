@@ -1058,21 +1058,166 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
       {/* Siswa List Content - Hybrid View */}
       <div className="bg-transparent overflow-hidden">
         {isMobile ? (
-          <MobileAcademicList
-            title="Direktori Siswa"
-            data={siswas}
-            loading={isListLoading || loading}
-            totalItems={totalItems}
-            onRefresh={() => refetch()}
-            onAdd={onAdd}
-            canManage={canManage}
-            pagination={{
-              currentPage,
-              totalPages,
-              onPageChange: handlePageChange
-            }}
-            renderCard={renderSiswaMobileCard}
-          />
+          <div className="p-4 space-y-4">
+            {/* Context Switcher for Dual Role on Mobile */}
+            {isDualRoleUser && (
+              <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold shadow-xs w-full">
+                <button
+                  type="button"
+                  onClick={() => handleContextSwitch('walikelas')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 ${
+                    isWaliKelasMode
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <span>🟢</span>
+                  <span>Rombel {waliKelasData?.nama || 'Binaan'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleContextSwitch('sekolah')}
+                  className={`flex-1 py-1.5 rounded-lg transition-all text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 ${
+                    !isWaliKelasMode
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <span>🔵</span>
+                  <span>Seluruh Sekolah</span>
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Search & Filter Section */}
+            <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Cari siswa (NIS, Nama, RFID)..."
+                  aria-label="Cari siswa"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <SearchableSelect
+                  value={filterTingkat}
+                  onValueChange={setFilterTingkat}
+                  options={[
+                    { label: 'Semua Tingkat', value: '' },
+                    ...tingkatList.map(t => ({ label: `Tingkat ${t}`, value: String(t) }))
+                  ]}
+                  placeholder="Tingkat"
+                  searchPlaceholder="Cari Tingkat..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+
+                <SearchableSelect
+                  value={filterKelas}
+                  onValueChange={setFilterKelas}
+                  options={filteredKelasOptions}
+                  placeholder="Kelas"
+                  searchPlaceholder="Cari Kelas..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+
+                <SearchableSelect
+                  value={filterStatus}
+                  onValueChange={setFilterStatus}
+                  options={[
+                    { label: 'Semua Status', value: '' },
+                    { label: 'Aktif', value: 'AKTIF' },
+                    { label: 'Tidak Aktif', value: 'TIDAK_AKTIF' },
+                    { label: 'Lulus', value: 'LULUS' },
+                    { label: 'Pindah', value: 'PINDAH' },
+                    { label: 'Keluar', value: 'KELUAR' }
+                  ]}
+                  placeholder="Status"
+                  searchPlaceholder="Cari Status..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+
+                <SearchableSelect
+                  value={filterGender}
+                  onValueChange={setFilterGender}
+                  options={[
+                    { label: 'Semua Gender', value: '' },
+                    { label: 'Laki-laki', value: 'L' },
+                    { label: 'Perempuan', value: 'P' }
+                  ]}
+                  placeholder="Gender"
+                  searchPlaceholder="Cari Gender..."
+                  triggerClassName="h-9 text-xs rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+
+              {/* Action Buttons on Mobile */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                {canManage && onAdd && (
+                  <Button 
+                    onClick={onAdd}
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    className="flex-1"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Tambah
+                  </Button>
+                )}
+                {canManage && onImport && (
+                  <Button
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={onImport}
+                    className="flex-1"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 mr-1" />
+                    Import
+                  </Button>
+                )}
+                <Button
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={onExport}
+                  disabled={isExporting}
+                  className="rounded-xl flex-1"
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" />
+                  Export
+                </Button>
+                <Button
+                  variant="toolbarOutline"
+                  size="toolbarIcon"
+                  onClick={() => refetch()}
+                  aria-label="Refresh Data"
+                  className="rounded-xl"
+                  disabled={loading}
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+
+            <MobileAcademicList
+              title="Direktori Siswa"
+              data={siswas}
+              loading={isListLoading || loading}
+              totalItems={totalItems}
+              onRefresh={() => refetch()}
+              onAdd={onAdd}
+              canManage={canManage}
+              pagination={{
+                currentPage,
+                totalPages,
+                onPageChange: handlePageChange
+              }}
+              renderCard={renderSiswaMobileCard}
+            />
+          </div>
         ) : (
           <div className="hidden md:block">
             <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { FileText, Plus, RefreshCw, Search, Trash2, Download, History, Pencil } from 'lucide-react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import useConfirm from '@/hooks/useConfirm';
@@ -9,6 +9,9 @@ import toast from 'react-hot-toast';
 import { useFormValidation } from '@/hooks/useFormValidation';
 import { useDebounce } from '@/hooks/useDebounce';
 import { formatDate } from '@/utils/layoutUtils';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 import {
   Button,
   Loader,
@@ -17,6 +20,8 @@ import {
   PageLoader,
   Modal,
   ModalFooter,
+  Badge,
+  Checkbox,
 } from '@/components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -96,6 +101,21 @@ const mouSchema = z.object({
   pihak_kedua_alamat: z.string().optional(),
 });
 
+function formatBytes(bytes: number): string {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n < 0) return '-';
+  if (n < 1024) return `${n} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = n / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  const rounded = value >= 10 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${rounded} ${units[unitIndex]}`;
+}
+
 const editMetadataSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi'),
   category: z.enum(['ADMINISTRATIVE', 'LEGAL', 'MANUAL', 'OTHER']),
@@ -104,6 +124,7 @@ const editMetadataSchema = z.object({
 
 export default React.memo(function DocumentCenterPage() {
   const confirm = useConfirm();
+  const isMobile = useIsMobile();
 
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -398,6 +419,122 @@ export default React.memo(function DocumentCenterPage() {
     { label: 'Dokumen Legalitas' }
   ], []);
 
+  const renderDocumentMobileCard = useCallback((doc: DocumentItem) => {
+    const isSelected = selectedIds.has(doc.id);
+    const categoryLabel = BASE_CATEGORY_OPTIONS.find((o) => o.value === doc.category)?.label || doc.category;
+
+    return (
+      <div className={cn(
+        "p-4 bg-white dark:bg-slate-900 rounded-2xl border transition-all space-y-3 shadow-xs",
+        isSelected 
+          ? "border-blue-500/50 bg-blue-50/20 dark:bg-blue-950/20 ring-1 ring-blue-500/30" 
+          : "border-slate-200/80 dark:border-slate-800"
+      )}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            {canDelete && (
+              <div className="pt-0.5 shrink-0">
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={(checked) => {
+                    const next = new Set(selectedIds);
+                    checked ? next.add(doc.id) : next.delete(doc.id);
+                    setSelectedIds(next);
+                  }}
+                  aria-label={`Pilih ${doc.title}`}
+                />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+                  {doc.title}
+                </h4>
+                <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded-md">
+                  v{doc.current_version || 1}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 font-mono mt-0.5 truncate">
+                {doc.file_original_name}
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider shrink-0">
+            {categoryLabel}
+          </Badge>
+        </div>
+
+        {doc.description && (
+          <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-950/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/80 line-clamp-2 leading-relaxed">
+            {doc.description}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+          <div className="flex items-center gap-2">
+            <span className="font-mono">{formatBytes(doc.size_bytes)}</span>
+            <span>•</span>
+            <span>{formatDate(doc.created_at, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => handleDownload(doc)}
+              title="Unduh Dokumen"
+              className="h-7 w-7 p-0 rounded-lg text-blue-600 hover:bg-blue-50"
+            >
+              <Download className="w-3.5 h-3.5" />
+            </Button>
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => openVersionHistory(doc)}
+              title="Riwayat Versi"
+              className="h-7 w-7 p-0 rounded-lg text-indigo-600 hover:bg-indigo-50"
+            >
+              <History className="w-3.5 h-3.5" />
+            </Button>
+            {canUpload && (
+              <>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => openEditMetadata(doc)}
+                  title="Edit Metadata"
+                  className="h-7 w-7 p-0 rounded-lg text-amber-600 hover:bg-amber-50"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => { setVersionTarget(doc); setVersionUploadOpen(true); }}
+                  title="Upload Versi Baru"
+                  className="h-7 w-7 p-0 rounded-lg text-emerald-600 hover:bg-emerald-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </Button>
+              </>
+            )}
+            {canDelete && (
+              <Button
+                size="xs"
+                variant="danger"
+                onClick={() => handleDelete(doc)}
+                title="Hapus Dokumen"
+                className="h-7 w-7 p-0 rounded-lg text-rose-600 hover:bg-rose-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [selectedIds, canDelete, canUpload, handleDownload, openVersionHistory, openEditMetadata, handleDelete]);
+
   return (
     <AcademicPageLayout
       title="Dokumen Legalitas Sekolah"
@@ -458,6 +595,28 @@ export default React.memo(function DocumentCenterPage() {
               <Loader className="mb-4" />
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Menghubungkan Database Dokumen...</p>
             </div>
+          ) : isMobile ? (
+            <div className="p-4">
+              <MobileAcademicList
+                title="Daftar Dokumen Resmi Institusi"
+                data={documents}
+                loading={loading}
+                totalItems={totalItems}
+                emptyMessage="Tidak ada dokumen ditemukan"
+                pagination={{
+                  currentPage,
+                  totalPages,
+                  totalItems,
+                  itemsPerPage,
+                  onPageChange: handlePageChange,
+                  onLimitChange: (limit) => {
+                    setItemsPerPage(limit);
+                    setCurrentPage(1);
+                  }
+                }}
+                renderCard={renderDocumentMobileCard}
+              />
+            </div>
           ) : (
             <Suspense fallback={<PageLoader />}>
               <DocumentTable
@@ -485,7 +644,7 @@ export default React.memo(function DocumentCenterPage() {
             </Suspense>
           )}
 
-          {documents.length > 0 && (
+          {!isMobile && documents.length > 0 && (
             <div className="flex flex-col md:flex-row items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-slate-800 gap-4">
               <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-4">
                 <span>Total: {totalItems} Data</span>
