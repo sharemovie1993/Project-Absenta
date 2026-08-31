@@ -64,6 +64,8 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
   const [jurusanDropdown, setJurusanDropdown] = useState<DropdownOption[]>([]);
   const [kelasDropdown, setKelasDropdown] = useState<DropdownOption[]>([]);
   const [updatingScopeId, setUpdatingScopeId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   const { isKurikulum, isAdmin, can } = useCapabilities();
   const canManage = useMemo(() => {
@@ -174,7 +176,29 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, selectedGuruId, selectedMapelId, selectedTahunPelajaranId, selectedSemesterId, fetchBebanData]);
+  const filteredItems = useMemo(() => {
+    if (!debouncedSearch) return items;
+    const q = debouncedSearch.toLowerCase();
+    return items.filter(gm => 
+      (gm.Guru?.nama_guru && gm.Guru.nama_guru.toLowerCase().includes(q)) ||
+      (gm.Guru?.nip && gm.Guru.nip.toLowerCase().includes(q)) ||
+      (gm.Mapel?.nama_mapel && gm.Mapel.nama_mapel.toLowerCase().includes(q)) ||
+      (gm.Mapel?.kode_mapel && gm.Mapel.kode_mapel.toLowerCase().includes(q)) ||
+      (gm.Kelas?.nama_kelas && gm.Kelas.nama_kelas.toLowerCase().includes(q)) ||
+      (gm.Jurusan?.nama && gm.Jurusan.nama.toLowerCase().includes(q))
+    );
+  }, [items, debouncedSearch]);
+
+  const totalPages = Math.ceil(filteredItems.length / limit) || 1;
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredItems.slice(start, start + limit);
+  }, [filteredItems, page, limit]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, selectedGuruId, selectedMapelId, selectedTahunPelajaranId, selectedSemesterId]);
 
   useEffect(() => {
     fetchData();
@@ -822,13 +846,18 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         <div className="p-4 space-y-4">
           <MobileAcademicList
             title="Daftar Guru Pengampu"
-            data={items}
+            data={paginatedItems}
             loading={loading}
-            totalItems={items.length}
+            totalItems={filteredItems.length}
             onRefresh={() => fetchData()}
             onAdd={canManage && onAdd ? onAdd : undefined}
             canManage={canManage}
             emptyMessage="Belum ada pengampu"
+            pagination={{
+              currentPage: page,
+              totalPages: totalPages,
+              onPageChange: setPage
+            }}
             renderCard={renderGuruMapelMobileCard}
           />
         </div>
@@ -836,13 +865,24 @@ const GuruMapelList = React.memo<Props>(({ refreshTrigger = 0, onAdd, onAddWizar
         <div className="bg-transparent overflow-hidden">
           <Table 
             columns={columns} 
-            data={items} 
+            data={paginatedItems} 
             loading={loading}
             emptyMessage="Belum ada pengampu" 
             compact={true}
             selectedRowKeys={selectedIds}
             onSelectedRowKeysChange={setSelectedIds}
             rowKey="id"
+            pagination={{
+              currentPage: page,
+              totalPages: totalPages,
+              totalItems: filteredItems.length,
+              itemsPerPage: limit,
+              onPageChange: setPage,
+              onLimitChange: (newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }
+            }}
             toolbarLeft={
               <div className="flex flex-wrap items-center gap-2">
                  {canManage && onAdd && (
