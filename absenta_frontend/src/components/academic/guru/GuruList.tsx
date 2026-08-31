@@ -640,7 +640,13 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
             pagination={{
               currentPage,
               totalPages,
-              onPageChange: handlePageChange
+              totalItems,
+              itemsPerPage,
+              onPageChange: handlePageChange,
+              onLimitChange: (limit) => {
+                setItemsPerPage(limit);
+                setCurrentPage(1);
+              }
             }}
             renderCard={useCallback((guru: Guru) => (
               <div 
@@ -668,8 +674,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
-                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'} {guru.User?.email ? `• ${guru.User.email}` : ''}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'} • {guru.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Tendik' : 'Tenaga Pendidik'}
                   </p>
                 </div>
 
