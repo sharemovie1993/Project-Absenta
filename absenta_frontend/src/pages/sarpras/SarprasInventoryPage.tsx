@@ -119,7 +119,7 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
         instruction={instruction}
         hardeningModuleKey="sarpras_inventory"
         toolbar={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
              <Button 
                variant="outline" 
                className="rounded-xl border-slate-200 shadow-sm"
@@ -136,8 +136,8 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
           </div>
         }
       >
-        <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
             <AnalyticsCard
               title="Total Aset"
               value={stats.totalAssets}
@@ -166,7 +166,7 @@ const SarprasInventoryPage: React.FC = React.memo(() => {
 
           {/* Main Grid Section Wrapped in SectionCard */}
           <SectionCard title="Daftar Inventaris" icon={Package} fullWidth>
-            <div className="p-6">
+            <div className="p-3 sm:p-6">
               <AssetGrid 
                 onEdit={handleEdit} 
                 onAdd={handleAdd}
