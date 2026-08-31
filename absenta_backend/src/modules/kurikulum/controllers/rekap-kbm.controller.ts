@@ -37,6 +37,20 @@ export class RekapKBMController {
         }
       });
 
+      // 1b. Ambil data GuruMapel (penugasan guru mapel) untuk memastikan seluruh penugasan tercakup
+      const guruMapelList: any[] = await prisma.guruMapel.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tahun_pelajaran_id || undefined,
+          semester_id: semester_id || undefined,
+        },
+        include: {
+          Guru: { select: { id: true, nama_guru: true, nip: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+          Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+        }
+      });
+
       // 2. Ambil data StrukturKurikulum untuk alokasi JP per minggu
       const strukturList = await prisma.strukturKurikulum.findMany({
         where: {
@@ -60,6 +74,7 @@ export class RekapKBMController {
       const guruMap: Record<string, any> = {};
       const uniqueAssignments = new Set<string>();
 
+      // Proses JadwalKBM
       for (const t of templates) {
         if (!t.Guru || !t.Mapel || !t.Kelas) continue;
 
@@ -92,6 +107,40 @@ export class RekapKBMController {
           guruMap[guruId].detail_kelas.push({
             kelas: t.Kelas.nama_kelas ?? '-',
             mapel: t.Mapel.nama_mapel ?? '-',
+            jp_per_minggu: jp,
+          });
+        }
+      }
+
+      // Proses GuruMapel untuk melengkapi guru yang belum dijadwalkan per-slot
+      for (const gm of guruMapelList) {
+        if (!gm.Guru || !gm.Mapel || !gm.Kelas) continue;
+
+        const guruId = gm.Guru.id;
+        const mapelId = gm.Mapel.id;
+        const kelasId = gm.Kelas.id;
+        const assignmentKey = `${guruId}_${mapelId}_${kelasId}`;
+
+        if (!guruMap[guruId]) {
+          guruMap[guruId] = {
+            guru_id: guruId,
+            nama_guru: gm.Guru.nama_guru ?? '-',
+            nip: gm.Guru.nip ?? '-',
+            total_jp_rencana: 0,
+            total_jp_dijadwalkan: 0,
+            detail_kelas: [],
+          };
+        }
+
+        if (!uniqueAssignments.has(assignmentKey)) {
+          uniqueAssignments.add(assignmentKey);
+
+          const jp = strukturMap.get(`${mapelId}_${gm.Kelas.tingkat}`) ?? 2;
+
+          guruMap[guruId].total_jp_rencana += jp;
+          guruMap[guruId].detail_kelas.push({
+            kelas: gm.Kelas.nama_kelas ?? '-',
+            mapel: gm.Mapel.nama_mapel ?? '-',
             jp_per_minggu: jp,
           });
         }
