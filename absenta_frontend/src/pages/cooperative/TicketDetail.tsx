@@ -13,6 +13,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { formatDate } from '@/utils/layoutUtils';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { getApiErrorMessage } from '../../utils/errorUtils';
 
 const replySchema = z.object({
   reply: z.string().min(1, 'Pesan balasan tidak boleh kosong'),
@@ -88,8 +89,9 @@ export const TicketDetail: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
     },
-    onError: () => {
-      toast.error('Gagal memperbarui status');
+    onError: (err) => {
+      const msg = getApiErrorMessage(err, 'Gagal memperbarui status');
+      toast.error(msg);
     }
   });
 
@@ -97,10 +99,15 @@ export const TicketDetail: React.FC = React.memo(() => {
     e.preventDefault();
     const parsed = replySchema.safeParse({ reply });
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Pesan balasan belum valid');
+      const errorMsg = (parsed as any).error?.errors?.[0]?.message || (parsed as any).error?.issues?.[0]?.message || 'Pesan balasan belum valid';
+      toast.error(errorMsg);
       return;
     }
-    await replyMutation.mutateAsync(reply);
+    try {
+      await replyMutation.mutateAsync(reply);
+    } catch {
+      // Handled in onError
+    }
   }, [reply, replyMutation]);
 
   const breadcrumbs = useMemo(() => [

@@ -13,6 +13,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { formatDate } from '@/utils/layoutUtils';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { getApiErrorMessage } from '../../utils/errorUtils';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -65,8 +66,8 @@ export const Tickets: React.FC = React.memo(() => {
   const loading = ticketsQuery.isLoading;
 
   const createTicketMutation = useMutation({
-    mutationFn: async (payload: { subject: string; priority: string; message: string }) => {
-      const res = await api.post('/cooperative/tickets', payload);
+    mutationFn: async (data: typeof formData) => {
+      const res = await api.post('/cooperative/tickets', data);
       return res.data;
     },
     onSuccess: () => {
@@ -75,8 +76,9 @@ export const Tickets: React.FC = React.memo(() => {
       setFormData({ subject: '', priority: 'MEDIUM', message: '' });
       queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
     },
-    onError: () => {
-      toast.error('Gagal membuat tiket');
+    onError: (err) => {
+      const msg = getApiErrorMessage(err, 'Gagal membuat tiket');
+      toast.error(msg);
     }
   });
 
@@ -85,10 +87,15 @@ export const Tickets: React.FC = React.memo(() => {
     e.preventDefault();
     const parsed = ticketFormSchema.safeParse(formData);
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data tiket belum lengkap');
+      const errorMsg = (parsed as any).error?.errors?.[0]?.message || (parsed as any).error?.issues?.[0]?.message || 'Data tiket belum lengkap';
+      toast.error(errorMsg);
       return;
     }
-    await createTicketMutation.mutateAsync(formData);
+    try {
+      await createTicketMutation.mutateAsync(formData);
+    } catch {
+      // Handled in onError
+    }
   }, [isLocked, formData, createTicketMutation]);
 
   const paginatedTickets = useMemo(() => {
