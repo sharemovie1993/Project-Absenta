@@ -24,6 +24,9 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import useConfirm from '../../hooks/useConfirm';
 import PageLayout from '../../components/common/PageLayout';
 import { formatDate } from '../../utils/layoutUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { cn } from '@/lib/utils';
 
 // Lazy load heavy components
 const Modal = lazy(() => import('../../components/ui/Modal').then(m => ({ default: m.Modal })));
@@ -33,6 +36,11 @@ const faceTemplateFilterSchema = z.object({
   search: z.string().optional(),
   kelas_id: z.string().optional(),
 });
+
+const breadcrumbs = [
+  { label: 'Presensi', path: '/attendance/ops' },
+  { label: 'Rekam Wajah Premium', active: true }
+];
 
 interface FaceTemplate {
   id: string;
@@ -192,9 +200,87 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
     }
   ], [confirm, loadData]);
 
-  if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
+  const isMobile = useIsMobile();
 
-  const stats = [
+  const renderFaceTemplateMobileCard = useCallback((row: FaceTemplate) => {
+    const siswa = row.Siswa;
+    const kelas = siswa?.Kelas?.nama_kelas || '-';
+
+    return (
+      <div
+        key={row.id}
+        className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      >
+        {/* Header: Icon + Siswa Name + Source Badge */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100 tracking-tight leading-tight">
+                {siswa?.nama_siswa || '-'}
+              </h3>
+              <p className="text-[11px] text-slate-400 font-medium font-mono mt-0.5">
+                NIS: {siswa?.nis || '-'}
+              </p>
+            </div>
+          </div>
+
+          <Badge variant="outline" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-slate-200 dark:border-slate-800 shrink-0">
+            {row.source || 'Default'}
+          </Badge>
+        </div>
+
+        {/* Details: Kelas & Waktu Rekam */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Kelas</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">
+              {kelas}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-slate-400 block font-medium">Waktu Rekam</span>
+            <span className="font-bold text-slate-700 dark:text-slate-200">
+              {row.created_at ? formatDate(row.created_at, { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Hapus Template Wajah',
+                description: 'Apakah Anda yakin ingin menghapus template wajah siswa ini? Siswa tidak akan bisa melakukan absen biometrik.',
+                confirmText: 'Ya, Hapus',
+                cancelText: 'Batal',
+                style: 'danger'
+              });
+              if (ok) {
+                try {
+                  await deleteFaceTemplate(row.id);
+                  setSuccess('Template berhasil dihapus');
+                  loadData();
+                } catch (e) {
+                  setError('Gagal menghapus template');
+                }
+              }
+            }}
+            className="text-xs text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold"
+          >
+            <Trash className="w-3.5 h-3.5 mr-1" /> Hapus Template
+          </Button>
+        </div>
+      </div>
+    );
+  }, [confirm, loadData]);
+
+  const stats = useMemo(() => [
     {
       title: "Template Terdaftar",
       value: items.length.toString(),
@@ -209,7 +295,9 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
       gradient: "from-emerald-500 to-teal-600",
       subtitle: "Face API Loaded"
     }
-  ];
+  ], [items.length]);
+
+  if (!canView) return <Alert variant="destructive" className="m-4"><AlertDescription>Akses Ditolak</AlertDescription></Alert>;
 
   const pageContent = (
     <div className="space-y-6">
@@ -241,25 +329,45 @@ export const FaceTemplatePage: React.FC = React.memo(() => {
 
       <SectionCard title="Daftar Template Wajah" icon={ScanFace} fullWidth noPadding>
         <div className="bg-white dark:bg-slate-950 overflow-hidden">
-          <Table
-            columns={columns}
-            data={items}
-            loading={loading}
-            emptyMessage="Belum ada template wajah terdaftar. Klik Rekam Wajah Baru untuk memulai."
-            compact={true}
-            className="border-none"
-            sortBy={sortKey}
-            sortOrder={sortDirection}
-            onSort={handleSort}
-            pagination={{
-              currentPage: Math.floor(pagination.offset / pagination.limit) + 1,
-              totalPages: Math.ceil(totalItems / pagination.limit) || 1,
-              totalItems: totalItems,
-              itemsPerPage: pagination.limit,
-              onPageChange: handlePageChange,
-              onLimitChange: handleLimitChange
-            }}
-          />
+          {isMobile ? (
+            <div className="p-4 space-y-4">
+              <MobileAcademicList
+                title="Daftar Template Wajah"
+                data={items}
+                loading={loading}
+                totalItems={totalItems}
+                onRefresh={loadData}
+                onAdd={!isLocked ? () => setShowEnroll(true) : undefined}
+                emptyMessage="Belum ada template wajah terdaftar. Klik Rekam Wajah Baru untuk memulai."
+                pagination={{
+                  currentPage: Math.floor(pagination.offset / pagination.limit) + 1,
+                  totalPages: Math.ceil(totalItems / pagination.limit) || 1,
+                  onPageChange: handlePageChange
+                }}
+                renderCard={renderFaceTemplateMobileCard}
+              />
+            </div>
+          ) : (
+            <Table
+              columns={columns}
+              data={items}
+              loading={loading}
+              emptyMessage="Belum ada template wajah terdaftar. Klik Rekam Wajah Baru untuk memulai."
+              compact={true}
+              className="border-none"
+              sortBy={sortKey}
+              sortOrder={sortDirection}
+              onSort={handleSort}
+              pagination={{
+                currentPage: Math.floor(pagination.offset / pagination.limit) + 1,
+                totalPages: Math.ceil(totalItems / pagination.limit) || 1,
+                totalItems: totalItems,
+                itemsPerPage: pagination.limit,
+                onPageChange: handlePageChange,
+                onLimitChange: handleLimitChange
+              }}
+            />
+          )}
         </div>
       </SectionCard>
 
