@@ -28,6 +28,7 @@ interface SubscriptionWithFeatures {
 export const useSavingsState = () => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
+  const sub = subscription as SubscriptionWithFeatures | null | undefined;
   const { can } = useCapabilities();
 
   const isManageMode = window.location.pathname.endsWith('/manage');
