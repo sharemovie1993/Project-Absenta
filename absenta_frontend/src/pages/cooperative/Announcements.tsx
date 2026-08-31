@@ -4,7 +4,7 @@ import { z } from 'zod';
 import api from '../../lib/axiosInstance';
 import { Button } from '../../components/cooperative/ui/Button';
 import { Input } from '../../components/cooperative/ui/Input';
-import { Plus, Bell } from 'lucide-react';
+import { Plus, Bell, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { useAuthStore } from '../../store/authStore';
@@ -13,6 +13,8 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
 import { formatDate } from '../../utils/layoutUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
@@ -39,6 +41,7 @@ const Announcements: React.FC = React.memo(() => {
   const confirm = useConfirm();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
 
@@ -117,17 +120,16 @@ const Announcements: React.FC = React.memo(() => {
   });
 
   const handleDelete = useCallback(async (id: string) => {
-    const ok = await confirm({
+    const isConfirmed = await confirm({
       title: 'Hapus Pengumuman',
-      description: 'Apakah Anda yakin ingin menghapus pengumuman ini?',
+      message: 'Apakah Anda yakin ingin menghapus pengumuman ini? Tindakan ini tidak dapat dibatalkan.',
       confirmText: 'Hapus',
-      style: 'danger'
+      cancelText: 'Batal',
+      type: 'danger'
     });
-    if (!ok) return;
-    try {
-      await deleteAnnouncementMutation.mutateAsync(id);
-    } catch {
-      // Error is caught and displayed by mutation onError
+
+    if (isConfirmed) {
+      deleteAnnouncementMutation.mutate(id);
     }
   }, [confirm, deleteAnnouncementMutation]);
 
@@ -137,6 +139,37 @@ const Announcements: React.FC = React.memo(() => {
   }, [announcements, currentPage, pageLimit]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil((announcements ?? []).length / pageLimit)), [announcements, pageLimit]);
+
+  const renderMobileCard = useCallback((row: Announcement) => {
+    return (
+      <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-snug">
+              {row.title}
+            </h4>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 block">
+              {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+          {canDelete && (
+            <button
+              onClick={() => handleDelete(row.id)}
+              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+              aria-label={`Hapus pengumuman ${row.title}`}
+              title="Hapus Pengumuman"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+        </div>
+
+        <p className="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed bg-slate-50 dark:bg-slate-900/40 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+          {row.content}
+        </p>
+      </div>
+    );
+  }, [canDelete, handleDelete]);
 
   const columns = useMemo<Column[]>(() => [
     {
@@ -204,10 +237,6 @@ const Announcements: React.FC = React.memo(() => {
         }}
       >
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-            <Bell className="mr-2" /> {canCreate ? "Manajemen Pengumuman" : "Pengumuman Koperasi"}
-          </h2>
-
           <div className={canCreate ? "grid grid-cols-1 md:grid-cols-3 gap-6" : "block"}>
             {/* Form */}
             {canCreate && (
@@ -224,10 +253,10 @@ const Announcements: React.FC = React.memo(() => {
                         placeholder="Judul pengumuman..."
                       />
                       <div>
-                        <label htmlFor="announcement-content" className="block text-sm font-medium text-gray-700 mb-1">Isi Pengumuman</label>
+                        <label htmlFor="announcement-content" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Isi Pengumuman</label>
                         <textarea
                           id="announcement-content"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                           rows={4}
                           value={content}
                           onChange={(e) => setContent(e.target.value)}
@@ -252,21 +281,44 @@ const Announcements: React.FC = React.memo(() => {
 
             {/* List */}
             <div className={canCreate ? "md:col-span-2" : "w-full"}>
-              <Table
-                data={paginatedData}
-                columns={columns}
-                loading={loading}
-                emptyMessage="Belum ada pengumuman."
-                pagination={{
-                  currentPage,
-                  totalPages,
-                  onPageChange: setCurrentPage,
-                  totalItems: announcements.length,
-                  itemsPerPage: pageLimit,
-                  onLimitChange: setPageLimit,
-                  onItemsPerPageChange: setPageLimit
-                }}
-              />
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                {isMobile ? (
+                  <div className="p-4">
+                    <MobileAcademicList
+                      title="Daftar Pengumuman"
+                      data={announcements}
+                      loading={loading}
+                      totalItems={announcements.length}
+                      emptyMessage="Belum ada pengumuman yang diterbitkan."
+                      pagination={{
+                        currentPage,
+                        totalPages,
+                        totalItems: announcements.length,
+                        itemsPerPage: pageLimit,
+                        onPageChange: setCurrentPage,
+                        onLimitChange: setPageLimit,
+                      }}
+                      renderCard={renderMobileCard}
+                    />
+                  </div>
+                ) : (
+                  <Table
+                    data={paginatedData}
+                    columns={columns}
+                    loading={loading}
+                    emptyMessage="Belum ada pengumuman."
+                    pagination={{
+                      currentPage,
+                      totalPages,
+                      onPageChange: setCurrentPage,
+                      totalItems: announcements.length,
+                      itemsPerPage: pageLimit,
+                      onLimitChange: setPageLimit,
+                      onItemsPerPageChange: setPageLimit
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>
