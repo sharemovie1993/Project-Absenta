@@ -28,6 +28,7 @@ import type { CareStudentItem, LeaderboardItem } from '../../components/kesiswaa
 import type { MonthlyTrendItem } from '../../components/kesiswaan/monitoring/MonthlyTrendChart';
 
 import { formatDate } from '../../utils/layoutUtils';
+import { cn } from '../../lib/utils';
 
 // Lazy load heavy subcomponents (Pilar 21)
 const CareSpotlightSection = lazy(() => import('../../components/kesiswaan/monitoring/CareSpotlightSection').then(m => ({ default: m.CareSpotlightSection })));
@@ -387,56 +388,127 @@ const MonitoringKesiswaanPage: React.FC = React.memo(() => {
       topSlot={<WorkspaceAppLauncherCard workspaceId="KESISWAAN_WORKSPACE" />}
       hardeningModuleKey="kesiswaan_monitoring"
     >
-      <div className="space-y-6 pb-12 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch mt-2">
-          <div className="lg:col-span-5 flex">
-            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm w-full">
-              <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight mb-4">Papan Informasi Piket & Agenda</h3>
-              <PiketAgendaPanel />
-            </Card>
-          </div>
+      <div className="space-y-6 pb-12 relative mt-2">
+        {/* === SECTION 1: PAPAN INFORMASI PIKET, IZIN KELUAR & AGENDA (FULL WIDTH 3-COLUMN) === */}
+        <PiketAgendaPanel />
+
+        {/* === SECTION 2: DUA KOLOM SEIMBANG (CATATAN TERKINI & CARE SPOTLIGHT) === */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Kolom Kiri: Catatan Pelanggaran Terkini (Live Feed) */}
           <div className="lg:col-span-7 flex">
-            <Card className="p-6 rounded-xl border border-gray-100 dark:border-slate-700/60 bg-white dark:bg-slate-800/50 shadow-sm flex flex-col justify-between w-full min-h-[360px]">
+            <Card className="p-6 rounded-2xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex flex-col justify-between w-full">
               <div>
-                <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight mb-4">Catatan Pelanggaran Terkini</h3>
-                <div className="space-y-3">
-                  {isLoading ? [1,2,3]?.map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />) :
-                  recentViolations?.map((v) => (
-                    <div key={v.id} className="p-3.5 rounded-xl border border-gray-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-between">
-                      <div className="min-w-0 flex-1 pr-3">
-                        <h4 className="font-black text-gray-900 dark:text-white text-xs uppercase truncate">{v.Siswa?.nama_siswa}</h4>
-                        <p className="text-[11px] text-gray-500 font-medium truncate">{v.jenis_pelanggaran} • {v.Siswa?.Kelas?.nama_kelas}</p>
-                      </div>
-                      <span className="font-black text-rose-600 text-xs shrink-0">+{v.poin} Poin</span>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                      <ShieldAlert size={18} />
                     </div>
-                  ))}
+                    <div>
+                      <h3 className="text-base font-black text-gray-900 dark:text-white tracking-tight leading-none">Catatan Pelanggaran Terkini</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-1">Aktivitas penegakan disiplin real-time</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Feed
+                    </span>
+                    <Link
+                      to="/kesiswaan/pelanggaran"
+                      className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline hidden sm:inline-block"
+                    >
+                      Buku Catatan →
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {isLoading ? (
+                    [1, 2, 3, 4]?.map(i => <Skeleton key={i} className="h-14 w-full rounded-xl" />)
+                  ) : recentViolations.length > 0 ? (
+                    recentViolations?.map((v) => (
+                      <div key={v.id} className="p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 rounded-xl flex items-center justify-between gap-3 hover:bg-slate-100/70 dark:hover:bg-slate-800 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0",
+                            v.poin >= 25 
+                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400"
+                              : "bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400"
+                          )}>
+                            {v.Siswa?.nama_siswa ? v.Siswa.nama_siswa.charAt(0).toUpperCase() : 'S'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs uppercase truncate">{v.Siswa?.nama_siswa}</h4>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
+                                {v.Siswa?.Kelas?.nama_kelas || '-'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                              {v.jenis_pelanggaran} {v.catatan ? `• ${v.catatan}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-black text-rose-600 dark:text-rose-400 text-xs block">+{v.poin} Poin</span>
+                          <span className="text-[9px] font-semibold text-slate-400 dark:text-slate-500">
+                            {v.created_at ? formatDate(v.created_at, { hour: '2-digit', minute: '2-digit' }) : 'Hari ini'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/30 dark:bg-slate-900/20 flex flex-col items-center justify-center space-y-2">
+                      <CheckCircle2 size={32} className="text-emerald-500" />
+                      <h4 className="font-bold text-slate-700 dark:text-slate-300 text-xs">Belum Ada Pelanggaran Hari Ini</h4>
+                      <p className="text-[11px] text-slate-400 max-w-xs">Seluruh siswa menjaga ketertiban sekolah dengan sangat kondusif.</p>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {recentViolations.length > 0 && (
+                <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                  <span className="text-slate-400 text-[11px]">Menampilkan {recentViolations.length} catatan terbaru</span>
+                  <Link to="/kesiswaan/pelanggaran" className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                    Lihat Semua Catatan →
+                  </Link>
+                </div>
+              )}
             </Card>
+          </div>
+
+          {/* Kolom Kanan: Care Spotlight & Pembinaan Siswa */}
+          <div className="lg:col-span-5 flex">
+            <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
+              <CareSpotlightSection
+                spotlightTab={spotlightTab}
+                setSpotlightTab={setSpotlightTab}
+                careStudents={careStudents}
+                leaderboardData={leaderboardData}
+                isLoading={isLoading}
+                isLoadingLeaderboard={isLoadingLeaderboard}
+                onNavigateToPelanggaran={handleNavigateToPelanggaran}
+              />
+            </Suspense>
           </div>
         </div>
 
-        <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-          <CareSpotlightSection
-            spotlightTab={spotlightTab}
-            setSpotlightTab={setSpotlightTab}
-            careStudents={careStudents}
-            leaderboardData={leaderboardData}
-            isLoading={isLoading}
-            isLoadingLeaderboard={isLoadingLeaderboard}
-            onNavigateToPelanggaran={handleNavigateToPelanggaran}
-          />
-        </Suspense>
-
-        <RombelDisiplinPanel violations={violations} analytics={analytics} />
-
-        <Suspense fallback={<Skeleton className="h-48 w-full rounded-xl" />}>
-          <MonthlyTrendChart
-            monthlyTrend={monthlyTrend}
-            maxCases={maxCases}
-            isLoadingAnalytics={isLoadingAnalytics}
-          />
-        </Suspense>
+        {/* === SECTION 3: ANALITIK ROMBEL & TREN TAHUNAN (2 KOLOM SEIMBANG) === */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          <div className="lg:col-span-5 flex">
+            <RombelDisiplinPanel violations={violations} analytics={analytics} />
+          </div>
+          <div className="lg:col-span-7 flex">
+            <Suspense fallback={<Skeleton className="h-full w-full rounded-2xl" />}>
+              <MonthlyTrendChart
+                monthlyTrend={monthlyTrend}
+                maxCases={maxCases}
+                isLoadingAnalytics={isLoadingAnalytics}
+              />
+            </Suspense>
+          </div>
+        </div>
 
         {/* Modal Pencatatan Kilat Pelanggaran (Quick Entry) */}
         <Suspense fallback={null}>
