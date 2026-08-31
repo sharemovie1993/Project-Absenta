@@ -185,6 +185,7 @@ export const GuruPage: React.FC = () => {
       canView={canView}
       permissionMessage="Anda tidak memiliki izin untuk mengakses data guru."
       hardeningModuleKey="academic_guru"
+      onBack={selectedGuruIdForDetail ? () => setSelectedGuruIdForDetail(null) : undefined}
     >
       {selectedGuruIdForDetail ? (
         <Suspense fallback={<div className="p-16 flex justify-center"><Loader size="lg" /></div>}>

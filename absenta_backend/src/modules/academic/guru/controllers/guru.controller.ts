@@ -134,8 +134,8 @@ export class GuruController {
       const guru = await guruService.getGuruMe(userId, tenantId);
 
       if (!guru) {
-        reply.status(404);
-        return { success: false, message: 'Profil guru tidak ditemukan untuk akun ini' };
+        reply.status(200);
+        return { success: true, message: 'User is not a registered guru profile', data: null };
       }
 
       reply.status(200);

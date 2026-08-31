@@ -49,6 +49,7 @@ interface AcademicPageLayoutProps {
   canView?: boolean;
   permissionMessage?: string;
   hardeningModuleKey?: string; // Properti opsional pemegang kunci konfigurasi kepatuhan
+  onBack?: () => void;
 }
 
 export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(({
@@ -64,7 +65,8 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   isLoading = false,
   canView: canViewProp = true,
   permissionMessage = "Anda tidak memiliki izin untuk mengakses halaman ini.",
-  hardeningModuleKey
+  hardeningModuleKey,
+  onBack,
 }) => {
   const { setInstructionData } = useInstruction();
   const { user } = useAuthStore();
@@ -203,23 +205,31 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
   }, [currentPath]);
 
   const handleGoBack = useCallback(() => {
-    // 1. Khusus Kepala Sekolah: Selalu utamakan kembali ke Executive Dashboard (/dashboard)
-    if (isKepsek) {
-      if (window.history.state && window.history.state.idx > 0) {
-        navigate(-1);
-      } else {
-        navigate('/dashboard');
-      }
+    // 1. Jika ada custom onBack handler (misal menutup modal/detail view di dalam page)
+    if (onBack) {
+      onBack();
       return;
     }
 
-    // 2. Jika berada di root modul, kembali ke portal utama /dashboard
+    // 2. Jika ada riwayat browser, kembali ke halaman sebelumnya
+    if (typeof window !== 'undefined' && window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+      return;
+    }
+
+    // 3. Khusus Kepala Sekolah: Selalu utamakan kembali ke Executive Dashboard (/dashboard)
+    if (isKepsek) {
+      navigate('/dashboard');
+      return;
+    }
+
+    // 4. Jika berada di root modul, kembali ke portal utama /dashboard
     if (isModuleRootDashboard) {
       navigate('/dashboard');
       return;
     }
 
-    // 3. Smart Parent Resolver untuk staff spesialis modul
+    // 5. Smart Parent Resolver untuk staff spesialis modul
     if (currentPath.startsWith('/kurikulum')) {
       navigate('/kurikulum/dashboard');
       return;
@@ -260,17 +270,9 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
       navigate('/attendance/dashboard');
       return;
     }
-    if (currentPath.startsWith('/academic')) {
-      navigate('/dashboard');
-      return;
-    }
 
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/dashboard');
-    }
-  }, [navigate, currentPath, isKepsek, isModuleRootDashboard]);
+    navigate('/dashboard');
+  }, [onBack, navigate, currentPath, isKepsek, isModuleRootDashboard]);
 
   if (isLoading) {
     return (

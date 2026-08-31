@@ -647,6 +647,7 @@ const SiswaPage: React.FC = () => {
       canView={canView}
       permissionMessage="Anda tidak memiliki izin untuk mengakses data siswa."
       hardeningModuleKey="academic_siswa"
+      onBack={selectedSiswaIdForDetail ? () => setSelectedSiswaIdForDetail(null) : undefined}
     >
       {selectedSiswaIdForDetail ? (
         <Suspense fallback={<div className="p-16 flex justify-center"><Loader size="lg" /></div>}>
