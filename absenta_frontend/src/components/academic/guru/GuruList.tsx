@@ -570,6 +570,52 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
     }
   }, [selectedIds, gurus, queryClient, refetch, confirm, onRefresh]);
 
+  const renderMobileCard = useCallback((guru: Guru) => (
+    <div 
+      key={guru.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => onView?.(guru)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onView?.(guru);
+        }
+      }}
+      aria-label={`Lihat detail ${guru.nama_guru}`}
+      className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
+            {guru.nama_guru}
+          </h4>
+          {guru.status_kepegawaian && (
+            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
+              {guru.status_kepegawaian}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
+          {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'}
+        </p>
+      </div>
+
+      <Button
+        size="xs"
+        variant="outline"
+        onClick={(e) => {
+          e.stopPropagation();
+          onView?.(guru);
+        }}
+        aria-label={`Detail ${guru.nama_guru}`}
+        className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
+      >
+        Detail
+      </Button>
+    </div>
+  ), [onView]);
+
   return (
     <div className="flex flex-col">
       {/* Toolbar Baris Kedua - Filter & Search (Desktop Only) */}
@@ -743,54 +789,10 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                   setCurrentPage(1);
                 }
               }}
-            renderCard={useCallback((guru: Guru) => (
-              <div 
-                key={guru.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onView?.(guru)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onView?.(guru);
-                  }
-                }}
-                aria-label={`Lihat detail ${guru.nama_guru}`}
-                className="p-3.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-between gap-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm leading-snug">
-                      {guru.nama_guru}
-                    </h4>
-                    {guru.status_kepegawaian && (
-                      <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded-md">
-                        {guru.status_kepegawaian}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 truncate">
-                    {guru.nip ? `NIP: ${guru.nip}` : 'Tanpa NIP'}
-                  </p>
-                </div>
-
-                <Button
-                  size="xs"
-                  variant="outline"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onView?.(guru);
-                  }}
-                  aria-label={`Detail ${guru.nama_guru}`}
-                  className="rounded-xl px-3.5 py-1.5 font-bold text-xs border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
-                >
-                  Detail
-                </Button>
-              </div>
-            ), [onView])}
-          />
-        </div>
-      ) : (
+              renderCard={renderMobileCard}
+            />
+          </div>
+        ) : (
           <div className="hidden md:block">
             <Suspense fallback={<div className="p-8 flex justify-center"><Loader /></div>}>
               <Table
