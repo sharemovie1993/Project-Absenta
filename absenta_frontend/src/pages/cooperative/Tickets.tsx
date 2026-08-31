@@ -14,6 +14,8 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { formatDate } from '@/utils/layoutUtils';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { getApiErrorMessage } from '../../utils/errorUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -40,6 +42,7 @@ export const Tickets: React.FC = React.memo(() => {
   const { subscription } = useAuthStore();
   const location = useLocation();
   const isManageRoute = location.pathname.endsWith('/manage');
+  const isMobile = useIsMobile();
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
@@ -104,6 +107,50 @@ export const Tickets: React.FC = React.memo(() => {
   }, [tickets, currentPage, pageLimit]);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil((tickets ?? []).length / pageLimit)), [tickets, pageLimit]);
+
+  const renderMobileCard = useCallback((row: Ticket) => {
+    return (
+      <div className="p-4 bg-white dark:bg-slate-800/80 rounded-2xl border border-slate-100 dark:border-slate-700/60 shadow-xs space-y-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-snug truncate">
+              {row.subject}
+            </h4>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Dari: <span className="font-medium text-slate-700 dark:text-slate-300">{row.member?.name ?? 'Anggota'}</span>
+            </p>
+          </div>
+          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+            row.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' :
+            row.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300'
+          }`}>
+            {row.status.replace('_', ' ')}
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/50 text-xs">
+          <div className="flex items-center gap-2">
+            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+              row.priority === 'HIGH' ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/30' :
+              row.priority === 'MEDIUM' ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30'
+            }`}>
+              {row.priority}
+            </span>
+            <span className="text-[10px] text-slate-400">
+              {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+
+          <Link to={`/cooperative/tickets/${row.id}`}>
+            <Button size="sm" variant="outline" className="font-bold text-xs inline-flex items-center gap-1">
+              <Eye size={13} />
+              <span>Detail</span>
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }, []);
 
   const columns = useMemo<Column[]>(() => [
     {
@@ -214,23 +261,47 @@ export const Tickets: React.FC = React.memo(() => {
         >
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              <Table
-                columns={columns}
-                data={paginatedTickets}
-                isLoading={loading}
-                emptyMessage="Belum ada tiket bantuan yang diajukan."
-                pagination={{
-                  currentPage,
-                  totalPages,
-                  totalItems: tickets.length,
-                  itemsPerPage: pageLimit,
-                  onPageChange: setCurrentPage,
-                  onLimitChange: (limit) => {
-                    setPageLimit(limit);
-                    setCurrentPage(1);
-                  },
-                }}
-              />
+              {isMobile ? (
+                <div className="p-4">
+                  <MobileAcademicList
+                    title="Daftar Tiket Bantuan"
+                    data={tickets}
+                    loading={loading}
+                    totalItems={tickets.length}
+                    emptyMessage="Belum ada tiket bantuan yang diajukan."
+                    pagination={{
+                      currentPage,
+                      totalPages,
+                      totalItems: tickets.length,
+                      itemsPerPage: pageLimit,
+                      onPageChange: setCurrentPage,
+                      onLimitChange: (limit) => {
+                        setPageLimit(limit);
+                        setCurrentPage(1);
+                      },
+                    }}
+                    renderCard={renderMobileCard}
+                  />
+                </div>
+              ) : (
+                <Table
+                  columns={columns}
+                  data={paginatedTickets}
+                  isLoading={loading}
+                  emptyMessage="Belum ada tiket bantuan yang diajukan."
+                  pagination={{
+                    currentPage,
+                    totalPages,
+                    totalItems: tickets.length,
+                    itemsPerPage: pageLimit,
+                    onPageChange: setCurrentPage,
+                    onLimitChange: (limit) => {
+                      setPageLimit(limit);
+                      setCurrentPage(1);
+                    },
+                  }}
+                />
+              )}
             </div>
           </SectionCard>
         </AcademicPageLayout>
