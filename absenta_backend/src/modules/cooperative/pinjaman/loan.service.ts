@@ -290,4 +290,120 @@ export class LoanService {
             return paidInstallment;
         });
     }
+
+    // Get student metrics
+    static async getStudentMetrics(tenantId: string, userId: string) {
+        const member = await prisma.member.findFirst({
+            where: { tenantId, userId },
+            include: {
+                loans: {
+                    include: {
+                        installments: { orderBy: { dueDate: 'asc' } },
+                    },
+                    orderBy: { createdAt: 'desc' },
+                },
+            },
+        });
+
+        const formatRupiah = (num: number) => `Rp ${Number(num || 0).toLocaleString('id-ID')}`;
+
+        if (!member) {
+            return {
+                card1Title: 'Status Pinjaman',
+                card1Val: 'Bukan Anggota',
+                card1Sub: 'Daftar anggota terlebih dahulu',
+                card2Title: 'Sisa Pokok Pinjaman',
+                card2Val: 'Rp 0',
+                card2Sub: '0 Cicilan',
+                card3Title: 'Total Pinjaman Berjalan',
+                card3Val: 'Rp 0',
+                card3Sub: '0 Total Riwayat',
+                isOverdue: false,
+                isApproaching: false,
+                hasApprovedLoans: false,
+                hasActiveLoan: false,
+                hasPendingLoan: false,
+            };
+        }
+
+        const loans = member.loans || [];
+        const activeLoan = loans.find(l => l.status === 'APPROVED');
+        const pendingLoan = loans.find(l => l.status === 'PENDING');
+        const hasActiveLoan = !!activeLoan;
+        const hasPendingLoan = !!pendingLoan;
+        const hasApprovedLoans = loans.some(l => l.status === 'APPROVED' || l.status === 'PAID');
+
+        let nextDueDateStr = '-';
+        let nextDueAmount = 0;
+        let isOverdue = false;
+        let isApproaching = false;
+
+        let totalRemaining = 0;
+        let paidCount = 0;
+        let totalCount = 0;
+
+        if (activeLoan) {
+            const unpaid = activeLoan.installments.filter(i => i.status === 'UNPAID');
+            paidCount = activeLoan.installments.filter(i => i.status === 'PAID').length;
+            totalCount = activeLoan.installments.length;
+            totalRemaining = unpaid.reduce((sum, i) => sum + Number(i.amount), 0);
+
+            if (unpaid.length > 0) {
+                const nextInst = unpaid[0];
+                nextDueAmount = Number(nextInst.amount);
+                const due = new Date(nextInst.dueDate);
+                const now = new Date();
+                nextDueDateStr = due.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                isOverdue = due < now;
+                const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                isApproaching = !isOverdue && diffDays <= 3;
+            }
+        }
+
+        const totalApprovedAmount = loans
+            .filter(l => l.status === 'APPROVED' || l.status === 'PAID')
+            .reduce((sum, l) => sum + Number(l.amount), 0);
+
+        return {
+            card1Title: hasActiveLoan ? 'Jatuh Tempo Berikutnya' : 'Status Pengajuan',
+            card1Val: hasActiveLoan ? nextDueDateStr : (hasPendingLoan ? 'Menunggu Verifikasi' : 'Tidak Ada Tagihan'),
+            card1Sub: hasActiveLoan ? formatRupiah(nextDueAmount) : (hasPendingLoan ? 'Sedang ditinjau pengurus' : 'Semua cicilan lunas'),
+            card2Title: 'Sisa Pokok Pinjaman',
+            card2Val: formatRupiah(totalRemaining),
+            card2Sub: hasActiveLoan ? `${paidCount}/${totalCount} Cicilan Terbayar` : '0 Tagihan Aktif',
+            card3Title: 'Total Pinjaman',
+            card3Val: formatRupiah(totalApprovedAmount),
+            card3Sub: `${loans.length} Total Riwayat`,
+            isOverdue,
+            isApproaching,
+            hasApprovedLoans,
+            hasActiveLoan,
+            hasPendingLoan,
+        };
+    }
+
+    // Get operator metrics
+    static async getOperatorMetrics(tenantId: string) {
+        const loans = await prisma.loan.findMany({
+            where: { member: { tenantId } },
+            select: { amount: true, status: true },
+        });
+
+        const pendingCount = loans.filter(l => l.status === 'PENDING').length;
+        const activeCount = loans.filter(l => l.status === 'APPROVED').length;
+        const totalDisbursed = loans
+            .filter(l => l.status === 'APPROVED' || l.status === 'PAID')
+            .reduce((sum, l) => sum + Number(l.amount), 0);
+
+        const formatRupiah = (num: number) => `Rp ${Number(num || 0).toLocaleString('id-ID')}`;
+
+        return {
+            card1Title: 'Pengajuan Menunggu',
+            card1Val: `${pendingCount} Berkas`,
+            card2Title: 'Pinjaman Aktif',
+            card2Val: `${activeCount} Berjalan`,
+            card3Title: 'Total Penyaluran',
+            card3Val: formatRupiah(totalDisbursed),
+        };
+    }
 }

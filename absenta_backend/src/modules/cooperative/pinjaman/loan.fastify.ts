@@ -91,6 +91,34 @@ export default async function loanRoutes(fastify: any) {
         }
     });
 
+    // GET /loans/student-metrics
+    fastify.get('/student-metrics', { preHandler: [requireCapability('cooperative.loans.apply')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const userId = req.user?.id;
+            if (!userId) {
+                return reply.send({ success: true, data: null });
+            }
+            const metrics = await LoanService.getStudentMetrics(tenantId, userId);
+            return reply.send({ success: true, data: metrics });
+        } catch (error) {
+            appLogger.error({ err: error }, 'Failed to fetch student metrics');
+            reply.status(500).send({ success: false, message: 'Failed to fetch student metrics' });
+        }
+    });
+
+    // GET /loans/operator-metrics
+    fastify.get('/operator-metrics', { preHandler: [requireCapability('cooperative.loans.view.list')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const metrics = await LoanService.getOperatorMetrics(tenantId);
+            return reply.send({ success: true, data: metrics });
+        } catch (error) {
+            appLogger.error({ err: error }, 'Failed to fetch operator metrics');
+            reply.status(500).send({ success: false, message: 'Failed to fetch operator metrics' });
+        }
+    });
+
     // GET /loans/:id
     fastify.get('/:id', { preHandler: [requireCapability(['cooperative.loans.view.detail', 'cooperative.loans.apply'])] }, async (req: any, reply: any) => {
         try {
