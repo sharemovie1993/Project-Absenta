@@ -349,26 +349,23 @@ export class EvaluasiKinerjaService {
 
       // Tingkat kehadiran aktual (%)
       const totalHadirFisik = hadirCount + lateCount;
-      const kehadiranPct = Math.min(100, Math.round(((totalHadirFisik + izinSakitCount) / totalExpectedDays) * 100));
+      const kehadiranPct = myGerbang.length > 0 
+        ? Math.min(100, Math.round(((totalHadirFisik + izinSakitCount) / totalExpectedDays) * 100))
+        : (mySesiAbsen.length > 0 ? Math.min(100, Math.round((mySesiAbsen.filter(s => s.status === 'HADIR' || s.status === 'TEPAT_WAKTU').length / mySesiAbsen.length) * 100)) : 0);
 
-      // Rumus Skor Presensi:
-      // Hadir tepat waktu bernilai 100%, Terlambat bernilai 75%, Izin/Sakit bernilai 80%, Alpa -100%.
-      // Ditambah pinalti menit keterlambatan (2 poin per 60 menit telat).
-      let presensiScore = 100;
+      // Rumus Skor Presensi (STRICT: 0 jika tidak ada riwayat absensi sama sekali)
+      let presensiScore = 0;
       if (myGerbang.length > 0) {
         const weightedPresence = (hadirCount * 100) + (lateCount * 75) + (izinSakitCount * 80) - (alpaCount * 100);
         const rawScore = weightedPresence / totalExpectedDays;
         const latePenalty = Math.floor(totalLateMinutes / 60) * 2;
         presensiScore = Math.max(0, Math.min(100, Math.round(rawScore - latePenalty)));
+      } else if (mySesiAbsen.length > 0) {
+        const sesiHadir = mySesiAbsen.filter(s => s.status === 'HADIR' || s.status === 'TEPAT_WAKTU').length;
+        const sesiTelat = mySesiAbsen.filter(s => s.status === 'TERLAMBAT' || s.is_terlambat).length;
+        presensiScore = Math.min(100, Math.round(((sesiHadir * 100 + sesiTelat * 75) / mySesiAbsen.length)));
       } else {
-        // Jika belum ada data tap gerbang, evaluasi dari absensi KBM sesi
-        if (mySesiAbsen.length > 0) {
-          const sesiHadir = mySesiAbsen.filter(s => s.status === 'HADIR' || s.status === 'TEPAT_WAKTU').length;
-          const sesiTelat = mySesiAbsen.filter(s => s.status === 'TERLAMBAT' || s.is_terlambat).length;
-          presensiScore = Math.min(100, Math.round(((sesiHadir * 100 + sesiTelat * 75) / mySesiAbsen.length)));
-        } else {
-          presensiScore = 80; // Baseline netral
-        }
+        presensiScore = 0; // STRICT: Belum ada catatan absensi
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -381,7 +378,7 @@ export class EvaluasiKinerjaService {
       const mapelSet = new Set<string>();
       myTemplates.forEach(t => { if (t.Mapel?.nama_mapel) mapelSet.add(t.Mapel.nama_mapel); });
       myPloting.forEach(gm => { if (gm.Mapel?.nama_mapel) mapelSet.add(gm.Mapel.nama_mapel); });
-      const mapelStr = Array.from(mapelSet).join(', ') || 'Guru Mata Pelajaran';
+      const mapelStr = Array.from(mapelSet).join(', ') || (myTemplates.length > 0 || myPloting.length > 0 ? 'Guru Mata Pelajaran' : 'Belum Ada Penugasan Mapel');
 
       // Hitung JP mingguan rencana dari Struktur Kurikulum
       let weeklyPlannedJp = 0;
@@ -410,9 +407,6 @@ export class EvaluasiKinerjaService {
       if (weeklyPlannedJp === 0 && myTemplates.length > 0) {
         weeklyPlannedJp = myTemplates.length;
       }
-      if (weeklyPlannedJp === 0) {
-        weeklyPlannedJp = 24; // Beban standar sertifikasi guru 24 JP/minggu
-      }
 
       const totalJpRencanaSemester = weeklyPlannedJp * WEEKS_PER_SEMESTER;
 
@@ -426,15 +420,15 @@ export class EvaluasiKinerjaService {
         ? Math.min(100, Math.round((totalJpRealisasi / totalJpRencanaSemester) * 100))
         : 0;
 
-      // Skor KBM: dihitung proporsional terhadap target sesi yang telah berjalan
-      let kbmScore = 80;
-      if (closedSesi.length > 0) {
-        kbmScore = Math.min(100, Math.round((totalJpRealisasi / (weeklyPlannedJp * Math.max(1, Math.ceil(baselineHariKerja / 5)))) * 100));
-        kbmScore = Math.min(100, Math.max(20, kbmScore));
-      } else if (mySesi.length > 0) {
-        kbmScore = 50; // Ada sesi tapi belum ada yang diselesaikan (CLOSED)
+      // Skor KBM (STRICT: 0 jika belum ada sesi KBM yang berstatus CLOSED)
+      let kbmScore = 0;
+      if (closedSesi.length > 0 && weeklyPlannedJp > 0) {
+        const targetRunningJp = weeklyPlannedJp * Math.max(1, Math.ceil(baselineHariKerja / 5));
+        kbmScore = Math.min(100, Math.round((totalJpRealisasi / targetRunningJp) * 100));
+      } else if (closedSesi.length > 0) {
+        kbmScore = Math.min(100, totalJpRealisasi * 10);
       } else {
-        kbmScore = 75; // Sesi semester belum dimulai
+        kbmScore = 0; // STRICT
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -447,9 +441,10 @@ export class EvaluasiKinerjaService {
         return hasMateri && hasAbsenSiswa;
       });
 
+      // Jurnal Score (STRICT: 0 jika belum ada sesi terisi jurnal & absensi)
       const jurnalTerisiPct = closedSesi.length > 0
         ? Math.round((sesiWithJournalAndAbsen.length / closedSesi.length) * 100)
-        : (mySesi.length > 0 ? 60 : 85);
+        : 0;
       const jurnalScore = jurnalTerisiPct;
 
       // ─────────────────────────────────────────────────────────────
@@ -462,20 +457,18 @@ export class EvaluasiKinerjaService {
       // Standar dokumen per mapel yang diampu: 4 dokumen (Modul Ajar, ATP, Prota, Promes)
       const expectedPerangkat = Math.max(4, mapelSet.size * 4);
 
-      let perangkatScore = 70;
+      let perangkatScore = 0;
       let perangkatStatus: 'LENGKAP' | 'REVIEW' | 'KURANG' = 'KURANG';
 
-      if (approvedPerangkat.length >= expectedPerangkat) {
-        perangkatScore = 100;
-        perangkatStatus = 'LENGKAP';
-      } else if (approvedPerangkat.length + reviewPerangkat.length >= expectedPerangkat) {
-        perangkatScore = Math.round(((approvedPerangkat.length * 1.0 + reviewPerangkat.length * 0.7) / expectedPerangkat) * 100);
-        perangkatStatus = 'REVIEW';
-      } else if (myPerangkat.length > 0) {
-        perangkatScore = Math.min(85, Math.round(((approvedPerangkat.length * 1.0 + reviewPerangkat.length * 0.6) / expectedPerangkat) * 100));
-        perangkatStatus = 'REVIEW';
+      if (myPerangkat.length > 0) {
+        perangkatScore = Math.min(100, Math.round(((approvedPerangkat.length * 1.0 + reviewPerangkat.length * 0.5) / expectedPerangkat) * 100));
+        if (approvedPerangkat.length >= expectedPerangkat) {
+          perangkatStatus = 'LENGKAP';
+        } else {
+          perangkatStatus = 'REVIEW';
+        }
       } else {
-        perangkatScore = 60;
+        perangkatScore = 0; // STRICT: 0 jika belum ada dokumen yang diunggah
         perangkatStatus = 'KURANG';
       }
 
@@ -486,7 +479,7 @@ export class EvaluasiKinerjaService {
       const completedSupervisi = mySupervisi.filter(s => s.status === 'COMPLETED' || s.status === 'SELESAI');
       const latestSupervisi = completedSupervisi[0] || mySupervisi[0] || null;
 
-      let supervisiSkor = 80;
+      let supervisiSkor = 0;
       let supervisiStatus: 'SELESAI' | 'TERJADWAL' | 'BELUM_ADA' = 'BELUM_ADA';
       let supervisiTanggal: string | null = null;
       let catatanPenilai: string | null = null;
@@ -502,12 +495,12 @@ export class EvaluasiKinerjaService {
           supervisiSkor = latestSupervisi.nilai_self;
           supervisiStatus = 'TERJADWAL';
         } else {
-          supervisiSkor = 80;
+          supervisiSkor = 0;
           supervisiStatus = 'TERJADWAL';
         }
       } else {
         supervisiStatus = 'BELUM_ADA';
-        supervisiSkor = 80; // Baseline netral bila belum dijadwalkan supervisi
+        supervisiSkor = 0; // STRICT: 0 jika belum pernah disupervisi
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -524,13 +517,13 @@ export class EvaluasiKinerjaService {
         tugasTambahanNames.push(guru.jabatan);
       }
 
-      let tugasTambahanScore = 80;
+      let tugasTambahanScore = 0;
       if (tugasTambahanNames.length >= 2) {
-        tugasTambahanScore = 95;
+        tugasTambahanScore = 100;
       } else if (tugasTambahanNames.length === 1) {
-        tugasTambahanScore = 90;
-      } else {
         tugasTambahanScore = 80;
+      } else {
+        tugasTambahanScore = 0;
       }
 
       // ─────────────────────────────────────────────────────────────
