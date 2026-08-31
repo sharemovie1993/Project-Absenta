@@ -19,6 +19,7 @@ import type { Column } from '../../components/ui/Table';
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
 
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { getApiErrorMessage } from '../../utils/errorUtils';
 
 const announcementSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi'),
@@ -77,7 +78,8 @@ const Announcements: React.FC = React.memo(() => {
     },
     onError: (error) => {
       console.error(error);
-      toast.error('Gagal membuat pengumuman');
+      const msg = getApiErrorMessage(error, 'Gagal membuat pengumuman');
+      toast.error(msg);
     }
   });
 
@@ -108,7 +110,8 @@ const Announcements: React.FC = React.memo(() => {
     },
     onError: (error) => {
       console.error(error);
-      toast.error('Gagal menghapus pengumuman');
+      const msg = getApiErrorMessage(error, 'Gagal menghapus pengumuman');
+      toast.error(msg);
     }
   });
 
