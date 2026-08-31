@@ -1,7 +1,4 @@
-import { z } from 'zod';
-const jkkSchema = z.object({
-  guru_id: z.string().min(1, 'Guru wajib dipilih')
-});
+import React, { useState, useMemo, useCallback } from 'react';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { formatDate } from '@/utils/date.utils';
@@ -52,8 +49,8 @@ const JadwalKontrakKbmPage: React.FC = () => {
   const canManage = useMemo(() => isAdmin || isKurikulum || can('academic.teaching.manage'), [isAdmin, isKurikulum, can]);
 
   // === Hooks untuk dropdown filter ===
-  const { rawList: tahunList } = useTahunPelajaranOptions();
-  const { rawList: semesterList } = useSemesterOptions({ tahunPelajaranId: selectedTahunId });
+  const { options: tahunOptions } = useTahunPelajaranOptions();
+  const { options: semesterOptions } = useSemesterOptions({ tahunPelajaranId: selectedTahunId });
 
   // === Main data hook ===
   const {
@@ -177,55 +174,54 @@ const JadwalKontrakKbmPage: React.FC = () => {
         </div>
 
         {/* Tahun Pelajaran */}
-        <div className="relative">
+        <div className="w-full sm:w-48">
           <SearchableSelect
-    id="jkk_select"
-    aria-label="Pilih Guru / Kelas"
-    options={[
-      { value: 'all', label: 'Semua Guru & Kelas' }
-    ]}
-    placeholder="Pilih Opsi..."
-  />
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            id="tp_select"
+            aria-label="Pilih Tahun Pelajaran"
+            options={[{ value: '', label: 'Semua Tahun' }, ...tahunOptions]}
+            value={selectedTahunId}
+            onValueChange={(val) => {
+              setSelectedTahunId(val);
+              setSelectedSemesterId('');
+            }}
+            placeholder="Pilih Tahun..."
+          />
         </div>
 
         {/* Semester */}
-        <div className="relative">
+        <div className="w-full sm:w-44">
           <SearchableSelect
-    id="jkk_select"
-    aria-label="Pilih Guru / Kelas"
-    options={[
-      { value: 'all', label: 'Semua Guru & Kelas' }
-    ]}
-    placeholder="Pilih Opsi..."
-  />
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            id="sem_select"
+            aria-label="Pilih Semester"
+            options={[{ value: '', label: 'Semua Semester' }, ...semesterOptions]}
+            value={selectedSemesterId}
+            onValueChange={setSelectedSemesterId}
+            placeholder="Pilih Semester..."
+          />
         </div>
 
         {/* Filter Kelas */}
-        <div className="relative">
+        <div className="w-full sm:w-44">
           <SearchableSelect
-    id="jkk_select"
-    aria-label="Pilih Guru / Kelas"
-    options={[
-      { value: 'all', label: 'Semua Guru & Kelas' }
-    ]}
-    placeholder="Pilih Opsi..."
-  />
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            id="kelas_select"
+            aria-label="Pilih Kelas"
+            options={[{ value: '', label: 'Semua Kelas' }, ...kelasOptionsFromData]}
+            value={selectedKelasId}
+            onValueChange={setSelectedKelasId}
+            placeholder="Pilih Kelas..."
+          />
         </div>
 
         {/* Filter Guru */}
-        <div className="relative">
+        <div className="w-full sm:w-48">
           <SearchableSelect
-    id="jkk_select"
-    aria-label="Pilih Guru / Kelas"
-    options={[
-      { value: 'all', label: 'Semua Guru & Kelas' }
-    ]}
-    placeholder="Pilih Opsi..."
-  />
-          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            id="guru_select"
+            aria-label="Pilih Guru"
+            options={[{ value: '', label: 'Semua Guru' }, ...guruOptionsFromData]}
+            value={selectedGuruId}
+            onValueChange={setSelectedGuruId}
+            placeholder="Pilih Guru..."
+          />
         </div>
 
         {/* Refresh */}

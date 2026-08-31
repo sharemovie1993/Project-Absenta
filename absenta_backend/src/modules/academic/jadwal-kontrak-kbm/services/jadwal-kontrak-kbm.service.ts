@@ -23,8 +23,8 @@ const includeRelations = {
   Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
   Guru: { select: { id: true, nama_guru: true } },
   Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-  TahunPelajaran: { select: { id: true, nama: true } },
-  Semester: { select: { id: true, nama: true } },
+  TahunPelajaran: { select: { id: true, tahun: true } },
+  Semester: { select: { id: true, nama_semester: true } },
   MasterRuangan: { select: { id: true, nama_ruangan: true } },
 };
 

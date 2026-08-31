@@ -20,8 +20,8 @@ export interface JadwalKontrakKbmItem {
   Kelas?: { id: string; nama_kelas: string; tingkat: number };
   Guru?: { id: string; nama_guru: string } | null;
   Mapel?: { id: string; nama_mapel: string; kode_mapel?: string } | null;
-  TahunPelajaran?: { id: string; nama: string };
-  Semester?: { id: string; nama: string };
+  TahunPelajaran?: { id: string; tahun?: string; nama?: string };
+  Semester?: { id: string; nama_semester?: string; nama?: string };
   MasterRuangan?: { id: string; nama_ruangan: string } | null;
 }
 
