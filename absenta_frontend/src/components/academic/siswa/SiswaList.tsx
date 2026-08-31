@@ -1199,7 +1199,13 @@ const SiswaList: React.FC<SiswaListProps> = React.memo(({
               pagination={{
                 currentPage,
                 totalPages,
-                onPageChange: handlePageChange
+                totalItems,
+                itemsPerPage,
+                onPageChange: handlePageChange,
+                onLimitChange: (limit) => {
+                  setItemsPerPage(limit);
+                  setCurrentPage(1);
+                }
               }}
               renderCard={renderSiswaMobileCard}
             />

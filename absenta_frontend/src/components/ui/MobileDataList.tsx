@@ -17,6 +17,11 @@ export interface MobileDataListProps<T> {
     currentPage: number;
     totalPages: number;
     onPageChange: (page: number) => void;
+    totalItems?: number;
+    itemsPerPage?: number;
+    onLimitChange?: (limit: number) => void;
+    onItemsPerPageChange?: (limit: number) => void;
+    pageSizeOptions?: number[];
   };
   emptyMessage?: React.ReactNode;
   toolbar?: React.ReactNode;
@@ -147,30 +152,67 @@ export function MobileDataList<T>({
             </div>
           )}
 
-          {/* Mobile Pagination Controls */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 pb-8">
-              <Button
-                variant="ghost"
-                disabled={pagination.currentPage <= 1}
-                onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-                aria-label="Halaman Sebelumnya"
-                className="text-[11px] font-black uppercase tracking-wider h-10 px-4 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              >
-                Sebelumnya
-              </Button>
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-2xs font-mono">
-                {pagination.currentPage} / {pagination.totalPages}
-              </span>
-              <Button
-                variant="ghost"
-                disabled={pagination.currentPage >= pagination.totalPages}
-                onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-                aria-label="Halaman Berikutnya"
-                className="text-[11px] font-black uppercase tracking-wider h-10 px-4 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-              >
-                Berikutnya
-              </Button>
+          {/* Mobile Pagination Controls & Limit Selector */}
+          {pagination && (
+            <div className="flex flex-col gap-3 pt-4 pb-6 border-t border-slate-100 dark:border-slate-800">
+              {/* Row 1: Total items & Page Size / Limit Selector */}
+              <div className="flex items-center justify-between px-1 text-xs">
+                <span className="font-bold text-slate-500 dark:text-slate-400">
+                  Total: {typeof (pagination.totalItems ?? totalItems) === 'number' ? `${pagination.totalItems ?? totalItems} Data` : `${data.length} Data`}
+                </span>
+
+                {(pagination.onLimitChange || pagination.onItemsPerPageChange) && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="mobile-page-limit" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                      Baris:
+                    </label>
+                    <select
+                      id="mobile-page-limit"
+                      aria-label="Atur batas data per halaman"
+                      value={pagination.itemsPerPage || 10}
+                      onChange={(e) => {
+                        const newLimit = Number(e.target.value);
+                        pagination.onLimitChange?.(newLimit);
+                        pagination.onItemsPerPageChange?.(newLimit);
+                      }}
+                      className="h-8 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+                      {(pagination.pageSizeOptions || [10, 25, 50, 100]).map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt} / hal
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Row 2: Prev / Page Indicator / Next */}
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    variant="ghost"
+                    disabled={pagination.currentPage <= 1}
+                    onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                    aria-label="Halaman Sebelumnya"
+                    className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  >
+                    Sebelumnya
+                  </Button>
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-2xs font-mono">
+                    {pagination.currentPage} / {pagination.totalPages}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    disabled={pagination.currentPage >= pagination.totalPages}
+                    onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                    aria-label="Halaman Berikutnya"
+                    className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
