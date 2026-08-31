@@ -42,6 +42,7 @@ import {
 } from '../../components/kurikulum/perangkat-ajar/perangkatAjarSchemas';
 
 import { PerangkatAjarGridCard } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarGridCard';
+import { getPerangkatAjarTableColumns } from '../../components/kurikulum/perangkat-ajar/perangkatAjarTableColumns';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
