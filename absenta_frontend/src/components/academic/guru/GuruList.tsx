@@ -13,6 +13,7 @@ import {
   Search, 
   RefreshCw, 
   Download, 
+  Upload,
   FileSpreadsheet,
   AlertCircle,
   Sparkles,
