@@ -21,7 +21,8 @@ import {
   Modal, 
   Badge, 
   Loader,
-  SearchableSelect
+  SearchableSelect,
+  CleanDeckCard
 } from '../../ui';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { BookOpen } from 'lucide-react';
@@ -322,6 +323,37 @@ const MapelList = React.memo<MapelListProps>(({
 
   const isSmkMak = jenjang === 'SMK' || jenjang === 'MAK';
 
+  const renderMobileCard = useCallback((mapel: Mapel) => {
+    const handleDetail = () => {
+      if (onView) onView(mapel);
+      else if (onEdit) onEdit(mapel);
+    };
+
+    return (
+      <CleanDeckCard
+        key={mapel.id}
+        title={mapel.nama_mapel}
+        subtitle={
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <span>{mapel.kode_mapel ? `Kode: ${mapel.kode_mapel}` : 'Tanpa Kode'}</span>
+            <span>•</span>
+            <span className="font-bold text-blue-600 dark:text-blue-400">
+              {mapel.tingkat ? `Kelas ${mapel.tingkat}` : 'Semua Tingkat'}
+            </span>
+          </div>
+        }
+        selected={selectedIds.has(mapel.id)}
+        onSelect={(checked) => {
+          const next = new Set(selectedIds);
+          if (checked) next.add(mapel.id); else next.delete(mapel.id);
+          setSelectedIds(next);
+        }}
+        onDetail={handleDetail}
+        onClick={handleDetail}
+      />
+    );
+  }, [selectedIds, onView, onEdit]);
+
   return (
     <div className="flex flex-col">
       {/* Tab Filter + Search Bar */}
@@ -392,8 +424,6 @@ const MapelList = React.memo<MapelListProps>(({
         </div>
       </div>
       
-
-      
       <div className="bg-transparent overflow-hidden">
         <Table
           columns={columns}
@@ -401,6 +431,9 @@ const MapelList = React.memo<MapelListProps>(({
           loading={loading}
           emptyMessage="Tidak ada data mata pelajaran ditemukan"
           compact={true}
+          renderMobileCard={renderMobileCard}
+          onView={onView || onEdit}
+          onRowClick={(row: Mapel) => (onView ? onView(row) : onEdit ? onEdit(row) : undefined)}
           pagination={{
             currentPage,
             totalPages,
