@@ -7,6 +7,7 @@ import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOpti
 import { usePiketGateStore } from '../../../hooks/usePiketGateStore';
 import { calculatePiketAnalytics, getPermitGateStage, getPermitStatusBadge } from '../../../utils/piketStatusHelper';
 import { formatDate } from '../../../utils/layoutUtils';
+import { Card } from '../../../components/ui/Card';
 
 interface PelanggaranItem {
   id: string;
