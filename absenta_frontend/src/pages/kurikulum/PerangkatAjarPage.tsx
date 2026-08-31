@@ -43,19 +43,10 @@ import {
 
 import { PerangkatAjarGridCard } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarGridCard';
 import { getPerangkatAjarTableColumns } from '../../components/kurikulum/perangkat-ajar/perangkatAjarTableColumns';
+import { PerangkatAjarFilterBar } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarFilterBar';
+import { PerangkatAjarModals } from '../../components/kurikulum/perangkat-ajar/PerangkatAjarModals';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
-
-// Subcomponents Lazy Loading
-const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
-const PerangkatAjarUploadModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarUploadModal'));
-const PerangkatAjarReviewModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarReviewModal'));
-const PerangkatAjarLibraryModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarLibraryModal'));
-const PerangkatAjarAIModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarAIModal'));
-const PerangkatAjarWordEditorModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWordEditorModal'));
-const PerangkatAjarWizardModal = lazy(() => import('../../components/kurikulum/perangkat-ajar/PerangkatAjarWizardModal'));
-const BahanAjarReaderModal = lazy(() => import('../../components/kurikulum/bahan-ajar/BahanAjarReaderModal').then(m => ({ default: m.BahanAjarReaderModal })));
-const ModulAjarStudioModal = lazy(() => import('../../components/kurikulum/bahan-ajar/ModulAjarStudioModal').then(m => ({ default: m.ModulAjarStudioModal })));
 
 const hardeningModuleKey = 'perangkat_ajar_page';
 
