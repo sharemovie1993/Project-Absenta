@@ -7,6 +7,7 @@ import { useCapabilities } from '../../../hooks/useCapabilities';
 import { fetchCoopSettings, type CoopSettingsData, printCoopReceipt } from '../../../utils/cooperative/coopDocUtils';
 import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import type { Subscription } from '../../../types/subscription';
+import { useModuleAccess } from '../../../hooks/useModuleAccess';
 
 export interface CoopMember {
   id: string;
@@ -183,15 +184,8 @@ export const usePOSState = () => {
   const [limit, setLimit] = useState<number>(10);
   const [historySearch, setHistorySearch] = useState<string>('');
 
-  const sub = subscription as (Subscription & {
-    features?: string[];
-    Plan?: { features_json?: string[] };
-    plan?: { features_json?: string[] };
-  }) | null;
-  const features = sub?.features || 
-                   sub?.Plan?.features_json || 
-                   sub?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   const queryParams = new URLSearchParams(window.location.search);
   const isForceCatalog = queryParams.get('mode') === 'catalog';

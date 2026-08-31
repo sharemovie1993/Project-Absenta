@@ -22,6 +22,7 @@ import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import type { CriticalStockItem, Announcement, Sale, SaleItem, CoopUserInfo } from '@/components/cooperative/types';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
@@ -64,9 +65,8 @@ const Dashboard: React.FC = React.memo(() => {
   const isKoperasiStaff = isAdmin || isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiStore;
   const isGuruOrSiswa = !isKoperasiStaff;
 
-  // Gating Logic
-  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   // Dummy data for chart - in production, fetch this from API
   const chartData = useMemo(() => [

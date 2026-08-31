@@ -12,6 +12,7 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { formatDate } from '@/utils/layoutUtils';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -47,12 +48,8 @@ export const Tickets: React.FC = React.memo(() => {
     message: ''
   });
 
-  const features = useMemo(() => {
-    const sub = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
-    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  }, [subscription]);
-
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   const ticketsQuery = useQuery({
     queryKey: ['koperasi-tickets-list'],

@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import useConfirm from '../../hooks/useConfirm';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 // Lazy load komponen berat
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
@@ -61,9 +62,8 @@ const PPOB: React.FC = React.memo(() => {
   const [customerNo, setCustomerNo] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<PPOBProduct | null>(null);
 
-  // Gating Logic
-  const features = useMemo(() => subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   const ppobQuery = useQuery({
     queryKey: ['koperasi-ppob-services'],

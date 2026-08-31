@@ -12,6 +12,7 @@ import {
   exportSingleSavingPdf,
   exportAllSavingsPdf
 } from './savingsExportUtils';
+import { useModuleAccess } from '../../../hooks/useModuleAccess';
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -33,8 +34,8 @@ export const useSavingsState = () => {
   const isOperator = can('cooperative.savings.deposit');
   const isStudent = !isManageMode || !isOperator;
 
-  const sub = subscription as SubscriptionWithFeatures | null | undefined;
-  const features = sub?.features || subscription?.Plan?.features_json || subscription?.plan?.features_json || [];
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
   const [selectedSaving, setSelectedSaving] = useState<Saving | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
@@ -84,8 +85,6 @@ export const useSavingsState = () => {
   // Pagination state
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
-
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
 
   const isMountedRef = useRef(true);
 

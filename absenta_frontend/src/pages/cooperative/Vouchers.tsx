@@ -17,6 +17,7 @@ import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 export interface Voucher {
   id: string;
@@ -129,11 +130,8 @@ const Vouchers: React.FC = React.memo(() => {
   const [salesLoading, setSalesLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
 
-  // Gating Logic
-  const features = (subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } })?.features || 
-                   subscription?.Plan?.features_json || 
-                   subscription?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   const hasManageAccess = useMemo(() => {
     return user?.capabilities?.includes('cooperative.vouchers.manage') || false;

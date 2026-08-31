@@ -18,6 +18,8 @@ import { Table } from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 const Card = lazy(() => import('../../components/cooperative/ui/Card').then(m => ({ default: m.Card })));
 
+import { useModuleAccess } from '../../hooks/useModuleAccess';
+
 const announcementSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi'),
   content: z.string().min(1, 'Isi pengumuman wajib diisi'),
@@ -32,16 +34,14 @@ interface Announcement {
 
 const Announcements: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const { subscription, user } = useAuthStore();
   const confirm = useConfirm();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageLimit, setPageLimit] = useState(10);
 
-  // Otorisasi & Gating Logic
-  const features = useMemo(() => (subscription as unknown as Record<string, unknown>)?.features as string[] || subscription?.Plan?.features_json || subscription?.plan?.features_json || [], [subscription]);
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
+  // Otorisasi & Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   const { isKoperasiHead, isAdmin, can } = useCapabilities();
   const canCreate = useMemo(() => isAdmin || isKoperasiHead || can('cooperative.announcements.create'), [isAdmin, isKoperasiHead, can]);
@@ -90,7 +90,11 @@ const Announcements: React.FC = React.memo(() => {
       toast.error(parseResult.error.errors[0]?.message || 'Data pengumuman tidak valid');
       return;
     }
-    await createAnnouncementMutation.mutateAsync({ title, content });
+    try {
+      await createAnnouncementMutation.mutateAsync({ title, content });
+    } catch {
+      // Error is caught and displayed by mutation onError
+    }
   }, [title, content, createAnnouncementMutation]);
 
   const deleteAnnouncementMutation = useMutation({
@@ -116,7 +120,11 @@ const Announcements: React.FC = React.memo(() => {
       style: 'danger'
     });
     if (!ok) return;
-    await deleteAnnouncementMutation.mutateAsync(id);
+    try {
+      await deleteAnnouncementMutation.mutateAsync(id);
+    } catch {
+      // Error is caught and displayed by mutation onError
+    }
   }, [confirm, deleteAnnouncementMutation]);
 
   const paginatedData = useMemo(() => {

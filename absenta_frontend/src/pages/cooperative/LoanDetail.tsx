@@ -21,6 +21,7 @@ import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoan
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 const LoanDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -34,10 +35,8 @@ const LoanDetail: React.FC = React.memo(() => {
   const [installmentPage, setInstallmentPage] = useState(1);
   const installmentLimit = 12;
 
-  // Gating Logic
-  const subData = subscription as unknown as Record<string, unknown>;
-  const features = (subData?.features as string[]) || (subData?.Plan as Record<string, unknown>)?.features_json as string[] || (subData?.plan as Record<string, unknown>)?.features_json as string[] || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   // Capability checks
   const isOperator = user?.capabilities?.includes('cooperative.loans.repay');

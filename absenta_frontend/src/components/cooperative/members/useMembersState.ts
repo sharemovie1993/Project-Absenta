@@ -7,6 +7,7 @@ import type { Student } from '../../common/SmartStudentPicker';
 import type { Member, CoopProfile } from './types';
 import { fetchCoopSettings } from '../../../utils/cooperative/coopDocUtils';
 import { parseImportExcel } from '../../../utils/cooperative/memberDocUtils';
+import { useModuleAccess } from '../../../hooks/useModuleAccess';
 
 interface AxiosErrorLike {
   response?: {
@@ -155,14 +156,8 @@ export const useMembersState = (subscription: any) => {
     };
   }, []);
 
-  // Gating Logic
-  const subObj = subscription as Record<string, any> | null;
-  const features =
-    subObj?.features ||
-    subObj?.Plan?.features_json ||
-    subObj?.plan?.features_json ||
-    [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   // React Query setup for members and kelas
   const membersQuery = useQuery({

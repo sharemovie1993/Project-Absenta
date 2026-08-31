@@ -12,6 +12,7 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { formatDate } from '@/utils/layoutUtils';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 const replySchema = z.object({
   reply: z.string().min(1, 'Pesan balasan tidak boleh kosong'),
@@ -40,12 +41,8 @@ export const TicketDetail: React.FC = React.memo(() => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const features = useMemo(() => {
-    const sub = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
-    return sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-  }, [subscription]);
-
-  const isLocked = useMemo(() => !Array.isArray(features) || !features.includes('KOPERASI'), [features]);
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
   const { isKoperasi, isAdmin, can } = useCapabilities();
   const hasListPermission = useMemo(() => isAdmin || isKoperasi || can('cooperative.tickets.view.list'), [isAdmin, isKoperasi, can]);
   const [reply, setReply] = useState('');

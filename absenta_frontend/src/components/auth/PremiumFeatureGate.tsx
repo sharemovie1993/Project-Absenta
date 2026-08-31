@@ -59,6 +59,21 @@ export default function PremiumFeatureGate({
     (subscription as any)?.subscriptions ??
     (user as any)?.subscriptions ??
     [];
+  const MODULE_ALIASES: Record<string, string[]> = {
+    KOPERASI: ['KOPERASI', 'COOPERATIVE', 'COOP'],
+    COOPERATIVE: ['KOPERASI', 'COOPERATIVE', 'COOP'],
+    COOP: ['KOPERASI', 'COOPERATIVE', 'COOP'],
+    ABSENSI: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
+    ATTENDANCE: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
+    ATTENDANCE_OPS: ['ABSENSI', 'ATTENDANCE', 'ATTENDANCE_OPS'],
+    HUBIN: ['HUBIN', 'BKK', 'PRAKERIN'],
+    SARPRAS: ['SARPRAS', 'ASSET'],
+    RAPOR: ['RAPOR', 'REPORTING', 'NILAI'],
+    REPORTING: ['RAPOR', 'REPORTING', 'NILAI'],
+  };
+
+  const allowedNames = MODULE_ALIASES[targetModule] || [targetModule];
+
   const hasExpiredChildSub = Boolean(
     targetModule &&
     subs.some((s: any) => {
@@ -68,21 +83,26 @@ export default function PremiumFeatureGate({
         ? planFeatures.map(f => String(f).toUpperCase())
         : [];
       return (
-        planFeaturesUpper.includes(targetModule) &&
+        planFeaturesUpper.some(f => allowedNames.includes(f)) &&
         expiredStatuses.includes(String(s?.status ?? '').toUpperCase())
       );
     })
   );
 
-  const isModuleAllowed = targetModule
-    ? Array.isArray(features) && features.some(f => String(f).toUpperCase() === targetModule)
-    : true;
+  const isModuleAllowed = useMemo(() => {
+    if (!targetModule) return true;
+    if (isAdmin) return true;
+    const featuresUpper = Array.isArray(features)
+      ? features.map(f => String(f).toUpperCase())
+      : [];
+    return featuresUpper.some(f => allowedNames.includes(f));
+  }, [targetModule, isAdmin, features]);
 
   // isLocked jika modul tidak ada di paket ATAU status langganan sudah kedaluwarsa/tidak aktif
   const isLocked =
     propIsLocked !== undefined
       ? propIsLocked
-      : !isModuleAllowed || isStatusExpired || isPastEndDate || hasExpiredChildSub;
+      : !isModuleAllowed || (isStatusExpired && !isAdmin) || (isPastEndDate && !isAdmin) || hasExpiredChildSub;
 
   // Detect EXPIRED (pernah berlangganan tapi habis / status expired) vs TRIAL (belum pernah)
   const isExpired = useMemo(() => {

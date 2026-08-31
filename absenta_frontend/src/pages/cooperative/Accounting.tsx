@@ -28,6 +28,7 @@ import { JournalTable } from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Lazy loaded component for performance optimization
@@ -74,9 +75,8 @@ const Accounting: React.FC = React.memo(() => {
 
     const printTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    const sub = subscription as SubscriptionWithFeatures | null | undefined;
-    const features = sub?.features || sub?.Plan?.features_json || sub?.plan?.features_json || [];
-    const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+    // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+    const { isLocked } = useModuleAccess('KOPERASI');
     
     // Capability checks for Accounting
     const canViewFinancials = can('cooperative.reports.view.financial');

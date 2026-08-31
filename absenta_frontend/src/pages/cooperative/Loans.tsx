@@ -20,6 +20,7 @@ import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -71,12 +72,8 @@ const Loans: React.FC = React.memo(() => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
-  // Gating Logic
-  const subFeatures = subscription as { features?: string[]; Plan?: { features_json?: string[] }; plan?: { features_json?: string[] } } | null;
-  const features = subFeatures?.features || 
-                   subFeatures?.Plan?.features_json || 
-                   subFeatures?.plan?.features_json || [];
-  const isLocked = !Array.isArray(features) || !features.includes('KOPERASI');
+  // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
+  const { isLocked } = useModuleAccess('KOPERASI');
 
   // Member Status query
   const memberStatusQuery = useQuery({
