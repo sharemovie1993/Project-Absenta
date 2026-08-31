@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 export const usePerangkatAjarMutations = (params: any) => {
   const {
     queryClient, setIsUploadModalOpen, setUploadForm, setIsReviewModalOpen,
-    setSelectedPerangkatId, setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
+    setSelectedPerangkatId, selectedRowKeys = new Set(), setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
     setGeneratedAIContent, JENIS_LABELS, aiForm, isWizardModalOpen, setIsWizardModalOpen,
     setSelectedWordEditItem, currentGuru, activeYear, activeSemester, setIsWordEditorOpen,
     setIsAIModalOpen, setActiveTab, setFilterJenis, setFilterMapel, setPage
-  } = params;
+  } = params || {};
 
   // Mutations
   const uploadMutation = useMutation({

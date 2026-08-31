@@ -283,11 +283,11 @@ export default function PerangkatAjarPage() {
   }, [allPerangkatForStats]);
 
   const {
-    uploadMutation, reviewMutation, deleteMutation, bulkDeleteMutation,
+    uploadMutation, reviewMutation, deleteMutation, bulkDeleteMutation, handleBulkDelete,
     claimMutation, generateAIMutation, saveAIMutation
   } = usePerangkatAjarMutations({
     queryClient, setIsUploadModalOpen, setUploadForm, setIsReviewModalOpen,
-    setSelectedPerangkatId, setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
+    setSelectedPerangkatId, selectedRowKeys, setSelectedRowKeys, setClaimingId, setIsLibraryModalOpen,
     setGeneratedAIContent, JENIS_LABELS, aiForm, isWizardModalOpen, setIsWizardModalOpen,
     setSelectedWordEditItem, currentGuru, activeYear, activeSemester, setIsWordEditorOpen,
     setIsAIModalOpen, setActiveTab, setFilterJenis, setFilterMapel, setPage
@@ -584,6 +584,19 @@ export default function PerangkatAjarPage() {
                 striped
                 selectedRowKeys={selectedRowKeys}
                 onSelectedRowKeysChange={setSelectedRowKeys}
+                toolbarRight={
+                  selectedRowKeys.size > 0 && isKurikulumOrAdmin && (
+                    <Button
+                      variant="toolbarDanger"
+                      size="toolbar"
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleteMutation.isPending}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                      Hapus Terpilih ({selectedRowKeys.size})
+                    </Button>
+                  )
+                }
                 pagination={{
                   currentPage: page,
                   totalPages: listPerangkat?.meta?.last_page || 1,
