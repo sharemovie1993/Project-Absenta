@@ -217,7 +217,7 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                 {/* 1. KARTU PRODUK & KAPASITAS */}
                 <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
                   {(() => {
-                const selectedPlan = resolvePlan(activeOrder.size || '', activeOrder.period);
+                const selectedPlan = resolvePlanHelper(activeOrder, activeOrder.size || '', activeOrder.period, isHardware);
                 const capacity = selectedPlan?.max_user || selectedPlan?.device_limit || selectedPlan?.deviceLimit;
                 return <div className="flex items-start gap-3.5 sm:gap-4">
                         {/* Icon / Product Image */}
