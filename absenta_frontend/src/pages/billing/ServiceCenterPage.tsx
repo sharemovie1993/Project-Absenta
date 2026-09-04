@@ -44,40 +44,10 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import type { Invoice } from '../../types/invoice';
 import type { Plan } from '../../types/billing';
 import type { SubscriptionService } from '@/components/billing/AutoRenewModal';
+import type { OrderPayload } from '@/components/billing/OrderReviewSidebar';
 
 interface ServiceInvoice extends Invoice {
   subscription_id?: string;
-}
-
-interface CatalogVariant {
-  id: string;
-  billing_period?: string;
-  size_label?: string;
-  features_json?: string[];
-  price_monthly: number;
-  price_yearly: number;
-}
-
-interface CatalogGroup {
-  variants?: CatalogVariant[];
-  service_code?: string;
-  icon?: string;
-  module?: string;
-  baseName?: string;
-}
-
-interface OrderPayload {
-  id: string;
-  service_code?: string;
-  moduleIcon?: string;
-  moduleName?: string;
-  name?: string;
-  size?: string;
-  period: 'MONTH' | 'YEAR';
-  features_json?: string[];
-  price_monthly: number;
-  price_yearly: number;
-  group?: CatalogGroup;
 }
 
 export interface SubscriptionPlan {
@@ -116,9 +86,10 @@ export interface SubscriptionItem {
 // Zod Schema Validation Guard (Pilar 25)
 const orderPayloadSchema = z.object({
   id: z.string().min(1, 'ID Paket wajib ada'),
-  period: z.enum(['MONTH', 'YEAR']),
-  price_monthly: z.number().nonnegative(),
-  price_yearly: z.number().nonnegative()
+  period: z.enum(['MONTH', 'YEAR', 'ONETIME']).optional(),
+  price_monthly: z.number().nonnegative().optional(),
+  price_yearly: z.number().nonnegative().optional(),
+  price_onetime: z.number().nonnegative().optional()
 });
 
 // Lazy Loaded Subcomponents (Pilar 13)
@@ -235,13 +206,75 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     setIsAutoRenewModalOpen(true);
   }, []);
 
-  const handleSelectCatalogItem = useCallback((order: OrderPayload) => {
-    const validation = orderPayloadSchema.safeParse(order);
-    if (!validation.success) {
+  const handleSelectCatalogItem = useCallback((raw: any) => {
+    if (!raw) {
       toast.error('Data paket tidak valid');
       return;
     }
-    setSelectedOrder(order);
+
+    // Jika objek berupa group (mengandung array variants)
+    if (raw.variants && Array.isArray(raw.variants) && raw.variants.length > 0) {
+      const defaultVariant = raw.variants[0];
+      const isHardware = Boolean(
+        raw.module_id === 'SERVER_HARDWARE' ||
+        raw.module_id === 'NETWORK_HARDWARE' ||
+        raw.module_id === 'ABSENSI_HARDWARE' ||
+        raw.module_id === 'PHYSICAL_SERVICE' ||
+        defaultVariant.billing_period === 'ONETIME' ||
+        defaultVariant.price_onetime
+      );
+      const period = isHardware ? 'ONETIME' : (defaultVariant.billing_period === 'YEARLY' ? 'YEAR' : 'MONTH');
+
+      const normalized: OrderPayload = {
+        id: defaultVariant.id,
+        service_code: raw.service_code || defaultVariant.service_code,
+        moduleIcon: raw.icon || defaultVariant.module?.icon,
+        moduleName: raw.module || defaultVariant.module?.name,
+        name: defaultVariant.name || raw.baseName || raw.name,
+        size: defaultVariant.size || defaultVariant.size_label || 'Micro',
+        period: period as any,
+        features_json: defaultVariant.features_json || [],
+        price_monthly: Number(defaultVariant.price_monthly || 0),
+        price_yearly: Number(defaultVariant.price_yearly || 0),
+        price_onetime: Number(defaultVariant.price_onetime || 0),
+        group: raw
+      };
+      setSelectedOrder(normalized);
+      return;
+    }
+
+    // Jika objek berupa individual plan variant
+    const isHardware = Boolean(
+      raw.billing_period === 'ONETIME' ||
+      raw.price_onetime ||
+      raw.module_id === 'SERVER_HARDWARE' ||
+      raw.module_id === 'NETWORK_HARDWARE' ||
+      raw.module_id === 'ABSENSI_HARDWARE' ||
+      raw.module_id === 'PHYSICAL_SERVICE'
+    );
+    const period = raw.period || (isHardware ? 'ONETIME' : (raw.billing_period === 'YEARLY' ? 'YEAR' : 'MONTH'));
+
+    const normalized: OrderPayload = {
+      id: raw.id || raw.plan_id || '',
+      service_code: raw.service_code,
+      moduleIcon: raw.moduleIcon || raw.module?.icon,
+      moduleName: raw.moduleName || raw.module?.name,
+      name: raw.name || raw.title,
+      size: raw.size || raw.size_label || 'Micro',
+      period: period as any,
+      features_json: Array.isArray(raw.features_json) ? raw.features_json : [],
+      price_monthly: Number(raw.price_monthly || 0),
+      price_yearly: Number(raw.price_yearly || 0),
+      price_onetime: Number(raw.price_onetime || 0),
+      group: raw.group || (raw.variants ? raw : undefined)
+    };
+
+    if (!normalized.id) {
+      toast.error('Data paket tidak valid');
+      return;
+    }
+
+    setSelectedOrder(normalized);
   }, []);
 
   const handleConfirmOrder = useCallback(async () => {
@@ -250,7 +283,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     try {
       const res = await orderSubscriptionPlan({
         plan_id: selectedOrder.id,
-        billing_period: selectedOrder.period
+        billing_period: selectedOrder.period === 'YEAR' ? 'YEAR' : (selectedOrder.period === 'ONETIME' ? 'ONETIME' : 'MONTH')
       });
       if (res.data?.success) {
         toast.success('Pesanan berhasil dibuat!');
@@ -436,17 +469,19 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
         )}
 
         {/* Sidebar Order Review */}
-        {selectedOrder && (
-          <Suspense fallback={null}>
-            <OrderReviewSidebar
-              order={selectedOrder}
-              isOpen={Boolean(selectedOrder)}
-              onClose={() => setSelectedOrder(null)}
-              onConfirmOrder={handleConfirmOrder}
-              isOrdering={isOrdering}
-            />
-          </Suspense>
-        )}
+        <Suspense fallback={null}>
+          <OrderReviewSidebar
+            showOrderPanel={Boolean(selectedOrder)}
+            activeOrder={selectedOrder}
+            checkoutProcessing={isOrdering}
+            setShowOrderPanel={(show) => {
+              if (!show) setSelectedOrder(null);
+            }}
+            setActiveOrder={setSelectedOrder}
+            handleCheckout={handleConfirmOrder}
+            activeAcademicTier={activeAcademicTier}
+          />
+        </Suspense>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

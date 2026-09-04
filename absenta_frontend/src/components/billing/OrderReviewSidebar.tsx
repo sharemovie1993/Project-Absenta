@@ -28,6 +28,45 @@ interface OrderReviewSidebarProps {
   handleCheckout: () => Promise<void>;
   activeAcademicTier?: string;
 }
+// Deteksi Perangkat / Hardware / Physical Service
+const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
+
+// Urutan ukuran Shopee-style: kecil ke besar
+const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+
+const extractSizeLabel = (v: any): string => {
+  if (v?.size_label) return v.size_label;
+  const name = String(v?.name || v?.title || '');
+  const id = String(v?.id || '');
+  if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
+  if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
+  if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
+  if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
+  if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
+  if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
+  const limit = v?.device_limit || v?.max_user || 0;
+  if (limit > 0) {
+    if (limit <= 300) return 'Micro';
+    if (limit <= 600) return 'Small';
+    if (limit <= 1200) return 'Large';
+    if (limit <= 2500) return 'Enterprise';
+    return 'Ultra';
+  }
+  return 'Standard';
+};
+
+const resolvePlanHelper = (activeOrder: OrderPayload | null, size: string, period: 'MONTH' | 'YEAR' | 'ONETIME', isHardware: boolean): any | null => {
+  if (!activeOrder?.group?.variants) return null;
+  const variants: any[] = activeOrder.group.variants;
+
+  // Coba match sempurna: size + period
+  const exactMatch = variants.find(v => (v.size_label === size || extractSizeLabel(v) === size) && (v.billing_period === period || (isHardware && v.price_onetime > 0)));
+  if (exactMatch) return exactMatch;
+
+  // Fallback: jika billing_period tidak ada di data, ambil yang cocok size saja
+  return variants.find(v => v.size_label === size || extractSizeLabel(v) === size) || variants[0] || null;
+};
+
 export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
   showOrderPanel,
   activeOrder,
@@ -37,9 +76,21 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
   handleCheckout,
   activeAcademicTier = 'Micro'
 }) => {
+  // Deteksi Perangkat / Hardware / Physical Service
+  const isHardware = Boolean(
+    activeOrder && (
+      HARDWARE_MODULE_IDS.includes(activeOrder.group?.module_id || '') || 
+      HARDWARE_MODULE_IDS.includes(activeOrder.service_code || '') || 
+      activeOrder.service_code === 'HARDWARE' || 
+      activeOrder.service_code === 'PHYSICAL_GOODS' || 
+      activeOrder.period === 'ONETIME' || 
+      (activeOrder.id && (activeOrder.id.startsWith('HW_') || activeOrder.id.startsWith('SVC_') || activeOrder.id.includes('SERVER') || activeOrder.id.includes('DELL')))
+    )
+  );
+
   // Kumpulkan unique size_label dari semua varian (MONTH+YEAR digabung jadi 1 baris per ukuran)
   const groupedVariants = useMemo(() => {
-    if (!activeOrder.group?.variants) return [];
+    if (!activeOrder?.group?.variants) return [];
     const map = new Map<string, any[]>();
     activeOrder.group.variants.forEach((v: any) => {
       const key = extractSizeLabel(v);
@@ -52,16 +103,12 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
       const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === b.toLowerCase());
       return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
     });
-  }, [activeOrder.group]);
-
-  /**
-   * Kunci utama: resolve plan_id berdasarkan size_label + billing_period
-   * Karena 1 Plan = 1 periode (Skenario A), kombinasi ini menghasilkan plan_id yang berbeda
-   */
+  }, [activeOrder?.group]);
 
   // List fitur yang didapat dari selectedPlan / activeOrder
   const featuresList = useMemo(() => {
-    const selectedPlan = resolvePlan(activeOrder.size || '', activeOrder.period);
+    if (!activeOrder) return [];
+    const selectedPlan = resolvePlanHelper(activeOrder, activeOrder.size || '', activeOrder.period, isHardware);
     const raw = selectedPlan?.features_json || activeOrder.features_json;
     if (Array.isArray(raw)) return raw.filter(Boolean);
     if (typeof raw === 'string') {
@@ -73,50 +120,12 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
       }
     }
     return [];
-  }, [activeOrder.size, activeOrder.period, activeOrder.features_json, resolvePlan]);
-  if (!activeOrder) return null;
-
-  // Deteksi Perangkat / Hardware / Physical Service
-  const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
-  const isHardware = Boolean(HARDWARE_MODULE_IDS.includes(activeOrder.group?.module_id || '') || HARDWARE_MODULE_IDS.includes(activeOrder.service_code || '') || activeOrder.service_code === 'HARDWARE' || activeOrder.service_code === 'PHYSICAL_GOODS' || activeOrder.period === 'ONETIME' || activeOrder.id && (activeOrder.id.startsWith('HW_') || activeOrder.id.startsWith('SVC_') || activeOrder.id.includes('SERVER') || activeOrder.id.includes('DELL')));
-
-  // Urutan ukuran Shopee-style: kecil ke besar
-  const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
-  const extractSizeLabel = (v: any): string => {
-    if (v?.size_label) return v.size_label;
-    const name = String(v?.name || v?.title || '');
-    const id = String(v?.id || '');
-    if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
-    if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
-    if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
-    if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
-    if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
-    if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
-    const limit = v?.device_limit || v?.max_user || 0;
-    if (limit > 0) {
-      if (limit <= 300) return 'Micro';
-      if (limit <= 600) return 'Small';
-      if (limit <= 1200) return 'Large';
-      if (limit <= 2500) return 'Enterprise';
-      return 'Ultra';
-    }
-    return 'Standard';
-  };
-  const resolvePlan = (size: string, period: 'MONTH' | 'YEAR' | 'ONETIME'): any | null => {
-    if (!activeOrder.group?.variants) return null;
-    const variants: any[] = activeOrder.group.variants;
-
-    // Coba match sempurna: size + period
-    const exactMatch = variants.find(v => (v.size_label === size || extractSizeLabel(v) === size) && (v.billing_period === period || isHardware && v.price_onetime > 0));
-    if (exactMatch) return exactMatch;
-
-    // Fallback: jika billing_period tidak ada di data, ambil yang cocok size saja
-    return variants.find(v => v.size_label === size || extractSizeLabel(v) === size) || variants[0] || null;
-  };
+  }, [activeOrder, isHardware]);
 
   // Pilih ukuran baru → resolve plan_id dari size × period aktif
   const selectSize = (sizeLabel: string) => {
-    const plan = resolvePlan(sizeLabel, activeOrder.period);
+    if (!activeOrder) return;
+    const plan = resolvePlanHelper(activeOrder, sizeLabel, activeOrder.period, isHardware);
     if (!plan) return;
     const pOnetime = plan.price_onetime || Number(String(plan.price || 0).replace(/[^0-9]/g, '')) || 0;
     setActiveOrder(prev => prev ? {
@@ -133,8 +142,8 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
 
   // Ganti periode → resolve plan_id dari size aktif × period baru
   const updatePeriod = (period: 'MONTH' | 'YEAR') => {
-    if (isHardware) return; // Siklus tagihan tidak berlaku untuk hardware
-    const plan = resolvePlan(activeOrder.size || '', period);
+    if (!activeOrder || isHardware) return; // Siklus tagihan tidak berlaku untuk hardware
+    const plan = resolvePlanHelper(activeOrder, activeOrder.size || '', period, isHardware);
     if (!plan) return;
     setActiveOrder(prev => prev ? {
       ...prev,
@@ -145,8 +154,11 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
     } : null);
   };
 
+  if (!activeOrder) return null;
+
   // Harga yang ditampilkan berdasarkan jenis produk dan periode yang dipilih
   const displayPrice = isHardware ? activeOrder.price_onetime || activeOrder.price_monthly || activeOrder.price_yearly || 0 : activeOrder.period === 'YEAR' ? activeOrder.price_yearly || activeOrder.price_monthly * 12 : activeOrder.price_monthly;
+
   return <AnimatePresence>
       {showOrderPanel && <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto">
           {/* Backdrop */}
