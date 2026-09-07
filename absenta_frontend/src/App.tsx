@@ -58,6 +58,7 @@ const BillingReportsPage = lazy(() => import('./pages/billing/BillingReportsPage
 const ApprovalsPage = lazy(() => import('./pages/billing/ApprovalsPage'));
 const CheckoutPage = lazy(() => import('./pages/billing/CheckoutPage'));
 const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage'));
+const CatalogPage = lazy(() => import('./pages/billing/CatalogPage'));
 const RABCalculatorPage = lazy(() => import('./pages/billing/RABCalculatorPage').then(m => ({ default: m.RABCalculatorPage })));
 const SIPLaHAuditVerifyPage = lazy(() => import('./pages/public/SIPLaHAuditVerifyPage'));
 const AttendanceOpsPage = lazy(() => import('./pages/attendance/ops/AttendanceOpsPage'));
@@ -1262,16 +1263,21 @@ function App() {
                     <Route path="/komunikasi" element={<CommunicationCenterPage />} />
                     <Route path="/support" element={<SupportHelpdeskPage />} />
                     <Route path="/superadmin/support" element={<SupportHelpdeskPage />} />
-                    {/* Services Catalog (Internal Admin Only) */}
-                    {/* Unified Service Hub (Satu Pintu) */}
+                    {/* Services Catalog (Internal Admin / School Store) */}
+                    <Route path="/catalog" element={
+                      <ProtectedRoute requiredCapability="billing.my.subscription.view">
+                        <CatalogPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/services" element={<Navigate to="/catalog" replace />} />
+                    <Route path="/services-catalog" element={<Navigate to="/catalog" replace />} />
+
+                    {/* Unified Service Hub (Langganan & Lisensi Aktif) */}
                     <Route path="/service-center" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
                         <ServiceCenterPage />
                       </ProtectedRoute>
                     } />
-                    
-                    {/* Backward Compatibility Redirects */}
-                    <Route path="/services" element={<Navigate to="/service-center?tab=catalog" replace />} />
                     <Route path="/documents" element={
                       <ProtectedRoute
                         requiredCapability={[

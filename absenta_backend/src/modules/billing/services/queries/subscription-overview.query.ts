@@ -86,21 +86,26 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
   }
   const aggregatedFeatures = Array.from(featureSet);
 
+  const subList = (activeSubscriptions as any[]).map((s) => ({
+    id: s.id,
+    plan_id: s.plan_id,
+    service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
+    status: s.status,
+    end_date: s.end_date,
+    start_date: s.start_date,
+    auto_renew: s.auto_renew,
+    plan_snapshot: (s as any).plan_snapshot || null,
+    plan_name: (s as any).Plan?.name ?? null,
+    plan_features: (s as any).Plan?.features_json ?? null,
+    Plan: s.Plan || null, // Include full Plan object for UI richness
+  }));
+
   return {
     ...subscription,
     features: aggregatedFeatures,
-    subscriptions: (activeSubscriptions as any[]).map((s) => ({
-      id: s.id,
-      plan_id: s.plan_id,
-      status: s.status,
-      end_date: s.end_date,
-      start_date: s.start_date,
-      auto_renew: s.auto_renew,
-      plan_snapshot: (s as any).plan_snapshot || null,
-      plan_name: (s as any).Plan?.name ?? null,
-      plan_features: (s as any).Plan?.features_json ?? null,
-      Plan: s.Plan || null, // Include full Plan object for UI richness
-    })),
+    subscriptions: subList,
+    services: subList,
+    all_subscriptions: subList,
     target_upgrade_plan: upgradePlanChange
       ? {
           id: upgradePlanChange.to_plan_id,
@@ -189,24 +194,28 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
   try {
     const tenant = await prisma.tenant.findUnique({
       where: { id: _tenantId },
-      select: { subdomain: true }
+      select: { subdomain: true, name: true }
     });
     const slug = tenant?.subdomain?.toLowerCase();
+    const tenantName = tenant?.name?.toLowerCase();
 
     const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
     if (response.data?.success && response.data?.data?.invoices) {
       let rawInvoices = response.data.data.invoices;
 
-      if (slug) {
+      if (slug || tenantName) {
         const licenses = response.data.data.licenses || [];
         const tenantLicenses = licenses
-          .filter((l: any) => l.requested_slug?.toLowerCase() === slug)
+          .filter((l: any) => (slug && l.requested_slug?.toLowerCase() === slug) || (tenantName && l.school_name?.toLowerCase() === tenantName))
           .map((l: any) => l.id);
-        rawInvoices = rawInvoices.filter((inv: any) => 
-          tenantLicenses.includes(inv.license_id) || 
-          inv.school_name?.toLowerCase() === slug || 
-          inv.schoolName?.toLowerCase() === slug
-        );
+
+        rawInvoices = rawInvoices.filter((inv: any) => {
+          const invSchool = String(inv.school_name || inv.schoolName || '').toLowerCase();
+          const matchLicense = tenantLicenses.includes(inv.license_id);
+          const matchSlug = slug && (invSchool === slug || invSchool.includes(`|${slug}`) || invSchool.endsWith(`|${slug}`));
+          const matchName = tenantName && (invSchool === tenantName || invSchool.includes(tenantName));
+          return matchLicense || matchSlug || matchName;
+        });
       }
 
       return rawInvoices.map((inv: any) => {
@@ -264,24 +273,28 @@ export async function getPaymentsByTenantQuery(_tenantId: string) {
   try {
     const tenant = await prisma.tenant.findUnique({
       where: { id: _tenantId },
-      select: { subdomain: true }
+      select: { subdomain: true, name: true }
     });
     const slug = tenant?.subdomain?.toLowerCase();
+    const tenantName = tenant?.name?.toLowerCase();
 
     const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
     if (response.data?.success && response.data?.data?.invoices) {
       let rawInvoices = response.data.data.invoices;
 
-      if (slug) {
+      if (slug || tenantName) {
         const licenses = response.data.data.licenses || [];
         const tenantLicenses = licenses
-          .filter((l: any) => l.requested_slug?.toLowerCase() === slug)
+          .filter((l: any) => (slug && l.requested_slug?.toLowerCase() === slug) || (tenantName && l.school_name?.toLowerCase() === tenantName))
           .map((l: any) => l.id);
-        rawInvoices = rawInvoices.filter((inv: any) => 
-          tenantLicenses.includes(inv.license_id) || 
-          inv.school_name?.toLowerCase() === slug || 
-          inv.schoolName?.toLowerCase() === slug
-        );
+
+        rawInvoices = rawInvoices.filter((inv: any) => {
+          const invSchool = String(inv.school_name || inv.schoolName || '').toLowerCase();
+          const matchLicense = tenantLicenses.includes(inv.license_id);
+          const matchSlug = slug && (invSchool === slug || invSchool.includes(`|${slug}`) || invSchool.endsWith(`|${slug}`));
+          const matchName = tenantName && (invSchool === tenantName || invSchool.includes(tenantName));
+          return matchLicense || matchSlug || matchName;
+        });
       }
 
       return rawInvoices

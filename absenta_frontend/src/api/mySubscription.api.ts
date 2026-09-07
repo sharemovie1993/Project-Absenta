@@ -27,6 +27,12 @@ export async function getMySubscription(): Promise<MySubscriptionResponse> {
   });
 }
 
+export async function syncMySubscription(): Promise<MySubscriptionResponse> {
+  return requestWithFallback<MySubscriptionResponse>('post', '/me/subscription/sync', {
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 export async function getMyInvoices(): Promise<MyInvoicesResponse> {
   return requestWithFallback<MyInvoicesResponse>('get', '/billing/my-subscription/invoices', {
     headers: { 'X-Skip-403-Redirect': 'true' }

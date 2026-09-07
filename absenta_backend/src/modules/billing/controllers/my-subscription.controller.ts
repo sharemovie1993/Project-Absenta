@@ -2,6 +2,7 @@ import { toHttpError } from '../../../utils/error';
 import { isSystemSuperAdmin } from '../../../utils/rbac';
 import { subscriptionService } from '../services/subscription.service';
 import { getInvoicesByTenantQuery, getPaymentsByTenantQuery } from '../services/queries/subscription-overview.query';
+import { syncLocalSubscriptionsWithLicensingServer } from './subscription.controller';
 
 export const mySubscriptionController = {
   async getSubscription(req: any, reply: any) {
@@ -20,14 +21,53 @@ export const mySubscriptionController = {
       });
     }
 
+    if (req.query?.refresh === 'true') {
+      try {
+        await syncLocalSubscriptionsWithLicensingServer(tenantId);
+      } catch (err: any) {
+        console.warn('[getSubscription] Background sync warning:', err.message);
+      }
+    }
+
     const responseData = await subscriptionService.getMySubscriptionOverview(tenantId);
 
     return reply.send({
       success: true,
       message: 'Subscription data retrieved',
       data: responseData,
+    });
+  },
+
+  async syncSubscription(req: any, reply: any) {
+    const user = req.user || {};
+    const roleName = user.roleName || user.role?.name;
+    const tenantId = user.tenantId || user.tenant_id || null;
+
+    if (!tenantId) {
+      if (!isSystemSuperAdmin(roleName, tenantId)) {
+        throw toHttpError(400, 'Tenant context missing');
+      }
+      return reply.send({
+        success: true,
+        message: 'Subscription sync completed',
+        data: null,
       });
-    },
+    }
+
+    try {
+      await syncLocalSubscriptionsWithLicensingServer(tenantId);
+    } catch (err: any) {
+      console.error('[syncSubscription] Sync error:', err.message);
+    }
+
+    const responseData = await subscriptionService.getMySubscriptionOverview(tenantId);
+
+    return reply.send({
+      success: true,
+      message: 'Subscription synchronized successfully',
+      data: responseData,
+    });
+  },
 
   async getInvoices(req: any, reply: any) {
     const tenantId = (req.user?.tenant_id || req.user?.tenantId);

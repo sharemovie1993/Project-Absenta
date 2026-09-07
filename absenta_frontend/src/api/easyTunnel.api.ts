@@ -126,6 +126,11 @@ export const easyTunnelApi = {
     return requestWithFallback('get', `/system/easy-tunnel/order/licenses/${encodeURIComponent(slug)}`);
   },
 
+  async getCloudLicenses(slug?: string): Promise<{ success: boolean; data: any[] }> {
+    const targetSlug = slug || 'default';
+    return requestWithFallback('get', `/system/easy-tunnel/order/licenses/${encodeURIComponent(targetSlug)}`);
+  },
+
   // System & Installation Info
   async info(): Promise<{ success: boolean; data: SystemInfo }> {
     return requestWithFallback('get', '/system/easy-tunnel/system/info');

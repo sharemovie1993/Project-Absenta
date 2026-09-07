@@ -67,6 +67,24 @@ export const tenantEntitlementService = {
       const mid = normalizeFeature(plan?.module_id);
       if (mid) featureSet.add(mid);
 
+      // Special: Jika paket adalah PAKET_LENGKAP, aktifkan seluruh ekosistem modul & EASY_TUNNEL
+      const sCode = normalizeFeature((sub as any).service_code);
+      const pName = String(plan?.name || '').toUpperCase();
+      if (mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP')) {
+        featureSet.add('PAKET_LENGKAP');
+        featureSet.add('EASY_TUNNEL');
+        featureSet.add('ABSENSI');
+        featureSet.add('ATTENDANCE');
+        featureSet.add('KOPERASI');
+        featureSet.add('COOPERATIVE');
+        featureSet.add('SARPRAS');
+        featureSet.add('INVENTORY');
+        featureSet.add('HUBIN');
+        featureSet.add('RAPOR');
+        featureSet.add('CBT');
+        featureSet.add('WHATSAPP');
+      }
+
       // 2. Process granular features from features_json
       const raw = plan?.features_json;
       if (!Array.isArray(raw)) continue;

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import {
   getMySubscription,
+  syncMySubscription,
   getMyInvoices,
   getMyPayments,
   getInvoiceDownloadUrl,
@@ -111,8 +112,9 @@ function MySubscriptionContent() {
 
   const subscription: MySubscription | null = subData ?? null;
   const services: Subscription[] = useMemo(() => {
-    if (subData && Array.isArray(subData.subscriptions) && subData.subscriptions.length > 0) {
-      return subData.subscriptions;
+    const raw = (subData as any)?.services || (subData as any)?.all_subscriptions || subData?.subscriptions;
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw;
     }
     return subData ? [subData] : [];
   }, [subData]);
@@ -120,6 +122,9 @@ function MySubscriptionContent() {
   const loading = loadingSub || loadingInvoices || loadingPayments;
 
   const handleRefresh = useCallback(async () => {
+    try {
+      await syncMySubscription();
+    } catch {}
     await Promise.all([
       refetchSub(),
       refetchInvoices(),

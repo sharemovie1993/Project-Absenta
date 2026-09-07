@@ -38,13 +38,30 @@ Modul Kurikulum adalah pusat pengaturan struktur pendidikan, Kurikulum Merdeka (
 - **Kalkulasi Minggu Efektif (RPE)**: Menghitung jumlah minggu efektif riil per semester & tahunan.
 - **Integrasi iCal Subscription**: Feed data kalender dalam format standar iCalendar (`.ics` RFC 5545) bebas OAuth.
 
+### 6. Jadwal Piket Guru & Otomatisasi Notifikasi WhatsApp
+- **Distribusi Penugasan Piket**: Pengaturan guru piket harian (Piket Umum & Piket Jurusan) berbasis Tahun Pelajaran & Semester aktif.
+- **SaaS Dynamic Minute Dispatcher**: Pengiriman pesan otomatis pengingat piket guru ke Grup WhatsApp sekolah berbasis timezone lokal tenant (WIB/WITA/WIT).
+- **Idempotency Outbox**: Proteksi anti-duplikasi pengiriman pesan berbasis `NotificationLog`.
+
 ---
 
 ## API ENDPOINTS UTAMA
 
+### Perangkat Ajar & Supervisi
 - `GET /api/kurikulum/perangkat` — List Perangkat Ajar Guru.
 - `POST /api/kurikulum/perangkat` — Unggah Berkas Perangkat Ajar.
 - `POST /api/kurikulum/perangkat/generate-ai` — Hasilkan Naskah Perangkat Ajar dengan AI.
 - `POST /api/kurikulum/perangkat/save-editor` — Simpan Naskah AI ke Repositori.
 - `GET /api/kurikulum/perangkat/:id/download` — Stream PDF Murni 5 Halaman A4 On-the-Fly.
 - `POST /api/kurikulum/perangkat/:id/review` — Verifikasi Perangkat Ajar (APPROVED / REJECTED).
+
+### Jadwal Piket Guru & Notifikasi WhatsApp
+- `GET /api/kurikulum/jadwal-piket` — Ambil daftar jadwal piket guru (dengan filter semester, TP, hari).
+- `GET /api/kurikulum/jadwal-piket/hari-ini` — Ambil daftar guru piket yang bertugas hari ini.
+- `POST /api/kurikulum/jadwal-piket` — Buat penugasan piket single guru.
+- `POST /api/kurikulum/jadwal-piket/bulk` — Buat penugasan piket massal (*Bulk Assign*).
+- `PUT /api/kurikulum/jadwal-piket/:id` — Perbarui data penugasan piket.
+- `DELETE /api/kurikulum/jadwal-piket/:id` — Hapus penugasan piket.
+- `GET /api/kurikulum/jadwal-piket/notif-config` — Ambil konfigurasi notifikasi WA group & daftar grup terdeteksi.
+- `POST /api/kurikulum/jadwal-piket/notif-config` — Simpan konfigurasi pengingat WA (jam pagi/malam, status aktif, target grup).
+- `POST /api/kurikulum/jadwal-piket/test-notif` — Uji coba pengiriman pesan instan ke Grup WA.

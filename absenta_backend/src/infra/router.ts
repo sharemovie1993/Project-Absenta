@@ -313,6 +313,14 @@ export async function registerRoutes(fastify: any, prisma: any) {
         },
       });
 
+      fastify.post('/me/subscription/sync', {
+        preHandler: [requireCapability('billing.my.subscription.view')],
+        handler: async (request: any, reply: any) => {
+          const { mySubscriptionController } = await import('../modules/billing/controllers/my-subscription.controller');
+          return mySubscriptionController.syncSubscription(request, reply);
+        },
+      });
+
       const { academicRoutes } = await import('../modules/academic/routes/academic.routes');
       await fastify.register(academicRoutes, { prefix: '/academic' });
 

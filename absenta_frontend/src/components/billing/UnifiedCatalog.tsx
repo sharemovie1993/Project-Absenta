@@ -7,72 +7,152 @@ import {
   Package, 
   Search, 
   ArrowRight, 
-  CheckCircle, 
   Sparkles,
-  Info
+  ShoppingBag,
+  Clock,
+  Briefcase,
+  MessageCircle,
+  Server,
+  Calculator,
+  CheckCircle2,
+  FilterX
 } from 'lucide-react';
-import * as LucideIcons from 'lucide-react';
 
-import { Card, Button, Badge, Loader } from '../ui';
+import { Button } from '../ui';
 import { getPublicPlans } from '../../api/plans.api';
 import { getPublicModules } from '../../api/module.api';
 import { 
   formatCurrency, 
-  getServiceIcon, 
-  getServiceTheme, 
-  getServiceThumbnail 
+  getServiceIcon 
 } from '../../lib/billingUtils';
 import { useCartStore } from '../../store/useCartStore';
 import { CartDrawer } from './CartDrawer';
 import { RABCalculatorModal } from './RABCalculatorModal';
+import { ShopeeProductDetail } from './ShopeeProductDetail';
+import { OrderReviewSidebar, OrderPayload } from './OrderReviewSidebar';
+import { orderSubscriptionPlan } from '../../api/subscription.api';
 import toast from 'react-hot-toast';
 
 interface UnifiedCatalogProps {
-  mode: 'public' | 'private';
+  mode?: 'public' | 'private';
   ownedFeatures?: string[];
   ownedServices?: any[];
   onSelectPlan?: (plan: any) => void;
+  activeAcademicTier?: string;
 }
 
+const CATEGORY_TABS = [
+  { id: 'ALL', label: 'Semua Produk', icon: LayoutGrid },
+  { id: 'PAKET_LENGKAP', label: 'Paket Komplit', icon: Sparkles, badge: 'Terpopuler' },
+  { id: 'ABSENSI', label: 'Presensi Digital', icon: Clock },
+  { id: 'KOPERASI', label: 'Koperasi & POS', icon: ShoppingBag },
+  { id: 'HUBIN', label: 'Hubin & PKL', icon: Briefcase },
+  { id: 'SARPRAS', label: 'Sarpras & Aset', icon: Package },
+  { id: 'WHATSAPP', label: 'WhatsApp Gateway', icon: MessageCircle },
+  { id: 'HARDWARE', label: 'Server & Hardware', icon: Server },
+];
+
+const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+
+const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
+
 export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({ 
-  mode, 
-  ownedFeatures = [], 
+  mode = 'private', 
   ownedServices = [],
-  onSelectPlan 
+  onSelectPlan,
+  activeAcademicTier = 'Micro'
 }) => {
   const navigate = useNavigate();
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [mainCategory, setMainCategory] = useState<'SAAS' | 'HARDWARE'>('SAAS');
-  const [configView, setConfigView] = useState<'GRID' | 'COMPARE'>('GRID');
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRABModalOpen, setIsRABModalOpen] = useState(false);
+
+  // Direct SaaS Order State
+  const [activeOrder, setActiveOrder] = useState<OrderPayload | null>(null);
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [checkoutProcessing, setCheckoutProcessing] = useState(false);
 
   const cartItems = useCartStore((state) => state.items);
   const setCartOpen = useCartStore((state) => state.setCartOpen);
   const addItemToCart = useCartStore((state) => state.addItem);
 
-  // 1. Plans Query — satu sumber: getPublicPlans() sudah mencakup software + hardware (product_id=cakola)
+  const handleConfirmSaaSOrder = async () => {
+    if (!activeOrder) return;
+    setCheckoutProcessing(true);
+    const toastId = toast.loading('Membuat invoice langganan SaaS...');
+    try {
+      const res: any = await orderSubscriptionPlan({
+        plan_id: activeOrder.id,
+        billing_period: activeOrder.period === 'YEAR' ? 'YEAR' : (activeOrder.period === 'ONETIME' ? 'ONETIME' : 'MONTH')
+      });
+      const isSuccess = Boolean(res?.success || res?.data?.success || res?.data?.checkout_url || res?.data?.checkout);
+      if (isSuccess) {
+        toast.success('Pesanan SaaS berhasil dibuat!', { id: toastId });
+        setShowOrderPanel(false);
+        const invData = res.data || res;
+        const checkoutUrl = invData?.checkout_url || invData?.qr_url || invData?.pay_url || invData?.checkout?.public_url;
+        const invId = invData?.invoice_id || invData?.token || invData?.invoice_token || invData?.checkout?.public_token;
+        if (checkoutUrl && (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://'))) {
+          window.location.href = checkoutUrl;
+        } else if (invId) {
+          navigate(`/billing/checkout?invoice_id=${invId}`);
+        } else {
+          navigate('/service-center?tab=invoices');
+        }
+      } else {
+        toast.error(res?.message || res?.data?.message || 'Gagal memproses pesanan.', { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Terjadi kesalahan sistem pesanan.', { id: toastId });
+    } finally {
+      setCheckoutProcessing(false);
+    }
+  };
+
+  const handleDirectPlanSelect = async (payload: any) => {
+    if (onSelectPlan) {
+      onSelectPlan(payload);
+      return;
+    }
+
+    const isHardware = HARDWARE_MODULE_IDS.includes(payload.module_id || payload.group?.service_code || payload.service_code);
+    if (isHardware) {
+      addItemToCart({
+        plan_id: payload.id,
+        name: payload.name || payload.group?.baseName || 'Hardware Absenta',
+        price: payload.price_onetime || payload.price_monthly || 0,
+        type: 'HARDWARE_PERIPHERAL',
+        billingPeriod: payload.period || 'ONETIME',
+        moduleName: payload.moduleName || 'Hardware'
+      });
+      setCartOpen(true);
+      toast.success('Hardware berhasil dimasukkan ke Keranjang Belanja!');
+    } else {
+      // Direct navigate to Absenta's Checkout Wizard Page
+      const cycle = payload.period === 'YEAR' ? 'YEAR' : 'MONTH';
+      navigate(`/billing/checkout?plan_id=${encodeURIComponent(payload.id)}&cycle=${cycle}`);
+    }
+  };
+
+  // 1. Plans Query
   const plansQuery = useQuery({
     queryKey: ['public-plans'],
     queryFn: async () => {
-      // Fetch semua plan dari backend (sudah include hardware via product_id=cakola)
       const res = await getPublicPlans();
       const plans: any[] = Array.isArray((res.data as any)?.plans)
         ? (res.data as any).plans
         : Array.isArray(res.data) ? res.data : [];
 
-      // Cek apakah hardware plans sudah ada di response backend
-      const HARDWARE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
-      const hasHardware = plans.some((p: any) => HARDWARE_IDS.includes(p.module_id));
+      const hasHardware = plans.some((p: any) => HARDWARE_MODULE_IDS.includes(p.module_id));
 
       if (!hasHardware) {
-        // Fallback: ambil langsung dari Server Lisensi jika backend belum include hardware
         try {
           const hwRes = await fetch('https://api.absenta.id/api/license/packages?product_id=cakola');
           const hwData = await hwRes.json();
           if (hwData?.success && Array.isArray(hwData.data)) {
             const hwPlans = hwData.data
-              .filter((h: any) => HARDWARE_IDS.includes(h.module_id))
+              .filter((h: any) => HARDWARE_MODULE_IDS.includes(h.module_id))
               .map((h: any) => ({
                 id: h.id,
                 name: h.name || h.title,
@@ -112,47 +192,46 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     staleTime: 1000 * 60 * 5,
   });
 
-  // 2. Modules Query — dari backend + hardware categories sebagai fallback
+  // 2. Modules Query
   const modulesQuery = useQuery({
     queryKey: ['public-modules'],
     queryFn: async () => {
       const res = await getPublicModules();
-      const modules: any[] = Array.isArray(res.data) ? res.data : [];
-
-      // Pastikan hardware modules selalu ada di filter bar
-      const hardwareModules = [
-        { id: 'SERVER_HARDWARE',  name: 'Server Node',      icon: 'Server'      },
-        { id: 'NETWORK_HARDWARE', name: 'Network Wi-Fi 6',  icon: 'Wifi'        },
-        { id: 'ABSENSI_HARDWARE', name: 'Biometrik & RFID', icon: 'Fingerprint' },
-        { id: 'PHYSICAL_SERVICE', name: 'Kartu & Cetak',    icon: 'CreditCard'  },
-      ];
-      hardwareModules.forEach(hm => {
-        if (!modules.some((m: any) => m.id === hm.id)) modules.push(hm);
-      });
-
-      return modules;
+      return Array.isArray(res.data) ? res.data : [];
     },
     staleTime: 1000 * 60 * 60,
   });
 
   const catalogPlans = plansQuery.data || [];
-  const allModules = modulesQuery.data || [];
 
-  const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
+  const extractSizeLabel = (plan: any): string => {
+    if (plan?.size_label) return plan.size_label;
+    const name = String(plan?.name || plan?.title || '');
+    const id = String(plan?.id || '');
 
-  const visibleSubModules = useMemo(() => {
-    if (!allModules || !Array.isArray(allModules)) return [];
-    return allModules.filter((m: any) => {
-      const isHwModule = HARDWARE_MODULE_IDS.includes(m.id);
-      if (mainCategory === 'SAAS') return !isHwModule;
-      if (mainCategory === 'HARDWARE') return isHwModule;
-      return true;
-    });
-  }, [allModules, mainCategory]);
+    if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
+    if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
+    if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
+    if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
+    if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
+    if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
 
-  const filteredPlans = useMemo(() => {
+    const limit = plan?.device_limit || plan?.max_user || 0;
+    if (limit > 0) {
+      if (limit <= 300) return 'Micro';
+      if (limit <= 600) return 'Small';
+      if (limit <= 1200) return 'Medium';
+      if (limit <= 2500) return 'Large';
+      return 'Enterprise';
+    }
+
+    return 'Standard';
+  };
+
+  // Grouping products into unique solutions
+  const allGroupedProducts = useMemo(() => {
     if (!catalogPlans || !Array.isArray(catalogPlans)) return [];
-    
+
     // Filter out Academic Core / CORE plans entirely from the catalog
     const nonCorePlans = catalogPlans.filter((p: any) => {
       const code = String(p.code || p.service_code || '').toUpperCase();
@@ -160,626 +239,391 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       return !code.includes('CORE') && !name.includes('CORE_PLATFORM') && !name.includes('ACADEMIC CORE');
     });
 
-    const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
-    const isHardwareItem = (p: any) => {
-      return HARDWARE_MODULE_IDS.includes(p.module_id) ||
-        p.service_code === 'HARDWARE' || p.service_code === 'PHYSICAL_GOODS' ||
-        p.type === 'HARDWARE_PERIPHERAL' || p.type === 'PHYSICAL_SERVICE' ||
-        p.id.includes('SERVER') || p.id.includes('DELL') || p.id.includes('HW_');
-    };
-
-    return nonCorePlans.filter((p: any) => {
-      // 1. Filter by Main Category Segment (SAAS vs HARDWARE)
-      if (mainCategory === 'SAAS' && isHardwareItem(p)) return false;
-      if (mainCategory === 'HARDWARE' && !isHardwareItem(p)) return false;
-
-      // 2. Filter by Specific Sub-Module Pill Tab
-      if (categoryFilter === 'ALL') return true;
-
-      const modId = String(p.module_id || '').toUpperCase();
-      const filter = String(categoryFilter).toUpperCase();
-      const sCode = String(p.service_code || p.Module?.service_code || '').toUpperCase();
-      const pCode = String(p.code || '').toUpperCase();
-
-      if (filter === 'ABSENSI')   return sCode.includes('ABSENSI')   || pCode.includes('ABSENSI');
-      if (filter === 'KOPERASI')  return sCode.includes('KOPERASI')  || sCode.includes('KANTIN')   || pCode.includes('KOPERASI');
-      if (filter === 'INVENTORY') return sCode.includes('INVENTORY') || sCode.includes('SARPRAS')  || pCode.includes('INVENTORY');
-
-      // Hardware categories: match by module_id prefix
-      if (filter === 'SERVER_HARDWARE')  return modId === 'SERVER_HARDWARE';
-      if (filter === 'NETWORK_HARDWARE') return modId === 'NETWORK_HARDWARE';
-      if (filter === 'ABSENSI_HARDWARE') return modId === 'ABSENSI_HARDWARE';
-      if (filter === 'PHYSICAL_SERVICE') return modId === 'PHYSICAL_SERVICE';
-
-      return sCode === filter;
-    });
-  }, [catalogPlans, categoryFilter, mainCategory]);
-
-  // Urutan ukuran dari kecil ke besar (Shopee-style)
-  const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
-
-  const groupedProducts = useMemo(() => {
     const products: Record<string, any> = {};
 
-    filteredPlans.forEach((p: any) => {
-        const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
-        const isHardware = HARDWARE_MODULE_IDS.includes(p.module_id) ||
-          p.service_code === 'HARDWARE' || p.service_code === 'PHYSICAL_GOODS' ||
-          p.type === 'HARDWARE_PERIPHERAL' || p.type === 'PHYSICAL_SERVICE';
+    nonCorePlans.forEach((p: any) => {
+      const isHardware = HARDWARE_MODULE_IDS.includes(p.module_id) ||
+        p.service_code === 'HARDWARE' || p.service_code === 'PHYSICAL_GOODS' ||
+        p.type === 'HARDWARE_PERIPHERAL' || p.type === 'PHYSICAL_SERVICE' ||
+        p.id.includes('SERVER') || p.id.includes('DELL') || p.id.includes('HW_') || p.id.startsWith('SVC_');
 
-        // Ekstrak nama dasar produk (tanpa ukuran dan periode)
-        let cleanBaseName = isHardware
-            ? p.name
-            : p.name
-                .replace(/\((.*?)\)/g, '')
-                .replace(/\b(Micro|Small|Medium|Large|Enterprise|Pro|Basic|Ultra|Lite)\b/gi, '')
-                .replace(/\b(Bulanan|Tahunan|Monthly|Yearly|Daily|Mingguan)\b/gi, '')
-                .replace(/-/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
+      let cleanBaseName = isHardware
+        ? p.name
+        : p.name
+            .replace(/\((.*?)\)/g, '')
+            .replace(/\b(Micro|Small|Medium|Large|Enterprise|Pro|Basic|Ultra|Lite)\b/gi, '')
+            .replace(/\b(Bulanan|Tahunan|Monthly|Yearly|Daily|Mingguan)\b/gi, '')
+            .replace(/-/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
-        const moduleName = p.module?.name || 'Layanan';
-        const planMode = p.absensi_mode || 'STANDARD';
+      const moduleName = p.module?.name || 'Layanan';
+      const planMode = p.absensi_mode || (p.name.includes('Multi') ? 'MULTI_SESI' : 'SIMPLE');
 
-        // Grouping key: Hardware devices grouped by product family
-        let groupKey = p.module_id ? `${p.module_id}-${planMode}` : `${cleanBaseName}-${planMode}`;
+      let groupKey = p.module_id ? `${p.module_id}-${planMode}` : `${cleanBaseName}-${planMode}`;
+      let categoryKey = 'SAAS';
+      let imageUrl = '/assets/modules/absensi-simple.png';
+      let cleanDescription = 'Solusi presensi digital sekolah terintegrasi.';
+      let highlightBadge = 'Sesuai Juknis BOS';
+      
+      if (isHardware) {
+        categoryKey = 'HARDWARE';
+        const idUp = (p.id || '').toUpperCase();
+        const nameUp = (p.name || '').toUpperCase();
         
-        if (isHardware) {
-          const idUp = (p.id || '').toUpperCase();
-          const nameUp = (p.name || '').toUpperCase();
-          
-          if (idUp.includes('DELL') || nameUp.includes('DELL')) {
-            groupKey = 'HW_GROUP_DELL_SERVER';
-            cleanBaseName = 'Server Dell PowerEdge Build-Up';
-          } else if (idUp.includes('NODE') || nameUp.includes('MINI PC') || nameUp.includes('WORKSTATION')) {
-            groupKey = 'HW_GROUP_MINI_PC';
-            cleanBaseName = 'Absenta Mini PC & Workstation Server';
-          } else if (idUp.includes('AP_') || idUp.includes('SWITCH') || nameUp.includes('WI-FI') || nameUp.includes('SWITCH')) {
-            groupKey = 'HW_GROUP_NETWORK';
-            cleanBaseName = 'Perangkat Jaringan Network & Wi-Fi 6';
-          } else if (idUp.includes('FP_') || idUp.includes('RFID') || nameUp.includes('HIKVISION') || nameUp.includes('ZKTECO') || nameUp.includes('FINGERPRINT') || nameUp.includes('SOLUTION')) {
-            groupKey = 'HW_GROUP_TERMINAL';
-            cleanBaseName = 'Terminal Presensi Absensi (Fingerprint & Wajah)';
-          } else {
-            groupKey = p.id;
-          }
+        if (idUp.includes('DELL') || nameUp.includes('DELL')) {
+          groupKey = 'HW_GROUP_DELL_SERVER';
+          cleanBaseName = 'Server Dell PowerEdge Build-Up';
+          imageUrl = '/assets/modules/server.png';
+          cleanDescription = 'Server fisik performa tinggi Dell PowerEdge untuk engine lokal offline/hybrid sekolah.';
+          highlightBadge = 'Garansi Resmi 3 Tahun';
+        } else if (idUp.includes('NODE') || nameUp.includes('MINI PC') || nameUp.includes('WORKSTATION')) {
+          groupKey = 'HW_GROUP_MINI_PC';
+          cleanBaseName = 'Absenta Mini PC & Workstation Server';
+          imageUrl = '/assets/modules/server.png';
+          cleanDescription = 'Unit Mini PC hemat daya untuk mesin antrean, kiosk presensi, dan mini server kelas.';
+          highlightBadge = 'Hemat Daya 25 Watt';
+        } else if (idUp.includes('AP_') || idUp.includes('SWITCH') || nameUp.includes('WI-FI') || nameUp.includes('SWITCH')) {
+          groupKey = 'HW_GROUP_NETWORK';
+          cleanBaseName = 'Perangkat Jaringan Network & Wi-Fi 6';
+          imageUrl = '/assets/modules/absensi.png';
+          cleanDescription = 'Access Point Enterprise Wi-Fi 6 berkecepatan gigabit & Switch PoE Managed stabil.';
+          highlightBadge = 'Gigabit PoE Managed';
+        } else if (idUp.includes('FP_') || idUp.includes('RFID') || nameUp.includes('HIKVISION') || nameUp.includes('ZKTECO') || nameUp.includes('FINGERPRINT') || nameUp.includes('SOLUTION') || nameUp.includes('FACE')) {
+          groupKey = 'HW_GROUP_TERMINAL';
+          cleanBaseName = 'Terminal Presensi Absensi (Fingerprint & Wajah)';
+          imageUrl = '/assets/modules/absensi-simple.png';
+          cleanDescription = 'Mesin absensi sidik jari & deteksi wajah berkecepatan tinggi dengan integrasi API langsung.';
+          highlightBadge = 'Multi-Biometrik & RFID';
+        } else if (idUp.includes('SVC_') || idUp.includes('PVC') || nameUp.includes('KARTU') || nameUp.includes('MIFARE')) {
+          groupKey = 'HW_GROUP_PVC_CARDS';
+          cleanBaseName = 'Kartu Pelajar PVC RFID Mifare 13.56MHz';
+          imageUrl = '/assets/modules/absensi.png';
+          cleanDescription = 'Cetak kartu pelajar smartcard PVC custom design full color dengan chip RFID Mifare asli.';
+          highlightBadge = 'Custom Full Color';
+        } else {
+          groupKey = `HW_${p.module_id || p.id}`;
+          imageUrl = '/assets/modules/server.png';
+          cleanDescription = 'Perangkat keras pendukung ekosistem Absenta.';
+          highlightBadge = 'Hardware Resmi';
         }
-
-        if (!products[groupKey]) {
-            products[groupKey] = {
-                id: groupKey,
-                baseName: cleanBaseName || p.name,
-                module: isHardware ? cleanBaseName : moduleName,
-                module_id: p.module_id,
-                icon: isHardware ? (groupKey.includes('DELL') || groupKey.includes('MINI') ? 'Server' : groupKey.includes('NETWORK') ? 'Wifi' : 'Scan') : (p.module?.icon || 'Package'),
-                service_code: p.service_code,
-                mode: planMode,
-                variants: [],         // Semua plan (MONTH + YEAR + ENTERPRISE) disimpan untuk lookup
-                uniqueSizes: new Set<string>(), // Hanya size_label unik (tanpa duplikat periode)
-            };
+      } else {
+        const pNameUp = (p.name || '').toUpperCase();
+        const pIdUp = (p.id || '').toUpperCase();
+        if (pNameUp.includes('PAKET LENGKAP') || pIdUp.includes('PAKET_LENGKAP')) {
+          groupKey = 'SAAS_GROUP_PAKET_LENGKAP';
+          categoryKey = 'PAKET_LENGKAP';
+          cleanBaseName = 'Paket Lengkap All-in-One Platform Absenta';
+          imageUrl = '/assets/modules/absensi.png';
+          cleanDescription = 'Bundling komplit seluruh modul: Presensi Multi-Sesi, POS Koperasi, Hubin PKL, Sarpras, & WA Gateway.';
+          highlightBadge = 'Semua Modul Termasuk';
+        } else if (pNameUp.includes('WHATSAPP') || pIdUp.includes('WHATSAPP')) {
+          groupKey = 'SAAS_GROUP_WHATSAPP';
+          categoryKey = 'WHATSAPP';
+          cleanBaseName = 'WhatsApp Service & Broadcast Pengingat';
+          imageUrl = '/assets/modules/whatsapp.png';
+          cleanDescription = 'Engine notifikasi WhatsApp real-time untuk info presensi kehadiran, tagihan SPP, & pengumuman sekolah.';
+          highlightBadge = 'Broadcast Real-Time';
+        } else if (pNameUp.includes('HUBUNGAN INDUSTRI') || pIdUp.includes('HUBIN')) {
+          groupKey = 'SAAS_GROUP_HUBIN';
+          categoryKey = 'HUBIN';
+          cleanBaseName = 'Modul Hubungan Industri (Jurnal PKL & Tracer)';
+          imageUrl = '/assets/modules/hubin.png';
+          cleanDescription = 'Digitalisasi kemitraan industri, bursa kerja khusus (BKK), jurnal harian magang, & Tracer Study alumni.';
+          highlightBadge = 'Kurikulum Merdeka SMK';
+        } else if (pNameUp.includes('KOPERASI') || pIdUp.includes('KOPERASI')) {
+          groupKey = 'SAAS_GROUP_KOPERASI';
+          categoryKey = 'KOPERASI';
+          cleanBaseName = 'Modul Koperasi Sekolah & POS Kantin';
+          imageUrl = '/assets/modules/koperasi.png';
+          cleanDescription = 'Sistem kasir POS minimarket & kantin sekolah, e-money kartu siswa, simpan pinjam, & SHU.';
+          highlightBadge = 'Cashless Smartcard';
+        } else if (pNameUp.includes('INVENTORY') || pNameUp.includes('SARPRAS') || pIdUp.includes('SARPRAS')) {
+          groupKey = 'SAAS_GROUP_SARPRAS';
+          categoryKey = 'SARPRAS';
+          cleanBaseName = 'Modul Manajemen Sarana & Prasarana';
+          imageUrl = '/assets/modules/inventory.png';
+          cleanDescription = 'Pendataan aset inventaris sekolah, barcode QR barang, jadwal pemeliharaan, & peminjaman alat.';
+          highlightBadge = 'Barcode & Aset Sekolah';
+        } else if (pNameUp.includes('MULTI') || planMode === 'MULTI_SESI') {
+          groupKey = 'SAAS_GROUP_ABSENSI_MULTI';
+          categoryKey = 'ABSENSI';
+          cleanBaseName = 'Presensi Digital Multi-Sesi (Shift & Magang)';
+          imageUrl = '/assets/modules/absensi-multi-sesi.png';
+          cleanDescription = 'Presensi fleksibel untuk sekolah multi-shift, monitoring siswa magang DUDI, dan lembur GTK.';
+          highlightBadge = 'Multi-Shift & DUDI';
+        } else {
+          groupKey = 'SAAS_GROUP_ABSENSI_SIMPLE';
+          categoryKey = 'ABSENSI';
+          cleanBaseName = 'Presensi Digital Standar (Siswa & GTK)';
+          imageUrl = '/assets/modules/absensi-simple.png';
+          cleanDescription = 'Presensi digital terintegrasi RFID, QR Code, Geofencing GPS, dan WhatsApp notifikasi otomatis.';
+          highlightBadge = 'RFID & Geofencing GPS';
         }
+      }
 
-        const extractSize = (plan: any): string => {
-          if (plan?.size_label) return plan.size_label;
-          const name = String(plan?.name || plan?.title || '');
-          const id = String(plan?.id || '');
-
-          if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
-          if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
-          if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
-          if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
-          if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
-          if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
-
-          const limit = plan?.device_limit || plan?.max_user || 0;
-          if (limit > 0) {
-            if (limit <= 300) return 'Micro';
-            if (limit <= 600) return 'Small';
-            if (limit <= 1200) return 'Large';
-            if (limit <= 2500) return 'Enterprise';
-            return 'Ultra';
-          }
-
-          return 'Standard';
+      if (!products[groupKey]) {
+        products[groupKey] = {
+          id: groupKey,
+          categoryKey: categoryKey,
+          baseName: cleanBaseName || p.name,
+          module: isHardware ? cleanBaseName : moduleName,
+          module_id: p.module_id,
+          icon: isHardware ? (groupKey.includes('DELL') || groupKey.includes('MINI') ? 'Server' : groupKey.includes('NETWORK') ? 'Wifi' : groupKey.includes('PVC') ? 'CreditCard' : 'Scan') : (p.module?.icon || (groupKey.includes('WHATSAPP') ? 'MessageCircle' : groupKey.includes('HUBIN') ? 'Briefcase' : 'Package')),
+          service_code: p.service_code,
+          mode: planMode,
+          isHardware: isHardware,
+          imageUrl: imageUrl,
+          description: cleanDescription,
+          highlightBadge: highlightBadge,
+          variants: [],
+          uniqueSizes: new Set<string>(),
         };
+      }
 
-        const size = extractSize(p);
-        products[groupKey].uniqueSizes.add(size);
-        products[groupKey].variants.push(p);
+      const size = extractSizeLabel(p);
+      products[groupKey].uniqueSizes.add(size);
+      products[groupKey].variants.push(p);
     });
 
     return Object.values(products).map(p => ({
-        ...p,
-        // sizes: array unik ukuran, diurutkan dari kecil ke besar
-        sizes: Array.from(p.uniqueSizes as Set<string>).sort((a: string, b: string) => {
-            const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === a.toLowerCase());
-            const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === b.toLowerCase());
-            return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-        }),
-    })).sort((a, b) => {
-        const getLowestPrice = (groupItem: any) => {
-            const prices = groupItem.variants.map((v: any) =>
-                (v.price_onetime && v.price_onetime > 0) ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
-            ).filter((p: number) => p > 0);
-            return prices.length > 0 ? Math.min(...prices) : 0;
-        };
-        return getLowestPrice(a) - getLowestPrice(b);
-    });
-  }, [filteredPlans]);
-
-  // Section Grouping helper for visual category section blocks
-  const sectionGroups = useMemo(() => {
-    if (groupedProducts.length === 0) return [];
-
-    const SECTIONS = [
-      {
-        id: 'SERVER_HARDWARE',
-        title: '🖥️ Server Node & Engine Lokal Sekolah',
-        subtitle: 'Server Build-Up Dell PowerEdge & Mini PC Workstation untuk Engine Lokal Sekolah',
-        badge: 'Local Engine',
-        gradient: 'from-blue-600 via-indigo-600 to-violet-700'
-      },
-      {
-        id: 'ABSENSI_HARDWARE',
-        title: '🖐️ Mesin Biometrik & Reader RFID Presensi',
-        subtitle: 'Terminal Sidik Jari, Face Recognition Hikvision & ZKTeco, serta Reader RFID Ruang Kelas',
-        badge: 'Gate & Class Terminal',
-        gradient: 'from-indigo-600 via-purple-600 to-pink-600'
-      },
-      {
-        id: 'NETWORK_HARDWARE',
-        title: '🌐 Network & Wi-Fi 6 Infrastructure',
-        subtitle: 'Access Point Enterprise Wi-Fi 6 & Switch PoE Managed untuk Infrastruktur Sekolah',
-        badge: 'Wi-Fi 6 & PoE',
-        gradient: 'from-cyan-600 via-blue-600 to-indigo-600'
-      },
-      {
-        id: 'PHYSICAL_SERVICE',
-        title: '🎴 Kartu Pelajar PVC RFID Custom',
-        subtitle: 'Paket Cetak Kartu PVC RFID Mifare 13.56MHz Custom Design Logo & Data Siswa',
-        badge: 'Custom Mifare',
-        gradient: 'from-emerald-600 via-teal-600 to-cyan-600'
-      },
-      {
-        id: 'SAAS_MODULES',
-        title: '💻 Aplikasi Cloud SaaS & Add-on Modul',
-        subtitle: 'Platform Core Absenta, Modul Keuangan SPP, Jurnal PKL, CBT, & Kredit WhatsApp Broadcast',
-        badge: 'Cloud SaaS',
-        gradient: 'from-blue-600 via-indigo-600 to-purple-600'
-      }
-    ];
-
-    const map: Record<string, any[]> = {};
-    SECTIONS.forEach(s => { map[s.id] = []; });
-
-    groupedProducts.forEach(group => {
-      const modId = String(group.module_id || '').toUpperCase();
-      const id = String(group.id || '').toUpperCase();
-
-      if (modId === 'SERVER_HARDWARE' || id.startsWith('HW_SERVER') || id.includes('DELL')) {
-        map['SERVER_HARDWARE'].push(group);
-      } else if (modId === 'ABSENSI_HARDWARE' || id.startsWith('HW_FP') || id.startsWith('HW_RFID') || id.startsWith('HW_FACE') || id.includes('HIKVISION') || id.includes('ZKTECO')) {
-        map['ABSENSI_HARDWARE'].push(group);
-      } else if (modId === 'NETWORK_HARDWARE' || id.startsWith('HW_AP') || id.startsWith('HW_SWITCH') || id.includes('OMADA') || id.includes('RUIJIE') || id.includes('UNIFI')) {
-        map['NETWORK_HARDWARE'].push(group);
-      } else if (modId === 'PHYSICAL_SERVICE' || id.startsWith('SVC_') || id.includes('PVC_KARTU')) {
-        map['PHYSICAL_SERVICE'].push(group);
-      } else {
-        map['SAAS_MODULES'].push(group);
-      }
-    });
-
-    const getItemPrice = (groupItem: any) => {
-      const prices = groupItem.variants.map((v: any) =>
-        (v.price_onetime && v.price_onetime > 0) ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
-      ).filter((p: number) => p > 0);
-      return prices.length > 0 ? Math.min(...prices) : 0;
-    };
-
-    const getItemTypeScore = (groupItem: any) => {
-      const isDell = groupItem.id.includes('DELL') || groupItem.baseName.toLowerCase().includes('dell');
-      return isDell ? 2 : 1; // 1 = Custom Node, 2 = Dell Build-Up
-    };
-
-    return SECTIONS.filter(s => map[s.id].length > 0).map(s => ({
-      ...s,
-      items: map[s.id].sort((a, b) => {
-        const typeDiff = getItemTypeScore(a) - getItemTypeScore(b);
-        if (typeDiff !== 0) return typeDiff;
-        return getItemPrice(a) - getItemPrice(b);
-      })
+      ...p,
+      sizes: Array.from(p.uniqueSizes as Set<string>).sort((a: string, b: string) => {
+        const ai = SIZE_ORDER.findIndex(s => s.toLowerCase() === a.toLowerCase());
+        const bi = SIZE_ORDER.findIndex(s => s.toLowerCase() === b.toLowerCase());
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      }),
     }));
-  }, [groupedProducts]);
+  }, [catalogPlans]);
 
-  const handleCardClick = (group: any) => {
-    if (onSelectPlan) {
-      // Marketplace style: Begitu klik kartu, langsung kirim grup ke sidebar
-      // Biarkan sidebar yang menangani pemilihan varian (Edisi & Periode)
-      onSelectPlan(group);
-    } else {
-      // In public mode, navigate to specific service or registration
-      navigate(`/services/${group.id}`);
-    }
-  };
+  // Filtered by Category Tab & Search Query
+  const displayedProducts = useMemo(() => {
+    return allGroupedProducts.filter((p) => {
+      // Category Filter
+      if (selectedCategory !== 'ALL') {
+        if (selectedCategory === 'HARDWARE' && !p.isHardware) return false;
+        if (selectedCategory !== 'HARDWARE' && p.categoryKey !== selectedCategory) return false;
+      }
+
+      // Search Query Filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const nameMatch = p.baseName.toLowerCase().includes(query);
+        const descMatch = p.description.toLowerCase().includes(query);
+        const modMatch = (p.module || '').toLowerCase().includes(query);
+        if (!nameMatch && !descMatch && !modMatch) return false;
+      }
+
+      return true;
+    });
+  }, [allGroupedProducts, selectedCategory, searchQuery]);
+
+  if (selectedGroup) {
+    return (
+      <div className="w-full min-w-0">
+        <ShopeeProductDetail
+          group={selectedGroup}
+          onBack={() => setSelectedGroup(null)}
+          onCheckout={handleDirectPlanSelect}
+          activeAcademicTier={activeAcademicTier}
+          ownedServices={ownedServices}
+          checkoutProcessing={checkoutProcessing}
+        />
+        {mode === 'private' && (
+          <>
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="fixed bottom-6 right-6 z-40 p-3.5 sm:p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl shadow-indigo-600/50 flex items-center gap-3 border border-indigo-400/40 hover:scale-105 active:scale-95 transition-all hidden md:flex"
+              aria-label="Buka Keranjang Belanja"
+            >
+              <div className="relative">
+                <ShoppingBag className="w-5 h-5 sm:w-6 sm:h-6" />
+                {cartItems.reduce((sum, item) => sum + item.qty, 0) > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-rose-500 text-white font-black text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-indigo-600 animate-in zoom-in">
+                    {cartItems.reduce((sum, item) => sum + item.qty, 0)}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs font-black uppercase tracking-wider">
+                Keranjang
+              </span>
+            </button>
+            <CartDrawer />
+            <OrderReviewSidebar
+              showOrderPanel={showOrderPanel}
+              activeOrder={activeOrder}
+              checkoutProcessing={checkoutProcessing}
+              setShowOrderPanel={setShowOrderPanel}
+              setActiveOrder={setActiveOrder}
+              handleCheckout={handleConfirmSaaSOrder}
+              activeAcademicTier={activeAcademicTier}
+            />
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-10">
-      {/* Module Explorer Header */}
-      <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <div className="max-w-xl">
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1 tracking-tight">Katalog Solusi Sekolah</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium opacity-80">Pilih modul otomasi yang tepat untuk efisiensi operasional sekolah Anda.</p>
+    <div className="space-y-4">
+      {/* ── 1. COMPACT 1-ROW FILTER & ACTION TOOLBAR (NO GREETING BANNER) ── */}
+      <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Category Pill Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar flex-1 min-w-0">
+            {CATEGORY_TABS.map((cat) => {
+              const isSelected = selectedCategory === cat.id;
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs scale-[1.01]'
+                      : 'bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Icon size={13} className={isSelected ? 'text-white' : 'text-slate-400'} />
+                  <span>{cat.label}</span>
+                  {cat.badge && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[8px] font-black uppercase tracking-wider ${
+                      isSelected ? 'bg-white text-indigo-700' : 'bg-amber-500 text-white'
+                    }`}>
+                      {cat.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-          
-          <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 self-start shadow-inner items-center gap-1">
-            <button 
-              onClick={() => setConfigView('GRID')}
-              className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${configView === 'GRID' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+
+          {/* Search & RAB Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative w-full sm:w-56">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari solusi / modul..."
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <Button
+              type="button"
+              onClick={() => setIsRABModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs flex items-center gap-1.5 shrink-0 h-8"
             >
-              Belanja
-            </button>
-            <button 
-              onClick={() => setConfigView('COMPARE')}
-              className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${configView === 'COMPARE' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-            >
-              Bandingkan
-            </button>
-            <button 
-              onClick={() => navigate('/billing/rab-calculator')}
-              className="px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20 hover:scale-105 flex items-center gap-1.5"
-            >
-              🧮 Kalkulator RAB
-            </button>
+              <Calculator size={13} />
+              <span>Simulasi RAB BOS</span>
+            </Button>
           </div>
-        </div>
-
-        {/* ── TOP MAIN CATEGORY SEGMENT SWITCHER (SAAS vs HARDWARE PENGADAAN) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button
-            onClick={() => { setMainCategory('SAAS'); setCategoryFilter('ALL'); }}
-            className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${
-              mainCategory === 'SAAS'
-                ? 'bg-blue-600 border-blue-600 text-white shadow-xl scale-[1.01]'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'
-            }`}
-          >
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-              mainCategory === 'SAAS' ? 'bg-white/20 text-white' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
-            }`}>
-              <LucideIcons.Cloud size={24} />
-            </div>
-            <div>
-              <div className="font-black text-sm uppercase tracking-wider">1. Cloud SaaS Solution</div>
-              <div className={`text-xs ${mainCategory === 'SAAS' ? 'text-blue-100' : 'text-slate-400'}`}>Cloud Apps, Add-on Modul & WA Credit (Instant Payment)</div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => { setMainCategory('HARDWARE'); setCategoryFilter('ALL'); }}
-            className={`p-5 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${
-              mainCategory === 'HARDWARE'
-                ? 'bg-indigo-600 border-indigo-600 text-white shadow-xl scale-[1.01]'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-indigo-400'
-            }`}
-          >
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-              mainCategory === 'HARDWARE' ? 'bg-white/20 text-white' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
-            }`}>
-              <LucideIcons.Building2 size={24} />
-            </div>
-            <div>
-              <div className="font-black text-sm uppercase tracking-wider">2. On-Premise Solution & Hardware</div>
-              <div className={`text-xs ${mainCategory === 'HARDWARE' ? 'text-indigo-100' : 'text-slate-400'}`}>Server Lokal (Dell/Mini PC), Biometrik & RFID (SIPLaH/RAB)</div>
-            </div>
-          </button>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          <button 
-            onClick={() => setCategoryFilter('ALL')}
-            className={`px-6 h-12 rounded-full font-black text-[11px] uppercase tracking-[0.15em] transition-all duration-300 flex items-center gap-3 border-2 ${categoryFilter === 'ALL' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-xl scale-105' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600'}`}
-          >
-            <LayoutGrid size={16} />
-            {mainCategory === 'SAAS' ? 'Semua Layanan SaaS' : mainCategory === 'HARDWARE' ? 'Semua Perangkat Hardware' : 'Semua Layanan'}
-          </button>
-
-          {visibleSubModules.map((m: any) => {
-            const Icon = (LucideIcons as any)[m.icon] || Package;
-            const isActive = categoryFilter === m.id;
-            return (
-              <button 
-                key={m.id}
-                onClick={() => setCategoryFilter(m.id)}
-                className={`px-6 h-12 rounded-full font-black text-[11px] uppercase tracking-[0.15em] transition-all duration-300 flex items-center gap-3 border-2 ${isActive ? 'bg-blue-600 text-white border-blue-600 shadow-xl scale-105' : 'bg-white dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 hover:border-slate-200 dark:hover:border-slate-600'}`}
-              >
-                <Icon size={16} />
-                {m.name}
-              </button>
-            );
-          })}
         </div>
       </div>
 
-      {/* Product Catalog Area */}
-      <div className="relative">
+      {/* ── 2. PRODUCT GRID SECTION ── */}
+      <div>
         <AnimatePresence mode="wait">
-          {configView === 'COMPARE' ? (
-            <motion.div
-              key="compare"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -30 }}
-              className="bg-white dark:bg-slate-900/50 backdrop-blur-3xl rounded-[3rem] border border-slate-200 dark:border-slate-800 overflow-x-auto shadow-2xl"
-            >
-               <table className="w-full text-sm text-left border-collapse min-w-[800px]">
-                 <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800">
-                       <th className="p-10 text-xs font-black uppercase tracking-widest text-slate-400 w-1/4">Komponen Fitur</th>
-                       {groupedProducts.slice(0, 3).map(p => (
-                           <th key={p.id} className="p-10">
-                              <div className="text-[10px] font-black text-blue-600 uppercase mb-2 tracking-tighter">{p.module}</div>
-                              <div className="text-xl font-black text-slate-900 dark:text-white leading-tight">{p.baseName}</div>
-                           </th>
-                         ))}
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50 font-medium">
-                    <tr>
-                       <td className="p-8 pl-10 text-slate-500 font-bold">Mode Pengoperasian</td>
-                       {groupedProducts.slice(0, 3).map(p => (
-                         <td key={p.id} className="p-8 text-slate-900 dark:text-white font-black">{p.mode.replace('_', ' ')}</td>
-                       ))}
-                    </tr>
-                 </tbody>
-               </table>
-            </motion.div>
+          {plansQuery.isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse h-[340px]" />
+              ))}
+            </div>
+          ) : displayedProducts.length === 0 ? (
+            <div className="py-16 flex flex-col items-center justify-center text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-3">
+              <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-inner">
+                <FilterX size={22} className="text-slate-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Tidak Ada Produk yang Cocok
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs mt-0.5">
+                  Tidak ditemukan produk untuk pencarian <strong>"{searchQuery || selectedCategory}"</strong>.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setSelectedCategory('ALL'); setSearchQuery(''); }}
+                className="text-xs font-bold rounded-lg h-8 px-3"
+              >
+                Reset Filter
+              </Button>
+            </div>
           ) : (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="space-y-12"
-            >
-              {plansQuery.isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Card key={i} className="p-4 rounded-[3rem] bg-slate-50 dark:bg-slate-900 animate-pulse h-[450px]"><div /></Card>
-                  ))}
-                </div>
-              ) : sectionGroups.length === 0 ? (
-                <div className="col-span-full py-20 flex flex-col items-center justify-center text-center">
-                  <div className="w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center mb-8 shadow-xl"><Search size={32} className="text-slate-400" /></div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Produk Tidak Ditemukan</h3>
-                  <p className="text-slate-500 max-w-sm text-sm font-medium">Maaf, saat ini belum ada penawaran untuk kategori ini.</p>
-                </div>
-              ) : (
-                sectionGroups.map((section) => (
-                  <div key={section.id} className="space-y-6">
-                    {/* SECTION CATEGORY HEADER BANNER */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 px-6 bg-slate-50 dark:bg-slate-950/80 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
-                      <div>
-                        <h4 className="text-base font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                          {section.title}
-                        </h4>
-                        <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5 leading-normal">
-                          {section.subtitle}
-                        </p>
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full border border-blue-200 dark:border-blue-800/40 shrink-0">
-                        {section.items.length} Produk Pilihan
-                      </span>
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {displayedProducts.map((group) => {
+                const matchingService = mode === 'private' ? ownedServices.find((s: any) => {
+                  const sModuleId = String(s.Plan?.module_id || s.plan_snapshot?.module_id || '').trim().toUpperCase();
+                  const sMode = String(s.Plan?.absensi_mode || s.plan_snapshot?.absensi_mode || 'SIMPLE').trim().toUpperCase();
+                  const gModuleId = String(group.module_id || '').trim().toUpperCase();
+                  const gMode = String(group.mode || 'SIMPLE').trim().toUpperCase();
+                  return sModuleId === gModuleId && (gModuleId !== 'ABSENSI' || sMode === gMode);
+                }) : null;
 
-                    {/* ITEMS GRID PER SECTION (EXACT 5 COLUMNS DESKTOP GRID) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3">
-                      {section.items.map((group) => {
-                        const customImage = group.variants.find((v: any) => v.image_url)?.image_url;
-                        const thumbnail = customImage || getServiceThumbnail(group.service_code, group.module, group.mode);
-                        const lowestPrice = Math.min(
-                          ...group.variants.map((v: any) =>
-                            v.price_onetime > 0 ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
-                          )
-                        );
-                        const IconComp = getServiceIcon(group.service_code, group.icon);
-                        
-                        const matchingService = mode === 'private' ? ownedServices.find((s: any) => {
-                          const sModuleId = String(s.Plan?.module_id || s.plan_snapshot?.module_id || '').trim().toUpperCase();
-                          const sMode = String(s.Plan?.absensi_mode || s.plan_snapshot?.absensi_mode || 'SIMPLE').trim().toUpperCase();
-                          const gModuleId = String(group.module_id || '').trim().toUpperCase();
-                          const gMode = String(group.mode || 'SIMPLE').trim().toUpperCase();
-                          return sModuleId === gModuleId && (gModuleId !== 'ABSENSI' || sMode === gMode);
-                        }) : null;
+                const isActive = !!matchingService;
 
-                        const serviceStatus = matchingService?.status?.toUpperCase();
-                        const isActive = serviceStatus === 'ACTIVE' || serviceStatus === 'TRIAL';
-                        const isDellBuildUp = group.id.includes('DELL') || group.baseName.toLowerCase().includes('dell');
-                        const isCustomNode = group.id.includes('NODE') || group.baseName.toLowerCase().includes('mini pc') || group.baseName.toLowerCase().includes('workstation');
-
-                        return (
-                          <motion.div 
-                            key={group.id} 
-                            whileHover={{ y: -4 }}
-                            onClick={() => handleCardClick(group)}
-                            className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md hover:border-blue-500 transition-all flex flex-col h-full group"
-                          >
-                            {/* 1. SQUARE TOP IMAGE COVER - 100% COVER EDGE-TO-EDGE */}
-                            <div className="w-full aspect-square bg-slate-50 dark:bg-slate-950 relative overflow-hidden flex items-center justify-center p-2 border-b border-slate-100 dark:border-slate-800/60">
-                              {thumbnail ? (
-                                <img 
-                                  src={thumbnail} 
-                                  alt={group.baseName} 
-                                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                                />
-                              ) : (
-                                <IconComp size={40} className="text-slate-400 dark:text-slate-500 group-hover:text-blue-600 transition-colors" />
-                              )}
-
-                              {isActive && (
-                                <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white font-bold text-[8px] px-1.5 py-0.5 rounded shadow z-10">
-                                  Terpasang
-                                </span>
-                              )}
-
-                              {isDellBuildUp ? (
-                                <span className="absolute top-1.5 right-1.5 bg-blue-600 text-white font-bold text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shadow z-10">
-                                  Dell Build-Up
-                                </span>
-                              ) : isCustomNode ? (
-                                <span className="absolute top-1.5 right-1.5 bg-emerald-600 text-white font-bold text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded shadow z-10">
-                                  Custom Node
-                                </span>
-                              ) : null}
-                            </div>
-
-                            {/* 2. COMPACT CONTENT UNDER IMAGE (EXACT TOKOPEDIA STYLE: TITLE + PRICE ONLY) */}
-                            <div className="p-2.5 flex flex-col justify-between flex-1 space-y-2">
-                              <h3 
-                                style={{ fontSize: '9.5px', fontWeight: 400 }} 
-                                className="text-slate-700 dark:text-slate-300 leading-tight line-clamp-2 min-h-[1.75rem] group-hover:text-blue-600 transition-colors"
-                              >
-                                {group.baseName}
-                              </h3>
-
-                              <div>
-                                <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white font-mono tracking-tight">
-                                  {formatCurrency(lowestPrice)}
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </motion.div>
+                return (
+                  <ProductCatalogCard
+                    key={group.id}
+                    group={group}
+                    mode={mode}
+                    isActive={isActive}
+                    onSelectGroup={(g) => setSelectedGroup(g)}
+                  />
+                );
+              })}
+            </div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Variant Selector Modal for Private Mode */}
-      <AnimatePresence>
-        {selectedGroup && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedGroup(null)}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110]"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white dark:bg-slate-950 rounded-[2.5rem] shadow-2xl z-[111] overflow-hidden border border-slate-200 dark:border-slate-800"
-            >
-              <div className="p-10">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-xl shadow-blue-600/20">
-                      {React.createElement((LucideIcons as any)[selectedGroup.icon] || Package, { size: 24 })}
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{selectedGroup.baseName}</h3>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedGroup.module}</p>
-                    </div>
-                  </div>
-                  <button 
-                    onClick={() => setSelectedGroup(null)}
-                    className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-900 flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors"
-                  >
-                    <LucideIcons.X size={20} />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedGroup.variants.map((v: any) => (
-                    <div
-                      key={v.id}
-                      onClick={() => {
-                        onSelectPlan?.({
-                          ...v,
-                          moduleName: selectedGroup.module,
-                          moduleIcon: selectedGroup.icon
-                        });
-                        setSelectedGroup(null);
-                      }}
-                      className="group cursor-pointer p-6 rounded-[2rem] border-2 border-slate-100 dark:border-slate-800 hover:border-blue-600 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/50 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <Badge variant="outline" className="text-[10px] font-black uppercase py-0.5 px-3 bg-white dark:bg-slate-800 group-hover:bg-blue-600 group-hover:text-white group-hover:border-blue-600 transition-colors">Edisi {v.size}</Badge>
-                        <div className="text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <ArrowRight size={16} />
-                        </div>
-                      </div>
-                      <h4 className="text-lg font-black text-slate-900 dark:text-white mb-1">{v.name.replace(/-/g, ' ')}</h4>
-                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">
-                        {formatCurrency(v.price_monthly)}
-                        <span className="text-[10px] text-slate-400 font-bold ml-1 uppercase">/bln</span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">Kapasitas hingga {v.max_user?.toLocaleString() || 'Unlimited'} Pengguna</p>
-                      
-                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            addItemToCart({
-                              plan_id: v.id,
-                              name: v.name,
-                              price: v.price_onetime > 0 ? v.price_onetime : (v.price_monthly || 0),
-                              type: v.type || 'SOFTWARE_SUBSCRIPTION',
-                              weightGrams: v.weight_grams || 0,
-                              moduleName: selectedGroup.module
-                            });
-                            toast.success(`${v.name} telah ditambahkan ke keranjang!`);
-                          }}
-                          className="w-full py-2 px-3 rounded-xl bg-indigo-600/10 hover:bg-indigo-600 text-indigo-600 dark:text-indigo-400 hover:text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          <LucideIcons.Plus size={14} />
-                          + Tambah ke Keranjang
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="mt-8 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-2xl border border-amber-100 dark:border-amber-800 flex items-center gap-3">
-                  <Info size={16} className="text-amber-600 flex-shrink-0" />
-                  <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400 leading-relaxed">Pilih salah satu variasi paket di atas untuk melanjutkan ke proses aktivasi layanan.</p>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Cart Button */}
+      {/* ── 3. FLOATING CART & DRAWER MODALS ── */}
       {mode === 'private' && (
         <>
           <button
+            type="button"
             onClick={() => setCartOpen(true)}
-            className="fixed bottom-6 right-6 z-40 p-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl shadow-indigo-600/50 flex items-center gap-3 border border-indigo-400/40 hover:scale-105 active:scale-95 transition-all"
+            className="fixed bottom-6 right-6 z-40 p-3 sm:p-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/40 flex items-center gap-2.5 border border-indigo-400/40 hover:scale-105 active:scale-95 transition-all"
+            aria-label="Buka Keranjang Belanja"
           >
             <div className="relative">
-              <LucideIcons.ShoppingBag className="w-6 h-6" />
+              <ShoppingBag className="w-5 h-5" />
               {cartItems.reduce((sum, item) => sum + item.qty, 0) > 0 && (
-                <span className="absolute -top-2 -right-2 bg-rose-500 text-white font-bold text-[10px] w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-900 animate-in zoom-in">
+                <span className="absolute -top-2 -right-2 bg-rose-500 text-white font-black text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-indigo-600 animate-in zoom-in">
                   {cartItems.reduce((sum, item) => sum + item.qty, 0)}
                 </span>
               )}
             </div>
-            <span className="text-xs font-bold uppercase tracking-wider hidden sm:inline">
-              Keranjang Belanja
+            <span className="text-xs font-bold hidden sm:inline">
+              Keranjang
             </span>
           </button>
-
           <CartDrawer />
-
+          <OrderReviewSidebar
+            showOrderPanel={showOrderPanel}
+            activeOrder={activeOrder}
+            checkoutProcessing={checkoutProcessing}
+            setShowOrderPanel={setShowOrderPanel}
+            setActiveOrder={setActiveOrder}
+            handleCheckout={handleConfirmSaaSOrder}
+            activeAcademicTier={activeAcademicTier}
+          />
           <RABCalculatorModal
             isOpen={isRABModalOpen}
             onClose={() => setIsRABModalOpen(false)}
@@ -787,11 +631,12 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
             onApplyOrder={(items) => {
               items.forEach(item => {
                 addItemToCart({
-                  planId: item.plan.id,
-                  planName: item.plan.name,
+                  plan_id: item.plan.id,
+                  name: item.plan.name,
                   price: item.plan.price_onetime || item.plan.price_monthly || 0,
-                  cycle: 'ONETIME',
-                  qty: item.quantity
+                  type: item.plan.type || 'SOFTWARE_SUBSCRIPTION',
+                  billingPeriod: item.plan.billing_period || 'ONETIME',
+                  moduleName: item.plan.module?.name || 'Modul'
                 });
               });
               setCartOpen(true);
@@ -801,5 +646,154 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
         </>
       )}
     </div>
+  );
+};
+
+// ── SHOPEE-STYLE PRODUCT CATALOG CARD ──
+interface ProductCatalogCardProps {
+  group: any;
+  mode?: 'public' | 'private';
+  isActive?: boolean;
+  onSelectGroup?: (group: any) => void;
+  onSelectPlan?: (plan: any) => void;
+}
+
+const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
+  group,
+  isActive,
+  onSelectGroup,
+  onSelectPlan
+}) => {
+  const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
+
+  const isHardware = Boolean(group.isHardware);
+
+  // Lowest starting price in the group
+  const lowestPrice = useMemo(() => {
+    const prices = group.variants.map((v: any) =>
+      (v.price_onetime && v.price_onetime > 0) ? v.price_onetime : (v.price_monthly || v.price_yearly || 0)
+    ).filter((p: number) => p > 0);
+    return prices.length > 0 ? Math.min(...prices) : 0;
+  }, [group.variants]);
+
+  const IconComp = getServiceIcon(group.service_code, group.icon);
+
+  const handleCardClick = () => {
+    if (onSelectGroup) {
+      onSelectGroup(group);
+    } else if (onSelectPlan) {
+      onSelectPlan(group);
+    } else {
+      navigate(`/services/${group.id}`);
+    }
+  };
+
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      transition={{ duration: 0.15 }}
+      onClick={handleCardClick}
+      className="cursor-pointer bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xl hover:border-indigo-500/40 transition-all flex flex-col justify-between overflow-hidden group"
+    >
+      {/* ── 1. PRODUCT IMAGE COVER BANNER ── */}
+      <div className="relative h-40 sm:h-44 w-full bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/30 dark:from-slate-800/70 dark:via-slate-900 dark:to-indigo-950/30 p-4 flex items-center justify-center overflow-hidden border-b border-slate-100 dark:border-slate-800/80">
+        {group.imageUrl && !imgError ? (
+          <img
+            src={group.imageUrl}
+            alt={group.baseName}
+            onError={() => setImgError(true)}
+            className="h-full w-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
+            <IconComp size={36} />
+          </div>
+        )}
+
+        {/* Top Badges */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 z-10">
+          <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-900/85 dark:bg-slate-950/90 backdrop-blur-md text-white border border-white/10 shadow-2xs">
+            {isHardware ? 'Hardware Fisik' : 'Cloud SaaS'}
+          </span>
+        </div>
+
+        <div className="absolute top-2.5 right-2.5 z-10">
+          {isActive ? (
+            <span className="bg-emerald-600 text-white font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
+              <CheckCircle2 size={10} />
+              <span>Terpasang</span>
+            </span>
+          ) : !isHardware ? (
+            <span className="bg-amber-500 text-white font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg shadow-2xs">
+              Hemat 20%
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {/* ── 2. PRODUCT INFO & DETAILS ── */}
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider leading-none">
+              {group.module}
+            </div>
+            <div className="flex items-center text-amber-500 text-[10.5px] font-bold gap-1">
+              <span>★ 5.0</span>
+              <span className="text-[9.5px] text-slate-400 font-medium">• SIPLaH</span>
+            </div>
+          </div>
+
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 transition-colors line-clamp-1">
+            {group.baseName}
+          </h3>
+
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed line-clamp-2">
+            {group.description}
+          </p>
+
+          {/* Highlight Badge */}
+          {group.highlightBadge && (
+            <div className="pt-0.5">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold border border-indigo-100 dark:border-indigo-900/40">
+                <span>✨ {group.highlightBadge}</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── 3. PRICE & ACTION BUTTON ── */}
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <div className="text-[9.5px] font-medium uppercase text-slate-400 tracking-wider">
+                Mulai dari
+              </div>
+              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
+                {formatCurrency(lowestPrice)}
+                <span className="text-[10.5px] font-normal text-slate-400 ml-1 font-sans">
+                  {isHardware ? '/unit' : '/bln'}
+                </span>
+              </div>
+            </div>
+            {!isHardware && (
+              <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
+                Multi-Kapasitas
+              </span>
+            )}
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleCardClick}
+            className="w-full h-9.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all"
+          >
+            <span>Pilih Varian &amp; Edisi</span>
+            <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+          </Button>
+        </div>
+      </div>
+    </motion.div>
   );
 };

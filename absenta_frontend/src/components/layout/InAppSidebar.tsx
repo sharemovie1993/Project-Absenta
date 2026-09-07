@@ -154,6 +154,26 @@ export function InAppSidebar({
       }
     });
 
+    // Pastikan menu Katalog Layanan hadir sebagai menu mandiri di aplikasi Setelan
+    if (activeApp.id === 'settings') {
+      const hasCatalog = result.some(r => r.path === '/catalog' || r.path === '/services');
+      if (!hasCatalog) {
+        const subIndex = result.findIndex(r => r.path === '/service-center' || r.path === '/billing/my-subscription' || r.label.toLowerCase().includes('langganan'));
+        const catalogItem: ParsedMenuItem = {
+          id: 'menu-catalog-standalone',
+          label: 'Katalog Layanan',
+          path: '/catalog',
+          icon: iconForName('ShoppingBag') || iconForName('Package'),
+          isDivider: false
+        };
+        if (subIndex > -1) {
+          result.splice(subIndex + 1, 0, catalogItem);
+        } else {
+          result.push(catalogItem);
+        }
+      }
+    }
+
     return result;
   }, [rawMenu, activeApp]);
 

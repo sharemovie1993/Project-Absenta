@@ -277,9 +277,30 @@ export async function chooseSubscriptionPlan(id: string, plan_id: string): Promi
 }
 
 // ADMIN order plan for own tenant - POST /api/billing/subscriptions/order
-export async function orderSubscriptionPlan(plan_id: string, billing_period?: 'MONTH' | 'YEAR', payment_method?: string): Promise<SubscriptionResponse> {
+export async function orderSubscriptionPlan(
+  planIdOrPayload: string | { plan_id?: string; id?: string; billing_period?: 'MONTH' | 'YEAR' | 'ONETIME'; billing_cycle?: string; payment_method?: string },
+  billing_period?: 'MONTH' | 'YEAR' | 'ONETIME',
+  payment_method?: string
+): Promise<SubscriptionResponse> {
+  let payload: { plan_id: string; billing_period?: string; payment_method?: string };
+  if (typeof planIdOrPayload === 'object' && planIdOrPayload !== null) {
+    const pId = planIdOrPayload.plan_id || planIdOrPayload.id || '';
+    const bPeriod = planIdOrPayload.billing_period || (planIdOrPayload.billing_cycle === 'YEARLY' ? 'YEAR' : (planIdOrPayload.billing_cycle === 'MONTHLY' ? 'MONTH' : undefined));
+    payload = {
+      plan_id: pId,
+      billing_period: bPeriod,
+      payment_method: planIdOrPayload.payment_method
+    };
+  } else {
+    payload = {
+      plan_id: String(planIdOrPayload || ''),
+      billing_period,
+      payment_method
+    };
+  }
+
   return requestWithFallback<SubscriptionResponse>('post', `/billing/subscriptions/order`, {
-    data: { plan_id, billing_period, payment_method },
+    data: payload,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }

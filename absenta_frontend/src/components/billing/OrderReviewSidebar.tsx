@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck, Box, Sparkles } from 'lucide-react';
+import { ShoppingCart, X, Clock, Check, ArrowRight, ShieldCheck, Box, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button, Badge, Loader } from '../ui';
-import { formatCurrency, getServiceIcon } from '@/lib/billingUtils';
+import { formatCurrency, getServiceIcon, getServiceThumbnail, isCompleteBundlePlan } from '@/lib/billingUtils';
 import { useCartStore } from '../../store/useCartStore';
 import toast from 'react-hot-toast';
+
 export interface OrderPayload {
   id: string;
   service_code?: string;
@@ -17,8 +18,10 @@ export interface OrderPayload {
   price_monthly: number;
   price_yearly: number;
   price_onetime?: number;
+  imageUrl?: string;
   group?: any;
 }
+
 interface OrderReviewSidebarProps {
   showOrderPanel: boolean;
   activeOrder: OrderPayload | null;
@@ -28,6 +31,7 @@ interface OrderReviewSidebarProps {
   handleCheckout: () => Promise<void>;
   activeAcademicTier?: string;
 }
+
 // Deteksi Perangkat / Hardware / Physical Service
 const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
 
@@ -48,23 +52,40 @@ const extractSizeLabel = (v: any): string => {
   if (limit > 0) {
     if (limit <= 300) return 'Micro';
     if (limit <= 600) return 'Small';
-    if (limit <= 1200) return 'Large';
-    if (limit <= 2500) return 'Enterprise';
-    return 'Ultra';
+    if (limit <= 1200) return 'Medium';
+    if (limit <= 2500) return 'Large';
+    return 'Enterprise';
   }
   return 'Standard';
 };
+
+export const TIER_CAPACITY_INFO: Record<string, { maxUsers: number; capacityLabel: string; suitableFor: string }> = {
+  MICRO: { maxUsers: 200, capacityLabel: 's.d 200 Siswa', suitableFor: 'SD / SMP Kecil' },
+  SMALL: { maxUsers: 500, capacityLabel: 's.d 500 Siswa', suitableFor: 'SMP / SMA Sedang' },
+  MEDIUM: { maxUsers: 1000, capacityLabel: 's.d 1.000 Siswa', suitableFor: 'SMA / SMK Standar' },
+  LARGE: { maxUsers: 1500, capacityLabel: 's.d 1.500 Siswa', suitableFor: 'SMKN / SMAN Besar' },
+  ENTERPRISE: { maxUsers: 2500, capacityLabel: 's.d 2.500 Siswa', suitableFor: 'SMKN / Kampus Terbesar' },
+  ULTRA: { maxUsers: 5000, capacityLabel: 's.d 5.000 Siswa', suitableFor: 'Yayasan / Multi-Kampus' },
+};
+
 
 const resolvePlanHelper = (activeOrder: OrderPayload | null, size: string, period: 'MONTH' | 'YEAR' | 'ONETIME', isHardware: boolean): any | null => {
   if (!activeOrder?.group?.variants) return null;
   const variants: any[] = activeOrder.group.variants;
 
   // Coba match sempurna: size + period
-  const exactMatch = variants.find(v => (v.size_label === size || extractSizeLabel(v) === size) && (v.billing_period === period || (isHardware && v.price_onetime > 0)));
+  const exactMatch = variants.find(v => {
+    const vSize = extractSizeLabel(v);
+    const vPeriod = v.billing_period === 'YEARLY' ? 'YEAR' : (v.billing_period === 'MONTHLY' ? 'MONTH' : v.billing_period);
+    return vSize.toLowerCase() === size.toLowerCase() && (vPeriod === period || (isHardware && v.price_onetime > 0));
+  });
   if (exactMatch) return exactMatch;
 
-  // Fallback: jika billing_period tidak ada di data, ambil yang cocok size saja
-  return variants.find(v => v.size_label === size || extractSizeLabel(v) === size) || variants[0] || null;
+  // Fallback: jika period tidak ada, cocokkan size saja
+  const sizeMatch = variants.find(v => extractSizeLabel(v).toLowerCase() === size.toLowerCase());
+  if (sizeMatch) return sizeMatch;
+
+  return variants[0] || null;
 };
 
 export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
@@ -76,19 +97,19 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
   handleCheckout,
   activeAcademicTier = 'Micro'
 }) => {
+  const [imgError, setImgError] = useState(false);
+
   // Deteksi Perangkat / Hardware / Physical Service
   const isHardware = Boolean(
-    activeOrder && (
-      HARDWARE_MODULE_IDS.includes(activeOrder.group?.module_id || '') || 
-      HARDWARE_MODULE_IDS.includes(activeOrder.service_code || '') || 
-      activeOrder.service_code === 'HARDWARE' || 
-      activeOrder.service_code === 'PHYSICAL_GOODS' || 
-      activeOrder.period === 'ONETIME' || 
-      (activeOrder.id && (activeOrder.id.startsWith('HW_') || activeOrder.id.startsWith('SVC_') || activeOrder.id.includes('SERVER') || activeOrder.id.includes('DELL')))
-    )
+    activeOrder?.group?.isHardware === true ||
+    HARDWARE_MODULE_IDS.includes(activeOrder?.group?.module_id || '') || 
+    HARDWARE_MODULE_IDS.includes(activeOrder?.service_code || '') || 
+    activeOrder?.service_code === 'HARDWARE' || 
+    activeOrder?.service_code === 'PHYSICAL_GOODS' || 
+    (activeOrder?.id && (activeOrder.id.startsWith('HW_') || activeOrder.id.startsWith('SVC_')))
   );
 
-  // Kumpulkan unique size_label dari semua varian (MONTH+YEAR digabung jadi 1 baris per ukuran)
+  // Kumpulkan unique size_label dari semua varian
   const groupedVariants = useMemo(() => {
     if (!activeOrder?.group?.variants) return [];
     const map = new Map<string, any[]>();
@@ -122,407 +143,479 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
     return [];
   }, [activeOrder, isHardware]);
 
-  // Pilih ukuran baru → resolve plan_id dari size × period aktif
+  const isCompleteBundle = useMemo(() => {
+    return isCompleteBundlePlan(activeOrder) || isCompleteBundlePlan(activeOrder?.group);
+  }, [activeOrder]);
+
+  // Pilih ukuran / varian baru → harga berubah seketika
   const selectSize = (sizeLabel: string) => {
     if (!activeOrder) return;
     const plan = resolvePlanHelper(activeOrder, sizeLabel, activeOrder.period, isHardware);
     if (!plan) return;
     const pOnetime = plan.price_onetime || Number(String(plan.price || 0).replace(/[^0-9]/g, '')) || 0;
+    const pMonthly = Number(plan.price_monthly || 0);
+    const pYearly = Number(plan.price_yearly || 0);
+
     setActiveOrder(prev => prev ? {
       ...prev,
       id: plan.id,
       name: plan.name || prev.name,
       size: plan.size_label || sizeLabel,
-      features_json: plan.features_json || [],
-      price_monthly: plan.price_monthly || 0,
-      price_yearly: plan.price_yearly || 0,
+      features_json: plan.features_json || prev.features_json,
+      price_monthly: pMonthly,
+      price_yearly: pYearly,
       price_onetime: pOnetime > 0 ? pOnetime : prev.price_onetime
     } : null);
   };
 
-  // Ganti periode → resolve plan_id dari size aktif × period baru
+  // Ganti periode → harga berubah seketika
   const updatePeriod = (period: 'MONTH' | 'YEAR') => {
-    if (!activeOrder || isHardware) return; // Siklus tagihan tidak berlaku untuk hardware
+    if (!activeOrder || isHardware) return;
     const plan = resolvePlanHelper(activeOrder, activeOrder.size || '', period, isHardware);
     if (!plan) return;
+    const pMonthly = Number(plan.price_monthly || 0);
+    const pYearly = Number(plan.price_yearly || 0);
+
     setActiveOrder(prev => prev ? {
       ...prev,
       period,
       id: plan.id,
-      price_monthly: plan.price_monthly || 0,
-      price_yearly: plan.price_yearly || 0
+      price_monthly: pMonthly > 0 ? pMonthly : prev.price_monthly,
+      price_yearly: pYearly > 0 ? pYearly : prev.price_yearly
     } : null);
   };
 
   if (!activeOrder) return null;
 
-  // Harga yang ditampilkan berdasarkan jenis produk dan periode yang dipilih
-  const displayPrice = isHardware ? activeOrder.price_onetime || activeOrder.price_monthly || activeOrder.price_yearly || 0 : activeOrder.period === 'YEAR' ? activeOrder.price_yearly || activeOrder.price_monthly * 12 : activeOrder.price_monthly;
+  // Resolusi gambar produk
+  const resolvedImageUrl = activeOrder.imageUrl || activeOrder.group?.imageUrl || getServiceThumbnail(activeOrder.service_code, activeOrder.moduleName, activeOrder.group?.mode);
 
-  return <AnimatePresence>
-      {showOrderPanel && <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 md:p-6 overflow-y-auto">
+  // Harga yang ditampilkan berdasarkan jenis produk dan periode yang dipilih secara dinamis
+  const displayPrice = isHardware
+    ? (activeOrder.price_onetime || activeOrder.price_monthly || activeOrder.price_yearly || 0)
+    : (activeOrder.period === 'YEAR'
+        ? (activeOrder.price_yearly > 0 ? activeOrder.price_yearly : Math.round((activeOrder.price_monthly || 0) * 12 * 0.8))
+        : (activeOrder.price_monthly || 0)
+      );
+
+  // Nominal penghematan tahunan jika aktif
+  const yearlySavings = !isHardware && activeOrder.period === 'YEAR' && activeOrder.price_monthly > 0
+    ? ((activeOrder.price_monthly * 12) - displayPrice)
+    : 0;
+
+  // Kalkulasi biaya unit per siswa untuk Sekolah Negeri
+  const currentTierKey = (activeOrder?.size || 'ENTERPRISE').toUpperCase();
+  const currentTierInfo = TIER_CAPACITY_INFO[currentTierKey] || TIER_CAPACITY_INFO['ENTERPRISE'];
+  const effectiveMonthlyPrice = activeOrder?.period === 'YEAR'
+    ? Math.round(displayPrice / 12)
+    : displayPrice;
+  const perStudentPerMonth = currentTierInfo?.maxUsers > 0
+    ? Math.round(effectiveMonthlyPrice / currentTierInfo.maxUsers)
+    : 0;
+
+  return (
+    <AnimatePresence>
+      {showOrderPanel && (
+        <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-0 sm:p-4 md:p-6 overflow-hidden">
           {/* Backdrop */}
-          <motion.div initial={{
-        opacity: 0
-      }} animate={{
-        opacity: 1
-      }} exit={{
-        opacity: 0
-      }} onClick={() => setShowOrderPanel(false)} className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100]" />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowOrderPanel(false)}
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[120]"
+          />
 
-          {/* Centered Responsive Modal Dialog Card */}
-          <motion.div initial={{
-        opacity: 0,
-        scale: 0.96,
-        y: 15
-      }} animate={{
-        opacity: 1,
-        scale: 1,
-        y: 0
-      }} exit={{
-        opacity: 0,
-        scale: 0.96,
-        y: 15
-      }} transition={{
-        type: 'spring',
-        damping: 25,
-        stiffness: 300
-      }} className="relative bg-white dark:bg-slate-950 shadow-2xl z-[101] border-0 sm:border border-slate-200 dark:border-slate-800 rounded-none sm:rounded-3xl w-full max-w-4xl h-full sm:h-auto max-h-[100vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
-            {/* ── HEADER ── */}
-            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/60 shrink-0">
-              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-                <div className="p-2 sm:p-2.5 bg-blue-600 text-white rounded-xl sm:rounded-2xl shadow-md shadow-blue-600/20 shrink-0">
-                  <ShoppingCart size={18} className="sm:w-5 sm:h-5" />
+          {/* Shopee-Style Responsive Modal Dialog */}
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.98 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+            className="relative bg-white dark:bg-slate-950 shadow-2xl z-[121] border-0 sm:border border-slate-200 dark:border-slate-800 rounded-t-[2.5rem] sm:rounded-3xl w-full max-w-3xl h-[92vh] sm:h-auto max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden"
+          >
+            {/* Mobile Drag Indicator */}
+            <div className="sm:hidden pt-3 pb-1 flex justify-center bg-slate-50 dark:bg-slate-900 shrink-0">
+              <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+            </div>
+
+            {/* ── 1. TOP HEADER (PRODUCT THUMBNAIL & BIG DYNAMIC PRICE) ── */}
+            <div className="p-4 sm:p-6 border-b border-slate-100 dark:border-slate-800 flex items-start gap-4 sm:gap-5 bg-slate-50/80 dark:bg-slate-900/80 shrink-0 relative">
+              {/* Product Thumbnail */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 p-2 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                {resolvedImageUrl && !imgError ? (
+                  <img
+                    src={resolvedImageUrl}
+                    alt={activeOrder.name}
+                    onError={() => setImgError(true)}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="text-indigo-600 dark:text-indigo-400">
+                    {React.createElement(getServiceIcon(activeOrder.service_code, activeOrder.moduleIcon), { size: 36 })}
+                  </div>
+                )}
+              </div>
+
+              {/* Title & Dynamic Price Info */}
+              <div className="flex-1 min-w-0 pr-8 space-y-1">
+                <div className="text-[10px] sm:text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest leading-none">
+                  {activeOrder.moduleName || 'Modul Absenta'}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-tight leading-none truncate">
-                    Review &amp; Konfigurasi Pesanan
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-400 font-medium mt-1 capitalize truncate">
-                    {activeOrder.name?.replace(/-/g, ' ') || 'Pilih paket Anda'}
-                  </p>
+                <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight capitalize truncate">
+                  {activeOrder.group?.baseName || activeOrder.name?.replace(/-/g, ' ')}
+                </h3>
+
+                {/* 🌟 BIG DYNAMIC PRICE 🌟 */}
+                <div className="flex items-baseline gap-2 flex-wrap pt-0.5">
+                  <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight animate-in fade-in zoom-in-95 duration-150">
+                    {formatCurrency(displayPrice)}
+                  </div>
+                  <span className="text-xs font-bold text-slate-500 font-sans">
+                    {isHardware ? '/unit' : activeOrder.period === 'YEAR' ? '/tahun' : '/bulan'}
+                  </span>
+
+                  {/* Savings Badge */}
+                  {yearlySavings > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-wider border border-rose-500/20">
+                      Hemat 20%
+                    </span>
+                  )}
+                </div>
+
+                {/* Unit Cost & School Capacity Breakdown */}
+                {!isHardware && currentTierInfo && (
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-0.5">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-300 text-[10.5px] font-bold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Setara <strong>{formatCurrency(perStudentPerMonth)} / siswa / bulan</strong></span>
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+                      • Kapasitas {currentTierInfo.capacityLabel} ({currentTierInfo.suitableFor})
+                    </span>
+                  </div>
+                )}
+
+                {/* Selected summary */}
+                <div className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 flex-wrap pt-0.5">
+                  <span>Pilihan:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    {isHardware ? activeOrder.name : `Edisi ${activeOrder.size || 'Standard'} (${currentTierInfo?.capacityLabel || ''}) · ${activeOrder.period === 'YEAR' ? 'Tagihan Tahunan' : 'Tagihan Bulanan'}`}
+                  </span>
                 </div>
               </div>
-              <button onClick={() => setShowOrderPanel(false)} className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors shrink-0 ml-2" aria-label="Tutup">
-                <X size={18} className="sm:w-5 sm:h-5" />
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowOrderPanel(false)}
+                className="absolute top-4 right-4 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-200/70 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors shrink-0"
+                aria-label="Tutup"
+              >
+                <X size={16} className="sm:w-4 sm:h-4" />
               </button>
             </div>
 
-            {/* ── BODY (2 Columns Responsive Grid Layout) ── */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 grid grid-cols-1 md:grid-cols-12 gap-5 md:gap-6 no-scrollbar pb-24 md:pb-6">
+            {/* ── 2. MODAL BODY: LEVEL 1 & LEVEL 2 BUTTONS ── */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 no-scrollbar pb-32 md:pb-6">
 
-              {/* LEFT COLUMN (7 cols): Configuration & Features */}
-              <div className="md:col-span-7 space-y-5 sm:space-y-6">
+              {/* 🌟 PAKET LENGKAP INCLUDED BONUSES 🌟 */}
+              {isCompleteBundle && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-violet-50/50 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles size={13} className="text-amber-500 fill-amber-500" />
+                      <span className="text-[10.5px] font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+                        Keuntungan Bawaan Paket Lengkap
+                      </span>
+                    </div>
+                    <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
+                      Gratis Termasuk
+                    </span>
+                  </div>
 
-                {/* 1. KARTU PRODUK & KAPASITAS */}
-                <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800">
-                  {(() => {
-                const selectedPlan = resolvePlanHelper(activeOrder, activeOrder.size || '', activeOrder.period, isHardware);
-                const capacity = selectedPlan?.max_user || selectedPlan?.device_limit || selectedPlan?.deviceLimit;
-                return <div className="flex items-start gap-3.5 sm:gap-4">
-                        {/* Icon / Product Image */}
-                        {selectedPlan?.image_url || activeOrder.group?.variants?.find((v: any) => v.image_url)?.image_url ? <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-1.5 flex items-center justify-center flex-shrink-0 shadow-sm">
-                            <img src={selectedPlan?.image_url || activeOrder.group?.variants?.find((v: any) => v.image_url)?.image_url} alt={activeOrder.name} className="w-full h-full object-contain" />
-                          </div> : <div className="w-12 h-12 sm:w-14 sm:h-14 bg-blue-100 dark:bg-blue-900/40 rounded-2xl flex items-center justify-center text-blue-600 flex-shrink-0">
-                            {React.createElement(getServiceIcon(activeOrder.service_code, activeOrder.moduleIcon), {
-                      size: 24
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                      <span className="font-semibold text-[11px]">1x Dedicated Easy Tunnel (SSL HTTPS)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                      <span className="font-semibold text-[11px]">WhatsApp Notification Gateway</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                      <span className="font-semibold text-[11px]">Akses Semua Modul Aplikasi</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
+                      <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+                      <span className="font-semibold text-[11px]">Klaim Domain Pasca-Bayar di Menu Tunnel</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── LEVEL 1: TOMBOL PILIHAN EDISI (MICRO, SMALL, MEDIUM, LARGE, ENTERPRISE) ── */}
+              {groupedVariants.length > 0 && !isHardware && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                      Pilih Edisi Kapasitas Siswa
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-medium hidden sm:inline">
+                      Kapasitas total siswa aktif
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                    {groupedVariants.map(([sizeLabel]) => {
+                      const isSelected = (activeOrder.size || '').toLowerCase() === sizeLabel.toLowerCase();
+                      const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
+                      const academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+                      const sizeIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === sizeLabel.toLowerCase());
+                      const isLocked = activeOrder.service_code !== 'KOPERASI' && academicIdx !== -1 && sizeIdx !== -1 && sizeIdx < academicIdx;
+                      const tierMeta = TIER_CAPACITY_INFO[sizeLabel.toUpperCase()] || { capacityLabel: 'Kapasitas Siswa', suitableFor: '' };
+
+                      return (
+                        <button
+                          key={sizeLabel}
+                          id={`edition-select-${sizeLabel}`}
+                          data-testid={`edition-select-${sizeLabel}`}
+                          type="button"
+                          disabled={isLocked}
+                          onClick={() => {
+                            if (!isLocked) selectSize(sizeLabel);
+                          }}
+                          className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl transition-all duration-150 border-2 flex flex-col items-start gap-0.5 text-left ${
+                            isLocked
+                              ? 'bg-slate-100 dark:bg-slate-900/40 text-slate-300 dark:text-slate-700 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-50'
+                              : isSelected
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/30 scale-105 ring-2 ring-indigo-500/20'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400 hover:text-indigo-600'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 w-full justify-between">
+                            <span className="text-xs sm:text-sm font-black tracking-wider">{sizeLabel}</span>
+                            {isSelected && <CheckCircle2 size={14} className="text-white shrink-0" />}
+                            {isLocked && <span className="text-xs">🔒</span>}
+                          </div>
+                          <div className={`text-[10px] font-medium leading-none ${
+                            isSelected ? 'text-indigo-100 font-semibold' : 'text-slate-400 dark:text-slate-500'
+                          }`}>
+                            {tierMeta.capacityLabel}
+                          </div>
+                        </button>
+                      );
                     })}
-                          </div>}
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[9px] sm:text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] mb-0.5 sm:mb-1">
-                            {activeOrder.moduleName}
-                          </div>
-                          <h4 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight capitalize truncate mb-1.5 sm:mb-2">
-                            {activeOrder.name?.replace(/-/g, ' ')}
-                          </h4>
-                          {/* Edisi badge + kapasitas inline */}
-                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                            <span className="text-[10px] sm:text-xs font-black text-white bg-blue-600 px-2 sm:px-2.5 py-0.5 rounded-lg uppercase tracking-wider shadow-sm">
-                              {isHardware ? 'Unit Hardware' : `Edisi ${activeOrder.size}`}
-                            </span>
-                            {!isHardware && <span className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-200/60 dark:bg-slate-800 px-2 sm:px-2.5 py-0.5 rounded-lg">
-                                📦 {capacity ? `${capacity.toLocaleString('id-ID')} Pengguna` : 'Unlimited'}
-                              </span>}
-                          </div>
-                        </div>
-                      </div>;
-              })()}
-                </div>
-
-                {/* 2. PILIH EDISI PERANGKAT / HARDWARE VARIANT (Standar Barebone vs Enterprise Solution) */}
-                {isHardware && <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
-                      1 · Pilih Tipe Paket / Edisi Perangkat
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(() => {
-                  const variants = activeOrder.group?.variants || [];
-                  if (variants.length <= 1) {
-                    return <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300">
-                              {activeOrder.name}
-                            </div>;
-                  }
-                  return variants.map((v: any) => {
-                    const isSelected = activeOrder.plan_id === v.id || activeOrder.name === v.name;
-                    const isEnt = (v.name || '').includes('Enterprise Solution') || (v.id || '').includes('_ENT');
-                    const price = v.price_onetime || v.price_monthly || 0;
-                    return <button key={v.id} type="button" onClick={() => {
-                      setActiveOrder(prev => ({
-                        ...prev,
-                        plan_id: v.id,
-                        name: v.name,
-                        price: price,
-                        price_onetime: price
-                      }));
-                    }} className={`p-3.5 rounded-xl text-left border-2 transition-all flex flex-col justify-between gap-2.5 ${isSelected ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-600 text-blue-900 dark:text-white shadow-md' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-blue-300'}`}>
-                              <div>
-                                <div className="flex items-center justify-between gap-1 mb-1.5">
-                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${isEnt ? 'bg-amber-500 text-white shadow-sm' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
-                                    {isEnt ? '⭐ Enterprise Solution' : '📦 Standar Barebone'}
-                                  </span>
-                                  {isSelected && <Check size={14} className="text-blue-600 dark:text-blue-400 font-bold" />}
-                                </div>
-                                <div className="text-xs font-black leading-snug line-clamp-2">{v.name}</div>
-                              </div>
-                              <div className="text-sm font-black font-mono text-blue-600 dark:text-blue-400 border-t border-slate-100 dark:border-slate-800 pt-2">
-                                Rp {price.toLocaleString('id-ID')}
-                              </div>
-                            </button>;
-                  });
-                })()}
-                    </div>
-                  </div>}
-
-                {/* 2. PILIH EDISI (Hanya untuk SaaS jika ada varian edisi) */}
-                {groupedVariants.length > 1 && !isHardware && <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
-                      1 · Pilih Edisi Kapasitas Siswa
-                    </div>
-                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-2.5">
-                      {(() => {
-                  const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
-                  const academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
-                  return groupedVariants.map(([sizeLabel]) => {
-                    const isSelected = activeOrder.size === sizeLabel;
-                    const sizeIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === sizeLabel.toLowerCase());
-                    const isLocked = activeOrder.service_code !== 'KOPERASI' && academicIdx !== -1 && sizeIdx !== -1 && sizeIdx < academicIdx;
-                    return <button key={sizeLabel} id={`edition-select-${sizeLabel}`} data-testid={`edition-select-${sizeLabel}`} onClick={() => {
-                      if (!isLocked) selectSize(sizeLabel);
-                    }} disabled={isLocked} className={`h-11 sm:h-auto px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-200 border-2 flex items-center justify-center gap-1 ${isLocked ? 'bg-slate-100 dark:bg-slate-900/50 text-slate-300 dark:text-slate-700 border-slate-100 dark:border-slate-800 cursor-not-allowed opacity-50' : isSelected ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-600/25 scale-[1.02] sm:scale-105' : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:text-blue-600'}`}>
-                              <span>{sizeLabel}</span>
-                              {isLocked && <span>🔒</span>}
-                            </button>;
-                  });
-                })()}
-                    </div>
-                    {activeAcademicTier && activeAcademicTier.toLowerCase() !== 'micro' && activeOrder.service_code !== 'KOPERASI' && <p className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500 font-medium italic mt-2.5 sm:mt-3 block">
-                        * Edisi minimal yang dapat dibeli adalah <span className="font-bold">{activeAcademicTier}</span> sesuai kapasitas sekolah Anda.
-                      </p>}
-                  </div>}
-
-                {/* 3. SIKLUS TAGIHAN */}
-                <div className="p-4 sm:p-5 bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-slate-800">
-                  <div className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-3">
-                    2 · Siklus Tagihan
                   </div>
-                  {isHardware ? <div className="p-3 sm:p-3.5 bg-blue-50 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-800/60 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-black text-blue-700 dark:text-blue-300 uppercase tracking-wider truncate">
-                        <Box size={16} className="text-blue-600 shrink-0" />
-                        <span>Pembelian Perangkat (Sekali Bayar)</span>
+                </div>
+              )}
+
+              {/* HARDWARE EDITIONS BUTTONS */}
+              {isHardware && (
+                <div className="space-y-3">
+                  <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Pilih Tipe Paket / Spesifikasi
+                  </div>
+                  <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                    {(() => {
+                      const variants = activeOrder.group?.variants || [];
+                      return variants.map((v: any) => {
+                        const isSelected = activeOrder.id === v.id || activeOrder.name === v.name;
+                        const isEnt = (v.name || '').includes('Enterprise') || (v.id || '').includes('_ENT');
+                        const price = v.price_onetime || v.price_monthly || 0;
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveOrder(prev => prev ? ({
+                                ...prev,
+                                id: v.id,
+                                name: v.name,
+                                price_onetime: price
+                              }) : null);
+                            }}
+                            className={`px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl text-xs sm:text-sm font-black tracking-wider transition-all duration-150 border-2 flex items-center justify-center gap-2 ${
+                              isSelected
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/30 scale-105 ring-2 ring-indigo-500/20'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400'
+                            }`}
+                          >
+                            <span>{v.name}</span>
+                            {isSelected && <CheckCircle2 size={16} className="text-white shrink-0" />}
+                          </button>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* ── LEVEL 2: TOMBOL PILIHAN SIKLUS TAGIHAN (BULANAN VS TAHUNAN) ── */}
+              {!isHardware && (
+                <div className="space-y-3 pt-1">
+                  <div className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center justify-between">
+                    <span>Pilih Siklus Tagihan</span>
+                    <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold normal-case">
+                      💡 Hemat 20% dengan paket tahunan
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2.5 sm:gap-3">
+                    {/* BULANAN */}
+                    <button
+                      type="button"
+                      onClick={() => updatePeriod('MONTH')}
+                      className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-left border-2 transition-all duration-150 flex flex-col items-start gap-0.5 ${
+                        activeOrder.period === 'MONTH'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/30 scale-105 ring-2 ring-indigo-500/20'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400 hover:text-indigo-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black">
+                        <span>📅 Tagihan Bulanan</span>
+                        {activeOrder.period === 'MONTH' && <CheckCircle2 size={14} className="text-white shrink-0" />}
                       </div>
-                      <span className="bg-blue-600 text-white text-[10px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded-full uppercase tracking-widest shrink-0">
-                        Unit Hardware
-                      </span>
-                    </div> : <div className="grid grid-cols-2 gap-2.5 sm:gap-3 bg-slate-100 dark:bg-slate-900 p-1.5 sm:p-2 rounded-2xl border border-slate-200/50 dark:border-slate-800">
-                      <button onClick={() => updatePeriod('MONTH')} className={`h-11 sm:h-auto py-2.5 sm:py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeOrder.period === 'MONTH' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>
-                        Bulanan
-                      </button>
-                      <button onClick={() => updatePeriod('YEAR')} className={`h-11 sm:h-auto py-2.5 sm:py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all relative ${activeOrder.period === 'YEAR' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-400 hover:text-slate-600'}`}>
-                        Tahunan
-                        <span className="absolute -top-2 -right-1 bg-amber-500 text-white text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full ring-2 ring-white dark:ring-slate-950 shadow-sm">
-                          HEMAT 20%
+                      <div className={`text-[10px] ${activeOrder.period === 'MONTH' ? 'text-indigo-100' : 'text-slate-400'}`}>
+                        Fleksibel per bulan
+                      </div>
+                    </button>
+
+                    {/* TAHUNAN */}
+                    <button
+                      type="button"
+                      onClick={() => updatePeriod('YEAR')}
+                      className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl text-left border-2 transition-all duration-150 flex flex-col items-start gap-0.5 relative ${
+                        activeOrder.period === 'YEAR'
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/30 scale-105 ring-2 ring-indigo-500/20'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400 hover:text-indigo-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-black">
+                        <span>🌟 Paket Tahunan</span>
+                        <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[8px] font-black rounded-full uppercase tracking-wider shadow-xs">
+                          Hemat 20%
                         </span>
-                      </button>
-                    </div>}
-                </div>
-
-                {/* 4. FITUR LAYANAN & MODUL TERMASUK */}
-                <div className="p-4 sm:p-5 bg-slate-50/70 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 dark:border-slate-800 space-y-4">
-                  {/* Modul Core Bawaan (Gratis) */}
-                  {!isHardware && <div>
-                      <div className="text-[10px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Sparkles size={15} className="text-emerald-500 shrink-0" />
-                        <span>Sudah Termasuk Modul Core (Gratis)</span>
+                        {activeOrder.period === 'YEAR' && <CheckCircle2 size={14} className="text-white shrink-0" />}
                       </div>
-                      <ul className="space-y-2.5 sm:space-y-3">
-                        <li className="flex items-start gap-2.5 sm:gap-3 text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                          <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                          <div className="flex-1">
-                            <span className="font-black text-slate-900 dark:text-white">Modul Academic / TU: </span>
-                            <span className="text-slate-500 dark:text-slate-400">Master Data SDM Guru/Siswa (Wizard NIS Massal), Jabatan Organisasi, Transisi Kenaikan/Kelulusan, &amp; Designer Kartu Pelajar QR</span>
-                          </div>
-                        </li>
-                        <li className="flex items-start gap-2.5 sm:gap-3 text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                          <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                          <div className="flex-1">
-                            <span className="font-black text-slate-900 dark:text-white">Modul Kurikulum: </span>
-                            <span className="text-slate-500 dark:text-slate-400">Penjadwalan KBM (Timetable Solver &amp; Shift Jam), Struktur JP Kurikulum Merdeka, Repositori Perangkat Ajar, RPE, &amp; Supervisi Akademik Guru</span>
-                          </div>
-                        </li>
-                        <li className="flex items-start gap-2.5 sm:gap-3 text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                          <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                          <div className="flex-1">
-                            <span className="font-black text-slate-900 dark:text-white">Modul Kesiswaan: </span>
-                            <span className="text-slate-500 dark:text-slate-400">Kedisiplinan &amp; Poin Pelanggaran (Auto-Seeding 18+ Jenis), Poin Prestasi/Reward, Buku Piket &amp; Izin Digital, serta Jadwal Eskul/Agenda Non-KBM</span>
-                          </div>
-                        </li>
-                      </ul>
-                    </div>}
-
-                  {/* Fitur Spesifik Modul / Spesifikasi Hardware */}
-                  {featuresList.length > 0 && <div className={!isHardware ? "pt-3.5 sm:pt-4 border-t border-slate-200/80 dark:border-slate-800" : ""}>
-                      <div className="text-[10px] sm:text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                        <Box size={15} className="text-blue-500 shrink-0" />
-                        <span>{isHardware ? 'Spesifikasi & Deskripsi Perangkat' : `Fitur Khusus ${activeOrder.name?.replace(/-/g, ' ') || 'Modul'}`}</span>
+                      <div className={`text-[10px] font-semibold ${activeOrder.period === 'YEAR' ? 'text-amber-200' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                        🏛️ Rekomendasi SPJ Dana BOS
                       </div>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
-                        {featuresList.map((feat: string, idx: number) => <li key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300 font-medium leading-normal bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                            <div className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                              <Check size={10} strokeWidth={3} />
-                            </div>
-                            <span>{feat}</span>
-                          </li>)}
-                      </ul>
-                    </div>}
-                </div>
-
-              </div>
-
-              {/* RIGHT COLUMN (5 cols): Ringkasan Harga & Tombol Aksi */}
-              <div className="md:col-span-5 flex flex-col justify-between">
-                <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-900/80 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm md:sticky md:top-0">
-                  <div className="text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800 pb-3">
-                    Ringkasan Tagihan
+                    </button>
                   </div>
+                </div>
+              )}
 
-                  <div className="space-y-2.5 sm:space-y-3">
-                    <div className="flex justify-between items-center text-xs sm:text-sm">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">
-                        Subtotal ({isHardware ? 'Perangkat / Unit' : activeOrder.period === 'YEAR' ? 'Tahunan' : 'Bulanan'})
-                      </span>
-                      <span className="text-slate-900 dark:text-white font-black">
-                        {formatCurrency(displayPrice)}
+              {/* ── BUKTI DANA BOS & SIPLAH COMPLIANCE ── */}
+              {!isHardware && (
+                <div className="p-3.5 sm:p-4 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm font-black text-xs">
+                    BOS
+                  </div>
+                  <div className="space-y-0.5 text-xs">
+                    <div className="font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5 flex-wrap">
+                      <span>Resmi & Kompatibel Anggaran BOS (ARKAS)</span>
+                      <span className="px-1.5 py-0.5 rounded bg-emerald-200/60 dark:bg-emerald-800/60 text-emerald-800 dark:text-emerald-200 text-[9px] font-black uppercase">
+                        Mitra SIPLaH
                       </span>
                     </div>
+                    <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 leading-relaxed">
+                      Tersedia transaksi resmi via <strong>SIPLaH Kemendikbud</strong> dengan faktur pajak PPN 11%, kode rekening ARKAS valid, dan berkas SPJ siap audit BPK/Inspektorat Daerah.
+                    </p>
+                  </div>
+                </div>
+              )}
 
-                    {!isHardware && activeOrder.period === 'YEAR' && activeOrder.price_monthly > 0 && <div className="flex justify-between items-center text-xs text-slate-400">
-                        <span>Setara per bulan</span>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">{formatCurrency(Math.round(displayPrice / 12))}/bln</span>
-                      </div>}
+              {/* ── DETAIL FITUR YANG TERMASUK ── */}
+              <div className="p-4 sm:p-5 bg-slate-50/80 dark:bg-slate-900/60 rounded-2xl border border-slate-200/70 dark:border-slate-800 space-y-3">
+                <div className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+                  <Sparkles size={14} />
+                  <span>Fitur & Modul yang Termasuk</span>
+                </div>
 
-                    <div className="flex justify-between items-center text-xs sm:text-sm">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">Pajak (PPN 11%)</span>
-                      <span className="text-emerald-600 font-black">Termasuk</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs text-slate-400">
-                      <span>Estimasi Biaya Layanan</span>
-                      <span className="font-bold">± Rp 4.500 (Terhubung Gateway)</span>
-                    </div>
-
-                    {!isHardware && activeOrder.period === 'YEAR' && <div className="flex justify-between items-center text-xs p-2.5 sm:p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-600 font-bold">
-                        <span>💰 Hemat ~20% vs Bulanan</span>
-                        <span className="bg-amber-500 text-white px-2 py-0.5 rounded-full text-[9px] uppercase tracking-widest">Aktif</span>
-                      </div>}
-
-                    <div className="pt-3 sm:pt-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-xs font-black uppercase text-slate-400 tracking-widest">Total Bayar</span>
-                        <span className="text-xl sm:text-2xl md:text-3xl font-black text-blue-600 dark:text-blue-400">
-                          {formatCurrency(displayPrice)}
-                        </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {!isHardware && (
+                    <>
+                      <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80">
+                        <Check size={12} className="text-emerald-500 shrink-0 font-bold" />
+                        <span>Termasuk Modul Core TU & Kurikulum</span>
                       </div>
-                      <div className="text-[10px] text-slate-400 text-right">
-                        {isHardware ? 'Harga unit perangkat (Sekali bayar)' : activeOrder.period === 'YEAR' ? 'Dibayar di muka (12 bln)' : 'Tagihan berulang bulanan'}
+                      <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80">
+                        <Check size={12} className="text-emerald-500 shrink-0 font-bold" />
+                        <span>Termasuk Disiplin & Kesiswaan</span>
                       </div>
+                    </>
+                  )}
+                  {featuresList.slice(0, 6).map((f: string, i: number) => (
+                    <div key={i} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/80">
+                      <Check size={12} className="text-indigo-500 shrink-0 font-bold" />
+                      <span className="truncate">{f}</span>
                     </div>
-                  </div>
-
-                  {/* Tombol Aksi Desktop */}
-                  <div className="hidden md:flex flex-col gap-3 pt-2">
-                    <Button className="w-full h-13 sm:h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-xl shadow-blue-600/25 transition-all hover:scale-[1.01] active:scale-[0.99] group flex items-center justify-center gap-2" onClick={handleCheckout} disabled={checkoutProcessing}>
-                      {checkoutProcessing ? <Loader size="sm" className="mr-2" /> : <>
-                          Beli Langsung Sekarang
-                          <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </>}
-                    </Button>
-
-                    <Button type="button" className="w-full h-11 sm:h-12 rounded-2xl bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-2" onClick={() => {
-                  useCartStore.getState().addItem({
-                    plan_id: activeOrder.id,
-                    name: isHardware ? `${activeOrder.moduleName || 'Hardware'} - ${activeOrder.name || 'Unit'}` : `${activeOrder.moduleName || 'Modul'} - Edisi ${activeOrder.size || 'Standard'} (${activeOrder.period === 'YEAR' ? 'Tahunan' : 'Bulanan'})`,
-                    price: displayPrice,
-                    type: isHardware ? 'HARDWARE_PERIPHERAL' : 'SOFTWARE_SUBSCRIPTION',
-                    billingPeriod: activeOrder.period,
-                    moduleName: activeOrder.moduleName
-                  });
-                  toast.success('Produk berhasil ditambahkan ke keranjang belanja!');
-                }}>
-                      <ShoppingCart size={16} />
-                      + Tambah ke Keranjang Belanja
-                    </Button>
-                  </div>
-
-                  <div className="hidden md:flex items-center justify-center gap-1.5 pt-1 opacity-50">
-                    <ShieldCheck size={14} className="text-emerald-500" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Secure Payment Gateway</span>
-                  </div>
+                  ))}
                 </div>
               </div>
 
             </div>
 
-            {/* ── MOBILE STICKY BOTTOM ACTION BAR (Tampil Khusus di Layar Ponsel / <768px) ── */}
-            <div className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 p-3 px-4 z-[105] shadow-2xl flex items-center justify-between gap-3">
+            {/* ── 3. SHOPEE BOTTOM ACTION BAR ── */}
+            <div className="border-t border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-950 p-4 sm:p-5 flex items-center justify-between gap-3 sm:gap-4 shrink-0 shadow-lg">
               <div>
-                <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Total Bayar</div>
-                <div className="text-base font-black text-blue-600 dark:text-blue-400 leading-none">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Total Pembayaran
+                </div>
+                <div className="text-lg sm:text-2xl font-black text-rose-600 dark:text-rose-400 font-mono leading-none">
                   {formatCurrency(displayPrice)}
+                </div>
+                <div className="text-[10px] text-slate-400 mt-0.5 hidden sm:block">
+                  PPN 11% sudah termasuk
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button type="button" className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 shrink-0" onClick={() => {
-              useCartStore.getState().addItem({
-                plan_id: activeOrder.id,
-                name: isHardware ? `${activeOrder.moduleName || 'Hardware'} - ${activeOrder.name || 'Unit'}` : `${activeOrder.moduleName || 'Modul'} - Edisi ${activeOrder.size || 'Standard'} (${activeOrder.period === 'YEAR' ? 'Tahunan' : 'Bulanan'})`,
-                price: displayPrice,
-                type: isHardware ? 'HARDWARE_PERIPHERAL' : 'SOFTWARE_SUBSCRIPTION',
-                billingPeriod: activeOrder.period,
-                moduleName: activeOrder.moduleName
-              });
-              toast.success('Produk ditambahkan ke keranjang!');
-            }} aria-label="Tambah ke Keranjang">
-                  <ShoppingCart size={18} />
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Button Masukkan Keranjang */}
+                <Button
+                  type="button"
+                  onClick={() => {
+                    useCartStore.getState().addItem({
+                      plan_id: activeOrder.id,
+                      name: isHardware
+                        ? `${activeOrder.moduleName || 'Hardware'} - ${activeOrder.name || 'Unit'}`
+                        : `${activeOrder.moduleName || 'Modul'} - Edisi ${activeOrder.size || 'Standard'} (${activeOrder.period === 'YEAR' ? 'Tahunan' : 'Bulanan'})`,
+                      price: displayPrice,
+                      type: isHardware ? 'HARDWARE_PERIPHERAL' : 'SOFTWARE_SUBSCRIPTION',
+                      billingPeriod: activeOrder.period,
+                      moduleName: activeOrder.moduleName
+                    });
+                    toast.success('Produk berhasil dimasukkan ke Keranjang!');
+                  }}
+                  className="h-11 sm:h-12 px-3.5 sm:px-5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-all shrink-0"
+                >
+                  <ShoppingCart size={16} />
+                  <span className="hidden sm:inline">+ Keranjang</span>
                 </Button>
 
-                <Button className="h-11 px-5 rounded-xl bg-blue-600 text-white font-black text-xs shadow-lg shadow-blue-600/20 flex items-center justify-center gap-1.5 shrink-0" onClick={handleCheckout} disabled={checkoutProcessing}>
-                  {checkoutProcessing ? <Loader size="sm" /> : <>
-                      <span>Beli Langsung</span>
-                      <ArrowRight size={15} />
-                    </>}
+                {/* Button Beli / Langganan Sekarang */}
+                <Button
+                  type="button"
+                  onClick={handleCheckout}
+                  disabled={checkoutProcessing}
+                  className="h-11 sm:h-12 px-5 sm:px-8 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs sm:text-sm shadow-xl shadow-indigo-600/25 flex items-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.99] shrink-0"
+                >
+                  {checkoutProcessing ? (
+                    <Loader size="sm" />
+                  ) : (
+                    <>
+                      <span>Langganan Sekarang</span>
+                      <ArrowRight size={16} />
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
 
           </motion.div>
-        </div>}
-    </AnimatePresence>;
+        </div>
+      )}
+    </AnimatePresence>
+  );
 };

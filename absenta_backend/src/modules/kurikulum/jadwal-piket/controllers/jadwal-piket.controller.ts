@@ -264,7 +264,7 @@ export class JadwalPiketController {
       }
 
       const { isNightReminder, overrideTargetGroupId } = request.body || {};
-      const result = await this.service.sendPiketReminderToGroup(tenantId, Boolean(isNightReminder), overrideTargetGroupId);
+      const result = await this.service.sendPiketReminderToGroup(tenantId, Boolean(isNightReminder), overrideTargetGroupId, true);
 
       return reply.send({
         success: true,

@@ -10,10 +10,10 @@ interface AcademicTierCardProps {
 }
 
 const TIER_OPTIONS = [
-  { value: 'MICRO', label: 'Micro (Maks. 100 Siswa)' },
-  { value: 'SMALL', label: 'Small (Maks. 300 Siswa)' },
-  { value: 'MEDIUM', label: 'Medium (Maks. 600 Siswa)' },
-  { value: 'LARGE', label: 'Large (Maks. 1.200 Siswa)' },
+  { value: 'MICRO', label: 'Micro (≤ 100 Siswa)' },
+  { value: 'SMALL', label: 'Small (≤ 300 Siswa)' },
+  { value: 'MEDIUM', label: 'Medium (≤ 600 Siswa)' },
+  { value: 'LARGE', label: 'Large (≤ 1.200 Siswa)' },
   { value: 'ENTERPRISE', label: 'Enterprise (Tanpa Batas)' }
 ];
 
@@ -22,6 +22,9 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
   onTierChangeSuccess
 }) => {
   const currentTierVal = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' ? 'MICRO' : activeAcademicTier.toUpperCase();
+  const tierDisplayName = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' 
+    ? 'Core Platform' 
+    : `Edisi ${activeAcademicTier.charAt(0).toUpperCase() + activeAcademicTier.slice(1).toLowerCase()}`;
 
   const handleSelectTier = async (newTier: string) => {
     const confirmChange = window.confirm(`Apakah Anda yakin ingin mengubah kapasitas sekolah ke edisi ${newTier}?`);
@@ -42,24 +45,24 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
   };
 
   return (
-    <Card className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm relative overflow-hidden">
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 shrink-0">
-          <GraduationCap className="w-5 h-5" />
+    <Card className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs relative overflow-hidden">
+      <div className="flex items-start gap-2.5">
+        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 shrink-0 mt-0.5">
+          <GraduationCap className="w-4 h-4" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Edisi Sekolah</span>
-            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Edisi Institusi</span>
+            <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
           </div>
-          <h4 className="text-sm font-black text-slate-900 dark:text-white capitalize truncate">
-            Edisi {activeAcademicTier.toLowerCase().replace('_', ' ')}
+          <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug mt-0.5">
+            {tierDisplayName}
           </h4>
         </div>
       </div>
 
-      <div className="mt-3.5 pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
-        <label htmlFor="selectAcademicTier" className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+        <label htmlFor="selectAcademicTier" className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
           Pilih Kapasitas Baru
         </label>
         <SearchableSelect
@@ -70,10 +73,10 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
           options={TIER_OPTIONS}
           placeholder="Pilih edisi kapasitas"
           searchPlaceholder="Cari edisi..."
-          triggerClassName="w-full text-[10px] font-bold"
+          triggerClassName="w-full text-xs font-medium h-9"
         />
-        <p className="text-[8.5px] text-slate-400 font-medium leading-relaxed italic mt-2">
-          * Pilihan edisi minimal setara dengan kapasitas sekolah Anda untuk dapat membeli modul premium.
+        <p className="text-[9px] text-slate-400 leading-tight italic mt-1.5">
+          * Pilihan edisi menentukan batas kapasitas siswa untuk pengadaan modul.
         </p>
       </div>
     </Card>

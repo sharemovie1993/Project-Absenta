@@ -27,6 +27,14 @@ export async function mySubscriptionRoutes(fastify: any) {
     mySubscriptionController.getPayments
   );
 
+  fastify.post(
+    '/sync',
+    {
+      preHandler: [requireCapability("billing.my.subscription.view"), determineDataScope()]
+    },
+    mySubscriptionController.syncSubscription
+  );
+
   fastify.patch(
     '/:id/auto-renew',
     {

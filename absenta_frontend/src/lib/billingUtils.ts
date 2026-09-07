@@ -156,3 +156,33 @@ export const getServiceStyle = (name: string) => {
   const index = Math.abs(hash) % colorPalettes.length;
   return { ...colorPalettes[index], icon };
 };
+
+/**
+ * 🛡️ Helper eksplisit untuk mendeteksi apakah suatu produk / plan / grup adalah Paket Lengkap (All-in-One Bundle)
+ */
+export const isCompleteBundlePlan = (planOrGroup: any): boolean => {
+  if (!planOrGroup) return false;
+  const sCode = String(planOrGroup.service_code || planOrGroup.serviceCode || '').toUpperCase();
+  const mId = String(planOrGroup.module_id || planOrGroup.moduleId || (planOrGroup.module && planOrGroup.module.id) || '').toUpperCase();
+  const gKey = String(planOrGroup.groupKey || '').toUpperCase();
+  const pId = String(planOrGroup.id || planOrGroup.plan_id || '').toUpperCase();
+  const pName = String(planOrGroup.name || planOrGroup.baseName || planOrGroup.title || '').toUpperCase();
+
+  const rawFeatures = planOrGroup.features_json || planOrGroup.features || (planOrGroup.Plan && planOrGroup.Plan.features_json) || [];
+  const featuresUpper = Array.isArray(rawFeatures)
+    ? rawFeatures.map((f: any) => String(f).toUpperCase())
+    : [];
+
+  return (
+    sCode === 'PAKET_LENGKAP' ||
+    mId === 'PAKET_LENGKAP' ||
+    gKey === 'SAAS_GROUP_PAKET_LENGKAP' ||
+    pId.startsWith('PAKET_LENGKAP') ||
+    pName.includes('PAKET LENGKAP') ||
+    pName.includes('ALL-IN-ONE') ||
+    featuresUpper.includes('PAKET_LENGKAP') ||
+    featuresUpper.includes('ALL_IN_ONE') ||
+    featuresUpper.includes('EASY_TUNNEL')
+  );
+};
+

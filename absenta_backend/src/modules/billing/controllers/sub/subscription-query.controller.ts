@@ -58,28 +58,52 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       const remoteSubs = response.data.data;
 
-      // Get all pricing plans from server to resolve module_id and specifications
-      const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=absenta`, { timeout: 8000 });
-      const remotePlans = (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) ? plansResponse.data.data : [];
+      // 1. Get all pricing plans from server without product_id filter to include all packages
+      let remotePlans: any[] = [];
+      try {
+        const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages`, { timeout: 8000 });
+        if (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) {
+          remotePlans = plansResponse.data.data;
+        }
+      } catch (err: any) {
+        console.warn('[SYNC SUBSCRIPTION] Failed to fetch remote packages:', err.message);
+      }
 
-      for (const rSub of remoteSubs) {
-        console.log('[DEBUG SYNC] Processing rSub:', JSON.stringify(rSub));
-        // Find matching plan from remote plans
-        const planData = remotePlans.find((p: any) => p.id === rSub.plan_id);
-        console.log('[DEBUG SYNC] planData:', JSON.stringify(planData));
-        if (!planData) continue;
+      // 2. Resolve tenant slug for filtering if multiple tenant entries exist
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { subdomain: true, name: true }
+      });
+      const slug = tenant?.subdomain?.toLowerCase();
 
-        // Ensure Plan exists locally
+      let applicableSubs = remoteSubs;
+      if (slug) {
+        const matched = remoteSubs.filter((s: any) => {
+          const sn = String(s.school_name || '').toLowerCase();
+          return sn.includes(`|${slug}`) || sn.endsWith(`|${slug}`) || sn === slug;
+        });
+        if (matched.length > 0) {
+          applicableSubs = matched;
+        }
+      }
+
+      for (const rSub of applicableSubs) {
+        // Find matching plan from remote plans or local DB
+        let planData = remotePlans.find((p: any) => p.id === rSub.plan_id || p.code === rSub.plan_id);
+
         let plan = await prisma.plan.findFirst({
           where: {
             OR: [
-              { id: planData.id },
-              { code: planData.id }
+              { id: rSub.plan_id },
+              { code: rSub.plan_id }
             ]
           }
         });
-        const modId = planData.module_id || 'ABSENSI';
-        if (!plan) {
+
+        const modId = (planData?.module_id || (plan as any)?.module_id || rSub.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
+        const serviceCode = (planData?.service_code || (plan as any)?.service_code || (modId === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : modId)).toUpperCase();
+
+        if (!plan && planData) {
           let features = planData.features_json;
           if (typeof features === 'string') {
             try { features = JSON.parse(features); } catch (e) { features = []; }
@@ -95,7 +119,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
             data: {
               id: planData.id,
               code: planData.id,
-              service_code: planData.service_code || 'ABSENSI',
+              service_code: serviceCode,
               module_id: modId,
               name: planData.name || planData.title,
               price_monthly: planData.price_monthly || 0,
@@ -104,7 +128,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
               features_json: features || [],
               description: planData.description || '',
               billing_period: planData.billing_period || 'MONTH',
-              absensi_mode: planData.module_id === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+              absensi_mode: modId === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
               is_active: true,
               is_public: true,
               currency: 'IDR'
@@ -112,9 +136,35 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
           });
         }
 
-        const localStatus = rSub.status === 'active' ? 'ACTIVE' : (rSub.status === 'expired' ? 'EXPIRED' : 'TRIAL');
-        const serviceCode = planData.service_code || 'ABSENSI';
-        
+        if (!plan) {
+          let localMod = await prisma.module.findUnique({ where: { id: modId } });
+          if (!localMod) {
+            localMod = await prisma.module.create({
+              data: { id: modId, name: modId, is_active: true }
+            });
+          }
+          plan = await prisma.plan.create({
+            data: {
+              id: rSub.plan_id,
+              code: rSub.plan_id,
+              service_code: serviceCode,
+              module_id: modId,
+              name: rSub.plan_id.replace(/_/g, ' '),
+              price_monthly: 0,
+              price_yearly: 0,
+              features_json: [],
+              description: '',
+              billing_period: 'MONTH',
+              is_active: true,
+              is_public: true,
+              currency: 'IDR'
+            }
+          });
+        }
+
+        const rawStatus = String(rSub.status || '').toLowerCase();
+        const localStatus = rawStatus === 'active' ? 'ACTIVE' : (rawStatus === 'expired' ? 'EXPIRED' : 'TRIAL');
+
         let localSub = await prisma.subscription.findFirst({
           where: {
             tenant_id: tenantId,

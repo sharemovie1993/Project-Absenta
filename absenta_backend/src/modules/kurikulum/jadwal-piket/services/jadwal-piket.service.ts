@@ -629,9 +629,14 @@ export class JadwalPiketService {
   }
 
   /**
-   * 11. Kirim Pengingat Piket ke WA Group (Hanya Mengirim pada Hari Kerja Sekolah)
+   * 11. Kirim Pengingat Piket ke WA Group (Hanya Mengirim pada Hari Kerja Sekolah & Idempotent)
    */
-  async sendPiketReminderToGroup(tenantId: string, isNightReminder: boolean, overrideTargetGroupId?: string): Promise<{ success: boolean; skipped?: boolean; message: string }> {
+  async sendPiketReminderToGroup(
+    tenantId: string,
+    isNightReminder: boolean,
+    overrideTargetGroupId?: string,
+    forceSend: boolean = false
+  ): Promise<{ success: boolean; skipped?: boolean; message: string }> {
     const config = await this.getPiketNotifConfig(tenantId);
     const targetGroupId = overrideTargetGroupId || config.targetGroupId;
 
@@ -639,18 +644,62 @@ export class JadwalPiketService {
       throw new Error('Group WA tujuan belum ditentukan. Silakan atur Group Tujuan di Pengaturan Notifikasi Piket.');
     }
 
+    // 🔒 1. Multi-Tenant Guard: Pastikan Tenant Aktif
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, status: true, name: true }
+    });
+
+    if (!tenant || tenant.status !== 'ACTIVE') {
+      appLogger.warn({ tenantId }, 'Pengingat piket dilewati: Tenant tidak aktif');
+      return { success: false, skipped: true, message: 'Tenant tidak aktif' };
+    }
+
     const timezone = await this.getTenantTimezone(tenantId);
 
-    // Tentukan tanggal target sesuai timezone tenant:
-    // Format YYYY-MM-DD lokal tenant
-    const nowStr = new Intl.DateTimeFormat('en-CA', { timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-    const dateTarget = new Date(`${nowStr}T12:00:00Z`);
+    // 🕒 2. Tentukan tanggal target sesuai timezone lokal tenant:
+    const nowStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
 
+    const dateTarget = new Date(`${nowStr}T12:00:00Z`);
     if (isNightReminder) {
       dateTarget.setDate(dateTarget.getDate() + 1);
     }
 
-    // 🔍 Smart Guard: Cek apakah hari target adalah hari kerja sekolah
+    const targetDateStr = dateTarget.toISOString().split('T')[0];
+    const shiftKey = isNightReminder ? 'NIGHT' : 'MORNING';
+    const idempotencyRelatedId = `PIKET:${targetDateStr}:${shiftKey}`;
+
+    // 🛡️ 3. Idempotency Outbox Guard: Cek apakah hari & shift ini sudah pernah terkirim (hanya jika bukan test/forceSend)
+    if (!forceSend) {
+      const existingSentLog = await prisma.notificationLog.findFirst({
+        where: {
+          tenant_id: tenantId,
+          event: 'PIKET_REMINDER',
+          related_id: idempotencyRelatedId,
+          recipient: targetGroupId,
+          status: 'SENT'
+        }
+      });
+
+      if (existingSentLog) {
+        appLogger.info(
+          { tenantId, targetGroupId, idempotencyRelatedId },
+          'Pengingat piket guru sudah pernah terkirim untuk shift ini (Idempotency Skip)'
+        );
+        return {
+          success: true,
+          skipped: true,
+          message: `Pengingat piket sudah pernah terkirim untuk tanggal ${targetDateStr} (${shiftKey})`
+        };
+      }
+    }
+
+    // 🔍 4. Smart Guard: Cek apakah hari target adalah hari kerja sekolah
     const workingDayCheck = await this.checkSchoolWorkingDay(tenantId, dateTarget, timezone);
     if (!workingDayCheck.isWorkingDay) {
       appLogger.info(
@@ -669,10 +718,105 @@ export class JadwalPiketService {
     const { waGatewayService } = await import('../../../../services/wa-gateway.service');
     await waGatewayService.sendMessageToJid(tenantId, targetGroupId, messageText);
 
+    // 📝 5. Record Success ke NotificationLog untuk Garansi Idempotency & Audit Trail
+    if (!forceSend) {
+      try {
+        await prisma.notificationLog.create({
+          data: {
+            tenant_id: tenantId,
+            type: 'WHATSAPP',
+            event: 'PIKET_REMINDER',
+            recipient: targetGroupId,
+            subject: `Pengingat Piket Guru (${shiftKey}) - ${targetDateStr}`,
+            message: messageText,
+            status: 'SENT',
+            related_id: idempotencyRelatedId
+          }
+        });
+      } catch (err: any) {
+        // Jika composite unique constraint terkena race condition, abaikan (sudah terkirim oleh worker paralel)
+        appLogger.warn({ tenantId, idempotencyRelatedId, err: err?.message }, 'NotificationLog duplicate or record warning');
+      }
+    }
+
     return {
       success: true,
       message: `Pengingat piket guru berhasil dikirimkan ke Group WA (${targetGroupId})`
     };
+  }
+
+  /**
+   * 12. SaaS Dynamic Minute Dispatcher
+   * Dipanggil setiap menit oleh background scheduler.
+   * Mengevaluasi waktu lokal masing-masing tenant (WIB / WITA / WIT) dan memicu pengingat sesuai jam yang diatur.
+   */
+  async dispatchDueTenantReminders(): Promise<{ processedCount: number; sentCount: number; skippedCount: number }> {
+    const configRows = await prisma.config.findMany({
+      where: {
+        key: 'PIKET_WA_NOTIF_CONFIG',
+        Tenant: { status: 'ACTIVE' }
+      },
+      include: {
+        Tenant: { select: { id: true, name: true, status: true } }
+      }
+    });
+
+    let processedCount = 0;
+    let sentCount = 0;
+    let skippedCount = 0;
+
+    const now = new Date();
+
+    for (const row of configRows) {
+      try {
+        if (!row.value) continue;
+        const config = JSON.parse(row.value);
+        if (!config.enabled || !config.targetGroupId) continue;
+
+        processedCount++;
+        const timezone = await this.getTenantTimezone(row.tenant_id);
+
+        // Ambil waktu lokal tenant dalam format HH:mm
+        const localTimeStr = new Intl.DateTimeFormat('en-GB', {
+          timeZone: timezone,
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }).format(now);
+
+        const morningTargetTime = (config.morningTime || '05:00').trim();
+        const nightTargetTime = (config.nightTime || '23:00').trim();
+
+        // Cek apakah waktu lokal tenant saat ini cocok dengan jadwal pagi (Hari H)
+        if (config.morningEnabled && localTimeStr === morningTargetTime) {
+          appLogger.info(
+            { tenantId: row.tenant_id, tenantName: row.Tenant?.name, localTimeStr, morningTargetTime, timezone },
+            '[PiketDispatcher] Memicu pengingat PAGI (Hari Ini) untuk tenant'
+          );
+          const result = await this.sendPiketReminderToGroup(row.tenant_id, false);
+          if (result.skipped) skippedCount++;
+          else sentCount++;
+        }
+
+        // Cek apakah waktu lokal tenant saat ini cocok dengan jadwal malam (H+1 Besok)
+        if (config.nightEnabled && localTimeStr === nightTargetTime) {
+          appLogger.info(
+            { tenantId: row.tenant_id, tenantName: row.Tenant?.name, localTimeStr, nightTargetTime, timezone },
+            '[PiketDispatcher] Memicu pengingat MALAM (Besok Hari) untuk tenant'
+          );
+          const result = await this.sendPiketReminderToGroup(row.tenant_id, true);
+          if (result.skipped) skippedCount++;
+          else sentCount++;
+        }
+      } catch (err: any) {
+        appLogger.error(
+          { tenantId: row.tenant_id, error: err?.message },
+          '[PiketDispatcher] Gagal memproses pengingat piket untuk tenant'
+        );
+      }
+    }
+
+    return { processedCount, sentCount, skippedCount };
   }
 }
 

@@ -43,7 +43,6 @@ import './easyTunnelAutoHealing.job';
 // ── Sarpras ───────────────────────────────────────────────────────────────────
 import './sarprasOverdueReminder.job';
 
-// ── Piket Guru Reminders ──────────────────────────────────────────────────────
-import './piketNightReminder.job';
-import './piketMorningReminder.job';
+// ── Piket Guru Reminders (SaaS Dynamic Minute Dispatcher) ─────────────────────
+import './piketScheduleDispatcher.job';
 

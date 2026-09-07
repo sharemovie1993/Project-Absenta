@@ -23,6 +23,9 @@ import { Button, Card, SectionCard, Badge } from '../../components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { getMySubscription } from '../../api/mySubscription.api';
+import { isCompleteBundlePlan } from '@/lib/billingUtils';
+import { Sparkles } from 'lucide-react';
 
 // Lazy Loaded Subcomponents (Pilar 13)
 const EasyTunnelCard = lazy(() => import('./components/EasyTunnelCard'));
@@ -188,6 +191,28 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
       }
     }
   });
+
+  // 5. Fetch Subscription details to check if Paket Lengkap is active
+  const { data: subData } = useQuery({
+    queryKey: ['my-subscription-details'],
+    queryFn: async () => {
+      try {
+        const res = await getMySubscription();
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 60 * 1000
+  });
+
+  const hasCompleteBundleActive = useMemo(() => {
+    const services = subData?.services || subData?.all_subscriptions || [];
+    return Array.isArray(services) && services.some((s: any) => {
+      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
+      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+    });
+  }, [subData]);
 
   // Fetch Packages & Payment channels on mount
   useEffect(() => {
@@ -517,6 +542,38 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                 </Button>
               </div>
             </div>
+
+            {/* 🌟 PAKET LENGKAP INCLUDED CLAIM BANNER 🌟 */}
+            {hasCompleteBundleActive && tunnels.length === 0 && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-violet-50/60 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/90 dark:border-indigo-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1.5 max-w-xl">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
+                      <Sparkles size={11} className="mr-1 inline text-amber-500 fill-amber-500" /> Termasuk di Paket Lengkap
+                    </Badge>
+                    <span className="text-[10.5px] text-indigo-700 dark:text-indigo-300 font-bold">1x Lisensi Siap Diaktifkan</span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                    Klaim Domain Online Sekolah Anda
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Paket Lengkap Anda sudah mencakup 1 subdomain dedicated <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-indigo-100 dark:border-indigo-900">.absenta.id</code> + enkripsi SSL HTTPS tanpa biaya langganan tunnel tambahan.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setLicenseKey('BUNDLE-INCLUDED');
+                    setShowSetupModal(true);
+                  }}
+                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-10 px-4 flex items-center justify-center gap-1.5 shrink-0 shadow-xs"
+                >
+                  <Plus size={14} />
+                  <span>Klaim &amp; Pasang Subdomain</span>
+                </Button>
+              </div>
+            )}
 
             {/* Cloud Licenses Section */}
             <Suspense fallback={null}>

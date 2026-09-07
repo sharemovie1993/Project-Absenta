@@ -46,7 +46,7 @@ function CheckoutContent() {
 
   const initialToken = useMemo(() => {
     const q = new URLSearchParams(location.search);
-    return q.get('token') || q.get('invoice_token') || q.get('invoiceToken') || '';
+    return q.get('token') || q.get('invoice_token') || q.get('invoiceToken') || q.get('invoice_id') || q.get('invoiceId') || '';
   }, [location.search]);
 
   // States
@@ -81,12 +81,41 @@ function CheckoutContent() {
       if (!planId) return null;
       const plansRes = await getPublicPlans();
       const resData = plansRes?.data as { plans?: Plan[] } | Plan[];
+      let allPlans: Plan[] = [];
       if (resData && !Array.isArray(resData) && resData.plans) {
-        return resData.plans.find((p: Plan) => String(p.id) === String(planId)) || null;
+        allPlans = resData.plans;
       } else if (Array.isArray(plansRes?.data)) {
-        return (plansRes.data as Plan[]).find((p: Plan) => String(p.id) === String(planId)) || null;
+        allPlans = plansRes.data as Plan[];
       }
-      return null;
+      let found = allPlans.find((p: Plan) => String(p.id) === String(planId) || String(p.code) === String(planId)) || null;
+      if (!found) {
+        try {
+          const lRes = await fetch('https://api.absenta.id/api/license/packages?product_id=cakola');
+          const lData = await lRes.json();
+          if (lData?.success && Array.isArray(lData.data)) {
+            const raw = lData.data.find((p: any) => String(p.id) === String(planId) || String(p.code) === String(planId));
+            if (raw) {
+              found = {
+                id: raw.id,
+                code: raw.id,
+                name: raw.name || raw.title,
+                service_code: raw.service_code || 'PAKET_LENGKAP',
+                module_id: raw.module_id || 'ABSENSI',
+                price_monthly: raw.price_monthly || 0,
+                price_yearly: raw.price_yearly || 0,
+                max_user: raw.device_limit || null,
+                features_json: raw.features_json || [],
+                description: raw.description || '',
+                billing_period: raw.billing_period || 'MONTH',
+                is_active: true,
+                is_public: true,
+                currency: 'IDR'
+              } as any;
+            }
+          }
+        } catch {}
+      }
+      return found;
     },
     enabled: !!planId,
     staleTime: 5 * 60 * 1000,
@@ -133,18 +162,30 @@ function CheckoutContent() {
     setProcessing(true);
     setError(null);
     try {
-      const res = await orderSubscriptionPlan({
+      const res: any = await orderSubscriptionPlan({
         plan_id: plan.id,
         billing_cycle: cycle === 'YEAR' ? 'YEARLY' : 'MONTHLY',
         payment_method: selectedChannel,
       });
 
-      if (res?.data?.token || res?.data?.invoice_token) {
-        const token = res.data.token || res.data.invoice_token;
+      const invData = res?.data || res;
+      const token = invData?.token || invData?.invoice_token || invData?.invoice_id || invData?.checkout?.public_token;
+
+      if (token) {
         setInvoiceToken(token);
+        setInvoiceDetails({
+          success: true,
+          data: {
+            invoice_number: invData.invoice_number || token,
+            total_amount: invData.total_amount || totalPrice,
+            active_transaction: {
+              qr_url: invData.qr_url || invData.active_transaction?.qr_url || (invData.checkout_url?.includes('tripay.co.id/qr') ? invData.checkout_url : null),
+              pay_code: invData.pay_code || invData.active_transaction?.pay_code,
+              payment_instructions: invData.payment_instructions || invData.active_transaction?.payment_instructions
+            }
+          }
+        });
         setStep('payment');
-        const invRes = await getPublicInvoiceLink(token);
-        setInvoiceDetails(invRes);
       } else {
         toast.success('Pemesanan paket berhasil diproses.');
         setStep('activate');
@@ -155,7 +196,7 @@ function CheckoutContent() {
     } finally {
       setProcessing(false);
     }
-  }, [plan, cycle, selectedChannel]);
+  }, [plan, cycle, selectedChannel, totalPrice]);
 
   const loadInvoiceDetails = useCallback(async (token: string) => {
     try {
