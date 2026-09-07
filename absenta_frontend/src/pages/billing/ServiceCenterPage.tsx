@@ -13,7 +13,9 @@ import {
   Settings, 
   Info,
   RefreshCw,
-  ShoppingBag
+  ShoppingBag,
+  User,
+  ExternalLink
 } from 'lucide-react';
 
 import * as UI from '../../components/ui';
@@ -388,96 +390,29 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
               onChange={handleTabChange}
             />
 
-            {/* Tab: Services */}
+            {/* Tab: Services (Option A: Interactive Card Grid) */}
             {(activeTab === 'services' || activeTab === 'catalog') && (
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 w-full min-w-0">
-                <div className="lg:col-span-1 space-y-4">
-                  <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
-                    <AcademicTierCard
-                      activeAcademicTier={activeAcademicTier}
-                      onTierChangeSuccess={() => subQuery.refetch()}
-                    />
-                  </Suspense>
-
-                  <h3 className="text-[11px] font-bold uppercase text-slate-400 tracking-wider px-1 items-center flex gap-2">
-                    <LayoutGrid size={14} /> Daftar Layanan
-                  </h3>
-                  <div className="space-y-2">
-                    {services.length === 0 ? (
-                      <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/10">
-                        <p className="text-slate-400 text-[11px] font-bold">Belum ada layanan aktif.</p>
-                        <Button
-                          type="button"
-                          aria-label="Belanja Layanan"
-                          variant="ghost"
-                          onClick={() => navigate('/catalog')}
-                          className="mt-1 text-blue-600 text-[11px] font-bold p-0 h-auto"
-                        >
-                          Buka Katalog Pengadaan
-                        </Button>
-                      </div>
-                    ) : (
-                      services?.map((svc: SubscriptionItem, sIdx: number) => {
-                        const fullPlanName = svc.Plan?.name || svc.plan_name || 'Layanan';
-                        const sCode = String(svc.Plan?.service_code || svc.plan_snapshot?.service_code || svc.service_code || '').toUpperCase();
-                        const upperRaw = fullPlanName.toUpperCase();
-
-                        let planName = 'LAYANAN';
-                        let isMasterPackage = false;
-                        if (sCode === 'PAKET_LENGKAP' || upperRaw.includes('PAKET LENGKAP')) {
-                          planName = upperRaw.includes('MULTI') ? 'PAKET LENGKAP MULTI' : 'PAKET LENGKAP';
-                          isMasterPackage = true;
-                        } else if (sCode === 'CORE' || upperRaw.includes('FREE LISENSI') || upperRaw.includes('AKTIVASI SERVER')) {
-                          planName = 'LISENSI SERVER';
-                        } else if (sCode === 'ABSENSI' || upperRaw.includes('ABSENSI')) {
-                          planName = upperRaw.includes('MULTI') ? 'ABSENSI MULTI SESI' : 'ABSENSI';
-                        } else if (sCode === 'SAAS-NODE' || upperRaw.includes('SAAS-NODE')) {
-                          planName = 'SAAS NODE ENGINE';
-                        } else if (sCode === 'HUBIN' || upperRaw.includes('HUBUNGAN INDUSTRI')) {
-                          planName = 'HUBUNGAN INDUSTRI';
-                        } else if (sCode === 'SARPRAS' || upperRaw.includes('SARANA PRASARANA')) {
-                          planName = 'SARANA & PRASARANA';
-                        } else if (sCode === 'KOPERASI' || upperRaw.includes('KOPERASI')) {
-                          planName = 'KOPERASI DIGITAL';
-                        } else if (sCode === 'WHATSAPP' || upperRaw.includes('WHATSAPP')) {
-                          planName = 'WHATSAPP GATEWAY';
-                        } else if (sCode === 'EASY_TUNNEL' || upperRaw.includes('TUNNEL') || upperRaw.includes('VPN')) {
-                          planName = 'EASY TUNNEL VPN';
-                        } else {
-                          const moduleName = svc.Plan?.Module?.name || fullPlanName.split(/[(-]/)[0]?.trim() || '';
-                          planName = moduleName.toUpperCase();
-                        }
-
-                        const IconComp = getServiceIcon(svc.Plan?.service_code || svc.plan_snapshot?.service_code);
-                        const isSelected = selectedService?.id === svc.id;
-                        return (
-                          <Card 
-                            key={svc.id || `svc-${sIdx}`}
-                            onClick={() => setSelectedServiceId(svc.id)}
-                            className={`p-2.5 xl:p-3.5 rounded-xl cursor-pointer transition-all duration-200 border ${isSelected ? 'border-blue-500 bg-blue-50/10 dark:bg-blue-900/20 shadow-xs ring-1 ring-blue-500/20' : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900'}`}
-                          >
-                            <div className="flex items-center gap-2 xl:gap-3">
-                              <div className={`p-1.5 xl:p-2 rounded-lg ${isMasterPackage ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-xs' : (svc.status === 'ACTIVE' || svc.status === 'TRIAL' ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400')} flex-shrink-0`}>
-                                <IconComp size={14} className="xl:w-4 xl:h-4" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5">
-                                  <h4 className="text-[11px] xl:text-[12.8px] font-bold text-slate-900 dark:text-white leading-tight truncate">{planName}</h4>
-                                  {isMasterPackage && (
-                                    <Badge variant="primary" className="text-[5.5px] xl:text-[6.5px] px-1 py-0 uppercase bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-black">ALL-IN-ONE</Badge>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1.5 xl:gap-2 mt-0.5">
-                                  <Badge variant={['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'].includes(svc.status) ? 'success' : 'warning'} className="text-[6px] xl:text-[7px] px-1 py-0 uppercase">{svc.status}</Badge>
-                                  <span className="text-[9px] text-slate-400 font-medium">Exp: {formatDate(svc.end_date)}</span>
-                                </div>
-                              </div>
-                              <ChevronRight size={14} className={isSelected ? 'text-blue-500' : 'text-slate-300'} />
-                            </div>
-                          </Card>
-                        );
-                      })
-                    )}
+              <div className="space-y-6 w-full min-w-0">
+                {/* Top Control Banner */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className="md:col-span-2">
+                    <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
+                      <AcademicTierCard
+                        activeAcademicTier={activeAcademicTier}
+                        onTierChangeSuccess={() => subQuery.refetch()}
+                      />
+                    </Suspense>
+                  </div>
+                  <Card className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col justify-between">
+                    <div>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Sinkronisasi Lisensi</span>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
+                        Status Server Lisensi Pusat
+                      </h4>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                        Perbarui kuota dan masa aktif instan langsung dari server lisensi pusat.
+                      </p>
+                    </div>
                     <Button
                       type="button"
                       aria-label="Sinkronisasi Status Lisensi"
@@ -498,30 +433,208 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                       }}
                       disabled={subQuery.isRefetching}
                       variant="outline"
-                      className="w-full mt-4 h-11 border-dashed hover:border-blue-500 hover:text-blue-500 font-bold rounded-xl text-xs flex items-center justify-center gap-2"
+                      className="w-full mt-3 h-9 border-dashed hover:border-blue-500 hover:text-blue-500 font-bold rounded-xl text-xs flex items-center justify-center gap-2"
                     >
-                      <RefreshCw size={14} className={subQuery.isRefetching ? 'animate-spin' : ''} />
-                      Sinkronisasi Status Lisensi
+                      <RefreshCw size={13} className={subQuery.isRefetching ? 'animate-spin' : ''} />
+                      <span>Sinkronisasi Status Lisensi</span>
                     </Button>
-                  </div>
+                  </Card>
                 </div>
 
-                <div className="lg:col-span-3">
-                  {selectedService ? (
-                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat rincian layanan...</div>}>
-                      <ServiceDetailsCard
-                        selectedService={selectedService}
-                        onExtend={handleExtend}
-                        onChangePlan={handleChangePlan}
-                        onOpenAutoRenew={handleOpenAutoRenew}
-                      />
-                    </Suspense>
-                  ) : (
-                    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat ringkasan lisensi...</div>}>
-                      <EmptySubscriptionOverview activeAcademicTier={activeAcademicTier} />
-                    </Suspense>
-                  )}
+                {/* Section Header */}
+                <div className="flex items-center justify-between pt-2">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <LayoutGrid size={16} className="text-blue-600" />
+                    <span>Daftar Modul &amp; Lisensi Aktif</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 font-bold">
+                      {services.length} Modul
+                    </span>
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/catalog')}
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <ShoppingBag size={14} />
+                    <span>Katalog Pengadaan</span>
+                  </Button>
                 </div>
+
+                {/* Interactive Card Grid */}
+                {services.length === 0 ? (
+                  <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat ringkasan lisensi...</div>}>
+                    <EmptySubscriptionOverview activeAcademicTier={activeAcademicTier} />
+                  </Suspense>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
+                    {services.map((svc: SubscriptionItem, sIdx: number) => {
+                      const fullPlanName = svc.Plan?.name || svc.plan_snapshot?.name || svc.plan_name || 'Layanan Absenta';
+                      const sCode = String(svc.Plan?.service_code || svc.plan_snapshot?.service_code || svc.service_code || '').toUpperCase();
+                      const upperRaw = fullPlanName.toUpperCase();
+
+                      let isMasterPackage = false;
+                      let displayName = fullPlanName;
+                      if (sCode === 'PAKET_LENGKAP' || upperRaw.includes('PAKET LENGKAP')) {
+                        displayName = upperRaw.includes('MULTI') ? 'PAKET LENGKAP MULTI (Enterprise)' : 'PAKET LENGKAP';
+                        isMasterPackage = true;
+                      } else if (sCode === 'CORE' || upperRaw.includes('FREE LISENSI') || upperRaw.includes('AKTIVASI SERVER')) {
+                        displayName = 'LISENSI SERVER ABSENTA';
+                      } else if (sCode === 'ABSENSI' || upperRaw.includes('ABSENSI')) {
+                        displayName = upperRaw.includes('MULTI') ? 'ABSENSI MULTI SESI' : 'ABSENSI SEKOLAH';
+                      } else if (sCode === 'SAAS-NODE' || upperRaw.includes('SAAS-NODE')) {
+                        displayName = 'SAAS NODE ENGINE SERVER';
+                      } else if (sCode === 'HUBIN' || upperRaw.includes('HUBUNGAN INDUSTRI')) {
+                        displayName = 'HUBUNGAN INDUSTRI & PKL (HUBIN)';
+                      } else if (sCode === 'SARPRAS' || upperRaw.includes('SARANA PRASARANA')) {
+                        displayName = 'SARANA & PRASARANA (SARPRAS)';
+                      } else if (sCode === 'KOPERASI' || upperRaw.includes('KOPERASI')) {
+                        displayName = 'KOPERASI SEKOLAH DIGITAL';
+                      } else if (sCode === 'WHATSAPP' || upperRaw.includes('WHATSAPP')) {
+                        displayName = 'WHATSAPP GATEWAY NOTIFIKASI';
+                      } else if (sCode === 'EASY_TUNNEL' || upperRaw.includes('TUNNEL') || upperRaw.includes('VPN')) {
+                        displayName = 'EASY TUNNEL VPN ACCESS';
+                      }
+
+                      const IconComp = getServiceIcon(svc.Plan?.service_code || svc.plan_snapshot?.service_code);
+                      const price = svc.Plan?.price_monthly || svc.plan_snapshot?.price_monthly || 0;
+                      const maxUser = svc.Plan?.max_user;
+                      const features = svc.Plan?.features_json || svc.plan_snapshot?.features_json || [];
+                      const daysLeft = Math.ceil((new Date(svc.end_date).getTime() - Date.now()) / (1000 * 3600 * 24));
+                      const isExpired = daysLeft <= 0;
+
+                      return (
+                        <Card 
+                          key={svc.id || `svc-${sIdx}`}
+                          className="p-5 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden group"
+                        >
+                          {/* Accent Top Bar */}
+                          <div className={`absolute top-0 left-0 right-0 h-1.5 ${isMasterPackage ? 'bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400' : 'bg-blue-600'}`} />
+
+                          <div className="space-y-4">
+                            {/* Card Header */}
+                            <div className="flex items-start justify-between gap-3 pt-1">
+                              <div className="flex items-start gap-3.5 min-w-0">
+                                <div className={`p-2.5 rounded-xl ${isMasterPackage ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 border border-blue-100 dark:border-blue-800'} shrink-0`}>
+                                  <IconComp size={22} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-snug">
+                                      {displayName}
+                                    </h4>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                    ID: {svc.id.substring(0, 8)}...
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1 shrink-0">
+                                <Badge variant={['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'].includes(svc.status) ? 'success' : 'warning'} className="text-[8px] font-black uppercase px-2 py-0.5">
+                                  {svc.status}
+                                </Badge>
+                                {isMasterPackage && (
+                                  <Badge variant="primary" className="text-[7px] font-black px-1.5 py-0.5 bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 uppercase">
+                                    ALL-IN-ONE
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Key Metrics 3-Col Box */}
+                            <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Masa Aktif</span>
+                                <div className="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">
+                                  {formatDate(svc.end_date)}
+                                </div>
+                                <span className={`text-[9px] font-bold ${isExpired ? 'text-rose-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-emerald-600'}`}>
+                                  {isExpired ? 'Kedaluwarsa' : `${daysLeft} Hari Lagi`}
+                                </span>
+                              </div>
+
+                              <div className="border-l border-slate-200 dark:border-slate-700 pl-2">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Kapasitas</span>
+                                <div className="font-bold text-slate-900 dark:text-white text-[11px] flex items-center gap-1 leading-tight">
+                                  <User size={11} className="text-blue-500" />
+                                  <span>{maxUser ? `${maxUser.toLocaleString('id-ID')} Akun` : 'Unlimited'}</span>
+                                </div>
+                                <span className="text-[9px] text-slate-400">Kuota Institusi</span>
+                              </div>
+
+                              <div className="border-l border-slate-200 dark:border-slate-700 pl-2">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Perpanjangan</span>
+                                <div className="font-bold text-slate-900 dark:text-white text-[11px] flex items-center gap-1 leading-tight">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${svc.auto_renew ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                                  <span>{svc.auto_renew ? 'Otomatis' : 'Manual'}</span>
+                                </div>
+                                <span className="text-[9px] text-slate-400 font-bold">
+                                  {price > 0 ? formatCurrency(price) : 'Gratis'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Features / Module chips */}
+                            {Array.isArray(features) && features.length > 0 && (
+                              <div className="space-y-1.5">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                                  Cakupan Modul &amp; Fitur:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {features.filter((f: string) => !String(f).toUpperCase().includes('CORE')).slice(0, 6).map((feat: string, fIdx: number) => (
+                                    <span key={fIdx} className="text-[9.5px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1">
+                                      <span className="text-emerald-500">✔</span> {String(feat).replace(/_/g, ' ')}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                            <Button
+                              type="button"
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleExtend(svc.plan_id || svc.id)}
+                              className="flex-1 rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
+                            >
+                              <Sparkles size={13} />
+                              <span>Perpanjang Masa Aktif</span>
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleChangePlan((svc.Plan || svc.plan_snapshot || {}) as Plan)}
+                              className="rounded-xl font-bold text-xs h-9 px-3 border-slate-200 dark:border-slate-700"
+                              title="Ganti atau Upgrade Paket"
+                            >
+                              Ganti Paket
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedServiceId(svc.id);
+                                handleOpenAutoRenew();
+                              }}
+                              className="rounded-xl font-bold text-xs h-9 px-2.5 border-slate-200 dark:border-slate-700"
+                              title="Pengaturan Tagihan & Auto-Renew"
+                            >
+                              <Settings size={13} />
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
