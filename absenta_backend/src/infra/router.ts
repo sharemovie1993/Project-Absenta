@@ -351,9 +351,17 @@ export async function registerRoutes(fastify: any, prisma: any) {
         try {
           const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
           if (response.data?.success && response.data?.data?.invoices) {
-            const inv = response.data.data.invoices.find((i: any) => i.invoice_number === invoiceId);
+            const inv = response.data.data.invoices.find((i: any) => i.invoice_number === invoiceId || i.id === invoiceId);
             if (inv) {
-              const url = inv.status === 'paid' 
+              const mappedStatus = String(inv.status).toUpperCase();
+              let instructions: any[] = [];
+              if (typeof inv.payment_instructions === 'string') {
+                try { instructions = JSON.parse(inv.payment_instructions); } catch (e) { instructions = []; }
+              } else if (Array.isArray(inv.payment_instructions)) {
+                instructions = inv.payment_instructions;
+              }
+
+              const url = mappedStatus === 'PAID' 
                 ? `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`
                 : (inv.qr_url || `${LICENSE_SERVER_URL}/api/license/print-invoice/${invoiceId}`);
               
@@ -361,8 +369,29 @@ export async function registerRoutes(fastify: any, prisma: any) {
                 success: true,
                 message: 'Invoice link resolved',
                 data: {
+                  id: String(inv.invoice_number),
+                  invoice_number: inv.invoice_number,
+                  amount: inv.amount,
+                  total_amount: Number(inv.amount || 0),
+                  currency: 'IDR',
+                  status: mappedStatus,
+                  due_date: inv.expired_time ? (typeof inv.expired_time === 'number' ? new Date(inv.expired_time * 1000).toISOString() : inv.expired_time) : null,
+                  created_at: inv.created_at,
+                  paid_at: inv.paid_at,
+                  plan_title: inv.plan_title || inv.planTitle || 'Layanan Absenta',
+                  notes: inv.plan_title || inv.planTitle || 'Layanan Absenta',
+                  payment_method: inv.payment_method || 'TRIPAY',
+                  pay_code: inv.pay_code || '',
+                  qr_url: inv.qr_url || '',
                   url: url,
-                  token: null
+                  active_transaction: mappedStatus === 'PAID' ? null : {
+                    status: 'PENDING',
+                    reference: inv.payment_reference || '',
+                    payment_method: inv.payment_method || 'TRIPAY',
+                    pay_code: inv.pay_code || '',
+                    qr_url: inv.qr_url || '',
+                    instructions: instructions
+                  }
                 }
               });
             }

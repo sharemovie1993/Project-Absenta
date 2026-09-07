@@ -207,7 +207,7 @@ function CheckoutContent() {
         const invData = res.data || res;
         setInvoiceDetails(res);
         setInvoiceToken(token);
-        const invStatus = String(invData.status || '').toUpperCase();
+        const invStatus = String(invData.status || invData.data?.status || '').toUpperCase();
         if (invStatus === 'PAID') {
           setStep('activate');
         } else {
@@ -238,7 +238,8 @@ function CheckoutContent() {
     try {
       const res: any = await getPublicInvoiceLink(invoiceToken);
       const invData = res?.data || res;
-      if (invData?.status === 'PAID') {
+      const invStatus = String(invData?.status || invData?.data?.status || '').toUpperCase();
+      if (invStatus === 'PAID') {
         toast.success('Pembayaran berhasil dikonfirmasi!');
         setInvoiceDetails(res);
         setStep('activate');
