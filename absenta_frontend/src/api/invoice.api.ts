@@ -17,6 +17,8 @@ import type {
   PublicInvoiceResponse
 } from '../types/invoice';
 
+import { getMyInvoices } from './mySubscription.api';
+
 // ==================== INVOICE CRUD OPERATIONS ====================
 
 /**
@@ -24,113 +26,45 @@ import type {
  */
 export const getAllInvoices = async (
   params?: InvoiceQueryParams,
-  options?: { skipTenantHeader?: boolean }
+  _options?: { skipTenantHeader?: boolean }
 ): Promise<InvoicesResponse> => {
-  // Ambil response mentah dari backend lalu normalisasi ke bentuk InvoicesResponse
-  const headers: Record<string, string> | undefined = options?.skipTenantHeader ? { 'X-Skip-Tenant': 'true' } : undefined;
-  const q: Record<string, unknown> | undefined = params ? { ...params } : undefined;
-  let raw: unknown;
   try {
-    raw = await requestWithFallback<unknown>('get', '/invoice', { params: q, headers });
-  } catch (e: any) {
-    const status = Number(e?.response?.status || e?.status || 0);
-    const msg = String(e?.response?.data?.message || e?.message || '').toLowerCase();
-    // Fallback untuk environment yang belum memiliki /api/invoice (route not found)
-    if (status === 404 || msg.includes('route not found')) {
-      const billingsResp: any = await requestWithFallback<unknown>('get', '/billing/billings', { params: { limit: params?.limit ?? 50, page: params?.page ?? 1 }, headers });
-      const billingsContainer: any = (billingsResp as any)?.data ?? billingsResp;
-      const billingsArr: any[] =
-        Array.isArray(billingsContainer?.data) ? billingsContainer.data :
-        Array.isArray(billingsContainer) ? billingsContainer :
-        Array.isArray((billingsContainer?.data as any)?.data) ? (billingsContainer?.data as any).data : [];
-      const invoicesFromBillings: any[] = (billingsArr || [])
-        .map((b: any) => b?.Invoice)
-        .filter((inv: any) => !!inv)
-        .map((inv: any) => ({
-          ...inv,
-          amount: inv?.amount ?? (inv?.total_amount ?? 0),
-        }));
-      const filtered = params?.status ? invoicesFromBillings.filter((inv: any) => String(inv?.status) === String(params?.status)) : invoicesFromBillings;
-      return {
-        success: true,
-        message: 'OK (fallback via billings)',
-        data: {
-          invoices: filtered as any,
-          pagination: {
-            total_pages: 1,
-            total_count: filtered.length,
-            current_page: params?.page ?? 1,
-            per_page: params?.limit ?? filtered.length
-          }
+    const res = await getMyInvoices();
+    const invoices = Array.isArray(res?.data) ? (res.data as any[]) : [];
+    const filtered = params?.status 
+      ? invoices.filter((inv: any) => String(inv?.status).toUpperCase() === String(params.status).toUpperCase()) 
+      : invoices;
+    return {
+      success: true,
+      message: 'Invoices retrieved',
+      data: {
+        invoices: filtered as any,
+        pagination: {
+          total_pages: 1,
+          total_count: filtered.length,
+          current_page: params?.page ?? 1,
+          per_page: params?.limit ?? filtered.length || 10
         }
-      };
-    }
-    throw e;
+      }
+    };
+  } catch (e: any) {
+    return {
+      success: false,
+      message: e?.message || 'Gagal memuat daftar invoice',
+      data: {
+        invoices: [],
+        pagination: {
+          total_pages: 0,
+          total_count: 0,
+          current_page: 1,
+          per_page: 10
+        }
+      }
+    };
   }
-
-  let success = true;
-  let message = 'OK';
-  let dataObj: unknown = undefined;
-  let topPagination: unknown = undefined;
-
-  if (typeof raw === 'object' && raw !== null) {
-    const obj = raw as Record<string, unknown>;
-    if (typeof obj['success'] === 'boolean') success = obj['success'] as boolean;
-    if (typeof obj['message'] === 'string') message = obj['message'] as string;
-    dataObj = obj['data'];
-    topPagination = obj['pagination'];
-  }
-
-  let listUnknown: unknown = [];
-  let innerPagination: unknown = undefined;
-
-  if (dataObj && typeof dataObj === 'object') {
-    const d = dataObj as Record<string, unknown>;
-    if (Array.isArray(d['data'])) listUnknown = d['data'];
-    else if (Array.isArray(d['invoices'])) listUnknown = d['invoices'];
-    innerPagination = d['pagination'];
-    const dd = d['data'];
-    if (dd && typeof dd === 'object') {
-      const inner = dd as Record<string, unknown>;
-      if (Array.isArray(inner['data'])) listUnknown = inner['data'];
-      else if (Array.isArray(inner['invoices'])) listUnknown = inner['invoices'];
-      if (inner['pagination']) innerPagination = inner['pagination'];
-    }
-  }
-
-  if (Array.isArray(raw)) {
-    listUnknown = raw;
-  }
-
-  const invoices = Array.isArray(listUnknown) ? (listUnknown as Invoice[]) : [];
-
-  const pagSrc = innerPagination ?? topPagination ?? {};
-  const p = typeof pagSrc === 'object' && pagSrc !== null ? (pagSrc as Record<string, unknown>) : {};
-
-  const normalized: InvoicesResponse = {
-    success,
-    message,
-    data: {
-      invoices,
-      pagination: {
-        total_pages:
-          typeof p['totalPages'] === 'number' ? (p['totalPages'] as number) :
-          typeof p['total_pages'] === 'number' ? (p['total_pages'] as number) : 1,
-        total_count:
-          typeof p['total'] === 'number' ? (p['total'] as number) :
-          typeof p['total_count'] === 'number' ? (p['total_count'] as number) : (Array.isArray(invoices) ? invoices.length : 0),
-        current_page:
-          typeof p['page'] === 'number' ? (p['page'] as number) :
-          typeof p['current_page'] === 'number' ? (p['current_page'] as number) : 1,
-        per_page:
-          typeof p['limit'] === 'number' ? (p['limit'] as number) :
-          typeof p['per_page'] === 'number' ? (p['per_page'] as number) : (params?.limit ?? 10),
-      },
-    },
-  };
-
-  return normalized;
 };
+
+
 
 /**
  * Mendapatkan invoice berdasarkan ID

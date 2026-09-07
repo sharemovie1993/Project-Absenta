@@ -47,15 +47,6 @@ const DashboardOverview = lazy(() => import('./pages/dashboard/DashboardOverview
 const UnifiedStaffDashboardPage = lazy(() =>
   import('./components/dashboard/roles/UnifiedStaffDashboard').then(m => ({ default: m.UnifiedStaffDashboard }))
 );
-const BillingsPage = lazy(() => import('./pages/billing/BillingsPage'));
-const BillingSettingsPage = lazy(() => import('./pages/billing/BillingSettingsPage'));
-const PaymentsPageBilling = lazy(() => import('./pages/billing/PaymentsPage'));
-const MonitoringPageBilling = lazy(() => import('./pages/billing/MonitoringPage'));
-const PlansPage = lazy(() => import('./pages/billing/PlansPage'));
-const SubscriptionsPage = lazy(() => import('./pages/billing/SubscriptionsPage'));
-const BillingDashboardPage = lazy(() => import('./pages/billing/BillingDashboardPage'));
-const BillingReportsPage = lazy(() => import('./pages/billing/BillingReportsPage'));
-const ApprovalsPage = lazy(() => import('./pages/billing/ApprovalsPage'));
 const CheckoutPage = lazy(() => import('./pages/billing/CheckoutPage'));
 const ServiceCenterPage = lazy(() => import('./pages/billing/ServiceCenterPage'));
 const CatalogPage = lazy(() => import('./pages/billing/CatalogPage'));
@@ -1088,21 +1079,17 @@ function App() {
                         <CoopSuppliers />
                       </ProtectedRoute>
                     } />
-                    {/* Billing Routes */}
+                    {/* Billing & Service Center Canonical Routes */}
                     <Route path="/billing/checkout" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.create">
                         <CheckoutPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/billing/my-subscription" element={
-                      <ProtectedRoute requiredCapability="billing.my.subscription.view">
-                        <Navigate to="/service-center?tab=status" replace />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/billing/my-subscription" element={<Navigate to="/service-center?tab=status" replace />} />
                     <Route path="/billing" element={
                       <ProtectedRoute requiredCapability="billing.my.subscription.view">
                         <RoleSwitch
-                          superadmin={<Navigate to="/billing/dashboard" replace />}
+                          superadmin={<Navigate to="/superadmin/revenue" replace />}
                           admin={<Navigate to="/service-center?tab=status" replace />}
                           fallback={<Navigate to="/service-center?tab=status" replace />}
                         />
@@ -1110,49 +1097,35 @@ function App() {
                     } />
                     <Route path="/billing/dashboard" element={
                       <ProtectedRoute requiredCapability="billing.subscriptions.view.list">
-                        <BillingDashboardPage />
+                        <RoleSwitch
+                          superadmin={<Navigate to="/superadmin/revenue" replace />}
+                          admin={<Navigate to="/service-center?tab=status" replace />}
+                          fallback={<Navigate to="/service-center?tab=status" replace />}
+                        />
                       </ProtectedRoute>
                     } />
-                    {/* Plans & Subscriptions (SUPERADMIN management only) */}
-                    <Route path="/billing/plans" element={
-                      <ProtectedRoute requiredCapability="billing.plans.view.list">
-                        <PlansPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/billing/subscriptions" element={
-                      <ProtectedRoute requiredCapability="billing.subscriptions.view.active">
-                        <SubscriptionsPage />
-                      </ProtectedRoute>
-                    } />
-                    {/* Redirect from legacy path to canonical billing path */}
-                    <Route path="/management/subscriptions" element={<Navigate to="/billing/subscriptions" replace />} />
-                    <Route path="/billing/billings" element={
-                      <ProtectedRoute requiredCapability="billing.invoices.view.list">
-                        <RoleSwitch superadmin={<BillingsPage />} fallback={<Navigate to="/service-center?tab=status" replace />} />
-                      </ProtectedRoute>
-                    } />
-                    {/* Owner-only: Approvals */}
-                    <Route path="/billing/approvals" element={
-                      <ProtectedRoute requiredCapability="billing.subscriptions.view.list">
-                        <ApprovalsPage />
-                      </ProtectedRoute>
-                    } />
-                    {/* Owner-only: Billing Settings */}
-                    <Route path="/billing/settings" element={
-                      <ProtectedRoute requiredCapability="core.sekolah.view.profile">
-                        <BillingSettingsPage />
-                      </ProtectedRoute>
-                    } />
+                    {/* Redirects from legacy billing paths to Service Center canonical tabs */}
+                    <Route path="/billing/plans" element={<Navigate to="/service-center?tab=catalog" replace />} />
+                    <Route path="/billing/subscriptions" element={<Navigate to="/service-center?tab=status" replace />} />
+                    <Route path="/management/subscriptions" element={<Navigate to="/service-center?tab=status" replace />} />
+                    <Route path="/billing/billings" element={<Navigate to="/service-center?tab=invoices" replace />} />
+                    <Route path="/billing/invoices" element={<Navigate to="/service-center?tab=invoices" replace />} />
+                    <Route path="/billing/payments" element={<Navigate to="/service-center?tab=payments" replace />} />
+                    <Route path="/billing/approvals" element={<Navigate to="/service-center?tab=status" replace />} />
+                    <Route path="/billing/settings" element={<Navigate to="/service-center?tab=status" replace />} />
+                    <Route path="/billing/reports" element={<Navigate to="/superadmin/revenue" replace />} />
                     <Route path="/billing/tripay-health" element={<Navigate to="/superadmin/infra/tripay-health" replace />} />
                     <Route path="/billing/tripay-simulator" element={<Navigate to="/superadmin/infra/tripay-simulator" replace />} />
-                    <Route path="/billing/payments" element={
-                      <ProtectedRoute requiredCapability="tu.finance.payments.view.history">
-                        <PaymentsPageBilling />
+
+                    {/* Superadmin Infrastructure Tripay Routes */}
+                    <Route path="/superadmin/infra/tripay-health" element={
+                      <ProtectedRoute requiredCapability="core.system.manage">
+                        <TripayHealthPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/billing/reports" element={
-                      <ProtectedRoute requiredCapability="billing.subscriptions.view.list">
-                        <BillingReportsPage />
+                    <Route path="/superadmin/infra/tripay-simulator" element={
+                      <ProtectedRoute requiredCapability="core.system.manage">
+                        <TripaySimulatorPage />
                       </ProtectedRoute>
                     } />
 
