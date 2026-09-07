@@ -222,6 +222,10 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     navigate(`/billing/checkout?plan_id=${planId}`);
   }, [navigate]);
 
+  const handleViewInvoice = useCallback((invoiceId: string) => {
+    navigate(`/billing/checkout?invoice_id=${invoiceId}`);
+  }, [navigate]);
+
   const handleChangePlan = useCallback((plan: Plan) => {
     const baseName = (plan.name || 'Layanan')
       .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
@@ -529,6 +533,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     invoices={(invoicesQuery.data as ServiceInvoice[]) || []}
                     isLoading={invoicesQuery.isLoading}
                     onRefresh={() => invoicesQuery.refetch()}
+                    handleViewInvoice={handleViewInvoice}
                   />
                 </Suspense>
               </div>

@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Loader } from '../ui';
 import { Receipt, CheckCircle, Box } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
@@ -22,9 +23,11 @@ const formatDate = (date?: string | Date | null) => {
 
 interface BillingInvoicesSectionProps {
   invoices: Invoice[];
-  actionLoading: string | null;
-  handleViewInvoice: (invoiceId: string, forceDocument?: boolean) => Promise<void>;
-  handleCancelInvoice: (invoiceId: string) => Promise<void>;
+  actionLoading?: string | null;
+  handleViewInvoice?: (invoiceId: string, forceDocument?: boolean) => Promise<void> | void;
+  handleCancelInvoice?: (invoiceId: string) => Promise<void> | void;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
@@ -32,7 +35,26 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
   actionLoading,
   handleViewInvoice,
   handleCancelInvoice,
+  isLoading,
+  onRefresh
 }) => {
+  const navigate = useNavigate();
+
+  const onViewInvoice = (inv: Invoice, forceDocument = false) => {
+    if (typeof handleViewInvoice === 'function') {
+      try {
+        handleViewInvoice(inv.invoice_number || inv.id, forceDocument);
+        return;
+      } catch (e) {
+        console.error('handleViewInvoice error:', e);
+      }
+    }
+    const invId = inv.invoice_number || inv.id;
+    if (invId) {
+      navigate(`/billing/checkout?invoice_id=${invId}`);
+    }
+  };
+
   const activeInvoices = useMemo(() => {
     return invoices?.filter(i => !['PAID', 'CANCELLED'].includes(i.status)) || [];
   }, [invoices]);
@@ -141,7 +163,7 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                       <div className="flex items-center justify-end">
                         <Button 
                           size="sm" 
-                          onClick={() => handleViewInvoice(inv.id)} 
+                          onClick={() => onViewInvoice(inv)} 
                           disabled={actionLoading === inv.id}
                           className="rounded-md bg-blue-600 text-white font-bold h-8 px-4 text-xs shadow-md shadow-blue-600/10 hover:bg-blue-700 transition-all active:scale-[0.97]"
                         >
@@ -238,8 +260,8 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => handleViewInvoice(inv.id, true)} 
-                            className="rounded-md h-8 px-4 font-bold text-xs border-slate-200"
+                            onClick={() => onViewInvoice(inv, true)} 
+                            className="rounded-md h-8 px-4 font-bold text-xs border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                           >
                             Detail
                           </Button>
