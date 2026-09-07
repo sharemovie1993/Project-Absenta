@@ -199,24 +199,49 @@ function CheckoutContent() {
   }, [plan, cycle, selectedChannel, totalPrice]);
 
   const loadInvoiceDetails = useCallback(async (token: string) => {
+    setProcessing(true);
+    setError(null);
     try {
-      const res = await getPublicInvoiceLink(token);
-      setInvoiceDetails(res);
+      const res: any = await getPublicInvoiceLink(token);
+      if (res?.data || res) {
+        const invData = res.data || res;
+        setInvoiceDetails(res);
+        setInvoiceToken(token);
+        const invStatus = String(invData.status || '').toUpperCase();
+        if (invStatus === 'PAID') {
+          setStep('activate');
+        } else {
+          setStep('payment');
+        }
+      } else {
+        setError('Data tagihan tidak ditemukan.');
+      }
     } catch (err: unknown) {
       const errObj = err as { message?: string };
       setError(errObj?.message || 'Gagal memuat invoice.');
+    } finally {
+      setProcessing(false);
     }
   }, []);
+
+  // Auto-load invoice details if initialToken is provided in query params
+  React.useEffect(() => {
+    if (initialToken) {
+      setInvoiceToken(initialToken);
+      loadInvoiceDetails(initialToken);
+    }
+  }, [initialToken, loadInvoiceDetails]);
 
   const handleCheckPaymentStatus = useCallback(async () => {
     if (!invoiceToken) return;
     setProcessing(true);
     try {
-      const res = await getPublicInvoiceLink(invoiceToken);
-      if (res?.data?.status === 'PAID') {
+      const res: any = await getPublicInvoiceLink(invoiceToken);
+      const invData = res?.data || res;
+      if (invData?.status === 'PAID') {
         toast.success('Pembayaran berhasil dikonfirmasi!');
+        setInvoiceDetails(res);
         setStep('activate');
-        navigate('/billing/my-subscription');
       } else {
         toast('Menunggu konfirmasi pembayaran...', { icon: '⏳' });
       }
@@ -225,7 +250,7 @@ function CheckoutContent() {
     } finally {
       setProcessing(false);
     }
-  }, [invoiceToken, navigate]);
+  }, [invoiceToken]);
 
   const handleCancelUpgrade = useCallback(async () => {
     if (!hasPendingUpgrade?.invoiceId) return;
@@ -248,7 +273,8 @@ function CheckoutContent() {
     { label: 'Checkout & Aktivasi' }
   ], []);
 
-  if (!planId || isPlanError) {
+  const isDirectInvoice = Boolean(initialToken);
+  if (!isDirectInvoice && (!planId || isPlanError)) {
     return (
       <AcademicPageLayout
         title="Checkout Layanan"
@@ -362,7 +388,7 @@ function CheckoutContent() {
 
             {step === 'activate' && (
               <Suspense fallback={<div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse" />}>
-                <CheckoutSuccessStep />
+                <CheckoutSuccessStep invoiceDetails={invoiceDetails} />
               </Suspense>
             )}
           </AnimatePresence>
