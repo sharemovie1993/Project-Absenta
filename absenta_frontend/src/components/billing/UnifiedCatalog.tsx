@@ -538,9 +538,9 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       <div>
         <AnimatePresence mode="wait">
           {plansQuery.isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse h-[340px]" />
+                <div key={i} className="p-4 sm:p-6 rounded-2xl bg-slate-100 dark:bg-slate-900 animate-pulse h-60 sm:h-[340px]" />
               ))}
             </div>
           ) : displayedProducts.length === 0 ? (
@@ -566,7 +566,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 md:gap-5">
               {displayedProducts.map((group) => {
                 const matchingService = mode === 'private' ? ownedServices.find((s: any) => {
                   const sModuleId = String(s.Plan?.module_id || s.plan_snapshot?.module_id || '').trim().toUpperCase();
@@ -649,7 +649,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   );
 };
 
-// ── SHOPEE-STYLE PRODUCT CATALOG CARD ──
+// ── SHOPEE-STYLE 2-COLUMN COMPACT PRODUCT CATALOG CARD ──
 interface ProductCatalogCardProps {
   group: any;
   mode?: 'public' | 'private';
@@ -691,106 +691,100 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
 
   return (
     <motion.div
-      whileHover={{ y: -4 }}
+      whileHover={{ y: -3 }}
       transition={{ duration: 0.15 }}
       onClick={handleCardClick}
-      className="cursor-pointer bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-xl hover:border-indigo-500/40 transition-all flex flex-col justify-between overflow-hidden group"
+      className="cursor-pointer bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-lg hover:border-indigo-500/40 transition-all flex flex-col justify-between overflow-hidden group"
     >
       {/* ── 1. PRODUCT IMAGE COVER BANNER ── */}
-      <div className="relative h-40 sm:h-44 w-full bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/30 dark:from-slate-800/70 dark:via-slate-900 dark:to-indigo-950/30 p-4 flex items-center justify-center overflow-hidden border-b border-slate-100 dark:border-slate-800/80">
+      <div className="relative h-28 sm:h-36 md:h-44 w-full bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/30 dark:from-slate-800/70 dark:via-slate-900 dark:to-indigo-950/30 p-2 sm:p-4 flex items-center justify-center overflow-hidden border-b border-slate-100 dark:border-slate-800/80">
         {group.imageUrl && !imgError ? (
           <img
             src={group.imageUrl}
             alt={group.baseName}
             onError={() => setImgError(true)}
-            className="h-full w-full object-contain filter drop-shadow-sm group-hover:scale-105 transition-transform duration-300"
+            className="h-full w-full object-contain filter drop-shadow-xs group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
-            <IconComp size={36} />
+          <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
+            <IconComp size={28} className="sm:w-9 sm:h-9" />
           </div>
         )}
 
         {/* Top Badges */}
-        <div className="absolute top-2.5 left-2.5 flex items-center gap-1 z-10">
-          <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-900/85 dark:bg-slate-950/90 backdrop-blur-md text-white border border-white/10 shadow-2xs">
-            {isHardware ? 'Hardware Fisik' : 'Cloud SaaS'}
+        <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex items-center gap-1 z-10">
+          <span className="px-1.5 py-0.5 rounded-md sm:rounded-lg text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-slate-900/85 dark:bg-slate-950/90 backdrop-blur-md text-white border border-white/10 shadow-2xs">
+            {isHardware ? 'Hardware' : 'Cloud SaaS'}
           </span>
         </div>
 
-        <div className="absolute top-2.5 right-2.5 z-10">
+        <div className="absolute top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 z-10">
           {isActive ? (
-            <span className="bg-emerald-600 text-white font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg shadow-2xs flex items-center gap-1">
-              <CheckCircle2 size={10} />
-              <span>Terpasang</span>
+            <span className="bg-emerald-600 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs flex items-center gap-0.5">
+              <CheckCircle2 size={9} />
+              <span>Aktif</span>
             </span>
           ) : !isHardware ? (
-            <span className="bg-amber-500 text-white font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-lg shadow-2xs">
-              Hemat 20%
+            <span className="bg-amber-500 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs">
+              Diskon
             </span>
           ) : null}
         </div>
       </div>
 
       {/* ── 2. PRODUCT INFO & DETAILS ── */}
-      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider leading-none">
+      <div className="p-2.5 sm:p-4 md:p-5 flex-1 flex flex-col justify-between space-y-2 sm:space-y-3">
+        <div className="space-y-1 sm:space-y-1.5">
+          <div className="flex items-center justify-between gap-1">
+            <div className="text-[8px] sm:text-[9.5px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider truncate">
               {group.module}
             </div>
-            <div className="flex items-center text-amber-500 text-[10.5px] font-bold gap-1">
+            <div className="flex items-center text-amber-500 text-[9px] sm:text-[10.5px] font-bold gap-0.5 shrink-0">
               <span>★ 5.0</span>
-              <span className="text-[9.5px] text-slate-400 font-medium">• SIPLaH</span>
             </div>
           </div>
 
-          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 transition-colors line-clamp-1">
+          <h3 className="text-xs sm:text-sm md:text-base font-bold text-slate-900 dark:text-white leading-snug group-hover:text-indigo-600 transition-colors line-clamp-2 min-h-[2rem] sm:min-h-0">
             {group.baseName}
           </h3>
 
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed line-clamp-2">
+          <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 font-normal leading-relaxed line-clamp-2">
             {group.description}
           </p>
 
           {/* Highlight Badge */}
           {group.highlightBadge && (
             <div className="pt-0.5">
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold border border-indigo-100 dark:border-indigo-900/40">
-                <span>✨ {group.highlightBadge}</span>
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 text-[8.5px] sm:text-[10px] font-semibold border border-indigo-100 dark:border-indigo-900/40 line-clamp-1">
+                <span className="truncate">✨ {group.highlightBadge}</span>
               </span>
             </div>
           )}
         </div>
 
         {/* ── 3. PRICE & ACTION BUTTON ── */}
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-2.5">
-          <div className="flex items-baseline justify-between">
+        <div className="pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-1.5 sm:space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-0.5">
             <div>
-              <div className="text-[9.5px] font-medium uppercase text-slate-400 tracking-wider">
+              <div className="text-[8px] sm:text-[9.5px] font-medium uppercase text-slate-400 tracking-wider">
                 Mulai dari
               </div>
-              <div className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
+              <div className="text-xs sm:text-lg md:text-xl font-black text-slate-900 dark:text-white font-mono tracking-tight text-indigo-600 dark:text-indigo-400">
                 {formatCurrency(lowestPrice)}
-                <span className="text-[10.5px] font-normal text-slate-400 ml-1 font-sans">
+                <span className="text-[9px] sm:text-[10.5px] font-normal text-slate-400 ml-0.5 font-sans">
                   {isHardware ? '/unit' : '/bln'}
                 </span>
               </div>
             </div>
-            {!isHardware && (
-              <span className="text-[9.5px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200/60 dark:border-emerald-800/60">
-                Multi-Kapasitas
-              </span>
-            )}
           </div>
 
           <Button
             type="button"
             onClick={handleCardClick}
-            className="w-full h-9.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-1.5 transition-all"
+            className="w-full h-8 sm:h-9 md:h-9.5 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10.5px] sm:text-xs shadow-xs flex items-center justify-center gap-1 transition-all"
           >
-            <span>Pilih Varian &amp; Edisi</span>
-            <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+            <span>Pilih Varian</span>
+            <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
           </Button>
         </div>
       </div>
