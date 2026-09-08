@@ -1,12 +1,14 @@
 import React from 'react';
-import { GraduationCap, ShieldCheck } from 'lucide-react';
-import { Card, SearchableSelect } from '../ui';
+import { GraduationCap, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Card, Button, SearchableSelect } from '../ui';
 import axiosInstance from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 
 interface AcademicTierCardProps {
   activeAcademicTier: string;
   onTierChangeSuccess: () => void;
+  onSync?: () => void;
+  isSyncing?: boolean;
 }
 
 const TIER_OPTIONS = [
@@ -19,7 +21,9 @@ const TIER_OPTIONS = [
 
 export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
   activeAcademicTier,
-  onTierChangeSuccess
+  onTierChangeSuccess,
+  onSync,
+  isSyncing = false
 }) => {
   const currentTierVal = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' ? 'MICRO' : activeAcademicTier.toUpperCase();
   const tierDisplayName = activeAcademicTier.toUpperCase() === 'CORE_PLATFORM' 
@@ -45,40 +49,63 @@ export const AcademicTierCard: React.FC<AcademicTierCardProps> = React.memo(({
   };
 
   return (
-    <Card className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs relative overflow-hidden">
-      <div className="flex items-start gap-2.5">
-        <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 shrink-0 mt-0.5">
-          <GraduationCap className="w-4 h-4" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Edisi Institusi</span>
-            <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+    <Card className="p-3.5 md:p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs relative overflow-hidden">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800 shrink-0">
+            <GraduationCap className="w-4 h-4" />
           </div>
-          <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug mt-0.5">
-            {tierDisplayName}
-          </h4>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Edisi Institusi</span>
+              <ShieldCheck className="w-3 h-3 text-emerald-500 shrink-0" />
+            </div>
+            <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-snug">
+              {tierDisplayName}
+            </h4>
+          </div>
         </div>
+
+        {onSync && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label="Sinkronisasi Status Lisensi"
+            onClick={onSync}
+            disabled={isSyncing}
+            className="h-8 px-2.5 text-[11px] font-bold border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:text-blue-500 rounded-lg flex items-center gap-1.5 shrink-0"
+            title="Sinkronisasi kuota & masa aktif dari server lisensi pusat"
+          >
+            <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Sinkronisasi</span>
+          </Button>
+        )}
       </div>
 
       <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-        <label htmlFor="selectAcademicTier" className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-          Pilih Kapasitas Baru
-        </label>
-        <SearchableSelect
-          id="selectAcademicTier"
-          aria-label="Pilih Kapasitas Baru Sekolah"
-          value={currentTierVal}
-          onValueChange={handleSelectTier}
-          options={TIER_OPTIONS}
-          placeholder="Pilih edisi kapasitas"
-          searchPlaceholder="Cari edisi..."
-          triggerClassName="w-full text-xs font-medium h-9"
-        />
-        <p className="text-[9px] text-slate-400 leading-tight italic mt-1.5">
-          * Pilihan edisi menentukan batas kapasitas siswa untuk pengadaan modul.
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+          <label htmlFor="selectAcademicTier" className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+            Pilih Kapasitas Baru
+          </label>
+          <span className="text-[9px] text-slate-400 italic">
+            Batas kapasitas siswa untuk pengadaan modul
+          </span>
+        </div>
+        <div className="mt-1">
+          <SearchableSelect
+            id="selectAcademicTier"
+            aria-label="Pilih Kapasitas Baru Sekolah"
+            value={currentTierVal}
+            onValueChange={handleSelectTier}
+            options={TIER_OPTIONS}
+            placeholder="Pilih edisi kapasitas"
+            searchPlaceholder="Cari edisi..."
+            triggerClassName="w-full text-xs font-medium h-9"
+          />
+        </div>
       </div>
     </Card>
   );
 });
+

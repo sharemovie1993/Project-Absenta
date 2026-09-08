@@ -149,6 +149,29 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     staleTime: 60 * 1000
   });
 
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSyncLicense = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const promise = (async () => {
+        await syncMySubscription();
+        await Promise.all([
+          subQuery.refetch(),
+          invoicesQuery.refetch(),
+          paymentsQuery.refetch()
+        ]);
+      })();
+      await toast.promise(promise, {
+        loading: 'Menyingkronkan status lisensi...',
+        success: 'Status lisensi berhasil diperbarui!',
+        error: 'Gagal melakukan sinkronisasi lisensi.'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [subQuery, invoicesQuery, paymentsQuery]);
+
   const activeAcademicTier = subQuery.data?.active_academic_tier || 'CORE_PLATFORM';
   const services: SubscriptionItem[] = useMemo(() => {
     const raw = subQuery.data?.services || subQuery.data?.all_subscriptions || subQuery.data?.subscriptions || [];
@@ -417,57 +440,19 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
 
             {/* Tab: Services (Option A: Interactive Card Grid) */}
             {(activeTab === 'services' || activeTab === 'catalog') && (
-              <div className="space-y-6 w-full min-w-0">
-                {/* Top Control Banner */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <div className="md:col-span-2">
-                    <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
-                      <AcademicTierCard
-                        activeAcademicTier={activeAcademicTier}
-                        onTierChangeSuccess={() => subQuery.refetch()}
-                      />
-                    </Suspense>
-                  </div>
-                  <Card className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs flex flex-col justify-between">
-                    <div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Sinkronisasi Lisensi</span>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                        Status Server Lisensi Pusat
-                      </h4>
-                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                        Perbarui kuota dan masa aktif instan langsung dari server lisensi pusat.
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      aria-label="Sinkronisasi Status Lisensi"
-                      onClick={async () => {
-                        const promise = (async () => {
-                          await syncMySubscription();
-                          await Promise.all([
-                            subQuery.refetch(),
-                            invoicesQuery.refetch(),
-                            paymentsQuery.refetch()
-                          ]);
-                        })();
-                        toast.promise(promise, {
-                          loading: 'Menyingkronkan status lisensi...',
-                          success: 'Status lisensi berhasil diperbarui!',
-                          error: 'Gagal melakukan sinkronisasi lisensi.'
-                        });
-                      }}
-                      disabled={subQuery.isRefetching}
-                      variant="outline"
-                      className="w-full mt-3 h-9 border-dashed hover:border-blue-500 hover:text-blue-500 font-bold rounded-xl text-xs flex items-center justify-center gap-2"
-                    >
-                      <RefreshCw size={13} className={subQuery.isRefetching ? 'animate-spin' : ''} />
-                      <span>Sinkronisasi Status Lisensi</span>
-                    </Button>
-                  </Card>
-                </div>
+              <div className="space-y-5 w-full min-w-0">
+                {/* Unified Compact Capacity & Sync Control Banner */}
+                <Suspense fallback={<div className="p-4 text-center text-xs text-slate-400">Memuat kapasitas...</div>}>
+                  <AcademicTierCard
+                    activeAcademicTier={activeAcademicTier}
+                    onTierChangeSuccess={() => subQuery.refetch()}
+                    onSync={handleSyncLicense}
+                    isSyncing={isSyncing || subQuery.isRefetching}
+                  />
+                </Suspense>
 
                 {/* Section Header */}
-                <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center justify-between pt-1">
                   <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <LayoutGrid size={16} className="text-blue-600" />
                     <span>Daftar Modul &amp; Lisensi Aktif</span>
@@ -475,17 +460,6 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                       {services.length} Modul
                     </span>
                   </h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Lihat Katalog Pengadaan"
-                    onClick={() => navigate('/catalog')}
-                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                  >
-                    <ShoppingBag size={14} />
-                    <span>Katalog Pengadaan</span>
-                  </Button>
                 </div>
 
                 {/* Interactive Card Grid */}
@@ -494,7 +468,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     <EmptySubscriptionOverview activeAcademicTier={activeAcademicTier} />
                   </Suspense>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 w-full">
                     {(services || [])?.map((svc: SubscriptionItem, sIdx: number) => {
                       const fullPlanName = svc.Plan?.name || svc.plan_snapshot?.name || svc.plan_name || 'Layanan Absenta';
                       const sCode = String(svc.Plan?.service_code || svc.plan_snapshot?.service_code || svc.service_code || '').toUpperCase();
@@ -533,17 +507,17 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                       return (
                         <Card 
                           key={svc.id || `svc-${sIdx}`}
-                          className="p-5 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden group"
+                          className="p-4 md:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between relative overflow-hidden group"
                         >
                           {/* Accent Top Bar */}
                           <div className={`absolute top-0 left-0 right-0 h-1.5 ${isMasterPackage ? 'bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400' : 'bg-blue-600'}`} />
 
-                          <div className="space-y-4">
+                          <div className="space-y-3.5">
                             {/* Card Header */}
                             <div className="flex items-start justify-between gap-3 pt-1">
-                              <div className="flex items-start gap-3.5 min-w-0">
+                              <div className="flex items-start gap-3 min-w-0">
                                 <div className={`p-2.5 rounded-xl ${isMasterPackage ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 border border-blue-100 dark:border-blue-800'} shrink-0`}>
-                                  <IconComp size={22} />
+                                  <IconComp size={20} />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -569,7 +543,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                             </div>
 
                             {/* Key Metrics 3-Col Box */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                               <div>
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Masa Aktif</span>
                                 <div className="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">
@@ -601,18 +575,26 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               </div>
                             </div>
 
-                            {/* Features / Module chips */}
+                            {/* Features / Module chips (Compact Clean Preview) */}
                             {Array.isArray(features) && features.length > 0 && (
-                              <div className="space-y-1.5">
+                              <div className="space-y-1">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                                  Cakupan Modul &amp; Fitur:
+                                  Cakupan Modul:
                                 </span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {(features || [])?.filter((f: string) => !String(f).toUpperCase().includes('CORE')).slice(0, 6)?.map((feat: string, fIdx: number) => (
-                                    <span key={fIdx} className="text-[9.5px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1">
-                                      <span className="text-emerald-500">✔</span> {String(feat).replace(/_/g, ' ')}
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {(features || [])
+                                    ?.filter((f: string) => !String(f).toUpperCase().includes('CORE'))
+                                    .slice(0, 3)
+                                    ?.map((feat: string, fIdx: number) => (
+                                      <span key={fIdx} className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded flex items-center gap-1">
+                                        <span className="text-emerald-500">✔</span> {String(feat).replace(/_/g, ' ')}
+                                      </span>
+                                    ))}
+                                  {features.filter((f: string) => !String(f).toUpperCase().includes('CORE')).length > 3 && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded">
+                                      +{features.filter((f: string) => !String(f).toUpperCase().includes('CORE')).length - 3} fitur lainnya
                                     </span>
-                                  ))}
+                                  )}
                                 </div>
                               </div>
                             )}
