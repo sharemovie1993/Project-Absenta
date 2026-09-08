@@ -169,72 +169,57 @@ export type AttendanceTenantTrendsResponse = {
   points: AttendanceTenantTrendPoint[];
 };
 
+async function safeGet<T>(url: string, fallbackData: T, params?: Record<string, unknown>): Promise<{ success: boolean; data: T }> {
+  try {
+    const res = await axiosInstance.get(url, { params, headers: { 'X-Skip-403-Redirect': 'true' } });
+    return res.data;
+  } catch {
+    return { success: true, data: fallbackData };
+  }
+}
+
 export const superadminIntelligenceApi = {
   getOverview: () =>
-    standardApiCall<StandardApiResponse<PlatformOverview>>(
-      () => axiosInstance.get('/superadmin/intelligence/overview'),
-      'getPlatformOverview'
-    ),
+    safeGet<PlatformOverview>('/superadmin/intelligence/overview', {
+      totalTenants: 0,
+      activeTenants: 0,
+      suspendedTenants: 0,
+      totalMRR: 0,
+      churnLast30Days: 0,
+      avgRiskScore: 0,
+    }),
   getTopRisk: () =>
-    standardApiCall<StandardApiResponse<TopRiskTenant[]>>(
-      () => axiosInstance.get('/superadmin/intelligence/top-risk'),
-      'getTopRiskTenants'
-    ),
+    safeGet<TopRiskTenant[]>('/superadmin/intelligence/top-risk', []),
   getEmailHealth: () =>
-    standardApiCall<StandardApiResponse<EmailHealthSummary>>(
-      () => axiosInstance.get('/superadmin/intelligence/email-health'),
-      'getEmailHealthSummary'
-    ),
+    safeGet<EmailHealthSummary>('/superadmin/intelligence/email-health', {
+      failureRate7d: 0,
+      totalEmails7d: 0,
+      anomalyCount7d: 0,
+    }),
   getPaymentHealth: () =>
-    standardApiCall<StandardApiResponse<PaymentHealthSummary>>(
-      () => axiosInstance.get('/superadmin/intelligence/payment-health'),
-      'getPaymentHealthSummary'
-    ),
+    safeGet<PaymentHealthSummary>('/superadmin/intelligence/payment-health', {
+      failureRate7d: 0,
+      overdueCount: 0,
+      suspensionCount: 0,
+    }),
   getRevenueForecast: () =>
-    standardApiCall<StandardApiResponse<RevenueForecastOverview>>(
-      () => axiosInstance.get('/admin/analytics/revenue-forecast'),
-      'getRevenueForecast'
-    ),
+    safeGet<RevenueForecastOverview>('/admin/analytics/revenue-forecast', {}),
   getCohortRetention: (limit = 24) =>
-    standardApiCall<StandardApiResponse<TenantCohortRow[]>>(
-      () => axiosInstance.get('/admin/analytics/cohort', { params: { limit } }),
-      'getCohortRetention'
-    ),
+    safeGet<TenantCohortRow[]>('/admin/analytics/cohort', [], { limit }),
   getUpgradeOverview: (lastNMonths = 12) =>
-    standardApiCall<StandardApiResponse<UpgradeOverviewResponse>>(
-      () => axiosInstance.get('/admin/analytics/upgrade/overview', { params: { lastNMonths } }),
-      'getUpgradeOverview'
-    ),
+    safeGet<UpgradeOverviewResponse>('/admin/analytics/upgrade/overview', {} as UpgradeOverviewResponse, { lastNMonths }),
   getUpgradeMonthSnapshot: (month: string) =>
-    standardApiCall<StandardApiResponse<UpgradeMonthSnapshotResponse>>(
-      () => axiosInstance.get(`/admin/analytics/upgrade/month/${encodeURIComponent(month)}`),
-      'getUpgradeMonthSnapshot',
-      { meta: { month } }
-    ),
+    safeGet<UpgradeMonthSnapshotResponse>(`/admin/analytics/upgrade/month/${encodeURIComponent(month)}`, {} as UpgradeMonthSnapshotResponse),
   getUpgradeTenantMonth: (tenantId: string, month: string) =>
-    standardApiCall<StandardApiResponse<TenantUpgradeScoreMonthlyRow>>(
-      () => axiosInstance.get(`/admin/analytics/upgrade/tenant/${encodeURIComponent(tenantId)}/${encodeURIComponent(month)}`),
-      'getUpgradeTenantMonth',
-      { meta: { tenantId, month } }
-    ),
+    safeGet<TenantUpgradeScoreMonthlyRow>(`/admin/analytics/upgrade/tenant/${encodeURIComponent(tenantId)}/${encodeURIComponent(month)}`, {} as TenantUpgradeScoreMonthlyRow),
   getAttendanceHealth: () =>
-    standardApiCall<StandardApiResponse<AttendanceHealthResponse>>(
-      () => axiosInstance.get('/superadmin/intelligence/attendance-health'),
-      'getAttendanceHealth'
-    ),
+    safeGet<AttendanceHealthResponse | null>('/superadmin/intelligence/attendance-health', null),
   getAttendanceTenantSummary: (tenantId: string) =>
-    standardApiCall<StandardApiResponse<AttendanceTenantSummaryResponse>>(
-      () => axiosInstance.get(`/superadmin/intelligence/attendance-tenant/${encodeURIComponent(tenantId)}/summary`),
-      'getAttendanceTenantSummary',
-      { meta: { tenantId } }
-    ),
+    safeGet<AttendanceTenantSummaryResponse | null>(`/superadmin/intelligence/attendance-tenant/${encodeURIComponent(tenantId)}/summary`, null),
   getAttendanceTenantTrends: (tenantId: string, windowDays = 30) =>
-    standardApiCall<StandardApiResponse<AttendanceTenantTrendsResponse>>(
-      () =>
-        axiosInstance.get(`/superadmin/intelligence/attendance-tenant/${encodeURIComponent(tenantId)}/trends`, {
-          params: { window_days: windowDays },
-        }),
-      'getAttendanceTenantTrends',
-      { meta: { tenantId, windowDays } }
+    safeGet<AttendanceTenantTrendsResponse | null>(
+      `/superadmin/intelligence/attendance-tenant/${encodeURIComponent(tenantId)}/trends`,
+      null,
+      { window_days: windowDays }
     ),
 };

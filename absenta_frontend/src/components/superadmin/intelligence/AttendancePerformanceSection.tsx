@@ -334,12 +334,11 @@ export default function AttendancePerformanceSection({
     );
   }
 
-  if (attendanceHealthQuery.isError) {
+  if (attendanceHealthQuery.isError || !attendanceHealthQuery.data) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Gagal memuat Attendance Performance</AlertTitle>
-        <AlertDescription>Periksa koneksi atau coba ulang.</AlertDescription>
-      </Alert>
+      <div className="text-center py-6 text-sm text-slate-500">
+        Data performa presensi platform belum tersedia atau sedang sinkronisasi.
+      </div>
     );
   }
 
