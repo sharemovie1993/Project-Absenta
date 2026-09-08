@@ -16,6 +16,7 @@ import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
 import { type DemoRoleProfile } from '@/config/demoProfiles.config';
 import { ServerDomainSetupModal } from '@/components/auth/ServerDomainSetupModal';
 import { getSavedServerDomain, isCapacitorApp } from '@/services/serverConfig';
+import { isSystemSuperAdmin } from '@/utils/rbac';
 import toast from 'react-hot-toast';
 const loginFormSchema = z.object({
   email: z.string().min(1, 'Email atau NISN/NIP wajib diisi'),
@@ -310,13 +311,21 @@ export default function LoginPage() {
   if (isAuthenticated) {
     const sub = useAuthStore.getState().subscription;
     const isGerbang = (user as Record<string, unknown>)?.position_codes?.includes('GERBANG');
+    const roleName = user?.role?.name || (user as Record<string, unknown>)?.roleName || '';
+    const tenantId = (user as any)?.tenant_id;
+    const isSuper = isSystemSuperAdmin(roleName, tenantId);
+
+    // Platform Superadmin should NEVER be routed to school onboarding
+    if (isSuper) {
+      return <Navigate to={location.state?.from?.pathname || '/dashboard'} replace />;
+    }
+
     const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard';
     const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
-    const roleName = user?.role?.name || (user as Record<string, unknown>)?.roleName || '';
-    const isAdminOrSuperadmin = roleName === 'SUPERADMIN' || roleName === 'ADMIN';
+    const isAdmin = roleName === 'ADMIN';
 
-    // Redirect to onboarding if not completed yet (only for admins)
-    const target = sub?.status === 'PENDING_PAYMENT' ? '/billing' : !hasCompletedOnboarding && isAdminOrSuperadmin ? '/onboarding' : location.state?.from?.pathname || defaultHome;
+    // Redirect to onboarding if not completed yet (only for school admins)
+    const target = sub?.status === 'PENDING_PAYMENT' ? '/billing' : !hasCompletedOnboarding && isAdmin ? '/onboarding' : location.state?.from?.pathname || defaultHome;
     return <Navigate to={target} replace />;
   }
   const containerVariants = {

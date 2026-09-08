@@ -508,7 +508,7 @@ function App() {
                     <Route path="/onboarding" element={<OnboardingDashboard />} />
                     <Route path="/dashboard" element={
                       <RoleSwitch
-                        superadmin={<DashboardOverview />}
+                        superadmin={<PlatformIntelligencePage />}
                         admin={<UnifiedStaffDashboardPage />}
                         guru={<UnifiedStaffDashboardPage />}
                         fallback={<DashboardOverview />}

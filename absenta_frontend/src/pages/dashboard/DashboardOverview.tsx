@@ -759,7 +759,7 @@ export default function DashboardOverview() {
   // Determine effective view: activeView if found, otherwise first available view
   const currentView = availableViews.find(v => v.id === activeView) || availableViews[0];
 
-  if (!hasCompletedOnboarding && isAdminOrSuperadmin) {
+  if (!hasCompletedOnboarding && isAdminOrSuperadmin && !isPlatformUser(roleName, user?.tenant_id)) {
     return <OnboardingDashboard />;
   }
 
