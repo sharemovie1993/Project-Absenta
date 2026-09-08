@@ -244,14 +244,15 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     setIsAutoRenewModalOpen(true);
   }, []);
 
-  const handleSelectCatalogItem = useCallback((raw: any) => {
+  const handleSelectCatalogItem = useCallback((raw: Record<string, unknown> | null | undefined) => {
     if (!raw) {
       toast.error('Data paket tidak valid');
       return;
     }
 
     // Jika objek berupa group (mengandung array variants)
-    if (raw.variants && Array.isArray(raw.variants) && raw.variants.length > 0) {
+    const rawVariants = Array.isArray(raw.variants) ? (raw.variants as Record<string, unknown>[]) : null;
+    if (rawVariants && rawVariants.length > 0) {
       const isHardware = Boolean(
         raw.isHardware === true ||
         raw.module_id === 'SERVER_HARDWARE' ||
@@ -260,23 +261,24 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
         raw.module_id === 'PHYSICAL_SERVICE' ||
         (raw.id && String(raw.id).startsWith('HW_'))
       );
-      const defaultVariant = raw.variants[0];
-      const defaultSize = raw.sizes && raw.sizes.length > 0 ? raw.sizes[0] : (defaultVariant.size || defaultVariant.size_label || 'Micro');
-      const period = isHardware ? 'ONETIME' : 'MONTH';
+      const defaultVariant = rawVariants[0];
+      const rawSizes = Array.isArray(raw.sizes) ? (raw.sizes as string[]) : [];
+      const defaultSize = rawSizes.length > 0 ? rawSizes[0] : String(defaultVariant.size || defaultVariant.size_label || 'Micro');
+      const period: 'MONTH' | 'YEAR' | 'ONETIME' = isHardware ? 'ONETIME' : 'MONTH';
 
       const normalized: OrderPayload = {
-        id: defaultVariant.id,
-        service_code: raw.service_code || defaultVariant.service_code,
-        moduleIcon: raw.icon || defaultVariant.module?.icon,
-        moduleName: raw.module || defaultVariant.module?.name,
-        name: raw.baseName || defaultVariant.name || raw.name,
+        id: String(defaultVariant.id || ''),
+        service_code: (raw.service_code || defaultVariant.service_code) as string | undefined,
+        moduleIcon: (raw.icon || (defaultVariant.module as Record<string, unknown>)?.icon) as string | undefined,
+        moduleName: (raw.module || (defaultVariant.module as Record<string, unknown>)?.name) as string | undefined,
+        name: String(raw.baseName || defaultVariant.name || raw.name || ''),
         size: defaultSize,
-        period: period as any,
-        features_json: defaultVariant.features_json || [],
+        period: period,
+        features_json: Array.isArray(defaultVariant.features_json) ? (defaultVariant.features_json as string[]) : [],
         price_monthly: Number(defaultVariant.price_monthly || 0),
         price_yearly: Number(defaultVariant.price_yearly || 0),
         price_onetime: Number(defaultVariant.price_onetime || 0),
-        imageUrl: raw.imageUrl,
+        imageUrl: raw.imageUrl as string | undefined,
         group: raw
       };
       setSelectedOrder(normalized);
@@ -292,22 +294,23 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
       raw.module_id === 'ABSENSI_HARDWARE' ||
       raw.module_id === 'PHYSICAL_SERVICE'
     );
-    const period = raw.period || (isHardware ? 'ONETIME' : (raw.billing_period === 'YEARLY' ? 'YEAR' : 'MONTH'));
+    const period: 'MONTH' | 'YEAR' | 'ONETIME' = (raw.period as 'MONTH' | 'YEAR' | 'ONETIME') || (isHardware ? 'ONETIME' : (raw.billing_period === 'YEARLY' ? 'YEAR' : 'MONTH'));
 
+    const rawPlan = raw.Plan as Record<string, unknown> | undefined;
     const normalized: OrderPayload = {
-      id: raw.id || raw.plan_id || '',
-      service_code: raw.service_code,
-      moduleIcon: raw.moduleIcon || raw.module?.icon,
-      moduleName: raw.moduleName || raw.module?.name,
-      name: raw.name || raw.plan_name || 'Layanan',
-      size: raw.size || raw.size_label || 'Micro',
-      period: period as any,
-      features_json: raw.features_json || raw.Plan?.features_json || [],
-      price_monthly: Number(raw.price_monthly || raw.Plan?.price_monthly || 0),
-      price_yearly: Number(raw.price_yearly || raw.Plan?.price_yearly || 0),
-      price_onetime: Number(raw.price_onetime || raw.Plan?.price_onetime || 0),
-      imageUrl: raw.imageUrl,
-      group: raw.group || (raw.variants ? raw : null)
+      id: String(raw.id || raw.plan_id || ''),
+      service_code: raw.service_code as string | undefined,
+      moduleIcon: (raw.moduleIcon || (raw.module as Record<string, unknown>)?.icon) as string | undefined,
+      moduleName: (raw.moduleName || (raw.module as Record<string, unknown>)?.name) as string | undefined,
+      name: String(raw.name || raw.plan_name || 'Layanan'),
+      size: String(raw.size || raw.size_label || 'Micro'),
+      period: period,
+      features_json: (raw.features_json || rawPlan?.features_json || []) as string[],
+      price_monthly: Number(raw.price_monthly || rawPlan?.price_monthly || 0),
+      price_yearly: Number(raw.price_yearly || rawPlan?.price_yearly || 0),
+      price_onetime: Number(raw.price_onetime || rawPlan?.price_onetime || 0),
+      imageUrl: raw.imageUrl as string | undefined,
+      group: (raw.group || (raw.variants ? raw : null)) as Record<string, unknown> | null
     };
     setSelectedOrder(normalized);
 
@@ -323,16 +326,35 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     if (!selectedOrder) return;
     setIsOrdering(true);
     try {
-      const res: any = await orderSubscriptionPlan({
+      const res = (await orderSubscriptionPlan({
         plan_id: selectedOrder.id,
         billing_period: selectedOrder.period === 'YEAR' ? 'YEAR' : (selectedOrder.period === 'ONETIME' ? 'ONETIME' : 'MONTH')
-      });
+      })) as {
+        success?: boolean;
+        data?: {
+          success?: boolean;
+          checkout_url?: string;
+          qr_url?: string;
+          pay_url?: string;
+          invoice_id?: string;
+          token?: string;
+          invoice_token?: string;
+          checkout?: { public_url?: string; public_token?: string };
+        };
+        message?: string;
+      };
       const isSuccess = Boolean(res?.success || res?.data?.success || res?.data?.checkout_url || res?.data?.checkout);
       if (isSuccess) {
         toast.success('Pesanan berhasil dibuat!');
         const invData = res.data || res;
-        const checkoutUrl = invData?.checkout_url || invData?.qr_url || invData?.pay_url || invData?.checkout?.public_url;
-        const invId = invData?.invoice_id || invData?.token || invData?.invoice_token || invData?.checkout?.public_token;
+        const checkoutUrl = (invData as { checkout_url?: string; qr_url?: string; pay_url?: string; checkout?: { public_url?: string } })?.checkout_url ||
+          (invData as { qr_url?: string })?.qr_url ||
+          (invData as { pay_url?: string })?.pay_url ||
+          (invData as { checkout?: { public_url?: string } })?.checkout?.public_url;
+        const invId = (invData as { invoice_id?: string; token?: string; invoice_token?: string; checkout?: { public_token?: string } })?.invoice_id ||
+          (invData as { token?: string })?.token ||
+          (invData as { invoice_token?: string })?.invoice_token ||
+          (invData as { checkout?: { public_token?: string } })?.checkout?.public_token;
         if (checkoutUrl && (checkoutUrl.startsWith('http://') || checkoutUrl.startsWith('https://'))) {
           window.location.href = checkoutUrl;
         } else if (invId) {
@@ -373,8 +395,11 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
         toolbar={
           <Button
             type="button"
+            variant="toolbarPrimary"
+            size="toolbar"
+            aria-label="Buka Katalog Pengadaan Modul"
             onClick={() => navigate('/catalog')}
-            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-3.5 font-bold text-xs flex items-center gap-1.5 shadow-xs"
+            className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
           >
             <ShoppingBag size={14} />
             <span>Katalog Pengadaan Modul</span>
@@ -454,6 +479,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     type="button"
                     variant="ghost"
                     size="sm"
+                    aria-label="Lihat Katalog Pengadaan"
                     onClick={() => navigate('/catalog')}
                     className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
                   >
@@ -469,7 +495,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                   </Suspense>
                 ) : (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 w-full">
-                    {services.map((svc: SubscriptionItem, sIdx: number) => {
+                    {(services || [])?.map((svc: SubscriptionItem, sIdx: number) => {
                       const fullPlanName = svc.Plan?.name || svc.plan_snapshot?.name || svc.plan_name || 'Layanan Absenta';
                       const sCode = String(svc.Plan?.service_code || svc.plan_snapshot?.service_code || svc.service_code || '').toUpperCase();
                       const upperRaw = fullPlanName.toUpperCase();
@@ -543,7 +569,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                             </div>
 
                             {/* Key Metrics 3-Col Box */}
-                            <div className="grid grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                               <div>
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Masa Aktif</span>
                                 <div className="font-bold text-slate-900 dark:text-white text-[11px] leading-tight">
@@ -582,7 +608,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                   Cakupan Modul &amp; Fitur:
                                 </span>
                                 <div className="flex flex-wrap gap-1.5">
-                                  {features.filter((f: string) => !String(f).toUpperCase().includes('CORE')).slice(0, 6).map((feat: string, fIdx: number) => (
+                                  {(features || [])?.filter((f: string) => !String(f).toUpperCase().includes('CORE')).slice(0, 6)?.map((feat: string, fIdx: number) => (
                                     <span key={fIdx} className="text-[9.5px] font-bold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md flex items-center gap-1">
                                       <span className="text-emerald-500">✔</span> {String(feat).replace(/_/g, ' ')}
                                     </span>
@@ -596,8 +622,9 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                           <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                             <Button
                               type="button"
-                              variant="primary"
-                              size="sm"
+                              variant="toolbarPrimary"
+                              size="toolbar"
+                              aria-label="Perpanjang Masa Aktif"
                               onClick={() => handleExtend(svc.plan_id || svc.id)}
                               className="flex-1 rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
                             >
@@ -609,6 +636,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               type="button"
                               variant="outline"
                               size="sm"
+                              aria-label="Ganti atau Upgrade Paket"
                               onClick={() => handleChangePlan((svc.Plan || svc.plan_snapshot || {}) as Plan)}
                               className="rounded-xl font-bold text-xs h-9 px-3 border-slate-200 dark:border-slate-700"
                               title="Ganti atau Upgrade Paket"
@@ -620,6 +648,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               type="button"
                               variant="outline"
                               size="sm"
+                              aria-label="Pengaturan Tagihan & Auto-Renew"
                               onClick={() => {
                                 setSelectedServiceId(svc.id);
                                 handleOpenAutoRenew();
