@@ -312,20 +312,20 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
   const IconComp = getServiceIcon(group.service_code, group.icon);
 
   return (
-    <div className="space-y-4 pb-24 md:pb-8 animate-in fade-in duration-200">
+    <div className="space-y-4 pb-28 md:pb-8 animate-in fade-in duration-200">
       {/* ── 1. COMPACT TOP NAV & BREADCRUMB ── */}
-      <div className="flex items-center justify-between gap-3 flex-wrap bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-2.5 bg-white dark:bg-slate-900 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-bold transition-all active:scale-95"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-700 dark:text-slate-200 text-xs font-bold transition-all active:scale-95 shrink-0"
           >
             <ArrowLeft size={13} />
-            <span>Kembali ke Katalog</span>
+            <span>Kembali</span>
           </button>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium truncate">
             <span>Katalog</span>
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">{group.module}</span>
@@ -334,17 +334,18 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
           </div>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
-          <CheckCircle2 size={12} className="text-emerald-500" />
-          <span>Terverifikasi Resmi SIPLaH &amp; Juknis BOS</span>
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-[10px] sm:text-[11px] font-semibold shrink-0">
+          <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
+          <span className="hidden xs:inline">Terverifikasi Resmi SIPLaH / ARKAS</span>
+          <span className="xs:hidden">Resmi SIPLaH</span>
         </div>
       </div>
 
-      {/* ── 2. SHOPEE MAIN 2-COLUMN SHOWCASE (OPTIMIZED FOR 1366px LAPTOPS) ── */}
+      {/* ── 2. SHOPEE MAIN 2-COLUMN SHOWCASE ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         {/* ── LEFT COLUMN: COMPACT IMAGE & TRUST CHIPS (lg:col-span-5) ── */}
         <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-4 sm:p-5 flex flex-col items-center justify-center relative overflow-hidden">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-3.5 sm:p-5 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute top-3 left-3 z-10">
               <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-900/90 dark:bg-slate-950/90 text-white backdrop-blur-md shadow-2xs">
                 {isHardware ? 'Hardware Fisik' : 'Cloud SaaS'}
@@ -360,7 +361,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             )}
 
             {/* Product Image */}
-            <div className="w-full h-44 sm:h-52 lg:h-56 flex items-center justify-center p-2 bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-800/40 dark:to-indigo-950/30 rounded-xl border border-slate-100 dark:border-slate-800/60">
+            <div className="w-full h-36 sm:h-48 lg:h-56 flex items-center justify-center p-2 bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-800/40 dark:to-indigo-950/30 rounded-xl border border-slate-100 dark:border-slate-800/60">
               {group.imageUrl && !imgError ? (
                 <img
                   src={group.imageUrl}
@@ -369,16 +370,16 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                   className="max-h-full max-w-full object-contain filter drop-shadow-md hover:scale-105 transition-transform duration-300"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                  <IconComp size={40} />
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <IconComp size={36} />
                 </div>
               )}
             </div>
           </div>
 
           {/* Compact Trust Badges Row */}
-          <div className="bg-slate-50/90 dark:bg-slate-900/60 p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
-            <div className="grid grid-cols-2 gap-1.5 text-[10.5px] text-slate-600 dark:text-slate-300 font-medium">
+          <div className="bg-slate-50/90 dark:bg-slate-900/60 p-2.5 sm:p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+            <div className="grid grid-cols-2 gap-1.5 text-[10px] sm:text-[10.5px] text-slate-600 dark:text-slate-300 font-medium">
               <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
                 <span className="truncate">Siap SPJ BOS ARKAS</span>
@@ -413,7 +414,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               </div>
             </div>
 
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
+            <h1 className="text-base sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-snug">
               {group.baseName}
             </h1>
 
@@ -427,7 +428,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga:</span>
-                <div className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
+                <div className="text-xl sm:text-3xl font-black text-rose-600 dark:text-rose-400 font-mono tracking-tight">
                   {formatCurrency(displayPrice)}
                 </div>
                 <span className="text-xs font-bold text-slate-500 font-sans">
@@ -442,7 +443,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
 
               {/* School Unit Cost Breakdown */}
               {!isHardware && currentTierInfo && (
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-300/60 dark:border-emerald-800">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10.5px] sm:text-[11px] font-bold border border-emerald-300/60 dark:border-emerald-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Setara <strong>{formatCurrency(perStudentPerMonth)} / siswa / bln</strong></span>
                 </div>
@@ -458,11 +459,11 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
 
           {/* 🌟 PAKET LENGKAP INCLUDED BONUSES (EASY TUNNEL & FULL ACCESS) 🌟 */}
           {isCompleteBundle && (
-            <div className="p-3.5 rounded-xl bg-gradient-to-br from-indigo-50/90 via-violet-50/50 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
+            <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-br from-indigo-50/90 via-violet-50/50 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={13} className="text-amber-500 fill-amber-500" />
-                  <span className="text-[10.5px] font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
+                  <span className="text-[10px] sm:text-[10.5px] font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
                     Keuntungan Resmi Paket Lengkap
                   </span>
                 </div>
@@ -474,37 +475,37 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-xs">
                 <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                   <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[11px]">1x Dedicated Easy Tunnel (SSL HTTPS)</span>
+                  <span className="font-semibold text-[10.5px] sm:text-[11px]">1x Dedicated Easy Tunnel (SSL HTTPS)</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                   <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[11px]">WhatsApp Notification Gateway</span>
+                  <span className="font-semibold text-[10.5px] sm:text-[11px]">WhatsApp Notification Gateway</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                   <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[11px]">Semua Modul Terbuka Penuh</span>
+                  <span className="font-semibold text-[10.5px] sm:text-[11px]">Semua Modul Terbuka Penuh</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
                   <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[11px]">Klaim Domain Pasca-Bayar di Menu Tunnel</span>
+                  <span className="font-semibold text-[10.5px] sm:text-[11px]">Klaim Domain Pasca-Bayar di Menu Tunnel</span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ── LEVEL 1: PILIHAN EDISI KAPASITAS SISWA (SLIM PILL CHIPS) ── */}
+          {/* ── LEVEL 1: PILIHAN EDISI KAPASITAS SISWA (RESPONSIVE 2-COL / FLEX) ── */}
           {groupedVariants.length > 0 && !isHardware && (
             <div className="space-y-2 pt-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
                   1. Edisi Kapasitas Siswa:
                 </span>
-                <span className="text-[10.5px] text-slate-400 font-medium">
-                  Berdasarkan total siswa aktif
+                <span className="text-[10px] sm:text-[10.5px] text-slate-400 font-medium">
+                  Sesuai siswa aktif
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap gap-2">
                 {groupedVariants.map(([sizeLabel]) => {
                   const isSelected = selectedSize.toLowerCase() === sizeLabel.toLowerCase();
                   const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
@@ -521,7 +522,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                       onClick={() => {
                         if (!isLocked) setSelectedSize(sizeLabel);
                       }}
-                      className={"px-3.5 py-2 rounded-xl transition-all duration-150 border text-left flex items-center gap-2 " + (
+                      className={"px-3 py-2 sm:px-3.5 sm:py-2 rounded-xl transition-all duration-150 border text-left flex items-center justify-between gap-1.5 " + (
                         isLocked
                           ? "bg-slate-100 dark:bg-slate-900/40 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800 cursor-not-allowed opacity-50 text-xs"
                           : isSelected
@@ -529,13 +530,13 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                           : "bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400 hover:text-indigo-600"
                       )}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-black tracking-wide">{sizeLabel}</span>
-                        <span className={"text-[10px] " + (isSelected ? "text-indigo-100 font-medium" : "text-slate-400 dark:text-slate-500")}>
-                          ({tierMeta.capacityLabel.replace('s.d ', '≤')})
-                        </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-black tracking-wide truncate">{sizeLabel}</div>
+                        <div className={"text-[9.5px] sm:text-[10px] truncate " + (isSelected ? "text-indigo-100 font-medium" : "text-slate-400 dark:text-slate-500")}>
+                          {tierMeta.capacityLabel.replace('s.d ', '≤ ')}
+                        </div>
                       </div>
-                      {isSelected && <CheckCircle2 size={13} className="text-white shrink-0 ml-0.5" />}
+                      {isSelected && <CheckCircle2 size={13} className="text-white shrink-0" />}
                       {isLocked && <Lock size={11} className="text-slate-400 shrink-0" />}
                     </button>
                   );
@@ -587,48 +588,48 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {/* BULANAN */}
                 <button
                   type="button"
                   onClick={() => setSelectedPeriod('MONTH')}
-                  className={"px-3.5 py-2.5 rounded-xl text-left border transition-all flex items-center justify-between " + (
+                  className={"px-3 py-2.5 sm:px-3.5 rounded-xl text-left border transition-all flex items-center justify-between " + (
                     selectedPeriod === 'MONTH'
                       ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/20"
                       : "bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400"
                   )}
                 >
-                  <div>
-                    <div className="text-xs font-bold">📅 Tagihan Bulanan</div>
-                    <div className={"text-[10px] " + (selectedPeriod === 'MONTH' ? "text-indigo-100" : "text-slate-400")}>
-                      Operasional reguler
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold truncate">📅 Bulanan</div>
+                    <div className={"text-[9.5px] sm:text-[10px] truncate " + (selectedPeriod === 'MONTH' ? "text-indigo-100" : "text-slate-400")}>
+                      Reguler
                     </div>
                   </div>
-                  {selectedPeriod === 'MONTH' && <CheckCircle2 size={15} className="text-white shrink-0" />}
+                  {selectedPeriod === 'MONTH' && <CheckCircle2 size={14} className="text-white shrink-0 ml-1" />}
                 </button>
 
                 {/* TAHUNAN */}
                 <button
                   type="button"
                   onClick={() => setSelectedPeriod('YEAR')}
-                  className={"px-3.5 py-2.5 rounded-xl text-left border transition-all flex items-center justify-between relative " + (
+                  className={"px-3 py-2.5 sm:px-3.5 rounded-xl text-left border transition-all flex items-center justify-between relative " + (
                     selectedPeriod === 'YEAR'
                       ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25 ring-2 ring-indigo-500/20"
                       : "bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-indigo-400"
                   )}
                 >
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold">🌟 Paket Tahunan</span>
-                      <span className="px-1.5 py-0.2 bg-amber-500 text-white text-[8px] font-black rounded-full uppercase tracking-wider">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-bold truncate">🌟 Tahunan</span>
+                      <span className="px-1 py-0.2 bg-amber-500 text-white text-[7.5px] font-black rounded uppercase tracking-wider shrink-0">
                         -20%
                       </span>
                     </div>
-                    <div className={"text-[10px] font-semibold " + (selectedPeriod === 'YEAR' ? "text-amber-200" : "text-emerald-600 dark:text-emerald-400")}>
-                      Rekomendasi SPJ BOS ARKAS
+                    <div className={"text-[9.5px] sm:text-[10px] font-semibold truncate " + (selectedPeriod === 'YEAR' ? "text-amber-200" : "text-emerald-600 dark:text-emerald-400")}>
+                      SPJ BOS ARKAS
                     </div>
                   </div>
-                  {selectedPeriod === 'YEAR' && <CheckCircle2 size={15} className="text-white shrink-0" />}
+                  {selectedPeriod === 'YEAR' && <CheckCircle2 size={14} className="text-white shrink-0 ml-1" />}
                 </button>
               </div>
             </div>
