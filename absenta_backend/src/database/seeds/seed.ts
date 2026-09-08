@@ -11,8 +11,6 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { seedPolicies } from './seed_policies';
-import { seedCore } from './seed_core';
-import { seedCooperative } from './seed_cooperative';
 import { seedJobdesk } from './seed_jobdesk';
 import { seedSarprasCatalog } from './seed_sarpras_catalog';
 import { seedMapelPresets } from './seed_mapel_presets';
@@ -834,31 +832,8 @@ async function main() {
 
   console.log('ℹ️ Seeding untuk katalog Plan Premium dilewati. Plan Premium sekarang dikelola secara terpusat oleh License Server.');
 
-  // 8️⃣ Seed Struktur Organisasi (System Tenant + All Active Tenants)
+  // 8️⃣ Seed Struktur Organisasi & Master Presets for all active tenants
   console.log('🌱 Seeding Struktur Organisasi for all active tenants...');
-  const isProduction = process.env.NODE_ENV === 'production' || process.env.DEPLOY_SCENARIO === 'production' || process.env.SKIP_DUMMY_SEED === 'true';
-  
-  let devTenant = null;
-  if (!isProduction) {
-    const devTenantSubdomain = 'smkn1cimahi';
-    devTenant = await prisma.tenant.findFirst({ where: { subdomain: devTenantSubdomain } });
-
-    if (!devTenant) {
-      console.log(`🌱 Creating Development Tenant: ${devTenantSubdomain}...`);
-      devTenant = await prisma.tenant.create({
-        data: {
-          name: 'SMK Negeri 1 Cimahi',
-          subdomain: devTenantSubdomain,
-          status: 'ACTIVE',
-          absensi_mode: 'MULTI_SESI',
-          jam_masuk_default: '07:00',
-          jam_pulang_default: '15:00',
-          toleransi_keterlambatan_menit: 15,
-        }
-      });
-    }
-  }
-
   const allTenants = await prisma.tenant.findMany({ where: { status: 'ACTIVE' } });
 
   for (const tenant of allTenants) {
@@ -870,78 +845,7 @@ async function main() {
   console.log('🔐 Menjalankan Policy Engine seeding (Fase B: Permission & StrukturPermission)...');
   console.log('✅ Policy Engine seeding (Fase B) selesai.');
 
-  // 9️⃣ Seed Dummy Core & Cooperative Data (Hanya untuk Tenant Development/Test)
-  // Ensure Subscription to CORE_PLATFORM (Only CORE features)
-  const platformPlan = await prisma.plan.findFirst({ where: { name: 'CORE_PLATFORM' } });
-  if (platformPlan && devTenant) {
-    const activeSub = await prisma.subscription.findFirst({
-      where: { tenant_id: devTenant.id, status: 'ACTIVE' }
-    });
-
-    // If subscription exists but not CORE_PLATFORM, update it? 
-    // Or just ensure if no subscription exists.
-    // For seed stability, let's update if exists or create if not.
-
-    if (activeSub) {
-      if (activeSub.plan_id !== platformPlan.id) {
-        console.log(`🔄 Updating Subscription for ${devTenant.name} to ${platformPlan.name}...`);
-        await prisma.subscription.update({
-          where: { id: activeSub.id },
-          data: { plan_id: platformPlan.id, service_code: (platformPlan as any).service_code || 'CORE' }
-        });
-      }
-    }
-  }
-
-
-  if (devTenant) {
-    console.log(`🌱 Seeding Data Koperasi & Core untuk Tenant Dev: ${devTenant.name}`);
-
-    // 9a. Create Custom Admin User
-    const adminRole = await prisma.role.findFirst({ where: { name: 'ADMIN', tenant_id: null } });
-    if (adminRole) {
-      const adminEmail = 'cimahi@gmail.com';
-      const adminPassword = await bcrypt.hash('admin1234', 10);
-
-      await prisma.user.upsert({
-        where: {
-          tenant_id_email: {
-            tenant_id: devTenant.id,
-            email: adminEmail
-          }
-        },
-        update: {
-          password: adminPassword,
-          role_id: adminRole.id,
-          status: 'ACTIVE'
-        },
-        create: {
-          tenant_id: devTenant.id,
-          email: adminEmail,
-          password: adminPassword,
-          full_name: 'Admin SMKN 1 Cimahi',
-          role_id: adminRole.id,
-          status: 'ACTIVE',
-          email_verified: true,
-          has_completed_onboarding: true
-        }
-      });
-      console.log(`✅ Admin User created: ${adminEmail} (password: admin1234)`);
-    }
-
-    // Seed Core (Siswa/Guru)
-    await seedCore(devTenant.id);
-
-    // Ambil guru yang baru di-seed
-    const guruList = await prisma.guru.findMany({ where: { tenant_id: devTenant.id } });
-
-    // Seed Cooperative (Member linked to Core)
-    const fetchedSiswaList = await prisma.siswa.findMany({ where: { tenant_id: devTenant.id } });
-
-    await seedCooperative(devTenant.id, fetchedSiswaList, guruList);
-  }
-
-  // 10️⃣ Seed Jobdesk Dasar (Roles & Positions)
+  // 9️⃣ Seed Jobdesk Dasar (Roles & Positions)
   await seedJobdesk();
 
   // 11️⃣ Seed Sarpras Global Catalog
