@@ -471,7 +471,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5 w-full">
                     {(services || [])?.map((svc: SubscriptionItem, sIdx: number) => {
                       const fullPlanName = svc.Plan?.name || svc.plan_snapshot?.name || svc.plan_name || 'Layanan Absenta';
-                      const sCode = String(svc.Plan?.service_code || svc.plan_snapshot?.service_code || svc.service_code || '').toUpperCase();
+                      const sCode = String(svc.service_code || svc.plan_snapshot?.service_code || svc.Plan?.service_code || '').toUpperCase();
                       const upperRaw = fullPlanName.toUpperCase();
 
                       let isMasterPackage = false;
@@ -479,6 +479,10 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                       if (sCode === 'PAKET_LENGKAP' || upperRaw.includes('PAKET LENGKAP')) {
                         displayName = upperRaw.includes('MULTI') ? 'PAKET LENGKAP MULTI (Enterprise)' : 'PAKET LENGKAP';
                         isMasterPackage = true;
+                      } else if (sCode === 'ACADEMIC' || upperRaw.includes('ACADEMIC') || upperRaw.includes('KURIKULUM')) {
+                        displayName = 'MANAJEMEN KURIKULUM & AKADEMIK';
+                      } else if (sCode === 'KESISWAAN' || upperRaw.includes('KESISWAAN') || upperRaw.includes('BPBK')) {
+                        displayName = 'MANAJEMEN KESISWAAN & BP/BK';
                       } else if (sCode === 'CORE' || upperRaw.includes('FREE LISENSI') || upperRaw.includes('AKTIVASI SERVER')) {
                         displayName = 'LISENSI SERVER ABSENTA';
                       } else if (sCode === 'ABSENSI' || upperRaw.includes('ABSENSI')) {
@@ -487,9 +491,9 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                         displayName = 'SAAS NODE ENGINE SERVER';
                       } else if (sCode === 'HUBIN' || upperRaw.includes('HUBUNGAN INDUSTRI')) {
                         displayName = 'HUBUNGAN INDUSTRI & PKL (HUBIN)';
-                      } else if (sCode === 'SARPRAS' || upperRaw.includes('SARANA PRASARANA')) {
+                      } else if (sCode === 'SARPRAS' || upperRaw.includes('SARANA PRASARANA') || upperRaw.includes('INVENTORY')) {
                         displayName = 'SARANA & PRASARANA (SARPRAS)';
-                      } else if (sCode === 'KOPERASI' || upperRaw.includes('KOPERASI')) {
+                      } else if (sCode === 'KOPERASI' || sCode === 'COOPERATIVE' || upperRaw.includes('KOPERASI')) {
                         displayName = 'KOPERASI SEKOLAH DIGITAL';
                       } else if (sCode === 'WHATSAPP' || upperRaw.includes('WHATSAPP')) {
                         displayName = 'WHATSAPP GATEWAY NOTIFIKASI';
@@ -497,7 +501,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                         displayName = 'EASY TUNNEL VPN ACCESS';
                       }
 
-                      const IconComp = getServiceIcon(svc.Plan?.service_code || svc.plan_snapshot?.service_code);
+                      const IconComp = getServiceIcon(sCode || svc.Plan?.service_code || svc.plan_snapshot?.service_code);
                       const price = svc.Plan?.price_monthly || svc.plan_snapshot?.price_monthly || 0;
                       const maxUser = svc.Plan?.max_user;
                       const features = svc.Plan?.features_json || svc.plan_snapshot?.features_json || [];
