@@ -619,14 +619,14 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                             <Button
                               type="button"
                               variant="toolbarPrimary"
                               size="toolbar"
                               aria-label="Perpanjang Masa Aktif"
                               onClick={() => handleExtend(svc.plan_id || svc.id)}
-                              className="flex-1 rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
+                              className="flex-1 min-w-[140px] rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
                             >
                               <Sparkles size={13} />
                               <span>Perpanjang Masa Aktif</span>
@@ -638,7 +638,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               size="sm"
                               aria-label="Ganti atau Upgrade Paket"
                               onClick={() => handleChangePlan((svc.Plan || svc.plan_snapshot || {}) as Plan)}
-                              className="rounded-xl font-bold text-xs h-9 px-3 border-slate-200 dark:border-slate-700"
+                              className="rounded-xl font-bold text-xs h-9 px-3 border-slate-200 dark:border-slate-700 shrink-0"
                               title="Ganti atau Upgrade Paket"
                             >
                               Ganti Paket
@@ -653,7 +653,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                 setSelectedServiceId(svc.id);
                                 handleOpenAutoRenew();
                               }}
-                              className="rounded-xl font-bold text-xs h-9 px-2.5 border-slate-200 dark:border-slate-700"
+                              className="rounded-xl font-bold text-xs h-9 px-2.5 border-slate-200 dark:border-slate-700 shrink-0"
                               title="Pengaturan Tagihan & Auto-Renew"
                             >
                               <Settings size={13} />
