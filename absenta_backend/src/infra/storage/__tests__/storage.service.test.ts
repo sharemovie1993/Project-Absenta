@@ -15,6 +15,7 @@ describe('StorageService Robustness Tests', () => {
 
   describe('resolveLocalPath & STORAGE_LOCAL_DIR', () => {
     it('should resolve local path relative to process.cwd() when STORAGE_LOCAL_DIR is not set', async () => {
+      process.env.STORAGE_DRIVER = 'local';
       delete process.env.STORAGE_LOCAL_DIR;
       
       // We can upload a test buffer locally
@@ -32,6 +33,7 @@ describe('StorageService Robustness Tests', () => {
     });
 
     it('should resolve local path relative to STORAGE_LOCAL_DIR when it is configured', async () => {
+      process.env.STORAGE_DRIVER = 'local';
       const customLocalDir = path.resolve(process.cwd(), 'temp_test_storage_dir');
       process.env.STORAGE_LOCAL_DIR = customLocalDir;
       
