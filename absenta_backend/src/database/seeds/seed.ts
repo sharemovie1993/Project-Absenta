@@ -460,7 +460,7 @@ async function main() {
       required_capability: null,
       order: 105,
       children: [
-        { label: 'Tiket Bantuan', icon: 'MessageSquare', path: '/superadmin/support', required_capability: 'admin.tickets.view.list' },
+        { label: 'Tiket Bantuan', icon: 'MessageSquare', path: '/support', required_capability: 'admin.tickets.view.list' },
       ],
     },
     {
@@ -468,7 +468,7 @@ async function main() {
       icon: 'LayoutTemplate',
       path: null,
       required_capability: null,
-      order: 108,
+      order: 110,
       children: [
         { label: 'Preset Mapel', icon: 'BookOpen', path: '/superadmin/mapel-presets', required_capability: 'superadmin.tenants.manage' },
         { label: 'Preset Topik', icon: 'Sparkles', path: '/superadmin/topik-presets', required_capability: 'superadmin.tenants.manage' },
@@ -478,49 +478,14 @@ async function main() {
         { label: 'Standar JP', icon: 'Clock', path: '/superadmin/kurikulum-standards', required_capability: 'superadmin.tenants.manage' },
         { label: 'Katalog Aset', icon: 'Package', path: '/sarpras/catalog', required_capability: 'superadmin.tenants.manage' },
       ],
-
-    },
-
-    {
-      label: 'Billing Platform',
-      icon: 'CreditCard',
-      path: null,
-      required_capability: null,
-      order: 110,
-      children: [
-        { label: 'Laporan Omset', icon: 'TrendingUp', path: '/superadmin/revenue', required_capability: 'superadmin.revenue.view.overview' },
-        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/billing/dashboard', required_capability: "billing.subscriptions.view.list" },
-        { label: 'Paket Layanan', icon: 'Package', path: '/billing/plans', required_capability: 'billing.plans.view.list' },
-        { label: 'Langganan Tenant', icon: 'CreditCard', path: '/billing/subscriptions', required_capability: 'billing.subscriptions.view.active' },
-        { label: 'Tagihan Invoice', icon: 'FileText', path: '/billing/invoices', required_capability: 'billing.invoices.view.list' },
-        { label: 'Laporan Billing', icon: 'BarChart3', path: '/billing/reports', required_capability: 'billing.subscriptions.view.list' },
-        { label: 'Pengaturan', icon: 'Settings', path: '/billing/settings', required_capability: 'core.system.config.view' },
-        { label: 'Simulator Tripay', icon: 'TestTube', path: '/superadmin/infra/tripay-simulator', required_capability: 'payments.test.simulate' },
-      ],
-    },
-    {
-      label: 'Monitoring & Observability',
-      icon: 'Activity',
-      path: null,
-      required_capability: null,
-      order: 120,
-      children: [
-        { label: 'Ringkasan', icon: 'LayoutDashboard', path: '/superadmin/intelligence', required_capability: 'superadmin.platform.intelligence.view' },
-        { label: 'Analisis Omset', icon: 'TrendingUp', path: '/superadmin/intelligence/revenue', required_capability: 'superadmin.platform.intelligence.view' },
-        { label: 'Analisis Upgrade', icon: 'Sparkles', path: '/superadmin/intelligence/upgrade', required_capability: 'superadmin.upgrade.intelligence.view' },
-        { label: 'Monitor Server', icon: 'Activity', path: '/superadmin/infra/monitoring', required_capability: "superadmin.infra.monitoring.view" },
-        { label: 'Status Tripay', icon: 'Activity', path: '/superadmin/infra/tripay-health', required_capability: "superadmin.infra.monitoring.view" },
-      ],
     },
     {
       label: 'Infrastruktur & Server',
       icon: 'Cpu',
       path: null,
       required_capability: null,
-      order: 130,
+      order: 120,
       children: [
-        { label: 'Socket Server', icon: 'Activity', path: '/superadmin/infra', required_capability: 'superadmin.infra.view.socket.global' },
-        { label: 'Job Scheduler', icon: 'Cpu', path: '/superadmin/infra/jobs', required_capability: 'superadmin.infra.monitoring.view' },
         { label: 'Cadangan Sistem', icon: 'Archive', path: '/superadmin/backups', required_capability: 'academic.backups.view.list' },
       ],
     },
@@ -529,7 +494,7 @@ async function main() {
       icon: 'Shield',
       path: null,
       required_capability: null,
-      order: 140,
+      order: 130,
       children: [
         { label: 'Hak Akses', icon: 'UserCog', path: '/management/roles', required_capability: 'superadmin.security.roles.view' },
         { label: 'Kelola Menu', icon: 'Sliders', path: '/management/menus', required_capability: 'core.menu.view.list' },
