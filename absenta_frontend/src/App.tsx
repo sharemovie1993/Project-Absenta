@@ -1117,18 +1117,6 @@ function App() {
                     <Route path="/billing/tripay-health" element={<Navigate to="/superadmin/infra/tripay-health" replace />} />
                     <Route path="/billing/tripay-simulator" element={<Navigate to="/superadmin/infra/tripay-simulator" replace />} />
 
-                    {/* Superadmin Infrastructure Tripay Routes */}
-                    <Route path="/superadmin/infra/tripay-health" element={
-                      <ProtectedRoute requiredCapability="core.system.manage">
-                        <TripayHealthPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/superadmin/infra/tripay-simulator" element={
-                      <ProtectedRoute requiredCapability="core.system.manage">
-                        <TripaySimulatorPage />
-                      </ProtectedRoute>
-                    } />
-
                     <Route path="/users" element={
                       <ProtectedRoute requiredCapability="core.users.view.list">
                         <UsersPage />
@@ -1162,18 +1150,14 @@ function App() {
                             <InfraControlCenterPage />
                           </ProtectedRoute>
                         } />
-                        <Route path="/superadmin/infra/monitoring" element={
-                          <ProtectedRoute requiredCapability="billing.reports.view.summary">
-                            <MonitoringPageBilling />
-                          </ProtectedRoute>
-                        } />
+                        <Route path="/superadmin/infra/monitoring" element={<Navigate to="/superadmin/infra" replace />} />
                         <Route path="/superadmin/infra/tripay-health" element={
-                          <ProtectedRoute requiredCapability="billing.reports.view.summary">
+                          <ProtectedRoute requiredCapability="core.system.manage">
                             <TripayHealthPage />
                           </ProtectedRoute>
                         } />
                         <Route path="/superadmin/infra/tripay-simulator" element={
-                          <ProtectedRoute requiredCapability="payments.test.simulate">
+                          <ProtectedRoute requiredCapability="core.system.manage">
                             <TripaySimulatorPage />
                           </ProtectedRoute>
                         } />
