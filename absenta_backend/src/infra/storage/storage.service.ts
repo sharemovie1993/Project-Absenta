@@ -204,6 +204,14 @@ export class StorageService {
           pass.end();
         })
         .catch((err: any) => {
+          try {
+            const { absolutePath } = resolveLocalPath(safeKey);
+            if (fs.existsSync(absolutePath)) {
+              const fileStream = fs.createReadStream(absolutePath);
+              fileStream.pipe(pass);
+              return;
+            }
+          } catch {}
           pass.destroy(err);
         });
       return pass;
@@ -216,17 +224,27 @@ export class StorageService {
     const safeKey = ensureSafeRelativeKey(key);
     const s3 = this.getS3();
     if (s3) {
-      const res: any = await s3.client.send(new GetObjectCommand({ Bucket: s3.cfg.bucket, Key: safeKey }));
-      const body = res?.Body;
-      if (body && typeof body.transformToByteArray === 'function') {
-        const arr = await body.transformToByteArray();
-        return Buffer.from(arr);
+      try {
+        const res: any = await s3.client.send(new GetObjectCommand({ Bucket: s3.cfg.bucket, Key: safeKey }));
+        const body = res?.Body;
+        if (body && typeof body.transformToByteArray === 'function') {
+          const arr = await body.transformToByteArray();
+          return Buffer.from(arr);
+        }
+        const chunks: Buffer[] = [];
+        for await (const chunk of body) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        }
+        return Buffer.concat(chunks);
+      } catch (err) {
+        try {
+          const { absolutePath } = resolveLocalPath(safeKey);
+          if (fs.existsSync(absolutePath)) {
+            return await fs.promises.readFile(absolutePath);
+          }
+        } catch {}
+        throw err;
       }
-      const chunks: Buffer[] = [];
-      for await (const chunk of body) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      }
-      return Buffer.concat(chunks);
     }
     const { absolutePath } = resolveLocalPath(safeKey);
     return fs.promises.readFile(absolutePath);
@@ -254,7 +272,13 @@ export class StorageService {
         await s3.client.send(new HeadObjectCommand({ Bucket: s3.cfg.bucket, Key: safeKey }));
         return true;
       } catch {
-        return false;
+        try {
+          const { absolutePath } = resolveLocalPath(safeKey);
+          await fs.promises.access(absolutePath, fs.constants.F_OK);
+          return true;
+        } catch {
+          return false;
+        }
       }
     }
     const { absolutePath } = resolveLocalPath(safeKey);
