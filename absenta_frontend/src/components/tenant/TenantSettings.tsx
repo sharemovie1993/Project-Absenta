@@ -37,6 +37,41 @@ export const TenantSettings: React.FC = () => {
     },
     staleTime: 60 * 1000
   });
+
+  const activePlanName = React.useMemo(() => {
+    const data = subQuery.data;
+    if (!data) return tenant?.subscription_plan || 'Core Platform';
+
+    const allSubs = (data as any).all_subscriptions || (data as any).services || (data as any).subscriptions || [];
+    
+    // 1. Cek Paket Lengkap Aktif
+    const completeBundle = allSubs.find((s: any) => 
+      s.status === 'ACTIVE' && (
+        s.service_code === 'PAKET_LENGKAP' || 
+        String(s.plan_name || s.Plan?.name || '').toUpperCase().includes('PAKET LENGKAP')
+      )
+    );
+    if (completeBundle) {
+      return completeBundle.plan_name || completeBundle.Plan?.name || 'Paket Lengkap All-in-One';
+    }
+
+    // 2. Cek Modul Komersial Aktif (Absensi, Koperasi, Hubin, dll)
+    const commercialSub = allSubs.find((s: any) => 
+      !['CORE', 'ACADEMIC', 'KESISWAAN'].includes(String(s.service_code || '').toUpperCase()) &&
+      s.status === 'ACTIVE'
+    );
+    if (commercialSub) {
+      return commercialSub.plan_name || commercialSub.Plan?.name || commercialSub.service_code;
+    }
+
+    if (data.package_name && data.package_name !== 'CORE_PLATFORM') return data.package_name;
+    if ((data as any).plan?.name && (data as any).plan.name !== 'CORE_PLATFORM') return (data as any).plan.name;
+    if (data.active_academic_tier && data.active_academic_tier !== 'CORE_PLATFORM') {
+      return `Edisi ${data.active_academic_tier}`;
+    }
+
+    return 'Academic Core Platform';
+  }, [subQuery.data, tenant?.subscription_plan]);
   
   // Mode edit & status saving
   const [isEditing, setIsEditing] = useState(false);
@@ -1045,9 +1080,9 @@ export const TenantSettings: React.FC = () => {
                       </Link>
                     </div>
                     <p className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 truncate">
-                      {subQuery.data?.plan?.name || subQuery.data?.package_name || (subQuery.data?.active_academic_tier ? `Edisi ${subQuery.data.active_academic_tier}` : null) || tenant.subscription_plan || 'Core Platform'}
+                      {activePlanName}
                     </p>
-                    {subQuery.data?.active_academic_tier && (
+                    {subQuery.data?.active_academic_tier && subQuery.data?.active_academic_tier !== 'CORE_PLATFORM' && (
                       <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
                         Kapasitas {subQuery.data.active_academic_tier}
                       </span>

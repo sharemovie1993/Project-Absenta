@@ -3,7 +3,7 @@ import { subscriptionDb as prisma } from '../repositories/subscription.db';
 import axios from 'axios';
 
 export async function getMySubscriptionOverviewQuery(tenantId: string) {
-  const subscription = await prisma.subscription.findFirst({
+  const allSubscriptions = await prisma.subscription.findMany({
     where: { tenant_id: tenantId },
     orderBy: { end_date: 'desc' },
     include: {
@@ -11,25 +11,32 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     },
   });
 
-  const activeSubscriptions = await prisma.subscription.findMany({
-    where: { 
-      tenant_id: tenantId, 
-      status: { 
-        in: [
-          SubscriptionStatus.ACTIVE, 
-          SubscriptionStatus.TRIAL, 
-          SubscriptionStatus.UPGRADE_PENDING,
-          SubscriptionStatus.PENDING_PAYMENT
-        ] as any 
-      } 
-    },
-    orderBy: { end_date: 'desc' },
-    include: { Plan: { include: { Module: true } } },
-  });
-
-  if (!subscription) {
+  if (!allSubscriptions || allSubscriptions.length === 0) {
     return null;
   }
+
+  const activeSubscriptions = allSubscriptions.filter(s => 
+    [
+      SubscriptionStatus.ACTIVE, 
+      SubscriptionStatus.TRIAL, 
+      SubscriptionStatus.UPGRADE_PENDING,
+      SubscriptionStatus.PENDING_PAYMENT
+    ].includes(s.status as any)
+  );
+
+  // Penentuan Primary Subscription yang cerdas:
+  // 1. Paket Lengkap Aktif (All-in-One)
+  // 2. Modul Komersial Aktif (Absensi, Koperasi, Hubin, dll)
+  // 3. Plan dengan harga/tier tertinggi
+  // 4. Fallback ke Core Platform
+  const primarySubscription = 
+    activeSubscriptions.find(s => s.service_code === 'PAKET_LENGKAP' || s.Plan?.service_code === 'PAKET_LENGKAP') ||
+    activeSubscriptions.find(s => !['CORE', 'ACADEMIC', 'KESISWAAN'].includes(String(s.service_code || '').toUpperCase()) && (s.Plan?.price_monthly || 0) > 0) ||
+    activeSubscriptions.find(s => !['CORE', 'ACADEMIC', 'KESISWAAN'].includes(String(s.service_code || '').toUpperCase())) ||
+    activeSubscriptions.find(s => (s.Plan?.price_monthly || 0) > 0) ||
+    allSubscriptions[0];
+
+  const subscription = primarySubscription;
 
   const upgradePlanChange = await prisma.planChangeRequest.findFirst({
     where: {
@@ -100,8 +107,25 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     Plan: s.Plan || null, // Include full Plan object for UI richness
   }));
 
+  const rawTier = (primarySubscription.Plan?.tier || primarySubscription.Plan?.size_label || '') as string;
+  let resolvedTier = rawTier;
+  if (!resolvedTier) {
+    const pName = String(primarySubscription.Plan?.name || '');
+    if (/\b(Enterprise)\b/i.test(pName)) resolvedTier = 'Enterprise';
+    else if (/\b(Large)\b/i.test(pName)) resolvedTier = 'Large';
+    else if (/\b(Medium)\b/i.test(pName)) resolvedTier = 'Medium';
+    else if (/\b(Small)\b/i.test(pName)) resolvedTier = 'Small';
+    else if (/\b(Micro)\b/i.test(pName)) resolvedTier = 'Micro';
+    else resolvedTier = 'Standard';
+  }
+
+  const resolvedPlanName = primarySubscription.Plan?.name || (primarySubscription as any).plan_name || 'Paket Layanan Absenta';
+
   return {
     ...subscription,
+    package_name: resolvedPlanName,
+    plan_name: resolvedPlanName,
+    active_academic_tier: resolvedTier,
     features: aggregatedFeatures,
     subscriptions: subList,
     services: subList,
