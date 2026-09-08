@@ -317,7 +317,7 @@ export default function LoginPage() {
 
     // Platform Superadmin should NEVER be routed to school onboarding
     if (isSuper) {
-      return <Navigate to={location.state?.from?.pathname || '/dashboard'} replace />;
+      return <Navigate to={location.state?.from?.pathname || '/tenants'} replace />;
     }
 
     const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard';
