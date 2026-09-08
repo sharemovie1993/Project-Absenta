@@ -265,13 +265,90 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
       }
     });
 
-    if (isHardware) {
-      addFeature('Garansi Resmi & Penggantian Unit', 'Jaminan penggantian unit hardware jika mengalami kendala teknis.');
-      addFeature('Panduan Instalasi & Bimbingan Teknis', 'Dukungan konfigurasi awal dan panduan integrasi jaringan.');
-    }
-
     return list;
   }, [isHardware, isCompleteBundle, featuresList]);
+
+  // Ecosystem Pillars for SaaS Level Transparency
+  const ecosystemPillars = useMemo(() => {
+    if (isHardware) return [];
+
+    const ALL_PILLARS = [
+      {
+        id: 'CORE',
+        title: 'Academic Core & GTK',
+        description: 'Jurnal mengajar GTK, kalender akademik, kesiswaan & BK.',
+        category: 'core',
+        isBase: true
+      },
+      {
+        id: 'ABSENSI',
+        serviceCodes: ['ABSENSI', 'ABSENSI-MULTI_SESI', 'PRESENSI', 'KBM'],
+        title: 'Presensi Multi-Sesi & KBM',
+        description: 'RFID, QR, Geofencing GPS, multi-shift, & monitoring per jam mapel.',
+        category: 'presensi'
+      },
+      {
+        id: 'KOPERASI',
+        serviceCodes: ['KOPERASI', 'COOPERATIVE', 'POS'],
+        title: 'Koperasi & POS Kasir Digital',
+        description: 'Kasir kantin/minimarket, kartu cashless, tabungan siswa & SHU.',
+        category: 'koperasi'
+      },
+      {
+        id: 'SARPRAS',
+        serviceCodes: ['SARPRAS', 'INVENTORY', 'ASET'],
+        title: 'Manajemen Sarana & Prasarana',
+        description: 'Inventaris aset, barcode QR, peminjaman alat & inventarisir BOS.',
+        category: 'sarpras'
+      },
+      {
+        id: 'HUBIN',
+        serviceCodes: ['HUBIN', 'BKK', 'PKL', 'MAGANG'],
+        title: 'Hubungan Industri, PKL & BKK',
+        description: 'Kemitraan DUDI, jurnal magang siswa, & Tracer Study alumni.',
+        category: 'hubin'
+      },
+      {
+        id: 'CBT',
+        serviceCodes: ['CBT', 'UJIAN', 'EXAM'],
+        title: 'Ujian Online CBT & Bank Soal',
+        description: 'Pelaksanaan ujian anti-curang, acak soal & kunci, koreksi instan.',
+        category: 'cbt'
+      },
+      {
+        id: 'RAPOR',
+        serviceCodes: ['RAPOR', 'E-RAPOR', 'NILAI'],
+        title: 'Olah Nilai & E-Rapor Merdeka',
+        description: 'Penilaian kurikulum merdeka, deskripsi capaian & cetak buku rapor.',
+        category: 'rapor'
+      },
+      {
+        id: 'EASY_TUNNEL',
+        serviceCodes: ['EASY_TUNNEL', 'TUNNEL'],
+        title: 'Domain Online Easy Tunnel (SSL)',
+        description: 'Subdomain resmi .absenta.id + SSL HTTPS gratis tanpa IP Publik.',
+        category: 'tunnel'
+      }
+    ];
+
+    const currentCode = String(group.service_code || group.module || '').toUpperCase();
+
+    return ALL_PILLARS.map(p => {
+      let isIncluded = false;
+      if (isCompleteBundle) {
+        isIncluded = true;
+      } else if (p.isBase) {
+        isIncluded = true;
+      } else if (p.serviceCodes && p.serviceCodes.some(c => currentCode.includes(c))) {
+        isIncluded = true;
+      }
+
+      return {
+        ...p,
+        isIncluded
+      };
+    });
+  }, [isHardware, isCompleteBundle, group.service_code, group.module]);
 
   const handleAddToCart = () => {
     if (!selectedPlan) return;
@@ -682,43 +759,157 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
           </button>
         </div>
 
-        {/* Tab 1: Fitur & Modul yang Termasuk */}
+        {/* Tab 1: Fitur & Modul yang Termasuk / Level Cakupan */}
         {activeTab === 'features' && (
-          <div className="space-y-3 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Daftar Modul &amp; Fasilitas Terintegrasi:
-              </h3>
-              <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">
-                {detailedFeatures.length} Fasilitas Siap Digunakan
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {detailedFeatures.map((item, i) => (
-                <div
-                  key={i}
-                  className={"p-3 rounded-xl border flex items-start gap-2.5 transition-all " + (
-                    item.isHighlight
-                      ? "bg-gradient-to-br from-indigo-50/80 to-violet-50/60 dark:from-indigo-950/40 dark:to-violet-950/30 border-indigo-200 dark:border-indigo-800 shadow-2xs"
-                      : "bg-slate-50 dark:bg-slate-950 border-slate-200/70 dark:border-slate-800/80"
-                  )}
-                >
-                  <CheckCircle2
-                    size={15}
-                    className={"shrink-0 mt-0.5 " + (item.isHighlight ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-emerald-500")}
-                  />
-                  <div className="space-y-0.5 min-w-0 flex-1">
-                    <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
-                      {item.title}
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* ── A. LEVEL SCOPE INDICATOR BANNER (KHUSUS SAAS) ── */}
+            {!isHardware ? (
+              <div className={"p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 " + (
+                isCompleteBundle
+                  ? "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-purple-500/10 border-emerald-500/30 dark:border-emerald-800"
+                  : "bg-gradient-to-r from-amber-500/10 via-slate-500/5 to-indigo-500/10 border-amber-500/30 dark:border-amber-800"
+              )}>
+                <div className="flex items-center gap-3">
+                  <div className={"w-9 h-9 rounded-xl flex items-center justify-center font-black text-base shadow-xs shrink-0 " + (
+                    isCompleteBundle ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
+                  )}>
+                    {isCompleteBundle ? '👑' : '🏷️'}
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+                      <span>{isCompleteBundle ? 'Tingkat Kelengkapan: Full Suite (All-in-One)' : `Tingkat Kelengkapan: Modul Spesifik (${group.baseName})`}</span>
+                      <span className={"px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider " + (
+                        isCompleteBundle
+                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
+                          : "bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300"
+                      )}>
+                        {isCompleteBundle ? '100% Seluruh Modul Terbuka' : 'Fokus Operasional Satuan'}
+                      </span>
                     </div>
-                    <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-snug">
-                      {item.description}
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                      {isCompleteBundle
+                        ? 'Mencakup seluruh 8 pilar ekosistem Absenta, domain tunnel resmi, dan WhatsApp gateway tanpa lisensi terpisah.'
+                        : `Mencakup modul ${group.module || group.baseName} & Platform Akademik. Modul lain dalam ekosistem belum termasuk.`
+                      }
                     </div>
                   </div>
                 </div>
-              ))}
+
+                {!isCompleteBundle && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold shrink-0 self-start sm:self-center">
+                    <Sparkles size={13} className="text-amber-500" />
+                    <span>Tersedia Upgrade ke Paket Lengkap</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-slate-800 text-white flex items-center justify-center text-base shrink-0">
+                  📦
+                </div>
+                <div>
+                  <div className="text-xs font-black text-slate-900 dark:text-white">
+                    Perangkat Keras Resmi (Hardware Fisik)
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Spesifikasi resmi unit terintegrasi dengan ekosistem software Absenta.
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── B. DAFTAR FASILITAS YANG TERMASUK (INCLUDED) ── */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
+                  <span>Fasilitas yang Termasuk dalam Paket Ini:</span>
+                </h3>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {detailedFeatures.length} Fasilitas Aktif
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {detailedFeatures.map((item, i) => (
+                  <div
+                    key={i}
+                    className={"p-3 rounded-xl border flex items-start gap-2.5 transition-all " + (
+                      item.isHighlight
+                        ? "bg-gradient-to-br from-indigo-50/80 to-violet-50/60 dark:from-indigo-950/40 dark:to-violet-950/30 border-indigo-200 dark:border-indigo-800 shadow-2xs"
+                        : "bg-slate-50 dark:bg-slate-950 border-slate-200/70 dark:border-slate-800/80"
+                    )}
+                  >
+                    <CheckCircle2
+                      size={15}
+                      className={"shrink-0 mt-0.5 " + (item.isHighlight ? "text-indigo-600 dark:text-indigo-400 font-bold" : "text-emerald-500")}
+                    />
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                        {item.title}
+                      </div>
+                      <div className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-snug">
+                        {item.description}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
+
+            {/* ── C. STATUS MODUL EKOSISTEM LAIN (KHUSUS SAAS SATUAN) ── */}
+            {!isHardware && !isCompleteBundle && (
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    <Lock size={13} className="text-amber-500" />
+                    <span>Modul Lain di Ekosistem Absenta (Belum Termasuk):</span>
+                  </div>
+                  <span className="text-[10.5px] text-amber-600 dark:text-amber-400 font-semibold">
+                    Dapat Ditambah Modular
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {ecosystemPillars.filter(p => !p.isIncluded).map((p) => (
+                    <div
+                      key={p.id}
+                      className="p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-100/60 dark:bg-slate-900/40 opacity-75 hover:opacity-100 transition-opacity flex items-start gap-2.5"
+                    >
+                      <Lock size={14} className="text-slate-400 mt-0.5 shrink-0" />
+                      <div className="space-y-0.5 min-w-0 flex-1">
+                        <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between gap-1">
+                          <span className="truncate">{p.title}</span>
+                          <span className="text-[8.5px] font-bold px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-800 text-slate-500 shrink-0">
+                            Terpisah
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 leading-snug">
+                          {p.description}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Callout ke Paket Lengkap */}
+                <div className="p-3 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <div className="text-xs text-indigo-950 dark:text-indigo-200 font-medium">
+                      Butuh seluruh modul sekaligus? <strong>Paket Lengkap All-in-One</strong> menghemat biaya pengadaan s.d <strong>45%</strong> dibanding modul satuan.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shrink-0 self-end sm:self-center active:scale-95 transition-all"
+                  >
+                    Jelajahi Paket Lengkap
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
