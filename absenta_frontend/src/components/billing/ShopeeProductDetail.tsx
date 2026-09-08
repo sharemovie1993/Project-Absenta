@@ -343,22 +343,14 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
 
       {/* ── 2. SHOPEE MAIN 2-COLUMN SHOWCASE ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
-        {/* ── LEFT COLUMN: COMPACT IMAGE & TRUST CHIPS (lg:col-span-5) ── */}
-        <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-4">
+        {/* ── LEFT COLUMN: COMPACT IMAGE & TRUST STRIP (lg:col-span-5) ── */}
+        <div className="lg:col-span-5 space-y-2.5 lg:sticky lg:top-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs p-3.5 sm:p-5 flex flex-col items-center justify-center relative overflow-hidden">
             <div className="absolute top-3 left-3 z-10">
               <span className="px-2.5 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-slate-900/90 dark:bg-slate-950/90 text-white backdrop-blur-md shadow-2xs">
                 {isHardware ? 'Hardware Fisik' : 'Cloud SaaS'}
               </span>
             </div>
-
-            {!isHardware && (
-              <div className="absolute top-3 right-3 z-10">
-                <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider bg-amber-500 text-white shadow-2xs">
-                  Hemat 20%
-                </span>
-              </div>
-            )}
 
             {/* Product Image */}
             <div className="w-full h-36 sm:h-48 lg:h-56 flex items-center justify-center p-2 bg-gradient-to-br from-slate-50 to-indigo-50/20 dark:from-slate-800/40 dark:to-indigo-950/30 rounded-xl border border-slate-100 dark:border-slate-800/60">
@@ -377,40 +369,43 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             </div>
           </div>
 
-          {/* Compact Trust Badges Row */}
-          <div className="bg-slate-50/90 dark:bg-slate-900/60 p-2.5 sm:p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800">
-            <div className="grid grid-cols-2 gap-1.5 text-[10px] sm:text-[10.5px] text-slate-600 dark:text-slate-300 font-medium">
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60">
+          {/* Ultra-Clean Trust Strip (Slim horizontal on mobile, clean grid on desktop) */}
+          <div className="bg-slate-50 dark:bg-slate-900/60 p-2 sm:p-2.5 rounded-xl border border-slate-200/70 dark:border-slate-800">
+            <div className="flex sm:grid sm:grid-cols-2 items-center justify-between sm:justify-start gap-1.5 sm:gap-2 text-[10px] text-slate-600 dark:text-slate-400 font-medium">
+              <div className="flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Siap SPJ BOS ARKAS</span>
+                <span className="truncate">Siap BOS ARKAS</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60">
+              <div className="flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Faktur Pajak PPN 11%</span>
+                <span className="truncate">Faktur Pajak 11%</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60">
+              <div className="hidden sm:flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
                 <span className="truncate">SLA Uptime 99.9%</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-white dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60">
+              <div className="hidden sm:flex items-center gap-1">
                 <Check size={11} className="text-emerald-500 font-bold shrink-0" />
-                <span className="truncate">Bimbingan Teknis GTK</span>
+                <span className="truncate">Bimbingan Teknis</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* ── RIGHT COLUMN: INTERACTIVE PDP CONFIGURATION (lg:col-span-7) ── */}
-        <div className="lg:col-span-7 space-y-4 bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
+        <div className="lg:col-span-7 space-y-3.5 bg-white dark:bg-slate-900 p-3.5 sm:p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs">
           {/* Header Title & Rating */}
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <span className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-wider">
                 {group.module}
               </span>
-              <div className="flex items-center gap-1 text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
+              <div className="flex items-center gap-1 text-[10.5px] sm:text-[11px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
                 <span>★ 5.0</span>
-                <span className="text-slate-400 font-normal">| 100% Puas (Sekolah Negeri &amp; Swasta)</span>
+                <span className="text-slate-400 font-normal">
+                  | <span className="hidden sm:inline">100% Puas (Sekolah Negeri &amp; Swasta)</span>
+                  <span className="sm:hidden">100% Puas</span>
+                </span>
               </div>
             </div>
 
@@ -424,7 +419,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
           </div>
 
           {/* 🌟 SHOPEE COMPACT DYNAMIC PRICE CARD 🌟 */}
-          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200/80 dark:border-slate-800/80 space-y-1.5">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Harga:</span>
@@ -443,7 +438,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
 
               {/* School Unit Cost Breakdown */}
               {!isHardware && currentTierInfo && (
-                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10.5px] sm:text-[11px] font-bold border border-emerald-300/60 dark:border-emerald-800">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-100/80 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-[10px] sm:text-[11px] font-bold border border-emerald-300/60 dark:border-emerald-800">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Setara <strong>{formatCurrency(perStudentPerMonth)} / siswa / bln</strong></span>
                 </div>
@@ -451,45 +446,28 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             </div>
 
             {!isHardware && currentTierInfo && (
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+              <div className="text-[10.5px] sm:text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                 Kapasitas {currentTierInfo.capacityLabel} • Cocok untuk {currentTierInfo.suitableFor}
               </div>
             )}
           </div>
 
-          {/* 🌟 PAKET LENGKAP INCLUDED BONUSES (EASY TUNNEL & FULL ACCESS) 🌟 */}
+          {/* 🌟 PAKET LENGKAP INCLUDED BONUSES (ULTRA-CLEAN 1-LINE PILL) 🌟 */}
           {isCompleteBundle && (
-            <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-br from-indigo-50/90 via-violet-50/50 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles size={13} className="text-amber-500 fill-amber-500" />
-                  <span className="text-[10px] sm:text-[10.5px] font-bold text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">
-                    Keuntungan Resmi Paket Lengkap
-                  </span>
-                </div>
-                <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md">
-                  All-in-One
+            <div className="p-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-50 dark:from-indigo-950/40 dark:via-purple-950/30 dark:to-indigo-950/40 border border-indigo-200/70 dark:border-indigo-800/70 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Sparkles size={13} className="text-amber-500 fill-amber-500 shrink-0" />
+                <span className="text-[10.5px] font-semibold text-indigo-950 dark:text-indigo-200 truncate">
+                  Termasuk <strong>Tunnel SSL, WA Gateway &amp; Semua Modul</strong>
                 </span>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-0.5 text-xs">
-                <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[10.5px] sm:text-[11px]">1x Dedicated Easy Tunnel (SSL HTTPS)</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[10.5px] sm:text-[11px]">WhatsApp Notification Gateway</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[10.5px] sm:text-[11px]">Semua Modul Terbuka Penuh</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-200">
-                  <CheckCircle2 size={12} className="text-emerald-500 shrink-0" />
-                  <span className="font-semibold text-[10.5px] sm:text-[11px]">Klaim Domain Pasca-Bayar di Menu Tunnel</span>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab('features')}
+                className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+              >
+                Lihat Fitur →
+              </button>
             </div>
           )}
 
