@@ -9,9 +9,10 @@ import { getGuruList } from '@/api/academic/guru.api';
 import { PrintHeader, type PrintHeaderLine } from '../ui/PrintHeader';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSystemConfig, saveSystemConfig, applyBrandingFromConfig } from '@/services/systemConfig';
 import { getKelasForDropdown } from '@/api/dropdown.api';
+import { getMySubscription } from '@/api/mySubscription.api';
 import axiosInstance from '@/lib/axiosInstance';
 
 /**
@@ -26,6 +27,16 @@ export const TenantSettings: React.FC = () => {
   const queryClient = useQueryClient();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Live Subscription Query
+  const subQuery = useQuery({
+    queryKey: ['my-subscription-details'],
+    queryFn: async () => {
+      const res = await getMySubscription();
+      return res.data;
+    },
+    staleTime: 60 * 1000
+  });
   
   // Mode edit & status saving
   const [isEditing, setIsEditing] = useState(false);
@@ -1023,24 +1034,36 @@ export const TenantSettings: React.FC = () => {
                   )}
                 </div>
 
-                {/* Status Langganan info */}
+                {/* Status Langganan info (Dinamis dari Database Subscription) */}
                 <div className="flex flex-col justify-between p-4 sm:p-5 border border-slate-200/60 dark:border-slate-800/80 rounded-2xl bg-white dark:bg-slate-950 shadow-xs relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Paket Aktif</span>
-                    <p className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-200">{tenant.subscription_plan || 'Free Plan'}</p>
+                    <div className="flex items-center justify-between gap-1 mb-0.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Paket &amp; Kapasitas</span>
+                      <Link to="/service-center" className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                        Detail →
+                      </Link>
+                    </div>
+                    <p className="text-sm sm:text-base font-black text-slate-800 dark:text-slate-200 truncate">
+                      {subQuery.data?.plan?.name || subQuery.data?.package_name || (subQuery.data?.active_academic_tier ? `Edisi ${subQuery.data.active_academic_tier}` : null) || tenant.subscription_plan || 'Core Platform'}
+                    </p>
+                    {subQuery.data?.active_academic_tier && (
+                      <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 block mt-0.5">
+                        Kapasitas {subQuery.data.active_academic_tier}
+                      </span>
+                    )}
                   </div>
                   <div className="mt-2.5">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Status Lisensi</span>
                     <div>
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        tenant.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/30' :
-                        tenant.status === 'SUSPENDED' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' :
+                        (subQuery.data?.status || tenant.status) === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-900/30' :
+                        (subQuery.data?.status || tenant.status) === 'SUSPENDED' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400' :
                         isPendingDeletion ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' :
                         'bg-slate-50 text-slate-700'
                       }`}>
                         <span className="h-1.5 w-1.5 rounded-full bg-current mr-1.5 animate-pulse"></span>
-                        {isPendingDeletion ? 'Dalam Penghapusan' : tenant.status}
+                        {isPendingDeletion ? 'Dalam Penghapusan' : (subQuery.data?.status || tenant.status)}
                       </span>
                     </div>
                   </div>
