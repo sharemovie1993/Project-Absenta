@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
-import { Card, SectionCard, Button, Badge, SearchableSelect } from '../../components/ui';
+import { Card, SectionCard, Button, Badge, SearchableSelect, Input } from '../../components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { kurikulumApi } from '../../api/kurikulum.api';
 import { toast } from 'react-hot-toast';
