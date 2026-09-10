@@ -498,11 +498,8 @@ export class AuthService {
       }
     }
 
-    // 3. Find the ADMIN role
+    // 3. Find the ADMIN role (fallback if available)
     const adminRole = await prisma.role.findFirst({ where: { name: 'ADMIN' } });
-    if (!adminRole) {
-      throw new Error('ADMIN role not found. Please seed the database.');
-    }
 
     if (normalizedNpsn) {
       const sekolahService = new SekolahService();
@@ -538,7 +535,7 @@ export class AuthService {
         });
 
         const tenantRoleMap = await ensureTenantBaseRoles(newTenant.id, tx);
-        const adminRoleId = tenantRoleMap['ADMIN'] || adminRole.id;
+        const adminRoleId = tenantRoleMap['ADMIN'] || adminRole?.id;
 
         await tx.sekolah.create({
           data: {

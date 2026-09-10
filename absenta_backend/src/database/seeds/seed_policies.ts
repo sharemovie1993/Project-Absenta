@@ -773,7 +773,9 @@ export async function seedPolicies() {
     }
   }
 
-  // Ensure base roles for all existing real school tenants
+  // Ensure base roles for system tenant template and all existing tenants
+  await ensureTenantBaseRoles('system', prisma);
+
   const existingTenants = await prisma.tenant.findMany({
     where: { id: { not: 'system' } },
     select: { id: true }
