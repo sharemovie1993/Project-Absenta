@@ -138,6 +138,9 @@ export class WireguardManager {
       hardenedConfig = hardenedConfig.replace(/(\[Peer\][\s\S]*?)(?=\n\[|\s*$)/gi, '$1\nPersistentKeepalive = 25\n');
     }
 
+    // Hardening: Auto-switch default blocked WireGuard port 51820 to unblocked port 51821 for absenta.id server
+    hardenedConfig = hardenedConfig.replace(/(103\.196\.155\.87|absenta\.id):51820/gi, '$1:51821');
+
     // Mencegah error "RTNETLINK answers: File exists" dan routing conflict saat multi-tunnel aktif di Linux
     if (!this.isWindows()) {
       // 1. Ekstrak Client IP dari Address
