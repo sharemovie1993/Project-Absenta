@@ -85,7 +85,7 @@ export const formatTanggalIndonesia = (dateVal?: string | Date | null): string =
 export const renderSertifikatFront = (
   doc: jsPDF,
   data: SertifikatPklPrintData,
-  options?: { logoDaerahBase64?: string | null }
+  options?: { logoDaerahBase64?: string | null; logoSekolahBase64?: string | null }
 ) => {
   const pageWidth = 297;
   const namaSekolah = data.sekolah?.nama || 'SEKOLAH MENENGAH KEJURUAN NEGERI 1 PLERED';
@@ -121,12 +121,20 @@ export const renderSertifikatFront = (
   const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(avgScore);
 
   // A. Kop Surat
-  const kopStartY = 13;
+  const kopStartY = 12.5;
   if (options?.logoDaerahBase64) {
     try {
-      doc.addImage(options.logoDaerahBase64, 'PNG', 20, kopStartY, 22, 26);
+      doc.addImage(options.logoDaerahBase64, 'PNG', 18, kopStartY, 23, 28);
     } catch (e) {
       console.warn('Failed to load logo daerah in PDF:', e);
+    }
+  }
+
+  if (options?.logoSekolahBase64) {
+    try {
+      doc.addImage(options.logoSekolahBase64, 'PNG', pageWidth - 41, kopStartY, 23, 28);
+    } catch (e) {
+      console.warn('Failed to load logo sekolah in PDF:', e);
     }
   }
 

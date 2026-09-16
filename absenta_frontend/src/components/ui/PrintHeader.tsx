@@ -123,8 +123,24 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
 
   // 4. PORTRAIT & LANDSCAPE LAYOUTS (SAFETY WRAPPING + PERFECT SYMMETRY)
   const isLandscape = variant === 'landscape';
-  const imgHeight = isLandscape ? '85px' : '70px';
-  const colWidth = '85px';
+
+  // Dynamic Adaptive Dimensions based on total text lines
+  const textLineCount = parsedLines.length;
+  const hasAddress = Boolean(alamatLengkap);
+  const hasContact = Boolean(website || email);
+  const totalLines = textLineCount + (hasAddress ? 1 : 0) + (hasContact ? 1 : 0);
+
+  // Dynamic formula with guardrails:
+  // - Landscape: base 85px for 4 lines, +12px per extra line, bounded to [75px, 115px]
+  // - Portrait: base 70px for 4 lines, +9px per extra line, bounded to [60px, 95px]
+  const calculatedHeightNum = isLandscape
+    ? Math.min(115, Math.max(75, 85 + (totalLines - 4) * 12))
+    : Math.min(95, Math.max(60, 70 + (totalLines - 4) * 9));
+
+  const imgHeight = `${calculatedHeightNum}px`;
+  const colWidthNum = Math.max(85, Math.round(calculatedHeightNum * 0.95));
+  const colWidth = `${colWidthNum}px`;
+  const maxLogoWidth = `${Math.round(calculatedHeightNum * 0.88)}px`;
 
   return (
     <table
@@ -148,10 +164,10 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
                 alt="Logo Kiri"
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
-                style={{ height: imgHeight, width: 'auto', maxHeight: imgHeight, maxWidth: '75px', objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                style={{ height: imgHeight, width: 'auto', maxHeight: imgHeight, maxWidth: maxLogoWidth, objectFit: 'contain', margin: '0 auto', display: 'block' }}
               />
             ) : (
-              <div style={{ width: '75px', height: '1px' }} />
+              <div style={{ width: maxLogoWidth, height: '1px' }} />
             )}
           </td>
 
@@ -206,10 +222,10 @@ export const PrintHeader: React.FC<PrintHeaderProps> = ({
                 alt="Logo Kanan"
                 referrerPolicy="no-referrer"
                 crossOrigin="anonymous"
-                style={{ height: imgHeight, width: 'auto', maxHeight: imgHeight, maxWidth: '75px', objectFit: 'contain', margin: '0 auto', display: 'block' }}
+                style={{ height: imgHeight, width: 'auto', maxHeight: imgHeight, maxWidth: maxLogoWidth, objectFit: 'contain', margin: '0 auto', display: 'block' }}
               />
             ) : (
-              <div style={{ width: '75px', height: '1px' }} />
+              <div style={{ width: maxLogoWidth, height: '1px' }} />
             )}
           </td>
         </tr>
