@@ -253,10 +253,10 @@ export const TenantSettings: React.FC = () => {
           });
           setActiveSelectedShiftId('pagi');
         }
-        setAddress(data.address || '');
-        setPhone(data.phone || '');
-        setEmail(data.email || '');
-        setWebsite(data.website || '');
+        setAddress(data.address || (data as any).sekolah?.alamat || '');
+        setPhone(data.phone || (data as any).sekolah?.telepon || '');
+        setEmail(data.email || (data as any).sekolah?.email || '');
+        setWebsite(data.website || (data as any).sekolah?.website || '');
         setLogoUrl(data.logo_url || '');
         setLogoDaerahUrl(data.logo_daerah_url || '');
         setKepalaSekolah(data.kepala_sekolah || '');

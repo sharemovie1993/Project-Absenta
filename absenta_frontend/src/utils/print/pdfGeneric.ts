@@ -277,6 +277,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
   } = options;
 
   const isLandscape = (module === 'kurikulum' && ['roster', 'roster_teacher'].includes(printType)) ||
+                      (module === 'hubin' && ['pkl_certificate', 'pkl_sertifikat'].includes(printType)) ||
                       printType === 'monthly_matrix' ||
                       filterData?.viewMode === 'MATRIX';
 
@@ -299,7 +300,7 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
   }
 
   // Handle coming soon documents
-  const comingSoonDocs = ['leger', 'kkm', 'rpp', 'osis_sk', 'attendance_recap_semester', 'bk_case_recap', 'stock_card', 'pkl_certificate'];
+  const comingSoonDocs = ['leger', 'kkm', 'rpp', 'osis_sk', 'attendance_recap_semester', 'bk_case_recap', 'stock_card'];
   if (comingSoonDocs.includes(printType)) {
     const headerEndY = drawKopSurat(
       doc,

@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Info,
   BookOpen,
-  GraduationCap
+  GraduationCap,
+  Lock
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -34,6 +35,7 @@ import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { SertifikatPklModal } from '../../components/hubin/SertifikatPklModal';
 
 // Zod Schema Validation Guard (Pilar 25)
 const scoreFieldSchema = z.number().min(0).max(100).nullable();
@@ -161,8 +163,10 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
   // Role Scoping: Guru Pembimbing vs Admin/Hubin
   const { user } = useAuthStore();
   const { can } = useCapabilities();
-  const canManageAll = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
+  const canManageAll = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage');
   const activeGuruId = user?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null;
+  const canEditScheme = canManageAll;
+  const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId);
   const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(canManageAll ? 'ALL' : 'MY_GUIDANCE');
 
   useEffect(() => {
@@ -211,17 +215,22 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     queryFn: () => hubinApi.getSettings(),
   });
 
-  const isCompositeMode = hubinSettings?.assessmentMode === 'COMPOSITE';
+  const effectiveSettings = useMemo(() => {
+    const raw = hubinSettings as any;
+    return raw?.data ?? raw;
+  }, [hubinSettings]);
+
+  const isCompositeMode = effectiveSettings?.assessmentMode === 'COMPOSITE';
 
   // Sync form state when hubinSettings loads
   useEffect(() => {
-    if (hubinSettings) {
-      setFormMode(hubinSettings.assessmentMode || 'DUDI_ONLY');
-      setFormWeightDudi(hubinSettings.weightDudi ?? 70);
-      setFormWeightLaporan(hubinSettings.weightLaporan ?? 15);
-      setFormWeightSidang(hubinSettings.weightSidang ?? 15);
+    if (effectiveSettings) {
+      setFormMode(effectiveSettings.assessmentMode || 'DUDI_ONLY');
+      setFormWeightDudi(effectiveSettings.weightDudi ?? 70);
+      setFormWeightLaporan(effectiveSettings.weightLaporan ?? 15);
+      setFormWeightSidang(effectiveSettings.weightSidang ?? 15);
     }
-  }, [hubinSettings]);
+  }, [effectiveSettings]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: (data: any) => hubinApi.updateSettings(data),
@@ -402,10 +411,10 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
           ? dudiGradeList.reduce((a, b) => a + b, 0) / dudiGradeList.length
           : null;
 
-        const isComposite = hubinSettings?.assessmentMode === 'COMPOSITE';
-        const wDudi = hubinSettings?.weightDudi ?? 70;
-        const wLaporan = hubinSettings?.weightLaporan ?? 15;
-        const wSidang = hubinSettings?.weightSidang ?? 15;
+        const isComposite = effectiveSettings?.assessmentMode === 'COMPOSITE';
+        const wDudi = effectiveSettings?.weightDudi ?? 70;
+        const wLaporan = effectiveSettings?.weightLaporan ?? 15;
+        const wSidang = effectiveSettings?.weightSidang ?? 15;
 
         if (isComposite) {
           let totalScore = 0;
@@ -449,7 +458,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
       clone[index] = target;
       return clone;
     });
-  }, [hubinSettings]);
+  }, [effectiveSettings]);
 
   const handleProcessPaste = useCallback(() => {
     if (!pasteRawText.trim()) return;
@@ -490,10 +499,10 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
 
             const dAvg = gradeList.length > 0 ? gradeList.reduce((a, b) => a + b, 0) / gradeList.length : null;
 
-            const isComposite = hubinSettings?.assessmentMode === 'COMPOSITE';
-            const wDudi = hubinSettings?.weightDudi ?? 70;
-            const wLaporan = hubinSettings?.weightLaporan ?? 15;
-            const wSidang = hubinSettings?.weightSidang ?? 15;
+            const isComposite = effectiveSettings?.assessmentMode === 'COMPOSITE';
+            const wDudi = effectiveSettings?.weightDudi ?? 70;
+            const wLaporan = effectiveSettings?.weightLaporan ?? 15;
+            const wSidang = effectiveSettings?.weightSidang ?? 15;
 
             if (isComposite) {
               let totalScore = 0;
@@ -532,7 +541,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     toast.success(`Berhasil memetakan ${matchedCount} data siswa dari Excel!`);
     setShowPasteModal(false);
     setPasteRawText('');
-  }, [pasteRawText, hubinSettings]);
+  }, [pasteRawText, effectiveSettings]);
 
   const handleSaveBatch = useCallback(() => {
     if (scores.length === 0) {
@@ -581,19 +590,11 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     return Array.isArray(raw) ? raw : [];
   }, [deskripsiList]);
 
-  const tabs = useMemo(() => {
-    if (isCompositeMode) {
-      return [
-        { id: 'dudi', label: `🏢 Nilai Industri (${displayedScores.length})` },
-        { id: 'sidang', label: `🎓 Nilai Sidang & Laporan (${displayedScores.length})` },
-        { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
-      ];
-    }
-    return [
-      { id: 'dudi', label: `🏢 Nilai Industri (${displayedScores.length})` },
-      { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
-    ];
-  }, [isCompositeMode, displayedScores.length]);
+  const tabs = useMemo(() => [
+    { id: 'dudi', label: `🏢 Nilai Industri (${displayedScores.length})` },
+    { id: 'sidang', label: `🎓 Nilai Sidang & Laporan (${displayedScores.length})` },
+    { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
+  ], [displayedScores.length]);
 
   return (
     <PremiumFeatureGate
@@ -613,7 +614,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
             items: [
               { text: "Pilih kelas untuk memuat daftar siswa yang sedang atau telah menyelesaikan masa PKL." },
               { text: "Gunakan fitur Paste dari Excel untuk mempercepat entri massal nilai dari instruktur industri." },
-              { text: "Aktifkan mode gabungan jika sekolah menyelenggarakan sidang/seminar jurnal laporan." },
+              { text: "Buka tab Nilai Sidang & Laporan untuk menginput nilai ujian presentasi dan memeriksa portofolio." },
               { text: "Klik tombol Sertifikat pada baris siswa untuk mencetak sertifikat resmi PKL." }
             ]
           }}
@@ -628,25 +629,29 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                   tabs={tabs}
                 />
 
-                {canManageAll && (
+                {canViewScheme && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setFormMode(hubinSettings?.assessmentMode || 'DUDI_ONLY');
-                      setFormWeightDudi(hubinSettings?.weightDudi ?? 70);
-                      setFormWeightLaporan(hubinSettings?.weightLaporan ?? 15);
-                      setFormWeightSidang(hubinSettings?.weightSidang ?? 15);
+                      setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
+                      setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
+                      setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
+                      setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
                       setShowSettingsModal(true);
                     }}
                     className="flex items-center gap-1.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 self-start sm:self-auto"
                   >
                     <Sliders size={14} className="text-indigo-600 dark:text-indigo-400" />
-                    Skema & Bobot Nilai
-                    {isCompositeMode && (
+                    {canEditScheme ? 'Skema & Bobot Nilai' : 'Informasi Bobot Nilai'}
+                    {isCompositeMode ? (
                       <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
-                        {hubinSettings?.weightDudi}% / {hubinSettings?.weightLaporan}% / {hubinSettings?.weightSidang}%
+                        Gabungan ({effectiveSettings?.weightDudi}% / {effectiveSettings?.weightLaporan}% / {effectiveSettings?.weightSidang}%)
+                      </span>
+                    ) : (
+                      <span className="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold">
+                        DUDI 100%
                       </span>
                     )}
                   </Button>
@@ -1122,21 +1127,35 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
 
                       {/* Info Bobot Penilaian Aktif */}
                       <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 col-span-1 sm:col-span-2">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
-                          <Info size={14} className="text-indigo-500 shrink-0" />
-                          <span>Bobot Penilaian Gabungan Aktif:</span>
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
-                          <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold">
-                            DUDI: {hubinSettings?.weightDudi ?? 70}%
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold">
-                            Laporan: {hubinSettings?.weightLaporan ?? 15}%
-                          </span>
-                          <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold">
-                            Sidang: {hubinSettings?.weightSidang ?? 15}%
-                          </span>
-                        </div>
+                        {isCompositeMode ? (
+                          <>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200">
+                              <Info size={14} className="text-indigo-500 shrink-0" />
+                              <span>Bobot Penilaian Gabungan Aktif:</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 flex-wrap">
+                              <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-semibold">
+                                DUDI: {effectiveSettings?.weightDudi ?? 70}%
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-semibold">
+                                Laporan: {effectiveSettings?.weightLaporan ?? 15}%
+                              </span>
+                              <span className="px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 font-semibold">
+                                Sidang: {effectiveSettings?.weightSidang ?? 15}%
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-200">
+                              <Lock size={14} className="text-amber-600 shrink-0" />
+                              <span>Skema Aktif: Nilai Industri Murni (100% DUDI)</span>
+                            </div>
+                            <p className="mt-0.5 text-[11px] text-amber-700/90 dark:text-amber-300/80 leading-snug">
+                              Form input nilai laporan & sidang dinonaktifkan. Nilai akhir rapor 100% dari DUDI. Hubungi Bagian Hubin jika ingin mengaktifkan skema gabungan.
+                            </p>
+                          </>
+                        )}
                       </div>
 
                       {/* Simpan Nilai Sidang */}
@@ -1146,11 +1165,12 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                           variant="primary"
                           size="sm"
                           onClick={handleSaveBatch}
-                          disabled={saveBatchMutation.isPending || scores.length === 0}
-                          className="w-full flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
+                          disabled={saveBatchMutation.isPending || scores.length === 0 || !isCompositeMode}
+                          title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
+                          className="w-full flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <Save size={14} />
-                          {saveBatchMutation.isPending ? 'Menyimpan...' : 'Simpan Nilai Sidang'}
+                          {saveBatchMutation.isPending ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci (DUDI 100%)' : 'Simpan Nilai Sidang')}
                         </Button>
                       </div>
                     </div>
@@ -1177,15 +1197,21 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                               <th className="p-3 min-w-[130px]">Portofolio / Laporan</th>
                               <th className="p-3 text-center min-w-[85px]">
                                 <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">DUDI</span>
-                                <span className="text-[9px] font-normal text-blue-500 uppercase tracking-tight">Rerata ({hubinSettings?.weightDudi ?? 70}%)</span>
+                                <span className="text-[9px] font-normal text-blue-500 uppercase tracking-tight">
+                                  {isCompositeMode ? `Rerata (${effectiveSettings?.weightDudi ?? 70}%)` : 'Rerata (100%)'}
+                                </span>
                               </th>
                               <th className="p-3 text-center min-w-[95px]">
                                 <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Laporan</span>
-                                <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">({hubinSettings?.weightLaporan ?? 15}%)</span>
+                                <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
+                                  {isCompositeMode ? `(${effectiveSettings?.weightLaporan ?? 15}%)` : '(Arsip)'}
+                                </span>
                               </th>
                               <th className="p-3 text-center min-w-[95px]">
                                 <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Sidang</span>
-                                <span className="text-[9px] font-normal text-purple-600 dark:text-purple-400 uppercase tracking-tight">({hubinSettings?.weightSidang ?? 15}%)</span>
+                                <span className="text-[9px] font-normal text-purple-600 dark:text-purple-400 uppercase tracking-tight">
+                                  {isCompositeMode ? `(${effectiveSettings?.weightSidang ?? 15}%)` : '(Arsip)'}
+                                </span>
                               </th>
                               <th className="p-3 min-w-[150px]">Guru Penguji</th>
                               <th className="p-3 min-w-[160px]">Catatan / Revisi Sidang</th>
@@ -1243,10 +1269,15 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       id={`score-lap-${globalIndex}`}
                                       aria-label={`Nilai laporan ${score.nama_siswa}`}
                                       type="number" min={0} max={100}
-                                      placeholder="0"
-                                      value={score.nilai_laporan ?? ''}
+                                      disabled={!isCompositeMode}
+                                      placeholder={!isCompositeMode ? '-' : '0'}
+                                      value={!isCompositeMode ? '' : (score.nilai_laporan ?? '')}
                                       onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', e.target.value)}
-                                      className="w-16 h-8 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700 rounded-lg text-xs font-bold text-center text-emerald-900 dark:text-emerald-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      className={`w-16 h-8 rounded-lg text-xs font-bold text-center shadow-sm focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                        !isCompositeMode
+                                          ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                                          : 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
+                                      }`}
                                     />
                                   </td>
                                   <td className="p-2 text-center">
@@ -1254,10 +1285,15 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       id={`score-sid-${globalIndex}`}
                                       aria-label={`Nilai sidang ${score.nama_siswa}`}
                                       type="number" min={0} max={100}
-                                      placeholder="0"
-                                      value={score.nilai_sidang ?? ''}
+                                      disabled={!isCompositeMode}
+                                      placeholder={!isCompositeMode ? '-' : '0'}
+                                      value={!isCompositeMode ? '' : (score.nilai_sidang ?? '')}
                                       onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', e.target.value)}
-                                      className="w-16 h-8 bg-purple-50 dark:bg-purple-950/30 border border-purple-300 dark:border-purple-700 rounded-lg text-xs font-bold text-center text-purple-900 dark:text-purple-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      className={`w-16 h-8 rounded-lg text-xs font-bold text-center shadow-sm focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                                        !isCompositeMode
+                                          ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                                          : 'bg-purple-50 dark:bg-purple-950/30 border border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-100 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500'
+                                      }`}
                                     />
                                   </td>
                                   <td className="p-2">
@@ -1265,10 +1301,15 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       id={`score-penguji-${globalIndex}`}
                                       aria-label={`Nama penguji ${score.nama_siswa}`}
                                       type="text"
-                                      placeholder="Nama Guru Penguji"
-                                      value={score.penguji_nama}
+                                      disabled={!isCompositeMode}
+                                      placeholder={!isCompositeMode ? 'Terkunci (DUDI 100%)' : 'Nama Guru Penguji'}
+                                      value={!isCompositeMode ? '' : score.penguji_nama}
                                       onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', e.target.value)}
-                                      className="w-full min-w-[130px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium px-2.5 py-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+                                      className={`w-full min-w-[130px] rounded-lg text-xs font-medium px-2.5 py-1.5 shadow-sm focus:outline-none transition-colors ${
+                                        !isCompositeMode
+                                          ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                                          : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
+                                      }`}
                                     />
                                   </td>
                                   <td className="p-2">
@@ -1276,10 +1317,15 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       id={`score-catatan-sidang-${globalIndex}`}
                                       aria-label={`Catatan sidang ${score.nama_siswa}`}
                                       type="text"
-                                      placeholder="Catatan & masukan penguji"
-                                      value={score.catatan_sidang}
+                                      disabled={!isCompositeMode}
+                                      placeholder={!isCompositeMode ? 'Terkunci (DUDI 100%)' : 'Catatan & masukan penguji'}
+                                      value={!isCompositeMode ? '' : score.catatan_sidang}
                                       onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_sidang', e.target.value)}
-                                      className="w-full min-w-[140px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium px-2.5 py-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
+                                      className={`w-full min-w-[140px] rounded-lg text-xs font-medium px-2.5 py-1.5 shadow-sm focus:outline-none transition-colors ${
+                                        !isCompositeMode
+                                          ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                                          : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
+                                      }`}
                                     />
                                   </td>
                                   <td className="p-2 text-center font-bold font-mono">
@@ -1288,7 +1334,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                         {score.nilai_akhir_pkl ?? '-'}
                                       </span>
                                       <span className="text-[9px] text-slate-400 font-normal tracking-tight">
-                                        {hasExamined ? 'Komposit' : 'Fallback DUDI'}
+                                        {isCompositeMode ? (hasExamined ? 'Gabungan' : 'Fallback DUDI') : 'DUDI 100%'}
                                       </span>
                                     </div>
                                   </td>
@@ -1296,7 +1342,11 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                     {score.predikat_pkl}
                                   </td>
                                   <td className="p-2 text-center">
-                                    {hasExamined ? (
+                                    {!isCompositeMode ? (
+                                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                        Non-Sidang
+                                      </span>
+                                    ) : hasExamined ? (
                                       Number(score.nilai_sidang) >= 70 ? (
                                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                                           <Check size={10} /> Lulus
@@ -1512,56 +1562,14 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
           </div>
         )}
 
-        {/* Modal Certificate Print Preview */}
+        {/* Modal Certificate Print Preview (Format Resmi Depan & Belakang SMKN 1 Plered) */}
         {selectedSiswaSertifikat && (
-          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-4xl w-full p-8 space-y-6 shadow-2xl relative border border-slate-100 dark:border-slate-800 my-8">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div className="flex items-center gap-3">
-                  <Award size={24} className="text-amber-500" />
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">Pratinjau Sertifikat PKL Siswa</h3>
-                    <p className="text-xs text-slate-400">Nomor: {selectedSiswaSertifikat.nomor_sertifikat || 'DRAFT/PKL/' + selectedSiswaSertifikat.nis}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => window.print()}
-                    className="text-xs font-bold rounded-xl"
-                  >
-                    <Printer className="w-4 h-4 mr-1.5" /> Cetak Sertifikat
-                  </Button>
-                  <button type="button" onClick={() => setSelectedSiswaSertifikat(null)} className="text-slate-400 hover:text-slate-600 p-2 font-bold">✕</button>
-                </div>
-              </div>
-
-              {/* Certificate Layout */}
-              <div className="border-4 border-double border-amber-600/30 p-8 rounded-2xl bg-amber-50/10 space-y-6 text-center text-slate-800 dark:text-slate-100 font-serif">
-                <div className="uppercase text-xs font-bold tracking-widest text-slate-500">DINAS PENDIDIKAN PROVINSI JAWA BARAT</div>
-                <div className="text-lg font-black text-slate-900 dark:text-white tracking-wide">SERTIFIKAT PRAKTIK KERJA LAPANGAN</div>
-                <div className="text-xs text-slate-500 font-sans">Nomor: {selectedSiswaSertifikat.nomor_sertifikat || 'DRAFT/PKL/' + selectedSiswaSertifikat.nis}</div>
-
-                <p className="text-xs font-sans leading-relaxed pt-2">Diberikan kepada:</p>
-                <div className="text-xl font-bold underline decoration-amber-500 text-indigo-950 dark:text-indigo-200">
-                  {selectedSiswaSertifikat.nama_siswa}
-                </div>
-                <p className="text-xs font-sans text-slate-500">
-                  NIS: {selectedSiswaSertifikat.nis}
-                </p>
-
-                <p className="text-xs font-sans max-w-xl mx-auto leading-relaxed text-slate-700 dark:text-slate-300">
-                  Telah melaksanakan Praktik Kerja Lapangan (PKL) di <strong>{selectedSiswaSertifikat.mitra_nama}</strong> dengan hasil kualifikasi:
-                </p>
-
-                <div className="inline-block px-6 py-2 bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 rounded-full font-sans font-bold text-sm">
-                  Predikat: {selectedSiswaSertifikat.predikat_pkl || 'Baik'} ({selectedSiswaSertifikat.nilai_akhir_pkl || 0}/100)
-                </div>
-              </div>
-            </div>
-          </div>
+          <SertifikatPklModal
+            isOpen={Boolean(selectedSiswaSertifikat)}
+            onClose={() => setSelectedSiswaSertifikat(null)}
+            siswaPklId={selectedSiswaSertifikat.siswa_pkl_id}
+            defaultData={selectedSiswaSertifikat}
+          />
         )}
 
         {/* Modal Pengaturan Skema & Bobot Penilaian PKL */}
@@ -1577,6 +1585,18 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
               </div>
 
               <div className="space-y-4">
+                {!canEditScheme && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-2xl flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
+                    <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Mode Hanya-Lihat (Transparansi Guru Pembimbing)</p>
+                      <p className="text-[11px] text-amber-700/90 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                        Skema dan persentase bobot penilaian PKL ditetapkan secara terpusat oleh <strong>Bagian Hubin / Kurikulum</strong> untuk menjamin keseragaman seluruh siswa.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {/* 1. Radio Mode Penilaian */}
                 <div className="space-y-2">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1585,16 +1605,24 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setFormMode('DUDI_ONLY')}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
+                      disabled={!canEditScheme}
+                      onClick={() => canEditScheme && setFormMode('DUDI_ONLY')}
+                      className={`p-3 rounded-2xl border text-left transition-all ${canEditScheme ? 'cursor-pointer select-none' : 'cursor-default'} ${
                         formMode === 'DUDI_ONLY'
-                          ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/20'
+                          ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/30'
                           : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🏢</span>
-                        <span className="text-xs font-bold">Hanya Industri (DUDI)</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🏢</span>
+                          <span className="text-xs font-bold">Hanya Industri (DUDI)</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                          formMode === 'DUDI_ONLY' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
+                          {formMode === 'DUDI_ONLY' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
                       </div>
                       <p className="text-[10px] text-slate-400 font-normal mt-1 leading-snug">
                         Nilai akhir 100% diambil dari 8 aspek kinerja yang dinilai pembimbing DUDI.
@@ -1603,16 +1631,24 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
 
                     <button
                       type="button"
-                      onClick={() => setFormMode('COMPOSITE')}
-                      className={`p-3 rounded-2xl border text-left transition-all ${
+                      disabled={!canEditScheme}
+                      onClick={() => canEditScheme && setFormMode('COMPOSITE')}
+                      className={`p-3 rounded-2xl border text-left transition-all ${canEditScheme ? 'cursor-pointer select-none' : 'cursor-default'} ${
                         formMode === 'COMPOSITE'
-                          ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/20'
+                          ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/30'
                           : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">⚖️</span>
-                        <span className="text-xs font-bold">Gabungan (DUDI + Sidang)</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">⚖️</span>
+                          <span className="text-xs font-bold">Gabungan (DUDI + Sidang)</span>
+                        </div>
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                          formMode === 'COMPOSITE' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 dark:border-slate-600'
+                        }`}>
+                          {formMode === 'COMPOSITE' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
                       </div>
                       <p className="text-[10px] text-slate-400 font-normal mt-1 leading-snug">
                         Kompilasi nilai industri dengan nilai laporan dan sidang seminar di sekolah.
@@ -1626,7 +1662,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                   <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                        Atur Persentase Bobot (%):
+                        {canEditScheme ? 'Atur Persentase Bobot (%):' : 'Rincian Persentase Bobot (%):'}
                       </span>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                         (formWeightDudi + formWeightLaporan + formWeightSidang) === 100
@@ -1646,9 +1682,12 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                           <input
                             id="input-bobot-dudi"
                             type="number" min={0} max={100}
+                            disabled={!canEditScheme}
                             value={formWeightDudi}
                             onChange={(e) => setFormWeightDudi(Number(e.target.value) || 0)}
-                            className="w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5"
+                            className={`w-full h-9 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5 ${
+                              !canEditScheme ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-900'
+                            }`}
                           />
                           <span className="absolute right-2 top-2 text-[10px] font-bold text-slate-400">%</span>
                         </div>
@@ -1662,9 +1701,12 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                           <input
                             id="input-bobot-laporan"
                             type="number" min={0} max={100}
+                            disabled={!canEditScheme}
                             value={formWeightLaporan}
                             onChange={(e) => setFormWeightLaporan(Number(e.target.value) || 0)}
-                            className="w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5"
+                            className={`w-full h-9 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5 ${
+                              !canEditScheme ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-900'
+                            }`}
                           />
                           <span className="absolute right-2 top-2 text-[10px] font-bold text-slate-400">%</span>
                         </div>
@@ -1678,9 +1720,12 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                           <input
                             id="input-bobot-sidang"
                             type="number" min={0} max={100}
+                            disabled={!canEditScheme}
                             value={formWeightSidang}
                             onChange={(e) => setFormWeightSidang(Number(e.target.value) || 0)}
-                            className="w-full h-9 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5"
+                            className={`w-full h-9 border border-slate-200 dark:border-slate-700 rounded-xl text-center text-xs font-bold text-slate-800 dark:text-slate-200 pr-5 ${
+                              !canEditScheme ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed' : 'bg-white dark:bg-slate-900'
+                            }`}
                           />
                           <span className="absolute right-2 top-2 text-[10px] font-bold text-slate-400">%</span>
                         </div>
@@ -1698,25 +1743,32 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold">
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  disabled={updateSettingsMutation.isPending || (formMode === 'COMPOSITE' && (formWeightDudi + formWeightLaporan + formWeightSidang) !== 100)}
-                  onClick={() => {
-                    updateSettingsMutation.mutate({
-                      assessmentMode: formMode,
-                      weightDudi: formWeightDudi,
-                      weightLaporan: formWeightLaporan,
-                      weightSidang: formWeightSidang
-                    });
-                  }}
-                  className="rounded-xl text-xs font-bold"
-                >
-                  {updateSettingsMutation.isPending ? 'Menyimpan...' : 'Terapkan Skema'}
-                </Button>
+                {canEditScheme ? (
+                  <>
+                    <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold px-4 py-2">
+                      Batal
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={updateSettingsMutation.isPending || (formMode === 'COMPOSITE' && (formWeightDudi + formWeightLaporan + formWeightSidang) !== 100)}
+                      onClick={() => {
+                        updateSettingsMutation.mutate({
+                          assessmentMode: formMode,
+                          weightDudi: formWeightDudi,
+                          weightLaporan: formWeightLaporan,
+                          weightSidang: formWeightSidang
+                        });
+                      }}
+                      className="rounded-xl text-xs font-bold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                      {updateSettingsMutation.isPending ? 'Menyimpan...' : 'Terapkan Skema'}
+                    </Button>
+                  </>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold px-4 py-2">
+                    Tutup
+                  </Button>
+                )}
               </div>
             </div>
           </div>

@@ -68,14 +68,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
     };
   }
 
-  async updateSettings(tenantId: string, data: { 
-    folderUrl?: string; 
-    driveMode?: string;
-    assessmentMode?: string;
-    weightDudi?: number;
-    weightLaporan?: number;
-    weightSidang?: number;
-  }) {
+  async updateSettings(tenantId: string, payload: any) {
+    const data = payload?.data || payload || {};
     if (data.folderUrl !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_FOLDER_URL', data.folderUrl);
     if (data.driveMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_MODE', data.driveMode);
     if (data.assessmentMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
@@ -659,8 +653,20 @@ export class HubinPenilaianService extends HubinCommonHelper {
             nisn: true,
             tempat_lahir: true,
             tanggal_lahir: true,
+            foto: true,
             Kelas: { select: { nama_kelas: true, tingkat: true } },
-            Jurusan: { select: { nama: true, singkatan: true } },
+            Jurusan: {
+              select: {
+                nama: true,
+                singkatan: true,
+                ProgramKeahlian: {
+                  select: {
+                    nama: true,
+                    bidang_keahlian: true,
+                  },
+                },
+              },
+            },
           },
         },
         Mitra: true,
@@ -686,6 +692,13 @@ export class HubinPenilaianService extends HubinCommonHelper {
       pkl.nomor_sertifikat = generatedNomor;
     }
 
-    return pkl;
+    const sekolah = await prisma.sekolah.findFirst({
+      where: { tenant_id: tenantId },
+    });
+
+    return {
+      ...pkl,
+      sekolah,
+    };
   }
 }

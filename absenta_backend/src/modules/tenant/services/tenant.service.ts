@@ -263,6 +263,11 @@ export class TenantService {
     let sekolahJenjang = null;
     let sekolahKurikulum = null;
     let sekolahDurasiSmk = null;
+    let sekolahAlamat = null;
+    let sekolahTelepon = null;
+    let sekolahEmail = null;
+    let sekolahWebsite = null;
+    let sekolahLogo = null;
     try {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: id }
@@ -272,6 +277,11 @@ export class TenantService {
         sekolahJenjang = sekolah.jenjang;
         sekolahKurikulum = sekolah.kurikulum;
         sekolahDurasiSmk = sekolah.durasi_smk;
+        sekolahAlamat = sekolah.alamat;
+        sekolahTelepon = sekolah.telepon;
+        sekolahEmail = sekolah.email;
+        sekolahWebsite = sekolah.website;
+        sekolahLogo = sekolah.logo_url;
       }
 
       // Smart Fallback jika data jenjang di profil sekolah masih kosong/null
@@ -297,7 +307,7 @@ export class TenantService {
       domain: tenant.subdomain, // Backward compatibility
       subdomain: tenant.subdomain,
       custom_domain: tenant.custom_domain,
-      logo_url: tenant.logo_url,
+      logo_url: tenant.logo_url || sekolahLogo || null,
       status: tenant.status,
       created_at: tenant.created_at,
       updated_at: tenant.updated_at,
@@ -317,10 +327,10 @@ export class TenantService {
       
       // Inject these custom configs!
       logo_daerah_url: configMap['logo_daerah_url'] || null,
-      address: configMap['address'] || null,
-      phone: configMap['phone'] || null,
-      email: configMap['email'] || null,
-      website: configMap['website'] || null,
+      address: (configMap['address'] && configMap['address'].trim() !== '') ? configMap['address'] : (sekolahAlamat || null),
+      phone: (configMap['phone'] && configMap['phone'].trim() !== '') ? configMap['phone'] : (sekolahTelepon || null),
+      email: (configMap['email'] && configMap['email'].trim() !== '') ? configMap['email'] : (sekolahEmail || null),
+      website: (configMap['website'] && configMap['website'].trim() !== '') ? configMap['website'] : (sekolahWebsite || null),
       print_header_lines: parsedLines,
       allow_manual_hadir_gate: configMap['ALLOW_MANUAL_HADIR_GATE'] === 'true',
       shift_jam_pelajaran: parsedShift,
@@ -480,8 +490,18 @@ export class TenantService {
       await syncJadwalKBMTimes(tenantId, prisma);
     }
 
-    // Save kepala_sekolah, nip_kepala, jenjang, kurikulum & durasi_smk in Sekolah table
-    if (kepala_sekolah !== undefined || nip_kepala !== undefined || jenjang !== undefined || kurikulum !== undefined || durasi_smk !== undefined) {
+    // Save kepala_sekolah, nip_kepala, jenjang, kurikulum, durasi_smk, address, phone, email, website in Sekolah table
+    if (
+      kepala_sekolah !== undefined ||
+      nip_kepala !== undefined ||
+      jenjang !== undefined ||
+      kurikulum !== undefined ||
+      durasi_smk !== undefined ||
+      address !== undefined ||
+      phone !== undefined ||
+      email !== undefined ||
+      website !== undefined
+    ) {
       const sekolah = await prisma.sekolah.findFirst({
         where: { tenant_id: tenantId }
       });
@@ -493,7 +513,11 @@ export class TenantService {
             nip_kepala: nip_kepala !== undefined ? nip_kepala : undefined,
             jenjang: jenjang !== undefined ? jenjang : undefined,
             kurikulum: kurikulum !== undefined ? kurikulum : undefined,
-            durasi_smk: durasi_smk !== undefined ? durasi_smk : undefined
+            durasi_smk: durasi_smk !== undefined ? durasi_smk : undefined,
+            alamat: address !== undefined ? address : undefined,
+            telepon: phone !== undefined ? phone : undefined,
+            email: email !== undefined ? email : undefined,
+            website: website !== undefined ? website : undefined,
           }
         });
       } else {
@@ -505,7 +529,11 @@ export class TenantService {
             nip_kepala: nip_kepala || '',
             jenjang: jenjang || null,
             kurikulum: kurikulum || 'MERDEKA',
-            durasi_smk: durasi_smk || '3_TAHUN'
+            durasi_smk: durasi_smk || '3_TAHUN',
+            alamat: address || null,
+            telepon: phone || null,
+            email: email || null,
+            website: website || null,
           }
         });
       }
@@ -682,18 +710,28 @@ export class TenantService {
       }
     }
 
-    if (!currentKepsekNama) {
-      try {
-        const sekolah = await prisma.sekolah.findFirst({
-          where: { tenant_id: tenantId }
-        });
-        if (sekolah) {
+    let sekolahAlamat = null;
+    let sekolahTelepon = null;
+    let sekolahEmail = null;
+    let sekolahWebsite = null;
+    let sekolahLogo = null;
+    try {
+      const sekolah = await prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId }
+      });
+      if (sekolah) {
+        if (!currentKepsekNama) {
           currentKepsekNama = sekolah.kepala_sekolah;
           currentKepsekNip = sekolah.nip_kepala;
         }
-      } catch (e) {
-        // safe ignore
+        sekolahAlamat = sekolah.alamat;
+        sekolahTelepon = sekolah.telepon;
+        sekolahEmail = sekolah.email;
+        sekolahWebsite = sekolah.website;
+        sekolahLogo = sekolah.logo_url;
       }
+    } catch (e) {
+      // safe ignore
     }
 
     return {
@@ -703,7 +741,7 @@ export class TenantService {
       domain: tenant.subdomain, // Backward compatibility
       subdomain: tenant.subdomain,
       custom_domain: tenant.custom_domain,
-      logo_url: tenant.logo_url,
+      logo_url: tenant.logo_url || sekolahLogo || null,
       status: tenant.status,
       created_at: tenant.created_at,
       updated_at: tenant.updated_at,
@@ -715,10 +753,10 @@ export class TenantService {
       
       // Inject these custom configs!
       logo_daerah_url: configMap['logo_daerah_url'] || null,
-      address: configMap['address'] || null,
-      phone: configMap['phone'] || null,
-      email: configMap['email'] || null,
-      website: configMap['website'] || null,
+      address: (configMap['address'] && configMap['address'].trim() !== '') ? configMap['address'] : (sekolahAlamat || null),
+      phone: (configMap['phone'] && configMap['phone'].trim() !== '') ? configMap['phone'] : (sekolahTelepon || null),
+      email: (configMap['email'] && configMap['email'].trim() !== '') ? configMap['email'] : (sekolahEmail || null),
+      website: (configMap['website'] && configMap['website'].trim() !== '') ? configMap['website'] : (sekolahWebsite || null),
       print_header_lines: parsedLines,
       shift_jam_pelajaran: parsedShift,
 

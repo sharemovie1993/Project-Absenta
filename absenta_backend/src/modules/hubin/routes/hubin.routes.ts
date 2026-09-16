@@ -43,8 +43,8 @@ export async function hubinRoutes(fastify: any) {
   fastify.put('/penempatan/:id/jurnal-akhir/review', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.reviewJurnalPortofolio(req, reply));
 
   // --- SETTINGS & GOOGLE DRIVE UPLOAD ---
-  fastify.get('/settings', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getSettings(req, reply));
-  fastify.put('/settings', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateSettings(req, reply));
+  fastify.get('/settings', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.manage', 'hubin.pkl.view.list']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getSettings(req, reply));
+  fastify.put('/settings', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.pkl.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateSettings(req, reply));
   fastify.post('/upload', { preHandler: [requireCapability(['hubin.self.pkl', 'hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.uploadPklPhoto(req, reply));
   fastify.delete('/upload', { preHandler: [requireCapability(['hubin.self.pkl', 'hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deletePklPhoto(req, reply));
 

@@ -250,7 +250,7 @@ export const hubinApi = {
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
-  }>('get', '/hubin/settings'),
+  }>('get', '/hubin/settings', { unwrapData: true }),
   updateSettings: (data: { 
     folderUrl?: string; 
     driveMode?: string;
@@ -258,7 +258,7 @@ export const hubinApi = {
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
-  }) => requestWithFallback<any>('put', '/hubin/settings', { data }),
+  }) => requestWithFallback<any>('put', '/hubin/settings', { data, unwrapData: true }),
   deletePhoto: (url: string) => requestWithFallback<any>('delete', '/hubin/upload', { data: { url } }),
 
   // MoU History

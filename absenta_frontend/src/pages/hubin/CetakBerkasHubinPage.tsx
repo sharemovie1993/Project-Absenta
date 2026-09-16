@@ -29,7 +29,8 @@ interface PklPenempatanItem {
 
 export const CetakBerkasHubinPage: React.FC = React.memo(() => {
   const docOptions = useMemo<DocOption[]>(() => [
-    { value: 'pkl_intro', label: '1. SURAT PENGANTAR PRAKTIK KERJA LAPANGAN (PKL)', requireClass: true }
+    { value: 'pkl_intro', label: '1. SURAT PENGANTAR PRAKTIK KERJA LAPANGAN (PKL)', requireClass: true },
+    { value: 'pkl_sertifikat', label: '2. SERTIFIKAT & DAFTAR NILAI PKL (DEPAN & BELAKANG)', requireClass: true },
   ], []);
 
   const breadcrumbs = useMemo(() => [
@@ -100,7 +101,7 @@ export const CetakBerkasHubinPage: React.FC = React.memo(() => {
 
     const penempatanMap: Record<string, PklPenempatanItem[]> = {};
 
-    if (selectedPrintType === 'pkl_intro' && selectedClassId) {
+    if ((selectedPrintType === 'pkl_intro' || selectedPrintType === 'pkl_sertifikat') && selectedClassId) {
       try {
         const res = await hubinApi.getPenempatan({ limit: 500 });
         if (res.success && res.data) {
