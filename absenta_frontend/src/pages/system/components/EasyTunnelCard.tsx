@@ -80,6 +80,11 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
                   • Lisensi: <code className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">{tunnel.license_key}</code>
                 </span>
               )}
+              {tunnel.expires_at && (
+                <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                  • Masa Aktif s.d: <strong className="text-slate-700 dark:text-slate-300 font-bold">{new Date(tunnel.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                </span>
+              )}
             </div>
           </div>
         </div>

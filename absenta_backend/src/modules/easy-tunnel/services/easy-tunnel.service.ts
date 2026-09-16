@@ -42,17 +42,26 @@ export class EasyTunnelService {
    * Sinkronisasi status/port terowongan dari server lisensi secara periodik/diam-diam
    */
   static async syncTunnelPort(tunnel: any): Promise<any> {
-    if (!tunnel.license_key || tunnel.status !== 'active') return tunnel;
+    if (!tunnel.license_key) return tunnel;
 
     try {
       const remoteInfo = await validateLicenseKey(tunnel.license_key);
 
       // 1. Update tanggal kedaluwarsa jika berbeda
-      if (remoteInfo.expires_at && remoteInfo.expires_at !== tunnel.expires_at) {
+      if (remoteInfo.expires_at) {
+        const remoteExpiryDate = new Date(remoteInfo.expires_at);
+        const shouldReactivate = !remoteInfo.expired && (tunnel.status === 'expired' || tunnel.status === 'inactive');
+
         await prisma.easyTunnel.update({
           where: { id: tunnel.id },
-          data: { expires_at: new Date(remoteInfo.expires_at) }
+          data: {
+            expires_at: remoteExpiryDate,
+            ...(shouldReactivate ? { status: 'active' } : {}),
+            last_synced_at: new Date()
+          }
         });
+        tunnel.expires_at = remoteExpiryDate;
+        if (shouldReactivate) tunnel.status = 'active';
       }
 
       // 2. Deteksi status kedaluwarsa dari server lisensi

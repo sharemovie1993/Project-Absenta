@@ -335,11 +335,20 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
     try {
       setOrderLoading(true);
       const res = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
-      if (res?.is_paid || res?.status === 'PAID' || res?.data?.is_paid || res?.data?.status === 'PAID') {
-        const key = res.license_key || res.data?.license_key || '';
-        toast.success(`Pembayaran Sukses! Lisensi Anda: ${key}`);
+      const invData = res?.data || res;
+      const statusRaw = String(invData?.status || res?.status || '').toLowerCase();
+      const isPaid = invData?.is_paid === true || res?.is_paid === true || statusRaw === 'paid' || statusRaw === 'settled';
+
+      if (isPaid) {
+        const key = invData?.license_key || res?.license_key || renewLicenseKey || licenseKey || '';
+        toast.success(renewLicenseKey ? 'Perpanjangan Lisensi Berhasil!' : `Pembayaran Sukses! Lisensi: ${key}`);
         if (key) setLicenseKey(key);
         setOrderStep(3);
+
+        // Tarik data terbaru dari server lisensi secara otomatis
+        queryClient.invalidateQueries({ queryKey: ['easy-tunnels'] });
+        queryClient.invalidateQueries({ queryKey: ['easy-tunnel-cloud-licenses'] });
+        refetch();
       } else {
         toast.error('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
       }

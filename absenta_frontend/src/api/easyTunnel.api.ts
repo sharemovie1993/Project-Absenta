@@ -7,6 +7,7 @@ export interface Tunnel {
   local_port: number;
   app_name: string;
   status: 'active' | 'inactive' | 'expired' | 'error' | string;
+  expires_at?: string;
   created_at: string;
   updated_at: string;
   wg_status?: {
