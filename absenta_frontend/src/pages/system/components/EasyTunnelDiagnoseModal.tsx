@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Activity, RefreshCw, CheckCircle2, AlertTriangle, XCircle, Terminal, Server } from 'lucide-react';
 import { Modal, Button, Badge } from '@/components/ui';
 import type { Tunnel } from '../../../api/easyTunnel.api';
@@ -91,25 +91,42 @@ export const EasyTunnelDiagnoseModal: React.FC<Props> = React.memo(({
         )}
 
         {/* Result summary banner */}
-        {!loading && result && (
-          <div className={`p-4 rounded-xl border flex items-start gap-2.5 ${
-            result.success
-              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
-              : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
-          }`}>
-            {result.success ? (
-              <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-            )}
-            <div className="space-y-0.5 flex-1">
-              <strong className="block font-bold text-xs">
-                {result.success ? 'Koneksi Tunnel Sehat & Berfungsi Normal' : 'Terdeteksi Kendala pada Jalur Tunnel'}
-              </strong>
-              <p className="text-[11px] opacity-90">{result.message}</p>
+        {!loading && result && (() => {
+          const hasError = result.details?.some(d => d.includes('❌')) || result.success === false;
+          const hasWarning = !hasError && result.details?.some(d => d.includes('⚠️'));
+
+          return (
+            <div className={`p-4 rounded-xl border flex items-start gap-2.5 ${
+              hasError
+                ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900 text-rose-800 dark:text-rose-200'
+                : hasWarning
+                ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+            }`}>
+              {hasError ? (
+                <XCircle size={16} className="shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              ) : hasWarning ? (
+                <AlertTriangle size={16} className="shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              ) : (
+                <CheckCircle2 size={16} className="shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
+              )}
+              <div className="space-y-0.5 flex-1">
+                <strong className="block font-bold text-xs">
+                  {hasError
+                    ? 'Terdeteksi Kendala pada Jalur Tunnel'
+                    : hasWarning
+                    ? 'Koneksi Berfungsi dengan Catatan'
+                    : 'Koneksi Tunnel Sehat & Berfungsi Normal'}
+                </strong>
+                <p className="text-[11px] opacity-90">
+                  {hasError
+                    ? 'Terdapat pemeriksaan yang gagal (❌). Periksa log diagnostik di bawah untuk melihat rincian dan solusinya.'
+                    : result.message}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Console Log Diagnostic Details */}
         {!loading && result?.details && result.details.length > 0 && (

@@ -722,9 +722,16 @@ export class WireguardManager {
     details.push('--------------------------------------------------');
     details.push('💡 RINGKASAN: Jika semua langkah bernilai ✅, terowongan siap digunakan.');
 
+    const hasError = details.some(d => d.includes('❌'));
+    const hasWarning = details.some(d => d.includes('⚠️'));
+
     return {
-      success: true,
-      message: 'Diagnosa terperinci selesai.',
+      success: !hasError,
+      message: hasError 
+        ? 'Ditemukan kendala pada konektivitas atau konfigurasi tunnel.' 
+        : hasWarning 
+        ? 'Diagnosa selesai dengan beberapa catatan peringatan.' 
+        : 'Semua pemeriksaan koneksi tunnel berhasil dan berfungsi normal.',
       details
     };
   }
