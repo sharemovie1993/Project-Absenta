@@ -671,19 +671,43 @@ export class WireguardManager {
         details.push('   │  └─ [LOKASI MASALAH: JARINGAN SEKOLAH] Server lokal tidak memiliki akses internet!');
       }
 
-      // Ping Gateway VPN 10.0.0.1
-      const pingVpnCmd = this.isWindows() ? 'ping -n 2 -w 2000 10.0.0.1' : 'ping -c 2 -W 2 10.0.0.1';
+      // Ping Gateway VPN
+      let gatewayIp = '10.0.0.1';
+      try {
+        const confContent = fs.readFileSync(confPath, 'utf8');
+        const allowedMatch = confContent.match(/AllowedIPs\s*=\s*([0-9.]+)/i);
+        if (allowedMatch) {
+          gatewayIp = allowedMatch[1];
+        } else if (status.wg_ip) {
+          const parts = status.wg_ip.split('.');
+          if (parts.length === 4) {
+            gatewayIp = `${parts[0]}.${parts[1]}.${parts[2]}.1`;
+          }
+        }
+      } catch {}
+
+      const ifName = `et-${slug}`;
+      const pingVpnCmd = this.isWindows()
+        ? (status.wg_ip ? `ping -n 2 -w 2000 -S ${status.wg_ip} ${gatewayIp}` : `ping -n 2 -w 2000 ${gatewayIp}`)
+        : (status.wg_ip ? `ping -c 2 -W 2 -I ${status.wg_ip} ${gatewayIp}` : `ping -c 2 -W 2 -I ${ifName} ${gatewayIp}`);
+
       let vpnGatewayOk = false;
       try {
-        const outVpn = execSync(pingVpnCmd, { stdio: 'pipe', windowsHide: true }).toString();
+        let outVpn = '';
+        try {
+          outVpn = execSync(pingVpnCmd, { stdio: 'pipe', windowsHide: true }).toString();
+        } catch {
+          // Fallback tanpa bind interface spesifik jika opsi -I/-S tidak didukung
+          outVpn = execSync(this.isWindows() ? `ping -n 2 -w 2000 ${gatewayIp}` : `ping -c 2 -W 2 ${gatewayIp}`, { stdio: 'pipe', windowsHide: true }).toString();
+        }
         if (outVpn.includes('TTL=') || outVpn.includes('ttl=')) vpnGatewayOk = true;
       } catch {}
 
       if (vpnGatewayOk) {
-        details.push('   └─ Tunnel VPN Gateway (10.0.0.1): ✅ KONEK (Ping 10.0.0.1 OK)');
+        details.push(`   └─ Tunnel VPN Gateway (${gatewayIp}): ✅ KONEK (Ping ${gatewayIp} OK)`);
       } else {
-        details.push('   └─ Tunnel VPN Gateway (10.0.0.1): ❌ RTO (Tidak ada balasan dari 10.0.0.1)');
-        details.push('      └─ [LOKASI MASALAH: VPS LISENSI / ROUTING] WireGuard up tetapi paket VPN tidak sampai ke 10.0.0.1.');
+        details.push(`   └─ Tunnel VPN Gateway (${gatewayIp}): ❌ RTO (Tidak ada balasan dari ${gatewayIp})`);
+        details.push(`      └─ [LOKASI MASALAH: VPS LISENSI / ROUTING] WireGuard up tetapi paket VPN tidak sampai ke ${gatewayIp}.`);
       }
     } catch (err: any) {
       details.push('❌ Error saat pengujian ping: ' + err.message);
