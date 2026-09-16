@@ -10,9 +10,8 @@ import {
   Wifi,
   WifiOff,
   Copy,
-  Server,
-  Zap,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import type { Tunnel } from '../../../api/easyTunnel.api';
@@ -28,7 +27,8 @@ interface Props {
   onRenew?: (t: Tunnel) => void;
   onEdit: (t: Tunnel) => void;
   onDelete: (id: string, name: string) => void;
-  onCheckPing: (id: string) => void;
+  onDiagnose: (t: Tunnel) => void;
+  onCheckLicense: (t: Tunnel) => void;
 }
 
 export const EasyTunnelCard: React.FC<Props> = React.memo(({
@@ -41,7 +41,8 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
   onRenew,
   onEdit,
   onDelete,
-  onCheckPing
+  onDiagnose,
+  onCheckLicense
 }) => {
   const isConnected = tunnel.status === 'connected' || tunnel.wg_status?.status === 'connected';
   const baseDomain = tunnelBaseDomain || 'absenta.id';
@@ -127,6 +128,31 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
               <Play size={12} className="mr-1" /> Hubungkan
             </Button>
           )}
+
+          <Button
+            type="button"
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => onCheckLicense(tunnel)}
+            disabled={actionLoading === `check-license-${tunnel.id}`}
+            className="rounded-xl border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold"
+            title="Cek status lisensi real-time ke server pusat"
+          >
+            <ShieldCheck size={13} className={actionLoading === `check-license-${tunnel.id}` ? 'animate-spin mr-1 text-indigo-600' : 'mr-1 text-emerald-500'} />
+            Cek Lisensi
+          </Button>
+
+          <Button
+            type="button"
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => onDiagnose(tunnel)}
+            disabled={Boolean(actionLoading)}
+            className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 font-bold text-xs"
+            title="Diagnosa handshake dan jalur koneksi WireGuard"
+          >
+            <Activity size={12} className="mr-1 text-indigo-500" /> Diagnosa
+          </Button>
 
           <Button
             type="button"

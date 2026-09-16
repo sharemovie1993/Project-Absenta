@@ -24,6 +24,7 @@ const EasyTunnelCustomDomainSection = lazy(() => import('./components/EasyTunnel
 const EasyTunnelSetupModal = lazy(() => import('./components/EasyTunnelSetupModal'));
 const EasyTunnelEditModal = lazy(() => import('./components/EasyTunnelEditModal'));
 const EasyTunnelOrderModal = lazy(() => import('./components/EasyTunnelOrderModal'));
+const EasyTunnelDiagnoseModal = lazy(() => import('./components/EasyTunnelDiagnoseModal'));
 
 // Zod Schema Validation Guards (Pilar 25)
 const setupSchema = z.object({
@@ -120,6 +121,13 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
   const [editAppName, setEditAppName] = useState('');
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
+
+  // Diagnose modal states
+  const [diagnoseTunnel, setDiagnoseTunnel] = useState<Tunnel | null>(null);
+  const [showDiagnoseModal, setShowDiagnoseModal] = useState(false);
+  const [diagnoseLoading, setDiagnoseLoading] = useState(false);
+  const [diagnoseResult, setDiagnoseResult] = useState<{ success: boolean; message: string; details: string[] } | null>(null);
+  const [diagnoseError, setDiagnoseError] = useState<string | null>(null);
 
   // Order wizard states
   const [schoolName, setSchoolName] = useState('');
@@ -384,6 +392,60 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
     setOrderStep(1);
     setShowOrderModal(true);
   };
+
+  const handleDiagnose = useCallback(async (t: Tunnel) => {
+    setDiagnoseTunnel(t);
+    setShowDiagnoseModal(true);
+    setDiagnoseLoading(true);
+    setDiagnoseError(null);
+    setDiagnoseResult(null);
+
+    try {
+      const res = await easyTunnelApi.diagnose(t.id);
+      if (res?.data) {
+        setDiagnoseResult(res.data);
+      } else {
+        setDiagnoseError('Tidak menerima data hasil diagnosa dari server.');
+      }
+    } catch (err: unknown) {
+      setDiagnoseError(getErrorMessage(err));
+    } finally {
+      setDiagnoseLoading(false);
+    }
+  }, []);
+
+  const handleCheckLicense = useCallback(async (t: Tunnel) => {
+    if (!t.license_key) {
+      toast.error('Tunnel ini belum memiliki kunci lisensi.');
+      return;
+    }
+
+    try {
+      setActionLoading(`check-license-${t.id}`);
+      const res = await easyTunnelApi.validateKey(t.license_key);
+      const info = res?.data;
+
+      if (info) {
+        const isExpired = info.is_expired || info.status === 'expired';
+        const expDateStr = info.expires_at ? new Date(info.expires_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Selamanya';
+
+        if (isExpired) {
+          toast.error(`Lisensi ${t.license_key} KEDALUWARSA sejak ${expDateStr}. Silakan lakukan perpanjangan.`);
+        } else {
+          toast.success(`Lisensi Terverifikasi Aktif! Berlaku s.d ${expDateStr} (${info.package_title || info.package_name || 'Easy Tunnel'}).`);
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['easy-tunnels'] });
+        refetch();
+      } else {
+        toast.error('Tidak menerima respon data lisensi dari server.');
+      }
+    } catch (err: unknown) {
+      toast.error('Gagal mengecek lisensi: ' + getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  }, [queryClient, refetch]);
 
   const handleStart = async (id: string) => {
     try {
@@ -666,7 +728,8 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                         setShowEditModal(true);
                       }}
                       onDelete={handleDelete}
-                      onCheckPing={() => {}}
+                      onDiagnose={handleDiagnose}
+                      onCheckLicense={handleCheckLicense}
                     />
                   </Suspense>
                 ))}
@@ -764,6 +827,21 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               onVerifyPayment={handleVerifyPayment}
               onAutoInstall={handleAutoInstall}
               licenseKey={licenseKey}
+            />
+          </Suspense>
+        )}
+
+        {showDiagnoseModal && diagnoseTunnel && (
+          <Suspense fallback={null}>
+            <EasyTunnelDiagnoseModal
+              isOpen={showDiagnoseModal}
+              onClose={() => setShowDiagnoseModal(false)}
+              tunnel={diagnoseTunnel}
+              tunnelBaseDomain={systemInfo?.tunnel_base_domain || 'absenta.id'}
+              loading={diagnoseLoading}
+              result={diagnoseResult}
+              error={diagnoseError}
+              onReDiagnose={() => handleDiagnose(diagnoseTunnel)}
             />
           </Suspense>
         )}

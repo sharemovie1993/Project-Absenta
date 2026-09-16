@@ -10,8 +10,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 |---|---|---|---|
 | **Total Halaman Utama** | **199 Halaman** | 100% | - |
 | **✅ Lolos Sempurna (Hardened)** | **159 Halaman** | 80% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **38 Halaman** | 19% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **2 Halaman** | 1% | **Prioritas Utama Refaktor** |
+| **⚠️ Sebagian Terstandar (Partial)** | **37 Halaman** | 19% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 2% | **Prioritas Utama Refaktor** |
 
 ---
 
@@ -38,6 +38,19 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Komponen <Table> ditemukan tetapi tidak memiliki implementasi Pagination. Wajib menyediakan properti 'pagination' dengan callback 'onPageChange' dan 'onLimitChange'.
   * ❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.
   * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+
+---
+
+### 📄 Halaman: `EasyTunnelPage.tsx`
+* **Lokasi File:** [EasyTunnelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/system/EasyTunnelPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 853 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [EasyTunnelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/system/EasyTunnelPage.tsx) (853 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || "Portal Sekolah"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <PageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.
 
 ---
 
@@ -361,16 +374,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant="compact-premium"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).
-
----
-
-### 📄 Halaman: `EasyTunnelPage.tsx`
-* **Lokasi File:** [EasyTunnelPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/system/EasyTunnelPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Menggunakan Layout tetapi belum melampirkan properti 'hardeningModuleKey' pada komponen AcademicPageLayout.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Terdeteksi teks branding platform statis yang ter-hardcode (Pelanggaran Kesiapan Whitelabel Dinas). Wajib melakukan refaktor secara best-practice: (1) DILARANG KERAS menulis teks 'Absenta.id' atau 'Absenta' secara permanen (hardcoded) di dalam tag JSX header/title/footer. (2) Ambil profil branding dinamis dari API/Layout dengan menyisipkan 'tenantName' atau 'systemConfig'. (3) Gunakan variabel dinamis '{tenantName || systemConfig?.app_name || "Portal Sekolah"}' pada teks tampilan. (4) Bungkus halaman dengan <AcademicPageLayout> atau <PageLayout> yang secara otomatis menyuplai branding Whitelabel tenant.
 
 ---
 
