@@ -243,7 +243,7 @@ const SettingsPage: React.FC = () => {
         { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
-        list.push({ id: 'system_update', label: 'Pembaruan Sistem' });
+        list.push({ id: 'system_update', label: 'Peralatan Sistem' });
       }
       return list;
     }
@@ -257,7 +257,7 @@ const SettingsPage: React.FC = () => {
       { id: 'notifications', label: 'Notifikasi' },
       { id: 'attendance', label: 'Absensi' },
       { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
-      { id: 'system_update', label: 'Pembaruan Sistem' },
+      { id: 'system_update', label: 'Peralatan Sistem' },
     ];
     return list;
   }, [isTenantUser, can, isAdmin]);
@@ -352,6 +352,10 @@ const SettingsPage: React.FC = () => {
           <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
             <EasyTunnelPage />
           </Suspense>
+        ) : activeTab === 'system_update' ? (
+          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+            <SystemUpdatePage isTab={true} />
+          </Suspense>
         ) : (
           <SectionCard fullWidth className="flex flex-col w-full min-w-0">
             {!loadingConfig && !config.app_name && activeTab === 'general' ? (
@@ -367,7 +371,6 @@ const SettingsPage: React.FC = () => {
                 {activeTab === 'security' && <SecuritySettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'notifications' && <NotificationSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
                 {activeTab === 'attendance' && <AttendanceSettingsForm config={config} onChange={handleChange} canEdit={canEdit} />}
-                {activeTab === 'system_update' && <SystemUpdatePage isTab={true} />}
               </Suspense>
             </React.Fragment>
           </SectionCard>
