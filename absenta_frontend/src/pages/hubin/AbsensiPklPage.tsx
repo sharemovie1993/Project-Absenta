@@ -22,9 +22,11 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { formatDate } from '../../utils/layoutUtils';
+import { getVirtualDate } from '../../utils/attendance/time';
 
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -59,7 +61,19 @@ interface SiswaPklWithAbsensi extends SiswaPkl {
 export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { user, subscription } = useAuthStore();
   const queryClient = useQueryClient();
+  const { isHubin, isAdmin, can, isStudent: isCapStudent } = useCapabilities();
+  const isStudent = isCapStudent || !!user?.isStudent;
   
+  // Konteks Tahun Pelajaran
+  const { options: tpOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
+  const [selectedTpFilter, setSelectedTpFilter] = useState<string>('');
+
+  useEffect(() => {
+    if (activeTahunPelajaran?.id && !selectedTpFilter) {
+      setSelectedTpFilter(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, selectedTpFilter]);
+
   // -- Local State --
   const [location, setLocation] = useState<{ lat: number; lng: number; accuracy?: number } | null>(null);
   const [isSpoofedLocation, setIsSpoofedLocation] = useState(false);
@@ -71,10 +85,10 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   const [newActivityText, setNewActivityText] = useState('');
   const [isAddingActivity, setIsAddingActivity] = useState(false);
 
-  // Auto-set current time when opening new journal form
+  // Auto-set current time when opening new journal form using tenant virtual time
   useEffect(() => {
     if (isAddingActivity) {
-      setNewActivityTime(format(new Date(), 'HH:mm'));
+      setNewActivityTime(format(getVirtualDate(), 'HH:mm'));
     }
   }, [isAddingActivity]);
 
@@ -99,7 +113,6 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   // Perbaiki logika gating agar tidak mengunci modul jika user memiliki izin HUBIN
   const hasHubinFeature = Array.isArray(features) && features.includes('HUBIN');
   const isEnabled = subscription !== undefined && hasHubinFeature;
-  const isStudent = !!user?.isStudent;
 
   // -- Data Fetching (Tenant Info via React Query) --
   const { data: tenantRes } = useQuery({
@@ -117,8 +130,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
 
   // -- React Query Hooks (emptyState handled in child views) --
   const { data: penempatanData, isLoading: isLoadingAll } = useQuery({
-    queryKey: ['penempatan-pkl', { limit: 100 }],
-    queryFn: () => hubinApi.getPenempatan({ limit: 100 }),
+    queryKey: ['penempatan-pkl', { limit: 100, tahun_pelajaran_id: selectedTpFilter }],
+    queryFn: () => hubinApi.getPenempatan({ limit: 100, tahun_pelajaran_id: selectedTpFilter || undefined }),
     enabled: isEnabled && !isStudent
   });
 
@@ -151,7 +164,17 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     return Array.isArray(absensiData?.data) ? (absensiData.data as AbsensiPkl[]) : (absensiData as { data?: AbsensiPkl[] })?.data || [];
   }, [absensiData]);
 
-  const { isHubin, isAdmin, can } = useCapabilities();
+  // Cek apakah PKL siswa masih aktif (status AKTIF + tanggal masih berlaku)
+  const isPklAktif = useMemo(() => {
+    if (!studentPkl) return false;
+    if ((studentPkl as any).status !== 'AKTIF') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selesai = (studentPkl as any).tanggal_selesai ? new Date((studentPkl as any).tanggal_selesai) : null;
+    if (selesai) selesai.setHours(0, 0, 0, 0);
+    return !selesai || selesai >= today;
+  }, [studentPkl]);
+
   const isGlobalHubin = isAdmin || isHubin || can('hubin.partners.manage');
 
   const visibleTabsCount = useMemo(() => {
@@ -166,6 +189,9 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       toast.success('Check-in Berhasil!');
       setKegiatan(''); setFotoUrl('');
     },
@@ -180,6 +206,9 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       toast.success('Check-out Berhasil! Sampai jumpa besok.');
       setKegiatan(''); setFotoUrl('');
     },
@@ -193,7 +222,15 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     mutationFn: (id: string) => hubinApi.verifyAbsensi(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       toast.success('Absensi Berhasil Diverifikasi');
+    },
+    onError: (error: unknown) => {
+      const errorMsg = error && typeof error === 'object' && 'response' in error ? ((error as ApiErrorResponse).response?.data?.message || 'Gagal verifikasi absensi') : 'Gagal verifikasi absensi';
+      toast.error(errorMsg);
     },
   });
 
@@ -201,6 +238,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     mutationFn: (url: string) => hubinApi.submitJurnalPortofolio(studentPkl.id, url),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
       toast.success('Jurnal & Portofolio Akhir berhasil dikumpulkan!');
     },
     onError: (error: unknown) => {
@@ -214,6 +253,9 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       toast.success('Jurnal kegiatan berhasil diperbarui!');
       setEditingAbsensi(null);
     },
@@ -315,7 +357,11 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
 
   const todayAbsensi = useMemo(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
-    return rawAbsensiHistory.find((a: AbsensiPkl) => format(new Date(a.tanggal), 'yyyy-MM-dd') === todayStr);
+    return rawAbsensiHistory.find((a: AbsensiPkl) => {
+      const dateFromTanggal = a.tanggal ? format(new Date(a.tanggal), 'yyyy-MM-dd') : '';
+      const dateFromJamMasuk = a.jam_masuk ? format(new Date(a.jam_masuk), 'yyyy-MM-dd') : '';
+      return dateFromTanggal === todayStr || dateFromJamMasuk === todayStr;
+    });
   }, [rawAbsensiHistory]);
 
   const parsedTimeline = useMemo(() => {
@@ -335,6 +381,10 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     }
     setIsAddingActivity(true);
   }, [todayAbsensi]);
+
+  const handleCloseAddActivity = useCallback(() => {
+    setIsAddingActivity(false);
+  }, []);
 
   const handleSaveNewActivity = useCallback((updatedActivities: { time: string; text: string; image_url?: string }[]) => {
     updateLogbookMutation.mutate({ keg: JSON.stringify(updatedActivities) });
@@ -401,22 +451,22 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   const content = (
     <>
       {/* Operational Divider */}
-      <div className="h-px bg-slate-200 dark:bg-slate-800 w-full mb-6 mt-2" />
+      <div className="h-px bg-slate-200 dark:bg-slate-800 w-full mb-3 mt-1" />
 
       {/* If embedded in tab and is student, show placement info at top */}
       {hideLayout && isStudent && studentPkl && (
-        <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-sm mb-6">
-          <div className="flex-1 min-w-[150px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Mitra PKL Anda</span>
-            <div className="flex items-center gap-2">
-              <Building2 size={16} className="text-indigo-600" />
+        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-xs mb-4">
+          <div className="flex-1 min-w-[140px]">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Mitra PKL Anda</span>
+            <div className="flex items-center gap-1.5">
+              <Building2 size={14} className="text-indigo-600" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-300">{studentPkl.Mitra?.nama}</span>
             </div>
           </div>
-          <div className="flex-1 min-w-[150px]">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Guru Pembimbing</span>
-            <div className="flex items-center gap-2">
-              <UserCheck size={16} className="text-emerald-600" />
+          <div className="flex-1 min-w-[140px]">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Guru Pembimbing</span>
+            <div className="flex items-center gap-1.5">
+              <UserCheck size={14} className="text-emerald-600" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-300">{studentPkl.Pembimbing?.nama_guru || '-'}</span>
             </div>
           </div>
@@ -424,112 +474,116 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
       )}
 
       <div className="w-full max-w-7xl mx-auto print:hidden">
-        <SectionCard title={isStudent ? "Presensi & Jurnal Kegiatan" : "Monitoring Absensi PKL"} icon={ClipIcon} fullWidth noPadding>
-          <div className="p-6">
-            <Tabs defaultValue={isStudent ? "record" : "management"}>
-              {visibleTabsCount > 1 && (
-                <div className="flex justify-between items-center mb-6">
-                  <MenuTabs className="h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
-                    {isStudent ? (
-                      <>
-                        <TabsTrigger value="record" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                          <Clock size={12} className="mr-2" /> Presensi
-                        </TabsTrigger>
-                        <TabsTrigger value="jurnal" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                          <History size={12} className="mr-2" /> Riwayat
-                        </TabsTrigger>
-                        <TabsTrigger value="portofolio" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                          <ClipIcon size={12} className="mr-2" /> Portofolio
-                        </TabsTrigger>
-                      </>
-                    ) : (
-                      <>
-                        <TabsTrigger value="management" className="px-4 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-sm data-[state=active]:text-indigo-600">
-                          <ShieldCheck size={12} className="mr-2" /> Monitoring
-                        </TabsTrigger>
-                      </>
-                    )}
-                  </MenuTabs>
-                </div>
-              )}
+        {isStudent ? (
+          <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding>
+            <div className="p-3 sm:p-5">
+              <Tabs defaultValue="record">
+                {visibleTabsCount > 1 && (
+                  <div className="mb-4">
+                    <MenuTabs className="w-full sm:w-auto grid grid-cols-3 sm:flex h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
+                      <TabsTrigger value="record" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
+                        <Clock size={12} className="mr-1 sm:mr-1.5 shrink-0" />
+                        <span className="truncate">Presensi</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="jurnal" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
+                        <History size={12} className="mr-1 sm:mr-1.5 shrink-0" />
+                        <span className="truncate">Riwayat</span>
+                      </TabsTrigger>
+                      <TabsTrigger value="portofolio" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
+                        <ClipIcon size={12} className="mr-1 sm:mr-1.5 shrink-0" />
+                        <span className="truncate">Portofolio</span>
+                      </TabsTrigger>
+                    </MenuTabs>
+                  </div>
+                )}
 
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 gap-4">
-                  <RefreshCw className="animate-spin text-indigo-500" size={32} />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Data PKL...</p>
-                </div>
-              ) : isStudent ? (
-                <>
-                  <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-                    <HubinStudentView
-                      user={user} studentPkl={studentPkl} todayAbsensi={todayAbsensi} location={location}
-                      isMockLocation={isSpoofedLocation}
-                      kegiatan={kegiatan} setKegiatan={setKegiatan} fotoUrl={fotoUrl} setFotoUrl={setFotoUrl}
-                      checkInMutation={checkInMutation} checkOutMutation={checkOutMutation}
-                      onRefreshLocation={refreshLocation}
-                      rawAbsensiHistory={rawAbsensiHistory}
-                      parsedTimeline={parsedTimeline}
-                      onDeleteActivity={(idx) => {
-                        const updated = [...parsedTimeline].filter((_, i) => i !== idx).sort((a, b) => a.time.localeCompare(b.time));
-                        updateLogbookMutation.mutate({ keg: JSON.stringify(updated) });
-                      }}
-                      onOpenAddModal={handleOpenAddActivity}
-                      jurnalUrl={jurnalUrl} setJurnalUrl={setJurnalUrl}
-                      submitJurnalMutation={submitJurnalMutation}
-                      stats={stats} generateCustomFileName={generateCustomFileName}
-                      onPrint={handlePrint}
-                    />
-                  </Suspense>
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-4">
+                    <RefreshCw className="animate-spin text-indigo-500" size={32} />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Memuat Data PKL...</p>
+                  </div>
+                ) : (
+                  <>
+                    <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+                      <HubinStudentView
+                        user={user} studentPkl={studentPkl} todayAbsensi={todayAbsensi} location={location}
+                        isMockLocation={isSpoofedLocation}
+                        kegiatan={kegiatan} setKegiatan={setKegiatan} fotoUrl={fotoUrl} setFotoUrl={setFotoUrl}
+                        checkInMutation={checkInMutation} checkOutMutation={checkOutMutation}
+                        onRefreshLocation={refreshLocation}
+                        rawAbsensiHistory={rawAbsensiHistory}
+                        parsedTimeline={parsedTimeline}
+                        onDeleteActivity={(idx) => {
+                          const updated = [...parsedTimeline].filter((_, i) => i !== idx).sort((a, b) => a.time.localeCompare(b.time));
+                          updateLogbookMutation.mutate({ keg: JSON.stringify(updated) });
+                        }}
+                        onOpenAddModal={handleOpenAddActivity}
+                        jurnalUrl={jurnalUrl} setJurnalUrl={setJurnalUrl}
+                        submitJurnalMutation={submitJurnalMutation}
+                        stats={stats} generateCustomFileName={generateCustomFileName}
+                        onPrint={handlePrint}
+                        isPklAktif={isPklAktif}
+                      />
+                    </Suspense>
 
-                  <Suspense fallback={null}>
-                    <HubinLogbookEditModal
-                      isOpen={isAddingActivity}
-                      onClose={() => setIsAddingActivity(false)}
-                      editingAbsensi={todayAbsensi || ({ tanggal: new Date().toISOString() } as AbsensiPkl)}
-                      editingActivities={[{ time: newActivityTime, text: newActivityText, image_url: newActivityPhotoUrl }]}
-                      setEditingActivities={(activities) => {
-                        if (activities.length > 0) {
-                          setNewActivityTime(activities[0].time);
-                          setNewActivityText(activities[0].text);
-                          setNewActivityPhotoUrl(activities[0].image_url || '');
-                        }
-                      }}
-                      isPending={updateLogbookMutation.isPending}
-                      onSave={(activities) => {
-                        const newEntry = activities[0];
-                        if (!newEntry.time || !newEntry.text.trim()) return toast.error('Harap isi jam dan deskripsi!');
-                        const updated = [...parsedTimeline, { ...newEntry, text: newEntry.text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
-                        handleSaveNewActivity(updated);
-                      }}
-                      userEmail={user?.email}
-                      studentClassName={currentStudentClassName}
-                      generateActivityFileName={generateActivityFileName}
-                    />
-                  </Suspense>
-                </>
-              ) : (
-                <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
-                  <HubinManagementView
-                    rawPenempatan={rawPenempatan} isLoading={isLoading} onVerify={verifyMutation.mutate}
-                    onQuickAddForId={(abs: AbsensiPkl, text: string) => {
-                      let parsed: ActivityItem[] = [];
-                      try { 
-                        parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; 
-                      } catch (e) { 
-                        console.error('Failed to parse kegiatan:', e);
-                      }
-                      const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
-                      updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
-                    }}
-                    onEditLogbook={setEditingAbsensi} quickAddTexts={quickAddTexts} setQuickAddTexts={setQuickAddTexts}
-                    renderActivityText={renderActivityText} getDriveThumbnailUrl={getDriveThumbnailUrl}
-                    isGlobalHubin={isGlobalHubin}
-                  />
-                </Suspense>
-              )}
-            </Tabs>
-          </div>
-        </SectionCard>
+                    <Suspense fallback={null}>
+                      <HubinLogbookEditModal
+                        isOpen={isAddingActivity}
+                        onClose={handleCloseAddActivity}
+                        editingAbsensi={todayAbsensi || ({ tanggal: new Date().toISOString() } as AbsensiPkl)}
+                        editingActivities={[{ time: newActivityTime, text: newActivityText, image_url: newActivityPhotoUrl }]}
+                        setEditingActivities={(activities) => {
+                          if (activities.length > 0) {
+                            setNewActivityTime(activities[0].time);
+                            setNewActivityText(activities[0].text);
+                            setNewActivityPhotoUrl(activities[0].image_url || '');
+                          }
+                        }}
+                        isPending={updateLogbookMutation.isPending}
+                        onSave={(activities) => {
+                          const newEntry = activities[0];
+                          if (!newEntry.time || !newEntry.text.trim()) return toast.error('Harap isi jam dan deskripsi!');
+                          const updated = [...parsedTimeline, { ...newEntry, text: newEntry.text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
+                          handleSaveNewActivity(updated);
+                        }}
+                        userEmail={user?.email}
+                        studentClassName={currentStudentClassName}
+                        generateActivityFileName={generateActivityFileName}
+                      />
+                    </Suspense>
+                  </>
+                )}
+              </Tabs>
+            </div>
+          </SectionCard>
+        ) : (
+          <Suspense fallback={<div className="flex justify-center p-8"><Loader size="lg" /></div>}>
+            <HubinManagementView
+              rawPenempatan={rawPenempatan}
+              isLoading={isLoading}
+              onVerify={verifyMutation.mutate}
+              onQuickAddForId={(abs: AbsensiPkl, text: string) => {
+                let parsed: ActivityItem[] = [];
+                try { 
+                  parsed = JSON.parse(abs.kegiatan || '[]') as ActivityItem[]; 
+                } catch (e) { 
+                  console.error('Failed to parse kegiatan:', e);
+                }
+                const updated = [...(Array.isArray(parsed) ? parsed : []), { time: format(new Date(), 'HH:mm'), text: text.trim() }].sort((a, b) => a.time.localeCompare(b.time));
+                updateLogbookMutation.mutate({ keg: JSON.stringify(updated), absensiId: abs.id });
+              }}
+              onEditLogbook={setEditingAbsensi}
+              quickAddTexts={quickAddTexts}
+              setQuickAddTexts={setQuickAddTexts}
+              renderActivityText={renderActivityText}
+              getDriveThumbnailUrl={getDriveThumbnailUrl}
+              isGlobalHubin={isGlobalHubin}
+              selectedTp={selectedTpFilter}
+              onTpChange={setSelectedTpFilter}
+              tpOptions={tpOptions}
+            />
+          </Suspense>
+        )}
       </div>
 
       {/* PRINT PORTAL */}
@@ -586,35 +640,35 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
             <div className="hidden md:block h-12 w-px bg-slate-200 dark:bg-slate-800 mx-2 lg:mx-10 shrink-0" />
             
             {/* Kolom 2: Kartu Informasi Tempat PKL & Stats - Compact on MD, Roomy on LG */}
-            <div className="flex flex-wrap md:flex-nowrap items-center gap-y-4 gap-x-2 md:gap-2 lg:gap-4 bg-white dark:bg-slate-900 p-3 md:p-1.5 lg:p-2.5 px-4 md:px-2 lg:px-7 rounded-xl md:rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm transition-all hover:shadow-md w-full md:w-auto">
-              <div className="flex flex-col pr-2 md:pr-2 lg:pr-10 border-r border-slate-100 dark:border-slate-800 flex-1 md:flex-initial min-w-[140px] md:min-w-0 md:shrink">
-                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Lokasi Penempatan</span>
-                <div className="flex items-start gap-1.5 md:gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <Building2 size="14" className="text-indigo-600 dark:text-indigo-400" />
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-y-2.5 gap-x-2 md:gap-2 lg:gap-4 bg-white dark:bg-slate-900 p-2.5 md:p-1.5 lg:p-2.5 px-3 md:px-2 lg:px-6 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs transition-all hover:shadow-md w-full md:w-auto">
+              <div className="flex flex-col pr-2 md:pr-2 lg:pr-8 border-r border-slate-100 dark:border-slate-800 flex-1 md:flex-initial min-w-[130px] md:min-w-0 md:shrink">
+                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Lokasi Penempatan</span>
+                <div className="flex items-start gap-1.5">
+                  <div className="w-5 h-5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <Building2 size={12} className="text-indigo-600 dark:text-indigo-400" />
                   </div>
-                  <span className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase leading-[1.2] max-w-[150px] md:max-w-[100px] lg:max-w-[200px] break-words line-clamp-2">
+                  <span className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase leading-tight max-w-[150px] md:max-w-[100px] lg:max-w-[200px] break-words line-clamp-2">
                     {studentPkl?.Mitra?.nama}
                   </span>
                 </div>
               </div>
 
-              <div className="flex flex-col pr-2 md:pr-2 lg:pr-10 md:border-r border-slate-100 dark:border-slate-800 flex-1 md:flex-initial min-w-[120px] md:min-w-0 md:shrink">
-                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Pembimbing</span>
-                <div className="flex items-start gap-1.5 md:gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <UserCheck size="14" className="text-emerald-600 dark:text-emerald-400" />
+              <div className="flex flex-col pr-2 md:pr-2 lg:pr-8 md:border-r border-slate-100 dark:border-slate-800 flex-1 md:flex-initial min-w-[110px] md:min-w-0 md:shrink">
+                <span className="text-[7px] md:text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Pembimbing</span>
+                <div className="flex items-start gap-1.5">
+                  <div className="w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <UserCheck size={12} className="text-emerald-600 dark:text-emerald-400" />
                   </div>
-                  <span className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase leading-[1.2] max-w-[120px] md:max-w-[90px] lg:max-w-[180px] break-words line-clamp-2">
+                  <span className="text-[9px] md:text-[10px] lg:text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase leading-tight max-w-[120px] md:max-w-[90px] lg:max-w-[180px] break-words line-clamp-2">
                     {studentPkl?.Pembimbing?.nama_guru || '-'}
                   </span>
                 </div>
               </div>
 
-              {/* Stats Group - Optimized for desktop space */}
-              <div className="flex flex-row items-center gap-2 lg:gap-5 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 md:pl-1 lg:pl-2 border-slate-50 dark:border-slate-800 md:shrink-0">
-                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2 lg:px-5 py-2 rounded-xl border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[45px] lg:min-w-[65px] h-[42px] lg:h-[48px]">
-                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1.5">Hub. Pembimbing</span>
+              {/* Stats Group - Optimized for desktop & mobile space */}
+              <div className="flex flex-row items-center gap-1.5 lg:gap-4 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 md:pl-1 border-slate-100 dark:border-slate-800 md:shrink-0">
+                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2 lg:px-4 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[40px] lg:min-w-[60px] h-[36px] lg:h-[44px]">
+                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Hub. WA</span>
                   <a
                     href={studentPkl?.Pembimbing?.no_hp ? formatWhatsAppLink(studentPkl.Pembimbing.no_hp, `Halo Pak/Bu ${studentPkl.Pembimbing.nama_guru}, saya ${user?.full_name} ingin berkonsultasi mengenai PKL.`) : '#'}
                     target={studentPkl?.Pembimbing?.no_hp ? "_blank" : "_self"}
@@ -629,8 +683,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
                   >
                     <svg 
                       viewBox="0 0 24 24" 
-                      width="18" 
-                      height="18" 
+                      width="15" 
+                      height="15" 
                       fill="currentColor" 
                       xmlns="http://www.w3.org/2000/svg"
                     >
@@ -638,22 +692,22 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
                     </svg>
                   </a>
                 </div>
-                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2.5 lg:px-5 py-2 rounded-xl border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[45px] lg:min-w-[65px] h-[42px] lg:h-[48px]">
-                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1.5">Hadir</span>
-                  <span className="text-[11px] md:text-[13px] font-black text-indigo-600 dark:text-indigo-400 leading-none">
+                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2 lg:px-4 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[40px] lg:min-w-[60px] h-[36px] lg:h-[44px]">
+                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Hadir</span>
+                  <span className="text-[10px] md:text-[12px] font-black text-indigo-600 dark:text-indigo-400 leading-none">
                     {rawAbsensiHistory.filter((a) => a.status === 'HADIR').length}
                   </span>
                 </div>
-                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2.5 lg:px-5 py-2 rounded-xl border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[45px] lg:min-w-[65px] h-[42px] lg:h-[48px]">
-                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1.5">Entri Jurnal</span>
-                  <span className="text-[11px] md:text-[13px] font-black text-emerald-600 dark:text-emerald-400 leading-none">
+                <div className="flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 px-2 lg:px-4 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700 flex-1 md:flex-none min-w-[40px] lg:min-w-[60px] h-[36px] lg:h-[44px]">
+                  <span className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase leading-none mb-1">Jurnal</span>
+                  <span className="text-[10px] md:text-[12px] font-black text-emerald-600 dark:text-emerald-400 leading-none">
                     {parsedTimeline.length}
                   </span>
                 </div>
               </div>
             </div>
           </div>
-        ) : null}
+        ) : undefined}
       >
         {content}
       </AcademicPageLayout>

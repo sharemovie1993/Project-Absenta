@@ -227,6 +227,10 @@ export type HubinCapability =
   | 'hubin.partners.manage'
   | 'hubin.pkl.manage'
   | 'hubin.pkl.view.list'
+  | 'hubin.self.bkk'
+  | 'hubin.self.logbook'
+  | 'hubin.self.pkl'
+  | 'hubin.self.tracer'
   | 'hubin.tefa.manage'
   | 'hubin.tracer.view';
 

@@ -9,7 +9,8 @@ const BkkSection = lazy(() => import('@/components/hubin/bkk/BkkSection').then(m
 
 export const BkkPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const isStudent = useMemo(() => !!user?.isStudent, [user]);
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
+  const isStudent = useMemo(() => !!user?.isStudent || roleName === 'SISWA', [user, roleName]);
 
   const title = useMemo(
     () => isStudent ? "Lowongan Kerja (BKK)" : "BKK & Lowongan Kerja",

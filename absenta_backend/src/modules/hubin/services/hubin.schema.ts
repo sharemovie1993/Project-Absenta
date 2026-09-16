@@ -29,7 +29,9 @@ export const createPenempatanSchema = z.object({
   tanggal_mulai: z.union([z.date(), z.string()]).transform((v) => new Date(v)),
   tanggal_selesai: z.union([z.date(), z.string()]).transform((v) => (v ? new Date(v) : null)).optional().nullable(),
   status: z.string().optional().default('AKTIF'),
-  pembimbing_id: z.string().optional().nullable(),
+  pembimbing_id: z.string().optional().nullable().transform((v) => (v && typeof v === 'string' && v.trim() !== '' ? v.trim() : null)),
+  tahun_pelajaran_id: z.string().optional().nullable(),
+  semester_id: z.string().optional().nullable(),
   lat_override: z.number().optional().nullable(),
   lon_override: z.number().optional().nullable(),
   radius_override: z.number().int().optional().nullable(),
@@ -38,11 +40,28 @@ export const createPenempatanSchema = z.object({
 
 export const updatePenempatanSchema = createPenempatanSchema.partial();
 
-export const bulkCreatePenempatanSchema = z.object({
-  siswa_ids: z.array(z.string()).min(1, 'Daftar siswa wajib diisi'),
-  mitra_id: z.string().min(1, 'Mitra industri wajib dipilih'),
-  tanggal_mulai: z.union([z.date(), z.string()]).transform((v) => new Date(v)),
-  tanggal_selesai: z.union([z.date(), z.string()]).transform((v) => (v ? new Date(v) : null)).optional().nullable(),
-  status: z.string().optional().default('AKTIF'),
-  pembimbing_id: z.string().optional().nullable(),
-});
+export const bulkCreatePenempatanSchema = z.union([
+  z.object({
+    siswa_ids: z.array(z.string()).min(1, 'Daftar siswa wajib diisi'),
+    mitra_id: z.string().min(1, 'Mitra industri wajib dipilih'),
+    tanggal_mulai: z.union([z.date(), z.string()]).transform((v) => new Date(v)),
+    tanggal_selesai: z.union([z.date(), z.string()]).transform((v) => (v ? new Date(v) : null)).optional().nullable(),
+    status: z.string().optional().default('AKTIF'),
+    pembimbing_id: z.string().optional().nullable().transform((v) => (v && typeof v === 'string' && v.trim() !== '' ? v.trim() : null)),
+    tahun_pelajaran_id: z.string().optional().nullable(),
+    semester_id: z.string().optional().nullable(),
+  }),
+  z.array(
+    z.object({
+      siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
+      mitra_id: z.string().min(1, 'Mitra industri wajib dipilih'),
+      tanggal_mulai: z.union([z.date(), z.string()]).transform((v) => new Date(v)),
+      tanggal_selesai: z.union([z.date(), z.string()]).transform((v) => (v ? new Date(v) : null)).optional().nullable(),
+      status: z.string().optional().default('AKTIF'),
+      pembimbing_id: z.string().optional().nullable().transform((v) => (v && typeof v === 'string' && v.trim() !== '' ? v.trim() : null)),
+      tahun_pelajaran_id: z.string().optional().nullable(),
+      semester_id: z.string().optional().nullable(),
+    })
+  ).min(1, 'Daftar penempatan tidak boleh kosong')
+]);
+

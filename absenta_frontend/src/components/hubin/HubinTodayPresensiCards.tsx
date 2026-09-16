@@ -9,6 +9,7 @@ import { PresensiActionColumn } from './PresensiActionColumn';
 import { HubinCameraModal } from './HubinCameraModal';
 import { HUBIN_CONFIG } from '../../constants/HubinConstants';
 import { calculateDistance, generateHubinFileName } from '../../utils/hubinUtils';
+import { getTimezoneLabel } from '../../utils/attendance/time';
 
 interface TodayAbsensi {
   jam_masuk?: string;
@@ -49,6 +50,7 @@ interface HubinTodayPresensiCardsProps {
   kegiatan: string;
   studentName?: string;
   onRefreshLocation?: () => void;
+  isPklAktif?: boolean;
 }
 
 export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = React.memo(({
@@ -61,6 +63,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
   kegiatan,
   studentName,
   onRefreshLocation,
+  isPklAktif = true,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isUploading, setIsUploading] = useState<'IN' | 'OUT' | null>(null);
@@ -186,11 +189,12 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
 
   // Is location restricted or can they bypass with "Dinas Luar"?
   const canAction = useMemo(() => {
+    if (!isPklAktif) return false;
     if (!location || !!isMockLocation) return false;
     if (distanceInfo.inRange) return true;
     if (isDinasLuarMode || studentPkl?.is_flexible_location) return true;
     return false;
-  }, [location, isMockLocation, distanceInfo.inRange, isDinasLuarMode, studentPkl]);
+  }, [isPklAktif, location, isMockLocation, distanceInfo.inRange, isDinasLuarMode, studentPkl]);
 
   return (
     <div className="bg-white dark:bg-slate-950 rounded-xl text-slate-900 dark:text-white shadow-2xl relative overflow-hidden flex flex-col items-center p-0 border border-slate-100 dark:border-slate-800 animate-fadeIn">
@@ -202,9 +206,9 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
       />
 
       {/* Header */}
-      <div className="w-full pt-6 pb-4 px-6 text-center border-b border-slate-50 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02]">
-        <h2 className="text-[11px] md:text-[13px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">
-          {format(currentTime, 'EEEE, dd MMMM yyyy', { locale: localeID })} | {format(currentTime, 'HH:mm:ss')} WIB
+      <div className="w-full py-2.5 sm:py-3 px-4 text-center border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
+        <h2 className="text-[11px] sm:text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+          {format(currentTime, 'EEEE, dd MMMM yyyy', { locale: localeID })} | {format(currentTime, 'HH:mm:ss')} {getTimezoneLabel()}
         </h2>
       </div>
 
@@ -218,16 +222,16 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
 
       {/* Dinas Luar Mode Switcher (Smart SaaS Feature) */}
       {!distanceInfo.inRange && location && !isMockLocation && !isCheckedOut && (
-        <div className="w-full px-6 py-3 bg-amber-50 dark:bg-amber-950/20 border-y border-amber-100 dark:border-amber-900/30 flex items-center justify-between">
+        <div className="w-full px-4 py-2 bg-amber-50 dark:bg-amber-950/20 border-y border-amber-100 dark:border-amber-900/30 flex items-center justify-between">
           <div className="flex flex-col">
-            <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Dinas Luar Kota / Field Work</span>
-            <span className="text-[8px] font-medium text-amber-600 dark:text-amber-500 italic">Membutuhkan verifikasi pembimbing</span>
+            <span className="text-[8px] sm:text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest">Dinas Luar Kota / Field Work</span>
+            <span className="text-[7px] sm:text-[8px] font-medium text-amber-600 dark:text-amber-500 italic">Membutuhkan verifikasi pembimbing</span>
           </div>
           <button
             onClick={handleToggleDinasLuar}
-            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border ${
+            className={`px-2.5 py-1 rounded-lg text-[8px] sm:text-[9px] font-black uppercase transition-all border ${
               isDinasLuarMode 
-                ? 'bg-amber-500 text-white border-amber-500 shadow-sm' 
+                ? 'bg-amber-500 text-white border-amber-500 shadow-xs' 
                 : 'bg-white dark:bg-slate-900 text-amber-600 border-amber-200 dark:border-amber-800 hover:border-amber-500'
             }`}
           >
@@ -237,7 +241,7 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
       )}
 
       {/* Actions: 2 Columns */}
-      <div className="w-full grid grid-cols-2 border-t border-slate-50 dark:border-white/5 divide-x divide-slate-50 dark:divide-white/5 bg-white dark:bg-white/[0.01]">
+      <div className="w-full grid grid-cols-2 border-t border-slate-100 dark:border-slate-800 divide-x divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-950/20">
         <PresensiActionColumn
           type="IN"
           label="Check-In Masuk"
@@ -263,15 +267,15 @@ export const HubinTodayPresensiCards: React.FC<HubinTodayPresensiCardsProps> = R
       {/* Done Overlay */}
       {isComplete && (
         <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none flex items-center justify-center overflow-hidden">
-          <div className="bg-emerald-500 text-white px-10 py-3 rotate-[-15deg] shadow-2xl border-4 border-white dark:border-slate-900 transform scale-125 font-black text-3xl tracking-[0.3em] opacity-90">
+          <div className="bg-emerald-500 text-white px-8 py-2 rotate-[-12deg] shadow-2xl border-4 border-white dark:border-slate-900 transform scale-110 font-black text-2xl tracking-[0.25em] opacity-90">
             DONE
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <div className="w-full py-4 text-center bg-slate-50/50 dark:bg-white/[0.02] border-t border-slate-50 dark:border-white/5">
-        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-600 italic uppercase tracking-wider">
+      <div className="w-full py-2.5 text-center bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-800">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 italic uppercase tracking-wider">
           {!isCheckedIn ? 'Silakan melakukan check-in masuk' : !isCheckedOut ? 'Anda sedang dalam masa PKL' : 'Presensi hari ini telah selesai'}
         </p>
       </div>

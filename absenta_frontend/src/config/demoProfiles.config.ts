@@ -405,6 +405,21 @@ export const DEMO_ROLE_PROFILES: DemoRoleProfile[] = [
     border: 'border-teal-300 dark:border-teal-700'
   },
   {
+    id: 'demo-pembimbing-pkl',
+    category: 'TEACHING',
+    roleCode: 'GURU',
+    title: 'Pembimbing PKL',
+    simulatedName: 'Aceng Demo',
+    email: 'acep@absenta.id',
+    password: 'password123',
+    badge: 'Guru Pembimbing PKL',
+    badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    description: 'Pembimbing siswa PKL di DUDI mitra, monitoring bimbingan lapangan, logbook & entri nilai PKL',
+    iconName: 'Building2',
+    gradient: 'from-emerald-600 to-teal-700 text-white',
+    border: 'border-emerald-300 dark:border-emerald-700'
+  },
+  {
     id: 'demo-guru-mapel',
     category: 'TEACHING',
     roleCode: 'GURU',
@@ -481,6 +496,21 @@ export const DEMO_ROLE_PROFILES: DemoRoleProfile[] = [
     description: 'Jadwal pelajaran X TJKT 1 hari ini, riwayat presensi, saldo e-wallet kantin, nilai ulangan & e-rapor',
     iconName: 'Smartphone',
     gradient: 'from-emerald-500 to-green-700 text-white',
+    border: 'border-emerald-300 dark:border-emerald-700'
+  },
+  {
+    id: 'demo-siswa-pkl',
+    category: 'END_USER',
+    roleCode: 'SISWA',
+    title: 'Siswa PKL / Magang',
+    simulatedName: 'Agnes Demo',
+    email: 'siswa.pkl@absenta.id',
+    password: 'password123',
+    badge: 'Siswa PKL (48 CUSTOM GARAGE)',
+    badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    description: 'Siswa magang di 48 CUSTOM GARAGE (Pmb: Aceng Demo), check-in/out GPS lapangan, logbook harian & portofolio akhir',
+    iconName: 'Building2',
+    gradient: 'from-emerald-600 to-teal-700 text-white',
     border: 'border-emerald-300 dark:border-emerald-700'
   },
   {

@@ -52,9 +52,13 @@ import {
   ArrowRight,
   FolderOpen,
   Camera,
-  Loader
+  Loader,
+  Briefcase,
+  BookOpen,
+  Building2 as BuildingIcon,
 } from 'lucide-react';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
+import { hubinApi } from '../../../api/hubin.api';
 import { cn } from '../../../lib/utils';
 import { siswaApi } from '../../../api/academic.api';
 import { getSiswaList, getSiswaMe } from '../../../api/academic/siswa.api';
@@ -315,8 +319,61 @@ export const SiswaDashboard: React.FC = () => {
     };
   }, [kelasLeaderboardRes, user, siswaProfile]);
 
+  // ── PKL Siswa Queries ──────────────────────────────────────────────────────
+  const isPklStudent = can('hubin.self.pkl');
+
+  const { data: myPenempatanRaw } = useQuery({
+    queryKey: ['hubin-penempatan-me'],
+    queryFn: () => hubinApi.getMyPenempatan(),
+    enabled: isPklStudent,
+    staleTime: 5 * 60 * 1000, // 5 menit
+  });
+
+  const myPenempatan = useMemo(() => {
+    const raw = myPenempatanRaw;
+    return (raw as any)?.data || raw || null;
+  }, [myPenempatanRaw]);
+
+  // PKL dianggap aktif jika ada data penempatan DAN statusnya AKTIF
+  const isAktifPkl = useMemo(() => {
+    if (!isPklStudent || !myPenempatan) return false;
+    return (myPenempatan as any).status === 'AKTIF';
+  }, [isPklStudent, myPenempatan]);
+
+  const { data: pklAbsensiDashboardRaw } = useQuery({
+    queryKey: ['pkl-absensi-dashboard', (myPenempatan as any)?.id],
+    queryFn: () => hubinApi.getAbsensi((myPenempatan as any).id, { limit: 5 }),
+    enabled: isAktifPkl && !!(myPenempatan as any)?.id,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const pklAbsensiHistory = useMemo(() => {
+    const raw = pklAbsensiDashboardRaw;
+    return Array.isArray((raw as any)?.data) ? (raw as any).data : [];
+  }, [pklAbsensiDashboardRaw]);
+
+  const todayPklAbsensi = useMemo(() => {
+    const todayStr = todayIso;
+    return pklAbsensiHistory.find((a: any) => {
+      const dateFromTanggal = a.tanggal ? toLocalDate(new Date(a.tanggal)) : '';
+      const dateFromJamMasuk = a.jam_masuk ? toLocalDate(new Date(a.jam_masuk)) : '';
+      return dateFromTanggal === todayStr || dateFromJamMasuk === todayStr;
+    }) || null;
+  }, [pklAbsensiHistory, todayIso]);
+
+  const pklHadir = useMemo(() => pklAbsensiHistory.filter((a: any) => a.status === 'HADIR').length, [pklAbsensiHistory]);
+
+  const pklSisaHari = useMemo(() => {
+    const selesai = (myPenempatan as any)?.tanggal_selesai;
+    if (!selesai) return null;
+    const diff = Math.ceil((new Date(selesai).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, diff);
+  }, [myPenempatan]);
+  // ──────────────────────────────────────────────────────────────────────────
+
   const dailyRecap = dailyRecapRes?.data ?? null;
   const monthlyRecap = monthlyRecapRes?.data ?? null;
+
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -935,6 +992,12 @@ export const SiswaDashboard: React.FC = () => {
                     <span>Petugas Kelas</span>
                   </span>
                 )}
+                {isAktifPkl && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                    <Briefcase size={11} />
+                    <span>PKL Aktif</span>
+                  </span>
+                )}
               </div>
 
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
@@ -1032,204 +1095,340 @@ export const SiswaDashboard: React.FC = () => {
       {/* TODAY'S PRESENCE & DISCIPLINE SCORE BANNER                         */}
       {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {activeTab === 'ringkasan' && (
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-blue-500/20">
-          {/* Left Side: Gate Attendance & Mini Session Status */}
-          <div className="space-y-3 max-w-2xl min-w-0">
-            <div className="space-y-1.5">
-              <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                STATUS HARI INI – {todayFormattedDate}
-              </span>
-
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
-                <span>Presensi Gerbang:</span>
-                <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
-                  {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
-                  {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap 
-                    ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
-                    : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
-                  })
+        isAktifPkl ? (
+          /* ── STATUS PKL HARI INI ── */
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-emerald-500/20">
+            <div className="space-y-3 max-w-2xl min-w-0">
+              <div className="space-y-1.5">
+                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  STATUS PKL – {todayFormattedDate}
                 </span>
-              </h2>
-
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
-                <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
-                <span>Gate 1 Utama</span>
-                <span>•</span>
-                <span>Sesi KBM Active</span>
-              </p>
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
+                  <span>Presensi PKL:</span>
+                  <span className={cn(
+                    "underline underline-offset-4 font-mono font-black",
+                    todayPklAbsensi?.jam_pulang ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-500" :
+                    todayPklAbsensi?.jam_masuk ? "text-blue-600 dark:text-blue-400 decoration-blue-500" :
+                    "text-rose-600 dark:text-rose-400 decoration-rose-500"
+                  )}>
+                    {todayPklAbsensi?.jam_masuk
+                      ? todayPklAbsensi?.jam_pulang
+                        ? `HADIR (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} – ${formatLocalTimeFromISO(todayPklAbsensi.jam_pulang)})`
+                        : `Sedang PKL (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} ${getTimezoneLabel()})`
+                      : 'Belum Check-In'
+                    }
+                  </span>
+                  {todayPklAbsensi?.jam_masuk && (
+                    todayPklAbsensi?.is_verified ? (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 no-underline">
+                        <ShieldCheck size={12} />
+                        Diverifikasi Pembimbing
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 no-underline">
+                        <Clock size={12} />
+                        Menunggu Verifikasi
+                      </span>
+                    )
+                  )}
+                </h2>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                  <BuildingIcon size={14} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span>{(myPenempatan as any)?.Mitra?.nama || 'Mitra PKL'}</span>
+                  {(myPenempatan as any)?.Pembimbing?.nama_guru && (
+                    <>
+                      <span>•</span>
+                      <span>Pembimbing: {(myPenempatan as any).Pembimbing.nama_guru}</span>
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
-
-            {/* Mini Status Sesi KBM Hari Ini (Khusus Mode Multi-Sesi) */}
-            {todayKbmSchedule && todayKbmSchedule.length > 0 && (
-              <div className="pt-2.5 space-y-1.5 border-t border-blue-500/20">
-                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
-                  Progres Sesi KBM Hari Ini ({todayKbmSchedule.length} Sesi Terjadwal)
+            <button
+              onClick={() => navigate('/hubin/absensi')}
+              className="shrink-0 px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-md shadow-emerald-500/30 transition-all active:scale-95 cursor-pointer"
+            >
+              <Briefcase size={14} />
+              Buka Presensi PKL
+            </button>
+          </div>
+        ) : (
+          /* ── STATUS SEKOLAH: Presensi Gerbang ── */
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-slate-900 dark:via-blue-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-blue-500/20">
+            {/* Left Side: Gate Attendance & Mini Session Status */}
+            <div className="space-y-3 max-w-2xl min-w-0">
+              <div className="space-y-1.5">
+                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                  STATUS HARI INI – {todayFormattedDate}
                 </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {todayKbmSchedule.map((sesi: any, idx: number) => {
-                    const gateStatus = dailyRecapRes?.data?.status || dailyRecapRes?.data?.rincian?.[0]?.status;
-                    const isStudentAtSchool = gateStatus === 'HADIR' || gateStatus === 'TERLAMBAT' || gateStatus === 'TEPAT_WAKTU';
 
-                    const tapList = Array.isArray(dailyRecapRes?.data?.sessionTaps)
-                      ? dailyRecapRes.data.sessionTaps
-                      : Array.isArray((dailyRecapRes as any)?.data?.rincian)
-                        ? (dailyRecapRes as any).data.rincian
-                        : [];
+                <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
+                  <span>Presensi Gerbang:</span>
+                  <span className="underline decoration-blue-500 underline-offset-4 font-mono font-black text-blue-600 dark:text-blue-400">
+                    {dailyRecapRes?.data?.status || (dailyRecapRes?.data?.rincian?.[0]?.status ?? 'HADIR')} (
+                    {dailyRecapRes?.data?.rincian?.[0]?.waktu_tap
+                      ? formatLocalTimeFromISO(dailyRecapRes.data.rincian[0].waktu_tap) + ' WIB'
+                      : (dailyRecapRes?.data?.waktu_masuk || 'Belum Tap')
+                    })
+                  </span>
+                </h2>
 
-                    const tap = tapList.find(
-                      (t: any) => 
-                        t.sesi_id === sesi.id || 
-                        t.nama_sesi === sesi.nama_sesi || 
-                        (t.nama_mapel && sesi.mapel && String(t.nama_mapel).toLowerCase().trim() === String(sesi.mapel).toLowerCase().trim()) || 
-                        (t.mapel && sesi.mapel && String(t.mapel).toLowerCase().trim() === String(sesi.mapel).toLowerCase().trim()) ||
-                        (t.jenis_kegiatan && sesi.mapel && String(t.jenis_kegiatan).toLowerCase().includes(String(sesi.mapel).toLowerCase())) ||
-                        (t.jenis_kegiatan && sesi.kode && String(t.jenis_kegiatan).toLowerCase().includes(String(sesi.kode).toLowerCase()))
-                    );
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                  <MapPin size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                  <span>Gate 1 Utama</span>
+                  <span>•</span>
+                  <span>Sesi KBM Active</span>
+                </p>
+              </div>
 
-                    let displayStatusLabel = 'Jadwal';
-                    let badgeStyle = 'bg-slate-200/60 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-slate-300/80 dark:border-slate-700';
+              {/* Mini Status Sesi KBM Hari Ini (Khusus Mode Multi-Sesi) */}
+              {todayKbmSchedule && todayKbmSchedule.length > 0 && (
+                <div className="pt-2.5 space-y-1.5 border-t border-blue-500/20">
+                  <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+                    Progres Sesi KBM Hari Ini ({todayKbmSchedule.length} Sesi Terjadwal)
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {todayKbmSchedule.map((sesi: any, idx: number) => {
+                      const gateStatus = dailyRecapRes?.data?.status || dailyRecapRes?.data?.rincian?.[0]?.status;
+                      const isStudentAtSchool = gateStatus === 'HADIR' || gateStatus === 'TERLAMBAT' || gateStatus === 'TEPAT_WAKTU';
 
-                    if (tap && tap.status) {
-                      const s = String(tap.status).toUpperCase();
-                      if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
-                        displayStatusLabel = 'Hadir';
-                        badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-                      } else if (s === 'TERLAMBAT') {
-                        displayStatusLabel = 'Terlambat';
-                        badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
-                      } else if (s === 'SAKIT' || s === 'IZIN' || s === 'DISPEN') {
-                        displayStatusLabel = s === 'SAKIT' ? 'Sakit' : s === 'IZIN' ? 'Izin' : 'Dispen';
-                        badgeStyle = 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
-                      } else if (s === 'ALPA') {
-                        displayStatusLabel = 'Alpa';
-                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                      }
-                    } else {
-                      if (sesi.status === 'Sedang Berlangsung') {
-                        displayStatusLabel = isStudentAtSchool ? 'KBM' : 'Belum';
-                        badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 animate-pulse';
-                      } else if (sesi.status === 'Terlewat') {
-                        displayStatusLabel = 'Terlewat';
-                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
-                      } else if (sesi.status === 'Mendatang') {
-                        displayStatusLabel = 'Jadwal';
-                        badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
-                      } else if (sesi.status === 'Selesai') {
-                        if (isStudentAtSchool) {
+                      const tapList = Array.isArray(dailyRecapRes?.data?.sessionTaps)
+                        ? dailyRecapRes.data.sessionTaps
+                        : Array.isArray((dailyRecapRes as any)?.data?.rincian)
+                          ? (dailyRecapRes as any).data.rincian
+                          : [];
+
+                      const tap = tapList.find(
+                        (t: any) =>
+                          t.sesi_id === sesi.id ||
+                          t.sesi_nama === sesi.nama_sesi ||
+                          (t.asal_gerbang && t.asal_gerbang === sesi.nama_sesi)
+                      );
+
+                      let displayStatusLabel = '';
+                      let badgeStyle = '';
+
+                      if (tap) {
+                        const s = tap.status;
+                        if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
                           displayStatusLabel = 'Hadir';
                           badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
-                        } else {
+                        } else if (s === 'TERLAMBAT') {
+                          displayStatusLabel = 'Terlambat';
+                          badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
+                        } else if (s === 'SAKIT' || s === 'IZIN' || s === 'DISPEN') {
+                          displayStatusLabel = s === 'SAKIT' ? 'Sakit' : s === 'IZIN' ? 'Izin' : 'Dispen';
+                          badgeStyle = 'bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30';
+                        } else if (s === 'ALPA') {
                           displayStatusLabel = 'Alpa';
                           badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
                         }
+                      } else {
+                        if (sesi.status === 'Sedang Berlangsung') {
+                          displayStatusLabel = isStudentAtSchool ? 'KBM' : 'Belum';
+                          badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 animate-pulse';
+                        } else if (sesi.status === 'Terlewat') {
+                          displayStatusLabel = 'Terlewat';
+                          badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+                        } else if (sesi.status === 'Mendatang') {
+                          displayStatusLabel = 'Jadwal';
+                          badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700';
+                        } else if (sesi.status === 'Selesai') {
+                          if (isStudentAtSchool) {
+                            displayStatusLabel = 'Hadir';
+                            badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+                          } else {
+                            displayStatusLabel = 'Alpa';
+                            badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+                          }
+                        }
                       }
-                    }
 
-                    return (
-                      <span
-                        key={sesi.id || `sesi-mini-${idx}`}
-                        className={cn("px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all", badgeStyle)}
-                        title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
-                      >
-                        <span className="font-mono text-[10px] opacity-75">Sesi {idx + 1}</span>
-                        <span className="font-extrabold">{displayStatusLabel}</span>
-                      </span>
-                    );
-                  })}
+                      return (
+                        <span
+                          key={sesi.id || `sesi-mini-${idx}`}
+                          className={cn("px-2.5 py-1 rounded-xl text-[11px] font-bold border flex items-center gap-1.5 transition-all", badgeStyle)}
+                          title={`${sesi.nama_sesi || `Sesi ${idx+1}`}: ${sesi.mapel || 'Mata Pelajaran'} (${displayStatusLabel})`}
+                        >
+                          <span className="font-mono text-[10px] opacity-75">Sesi {idx + 1}</span>
+                          <span className="font-extrabold">{displayStatusLabel}</span>
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )
       )}
-
-      {/* 4 SUMMARY STAT CARDS (Clean Light Theme - Rendered only on Ringkasan tab) */}
+      {/* 4 SUMMARY STAT CARDS — conditional PKL vs Sekolah */}
       {activeTab === 'ringkasan' && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-          {/* Stat 1: Saldo Poin Kedisiplinan (Clickable to Catatan Tab) */}
-          <div 
-            onClick={() => handleTabChange('catatan')}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-            title="Klik untuk membuka Tab Catatan & Buku Poin"
-          >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <Shield size={18} className="sm:hidden" />
-              <Shield size={20} className="hidden sm:block" />
-            </div>
-            <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin Kedisiplinan</span>
-              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
+        isAktifPkl ? (
+          /* ── STAT CARDS PKL ── */
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {/* PKL Card 1: Hari Hadir PKL */}
+            <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0">
+                <CheckCircle2 size={18} className="sm:hidden" />
+                <CheckCircle2 size={20} className="hidden sm:block" />
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                {netPoin >= 0 ? 'Aman (Saldo Poin Positif)' : netPoin >= -20 ? 'Peringatan (Perlu Perhatian)' : 'Kritis (Perlu Pembinaan)'}
-              </p>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Hari Hadir PKL</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">{pklHadir} Hari</div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+                  {pklHadir > 0 ? 'Terus semangat!' : 'Belum ada absensi'}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Stat 2: Peringkat Kedisiplinan (Clickable Leaderboard) */}
-          <div 
-            onClick={() => setShowLeaderboardModal(true)}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-blue-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-            title="Klik untuk melihat Klasemen Kedisiplinan Kelas"
-          >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <TrendingUp size={18} className="sm:hidden" />
-              <TrendingUp size={20} className="hidden sm:block" />
-            </div>
-            <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
-              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                {myRank.rank > 0 ? `#${myRank.rank}` : '-'}
+            {/* PKL Card 2: Sisa Hari */}
+            <div className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
+                <Clock size={18} className="sm:hidden" />
+                <Clock size={20} className="hidden sm:block" />
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
-                {myRank.totalStudents > 0 ? `Dari ${myRank.totalStudents} Siswa ${currentClassName}` : `Kelas ${currentClassName}`}
-              </p>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Sisa Hari PKL</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {pklSisaHari !== null ? `${pklSisaHari} Hari` : '–'}
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
+                  {pklSisaHari === 0 ? 'PKL berakhir hari ini' : pklSisaHari !== null ? 'Sebelum berakhir' : 'Tanpa batas waktu'}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Stat 3: Kehadiran Bulanan (Clickable Modal) */}
-          <div 
-            onClick={() => setShowKehadiranModal(true)}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-emerald-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-            title="Klik untuk melihat Rincian Kehadiran Bulanan"
-          >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <CheckCircle2 size={18} className="sm:hidden" />
-              <CheckCircle2 size={20} className="hidden sm:block" />
-            </div>
-            <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Kehadiran Bulanan</span>
-              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                {gamification.attendanceRate}%
+            {/* PKL Card 3: Saldo Poin Kedisiplinan */}
+            <div
+              onClick={() => handleTabChange('catatan')}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk membuka Tab Catatan & Buku Poin"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Shield size={18} className="sm:hidden" />
+                <Shield size={20} className="hidden sm:block" />
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
-                {gamification.attendanceRate >= 95 ? 'Sangat Baik' : gamification.attendanceRate >= 80 ? 'Cukup Baik' : 'Perlu Perhatian'}
-              </p>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
+                  {netPoin >= 0 ? 'Aman (Positif)' : netPoin >= -20 ? 'Peringatan' : 'Kritis'}
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Stat 4: Total Prestasi (Clickable Modal) */}
-          <div 
-            onClick={() => setShowPrestasiModal(true)}
-            className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
-            title="Klik untuk melihat Detail Catatan Prestasi & Penghargaan"
-          >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-              <Trophy size={18} className="sm:hidden" />
-              <Trophy size={20} className="hidden sm:block" />
-            </div>
-            <div className="space-y-0.5 min-w-0 w-full">
-              <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
-              <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-                {prestasiList.length} Penghargaan
+            {/* PKL Card 4: Lokasi / Mitra */}
+            <div
+              onClick={() => navigate('/hubin/absensi')}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-indigo-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk membuka halaman PKL"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <BuildingIcon size={18} className="sm:hidden" />
+                <BuildingIcon size={20} className="hidden sm:block" />
               </div>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
-                +{totalPoinPrestasi} Poin Bonus
-              </p>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Lokasi PKL</span>
+                <div className="text-sm font-black text-slate-900 dark:text-white leading-tight truncate">
+                  {(myPenempatan as any)?.Mitra?.nama || 'Mitra PKL'}
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 truncate">
+                  Tap untuk buka detail →
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          /* ── STAT CARDS SEKOLAH (existing) ── */
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+            {/* Stat 1: Saldo Poin Kedisiplinan (Clickable to Catatan Tab) */}
+            <div
+              onClick={() => handleTabChange('catatan')}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-amber-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk membuka Tab Catatan & Buku Poin"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Shield size={18} className="sm:hidden" />
+                <Shield size={20} className="hidden sm:block" />
+              </div>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Saldo Poin Kedisiplinan</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {netPoin >= 0 ? `+${netPoin}` : netPoin} Poin
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
+                  {netPoin >= 0 ? 'Aman (Saldo Poin Positif)' : netPoin >= -20 ? 'Peringatan (Perlu Perhatian)' : 'Kritis (Perlu Pembinaan)'}
+                </p>
+              </div>
+            </div>
+
+            {/* Stat 2: Peringkat Kedisiplinan (Clickable Leaderboard) */}
+            <div
+              onClick={() => setShowLeaderboardModal(true)}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-blue-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk melihat Klasemen Kedisiplinan Kelas"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <TrendingUp size={18} className="sm:hidden" />
+                <TrendingUp size={20} className="hidden sm:block" />
+              </div>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Peringkat Kedisiplinan</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {myRank.rank > 0 ? `#${myRank.rank}` : '-'}
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
+                  {myRank.totalStudents > 0 ? `Dari ${myRank.totalStudents} Siswa ${currentClassName}` : `Kelas ${currentClassName}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Stat 3: Kehadiran Bulanan (Clickable Modal) */}
+            <div
+              onClick={() => setShowKehadiranModal(true)}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-emerald-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk melihat Rincian Kehadiran Bulanan"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <CheckCircle2 size={18} className="sm:hidden" />
+                <CheckCircle2 size={20} className="hidden sm:block" />
+              </div>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Kehadiran Bulanan</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {gamification.attendanceRate}%
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-blue-600 dark:text-blue-400 truncate">
+                  {gamification.attendanceRate >= 95 ? 'Sangat Baik' : gamification.attendanceRate >= 80 ? 'Cukup Baik' : 'Perlu Perhatian'}
+                </p>
+              </div>
+            </div>
+
+            {/* Stat 4: Total Prestasi (Clickable Modal) */}
+            <div
+              onClick={() => setShowPrestasiModal(true)}
+              className="p-3.5 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3.5 relative overflow-hidden group hover:border-purple-500/60 transition-all cursor-pointer hover:shadow-md active:scale-[0.98]"
+              title="Klik untuk melihat Detail Catatan Prestasi & Penghargaan"
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                <Trophy size={18} className="sm:hidden" />
+                <Trophy size={20} className="hidden sm:block" />
+              </div>
+              <div className="space-y-0.5 min-w-0 w-full">
+                <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block truncate">Total Prestasi</span>
+                <div className="text-base sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                  {prestasiList.length} Penghargaan
+                </div>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-purple-600 dark:text-purple-400 truncate">
+                  +{totalPoinPrestasi} Poin Bonus
+                </p>
+              </div>
+            </div>
+          </div>
+        )
       )}
 
       {/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
@@ -1247,119 +1446,260 @@ export const SiswaDashboard: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="space-y-5 sm:space-y-6"
           >
-            {/* ðŸš€ AKSI CEPAT SISWA (Clean Light Theme) */}
+            {/* AKSI CEPAT — conditional PKL vs Sekolah */}
             <div className="space-y-3">
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Aksi Cepat Siswa</h3>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">
+                {isAktifPkl ? 'Aksi Cepat PKL' : 'Aksi Cepat Siswa'}
+              </h3>
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <button
-                  onClick={() => setShowDigitalCardModal(true)}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <QrCode size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleTabChange('kehadiran')}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Calendar size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jadwal KBM</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Cek Presensi Kelas</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleTabChange('catatan')}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Trophy size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Buku Poin</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Pelanggaran &amp; Prestasi</p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleTabChange('profil')}
-                  className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
-                >
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <User size={20} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* 📜 HISTORIS POIN KEDISIPLINAN TERBARU (Clean Light Theme) */}
-            <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Historis Poin Kedisiplinan Terbaru</h3>
-                <button onClick={() => handleTabChange('catatan')} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer">
-                  <span>Lihat Semua</span>
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {disciplineHistory.length > 0 ? (
-                  disciplineHistory.slice(0, 3).map((item) => {
-                    const isPositive = item.poin > 0;
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
-                          isPositive ? "border-emerald-200/80 dark:border-emerald-900/40 hover:border-emerald-500/40" : "border-rose-200/80 dark:border-rose-900/40 hover:border-rose-500/40"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
-                            isPositive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
-                          )}>
-                            {isPositive ? <Award size={18} /> : <AlertCircle size={18} />}
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-900 dark:text-white">{item.judul}</h4>
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                              {item.kategori} • {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
-                            </p>
-                          </div>
-                        </div>
-                        <span className={cn(
-                          "text-xs font-black shrink-0 font-mono",
-                          isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
-                        )}>
-                          {isPositive ? `+${item.poin} Poin` : `${item.poin} Poin`}
-                        </span>
+                {isAktifPkl ? (
+                  <>
+                    {/* PKL: Presensi PKL */}
+                    <button
+                      onClick={() => navigate('/hubin/absensi')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Briefcase size={20} />
                       </div>
-                    );
-                  })
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Presensi PKL</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Check-In / Check-Out</p>
+                      </div>
+                    </button>
+
+                    {/* PKL: Jurnal Harian */}
+                    <button
+                      onClick={() => navigate('/hubin/absensi')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <BookOpen size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jurnal Harian</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Logbook Kegiatan PKL</p>
+                      </div>
+                    </button>
+
+                    {/* PKL: Kartu Digital */}
+                    <button
+                      onClick={() => setShowDigitalCardModal(true)}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <QrCode size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
+                      </div>
+                    </button>
+
+                    {/* PKL: Profil Saya */}
+                    <button
+                      onClick={() => handleTabChange('profil')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-purple-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <User size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
+                      </div>
+                    </button>
+                  </>
                 ) : (
-                  <div className="py-6 text-center space-y-1.5">
-                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                      <FileText size={18} />
-                    </div>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada catatan poin kedisiplinan terbaru.</p>
-                  </div>
+                  <>
+                    {/* Sekolah: Kartu Digital */}
+                    <button
+                      onClick={() => setShowDigitalCardModal(true)}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <QrCode size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Kartu Digital</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Tampilkan QR / Barcode</p>
+                      </div>
+                    </button>
+
+                    {/* Sekolah: Jadwal KBM */}
+                    <button
+                      onClick={() => handleTabChange('kehadiran')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Calendar size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Jadwal KBM</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Cek Presensi Kelas</p>
+                      </div>
+                    </button>
+
+                    {/* Sekolah: Buku Poin */}
+                    <button
+                      onClick={() => handleTabChange('catatan')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Trophy size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Buku Poin</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Pelanggaran &amp; Prestasi</p>
+                      </div>
+                    </button>
+
+                    {/* Sekolah: Profil Saya */}
+                    <button
+                      onClick={() => handleTabChange('profil')}
+                      className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 shadow-sm text-left space-y-2.5 transition-all group cursor-pointer"
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <User size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">Profil Saya</h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">Profil &amp; Kartu Pelajar</p>
+                      </div>
+                    </button>
+                  </>
                 )}
               </div>
             </div>
+
+            {/* HISTORIS — conditional PKL vs Sekolah */}
+            {isAktifPkl ? (
+              /* ── RIWAYAT ABSENSI PKL TERBARU ── */
+              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Riwayat Absensi PKL Terbaru</h3>
+                  <button onClick={() => navigate('/hubin/absensi')} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1 cursor-pointer">
+                    <span>Lihat Semua</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {pklAbsensiHistory.length > 0 ? (
+                    pklAbsensiHistory.slice(0, 3).map((item: any) => {
+                      const isHadir = item.status === 'HADIR';
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
+                            isHadir ? "border-emerald-200/80 dark:border-emerald-900/40" : "border-rose-200/80 dark:border-rose-900/40"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
+                              isHadir ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                            )}>
+                              {isHadir ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                                {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' }) : '-'}
+                              </h4>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
+                                <span>{item.jam_masuk ? `Masuk: ${formatLocalTimeFromISO(item.jam_masuk)} ${getTimezoneLabel()}` : 'Belum check-in'}</span>
+                                {item.jam_pulang && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Pulang: {formatLocalTimeFromISO(item.jam_pulang)} ${getTimezoneLabel()}</span>
+                                  </>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {item.is_verified ? (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                <ShieldCheck size={11} />
+                                Terverifikasi
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                                <Clock size={11} />
+                                Menunggu
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-6 text-center space-y-1.5">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                        <FileText size={18} />
+                      </div>
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada riwayat absensi PKL.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* ── HISTORIS POIN KEDISIPLINAN (existing) ── */
+              <div className="p-5 sm:p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 space-y-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white tracking-tight">Historis Poin Kedisiplinan Terbaru</h3>
+                  <button onClick={() => handleTabChange('catatan')} className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1 cursor-pointer">
+                    <span>Lihat Semua</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {disciplineHistory.length > 0 ? (
+                    disciplineHistory.slice(0, 3).map((item) => {
+                      const isPositive = item.poin > 0;
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
+                            isPositive ? "border-emerald-200/80 dark:border-emerald-900/40 hover:border-emerald-500/40" : "border-rose-200/80 dark:border-rose-900/40 hover:border-rose-500/40"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
+                              isPositive ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                            )}>
+                              {isPositive ? <Award size={18} /> : <AlertCircle size={18} />}
+                            </div>
+                            <div>
+                              <h4 className="text-xs font-bold text-slate-900 dark:text-white">{item.judul}</h4>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                                {item.kategori} • {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                              </p>
+                            </div>
+                          </div>
+                          <span className={cn(
+                            "text-xs font-black shrink-0 font-mono",
+                            isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                          )}>
+                            {isPositive ? `+${item.poin} Poin` : `${item.poin} Poin`}
+                          </span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="py-6 text-center space-y-1.5">
+                      <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                        <FileText size={18} />
+                      </div>
+                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Belum ada catatan poin kedisiplinan terbaru.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
           </motion.div>
         )}

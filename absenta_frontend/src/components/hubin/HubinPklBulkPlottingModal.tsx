@@ -5,6 +5,8 @@ import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
 import { kelasApi, siswaApi } from '../../api/academic.api';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { toast } from 'react-hot-toast';
 
 interface HubinPklBulkPlottingModalProps {
@@ -19,6 +21,9 @@ interface HubinPklBulkPlottingModalProps {
     pembimbing_id: string | null;
     tanggal_mulai: string;
     tanggal_selesai: string | null;
+    tahun_pelajaran_id?: string | null;
+    semester_id?: string | null;
+    kelas_id?: string | null;
   }) => void;
   isPending: boolean;
   onGuruSearch?: (val: string) => void;
@@ -45,6 +50,27 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
   const [selectedMitraId, setSelectedMitraId] = useState('');
   const [selectedPembimbingId, setSelectedPembimbingId] = useState('');
 
+  // Tahun Pelajaran & Semester hooks
+  const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
+  const [selectedTpId, setSelectedTpId] = useState<string>('');
+
+  useEffect(() => {
+    if (activeTahunPelajaran?.id && !selectedTpId) {
+      setSelectedTpId(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, selectedTpId]);
+
+  const { options: semOptions, activeSemester, isLoading: isLoadingSem } = useSemesterOptions({
+    tahunPelajaranId: selectedTpId || activeTahunPelajaran?.id
+  });
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+
+  useEffect(() => {
+    if (activeSemester?.id && !selectedSemesterId) {
+      setSelectedSemesterId(activeSemester.id);
+    }
+  }, [activeSemester, selectedSemesterId]);
+
   // Reset state on open/close
   useEffect(() => {
     if (!isOpen) {
@@ -52,8 +78,10 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       setSelectedSiswaIds([]);
       setSelectedMitraId('');
       setSelectedPembimbingId('');
+      if (activeTahunPelajaran?.id) setSelectedTpId(activeTahunPelajaran.id);
+      if (activeSemester?.id) setSelectedSemesterId(activeSemester.id);
     }
-  }, [isOpen]);
+  }, [isOpen, activeTahunPelajaran, activeSemester]);
 
   // Fetch Classes
   const { data: kelasResponse, isLoading: isLoadingKelas } = useQuery({
@@ -129,6 +157,9 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       pembimbing_id: selectedPembimbingId || null,
       tanggal_mulai: tMulai ? new Date(tMulai).toISOString() : new Date().toISOString(),
       tanggal_selesai: tSelesai ? new Date(tSelesai).toISOString() : null,
+      tahun_pelajaran_id: selectedTpId || activeTahunPelajaran?.id || null,
+      semester_id: selectedSemesterId || activeSemester?.id || null,
+      kelas_id: selectedKelasId || null,
     });
   };
 
@@ -147,7 +178,42 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       <form onSubmit={handleFormSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Rombel / Kelas Selector */}
-          <div className="md:col-span-1 border-r border-slate-150 dark:border-slate-800 pr-4 space-y-4">
+          <div className="md:col-span-1 border-r border-slate-150 dark:border-slate-800 pr-4 space-y-3">
+            {/* Konteks Tahun Pelajaran & Semester */}
+            <div className="p-3 bg-slate-50/80 dark:bg-slate-900/40 rounded-xl border border-slate-200/70 dark:border-slate-800/80 space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <Calendar size={13} className="text-indigo-600" />
+                <span>Konteks Akademik</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <SimpleFormField htmlFor="bulk-tp" label="Tahun Pelajaran" required>
+                  <SearchableSelect
+                    id="bulk-tp"
+                    options={tpOptions}
+                    placeholder="-- Pilih TP --"
+                    triggerClassName="h-9 text-xs w-full rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                    onValueChange={(val) => {
+                      setSelectedTpId(val);
+                      setSelectedSemesterId('');
+                    }}
+                    value={selectedTpId || activeTahunPelajaran?.id || ''}
+                    isLoading={isLoadingTp}
+                  />
+                </SimpleFormField>
+                <SimpleFormField htmlFor="bulk-semester" label="Semester" required>
+                  <SearchableSelect
+                    id="bulk-semester"
+                    options={semOptions}
+                    placeholder="-- Pilih Semester --"
+                    triggerClassName="h-9 text-xs w-full rounded-lg bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                    onValueChange={(val) => setSelectedSemesterId(val)}
+                    value={selectedSemesterId || activeSemester?.id || ''}
+                    isLoading={isLoadingSem}
+                  />
+                </SimpleFormField>
+              </div>
+            </div>
+
             <SimpleFormField htmlFor="bulk-kelas" label="Pilih Kelas / Rombel" required>
               <SearchableSelect
                 id="bulk-kelas"
@@ -180,7 +246,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 )}
               </div>
 
-              <div className="h-[380px] overflow-y-auto overflow-x-hidden border border-slate-150 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 p-2 space-y-1.5">
+              <div className="h-[280px] overflow-y-auto overflow-x-hidden border border-slate-150 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 p-2 space-y-1.5">
                 {isLoadingSiswa ? (
                   <div className="h-full flex items-center justify-center text-xs text-slate-400">
                     Memuat data siswa...

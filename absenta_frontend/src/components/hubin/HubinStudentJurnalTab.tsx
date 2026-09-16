@@ -1,10 +1,8 @@
-import React from 'react';
-import { FileText, RefreshCw, AlertTriangle, ShieldCheck, Printer, Calendar, Clock } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { SectionCard, Button, Input } from '../ui';
-import { SimpleFormField } from '../ui/SimpleFormField';
-import { format, parseISO, isValid } from 'date-fns';
-import { id as localeID } from 'date-fns/locale';
+import React, { useState, useMemo, useEffect } from 'react';
+import { History, Printer, Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '../ui';
+import { formatDate } from '../../utils/layoutUtils';
+import { getTimezoneLabel } from '../../utils/attendance/time';
 import { renderDailyTimeline } from '../../utils/hubinUtils';
 import { PklStatusBadge } from './PklStatusBadge';
 
@@ -19,8 +17,8 @@ interface StudentPklJurnal {
 }
 
 interface SubmitJurnalMutation {
-  mutate: (url: string) => void;
-  isPending: boolean;
+  mutate?: (url: string) => void;
+  isPending?: boolean;
 }
 
 interface AbsensiItem {
@@ -28,200 +26,369 @@ interface AbsensiItem {
   tanggal: string;
   status?: string;
   is_verified?: boolean;
+  jam_masuk?: string;
+  jam_pulang?: string;
+  kegiatan?: string;
+  image_url?: string;
+  image_url_out?: string;
+  is_outside_radius?: boolean;
+  distance_meters?: number;
+  address_snapshot?: string;
 }
 
 interface HubinStudentJurnalTabProps {
-  studentPkl: StudentPklJurnal | null;
-  jurnalUrl: string;
-  setJurnalUrl: (val: string) => void;
-  submitJurnalMutation: SubmitJurnalMutation;
+  studentPkl?: StudentPklJurnal | null;
+  jurnalUrl?: string;
+  setJurnalUrl?: (val: string) => void;
+  submitJurnalMutation?: SubmitJurnalMutation;
   onPrint?: () => void;
   rawAbsensiHistory: AbsensiItem[];
 }
 
 export const HubinStudentJurnalTab: React.FC<HubinStudentJurnalTabProps> = React.memo(({
-  studentPkl,
-  jurnalUrl,
-  setJurnalUrl,
-  submitJurnalMutation,
   onPrint,
   rawAbsensiHistory
 }) => {
-  const handleSubmitJurnal = React.useCallback(() => {
-    if (!jurnalUrl.trim().startsWith('http')) {
-      toast.error('Harap masukkan alamat tautan link (URL) yang valid!');
-      return;
+  const [filter, setFilter] = useState<'ALL' | 'HADIR' | 'IZIN' | 'PENDING'>('ALL');
+  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [visibleLimit, setVisibleLimit] = useState<number>(15);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // 1. Ekstraksi Daftar Bulan Unik dari Riwayat (Auto-Grouping)
+  const availableMonths = useMemo(() => {
+    const monthsMap = new Map<string, string>();
+    (rawAbsensiHistory || []).forEach(a => {
+      if (a.tanggal) {
+        const ym = a.tanggal.slice(0, 7); // "YYYY-MM"
+        if (ym.length === 7 && !monthsMap.has(ym)) {
+          try {
+            const [year, month] = ym.split('-');
+            const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+            const label = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+            monthsMap.set(ym, label);
+          } catch {
+            monthsMap.set(ym, ym);
+          }
+        }
+      }
+    });
+    return Array.from(monthsMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [rawAbsensiHistory]);
+
+  // 2. Filter Berdasarkan Bulan Terpilih
+  const historyInMonth = useMemo(() => {
+    if (selectedMonth === 'ALL') return rawAbsensiHistory || [];
+    return (rawAbsensiHistory || []).filter(a => a.tanggal?.startsWith(selectedMonth));
+  }, [rawAbsensiHistory, selectedMonth]);
+
+  // 3. Metrik Ringkas Sesuai Bulan
+  const totalDays = historyInMonth.length;
+  const hadirCount = useMemo(() => historyInMonth.filter(a => (a.status || '').toUpperCase() === 'HADIR').length, [historyInMonth]);
+  const izinCount = useMemo(() => historyInMonth.filter(a => ['IZIN', 'SAKIT', 'DISPENSASI'].includes((a.status || '').toUpperCase())).length, [historyInMonth]);
+  const pendingCount = useMemo(() => historyInMonth.filter(a => !a.is_verified).length, [historyInMonth]);
+
+  // 4. Filter Status Kehadiran
+  const filteredHistory = useMemo(() => {
+    const list = [...historyInMonth].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime());
+    if (filter === 'HADIR') return list.filter(a => (a.status || '').toUpperCase() === 'HADIR');
+    if (filter === 'IZIN') return list.filter(a => ['IZIN', 'SAKIT', 'DISPENSASI'].includes((a.status || '').toUpperCase()));
+    if (filter === 'PENDING') return list.filter(a => !a.is_verified);
+    return list;
+  }, [historyInMonth, filter]);
+
+  // 5. Paginasi / Chunking untuk Performa Tinggi
+  const displayedHistory = useMemo(() => {
+    return filteredHistory.slice(0, visibleLimit);
+  }, [filteredHistory, visibleLimit]);
+
+  // Auto-expand 2 item teratas & item yang pending
+  useEffect(() => {
+    const initial = new Set<string>();
+    filteredHistory.forEach((abs, idx) => {
+      if (idx < 2 || !abs.is_verified) {
+        initial.add(abs.id || String(idx));
+      }
+    });
+    setExpandedIds(initial);
+    setVisibleLimit(15);
+  }, [selectedMonth, filter]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleExpandAll = () => {
+    if (expandedIds.size >= displayedHistory.length) {
+      setExpandedIds(new Set());
+    } else {
+      const all = new Set<string>();
+      displayedHistory.forEach((abs, idx) => all.add(abs.id || String(idx)));
+      setExpandedIds(all);
     }
-    submitJurnalMutation.mutate(jurnalUrl);
-  }, [jurnalUrl, submitJurnalMutation]);
+  };
+
+  const getActivitySummary = (abs: AbsensiItem) => {
+    let count = 0;
+    try {
+      if (abs.kegiatan) {
+        const parsed = JSON.parse(abs.kegiatan);
+        if (Array.isArray(parsed)) count = parsed.length;
+      }
+    } catch {}
+
+    const parts: string[] = [];
+    if (abs.jam_masuk) parts.push(abs.jam_masuk.slice(0, 5));
+    if (abs.jam_pulang) parts.push(abs.jam_pulang.slice(0, 5));
+
+    const timeStr = parts.length > 0 ? parts.join(' - ') : '';
+    const logStr = count > 0 ? `${count} kegiatan` : '';
+
+    if (timeStr && logStr) return `${timeStr} • ${logStr}`;
+    if (timeStr) return timeStr;
+    if (logStr) return logStr;
+    return 'Presensi Terdata';
+  };
 
   return (
-    <div className="space-y-8">
-      <SectionCard 
-        title="Riwayat & Cetak Laporan Jurnal PKL" 
-        icon={FileText} 
-        fullWidth
-      >
-        <div className="space-y-6">
-          {/* Quick Print Banner */}
-          <div className="p-6 bg-indigo-600 rounded-xl text-white flex flex-col sm:flex-row items-center justify-between gap-6 shadow-xl shadow-indigo-200 dark:shadow-none overflow-hidden relative group">
-            <div className="relative z-10">
-              <h4 className="text-lg font-black leading-tight mb-1">Cetak Laporan Jurnal Harian</h4>
-              <p className="text-indigo-100 text-xs font-medium opacity-90">Unduh hasil rekapitulasi seluruh aktivitas PKL Anda dalam format PDF resmi.</p>
-            </div>
-            <Button
-              onClick={onPrint}
-              className="relative z-10 bg-white text-indigo-600 hover:bg-indigo-50 font-black px-8 py-6 rounded-xl shadow-lg flex items-center gap-3 shrink-0 uppercase text-xs tracking-widest"
+    <div className="space-y-3.5">
+      {/* 1. Bar Pemilih Bulan & Cetak PDF */}
+      <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="relative flex items-center">
+            <Calendar size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
+            <select
+              value={selectedMonth}
+              aria-label="Pilih Periode Bulan"
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-7.5 pl-7 pr-7 text-[11px] font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-2xs appearance-none"
             >
-              <Printer size={20} />
-              Cetak Sekarang
-            </Button>
-            
-            {/* Decorative background elements */}
-            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:opacity-20 transition-opacity">
-              <Printer size={120} />
-            </div>
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+              <option value="ALL">Semua Periode ({rawAbsensiHistory?.length || 0} hari)</option>
+              {availableMonths.map(([ym, label]) => {
+                const count = (rawAbsensiHistory || []).filter(a => a.tanggal?.startsWith(ym)).length;
+                return (
+                  <option key={ym} value={ym}>
+                    {label} ({count} hari)
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown size={12} className="absolute right-2 text-slate-400 pointer-events-none" />
           </div>
-
-          {/* History List */}
-          <div className="space-y-4">
-            <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1">Riwayat Jurnal Harian</h5>
-            <div className="space-y-3">
-              {rawAbsensiHistory && rawAbsensiHistory.length > 0 ? (
-                [...rawAbsensiHistory].sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())?.map((abs, idx) => {
-                  return (
-                    <div key={abs.id || idx} className="p-4 bg-white dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all group">
-                      <div className="flex flex-col sm:flex-row justify-between gap-4">
-                        <div className="flex gap-4 w-full">
-                          <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 flex flex-col items-center justify-center shrink-0 border border-slate-100 dark:border-slate-700">
-                            <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{format(new Date(abs.tanggal), 'MMM', { locale: localeID })}</span>
-                            <span className="text-lg font-black text-slate-700 dark:text-slate-200 leading-none mt-1">{format(new Date(abs.tanggal), 'dd')}</span>
-                          </div>
-                          <div className="space-y-4 flex-1">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{format(new Date(abs.tanggal), 'EEEE, dd MMMM yyyy', { locale: localeID })}</span>
-                                {abs.is_verified ? (
-                                  <span className="text-[9px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 px-2 py-0.5 rounded-md border border-emerald-100/50 uppercase">Terverifikasi</span>
-                                ) : (
-                                  <span className="text-[9px] font-black bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 px-2 py-0.5 rounded-md border border-amber-100/50 uppercase">Pending</span>
-                                )}
-                              </div>
-                              <PklStatusBadge status={abs.status || 'HADIR'} />
-                            </div>
-                            
-                            <div className="pt-1">
-                              {renderDailyTimeline(abs)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-12 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm mb-4">
-                    <FileText className="text-slate-300" size={32} />
-                  </div>
-                  <h6 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase mb-1">Belum Ada Riwayat</h6>
-                  <p className="text-xs text-slate-400 font-medium max-w-[200px]">Silakan lakukan presensi hari ini untuk memulai jurnal kegiatan.</p>
-                </div>
-              )}
-            </div>
-          </div>
+          <span className="text-[10px] text-slate-400 hidden sm:inline">
+            • Zona {getTimezoneLabel()}
+          </span>
         </div>
-      </SectionCard>
 
-      <SectionCard title="Pengumpulan Jurnal & Portofolio PKL Akhir" icon={ShieldCheck} fullWidth>
-        <div className="space-y-6">
-          {/* Kurikulum Merdeka guidelines */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-900/40 dark:to-indigo-950/20 p-5 rounded-xl border border-blue-100 dark:border-indigo-900/30 flex gap-4 text-blue-800 dark:text-indigo-350 shadow-sm leading-relaxed">
-            <FileText className="shrink-0 text-indigo-500 mt-1" size={24} />
-            <div className="text-xs space-y-1.5 leading-relaxed">
-              <p className="font-bold text-sm text-indigo-900 dark:text-indigo-350">Panduan Administrasi Kurikulum Merdeka SMK</p>
-              <p>Berdasarkan panduan Kurikulum Merdeka, penilaian akhir PKL Anda tidak lagi berbasis Laporan PKL fisik tebal. Evaluasi akhir dinilai berdasarkan:</p>
-              <ul className="list-decimal list-inside pl-1 space-y-1 text-slate-600 dark:text-slate-400">
-                <li>Jurnal harian lengkap yang terverifikasi industri (Daftar di atas).</li>
-                <li>Portofolio Karya / Dokumen Hasil Kerja Terbaik selama magang di DUDI.</li>
-              </ul>
-              <p className="text-[10px] text-slate-400 mt-1 font-semibold">Silakan gabungkan seluruh berkas portofolio Anda dalam format PDF, unggah ke Google Drive/Dropbox, dan kumpulkan tautan berkasnya di bawah ini.</p>
-            </div>
-          </div>
+        {onPrint && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onPrint}
+            className="h-7.5 px-2.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 cursor-pointer shadow-2xs shrink-0"
+          >
+            <Printer size={12} />
+            <span>Cetak PDF</span>
+          </Button>
+        )}
+      </div>
 
-          {/* Status Pengumpulan */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-800">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Status Pengumpulan Portofolio</p>
-              <p className="text-xs text-slate-550 mt-0.5 font-medium">Guru Pembimbing: {studentPkl?.Pembimbing?.nama_guru || '-'}</p>
-            </div>
-            <div>
-              {!studentPkl?.jurnal_json?.status ? (
-                <span className="text-xs font-semibold bg-slate-150 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-3 py-1 rounded-full border border-slate-200/50">
-                  Belum Dikumpulkan
-                </span>
-              ) : studentPkl.jurnal_json.status === 'MENUNGGU_REVIEW' ? (
-                <span className="text-xs font-semibold bg-amber-50 text-amber-600 dark:bg-amber-950/20 dark:text-amber-400 px-3 py-1 rounded-full border border-amber-100/50 flex items-center gap-1.5">
-                  <RefreshCw size={12} className="animate-spin" /> Menunggu Review Guru
-                </span>
-              ) : studentPkl.jurnal_json.status === 'REVISI' ? (
-                <span className="text-xs font-semibold bg-rose-50 text-rose-650 dark:bg-rose-950/20 dark:text-rose-450 px-3 py-1 rounded-full border border-rose-100/50 flex items-center gap-1.5">
-                  <AlertTriangle size={12} /> Perlu Revisi
-                </span>
-              ) : (
-                <span className="text-xs font-semibold bg-emerald-50 text-emerald-650 dark:bg-emerald-950/20 dark:text-emerald-400 px-3 py-1 rounded-full border border-emerald-100/50 flex items-center gap-1.5">
-                  <ShieldCheck size={12} /> Jurnal Disetujui
-                </span>
-              )}
-            </div>
-          </div>
+      {/* 2. Interactive Stat & Filter Cards */}
+      <div className="grid grid-cols-4 gap-1.5">
+        <button
+          type="button"
+          onClick={() => setFilter('ALL')}
+          className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+            filter === 'ALL'
+              ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 border-slate-900 dark:border-slate-100 shadow-xs ring-2 ring-slate-400/30'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+          }`}
+        >
+          <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider block ${filter === 'ALL' ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`}>
+            Semua
+          </span>
+          <span className="text-xs sm:text-sm font-black mt-0.5 block">{totalDays}</span>
+        </button>
 
-          {/* Revision feedback */}
-          {studentPkl?.jurnal_json?.catatan_revisi && (
-            <div className="bg-rose-50 dark:bg-rose-950/20 p-4 rounded-xl border border-rose-100 dark:border-rose-900/30 flex gap-3 text-rose-800 dark:text-rose-450 animate-fadeIn">
-              <AlertTriangle className="shrink-0 text-rose-500 mt-0.5" size={18} />
-              <div className="text-xs space-y-1">
-                <p className="font-bold">Umpan Balik Guru Pembimbing</p>
-                <p className="italic">"{studentPkl.jurnal_json.catatan_revisi}"</p>
-              </div>
-            </div>
-          )}
+        <button
+          type="button"
+          onClick={() => setFilter('HADIR')}
+          className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+            filter === 'HADIR'
+              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-400/30'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-emerald-300'
+          }`}
+        >
+          <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider block ${filter === 'HADIR' ? 'text-emerald-100' : 'text-emerald-600 dark:text-emerald-400'}`}>
+            Hadir
+          </span>
+          <span className={`text-xs sm:text-sm font-black mt-0.5 block ${filter === 'HADIR' ? 'text-white' : 'text-emerald-700 dark:text-emerald-300'}`}>
+            {hadirCount}
+          </span>
+        </button>
 
-          {/* Form submission */}
-          <div className="space-y-4">
-            <SimpleFormField htmlFor="student-jurnal-url" label="Tautan Berkas Jurnal & Portofolio Akhir (PDF)" required>
-              <Input 
-                id="student-jurnal-url"
-                placeholder="https://drive.google.com/file/d/... (Pastikan akses diset publik/siapa saja memiliki link)"
-                value={jurnalUrl}
-                onChange={(e) => setJurnalUrl(e.target.value)}
-                disabled={studentPkl?.jurnal_json?.status === 'DISETUJUI'}
-                leftIcon={<FileText />}
-              />
-            </SimpleFormField>
+        <button
+          type="button"
+          onClick={() => setFilter('IZIN')}
+          className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+            filter === 'IZIN'
+              ? 'bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-400/30'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-blue-300'
+          }`}
+        >
+          <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider block ${filter === 'IZIN' ? 'text-blue-100' : 'text-blue-600 dark:text-blue-400'}`}>
+            Izin/Sakit
+          </span>
+          <span className={`text-xs sm:text-sm font-black mt-0.5 block ${filter === 'IZIN' ? 'text-white' : 'text-blue-700 dark:text-blue-300'}`}>
+            {izinCount}
+          </span>
+        </button>
 
-            {studentPkl?.jurnal_json?.status !== 'DISETUJUI' && (
-              <Button
-                onClick={handleSubmitJurnal}
-                disabled={submitJurnalMutation.isPending || !jurnalUrl.trim()}
-                isLoading={submitJurnalMutation.isPending}
-                variant="primary"
-                className="w-full font-bold uppercase tracking-wider py-3 shadow-lg shadow-indigo-100 dark:shadow-none"
+        <button
+          type="button"
+          onClick={() => setFilter('PENDING')}
+          className={`p-2 sm:p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+            filter === 'PENDING'
+              ? 'bg-amber-600 text-white border-amber-600 shadow-xs ring-2 ring-amber-400/30'
+              : pendingCount > 0
+                ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-900/40 text-slate-600 dark:text-slate-400 hover:border-amber-300'
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+          }`}
+        >
+          <span className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-wider block ${
+            filter === 'PENDING'
+              ? 'text-amber-100'
+              : pendingCount > 0
+                ? 'text-amber-600 dark:text-amber-400'
+                : 'text-slate-400'
+          }`}>
+            Pending
+          </span>
+          <span className={`text-xs sm:text-sm font-black mt-0.5 block ${
+            filter === 'PENDING'
+              ? 'text-white'
+              : pendingCount > 0
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-slate-600 dark:text-slate-400'
+          }`}>
+            {pendingCount}
+          </span>
+        </button>
+      </div>
+
+      {/* 3. Header List + Toggle Expand All */}
+      {filteredHistory.length > 0 && (
+        <div className="flex items-center justify-between px-1 pt-1">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Daftar Aktivitas ({filteredHistory.length} hari)
+          </span>
+          <button
+            type="button"
+            onClick={toggleExpandAll}
+            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+          >
+            {expandedIds.size >= displayedHistory.length ? 'Ringkas Semua' : 'Buka Semua'}
+          </button>
+        </div>
+      )}
+
+      {/* 4. History List (Collapsible Accordion Cards) */}
+      <div className="space-y-2">
+        {displayedHistory && displayedHistory.length > 0 ? (
+          displayedHistory.map((abs, idx) => {
+            const cardId = abs.id || String(idx);
+            const isExpanded = expandedIds.has(cardId);
+            const dateFormatted = abs.tanggal
+              ? formatDate(abs.tanggal, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+              : '-';
+            const summaryText = getActivitySummary(abs);
+
+            return (
+              <div
+                key={cardId}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all shadow-2xs overflow-hidden"
               >
-                {studentPkl?.jurnal_json?.status === 'REVISI' ? 'Kumpulkan Revisi Jurnal' : 'Kumpulkan Jurnal & Portofolio'}
-              </Button>
-            )}
+                {/* Header Kartu Harian (Click to Toggle) */}
+                <div
+                  onClick={() => toggleExpand(cardId)}
+                  className={`p-3 sm:p-3.5 flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                    isExpanded
+                      ? 'border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-800/20'
+                      : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-black text-slate-800 dark:text-slate-100 truncate">
+                      {dateFormatted}
+                    </span>
+                    {!isExpanded && (
+                      <span className="text-[10px] text-slate-400 font-medium truncate hidden sm:inline">
+                        • {summaryText}
+                      </span>
+                    )}
+                    {abs.is_verified ? (
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-100/50 shrink-0">
+                        Terverifikasi
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400 border border-amber-100/50 shrink-0">
+                        Pending
+                      </span>
+                    )}
+                  </div>
 
-            {studentPkl?.jurnal_json?.status === 'DISETUJUI' && (
-              <div className="bg-emerald-50 dark:bg-emerald-950/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex gap-3 text-emerald-800 dark:text-emerald-450 items-center justify-center">
-                <ShieldCheck className="text-emerald-500 shrink-0" size={20} />
-                <p className="text-xs font-bold">Administrasi PKL Anda telah selesai dan berkas disetujui!</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <PklStatusBadge status={abs.status || 'HADIR'} />
+                    <div className="w-5 h-5 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                      {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body Timeline Logbook (Hanya muncul jika Expanded) */}
+                {isExpanded && (
+                  <div className="p-3 sm:p-4 pt-2 sm:pt-3">
+                    {renderDailyTimeline(abs)}
+                  </div>
+                )}
               </div>
-            )}
+            );
+          })
+        ) : (
+          <div className="p-8 sm:p-12 bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mb-2.5 text-slate-300 dark:text-slate-600">
+              <FileText size={24} />
+            </div>
+            <h6 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 uppercase mb-0.5">
+              Belum Ada Riwayat
+            </h6>
+            <p className="text-[11px] text-slate-400 font-medium max-w-xs">
+              {filter !== 'ALL' || selectedMonth !== 'ALL'
+                ? 'Tidak ada catatan dengan filter periode ini.'
+                : 'Lakukan presensi dan isi logbook harian untuk melihat riwayat.'}
+            </p>
           </div>
-        </div>
-      </SectionCard>
+        )}
+
+        {/* 5. Tombol Paginasi "Tampilkan Lebih Banyak" */}
+        {filteredHistory.length > visibleLimit && (
+          <button
+            type="button"
+            onClick={() => setVisibleLimit(prev => prev + 15)}
+            className="w-full py-2.5 mt-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+          >
+            <span>Tampilkan 15 Hari Sebelumnya ({filteredHistory.length - visibleLimit} hari tersisa)</span>
+            <ChevronDown size={14} />
+          </button>
+        )}
+      </div>
     </div>
   );
 });

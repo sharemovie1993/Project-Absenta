@@ -107,6 +107,48 @@ const HEADER_MAP: Record<string, string> = {
   'KETERANGAN': 'description',
   'FOTO': 'imageUrl',
   'GAMBAR': 'imageUrl',
+
+  // Hubin / Mitra Industri
+  'NAMA MITRA': 'nama',
+  'NAMA PERUSAHAAN': 'nama',
+  'NAMA INSTANSI': 'nama',
+  'NAMA DUDI': 'nama',
+  'BIDANG INDUSTRI': 'bidang',
+  'BIDANG USAHA': 'bidang',
+  'BIDANG': 'bidang',
+  'ALAMAT PERUSAHAAN': 'alamat',
+  'ALAMAT LENGKAP': 'alamat',
+  'ALAMAT INSTANSI': 'alamat',
+  'KONTAK PERUSAHAAN': 'kontak',
+  'NO. TELP KANTOR': 'kontak',
+  'NO TELEPON PERUSAHAAN': 'kontak',
+  'NAMA PIC': 'pic_nama',
+  'PIC': 'pic_nama',
+  'JABATAN PIC': 'pic_jabatan',
+  'NO. HP PIC': 'pic_telepon',
+  'NO HP PIC': 'pic_telepon',
+  'TELEPON PIC': 'pic_telepon',
+  'EMAIL PIC': 'pic_email',
+  'NOMOR MOU': 'mou_nomor',
+  'NO MOU': 'mou_nomor',
+  'NO. MOU': 'mou_nomor',
+  'TANGGAL MULAI MOU': 'mou_tanggal_mulai',
+  'TGL MULAI MOU': 'mou_tanggal_mulai',
+  'TANGGAL MULAI MOU (YYYY-MM-DD)': 'mou_tanggal_mulai',
+  'TANGGAL BERAKHIR MOU': 'mou_tanggal_berakhir',
+  'TGL BERAKHIR MOU': 'mou_tanggal_berakhir',
+  'TANGGAL BERAKHIR MOU (YYYY-MM-DD)': 'mou_tanggal_berakhir',
+  'STATUS MOU': 'mou_status',
+  'KUOTA PKL': 'kuota_pkl',
+  'KUOTA': 'kuota_pkl',
+  'JURUSAN TERKAIT': 'kompetensi_keahlian',
+  'LATITUDE': 'latitude',
+  'LAT': 'latitude',
+  'LONGITUDE': 'longitude',
+  'LONG': 'longitude',
+  'LNG': 'longitude',
+  'RADIUS (METER)': 'radius',
+  'RADIUS': 'radius',
 };
 
 /**
@@ -128,6 +170,11 @@ const KEY_ALIASES: Record<string, string[]> = {
   'tanggal_masuk': ['tgl_masuk', 'tanggal_masuk_(yyyy-mm-dd)', 'tgl_masuk_(yyyy-mm-dd)'],
   'tanggal_keluar': ['tgl_keluar', 'tanggal_keluar_(yyyy-mm-dd)', 'tgl_keluar_(yyyy-mm-dd)'],
   'tanggal_lahir': ['tgl_lahir', 'tanggal_lahir_(yyyy-mm-dd)', 'tgl_lahir_(yyyy-mm-dd)'],
+  'nama': ['nama_mitra', 'nama_perusahaan', 'nama_instansi', 'nama_dudi'],
+  'pic_nama': ['nama_pic', 'pic'],
+  'pic_telepon': ['no_hp_pic', 'telepon_pic', 'no_telepon_pic'],
+  'mou_nomor': ['no_mou', 'nomor_mou'],
+  'kompetensi_keahlian': ['jurusan', 'nama_jurusan', 'pilihan_kompetensi'],
 };
 
 /**
@@ -181,9 +228,16 @@ export function smartReadSheet(ws: XLSX.WorkSheet): any[] {
       
       let val = row[colIdx];
       
+      // Unwrap ExcelJS object cells like { text: '', type: 'string' } or { v: ... } or { result: ... }
+      if (val && typeof val === 'object' && !Array.isArray(val) && !(val instanceof Date)) {
+        if ('text' in val) val = (val as any).text;
+        else if ('v' in val) val = (val as any).v;
+        else if ('result' in val) val = (val as any).result;
+      }
+
       // Basic cleanup
       if (typeof val === 'string') val = val.trim();
-      if (val === undefined) val = null;
+      if (val === '' || val === undefined) val = null;
       
       obj[key] = val;
 
@@ -212,8 +266,10 @@ export function smartReadSheet(ws: XLSX.WorkSheet): any[] {
       }
       
       // Handle objects (like empty cell objects from some parsers)
-      if (typeof v === 'object' && !Array.isArray(v)) {
-        return Object.keys(v).length > 0;
+      if (typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)) {
+        if ('text' in v) return String((v as any).text || '').trim().length > 0;
+        if ('v' in v) return String((v as any).v || '').trim().length > 0;
+        return Object.values(v).some(val => val !== null && val !== undefined && String(val).trim().length > 0);
       }
 
       // Handle arrays
@@ -221,7 +277,7 @@ export function smartReadSheet(ws: XLSX.WorkSheet): any[] {
         return v.length > 0;
       }
       
-      // If it reaches here, it has some value (number 0, boolean, etc.)
+      // If it reaches here, it has some value (number 0, boolean, Date, etc.)
       return true;
     });
   });

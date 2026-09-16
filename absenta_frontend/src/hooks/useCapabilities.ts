@@ -15,7 +15,7 @@ import { getUserPositions } from '../config/navigation.config';
  * - Base Role: ADMIN
  */
 export function useCapabilities() {
-  const { user, can, isAdmin, isAuthenticated } = useAuth();
+  const { user, can, canAny, isAdmin, isAuthenticated } = useAuth();
   const caps = useMemo(() => user?.capabilities || [], [user?.capabilities]);
 
   const personaHelpers = useMemo(() => {
@@ -125,7 +125,8 @@ export function useCapabilities() {
     const isBillingAdmin =
       can('billing.subscriptions.view.active');
 
-    const isSiswa = user?.role === 'SISWA';
+    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
+    const isSiswa = roleName === 'SISWA' || !!user?.isStudent;
 
     return {
       // Level 1
@@ -134,6 +135,7 @@ export function useCapabilities() {
       isPiketGuru: isGerbang || can('attendance.piket.view') || can('attendance.piket.manage'),
       isToolman,
       isSiswa,
+      isStudent: isSiswa,
 
       // Level 2
       isTUPersuratan,
@@ -172,10 +174,12 @@ export function useCapabilities() {
 
   // Type-safe wrapper so callers get IDE autocompletion on all CapabilityCode values
   const typedCan = (permission: CapabilityCode): boolean => can(permission as string);
+  const typedCanAny = (permissions: (CapabilityCode | string)[]): boolean => canAny(permissions as string[]);
 
   return {
     user,
     can: typedCan,
+    canAny: typedCanAny,
     isAdmin: isAdmin(),
     isAuthenticated,
     caps,

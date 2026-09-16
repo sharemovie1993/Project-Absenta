@@ -95,12 +95,21 @@ export class HubinPenilaianController {
   // --- PKL ASSESSMENT & SERTIFIKAT ---
   async upsertNilaiPklBatch(request: AuthenticatedRequest, reply: any) {
     try {
-      const { scores } = request.body;
+      const { scores, tahun_pelajaran_id, semester_id } = request.body || {};
       if (!Array.isArray(scores)) {
         return reply.status(400).send({ success: false, message: 'scores (array) wajib diisi' });
       }
-      const data = await this.hubinService.upsertNilaiPklBatch(request.tenantId!, scores);
-      return reply.status(200).send({ success: true, message: 'Batch nilai & sertifikat PKL berhasil disimpan', data });
+      const enhancedScores = scores.map((s: any) => ({
+        ...s,
+        tahun_pelajaran_id: s.tahun_pelajaran_id || tahun_pelajaran_id,
+        semester_id: s.semester_id || semester_id,
+      }));
+      const data = await this.hubinService.upsertNilaiPklBatch(request.tenantId!, enhancedScores);
+      return reply.status(200).send({ 
+        success: true, 
+        message: 'Batch nilai & sertifikat PKL berhasil disimpan dan disinkronkan ke Rapor', 
+        data 
+      });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }
@@ -108,8 +117,15 @@ export class HubinPenilaianController {
 
   async getRekapPklSiswa(request: AuthenticatedRequest, reply: any) {
     try {
-      const { kelas_id, status, search } = request.query;
-      const data = await this.hubinService.getRekapPklSiswa(request.tenantId!, { kelas_id, status, search });
+      const { kelas_id, status, search, tahun_pelajaran_id, semester_id, pembimbing_id } = request.query as any;
+      const data = await this.hubinService.getRekapPklSiswa(request.tenantId!, { 
+        kelas_id, 
+        status, 
+        search,
+        tahun_pelajaran_id,
+        semester_id,
+        pembimbing_id,
+      });
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

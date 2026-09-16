@@ -14,7 +14,7 @@ interface RedirectRoute {
 }
 
 export const HubinWorkspacePage: React.FC = React.memo(() => {
-  const { can, canAny } = useCapabilities();
+  const { can, canAny, isSiswa } = useCapabilities();
   const navigate = useNavigate();
 
   // Callback to execute routing (Pillar 3 & useCallback requirement)
@@ -23,40 +23,56 @@ export const HubinWorkspacePage: React.FC = React.memo(() => {
   }, [navigate]);
 
   // Use memo to optimize permission decision routing matrix (Pillar 3 & 20)
-  const routes = useMemo<RedirectRoute[]>(() => [
-    {
-      path: '/hubin/dashboard',
-      check: () => can('dashboard.view.hubin')
-    },
-    {
-      path: '/hubin/mitra',
-      check: () => canAny(['hubin.partners.manage', 'hubin.mou.view.list'])
-    },
-    {
-      path: '/hubin/penempatan',
-      check: () => canAny(['hubin.pkl.manage', 'hubin.pkl.view.list'])
-    },
-    {
-      path: '/hubin/absensi',
-      check: () => canAny(['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.pkl.view.list'])
-    },
-    {
-      path: '/hubin/monitoring',
-      check: () => canAny(['hubin.pkl.view.list', 'hubin.logbook.manage'])
-    },
-    {
-      path: '/hubin/bkk',
-      check: () => canAny(['hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.partners.manage', 'hubin.pkl.view.list'])
-    },
-    {
-      path: '/hubin/tracer',
-      check: () => canAny(['hubin.self.tracer', 'hubin.tracer.view', 'hubin.partners.manage'])
-    },
-    {
-      path: '/hubin/tefa',
-      check: () => can('hubin.tefa.manage')
+  const routes = useMemo<RedirectRoute[]>(() => {
+    // Siswa PKL langsung diarahkan ke presensi & logbook harian mandiri
+    if (isSiswa) {
+      return [
+        {
+          path: '/hubin/absensi',
+          check: () => true
+        }
+      ];
     }
-  ], [can, canAny]);
+
+    return [
+      {
+        path: '/hubin/dashboard',
+        check: () => can('dashboard.view.hubin')
+      },
+      {
+        path: '/hubin/mitra',
+        check: () => canAny(['hubin.partners.manage', 'hubin.mou.view.list'])
+      },
+      {
+        path: '/hubin/penempatan',
+        check: () => canAny(['hubin.pkl.manage', 'hubin.pkl.view.list', 'hubin.guidance.manage'])
+      },
+      {
+        path: '/hubin/absensi',
+        check: () => canAny(['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.self.pkl'])
+      },
+      {
+        path: '/hubin/monitoring',
+        check: () => canAny(['hubin.pkl.view.list', 'hubin.logbook.manage', 'hubin.guidance.manage'])
+      },
+      {
+        path: '/hubin/nilai-pkl',
+        check: () => canAny(['hubin.guidance.manage', 'hubin.pkl.manage'])
+      },
+      {
+        path: '/hubin/bkk',
+        check: () => canAny(['hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.partners.manage', 'hubin.pkl.view.list'])
+      },
+      {
+        path: '/hubin/tracer',
+        check: () => canAny(['hubin.self.tracer', 'hubin.tracer.view', 'hubin.partners.manage'])
+      },
+      {
+        path: '/hubin/tefa',
+        check: () => can('hubin.tefa.manage')
+      }
+    ];
+  }, [can, canAny, isSiswa]);
 
   useEffect(() => {
     const matchedRoute = routes.find(r => r.check());

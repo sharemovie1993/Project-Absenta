@@ -54,7 +54,8 @@ export const BottomNavigation: React.FC = React.memo(() => {
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
     isKoperasi,
-    isSiswa
+    isSiswa,
+    can
   } = useCapabilities();
   const guruProfile = user?.guru_profile;
   const roleName = typeof user?.role === 'string' ? user.role : (user?.role as any)?.name;
@@ -62,6 +63,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const jenisPtk = (guruProfile?.jenis_ptk || (user?.guru_profile as any)?.jenis_ptk || (user as any)?.jenis_ptk || '').toUpperCase();
   const isTuStaff = isTU || user?.role === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
   const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || !jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps));
+  const isPembimbingPkl = !isHubin && can('hubin.guidance.manage');
   const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum;
   const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as any)?.wali_kelas_di?.id;
   const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';
@@ -110,35 +112,60 @@ export const BottomNavigation: React.FC = React.memo(() => {
   // Don't render for Parent App as it has its own parent layout
 
   // 1. Siswa Mobile Bottom Tabs
-  const siswaTabs = useMemo<MobileBottomTabItem[]>(() => [{
-    id: 'beranda',
-    label: 'Beranda',
-    shortLabel: 'Beranda',
-    icon: Home,
-    targetPath: '/dashboard',
-    isActive: pathname => pathname === '/dashboard' || pathname === '/dashboard/'
-  }, {
-    id: 'jadwal',
-    label: 'Jadwal KBM',
-    shortLabel: 'Jadwal',
-    icon: Calendar,
-    targetPath: '/kbm/jadwal',
-    isActive: pathname => pathname.startsWith('/kbm/jadwal')
-  }, {
-    id: 'presensi',
-    label: 'Presensi',
-    shortLabel: 'Absensi',
-    icon: Clock,
-    targetPath: '/my-attendance',
-    isActive: pathname => pathname.startsWith('/my-attendance')
-  }, {
-    id: 'profil',
-    label: 'Profil',
-    shortLabel: 'Profil',
-    icon: User,
-    targetPath: '/profile',
-    isActive: pathname => pathname.startsWith('/profile')
-  }], []);
+  const hasPklAccess = isSiswa && can('hubin.self.pkl');
+  const siswaTabs = useMemo<MobileBottomTabItem[]>(() => {
+    const tabs: MobileBottomTabItem[] = [
+      {
+        id: 'beranda',
+        label: 'Beranda',
+        shortLabel: 'Beranda',
+        icon: Home,
+        targetPath: '/dashboard',
+        isActive: pathname => pathname === '/dashboard' || pathname === '/dashboard/'
+      },
+      {
+        id: 'jadwal',
+        label: 'Jadwal KBM',
+        shortLabel: 'Jadwal',
+        icon: Calendar,
+        targetPath: '/kbm/jadwal',
+        isActive: pathname => pathname.startsWith('/kbm/jadwal')
+      },
+    ];
+
+    // Tab PKL: muncul untuk siswa yang punya capability hubin.self.pkl
+    if (hasPklAccess) {
+      tabs.push({
+        id: 'pkl',
+        label: 'Presensi PKL',
+        shortLabel: 'PKL',
+        icon: Briefcase,
+        targetPath: '/hubin/absensi',
+        isActive: pathname => pathname.startsWith('/hubin/absensi')
+      });
+    }
+
+    tabs.push(
+      {
+        id: 'presensi',
+        label: 'Presensi',
+        shortLabel: 'Absensi',
+        icon: Clock,
+        targetPath: '/my-attendance',
+        isActive: pathname => pathname.startsWith('/my-attendance')
+      },
+      {
+        id: 'profil',
+        label: 'Profil',
+        shortLabel: 'Profil',
+        icon: User,
+        targetPath: '/profile',
+        isActive: pathname => pathname.startsWith('/profile')
+      }
+    );
+
+    return tabs;
+  }, [hasPklAccess]);
 
   // 1.1 Kepala Sekolah Mobile Bottom Tabs (6 Pilar 360° + Profil)
   const {
@@ -316,6 +343,19 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
+    // 7.1 Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
+    if (isPembimbingPkl && !isKepsek) {
+      list.push({
+        id: 'pembimbing_pkl',
+        label: 'Bimbingan PKL',
+        shortLabel: 'PKL',
+        icon: Briefcase,
+        badge: 'PKL',
+        targetPath: '/dashboard?tab=pembimbing_pkl',
+        isActive: (pathname, tabParam) => (pathname.startsWith('/dashboard') && tabParam === 'pembimbing_pkl') || pathname.startsWith('/hubin')
+      });
+    }
+
     // 8. Koperasi (hanya jika ada SK Koperasi / Admin murni)
     if ((isKoperasi || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
@@ -378,7 +418,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'profil' || pathname.startsWith('/profile')
     });
     return list;
-  }, [isAdminRole, isTuStaff, isKurikulum, isWaliKelas, waliKelasNama, isKesiswaan, isKepsek, isSarpras, isToolman, isKabeng, isHubin, isBkk, isKaprog, isKoperasi, isBpbk, isGerbang, isTUKepegawaian, isTU, tuTabMeta, guruProfile, isPendidik, isPureGerbangStaff, isPiketGuru]);
+  }, [isAdminRole, isTuStaff, isKurikulum, isWaliKelas, waliKelasNama, isKesiswaan, isKepsek, isSarpras, isToolman, isKabeng, isHubin, isPembimbingPkl, isBkk, isKaprog, isKoperasi, isBpbk, isGerbang, isTUKepegawaian, isTU, tuTabMeta, guruProfile, isPendidik, isPureGerbangStaff, isPiketGuru]);
   if (location.pathname.startsWith('/parent-app')) {
     return null;
   }

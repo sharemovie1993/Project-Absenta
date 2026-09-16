@@ -10,7 +10,7 @@ import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
-export class HubinMitraService {
+export class HubinMitraService extends HubinCommonHelper {
   async getMitra(tenantId: string, params?: { search?: string; page?: number; limit?: number }) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
@@ -132,6 +132,178 @@ export class HubinMitraService {
     this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_DELETE', 'MitraIndustri', id, { nama: result.nama });
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return result;
+  }
+
+  async importMitraFromRows(
+    tenantId: string,
+    rows: any[],
+    actorUserId?: string | null,
+    onProgress?: (data: { current: number; total: number; progress: number; created: number; updated: number; skipped: number; failed: number }) => void
+  ) {
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let failCount = 0;
+    const errors: Array<{ row: number; nama: string; reason: string }> = [];
+
+    const BATCH_SIZE = 15;
+
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+
+      await Promise.all(batch.map(async (row, batchIdx) => {
+        const rowNumber = row.__rowNum || (i + batchIdx + 2);
+        const cleanStr = (val: any) => {
+          if (val === undefined || val === null) return null;
+          const str = String(val).trim();
+          return str.length > 0 ? str : null;
+        };
+
+        const nama = String(row.nama || row.nama_mitra || row.nama_perusahaan || '').trim();
+
+        // Cek apakah seluruh baris ini kosong (misalnya baris sisa template Excel hingga baris 3000)
+        const hasAnyContent = Boolean(
+          nama ||
+          cleanStr(row.bidang) ||
+          cleanStr(row.alamat) ||
+          cleanStr(row.kontak) ||
+          cleanStr(row.pic_nama) ||
+          cleanStr(row.pic_telepon) ||
+          cleanStr(row.pic_email) ||
+          cleanStr(row.mou_nomor) ||
+          cleanStr(row.kompetensi_keahlian)
+        );
+
+        if (!hasAnyContent) {
+          // Baris kosong diabaikan secara senyap tanpa dianggap sebagai kesalahan
+          return;
+        }
+
+        if (!nama) {
+          failCount++;
+          errors.push({ 
+            row: rowNumber, 
+            nama: '-', 
+            message: 'Nama mitra / perusahaan wajib diisi',
+            reason: 'Nama mitra / perusahaan wajib diisi' 
+          });
+          return;
+        }
+
+        try {
+          const latitude = (row.latitude !== undefined && row.latitude !== null && row.latitude !== '') 
+            ? parseFloat(String(row.latitude)) 
+            : null;
+          const longitude = (row.longitude !== undefined && row.longitude !== null && row.longitude !== '') 
+            ? parseFloat(String(row.longitude)) 
+            : null;
+          const radius = (row.radius !== undefined && row.radius !== null && row.radius !== '') 
+            ? parseInt(String(row.radius), 10) 
+            : 100;
+          const kuota_pkl = (row.kuota_pkl !== undefined && row.kuota_pkl !== null && row.kuota_pkl !== '') 
+            ? parseInt(String(row.kuota_pkl), 10) 
+            : 0;
+
+          let mou_tanggal_mulai: Date | null = null;
+          if (row.mou_tanggal_mulai) {
+            const d = new Date(row.mou_tanggal_mulai);
+            if (!isNaN(d.getTime())) mou_tanggal_mulai = d;
+          }
+
+          let mou_tanggal_berakhir: Date | null = null;
+          if (row.mou_tanggal_berakhir) {
+            const d = new Date(row.mou_tanggal_berakhir);
+            if (!isNaN(d.getTime())) mou_tanggal_berakhir = d;
+          }
+
+          const dataToSave = {
+            bidang: cleanStr(row.bidang),
+            alamat: cleanStr(row.alamat),
+            kontak: cleanStr(row.kontak),
+            latitude: (latitude !== null && !isNaN(latitude)) ? latitude : null,
+            longitude: (longitude !== null && !isNaN(longitude)) ? longitude : null,
+            radius: (radius !== null && !isNaN(radius)) ? radius : 100,
+            pic_nama: cleanStr(row.pic_nama),
+            pic_jabatan: cleanStr(row.pic_jabatan),
+            pic_telepon: cleanStr(row.pic_telepon),
+            pic_email: cleanStr(row.pic_email),
+            mou_nomor: cleanStr(row.mou_nomor),
+            mou_tanggal_mulai,
+            mou_tanggal_berakhir,
+            mou_status: cleanStr(row.mou_status) || 'AKTIF',
+            kuota_pkl: (kuota_pkl !== null && !isNaN(kuota_pkl)) ? kuota_pkl : 0,
+            kompetensi_keahlian: cleanStr(row.kompetensi_keahlian),
+          };
+
+          const existing = await prisma.mitraIndustri.findFirst({
+            where: {
+              tenant_id: tenantId,
+              nama: { equals: nama, mode: 'insensitive' }
+            }
+          });
+
+          if (existing) {
+            await prisma.mitraIndustri.update({
+              where: { id: existing.id },
+              data: {
+                ...dataToSave,
+                nama: existing.nama
+              }
+            });
+            updatedCount++;
+          } else {
+            await prisma.mitraIndustri.create({
+              data: {
+                tenant_id: tenantId,
+                nama,
+                ...dataToSave
+              }
+            });
+            createdCount++;
+          }
+        } catch (err: any) {
+          failCount++;
+          errors.push({
+            row: rowNumber,
+            nama,
+            message: err.message || 'Gagal menyimpan baris data',
+            reason: err.message || 'Gagal menyimpan baris data'
+          });
+        }
+      }));
+
+      if (onProgress) {
+        const current = Math.min(rows.length, i + BATCH_SIZE);
+        const progress = Math.round((current / rows.length) * 100);
+        onProgress({
+          current,
+          total: rows.length,
+          progress,
+          created: createdCount,
+          updated: updatedCount,
+          skipped: skippedCount,
+          failed: failCount
+        });
+      }
+    }
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_IMPORT', 'MitraIndustri', null, {
+      total: rows.length,
+      created: createdCount,
+      updated: updatedCount,
+      failed: failCount,
+      skipped: skippedCount
+    });
+
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+
+    return {
+      created: createdCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      failed: failCount,
+      errors
+    };
   }
 
   /**

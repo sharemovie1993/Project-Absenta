@@ -1,23 +1,56 @@
 // @ts-nocheck
+import path from 'path';
+import crypto from 'crypto';
 import { HubinService } from '../../services/hubin.service';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
+import { storageService } from '@/infra/storage/storage.service';
+import { studentResolverService } from '@/services/student-resolver.service';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export class HubinAbsensiController {
   private hubinService = new HubinService();
+
+  private async hasHubinManageCaps(request: any): Promise<boolean> {
+    const role = request.user?.role || request.user?.Role?.name;
+    if (role === 'ADMIN' || role === 'SUPERADMIN') return true;
+    const authResult = await authorizationService.isUserAuthorized(
+      String(request.user.id),
+      ['hubin.pkl.manage', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'organization.scope.tenant_wide'],
+      { user: request.user }
+    );
+    return !!authResult.allowed;
+  }
+
   async getAbsensiSiswa(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId } = request.params;
       const isManager = await this.hasHubinManageCaps(request);
       if (!isManager) {
-        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
-        if (!siswaId) {
-          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        // Cek apakah user adalah guru pembimbing untuk penempatan PKL ini
+        let isPembimbing = false;
+        if (request.user?.id) {
+          const userWithGuru = await prisma.user.findUnique({
+            where: { id: request.user.id },
+            include: { Guru: true }
+          });
+          if (userWithGuru?.Guru?.id) {
+            const pkl = await prisma.siswaPkl.findFirst({
+              where: { id: siswaPklId, pembimbing_id: userWithGuru.Guru.id, tenant_id: request.tenantId }
+            });
+            if (pkl) isPembimbing = true;
+          }
         }
-        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
-        if (!isOwner) {
-          return reply.status(403).send({ success: false, message: 'Forbidden: Anda tidak memiliki akses ke data absensi ini' });
+        if (!isPembimbing) {
+          const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+          if (!siswaId) {
+            return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+          }
+          const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+          if (!isOwner) {
+            return reply.status(403).send({ success: false, message: 'Forbidden: Anda tidak memiliki akses ke data absensi ini' });
+          }
         }
       }
       const { page, limit } = request.query;
@@ -145,6 +178,37 @@ export class HubinAbsensiController {
         request.organizationalScope
       );
       return reply.status(201).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async updateKunjungan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.updateKunjungan(
+        request.tenantId!, 
+        request.params.id, 
+        request.params.kunjunganId,
+        request.body, 
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async deleteKunjungan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.deleteKunjungan(
+        request.tenantId!, 
+        request.params.id, 
+        request.params.kunjunganId,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });
     }

@@ -1,4 +1,5 @@
 import { requestWithFallback } from './apiUtils';
+import { importDataFromExcel } from '../utils/import.utils';
 
 export interface MitraIndustri {
   id: string;
@@ -192,9 +193,11 @@ export const hubinApi = {
   createMitra: (data: Partial<MitraIndustri>) => requestWithFallback<any>('post', '/hubin/mitra', { data }),
   updateMitra: (id: string, data: Partial<MitraIndustri>) => requestWithFallback<any>('put', `/hubin/mitra/${id}`, { data }),
   deleteMitra: (id: string) => requestWithFallback<any>('delete', `/hubin/mitra/${id}`),
+  importMitraFromExcel: (file: File, onProgress?: (percent: number) => void, socketId?: string) =>
+    importDataFromExcel('/hubin/mitra/import', file, onProgress, socketId),
 
   // Penempatan
-  getPenempatan: (params?: { search?: string; page?: number; limit?: number }) => 
+  getPenempatan: (params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string }) => 
     requestWithFallback<any>('get', '/hubin/penempatan', { params }),
   getMyPenempatan: () => requestWithFallback<any>('get', '/hubin/penempatan/me'),
   createPenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan', { data }),
@@ -202,13 +205,25 @@ export const hubinApi = {
   bulkCreatePenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/bulk', { data }),
   updatePenilaian: (id: string, nilai: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/nilai`, { data: { nilai } }),
   addKunjungan: (id: string, data: any) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/kunjungan`, { data }),
+  updateKunjungan: (id: string, kunjunganId: string, data: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`, { data }),
+  deleteKunjungan: (id: string, kunjunganId: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`),
   deletePenempatan: (id: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}`),
   submitJurnalPortofolio: (id: string, file_url: string) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/jurnal-akhir`, { data: { file_url } }),
   reviewJurnalPortofolio: (id: string, status: string, catatan: string) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/jurnal-akhir/review`, { data: { status, catatan } }),
 
   // Assessment & Sertifikat PKL
-  upsertNilaiPklBatch: (scores: any[]) => requestWithFallback<any>('post', '/hubin/penempatan/nilai-batch', { data: { scores } }),
-  getRekapPklSiswa: (params?: { kelas_id?: string; status?: string; search?: string }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
+  upsertNilaiPklBatch: (payload: { scores: any[]; tahun_pelajaran_id?: string; semester_id?: string } | any[]) => {
+    const data = Array.isArray(payload) ? { scores: payload } : payload;
+    return requestWithFallback<any>('post', '/hubin/penempatan/nilai-batch', { data });
+  },
+  getRekapPklSiswa: (params?: { 
+    kelas_id?: string; 
+    status?: string; 
+    search?: string;
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+    pembimbing_id?: string;
+  }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
   upsertSettingDeskripsiPkl: (data: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
   getSettingDeskripsiPklList: (params?: { mitra_id?: string }) => requestWithFallback<any>('get', '/hubin/deskripsi-tp', { params }),
   getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
@@ -228,8 +243,22 @@ export const hubinApi = {
   getStats: () => requestWithFallback<any>('get', '/dashboard/hubin/stats'),
 
   // Settings
-  getSettings: () => requestWithFallback<{ folderUrl: string; driveMode: string }>('get', '/hubin/settings'),
-  updateSettings: (data: { folderUrl: string; driveMode: string }) => requestWithFallback<any>('put', '/hubin/settings', { data }),
+  getSettings: () => requestWithFallback<{ 
+    folderUrl: string; 
+    driveMode: string;
+    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    weightDudi?: number;
+    weightLaporan?: number;
+    weightSidang?: number;
+  }>('get', '/hubin/settings'),
+  updateSettings: (data: { 
+    folderUrl?: string; 
+    driveMode?: string;
+    assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
+    weightDudi?: number;
+    weightLaporan?: number;
+    weightSidang?: number;
+  }) => requestWithFallback<any>('put', '/hubin/settings', { data }),
   deletePhoto: (url: string) => requestWithFallback<any>('delete', '/hubin/upload', { data: { url } }),
 
   // MoU History

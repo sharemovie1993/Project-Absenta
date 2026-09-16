@@ -10,7 +10,8 @@ const TracerStudySection = lazy(() => import('./components/TracerStudySection').
 
 export const TracerStudyPage: React.FC = React.memo(() => {
   const { user } = useAuthStore();
-  const isStudent = useMemo(() => !!user?.isStudent, [user]);
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
+  const isStudent = useMemo(() => !!user?.isStudent || roleName === 'SISWA', [user, roleName]);
 
   const title = useMemo(
     () => isStudent ? "Tracer Study Alumni" : "Tracer Study (Alumni)",

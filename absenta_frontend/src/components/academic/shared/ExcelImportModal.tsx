@@ -189,7 +189,7 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
       isOpen={isOpen}
       onClose={handleClose}
       title={title}
-      size="lg"
+      size="2xl"
       disableClose={loading}
     >
       <div className="space-y-6 p-1">
@@ -262,25 +262,38 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
               <ImportResultStats result={result} />
               
               {result.errors && result.errors.length > 0 && (
-                <div className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-                  <div className="bg-slate-50 dark:bg-slate-900 px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest">Detail Kesalahan Data</span>
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-rose-50/50 dark:bg-rose-950/20 px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <AlertCircle size={13} /> Detail Kesalahan Data ({result.errors.length} baris)
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">Perbaiki file Excel lalu unggah ulang</span>
                   </div>
-                  <div className="max-h-48 overflow-y-auto scrollbar-thin">
+                  <div className="max-h-56 overflow-y-auto scrollbar-thin">
                     <table className="w-full text-left">
-                      <thead className="bg-slate-50/50 dark:bg-slate-900/50 sticky top-0 backdrop-blur-sm">
+                      <thead className="bg-slate-50/90 dark:bg-slate-900/90 sticky top-0 backdrop-blur-sm border-b border-slate-100 dark:border-slate-800">
                         <tr>
-                          <th className="p-3 text-[10px] font-black text-slate-400 uppercase tracking-widest w-16">Baris</th>
-                          <th className="p-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pesan Kesalahan</th>
+                          <th className="p-3 text-[10px] font-black text-slate-500 uppercase tracking-wider w-20">Baris</th>
+                          <th className="p-3 text-[10px] font-black text-slate-500 uppercase tracking-wider">Pesan Kesalahan</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                        {(result.errors || []).map((err, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                            <td className="p-3 font-mono text-[10px] text-slate-500">#{err.row}</td>
-                            <td className="p-3 text-[11px] font-medium text-rose-600 dark:text-rose-400 leading-relaxed">{err.message}</td>
-                          </tr>
-                        ))}
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {(result.errors || []).map((err: any, idx: number) => {
+                          const rowNum = err?.row ?? err?.baris ?? idx + 1;
+                          const errorMsg = err?.message || err?.reason || err?.error || (typeof err === 'string' ? err : 'Format data tidak valid');
+                          const errorNama = err?.nama || err?.name;
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/60 transition-colors">
+                              <td className="p-3 font-mono text-[11px] font-bold text-slate-500 whitespace-nowrap">#{rowNum}</td>
+                              <td className="p-3 text-[11px] font-medium text-rose-600 dark:text-rose-400 leading-relaxed">
+                                {errorNama && errorNama !== '-' && (
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 mr-1.5">[{errorNama}]</span>
+                                )}
+                                {errorMsg}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -391,79 +404,103 @@ export const ExcelImportModal: React.FC<ExcelImportModalProps> = React.memo(({
           </div>
         )}
 
-        {/* 4. Upload Area */}
-        <div className={`relative group transition-all ${loading ? 'opacity-30 blur-[1px] pointer-events-none' : ''}`}>
-          <div className={`border-2 border-dashed rounded-xl p-8 transition-all flex flex-col items-center justify-center gap-4 ${
-            file 
-              ? 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/10' 
-              : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/50'
-          }`}>
-            <div className={`p-4 rounded-xl shadow-xl transition-transform group-hover:scale-110 ${
-              file ? 'bg-blue-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400'
+        {/* 4. Upload Area (Hanya tampil sebelum hasil impor keluar) */}
+        {!result && (
+          <div className={`relative group transition-all ${loading ? 'opacity-30 blur-[1px] pointer-events-none' : ''}`}>
+            <div className={`border-2 border-dashed rounded-xl p-8 transition-all flex flex-col items-center justify-center gap-4 ${
+              file 
+                ? 'border-blue-500 bg-blue-500/5 dark:bg-blue-500/10' 
+                : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 bg-slate-50/50 dark:bg-slate-900/50'
             }`}>
-              {file ? <CheckCircle2 size={32} /> : <Upload size={32} />}
-            </div>
-            
-            <div className="text-center space-y-1">
-              <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">
-                {file ? file.name : 'Pilih File Excel Anda'}
-              </p>
-              <p className="text-[10px] text-slate-400 font-medium">Format: .xlsx (Maks 10MB)</p>
-            </div>
+              <div className={`p-4 rounded-xl shadow-xl transition-transform group-hover:scale-110 ${
+                file ? 'bg-blue-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400'
+              }`}>
+                {file ? <CheckCircle2 size={32} /> : <Upload size={32} />}
+              </div>
+              
+              <div className="text-center space-y-1">
+                <p className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-tight">
+                  {file ? file.name : 'Pilih File Excel Anda'}
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium">Format: .xlsx (Maks 10MB)</p>
+              </div>
 
-            <input 
-              type="file" 
-              accept=".xlsx" 
-              className="absolute inset-0 opacity-0 cursor-pointer" 
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              disabled={loading}
-            />
-            
-            {file && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setFile(null); setResult(null); }}
-                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-rose-500 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            )}
+              <input 
+                type="file" 
+                accept=".xlsx" 
+                className="absolute inset-0 opacity-0 cursor-pointer" 
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                disabled={loading}
+              />
+              
+              {file && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setFile(null); setResult(null); }}
+                  className="absolute top-4 right-4 p-2 text-slate-400 hover:text-rose-500 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 5. Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <Button 
-            variant="outline" 
-            onClick={handleClose}
-            className="rounded-xl px-6 text-[11px] font-black uppercase tracking-widest"
-          >
-            {result ? 'Tutup' : 'Batal'}
-          </Button>
-          {!result && (
-            <Button 
-              onClick={handleImport}
-              disabled={!file || loading}
-              className={`rounded-xl px-8 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 ${
-                file && !loading
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30 scale-[1.02]'
-                  : 'shadow-blue-500/20'
-              }`}
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Sedang Impor...
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  {file && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                  Mulai Impor
-                </span>
-              )}
-            </Button>
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+          {result ? (
+            <>
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={resetState}
+                className="rounded-xl px-5 text-[11px] font-black uppercase tracking-wider"
+              >
+                Unggah File Lain
+              </Button>
+              <Button 
+                type="button"
+                variant="primary" 
+                onClick={handleClose}
+                className="rounded-xl px-6 text-[11px] font-black uppercase tracking-wider"
+              >
+                Selesai
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={handleClose}
+                className="rounded-xl px-6 text-[11px] font-black uppercase tracking-widest"
+              >
+                Batal
+              </Button>
+              <Button 
+                onClick={handleImport}
+                disabled={!file || loading}
+                className={`rounded-xl px-8 text-[11px] font-black uppercase tracking-widest shadow-lg transition-all duration-300 ${
+                  file && !loading
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-500/30 scale-[1.02]'
+                    : 'shadow-blue-500/20'
+                }`}
+              >
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Sedang Impor...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    {file && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                    Mulai Impor
+                  </span>
+                )}
+              </Button>
+            </>
           )}
         </div>
       </div>

@@ -366,7 +366,7 @@ async function main() {
         // Klaster 1: Magang & PKL DU/DI
         { label: 'Dashboard', icon: 'LayoutDashboard', path: '/hubin/dashboard', required_capability: 'dashboard.view.hubin' },
         { label: 'Mitra Industri', icon: 'Building2', path: '/hubin/mitra', required_capability: 'hubin.partners.manage, hubin.mou.view.list' },
-        { label: 'Plot & Pantau PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list' },
+        { label: 'Plot & Pantau PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list, hubin.guidance.manage' },
         { label: 'Presensi PKL', icon: 'Clock', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.absensi.view.history, hubin.pkl.view.list' },
         { label: 'Nilai PKL', icon: 'Award', path: '/hubin/nilai-pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list' },
         // Divider 1
@@ -375,7 +375,7 @@ async function main() {
         { label: 'Bursa Kerja (BKK)', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
         { label: 'Tracer Study', icon: 'GraduationCap', path: '/hubin/tracer', required_capability: 'hubin.self.tracer, hubin.tracer.view, hubin.partners.manage' },
         { label: 'Teaching Factory', icon: 'Hammer', path: '/hubin/tefa', required_capability: 'hubin.tefa.manage' },
-        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/hubin/cetak-berkas', required_capability: 'hubin.pkl.view.list' },
+        { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/hubin/cetak-berkas', required_capability: 'hubin.pkl.view.list, hubin.guidance.manage' },
       ]
     },
 

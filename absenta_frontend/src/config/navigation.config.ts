@@ -324,7 +324,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     desc: 'PKL & Kemitraan Industri',
     requiredCapability: 'dashboard.view.hubin',
     requiredPositionCode: 'HUBIN',
-    defaultPath: '/hubin/dashboard',
+    defaultPath: '/hubin',
     targetGroupKeywords: ['HUBIN'],
     crossModulePaths: [
       '/kurikulum/jadwal',

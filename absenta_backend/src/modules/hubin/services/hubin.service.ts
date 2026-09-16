@@ -23,6 +23,7 @@ export class HubinService {
   async createMitra(...args: any[]) { return (this.mitra as any).createMitra(...args); }
   async updateMitra(...args: any[]) { return (this.mitra as any).updateMitra(...args); }
   async deleteMitra(...args: any[]) { return (this.mitra as any).deleteMitra(...args); }
+  async importMitraFromRows(...args: any[]) { return (this.mitra as any).importMitraFromRows(...args); }
   async getMoUHistory(...args: any[]) { return (this.mitra as any).getMoUHistory(...args); }
   async createMoUHistory(...args: any[]) { return (this.mitra as any).createMoUHistory(...args); }
   async deleteMoUHistory(...args: any[]) { return (this.mitra as any).deleteMoUHistory(...args); }
@@ -43,6 +44,8 @@ export class HubinService {
   async syncOfflineLogbook(...args: any[]) { return (this.absensi as any).syncOfflineLogbook(...args); }
   async verifyAbsensi(...args: any[]) { return (this.absensi as any).verifyAbsensi(...args); }
   async addKunjungan(...args: any[]) { return (this.absensi as any).addKunjungan(...args); }
+  async updateKunjungan(...args: any[]) { return (this.absensi as any).updateKunjungan(...args); }
+  async deleteKunjungan(...args: any[]) { return (this.absensi as any).deleteKunjungan(...args); }
   async submitJurnalPortofolio(...args: any[]) { return (this.absensi as any).submitJurnalPortofolio(...args); }
   async reviewJurnalPortofolio(...args: any[]) { return (this.absensi as any).reviewJurnalPortofolio(...args); }
 

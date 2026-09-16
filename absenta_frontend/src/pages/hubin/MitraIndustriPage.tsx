@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   RefreshCw,
   History,
-  Eye
+  Eye,
+  FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -36,11 +37,13 @@ import type { Column } from '../../components/ui/Table';
 import useConfirm from '../../hooks/useConfirm';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
 
 // Lazy load heavy form component
 const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(module => ({ default: module.MitraFormModal })));
 const HubinMoUHistoryModal = lazy(() => import('../../components/hubin/HubinMoUHistoryModal').then(module => ({ default: module.HubinMoUHistoryModal })));
 const MitraDetailModal = lazy(() => import('../../components/hubin/MitraDetailModal').then(module => ({ default: module.MitraDetailModal })));
+const ExcelImportModal = lazy(() => import('../../components/academic/shared/ExcelImportModal').then(module => ({ default: module.ExcelImportModal })));
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -79,6 +82,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   const [editingMitra, setEditingMitra] = useState<MitraIndustri | null>(null);
   const [selectedMoUMitra, setSelectedMoUMitra] = useState<MitraIndustri | null>(null);
   const [selectedDetailMitra, setSelectedDetailMitra] = useState<MitraIndustri | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Gating Logic
   const sub = subscription as unknown as SubscriptionWithFeatures | null;
@@ -238,6 +242,58 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       deleteMutation.mutate(mitra.id);
     }
   }, [confirm, deleteMutation]);
+
+  const handleDownloadTemplate = useCallback(async () => {
+    try {
+      toast('Menyiapkan template...');
+      const jurusanNames = jurusanList.map(j => j.nama_jurusan).filter(Boolean);
+
+      await generateAdvancedTemplate(
+        [
+          { header: 'Nama Mitra', key: 'nama', width: 30, required: true },
+          { header: 'Bidang Industri', key: 'bidang', width: 25 },
+          { header: 'Alamat Perusahaan', key: 'alamat', width: 40 },
+          { header: 'Kontak Perusahaan', key: 'kontak', width: 20 },
+          { header: 'Nama PIC', key: 'pic_nama', width: 25 },
+          { header: 'Jabatan PIC', key: 'pic_jabatan', width: 20 },
+          { header: 'No. HP PIC', key: 'pic_telepon', width: 20 },
+          { header: 'Email PIC', key: 'pic_email', width: 25 },
+          { header: 'Nomor MoU', key: 'mou_nomor', width: 25 },
+          { header: 'Tanggal Mulai MoU', key: 'mou_tanggal_mulai', width: 22, isDate: true },
+          { header: 'Tanggal Berakhir MoU', key: 'mou_tanggal_berakhir', width: 22, isDate: true },
+          { header: 'Status MoU', key: 'mou_status', width: 16, dropdown: { refKey: 'status_mou' } },
+          { header: 'Kuota PKL', key: 'kuota_pkl', width: 15 },
+          { header: 'Kompetensi Keahlian', key: 'kompetensi_keahlian', width: 30, dropdown: { refKey: 'jurusan' } },
+          { header: 'Latitude', key: 'latitude', width: 18 },
+          { header: 'Longitude', key: 'longitude', width: 18 },
+          { header: 'Radius Presensi (Meter)', key: 'radius', width: 22 }
+        ],
+        {
+          fileName: 'template_impor_mitra_industri',
+          instructions: [
+            'TEMPLATE IMPOR MITRA INDUSTRI (DU/DI) & TEMPAT PKL.',
+            'Kolom EMAS (Nama Mitra) WAJIB diisi sebagai identitas perusahaan.',
+            'Jika instansi dengan nama yang sama sudah terdaftar, data profil akan otomatis diperbarui (Update).',
+            'Format tanggal MoU: YYYY-MM-DD (Contoh: 2026-07-15) atau DD/MM/YYYY.',
+            'Koordinat (Latitude & Longitude) opsional, digunakan untuk geofencing presensi PKL siswa di lokasi mitra.',
+            'Pilih Kompetensi Keahlian dari dropdown pilihan jurusan yang tersedia.'
+          ],
+          referenceData: {
+            jurusan: jurusanNames.length > 0 ? jurusanNames : ['Semua Jurusan'],
+            status_mou: ['AKTIF', 'KEDALUWARSA', 'PROSES_PENGAJUAN']
+          }
+        }
+      );
+      toast.success('Template berhasil diunduh.');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Gagal mengunduh template.';
+      toast.error(msg);
+    }
+  }, [jurusanList]);
+
+  const handleImportMitra = useCallback(async (file: File, onProgress: (p: number) => void, socketId?: string) => {
+    return hubinApi.importMitraFromExcel(file, onProgress, socketId);
+  }, []);
 
   const rawList = useMemo(() => {
     const dataObj = mitraData as { data?: MitraIndustri[] } | undefined;
@@ -603,18 +659,30 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
       </Button>
       {isHubin && (
-        <Button
-          onClick={() => {
-            setEditingMitra(null);
-            setIsModalOpen(true);
-          }}
-          variant="toolbarPrimary"
-          size="toolbar"
-          className="h-9 px-4 rounded-xl flex items-center gap-1.5"
-        >
-          <Plus size={16} />
-          Tambah Mitra
-        </Button>
+        <>
+          <Button
+            onClick={() => setIsImportModalOpen(true)}
+            variant="toolbarOutline"
+            size="toolbar"
+            className="h-9 px-3 rounded-xl flex items-center gap-1.5 font-bold text-xs text-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/40 hover:bg-emerald-100/80"
+            title="Import Mitra Industri dari Excel"
+          >
+            <FileSpreadsheet size={15} className="text-emerald-600 dark:text-emerald-400" />
+            <span>Import Excel</span>
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingMitra(null);
+              setIsModalOpen(true);
+            }}
+            variant="toolbarPrimary"
+            size="toolbar"
+            className="h-9 px-4 rounded-xl flex items-center gap-1.5"
+          >
+            <Plus size={16} />
+            Tambah Mitra
+          </Button>
+        </>
       )}
     </div>
   ), [isLoading, isHubin, refetch]);
@@ -670,6 +738,19 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
             isOpen={!!selectedDetailMitra}
             onClose={() => setSelectedDetailMitra(null)}
             mitra={selectedDetailMitra}
+          />
+          <ExcelImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            title="Import Mitra Industri"
+            description="Unggah data master rekanan DUDI dan tempat PKL dari file Excel (.xlsx)."
+            sampleDataHint="Pastikan kolom Nama Mitra diisi. Untuk memperbarui data mitra eksisting, samakan nama perusahaannya."
+            onImport={handleImportMitra}
+            onDownloadTemplate={handleDownloadTemplate}
+            onSuccess={() => {
+              refetch();
+              queryClient.invalidateQueries({ queryKey: ['mitra-industri'] });
+            }}
           />
         </Suspense>
       </div>
@@ -753,6 +834,19 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
             isOpen={!!selectedDetailMitra}
             onClose={() => setSelectedDetailMitra(null)}
             mitra={selectedDetailMitra}
+          />
+          <ExcelImportModal
+            isOpen={isImportModalOpen}
+            onClose={() => setIsImportModalOpen(false)}
+            title="Import Mitra Industri"
+            description="Unggah data master rekanan DUDI dan tempat PKL dari file Excel (.xlsx)."
+            sampleDataHint="Pastikan kolom Nama Mitra diisi. Untuk memperbarui data mitra eksisting, samakan nama perusahaannya."
+            onImport={handleImportMitra}
+            onDownloadTemplate={handleDownloadTemplate}
+            onSuccess={() => {
+              refetch();
+              queryClient.invalidateQueries({ queryKey: ['mitra-industri'] });
+            }}
           />
         </Suspense>
       </AcademicPageLayout>

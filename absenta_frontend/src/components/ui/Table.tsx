@@ -486,7 +486,7 @@ export function Table({
       </div>
 
       {/* Standardized, Centralized Premium Pagination Footer */}
-      {pagination && pagination.totalPages > 1 && (
+      {pagination && (pagination.totalItems > 0 || pagination.totalPages >= 1) && (
         <div className="flex items-center justify-between px-6 py-2 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/20 dark:bg-slate-950/20">
           <div className="flex items-center gap-4">
             <div className="text-[11px] text-slate-600 dark:text-slate-400 hidden sm:block font-medium">

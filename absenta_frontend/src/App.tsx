@@ -747,14 +747,14 @@ function App() {
 
                     {/* Hubin Module */}
                     <Route path="/hubin" element={
-                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.pkl.view.list', 'hubin.pkl.view.list', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list', 'hubin.tefa.manage']}>
+                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.self.pkl', 'hubin.self.logbook', 'hubin.self.tracer', 'hubin.self.bkk', 'hubin.bkk.manage', 'hubin.lamaran.manage', 'hubin.tracer.view', 'hubin.mou.view.list', 'hubin.tefa.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <HubinWorkspacePage />
                         </Suspense>
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/dashboard" element={
-                      <ProtectedRoute requiredCapability="dashboard.view.hubin">
+                      <ProtectedRoute requiredCapability={['dashboard.view.hubin', 'hubin.guidance.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <HubinDashboardPage />
                         </Suspense>
@@ -768,7 +768,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/penempatan" element={
-                      <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.pkl.view.list']}>
+                      <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.pkl.view.list', 'hubin.guidance.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <PenempatanPklPage />
                         </Suspense>
@@ -782,14 +782,14 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/absensi" element={
-                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.pkl.view.list']}>
+                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.self.pkl', 'hubin.self.logbook']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <AbsensiPklPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/monitoring" element={
-                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.logbook.manage']}>
+                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.logbook.manage', 'hubin.guidance.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <MonitoringPklPage />
                         </Suspense>
@@ -817,7 +817,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/hubin/cetak-berkas" element={
-                      <ProtectedRoute requiredCapability="hubin.pkl.view.list">
+                      <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.guidance.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <CetakBerkasHubinPage />
                         </Suspense>

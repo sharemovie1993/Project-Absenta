@@ -13,6 +13,7 @@ interface HubinGoogleDriveUploaderProps {
   customFileName?: string;
   compact?: boolean;
   folderName?: string;
+  accept?: string;
 }
 
 export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> = React.memo(({
@@ -21,7 +22,8 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
   label = 'Foto Bukti Kegiatan',
   customFileName,
   compact = false,
-  folderName
+  folderName,
+  accept = 'image/*'
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMounted = useRef(true);
@@ -136,7 +138,7 @@ export const HubinGoogleDriveUploader: React.FC<HubinGoogleDriveUploaderProps> =
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
-        accept="image/*"
+        accept={accept}
         className="hidden"
       />
 

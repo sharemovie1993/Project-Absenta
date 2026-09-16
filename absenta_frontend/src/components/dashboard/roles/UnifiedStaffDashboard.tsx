@@ -71,6 +71,7 @@ import { StaffWaliKelasTab } from '../staff/tabs/StaffWaliKelasTab';
 import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab';
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
+import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
 
 // Lazy Module Dashboards for In-Tab Rendering (Bebas Sidebar, 100% Full Width)
 const KurikulumDashboard = React.lazy(() => import('@/pages/kurikulum/Dashboard'));
@@ -236,6 +237,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     !!((user?.guru_profile as any)?.wali_kelas_di?.id);
 
   const isGlobalHubin = isHubin;
+  const isPembimbingPkl = !isHubin && can('hubin.guidance.manage');
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
@@ -543,6 +545,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     if (isKesiswaan) parts.push('Tim Kesiswaan');
     if (isSarpras)   parts.push('Pengelola Sarpras');
     if (isHubin)     parts.push('Hubin / PKL');
+    else if (isPembimbingPkl) parts.push('Pembimbing PKL');
     if (isToolman)   parts.push('Toolman Lab');
     if (isKaprog)    parts.push('Ketua Program');
     if (isKabeng)    parts.push('Kepala Bengkel');
@@ -560,7 +563,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
     if (jabatan) return jabatan;
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
-  }, [jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff]);
+  }, [jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isPembimbingPkl, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff]);
 
   const teacherInitials = useMemo(() => {
     const name = user?.full_name || user?.name || 'Hendra Wijaya';
@@ -648,6 +651,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
     }
 
+    // 7.1 Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
+    if (isPembimbingPkl && !isKepsek) {
+      list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase, badge: 'PKL' });
+    }
+
     // 8. Koperasi (hanya jika ada SK Pengelola Koperasi / Admin)
     if (isKoperasi || (isAdminRole && !isKepsek)) {
       list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
@@ -695,6 +703,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isToolman,
     isKabeng,
     isHubin,
+    isPembimbingPkl,
     isBkk,
     isKaprog,
     isKoperasi,
@@ -938,6 +947,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
               waliKelasNama={waliKelasNama}
               waliKelasId={waliKelasId}
               isWaliKelas={isWaliKelas}
+              isPembimbingPkl={isPembimbingPkl}
               hasGerbangDuty={hasGerbangDuty}
               isPureGerbang={isPureGerbangStaff}
               isPendidik={isPendidik}
@@ -992,6 +1002,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
             <HubinDashboard />
           </Suspense>
+        )}
+
+        {/* 💼 TAB 7.1: BIMBINGAN PKL DASHBOARD (KHUSUS GURU PEMBIMBING) */}
+        {activeTab === 'pembimbing_pkl' && (
+          <StaffPembimbingPklTab
+            guruId={guruId}
+            guruNama={guruProfile?.nama_guru || user?.full_name}
+          />
         )}
 
         {/* 🛒 TAB 8: KOPERASI DASHBOARD */}

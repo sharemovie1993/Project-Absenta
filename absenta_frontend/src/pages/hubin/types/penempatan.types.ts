@@ -10,6 +10,10 @@ export interface SiswaData {
     id: string;
     nama_kelas: string;
   };
+  TahunPelajaran?: {
+    id: string;
+    tahun: string;
+  };
 }
 
 export interface MitraData {
@@ -34,11 +38,20 @@ export interface SiswaPkl {
   status: HubinPklStatus;
   tanggal_mulai: string;
   tanggal_selesai: string;
+  siswa_akademik_id?: string | null;
   Siswa?: SiswaData;
+  SiswaAkademik?: {
+    id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    tahunPelajaran?: { id: string; tahun: string };
+    semester?: { id: string; nama_semester: string };
+  };
   Mitra?: MitraData;
   Pembimbing?: PembimbingData;
   kunjungan_json?: Array<{
     catatan: string;
+    catatan_dudi?: string;
     foto_url?: string;
     latitude?: number;
     longitude?: number;
@@ -65,6 +78,9 @@ export interface CreatePenempatanPayload {
   tanggal_mulai: string;
   tanggal_selesai: string | null;
   status: string;
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
+  kelas_id?: string | null;
 }
 
 export interface PenilaianPayload {
@@ -76,7 +92,9 @@ export interface PenilaianPayload {
 }
 
 export interface KunjunganPayload {
+  tanggal?: string;
   catatan: string;
+  catatan_dudi?: string;
   foto_url?: string;
   latitude?: number;
   longitude?: number;

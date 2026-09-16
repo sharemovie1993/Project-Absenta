@@ -205,7 +205,7 @@ export default function LoginPage() {
       const isLocalhostLogin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
       // Only pass tenantIdDev when on localhost (dev dropdown). When accessed via real domain, 
       // the backend resolves the tenant from the Host header automatically.
-      const devTenantArg = isDevMode && isLocalhostLogin && tenantIdDev.trim() ? tenantIdDev.trim() : undefined;
+      const devTenantArg = isDevMode && isLocalhostLogin ? (tenantIdDev.trim() || '2acb7e12-d264-4784-8262-8f7369061542') : undefined;
       await loginAction(credentials.email, credentials.password, devTenantArg);
     } catch (err) {
       const errorObj = err as {

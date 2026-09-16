@@ -2,7 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 export interface AnalyticsCardProps {
-  title: string;
+  title: React.ReactNode;
   value?: React.ReactNode;
   icon?: React.ReactNode;
   isLoading?: boolean;
@@ -98,7 +98,8 @@ export function AnalyticsCardBase({
             <div className="flex items-center sm:items-start justify-between gap-1.5 sm:gap-2 min-w-0">
               <div className="flex-1 min-w-0">
                 <p className={cn(
-                  "uppercase font-black tracking-widest truncate text-[8px] sm:text-[9px] mb-0 sm:mb-0.5", 
+                  "uppercase font-black truncate text-[8px] sm:text-[9px] mb-0 sm:mb-0.5", 
+                  isCompact ? "tracking-normal sm:tracking-wider" : "tracking-widest",
                   isPremiumVariant ? "text-white/80" : "text-slate-700 dark:text-slate-400"
                 )}>
                   {title}

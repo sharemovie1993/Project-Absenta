@@ -208,7 +208,7 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       hover: 'hover:border-teal-300 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/20',
       gradient: 'from-teal-600 to-emerald-600',
     },
-    defaultPath: '/hubin/dashboard',
+    defaultPath: '/hubin',
     pathPrefixes: ['/hubin', '/pkl', '/bkk', '/tracer', '/magang'],
     category: 'HUBIN',
   },

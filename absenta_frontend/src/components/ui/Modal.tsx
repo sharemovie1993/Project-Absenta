@@ -112,13 +112,16 @@ export function Modal({
     isMouseDownOnWrapper.current = false;
   };
 
-  // Close modal on Escape key
+  const onCloseRef = React.useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // Close modal on Escape key & manage body scroll lock
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if ((e.key === 'Escape' || e.code === 'Escape') && isOpen && !disableClose) {
         e.preventDefault();
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -131,7 +134,7 @@ export function Modal({
       document.removeEventListener('keydown', handleEscape, true);
       document.body.style.overflow = 'unset';
     };
-  }, [isOpen, onClose, disableClose]);
+  }, [isOpen, disableClose]);
 
   return (
     <AnimatePresence>

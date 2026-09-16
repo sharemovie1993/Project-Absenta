@@ -3,19 +3,31 @@ import { HubinService } from '../../services/hubin.service';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
+import { z } from 'zod';
+import { 
+  createPenempatanSchema, 
+  updatePenempatanSchema, 
+  bulkCreatePenempatanSchema 
+} from '../../services/hubin.schema';
 
 export class HubinPenempatanController {
   private hubinService = new HubinService();
   async getPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
-      const { search, page, limit } = request.query;
+      const { search, page, limit, tahun_pelajaran_id, semester_id, status, mitra_id, pembimbing_id, kelas_id } = request.query;
       const data = await this.hubinService.getPenempatan(
         request.tenantId!, 
         request.user.id, 
         {
           search,
           page: page ? parseInt(page) : undefined,
-          limit: limit ? parseInt(limit) : undefined
+          limit: limit ? parseInt(limit) : undefined,
+          tahun_pelajaran_id: tahun_pelajaran_id || undefined,
+          semester_id: semester_id || undefined,
+          status: status || undefined,
+          mitra_id: mitra_id || undefined,
+          pembimbing_id: pembimbing_id || undefined,
+          kelas_id: kelas_id || undefined
         },
         request.organizationalScope
       );

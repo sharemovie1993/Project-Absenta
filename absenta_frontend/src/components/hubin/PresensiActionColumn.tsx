@@ -49,18 +49,18 @@ export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.m
   }, [actualTime]);
   
   return (
-    <div className="flex flex-col items-center py-8 px-4 space-y-4">
-      <div className="flex flex-col items-center space-y-1">
+    <div className="flex flex-col items-center py-4 sm:py-6 px-2.5 sm:px-4 space-y-2 sm:space-y-3">
+      <div className="flex flex-col items-center space-y-0.5">
         <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</span>
-        <span className="text-[10px] font-mono text-slate-500 dark:text-slate-600">Jadwal: {scheduleTime}</span>
+        <span className="text-[9px] sm:text-[10px] font-mono text-slate-500 dark:text-slate-600">Jadwal: {scheduleTime}</span>
       </div>
       
       {isChecked ? (
-        <div className="flex flex-col items-center space-y-2">
-          <div className={`${isIN ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)]' : 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.05)]'} px-5 py-2 rounded-xl border text-lg font-black font-mono tracking-wider`}>
+        <div className="flex flex-col items-center space-y-1">
+          <div className={`${isIN ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/30 shadow-xs' : 'bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30 shadow-xs'} px-3.5 py-1.5 rounded-xl border text-base sm:text-lg font-black font-mono tracking-wider`}>
             {displayTime}
           </div>
-          <span className={`text-[8px] font-black uppercase tracking-tighter ${isIN ? 'text-emerald-500/60' : 'text-indigo-500/60'}`}>
+          <span className={`text-[8px] font-black uppercase tracking-wider ${isIN ? 'text-emerald-600 dark:text-emerald-400' : 'text-indigo-600 dark:text-indigo-400'}`}>
             BERHASIL
           </span>
         </div>
@@ -69,17 +69,17 @@ export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.m
           onClick={onAction}
           disabled={isDisabled || isLoading}
           isLoading={isLoading}
-          className={`w-full h-14 rounded-xl font-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 ${
+          className={`w-full h-11 sm:h-12 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all duration-300 ${
             !isDisabled 
               ? (isIN 
-                  ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-xl shadow-emerald-500/20 ring-1 ring-white/10' 
-                  : 'bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-xl shadow-indigo-500/20 ring-1 ring-white/10') 
+                  ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
+                  : 'bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-500/20') 
               : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed grayscale'
           }`}
         >
-          <div className="flex items-center justify-center gap-2.5">
-            <div className={`p-1.5 rounded-lg ${!isDisabled ? 'bg-white/10' : 'bg-slate-200 dark:bg-slate-700'}`}>
-              <Camera size={16} className={!isDisabled ? 'text-white' : 'text-slate-400'} />
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+            <div className={`p-1 rounded-md ${!isDisabled ? 'bg-white/10' : 'bg-slate-200 dark:bg-slate-700'}`}>
+              <Camera size={14} className={!isDisabled ? 'text-white' : 'text-slate-400'} />
             </div>
             <span>{isIN ? 'Check-In Masuk' : 'Check-Out Pulang'}</span>
           </div>

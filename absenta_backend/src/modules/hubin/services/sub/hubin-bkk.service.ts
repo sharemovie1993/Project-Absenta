@@ -10,7 +10,7 @@ import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
-export class HubinBkkService {
+export class HubinBkkService extends HubinCommonHelper {
   async getLowongan(tenantId: string, params?: { search?: string; status?: string; page?: number; limit?: number }) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;

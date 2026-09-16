@@ -22,11 +22,22 @@ import {
 const HubinTvModeLayout = React.lazy(() => import('./components/HubinTvModeLayout').then(m => ({ default: m.HubinTvModeLayout })));
 
 import { useQuery } from '@tanstack/react-query';
+import { useCapabilities } from '@/hooks/useCapabilities';
 
 export const HubinDashboardPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
   const { user, subscription } = useAuthStore();
   const { isTvMode } = useTvStore();
+  const { can } = useCapabilities();
+
+  const canViewHubinDashboard = useMemo(() => can('dashboard.view.hubin'), [can]);
+
+  // Gracefully redirect teachers/pembimbing to their guidance page instead of showing Access Denied
+  useEffect(() => {
+    if (!canViewHubinDashboard && can('hubin.guidance.manage')) {
+      navigate('/hubin/penempatan', { replace: true });
+    }
+  }, [canViewHubinDashboard, can, navigate]);
 
   const [currentScene, setCurrentScene] = useState(0);
 
@@ -52,7 +63,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
   const { data: statsRes, isLoading: loading, error: statsErr, dataUpdatedAt } = useQuery({
     queryKey: ['hubin-dashboard-stats'],
     queryFn: () => hubinApi.getStats(),
-    enabled: subscription !== undefined,
+    enabled: subscription !== undefined && canViewHubinDashboard,
     refetchInterval: isTvMode ? 60_000 : false,
     staleTime: 30_000,
   });
@@ -60,7 +71,7 @@ export const HubinDashboardPage: React.FC = React.memo(() => {
   const { data: actRes, isLoading: activitiesLoading } = useQuery({
     queryKey: ['hubin-recent-activities'],
     queryFn: () => hubinApi.getRecentActivity(),
-    enabled: subscription !== undefined,
+    enabled: subscription !== undefined && canViewHubinDashboard,
     refetchInterval: isTvMode ? 60_000 : false,
     staleTime: 30_000,
   });

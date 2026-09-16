@@ -1,9 +1,11 @@
-import React from 'react';
-import { UserPlus } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { UserPlus, Calendar } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 
 interface HubinPklPlottingModalProps {
   isOpen: boolean;
@@ -44,6 +46,33 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
   isLoadingMitra,
   editingPkl,
 }) => {
+  const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
+  const [selectedTpId, setSelectedTpId] = useState<string>('');
+
+  useEffect(() => {
+    if (activeTahunPelajaran?.id && !selectedTpId) {
+      setSelectedTpId(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, selectedTpId]);
+
+  const { options: semOptions, activeSemester, isLoading: isLoadingSem } = useSemesterOptions({
+    tahunPelajaranId: selectedTpId || activeTahunPelajaran?.id
+  });
+  const [selectedSemesterId, setSelectedSemesterId] = useState<string>('');
+
+  useEffect(() => {
+    if (activeSemester?.id && !selectedSemesterId) {
+      setSelectedSemesterId(activeSemester.id);
+    }
+  }, [activeSemester, selectedSemesterId]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (activeTahunPelajaran?.id) setSelectedTpId(activeTahunPelajaran.id);
+      if (activeSemester?.id) setSelectedSemesterId(activeSemester.id);
+    }
+  }, [isOpen, activeTahunPelajaran, activeSemester]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -57,6 +86,43 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
       }
     >
       <form onSubmit={handlePlottingSubmit} className="space-y-4">
+        <input type="hidden" name="tahun_pelajaran_id" value={selectedTpId || activeTahunPelajaran?.id || ''} />
+        <input type="hidden" name="semester_id" value={selectedSemesterId || activeSemester?.id || ''} />
+
+        {/* Konteks Tahun Pelajaran & Semester */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-200/70 dark:border-slate-800/80 space-y-2.5">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <Calendar size={14} className="text-indigo-600" />
+            <span>Konteks Tahun Pelajaran & Semester</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SimpleFormField htmlFor="plotting-tp" label="Tahun Pelajaran">
+              <SearchableSelect
+                id="plotting-tp"
+                options={tpOptions}
+                placeholder="-- Pilih Tahun Pelajaran --"
+                triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                onValueChange={(val) => {
+                  setSelectedTpId(val);
+                  setSelectedSemesterId('');
+                }}
+                value={selectedTpId || activeTahunPelajaran?.id || ''}
+                isLoading={isLoadingTp}
+              />
+            </SimpleFormField>
+            <SimpleFormField htmlFor="plotting-semester" label="Semester">
+              <SearchableSelect
+                id="plotting-semester"
+                options={semOptions}
+                placeholder="-- Pilih Semester --"
+                triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                onValueChange={(val) => setSelectedSemesterId(val)}
+                value={selectedSemesterId || activeSemester?.id || ''}
+                isLoading={isLoadingSem}
+              />
+            </SimpleFormField>
+          </div>
+        </div>
         {editingPkl ? (
           <SimpleFormField label="Siswa PKL (Terkunci)">
             <Input 

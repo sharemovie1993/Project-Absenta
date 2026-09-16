@@ -583,7 +583,7 @@ export class AuthService {
           email: admin_email,
           password: hashedPassword,
           tenant_id: newTenant.id,
-          role_id: adminRoleId,
+          role_id: adminRoleId!,
           no_hp: String(admin_phone).trim(),
         },
       });

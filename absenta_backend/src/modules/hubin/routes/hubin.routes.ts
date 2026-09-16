@@ -9,11 +9,12 @@ export async function hubinRoutes(fastify: any) {
   // --- MITRA ---
   fastify.get('/mitra', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.mou.view.list']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getMitra(req, reply));
   fastify.post('/mitra', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.createMitra(req, reply));
+  fastify.post('/mitra/import', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.importMitra(req, reply));
   fastify.put('/mitra/:id', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateMitra(req, reply));
   fastify.delete('/mitra/:id', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deleteMitra(req, reply));
 
   // --- PENEMPATAN ---
-  fastify.get('/penempatan', { preHandler: [requireCapability('hubin.pkl.view.list'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getPenempatan(req, reply));
+  fastify.get('/penempatan', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getPenempatan(req, reply));
   fastify.get('/penempatan/me', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getMyPenempatan(req, reply));
   fastify.post('/penempatan', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.createPenempatan(req, reply));
   fastify.post('/penempatan/bulk', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.bulkCreatePenempatan(req, reply));
@@ -25,14 +26,16 @@ export async function hubinRoutes(fastify: any) {
   fastify.get('/deskripsi-tp', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getSettingDeskripsiPklList(req, reply));
   fastify.get('/sertifikat/:id', { preHandler: [requireCapability(['hubin.pkl.view.list', 'hubin.self.pkl', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getSertifikatPklData(req, reply));
   fastify.post('/penempatan/:id/kunjungan', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.addKunjungan(req, reply));
+  fastify.put('/penempatan/:id/kunjungan/:kunjunganId', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateKunjungan(req, reply));
+  fastify.delete('/penempatan/:id/kunjungan/:kunjunganId', { preHandler: [requireCapability(['hubin.pkl.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deleteKunjungan(req, reply));
   fastify.delete('/penempatan/:id', { preHandler: [requireCapability('hubin.pkl.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deletePenempatan(req, reply));
 
   // --- ABSENSI ---
-  fastify.get('/absensi/:siswaPklId', { preHandler: [requireCapability(['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getAbsensiSiswa(req, reply));
+  fastify.get('/absensi/:siswaPklId', { preHandler: [requireCapability(['hubin.self.pkl', 'hubin.absensi.view.history', 'hubin.pkl.view.list', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getAbsensiSiswa(req, reply));
   fastify.post('/absensi/check-in', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.checkIn(req, reply));
   fastify.post('/absensi/check-out', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.checkOut(req, reply));
   fastify.put('/absensi/:siswaPklId/logbook', { preHandler: [requireCapability(['hubin.self.logbook', 'hubin.logbook.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateLogbook(req, reply));
-  fastify.put('/absensi/:id/verify', { preHandler: [requireCapability('hubin.absensi.verify'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.verifyAbsensi(req, reply));
+  fastify.put('/absensi/:id/verify', { preHandler: [requireCapability(['hubin.absensi.verify', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.verifyAbsensi(req, reply));
   fastify.post('/absensi/sync-offline', { preHandler: [requireCapability('hubin.self.pkl'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.syncOfflineLogbook(req, reply));
 
   // --- JURNAL & PORTOFOLIO PKL ---

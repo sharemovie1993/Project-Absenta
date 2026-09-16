@@ -10,7 +10,7 @@ import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
-export class HubinAbsensiService {
+export class HubinAbsensiService extends HubinCommonHelper {
   async getAbsensiSiswa(tenantId: string, siswaPklId: string, params?: { page?: number; limit?: number }) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
@@ -40,8 +40,7 @@ export class HubinAbsensiService {
   }
 
   async checkIn(tenantId: string, siswaPklId: string, data: { latitude: number; longitude: number; accuracy?: number; kegiatan?: string; image_url?: string; is_dinas_luar?: boolean; address_snapshot?: string }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = await this.getTodayDateForTenant(tenantId);
 
     // Get PKL detail to check geofence
     const pkl = await prisma.siswaPkl.findUnique({
@@ -158,8 +157,7 @@ export class HubinAbsensiService {
   }
 
   async checkOut(tenantId: string, siswaPklId: string, data: { latitude: number; longitude: number; accuracy?: number; kegiatan?: string; image_url?: string; is_dinas_luar?: boolean; address_snapshot?: string }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = await this.getTodayDateForTenant(tenantId);
 
     const existing = await prisma.absensiPkl.findFirst({
       where: {
@@ -239,8 +237,7 @@ export class HubinAbsensiService {
   }
 
   async updateLogbook(tenantId: string, siswaPklId: string, data: { kegiatan: string; absensiId?: string; image_url?: string }) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = await this.getTodayDateForTenant(tenantId);
 
     let existing;
     if (data.absensiId) {
@@ -297,11 +294,11 @@ export class HubinAbsensiService {
     if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
 
     const results: any[] = [];
+    const tenantTz = await this.getTenantTz(tenantId);
 
     for (const log of logs) {
       try {
-        const logDate = new Date(log.tanggal);
-        logDate.setHours(0, 0, 0, 0);
+        const logDate = this.parseDateOnly(log.tanggal, tenantTz);
 
         let isOutsideRadius = false;
         let distanceMeters = 0;
@@ -381,6 +378,32 @@ export class HubinAbsensiService {
     return results;
   }
 
+  async verifyAbsensi(tenantId: string, id: string, requesterId?: string, org?: any) {
+    const absensi = await prisma.absensiPkl.findFirst({
+      where: { id, tenant_id: tenantId }
+    });
+    if (!absensi) {
+      throw new Error('Data absensi PKL tidak ditemukan');
+    }
+
+    if (requesterId) {
+      // Check ownership/permissions on the associated SiswaPkl
+      await this.ensureOwnership(tenantId, absensi.siswa_pkl_id, requesterId, org);
+    }
+
+    const res = await prisma.absensiPkl.update({
+      where: { id },
+      data: {
+        is_verified: true,
+        verified_by: requesterId,
+        verifikasi_at: new Date()
+      }
+    });
+
+    this.log(tenantId, requesterId || null, 'VERIFY_ABSENSI_PKL', 'ABSENSI_PKL', id, { is_verified: true });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
+  }
 
   async addKunjungan(tenantId: string, id: string, data: any, requesterId?: string, org?: any) {
     if (requesterId) {
@@ -409,6 +432,89 @@ export class HubinAbsensiService {
       tanggal: new Date().toISOString(),
       ...data
     });
+
+    const res = await prisma.siswaPkl.update({ 
+      where: { id },
+      data: {
+        kunjungan_json: kunjunganList
+      }
+    });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
+  }
+
+  async updateKunjungan(tenantId: string, id: string, kunjunganId: string, data: any, requesterId?: string, org?: any) {
+    if (requesterId) {
+      await this.ensureOwnership(tenantId, id, requesterId, org);
+    }
+    const existing = await prisma.siswaPkl.findFirst({
+      where: { id, tenant_id: tenantId }
+    });
+    if (!existing) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    let kunjunganList: any[] = [];
+    if (existing.kunjungan_json) {
+      if (Array.isArray(existing.kunjungan_json)) {
+        kunjunganList = [...existing.kunjungan_json];
+      } else {
+        try {
+          kunjunganList = JSON.parse(existing.kunjungan_json as string);
+        } catch (e) {
+          kunjunganList = [];
+        }
+      }
+    }
+
+    const index = kunjunganList.findIndex((k: any, idx: number) => (k.id && k.id === kunjunganId) || String(idx) === kunjunganId);
+    if (index === -1) {
+      throw new Error('Data kunjungan tidak ditemukan');
+    }
+
+    kunjunganList[index] = {
+      ...kunjunganList[index],
+      ...data,
+      id: kunjunganList[index].id || crypto.randomBytes(8).toString('hex'),
+      updated_at: new Date().toISOString()
+    };
+
+    const res = await prisma.siswaPkl.update({ 
+      where: { id },
+      data: {
+        kunjungan_json: kunjunganList
+      }
+    });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return res;
+  }
+
+  async deleteKunjungan(tenantId: string, id: string, kunjunganId: string, requesterId?: string, org?: any) {
+    if (requesterId) {
+      await this.ensureOwnership(tenantId, id, requesterId, org);
+    }
+    const existing = await prisma.siswaPkl.findFirst({
+      where: { id, tenant_id: tenantId }
+    });
+    if (!existing) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    let kunjunganList: any[] = [];
+    if (existing.kunjungan_json) {
+      if (Array.isArray(existing.kunjungan_json)) {
+        kunjunganList = [...existing.kunjungan_json];
+      } else {
+        try {
+          kunjunganList = JSON.parse(existing.kunjungan_json as string);
+        } catch (e) {
+          kunjunganList = [];
+        }
+      }
+    }
+
+    const initialLength = kunjunganList.length;
+    kunjunganList = kunjunganList.filter((k: any, idx: number) => (k.id ? k.id !== kunjunganId : String(idx) !== kunjunganId));
+
+    if (kunjunganList.length === initialLength) {
+      throw new Error('Data kunjungan tidak ditemukan');
+    }
 
     const res = await prisma.siswaPkl.update({ 
       where: { id },

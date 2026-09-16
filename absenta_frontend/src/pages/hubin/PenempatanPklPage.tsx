@@ -18,7 +18,8 @@ import {
   FileText,
   MessageCircle,
   Trash2,
-  Users
+  Users,
+  RotateCcw
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -30,6 +31,7 @@ import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button, Input, Loader } from '../../components/ui';
+import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
@@ -37,8 +39,11 @@ import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { usePembimbingPklOptions } from '../../hooks/usePembimbingPklOptions';
+import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
+import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { PenempatanRowActionMenu } from '../../components/hubin/PenempatanRowActionMenu';
 
 import type {
   SiswaData,
@@ -56,6 +61,8 @@ const HubinPklNilaiModal = lazy(() => import('../../components/hubin/HubinPklNil
 const HubinPklKunjunganModal = lazy(() => import('../../components/hubin/HubinPklKunjunganModal').then(m => ({ default: m.HubinPklKunjunganModal })));
 const HubinPklReviewJurnalModal = lazy(() => import('../../components/hubin/HubinPklReviewJurnalModal').then(m => ({ default: m.HubinPklReviewJurnalModal })));
 const HubinPklPrintSurat = lazy(() => import('../../components/hubin/HubinPklPrintSurat').then(m => ({ default: m.HubinPklPrintSurat })));
+const HubinPklPrintMonitoringModal = lazy(() => import('../../components/hubin/HubinPklPrintMonitoringModal').then(m => ({ default: m.HubinPklPrintMonitoringModal })));
+import type { MonitoringPrintConfig } from '../../components/hubin/HubinPklPrintMonitoringModal';
 
 // ─── Zod Schema Validation Guard (Pilar 25) ───
 const penempatanSchema = z.object({
@@ -111,6 +118,13 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const [selectedPkl, setSelectedPkl] = useState<SiswaPkl | null>(null);
   const [printData, setPrintData] = useState<SiswaPkl | null>(null);
   const [printKolektifMitraId, setPrintKolektifMitraId] = useState<string | null>(null);
+  const [printMode, setPrintMode] = useState<'surat_tugas' | 'lembar_monitoring'>('surat_tugas');
+  const [isMonitoringConfigModalOpen, setIsMonitoringConfigModalOpen] = useState(false);
+  const [selectedMonitoringPkl, setSelectedMonitoringPkl] = useState<SiswaPkl | null>(null);
+  const [monitoringPrintConfig, setMonitoringPrintConfig] = useState<MonitoringPrintConfig>({
+    pattern: 'standard_3',
+    includeEmptyRows: true
+  });
 
   // Timer Cleanup Effect
   useEffect(() => {
@@ -133,15 +147,57 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     enabled: !!user?.tenant_id
   });
 
+  // Konteks Tahun Pelajaran, Kelas & Mitra Filter
+  const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
+  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions();
+  const [selectedTpFilter, setSelectedTpFilter] = useState<string>('');
+  const [selectedMitraFilter, setSelectedMitraFilter] = useState<string>('');
+  const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('');
+
+  useEffect(() => {
+    if (activeTahunPelajaran?.id && !selectedTpFilter) {
+      setSelectedTpFilter(activeTahunPelajaran.id);
+    }
+  }, [activeTahunPelajaran, selectedTpFilter]);
+
+  const tpFilterOptions = useMemo(() => [
+    { label: 'Semua Tahun Pelajaran', value: '' },
+    ...tpOptions
+  ], [tpOptions]);
+
+  const kelasFilterOptions = useMemo(() => [
+    { label: 'Semua Kelas', value: '' },
+    ...kelasOptions
+  ], [kelasOptions]);
+
   const { data: penempatanData, isLoading } = useQuery({
-    queryKey: ['penempatan-pkl', { search: searchTerm, page, limit }],
-    queryFn: () => hubinApi.getPenempatan({ search: searchTerm, page, limit }),
+    queryKey: ['penempatan-pkl', { 
+      search: searchTerm, 
+      page, 
+      limit, 
+      tahun_pelajaran_id: selectedTpFilter,
+      mitra_id: selectedMitraFilter,
+      kelas_id: selectedKelasFilter
+    }],
+    queryFn: () => hubinApi.getPenempatan({
+      search: searchTerm,
+      page,
+      limit,
+      tahun_pelajaran_id: selectedTpFilter || undefined,
+      mitra_id: selectedMitraFilter || undefined,
+      kelas_id: selectedKelasFilter || undefined
+    }),
     enabled: isEnabled
   });
 
   const { data: allActivePenempatan } = useQuery({
-    queryKey: ['penempatan-pkl', 'all-active'],
-    queryFn: () => hubinApi.getPenempatan({ limit: 1000 }),
+    queryKey: ['penempatan-pkl', 'all-active', { 
+      tahun_pelajaran_id: selectedTpFilter
+    }],
+    queryFn: () => hubinApi.getPenempatan({
+      limit: 1000,
+      tahun_pelajaran_id: selectedTpFilter || undefined
+    }),
     enabled: isEnabled
   });
 
@@ -157,7 +213,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     return count > 1;
   }, [rawPenempatan]);
 
-  const { data: rawMitraRes } = useQuery({
+  const { data: rawMitraRes, isLoading: isLoadingRawMitra } = useQuery({
     queryKey: ['mitra-industri-raw-penempatan'],
     queryFn: () => hubinApi.getMitra({ limit: 1000 }).catch(() => null),
     enabled: isEnabled,
@@ -165,6 +221,11 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const rawMitra = useMemo(() => {
     return (Array.isArray(rawMitraRes?.data) ? rawMitraRes.data : []) as MitraData[];
   }, [rawMitraRes]);
+
+  const mitraFilterOptions = useMemo(() => [
+    { label: 'Semua Mitra Industri', value: '' },
+    ...(rawMitra || []).map((m: MitraData) => ({ label: m.nama, value: m.id })).sort((a, b) => a.label.localeCompare(b.label))
+  ], [rawMitra]);
 
   // Integrated Custom Hooks (Pilar 31 Data Layer)
   const { options: mitraOptions, isLoading: isLoadingMitra } = useDudiOptions(mitraSearch);
@@ -175,6 +236,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     mutationFn: (payload: CreatePenempatanPayload) => hubinApi.createPenempatan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
       toast.success('Penempatan PKL berhasil dibuat');
       setIsPlottingOpen(false);
       setSelectedSiswaId('');
@@ -191,6 +254,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     mutationFn: ({ id, data }: { id: string; data: Partial<SiswaPkl> }) => hubinApi.updatePenempatan(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
       toast.success('Perubahan penempatan berhasil disimpan');
       setIsPlottingOpen(false);
       setSelectedPkl(null);
@@ -208,6 +273,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     mutationFn: (payload: CreatePenempatanPayload[]) => hubinApi.bulkCreatePenempatan(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
       toast.success('Plotting penempatan kolektif berhasil dibuat');
       setIsBulkPlottingOpen(false);
     },
@@ -221,6 +288,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     mutationFn: ({ id, nilai }: { id: string; nilai: PenilaianPayload }) => hubinApi.updatePenilaian(id, nilai),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor'] });
       toast.success('Penilaian PKL berhasil disimpan');
       setIsNilaiOpen(false);
       setSelectedPkl(null);
@@ -235,9 +304,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     mutationFn: ({ id, data }: { id: string; data: KunjunganPayload }) => hubinApi.addKunjungan(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
       toast.success('Laporan kunjungan berhasil ditambahkan');
-      setIsKunjunganOpen(false);
-      setSelectedPkl(null);
       setVisitLat('');
       setVisitLng('');
       setVisitFotoUrl('');
@@ -248,10 +316,43 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     },
   });
 
+  const updateKunjunganMutation = useMutation({
+    mutationFn: ({ id, kunjunganId, data }: { id: string; kunjunganId: string; data: KunjunganPayload }) =>
+      hubinApi.updateKunjungan(id, kunjunganId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      toast.success('Catatan kunjungan berhasil diperbarui');
+      setVisitLat('');
+      setVisitLng('');
+      setVisitFotoUrl('');
+    },
+    onError: (error: unknown) => {
+      const errorMsg = error instanceof Error ? error.message : 'Gagal memperbarui kunjungan';
+      toast.error(errorMsg);
+    },
+  });
+
+  const deleteKunjunganMutation = useMutation({
+    mutationFn: ({ id, kunjunganId }: { id: string; kunjunganId: string }) =>
+      hubinApi.deleteKunjungan(id, kunjunganId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      toast.success('Catatan kunjungan berhasil dihapus');
+    },
+    onError: (error: unknown) => {
+      const errorMsg = error instanceof Error ? error.message : 'Gagal menghapus kunjungan';
+      toast.error(errorMsg);
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => hubinApi.deletePenempatan(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
       toast.success('Penempatan PKL berhasil dihapus');
     },
     onError: (error: unknown) => {
@@ -290,26 +391,30 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     const latOverride = formData.get('lat_override') ? parseFloat(formData.get('lat_override') as string) : null;
     const lonOverride = formData.get('lon_override') ? parseFloat(formData.get('lon_override') as string) : null;
     const radiusOverride = formData.get('radius_override') ? parseInt(formData.get('radius_override') as string) : null;
+    const tpId = (formData.get('tahun_pelajaran_id') as string) || selectedTpFilter || null;
+    const semId = (formData.get('semester_id') as string) || null;
 
-    const data = {
+    const data: CreatePenempatanPayload = {
       siswa_id: selectedSiswaId,
       mitra_id: selectedMitraId,
       pembimbing_id: selectedPembimbingId || null,
       tanggal_mulai: new Date(formData.get('tanggal_mulai') as string).toISOString(),
       tanggal_selesai: formData.get('tanggal_selesai') ? new Date(formData.get('tanggal_selesai') as string).toISOString() : null,
       status: selectedPkl ? selectedPkl.status : 'AKTIF',
+      tahun_pelajaran_id: tpId,
+      semester_id: semId,
       is_flexible_location: isFlexible,
       lat_override: latOverride,
       lon_override: lonOverride,
       radius_override: radiusOverride
-    };
+    } as any;
 
     if (selectedPkl) {
       updateMutation.mutate({ id: selectedPkl.id, data });
     } else {
       createMutation.mutate(data);
     }
-  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, createMutation, updateMutation]);
+  }, [selectedSiswaId, selectedMitraId, selectedPembimbingId, selectedPkl, selectedTpFilter, createMutation, updateMutation]);
 
   const handleBulkPlottingSubmit = useCallback((data: {
     siswa_ids: string[];
@@ -317,6 +422,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     pembimbing_id: string | null;
     tanggal_mulai: string;
     tanggal_selesai: string | null;
+    tahun_pelajaran_id?: string | null;
+    semester_id?: string | null;
+    kelas_id?: string | null;
   }) => {
     const payload: CreatePenempatanPayload[] = (data.siswa_ids ?? [])?.map(siswa_id => ({
       siswa_id,
@@ -325,9 +433,12 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       tanggal_mulai: data.tanggal_mulai,
       tanggal_selesai: data.tanggal_selesai,
       status: 'AKTIF',
+      tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
+      semester_id: data.semester_id || null,
+      kelas_id: data.kelas_id || null,
     }));
     bulkCreateMutation.mutate(payload);
-  }, [bulkCreateMutation]);
+  }, [bulkCreateMutation, selectedTpFilter]);
 
   const placedStudentIds = useMemo(() => {
     const list = Array.isArray(allActivePenempatan?.data) ? allActivePenempatan.data : (allActivePenempatan as { data?: SiswaPkl[] })?.data || [];
@@ -355,17 +466,24 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     nilaiMutation.mutate({ id: selectedPkl.id, nilai });
   }, [selectedPkl, nilaiMutation]);
 
-  // Kunjungan Submit Handler
-  const handleKunjunganSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+  // Kunjungan Submit & Delete Handlers
+  const handleKunjunganSubmit = useCallback((
+    e: React.FormEvent<HTMLFormElement>,
+    editingKunjunganId?: string,
+    onSuccess?: () => void
+  ) => {
     e.preventDefault();
     if (!selectedPkl) return;
 
     const formData = new FormData(e.currentTarget);
-    const data = {
+    const tanggalVal = formData.get('tanggal') as string;
+    const data: KunjunganPayload = {
       catatan: formData.get('catatan') as string || '',
+      catatan_dudi: formData.get('catatan_dudi') as string || undefined,
       foto_url: formData.get('foto_url') as string || undefined,
       latitude: parseFloat(formData.get('latitude') as string) || undefined,
       longitude: parseFloat(formData.get('longitude') as string) || undefined,
+      tanggal: tanggalVal ? new Date(tanggalVal).toISOString() : undefined,
     };
 
     if (!data.catatan) {
@@ -373,8 +491,31 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       return;
     }
 
-    kunjunganMutation.mutate({ id: selectedPkl.id, data });
-  }, [selectedPkl, kunjunganMutation]);
+    if (editingKunjunganId) {
+      updateKunjunganMutation.mutate(
+        { id: selectedPkl.id, kunjunganId: editingKunjunganId, data },
+        {
+          onSuccess: () => {
+            onSuccess?.();
+          }
+        }
+      );
+    } else {
+      kunjunganMutation.mutate(
+        { id: selectedPkl.id, data },
+        {
+          onSuccess: () => {
+            onSuccess?.();
+          }
+        }
+      );
+    }
+  }, [selectedPkl, kunjunganMutation, updateKunjunganMutation]);
+
+  const handleDeleteKunjungan = useCallback((kunjunganId: string) => {
+    if (!selectedPkl) return;
+    deleteKunjunganMutation.mutate({ id: selectedPkl.id, kunjunganId });
+  }, [selectedPkl, deleteKunjunganMutation]);
 
   const rawGuru = useMemo(() => (guruOptions ?? [])?.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
 
@@ -405,11 +546,39 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     if (activeTab === 'MY_GUIDANCE') {
       result = result.filter((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
     }
+    if (selectedMitraFilter) {
+      result = result.filter((p: SiswaPkl) => p.mitra_id === selectedMitraFilter);
+    }
+    if (selectedKelasFilter) {
+      result = result.filter((p: SiswaPkl) => {
+        const kId = (p as any).SiswaAkademik?.kelas_id || p.Siswa?.Kelas?.id || (p.Siswa as any)?.kelas_id;
+        return kId === selectedKelasFilter;
+      });
+    }
     return result.filter((p: SiswaPkl) => 
       p.Siswa?.nama_siswa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.Mitra?.nama?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [rawPenempatan, searchTerm, activeTab, activeGuruId]);
+  }, [rawPenempatan, searchTerm, activeTab, activeGuruId, selectedMitraFilter, selectedKelasFilter]);
+
+  const hasActiveFilters = Boolean(
+    selectedMitraFilter || 
+    selectedKelasFilter || 
+    searchTerm || 
+    (selectedTpFilter && activeTahunPelajaran?.id && selectedTpFilter !== activeTahunPelajaran.id)
+  );
+
+  const handleResetFilters = useCallback(() => {
+    setSelectedMitraFilter('');
+    setSelectedKelasFilter('');
+    setSearchTerm('');
+    if (activeTahunPelajaran?.id) {
+      setSelectedTpFilter(activeTahunPelajaran.id);
+    } else {
+      setSelectedTpFilter('');
+    }
+    setPage(1);
+  }, [activeTahunPelajaran]);
 
   const paginationProps = useMemo(() => {
     if (!pagination) return undefined;
@@ -501,6 +670,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     },
     onCetakTugas: (row) => {
       setPrintKolektifMitraId(null);
+      setPrintMode('surat_tugas');
       setPrintData(row);
       printTimerRef.current = setTimeout(() => {
         window.print();
@@ -508,10 +678,15 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     },
     onCetakKolektif: (mitraId) => {
       setPrintData(null);
+      setPrintMode('surat_tugas');
       setPrintKolektifMitraId(mitraId);
       printTimerRef.current = setTimeout(() => {
         window.print();
       }, 250);
+    },
+    onPrintMonitoring: (row) => {
+      setSelectedMonitoringPkl(row);
+      setIsMonitoringConfigModalOpen(true);
     },
     onHapus: async (row) => {
       const isConfirmed = await confirm({
@@ -534,11 +709,27 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     }
   }), [rawMitra, canManage, hasKolektif, deleteMutation, confirm]);
 
+  const handleConfirmMonitoringPrint = useCallback((config: MonitoringPrintConfig) => {
+    if (!selectedMonitoringPkl) return;
+    setPrintKolektifMitraId(null);
+    setPrintMode('lembar_monitoring');
+    setMonitoringPrintConfig(config);
+    setPrintData(selectedMonitoringPkl);
+    printTimerRef.current = setTimeout(() => {
+      window.print();
+    }, 250);
+  }, [selectedMonitoringPkl]);
+
   // Visit history list calculation
+  const currentSelectedPkl = useMemo(() => {
+    if (!selectedPkl) return null;
+    return rawPenempatan?.find((p: SiswaPkl) => p.id === selectedPkl.id) || selectedPkl;
+  }, [selectedPkl, rawPenempatan]);
+
   const selectedKunjunganList = useMemo(() => {
-    if (!selectedPkl || !Array.isArray(selectedPkl.kunjungan_json)) return [];
-    return selectedPkl.kunjungan_json;
-  }, [selectedPkl]);
+    if (!currentSelectedPkl || !Array.isArray(currentSelectedPkl.kunjungan_json)) return [];
+    return currentSelectedPkl.kunjungan_json;
+  }, [currentSelectedPkl]);
 
   const collectiveStudents = useMemo(() => {
     if (!printKolektifMitraId || !rawPenempatan) return [];
@@ -607,7 +798,67 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
               </p>
             </div>
           </div>
-          <PklStatusBadge status={row.status} />
+          <div className="flex items-center gap-1.5 shrink-0">
+            <PklStatusBadge status={row.status} />
+            <PenempatanRowActionMenu
+              row={row}
+              canManage={canManage}
+              hasKolektif={hasKolektif}
+              onNilai={(r) => {
+                setSelectedPkl(r);
+                setIsNilaiOpen(true);
+              }}
+              onKunjungan={(r) => {
+                setSelectedPkl(r);
+                setIsKunjunganOpen(true);
+              }}
+              onReviewJurnal={(r) => {
+                setSelectedPkl(r);
+                setIsReviewJurnalOpen(true);
+              }}
+              onCetakTugas={(r) => {
+                setPrintKolektifMitraId(null);
+                setPrintMode('surat_tugas');
+                setPrintData(r);
+                printTimerRef.current = setTimeout(() => {
+                  window.print();
+                }, 250);
+              }}
+              onCetakKolektif={(mitraId) => {
+                setPrintData(null);
+                setPrintMode('surat_tugas');
+                setPrintKolektifMitraId(mitraId);
+                printTimerRef.current = setTimeout(() => {
+                  window.print();
+                }, 250);
+              }}
+              onPrintMonitoring={(r) => {
+                setSelectedMonitoringPkl(r);
+                setIsMonitoringConfigModalOpen(true);
+              }}
+              onHapus={async (r) => {
+                const isConfirmed = await confirm({
+                  title: 'Hapus Penempatan PKL',
+                  description: `Apakah Anda yakin ingin membatalkan plotting penempatan PKL untuk ${r.Siswa?.nama_siswa} di ${r.Mitra?.nama}?`,
+                  confirmText: 'Ya, Hapus',
+                  cancelText: 'Batal',
+                  style: 'danger'
+                });
+                if (isConfirmed) {
+                  deleteMutation.mutate(r.id);
+                }
+              }}
+              onEdit={(r) => {
+                setSelectedPkl(r);
+                setSelectedSiswaId(r.siswa_id);
+                setSelectedMitraId(r.mitra_id);
+                setSelectedPembimbingId(r.pembimbing_id || '');
+                setIsPlottingOpen(true);
+              }}
+              siswaPhone={siswaPhone}
+              mitraPhone={mitraPhone}
+            />
+          </div>
         </div>
 
         <div className="p-2.5 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
@@ -652,96 +903,31 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
+        {/* Quick Action Buttons */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
           <Button
             size="sm"
             variant="outline"
-            className="h-8 px-2.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 bg-blue-50/20"
+            className="h-8 px-3 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/20 rounded-xl"
             onClick={() => {
               setSelectedPkl(row);
               setIsNilaiOpen(true);
             }}
           >
-            <Award size={12} className="mr-1" /> Nilai
+            <Award size={13} className="mr-1" /> Nilai PKL
           </Button>
 
           <Button
             size="sm"
             variant="outline"
-            className="h-8 px-2.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 bg-emerald-50/20"
+            className="h-8 px-3 text-[11px] font-bold text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 bg-amber-50/30 dark:bg-amber-950/20 rounded-xl"
             onClick={() => {
               setSelectedPkl(row);
               setIsKunjunganOpen(true);
             }}
           >
-            <MapPin size={12} className="mr-1" /> Kunjungan
+            <MapPin size={13} className="mr-1" /> Kunjungan
           </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-2.5 text-[11px] font-bold text-purple-600 dark:text-purple-400 border-purple-200 bg-purple-50/20"
-            onClick={() => {
-              setSelectedPkl(row);
-              setIsReviewJurnalOpen(true);
-            }}
-          >
-            <FileText size={12} className="mr-1" /> Jurnal
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-2.5 text-[11px] font-bold text-slate-600 border-slate-200"
-            onClick={() => {
-              setPrintKolektifMitraId(null);
-              setPrintData(row);
-              printTimerRef.current = setTimeout(() => {
-                window.print();
-              }, 250);
-            }}
-          >
-            <Printer size={12} className="mr-1" /> Cetak
-          </Button>
-
-          {canManage && (
-            <>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-indigo-600 hover:bg-indigo-50"
-                onClick={() => {
-                  setSelectedPkl(row);
-                  setSelectedSiswaId(row.siswa_id);
-                  setSelectedMitraId(row.mitra_id);
-                  setSelectedPembimbingId(row.pembimbing_id || '');
-                  setIsPlottingOpen(true);
-                }}
-              >
-                Edit
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-rose-600 hover:bg-rose-50"
-                onClick={async () => {
-                  const isConfirmed = await confirm({
-                    title: 'Hapus Penempatan PKL',
-                    description: `Apakah Anda yakin ingin membatalkan plotting penempatan PKL untuk ${row.Siswa?.nama_siswa} di ${row.Mitra?.nama}?`,
-                    confirmText: 'Ya, Hapus',
-                    cancelText: 'Batal',
-                    style: 'danger'
-                  });
-                  if (isConfirmed) {
-                    deleteMutation.mutate(row.id);
-                  }
-                }}
-              >
-                <Trash2 size={13} />
-              </Button>
-            </>
-          )}
         </div>
       </div>
     );
@@ -751,25 +937,94 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     <>
       <SectionCard title="Data Penempatan PKL Siswa" icon={ClipboardList} fullWidth noPadding>
         {/* Custom Search & Toolbar */}
-        <div className="flex flex-col md:flex-row gap-4 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center w-full justify-between">
+        <div className="flex flex-col gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 w-full">
           {/* Tab Filters */}
           {showTabs && (
-            <TabSwitcher
-              options={tabOptions}
-              activeTab={activeTab}
-              onChange={(id) => setActiveTab(id as 'ALL' | 'MY_GUIDANCE')}
-            />
+            <div className="w-full flex justify-start pb-0.5">
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeTab}
+                onChange={(id) => setActiveTab(id as 'ALL' | 'MY_GUIDANCE')}
+              />
+            </div>
           )}
 
-          <div className="flex-1 relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              aria-label="Cari nama siswa atau mitra industri"
-              placeholder="Cari nama siswa atau nama mitra industri..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
-            />
+          {/* Filter Controls Grid */}
+          <div className="flex flex-col lg:flex-row flex-wrap items-center gap-2.5 w-full">
+            {/* Filter Tahun Pelajaran */}
+            <div className="w-full lg:w-48 shrink-0">
+              <SearchableSelect
+                id="filter-tp"
+                options={tpFilterOptions}
+                placeholder="-- Pilih TP --"
+                triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                onValueChange={(val) => {
+                  setSelectedTpFilter(val);
+                  setPage(1);
+                }}
+                value={selectedTpFilter}
+                isLoading={isLoadingTp}
+              />
+            </div>
+
+            {/* Filter Kelas */}
+            <div className="w-full lg:w-44 shrink-0">
+              <SearchableSelect
+                id="filter-kelas"
+                options={kelasFilterOptions}
+                placeholder="-- Semua Kelas --"
+                triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                onValueChange={(val) => {
+                  setSelectedKelasFilter(val);
+                  setPage(1);
+                }}
+                value={selectedKelasFilter}
+                isLoading={isLoadingKelas}
+              />
+            </div>
+
+            {/* Filter Mitra Industri */}
+            <div className="w-full lg:w-56 shrink-0">
+              <SearchableSelect
+                id="filter-mitra"
+                options={mitraFilterOptions}
+                placeholder="-- Semua Mitra --"
+                triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+                onValueChange={(val) => {
+                  setSelectedMitraFilter(val);
+                  setPage(1);
+                }}
+                value={selectedMitraFilter}
+                isLoading={isLoadingRawMitra}
+              />
+            </div>
+
+            {/* Search Input */}
+            <div className="flex-1 min-w-[200px] relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+              <Input
+                aria-label="Cari nama siswa atau mitra industri"
+                placeholder="Cari siswa atau mitra..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+              />
+            </div>
+
+            {/* Reset Button */}
+            {hasActiveFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleResetFilters}
+                className="h-10 px-3 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl shrink-0 transition-colors w-full lg:w-auto"
+                title="Reset semua filter"
+              >
+                <RotateCcw size={14} className="mr-1.5" />
+                Reset
+              </Button>
+            )}
           </div>
         </div>
 
@@ -867,11 +1122,14 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
             setIsKunjunganOpen(false);
             setSelectedPkl(null);
             setVisitFotoUrl('');
+            setVisitLat('');
+            setVisitLng('');
           }}
-          selectedPkl={selectedPkl}
+          selectedPkl={currentSelectedPkl}
           selectedKunjunganList={selectedKunjunganList}
           handleKunjunganSubmit={handleKunjunganSubmit}
-          isPending={kunjunganMutation.isPending}
+          onDeleteKunjungan={handleDeleteKunjungan}
+          isPending={kunjunganMutation.isPending || updateKunjunganMutation.isPending || deleteKunjunganMutation.isPending}
           isDetectingGps={isDetectingGps}
           setIsDetectingGps={setIsDetectingGps}
           visitLat={visitLat}
@@ -880,6 +1138,10 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           setVisitLng={setVisitLng}
           visitFotoUrl={visitFotoUrl}
           setVisitFotoUrl={setVisitFotoUrl}
+          onPrintMonitoring={(row) => {
+            setSelectedMonitoringPkl(row);
+            setIsMonitoringConfigModalOpen(true);
+          }}
         />
       </Suspense>
 
@@ -906,7 +1168,23 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           tenantData={tenantData}
           collectiveStudents={collectiveStudents}
           representativeRow={representativeRow}
+          printMode={printMode}
+          monitoringConfig={monitoringPrintConfig}
         />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {isMonitoringConfigModalOpen && selectedMonitoringPkl && (
+          <HubinPklPrintMonitoringModal
+            isOpen={isMonitoringConfigModalOpen}
+            onClose={() => {
+              setIsMonitoringConfigModalOpen(false);
+              setSelectedMonitoringPkl(null);
+            }}
+            selectedPkl={selectedMonitoringPkl}
+            onConfirmPrint={handleConfirmMonitoringPrint}
+          />
+        )}
       </Suspense>
     </>
   );

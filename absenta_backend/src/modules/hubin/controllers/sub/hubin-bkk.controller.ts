@@ -3,6 +3,8 @@ import { HubinService } from '../../services/hubin.service';
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
+import { studentResolverService } from '@/services/student-resolver.service';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 
 export class HubinBkkController {
   private hubinService = new HubinService();

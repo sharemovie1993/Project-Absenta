@@ -10,8 +10,8 @@ import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
-export class HubinPenempatanService {
-  async getPenempatan(tenantId: string, userId?: string, params?: { search?: string; page?: number; limit?: number }, org?: any) {
+export class HubinPenempatanService extends HubinCommonHelper {
+  async getPenempatan(tenantId: string, userId?: string, params?: { search?: string; page?: number; limit?: number; tahun_pelajaran_id?: string; semester_id?: string; status?: string; mitra_id?: string; pembimbing_id?: string; kelas_id?: string }, org?: any) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
     const skip = (page - 1) * limit;
@@ -67,8 +67,8 @@ export class HubinPenempatanService {
       });
 
       const isGlobalHubin = user?.Role?.name === 'ADMIN' || 
-                           user?.organizationalAssignments.some((oa: any) => oa.Position.code === 'HUBIN') ||
-                           user?.Role?.rolePermissions.some((rp: any) => rp.permission_id === 'hubin.partners.manage');
+                           user?.organizationalAssignments?.some((oa: any) => oa.Position?.code === 'HUBIN') ||
+                           user?.Role?.rolePermissions?.some((rp: any) => rp.permission_id === 'hubin.partners.manage');
 
       if (!isGlobalHubin && user?.Guru?.id) {
         andConditions.push({ pembimbing_id: user.Guru.id });
@@ -85,6 +85,45 @@ export class HubinPenempatanService {
       });
     }
 
+    if (params?.status) {
+      andConditions.push({ status: params.status });
+    }
+
+    if (params?.tahun_pelajaran_id) {
+      andConditions.push({
+        OR: [
+          { SiswaAkademik: { tahun_pelajaran_id: params.tahun_pelajaran_id } },
+          { Siswa: { tahun_pelajaran_id: params.tahun_pelajaran_id } }
+        ]
+      });
+    }
+
+    if (params?.semester_id) {
+      andConditions.push({
+        OR: [
+          { SiswaAkademik: { semester_id: params.semester_id } },
+          { Siswa: { semester_id: params.semester_id } }
+        ]
+      });
+    }
+
+    if (params?.mitra_id) {
+      andConditions.push({ mitra_id: params.mitra_id });
+    }
+
+    if (params?.pembimbing_id) {
+      andConditions.push({ pembimbing_id: params.pembimbing_id });
+    }
+
+    if (params?.kelas_id) {
+      andConditions.push({
+        OR: [
+          { SiswaAkademik: { kelas_id: params.kelas_id } },
+          { Siswa: { kelas_id: params.kelas_id } }
+        ]
+      });
+    }
+
     if (andConditions.length > 0) {
       where.AND = andConditions;
     }
@@ -96,8 +135,18 @@ export class HubinPenempatanService {
         include: {
           Siswa: { 
             include: { 
-              Kelas: { select: { id: true, nama_kelas: true } } 
+              Kelas: { select: { id: true, nama_kelas: true } },
+              TahunPelajaran: { select: { id: true, tahun: true } }
             } 
+          },
+          SiswaAkademik: {
+            select: {
+              id: true,
+              tahun_pelajaran_id: true,
+              semester_id: true,
+              tahunPelajaran: { select: { id: true, tahun: true } },
+              semester: { select: { id: true, nama_semester: true } }
+            }
           },
           Mitra: { select: { nama: true, latitude: true, longitude: true, radius: true, alamat: true } },
           Pembimbing: { select: { nama_guru: true, no_hp: true } },
@@ -127,17 +176,42 @@ export class HubinPenempatanService {
     const studentId = await studentResolverService.resolveSiswaId(tenantId, userId);
     if (!studentId) return null;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const includeConfig = {
+      Siswa: {
+        include: {
+          Kelas: { select: { id: true, nama_kelas: true } }
+        }
+      },
+      Mitra: { select: { nama: true, latitude: true, longitude: true, radius: true } },
+      Pembimbing: { select: { nama_guru: true, no_hp: true } },
+    };
+
+    // Prioritas 1: PKL berstatus AKTIF yang tanggalnya masih berlaku
+    const activePkl = await prisma.siswaPkl.findFirst({
+      where: {
+        tenant_id: tenantId,
+        siswa_id: studentId,
+        status: 'AKTIF',
+        tanggal_mulai: { lte: today },
+        OR: [
+          { tanggal_selesai: null },
+          { tanggal_selesai: { gte: today } },
+        ],
+      },
+      orderBy: { tanggal_mulai: 'desc' },
+      include: includeConfig,
+    });
+
+    if (activePkl) return activePkl;
+
+    // Fallback: PKL terbaru apapun statusnya (untuk view riwayat absensi)
     return await prisma.siswaPkl.findFirst({
       where: { tenant_id: tenantId, siswa_id: studentId },
-      include: {
-        Siswa: { 
-          include: { 
-            Kelas: { select: { id: true, nama_kelas: true } } 
-          } 
-        },
-        Mitra: { select: { nama: true, latitude: true, longitude: true, radius: true } },
-        Pembimbing: { select: { nama_guru: true, no_hp: true } },
-      },
+      orderBy: { tanggal_mulai: 'desc' },
+      include: includeConfig,
     });
   }
 
@@ -165,25 +239,55 @@ export class HubinPenempatanService {
       select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
     });
 
+    const targetTpId = data.tahun_pelajaran_id || siswa?.tahun_pelajaran_id;
+    const targetSemId = data.semester_id || siswa?.semester_id;
+    const targetKelasId = data.kelas_id || siswa?.kelas_id;
+
     let siswaAkademikId: string | undefined;
-    if (siswa && siswa.tahun_pelajaran_id && siswa.semester_id) {
-      const sa = await prisma.siswaAkademik.findFirst({
+    if (targetTpId && targetSemId) {
+      let sa = await prisma.siswaAkademik.findFirst({
         where: {
           siswa_id: data.siswa_id,
-          kelas_id: siswa.kelas_id || undefined,
-          tahun_pelajaran_id: siswa.tahun_pelajaran_id,
-          semester_id: siswa.semester_id
+          tahun_pelajaran_id: targetTpId,
+          semester_id: targetSemId
         }
       });
+      if (!sa && targetKelasId) {
+        try {
+          sa = await prisma.siswaAkademik.create({
+            data: {
+              siswa_id: data.siswa_id,
+              kelas_id: targetKelasId,
+              tahun_pelajaran_id: targetTpId,
+              semester_id: targetSemId,
+              status: 'AKTIF'
+            }
+          });
+        } catch (e: any) {
+          sa = await prisma.siswaAkademik.findFirst({
+            where: {
+              siswa_id: data.siswa_id,
+              tahun_pelajaran_id: targetTpId,
+              semester_id: targetSemId
+            }
+          });
+        }
+      }
       siswaAkademikId = sa?.id;
     }
 
+    const { tahun_pelajaran_id, semester_id, kelas_id, ...restData } = data;
+    const createData: any = {
+      ...restData,
+      pembimbing_id: (data.pembimbing_id && String(data.pembimbing_id).trim() !== '') ? String(data.pembimbing_id).trim() : null,
+      tanggal_mulai: data.tanggal_mulai ? new Date(data.tanggal_mulai) : new Date(),
+      tanggal_selesai: data.tanggal_selesai ? new Date(data.tanggal_selesai) : null,
+      tenant_id: tenantId,
+      siswa_akademik_id: siswaAkademikId,
+    };
+
     const result = await prisma.siswaPkl.create({
-      data: {
-        ...data,
-        tenant_id: tenantId,
-        siswa_akademik_id: siswaAkademikId,
-      },
+      data: createData,
     });
     this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', result.id, { siswa_nama: siswa?.nama_siswa });
     await cacheInvalidationService.invalidateHubinCache(tenantId, data.siswa_id);
@@ -220,6 +324,9 @@ export class HubinPenempatanService {
     }
 
     const updateData: any = { ...data };
+    if ('pembimbing_id' in updateData) {
+      updateData.pembimbing_id = (updateData.pembimbing_id && String(updateData.pembimbing_id).trim() !== '') ? String(updateData.pembimbing_id).trim() : null;
+    }
     if (updateData.tanggal_mulai) {
       updateData.tanggal_mulai = new Date(updateData.tanggal_mulai);
     }
@@ -242,17 +349,43 @@ export class HubinPenempatanService {
   }
 
   async bulkCreatePenempatan(tenantId: string, data: any, actorUserId?: string | null, org?: any) {
-    const { siswa_ids, mitra_id, pembimbing_id, tanggal_mulai, tanggal_selesai, status } = data;
-    if (!Array.isArray(siswa_ids) || siswa_ids.length === 0) {
-      throw new Error('siswa_ids must be a non-empty array');
+    let items: Array<{
+      siswa_id: string;
+      mitra_id: string;
+      pembimbing_id?: string | null;
+      tanggal_mulai?: string | Date;
+      tanggal_selesai?: string | Date | null;
+      status?: string;
+    }> = [];
+
+    if (Array.isArray(data)) {
+      items = data;
+    } else if (data && Array.isArray(data.siswa_ids)) {
+      items = data.siswa_ids.map((sId: string) => ({
+        siswa_id: sId,
+        mitra_id: data.mitra_id,
+        pembimbing_id: data.pembimbing_id,
+        tanggal_mulai: data.tanggal_mulai,
+        tanggal_selesai: data.tanggal_selesai,
+        status: data.status,
+        tahun_pelajaran_id: data.tahun_pelajaran_id,
+        semester_id: data.semester_id,
+        kelas_id: data.kelas_id,
+      }));
+    } else {
+      throw new Error('Format data bulk penempatan tidak valid');
+    }
+
+    if (items.length === 0) {
+      throw new Error('Daftar siswa penempatan tidak boleh kosong');
     }
 
     if (org && org.tenant_wide !== true) {
       if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
-        for (const siswaId of siswa_ids) {
+        for (const item of items) {
           const student = await prisma.siswa.findFirst({
             where: {
-              id: siswaId,
+              id: item.siswa_id,
               tenant_id: tenantId,
               Kelas: {
                 jurusan_id: { in: org.unit_ids }
@@ -267,35 +400,59 @@ export class HubinPenempatanService {
     }
 
     const results = [];
-    for (const siswaId of siswa_ids) {
+    for (const item of items) {
       const siswa = await prisma.siswa.findUnique({
-        where: { id: siswaId },
+        where: { id: item.siswa_id },
         select: { kelas_id: true, tahun_pelajaran_id: true, semester_id: true, nama_siswa: true }
       });
 
+      const targetTpId = (item as any).tahun_pelajaran_id || (data && (data as any).tahun_pelajaran_id) || siswa?.tahun_pelajaran_id;
+      const targetSemId = (item as any).semester_id || (data && (data as any).semester_id) || siswa?.semester_id;
+      const targetKelasId = (item as any).kelas_id || (data && (data as any).kelas_id) || siswa?.kelas_id;
+
       let siswaAkademikId: string | undefined;
-      if (siswa && siswa.tahun_pelajaran_id && siswa.semester_id) {
-        const sa = await prisma.siswaAkademik.findFirst({
+      if (targetTpId && targetSemId) {
+        let sa = await prisma.siswaAkademik.findFirst({
           where: {
-            siswa_id: siswaId,
-            kelas_id: siswa.kelas_id || undefined,
-            tahun_pelajaran_id: siswa.tahun_pelajaran_id,
-            semester_id: siswa.semester_id
+            siswa_id: item.siswa_id,
+            tahun_pelajaran_id: targetTpId,
+            semester_id: targetSemId
           }
         });
+        if (!sa && targetKelasId) {
+          try {
+            sa = await prisma.siswaAkademik.create({
+              data: {
+                siswa_id: item.siswa_id,
+                kelas_id: targetKelasId,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId,
+                status: 'AKTIF'
+              }
+            });
+          } catch (e: any) {
+            sa = await prisma.siswaAkademik.findFirst({
+              where: {
+                siswa_id: item.siswa_id,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId
+              }
+            });
+          }
+        }
         siswaAkademikId = sa?.id;
       }
 
       const res = await prisma.siswaPkl.create({
         data: {
           tenant_id: tenantId,
-          siswa_id: siswaId,
+          siswa_id: item.siswa_id,
           siswa_akademik_id: siswaAkademikId,
-          mitra_id,
-          pembimbing_id: pembimbing_id || null,
-          tanggal_mulai: tanggal_mulai ? new Date(tanggal_mulai) : new Date(),
-          tanggal_selesai: tanggal_selesai ? new Date(tanggal_selesai) : null,
-          status: status || 'AKTIF'
+          mitra_id: item.mitra_id,
+          pembimbing_id: (item.pembimbing_id && String(item.pembimbing_id).trim() !== '') ? String(item.pembimbing_id).trim() : null,
+          tanggal_mulai: item.tanggal_mulai ? new Date(item.tanggal_mulai) : new Date(),
+          tanggal_selesai: item.tanggal_selesai ? new Date(item.tanggal_selesai) : null,
+          status: item.status || 'AKTIF'
         }
       });
 

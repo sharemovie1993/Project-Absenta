@@ -19,6 +19,7 @@ import { toLocalDate } from '../../../../utils/attendance/time';
 
 // Lazy load GateInputModule
 const GateInputModule = lazy(() => import('../../../../pages/attendance/ops/components/GateInputModule').then(m => ({ default: m.GateInputModule })));
+import { PembimbingPklWidget } from '../../widgets/PembimbingPklWidget';
 
 interface StaffBerandaTabProps {
   guruId?: string;
@@ -26,6 +27,7 @@ interface StaffBerandaTabProps {
   waliKelasNama?: string;
   waliKelasId?: string;
   isWaliKelas?: boolean;
+  isPembimbingPkl?: boolean;
   hasGerbangDuty?: boolean;
   isPureGerbang?: boolean;
   isPendidik?: boolean;
@@ -39,6 +41,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   waliKelasNama,
   waliKelasId,
   isWaliKelas = false,
+  isPembimbingPkl = false,
   hasGerbangDuty = false,
   isPureGerbang = false,
   isPendidik = true,
@@ -301,6 +304,11 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
             </>
           )}
         </div>
+      )}
+
+      {/* ── WIDGET MONITORING BIMBINGAN PKL (KHUSUS GURU PEMBIMBING) ── */}
+      {isPembimbingPkl && (
+        <PembimbingPklWidget onNavigateTab={onNavigateTab} />
       )}
 
       {/* ── MATRIKS JADWAL GURU 1 MINGGU (STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK) ──────────── */}

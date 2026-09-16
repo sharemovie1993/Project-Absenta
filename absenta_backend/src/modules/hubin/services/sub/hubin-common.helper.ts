@@ -8,10 +8,46 @@ import { getRedisConnection } from '@/queue/redis';
 import { cacheService } from '@/utils/cache.service';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
-import { HubinCommonHelper } from './hubin-common.helper';
-
+import { getTenantTimezone } from '@/utils/timezone.utils';
 export class HubinCommonHelper {
-  private log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
+  protected async ensureOwnership(tenantId: string, id: string, userId: string, org?: any) {
+    if (org?.tenant_wide === true) return true;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { 
+        Guru: true,
+        Role: { include: { rolePermissions: true } },
+        organizationalAssignments: {
+          where: { is_active: true },
+          include: { Position: true }
+        }
+      }
+    });
+
+    const isGlobalHubin = user?.Role?.name === 'ADMIN' || 
+                         user?.Role?.name === 'SUPERADMIN' ||
+                         user?.organizationalAssignments?.some((oa: any) => oa.Position?.code === 'HUBIN') ||
+                         user?.Role?.rolePermissions?.some((rp: any) => 
+                           rp.permission_id === 'hubin.partners.manage' || rp.permission_id === 'hubin.pkl.manage'
+                         );
+
+    if (isGlobalHubin) return true;
+
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { id, tenant_id: tenantId }
+    });
+
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    if (user?.Guru?.id && pkl.pembimbing_id !== user.Guru.id) {
+      throw new Error('Anda tidak memiliki akses ke data siswa ini');
+    }
+
+    return true;
+  }
+
+  log(tenantId: string, userId: string | null, event: string, entity: string, entityId?: string | null, metadata?: any) {
     try {
       activityLogService.logEvent({
         event_type: event,
@@ -54,5 +90,40 @@ export class HubinCommonHelper {
     } catch (err) {
       console.error(`Failed to log HUBIN event ${event}:`, err);
     }
+  }
+
+  protected async getTenantTz(tenantId?: string | null): Promise<string> {
+    return await getTenantTimezone(tenantId);
+  }
+
+  protected async getTodayDateForTenant(tenantId: string): Promise<Date> {
+    const tz = await this.getTenantTz(tenantId);
+    return this.getTodayDate(tz);
+  }
+
+  protected async parseDateOnlyForTenant(tenantId: string, dateInput: string | Date): Promise<Date> {
+    const tz = await this.getTenantTz(tenantId);
+    return this.parseDateOnly(dateInput, tz);
+  }
+
+  protected getTodayDate(tz: string = 'Asia/Jakarta'): Date {
+    const dateStr = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: tz, 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).format(new Date());
+    return new Date(`${dateStr}T00:00:00.000Z`);
+  }
+
+  protected parseDateOnly(dateInput: string | Date, tz: string = 'Asia/Jakarta'): Date {
+    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+    const dateStr = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: tz, 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).format(d);
+    return new Date(`${dateStr}T00:00:00.000Z`);
   }
 }
