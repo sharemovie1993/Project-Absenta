@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -47,17 +48,54 @@ interface DeskripsiTpItem {
 
 export const HubinSettingsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<string>('sertifikat');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const urlTp = searchParams.get('tp');
 
-  // Academic Year selection for certificate reference context
+  const [activeTab, setActiveTab] = useState<string>(
+    urlTab && ['sertifikat', 'skema', 'deskripsi', 'storage'].includes(urlTab) ? urlTab : 'sertifikat'
+  );
+
+  // Sync tab from URL if changed
+  useEffect(() => {
+    if (urlTab && ['sertifikat', 'skema', 'deskripsi', 'storage'].includes(urlTab)) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
+
+  // Academic Year selection for certificate and assessment scheme context
   const { options: tpOptions, activeYear, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const [selectedTp, setSelectedTp] = useState<string>('');
+  const [selectedTp, setSelectedTp] = useState<string>(urlTp || '');
 
   useEffect(() => {
-    if (activeYear?.id && !selectedTp) {
+    if (urlTp && urlTp !== selectedTp) {
+      setSelectedTp(urlTp);
+    } else if (activeYear?.id && !selectedTp && !urlTp) {
       setSelectedTp(activeYear.id);
     }
-  }, [activeYear, selectedTp]);
+  }, [urlTp, activeYear, selectedTp]);
+
+  const handleTabChange = useCallback((newTab: string) => {
+    setActiveTab(newTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const handleTpChange = useCallback((newTp: string) => {
+    setSelectedTp(newTp);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (newTp) {
+        next.set('tp', newTp);
+      } else {
+        next.delete('tp');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Query Hubin Settings scoped to selected academic year
   const { data: rawSettings, isFetching: isFetchingSettings } = useQuery({
@@ -186,12 +224,13 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
       }
     }
     saveSettingsMutation.mutate({
+      tahun_pelajaran_id: selectedTp || undefined,
       assessmentMode: formMode,
       weightDudi: formWeightDudi,
       weightLaporan: formWeightLaporan,
       weightSidang: formWeightSidang,
     });
-  }, [formMode, formWeightDudi, formWeightLaporan, formWeightSidang, saveSettingsMutation]);
+  }, [selectedTp, formMode, formWeightDudi, formWeightLaporan, formWeightSidang, saveSettingsMutation]);
 
   // Handler Tab 3: Simpan Deskripsi TP
   const saveDeskripsiTpMutation = useMutation({
@@ -273,7 +312,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
               <TabSwitcher
                 tabs={tabs}
                 activeTab={activeTab}
-                onChange={setActiveTab}
+                onChange={handleTabChange}
                 ariaLabel="Kategori Pengaturan Hubin"
               />
               {isFetchingSettings && (
@@ -305,7 +344,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                       id="select-tp-sertifikat"
                       aria-label="Pilih tahun pelajaran untuk referensi sertifikat"
                       value={selectedTp}
-                      onValueChange={setSelectedTp}
+                      onValueChange={handleTpChange}
                       options={tpOptions}
                       placeholder="Pilih Tahun Pelajaran"
                       isLoading={isLoadingTp}
@@ -480,6 +519,32 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
             {/* TAB 2: SKEMA & BOBOT PENILAIAN */}
             {activeTab === 'skema' && (
               <div className="max-w-3xl space-y-6">
+                {/* Selector Konteks Tahun Pelajaran untuk Skema Nilai */}
+                <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Calendar size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Konteks Tahun Pelajaran Skema Nilai</h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tentukan skema dan persentase bobot penilaian khusus untuk angkatan/tahun ajaran yang dipilih.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-64 shrink-0">
+                    <SearchableSelect
+                      id="select-tp-skema"
+                      aria-label="Pilih tahun pelajaran untuk skema penilaian"
+                      value={selectedTp}
+                      onValueChange={handleTpChange}
+                      options={tpOptions}
+                      placeholder="Pilih Tahun Pelajaran"
+                      isLoading={isLoadingTp}
+                    />
+                  </div>
+                </div>
+
                 <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-6">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
                     <Sliders size={18} className="text-indigo-600 dark:text-indigo-400" />

@@ -53,10 +53,14 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const [
       configUrl, 
       configMode, 
-      configAssessmentMode, 
-      configWeightDudi, 
-      configWeightLaporan, 
-      configWeightSidang,
+      globalAssessmentMode, 
+      globalWeightDudi, 
+      globalWeightLaporan, 
+      globalWeightSidang,
+      tpAssessmentMode,
+      tpWeightDudi,
+      tpWeightLaporan,
+      tpWeightSidang,
       tpNomorSurat,
       tpTanggalTerbit,
       tpDurasiJp,
@@ -74,6 +78,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_DUDI' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_LAPORAN' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_SIDANG' } }),
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_ASSESSMENT_MODE_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_DUDI_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_LAPORAN_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_SIDANG_${targetTpId}` } }) : null,
       targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_NOMOR_SURAT_${targetTpId}` } }) : null,
       targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TANGGAL_TERBIT_${targetTpId}` } }) : null,
       targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_DURASI_JP_${targetTpId}` } }) : null,
@@ -86,13 +94,18 @@ export class HubinPenilaianService extends HubinCommonHelper {
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
     ]);
 
+    const resolvedAssessmentMode = (tpAssessmentMode?.value || globalAssessmentMode?.value as 'DUDI_ONLY' | 'COMPOSITE') || 'DUDI_ONLY';
+    const resolvedWeightDudi = tpWeightDudi ? Number(tpWeightDudi.value) : (globalWeightDudi ? Number(globalWeightDudi.value) : 70);
+    const resolvedWeightLaporan = tpWeightLaporan ? Number(tpWeightLaporan.value) : (globalWeightLaporan ? Number(globalWeightLaporan.value) : 15);
+    const resolvedWeightSidang = tpWeightSidang ? Number(tpWeightSidang.value) : (globalWeightSidang ? Number(globalWeightSidang.value) : 15);
+
     return {
       folderUrl: configUrl?.value || '',
       driveMode: configMode?.value || 'simulated',
-      assessmentMode: (configAssessmentMode?.value as 'DUDI_ONLY' | 'COMPOSITE') || 'DUDI_ONLY',
-      weightDudi: configWeightDudi ? Number(configWeightDudi.value) : 70,
-      weightLaporan: configWeightLaporan ? Number(configWeightLaporan.value) : 15,
-      weightSidang: configWeightSidang ? Number(configWeightSidang.value) : 15,
+      assessmentMode: resolvedAssessmentMode as 'DUDI_ONLY' | 'COMPOSITE',
+      weightDudi: resolvedWeightDudi,
+      weightLaporan: resolvedWeightLaporan,
+      weightSidang: resolvedWeightSidang,
       tahun_pelajaran_id: targetTpId || null,
       nomorSuratSertifikat: tpNomorSurat?.value || globalNomorSurat?.value || '425.1/0630/SMKN1PLD-KCD Wil.IV',
       tanggalTerbitSertifikat: tpTanggalTerbit?.value || globalTanggalTerbit?.value || '',
@@ -107,14 +120,26 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const data = payload?.data || payload || {};
     if (data.folderUrl !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_FOLDER_URL', data.folderUrl);
     if (data.driveMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_GOOGLE_DRIVE_MODE', data.driveMode);
-    if (data.assessmentMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
-    if (data.weightDudi !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
-    if (data.weightLaporan !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_LAPORAN', String(data.weightLaporan));
-    if (data.weightSidang !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_SIDANG', String(data.weightSidang));
 
-    // Scoped Academic Year certificate reference settings
+    // Scoped Academic Year settings
     const tpId = data.tahun_pelajaran_id;
     if (tpId) {
+      if (data.assessmentMode !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_ASSESSMENT_MODE_${tpId}`, data.assessmentMode);
+        await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
+      }
+      if (data.weightDudi !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_DUDI_${tpId}`, String(data.weightDudi));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
+      }
+      if (data.weightLaporan !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_LAPORAN_${tpId}`, String(data.weightLaporan));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_LAPORAN', String(data.weightLaporan));
+      }
+      if (data.weightSidang !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_WEIGHT_SIDANG_${tpId}`, String(data.weightSidang));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_SIDANG', String(data.weightSidang));
+      }
       if (data.nomorSuratSertifikat !== undefined) {
         await this.updateConfig(tenantId, `HUBIN_PKL_NOMOR_SURAT_${tpId}`, data.nomorSuratSertifikat);
         await this.updateConfig(tenantId, 'HUBIN_PKL_NOMOR_SURAT', data.nomorSuratSertifikat);
@@ -137,6 +162,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
         await this.updateConfig(tenantId, `HUBIN_PKL_PENANDATANGAN_NIP_${tpId}`, data.penandatanganNip);
       }
     } else {
+      if (data.assessmentMode !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_ASSESSMENT_MODE', data.assessmentMode);
+      if (data.weightDudi !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
+      if (data.weightLaporan !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_LAPORAN', String(data.weightLaporan));
+      if (data.weightSidang !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_SIDANG', String(data.weightSidang));
       if (data.nomorSuratSertifikat !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_NOMOR_SURAT', data.nomorSuratSertifikat);
       if (data.tanggalTerbitSertifikat !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_TANGGAL_TERBIT', data.tanggalTerbitSertifikat);
       if (data.durasiJp !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_DURASI_JP', String(data.durasiJp));
@@ -372,13 +401,18 @@ export class HubinPenilaianService extends HubinCommonHelper {
     }
 
     // 3. Fallback active academic context & Assessment Scheme Configurations
+    const targetTpId = tahun_pelajaran_id;
     const [
       activeTp, 
       activeSem, 
       configAssessmentMode, 
       configWeightDudi, 
       configWeightLaporan, 
-      configWeightSidang
+      configWeightSidang,
+      tpAssessmentMode,
+      tpWeightDudi,
+      tpWeightLaporan,
+      tpWeightSidang
     ] = await Promise.all([
       prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
       prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }),
@@ -386,12 +420,16 @@ export class HubinPenilaianService extends HubinCommonHelper {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_DUDI' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_LAPORAN' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_SIDANG' } }),
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_ASSESSMENT_MODE_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_DUDI_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_LAPORAN_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_SIDANG_${targetTpId}` } }) : null,
     ]);
 
-    const assessmentMode = (configAssessmentMode?.value as 'DUDI_ONLY' | 'COMPOSITE') || 'DUDI_ONLY';
-    const weightDudi = configWeightDudi ? Number(configWeightDudi.value) : 70;
-    const weightLaporan = configWeightLaporan ? Number(configWeightLaporan.value) : 15;
-    const weightSidang = configWeightSidang ? Number(configWeightSidang.value) : 15;
+    const assessmentMode = (tpAssessmentMode?.value || configAssessmentMode?.value as 'DUDI_ONLY' | 'COMPOSITE') || 'DUDI_ONLY';
+    const weightDudi = tpWeightDudi ? Number(tpWeightDudi.value) : (configWeightDudi ? Number(configWeightDudi.value) : 70);
+    const weightLaporan = tpWeightLaporan ? Number(tpWeightLaporan.value) : (configWeightLaporan ? Number(configWeightLaporan.value) : 15);
+    const weightSidang = tpWeightSidang ? Number(tpWeightSidang.value) : (configWeightSidang ? Number(configWeightSidang.value) : 15);
 
     const operations: any[] = [];
 
