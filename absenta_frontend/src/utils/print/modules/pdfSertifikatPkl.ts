@@ -82,10 +82,34 @@ export const formatTanggalIndonesia = (dateVal?: string | Date | null): string =
   }
 };
 
+export const getImageNaturalDimensions = (src?: string | null): Promise<{ width: number; height: number; aspect: number } | null> => {
+  if (!src) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && typeof Image !== 'undefined') {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        const width = img.naturalWidth || img.width || 1;
+        const height = img.naturalHeight || img.height || 1;
+        resolve({ width, height, aspect: width / height });
+      };
+      img.onerror = () => resolve(null);
+      img.src = src;
+    } else {
+      resolve(null);
+    }
+  });
+};
+
 export const renderSertifikatFront = (
   doc: jsPDF,
   data: SertifikatPklPrintData,
-  options?: { logoDaerahBase64?: string | null; logoSekolahBase64?: string | null }
+  options?: {
+    logoDaerahBase64?: string | null;
+    logoSekolahBase64?: string | null;
+    logoDaerahAspect?: number | null;
+    logoSekolahAspect?: number | null;
+  }
 ) => {
   const pageWidth = 297;
   const namaSekolah = data.sekolah?.nama || 'SEKOLAH MENENGAH KEJURUAN NEGERI 1 PLERED';
@@ -120,11 +144,23 @@ export const renderSertifikatFront = (
   const avgScore = totalScore / allScores.length;
   const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(avgScore);
 
-  // A. Kop Surat
+  // A. Kop Surat - Preserve exact aspect ratio (avoid lonjong)
   const kopStartY = 12.5;
+  const maxBoxW = 26;
+  const maxBoxH = 28;
+
   if (options?.logoDaerahBase64) {
     try {
-      doc.addImage(options.logoDaerahBase64, 'PNG', 18, kopStartY, 23, 28);
+      const aspect = options.logoDaerahAspect || (22 / 27);
+      let targetW = maxBoxW;
+      let targetH = maxBoxW / aspect;
+      if (targetH > maxBoxH) {
+        targetH = maxBoxH;
+        targetW = maxBoxH * aspect;
+      }
+      const x = 18 + (maxBoxW - targetW) / 2;
+      const y = kopStartY + (maxBoxH - targetH) / 2;
+      doc.addImage(options.logoDaerahBase64, 'PNG', x, y, targetW, targetH);
     } catch (e) {
       console.warn('Failed to load logo daerah in PDF:', e);
     }
@@ -132,7 +168,16 @@ export const renderSertifikatFront = (
 
   if (options?.logoSekolahBase64) {
     try {
-      doc.addImage(options.logoSekolahBase64, 'PNG', pageWidth - 41, kopStartY, 23, 28);
+      const aspect = options.logoSekolahAspect || 1.0;
+      let targetW = maxBoxW;
+      let targetH = maxBoxW / aspect;
+      if (targetH > maxBoxH) {
+        targetH = maxBoxH;
+        targetW = maxBoxH * aspect;
+      }
+      const x = (pageWidth - 18 - maxBoxW) + (maxBoxW - targetW) / 2;
+      const y = kopStartY + (maxBoxH - targetH) / 2;
+      doc.addImage(options.logoSekolahBase64, 'PNG', x, y, targetW, targetH);
     } catch (e) {
       console.warn('Failed to load logo sekolah in PDF:', e);
     }
@@ -513,8 +558,20 @@ export const generateSertifikatPdf = async (
 
   let isFirstPage = true;
 
+  // Preload image natural aspect ratios to prevent lonjong/distortion in jsPDF
+  const [logoDaerahInfo, logoSekolahInfo] = await Promise.all([
+    options?.logoDaerahBase64 ? getImageNaturalDimensions(options.logoDaerahBase64) : Promise.resolve(null),
+    options?.logoSekolahBase64 ? getImageNaturalDimensions(options.logoSekolahBase64) : Promise.resolve(null),
+  ]);
+
+  const resolvedFrontOptions = {
+    ...options,
+    logoDaerahAspect: logoDaerahInfo?.aspect,
+    logoSekolahAspect: logoSekolahInfo?.aspect,
+  };
+
   if (mode === 'all' || mode === 'front_only') {
-    renderSertifikatFront(doc, data, options);
+    renderSertifikatFront(doc, data, resolvedFrontOptions);
     isFirstPage = false;
   }
 
