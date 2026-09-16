@@ -720,6 +720,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               isOpen={showEditModal}
               onClose={() => setShowEditModal(false)}
               selectedTunnel={selectedTunnel}
+              tunnelBaseDomain={systemInfo?.tunnel_base_domain || 'absenta.id'}
               editError={editError}
               editLocalPort={editLocalPort}
               setEditLocalPort={setEditLocalPort}

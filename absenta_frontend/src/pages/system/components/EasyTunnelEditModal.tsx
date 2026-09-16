@@ -7,6 +7,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   selectedTunnel: Tunnel | null;
+  tunnelBaseDomain?: string;
   editError: string | null;
   editLocalPort: number;
   setEditLocalPort: (v: number) => void;
@@ -20,6 +21,7 @@ export const EasyTunnelEditModal: React.FC<Props> = React.memo(({
   isOpen,
   onClose,
   selectedTunnel,
+  tunnelBaseDomain,
   editError,
   editLocalPort,
   setEditLocalPort,
@@ -29,6 +31,10 @@ export const EasyTunnelEditModal: React.FC<Props> = React.memo(({
   onSubmit
 }) => {
   if (!selectedTunnel) return null;
+
+  const baseDomain = tunnelBaseDomain || 'absenta.id';
+  const slug = selectedTunnel.slug || (selectedTunnel as unknown as { subdomain?: string })?.subdomain || '';
+  const domainDisplay = slug ? (slug.includes('.') ? slug : `${slug}.${baseDomain}`) : '-';
 
   return (
     <Modal
@@ -52,9 +58,12 @@ export const EasyTunnelEditModal: React.FC<Props> = React.memo(({
             id="edit-subdomain"
             aria-label="Domain tunnel publik"
             disabled
-            value={selectedTunnel.subdomain}
-            className="rounded-xl font-mono text-slate-400 bg-slate-100 dark:bg-slate-800"
+            value={domainDisplay}
+            className="rounded-xl font-mono text-slate-500 bg-slate-100 dark:bg-slate-800 font-semibold"
           />
+          <p className="text-[11px] text-slate-400">
+            Subdomain permanen terdaftar pada sertifikat SSL dan server lisensi.
+          </p>
         </div>
 
         <div className="space-y-1">

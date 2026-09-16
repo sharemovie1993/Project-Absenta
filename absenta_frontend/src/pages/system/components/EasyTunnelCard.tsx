@@ -155,7 +155,7 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onDelete(tunnel.id, tunnel.app_name || tunnel.subdomain || tunnel.slug)}
+            onClick={() => onDelete(tunnel.id, tunnel.app_name || tunnel.slug)}
             className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-lg"
             title="Hapus tunnel"
           >
