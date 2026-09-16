@@ -375,7 +375,11 @@ async function main() {
         { label: 'Bursa Kerja (BKK)', icon: 'Briefcase', path: '/hubin/bkk', required_capability: 'hubin.self.bkk, hubin.bkk.manage, hubin.lamaran.manage, hubin.partners.manage, hubin.pkl.view.list' },
         { label: 'Tracer Study', icon: 'GraduationCap', path: '/hubin/tracer', required_capability: 'hubin.self.tracer, hubin.tracer.view, hubin.partners.manage' },
         { label: 'Teaching Factory', icon: 'Hammer', path: '/hubin/tefa', required_capability: 'hubin.tefa.manage' },
+        // Divider 2
+        { label: 'divider', icon: null, path: null },
+        // Klaster 3: Berkas & Pengaturan
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/hubin/cetak-berkas', required_capability: 'hubin.pkl.view.list, hubin.guidance.manage' },
+        { label: 'Pengaturan', icon: 'Settings', path: '/hubin/settings', required_capability: 'hubin.partners.manage, hubin.pkl.manage' },
       ]
     },
 
