@@ -41,14 +41,32 @@ export class HubinPenilaianService extends HubinCommonHelper {
     }
   }
 
-  async getSettings(tenantId: string) {
+  async getSettings(tenantId: string, tahunPelajaranId?: string) {
+    let targetTpId = tahunPelajaranId;
+    if (!targetTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true }
+      });
+      targetTpId = activeTp?.id;
+    }
+
     const [
       configUrl, 
       configMode, 
       configAssessmentMode, 
       configWeightDudi, 
       configWeightLaporan, 
-      configWeightSidang
+      configWeightSidang,
+      tpNomorSurat,
+      tpTanggalTerbit,
+      tpDurasiJp,
+      tpTempatTerbit,
+      tpPenandatanganNama,
+      tpPenandatanganNip,
+      globalNomorSurat,
+      globalTanggalTerbit,
+      globalDurasiJp,
+      sekolah
     ] = await Promise.all([
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_GOOGLE_DRIVE_FOLDER_URL' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_GOOGLE_DRIVE_MODE' } }),
@@ -56,6 +74,16 @@ export class HubinPenilaianService extends HubinCommonHelper {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_DUDI' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_LAPORAN' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_SIDANG' } }),
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_NOMOR_SURAT_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TANGGAL_TERBIT_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_DURASI_JP_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TEMPAT_TERBIT_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NAMA_${targetTpId}` } }) : null,
+      targetTpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NIP_${targetTpId}` } }) : null,
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_NOMOR_SURAT' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_TANGGAL_TERBIT' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_DURASI_JP' } }),
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
     ]);
 
     return {
@@ -65,6 +93,13 @@ export class HubinPenilaianService extends HubinCommonHelper {
       weightDudi: configWeightDudi ? Number(configWeightDudi.value) : 70,
       weightLaporan: configWeightLaporan ? Number(configWeightLaporan.value) : 15,
       weightSidang: configWeightSidang ? Number(configWeightSidang.value) : 15,
+      tahun_pelajaran_id: targetTpId || null,
+      nomorSuratSertifikat: tpNomorSurat?.value || globalNomorSurat?.value || '425.1/0630/SMKN1PLD-KCD Wil.IV',
+      tanggalTerbitSertifikat: tpTanggalTerbit?.value || globalTanggalTerbit?.value || '',
+      durasiJp: tpDurasiJp?.value || globalDurasiJp?.value || '792',
+      tempatTerbit: tpTempatTerbit?.value || sekolah?.kota || 'Purwakarta',
+      penandatanganNama: tpPenandatanganNama?.value || sekolah?.kepala_sekolah || '',
+      penandatanganNip: tpPenandatanganNip?.value || sekolah?.nip_kepala || '',
     };
   }
 
@@ -76,6 +111,40 @@ export class HubinPenilaianService extends HubinCommonHelper {
     if (data.weightDudi !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_DUDI', String(data.weightDudi));
     if (data.weightLaporan !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_LAPORAN', String(data.weightLaporan));
     if (data.weightSidang !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_WEIGHT_SIDANG', String(data.weightSidang));
+
+    // Scoped Academic Year certificate reference settings
+    const tpId = data.tahun_pelajaran_id;
+    if (tpId) {
+      if (data.nomorSuratSertifikat !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_NOMOR_SURAT_${tpId}`, data.nomorSuratSertifikat);
+        await this.updateConfig(tenantId, 'HUBIN_PKL_NOMOR_SURAT', data.nomorSuratSertifikat);
+      }
+      if (data.tanggalTerbitSertifikat !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_TANGGAL_TERBIT_${tpId}`, data.tanggalTerbitSertifikat);
+        await this.updateConfig(tenantId, 'HUBIN_PKL_TANGGAL_TERBIT', data.tanggalTerbitSertifikat);
+      }
+      if (data.durasiJp !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_DURASI_JP_${tpId}`, String(data.durasiJp));
+        await this.updateConfig(tenantId, 'HUBIN_PKL_DURASI_JP', String(data.durasiJp));
+      }
+      if (data.tempatTerbit !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_TEMPAT_TERBIT_${tpId}`, data.tempatTerbit);
+      }
+      if (data.penandatanganNama !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_PENANDATANGAN_NAMA_${tpId}`, data.penandatanganNama);
+      }
+      if (data.penandatanganNip !== undefined) {
+        await this.updateConfig(tenantId, `HUBIN_PKL_PENANDATANGAN_NIP_${tpId}`, data.penandatanganNip);
+      }
+    } else {
+      if (data.nomorSuratSertifikat !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_NOMOR_SURAT', data.nomorSuratSertifikat);
+      if (data.tanggalTerbitSertifikat !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_TANGGAL_TERBIT', data.tanggalTerbitSertifikat);
+      if (data.durasiJp !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_DURASI_JP', String(data.durasiJp));
+      if (data.tempatTerbit !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_TEMPAT_TERBIT', data.tempatTerbit);
+      if (data.penandatanganNama !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_PENANDATANGAN_NAMA', data.penandatanganNama);
+      if (data.penandatanganNip !== undefined) await this.updateConfig(tenantId, 'HUBIN_PKL_PENANDATANGAN_NIP', data.penandatanganNip);
+    }
+
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return { success: true };
   }
@@ -672,24 +741,66 @@ export class HubinPenilaianService extends HubinCommonHelper {
         Mitra: true,
         Pembimbing: { select: { nama_guru: true, nip: true } },
         Tenant: { select: { name: true, logo_url: true } },
+        SiswaAkademik: {
+          select: {
+            kelas_id: true,
+            tahun_pelajaran_id: true,
+            semester_id: true,
+            kelas: { select: { id: true, nama_kelas: true } },
+            tahunPelajaran: { select: { id: true, tahun: true } },
+          },
+        },
       },
     });
 
     if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
 
-    // Auto-generate nomor sertifikat jika belum ada
-    if (!pkl.nomor_sertifikat) {
-      const count = await prisma.siswaPkl.count({
-        where: { tenant_id: tenantId, NOT: { nomor_sertifikat: null } },
-      });
-      const nomorUrut = String(count + 1).padStart(4, '0');
-      const generatedNomor = `425.1/${nomorUrut}/SMKN1PLD-KCD Wil.IV`;
+    // Ambil konteks Tahun Pelajaran siswa
+    const tpId = pkl.SiswaAkademik?.tahun_pelajaran_id;
+    let certNomorConfig = null;
+    let certTanggalConfig = null;
+    let certDurasiConfig = null;
+    let certTempatConfig = null;
+    let certPenandatanganNamaConfig = null;
+    let certPenandatanganNipConfig = null;
 
+    if (tpId) {
+      [
+        certNomorConfig,
+        certTanggalConfig,
+        certDurasiConfig,
+        certTempatConfig,
+        certPenandatanganNamaConfig,
+        certPenandatanganNipConfig
+      ] = await Promise.all([
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_NOMOR_SURAT_${tpId}` } }),
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TANGGAL_TERBIT_${tpId}` } }),
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_DURASI_JP_${tpId}` } }),
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_TEMPAT_TERBIT_${tpId}` } }),
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NAMA_${tpId}` } }),
+        prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_PENANDATANGAN_NIP_${tpId}` } }),
+      ]);
+    }
+
+    if (!certNomorConfig) {
+      certNomorConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_NOMOR_SURAT' } });
+    }
+    if (!certTanggalConfig) {
+      certTanggalConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_TANGGAL_TERBIT' } });
+    }
+    if (!certDurasiConfig) {
+      certDurasiConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_DURASI_JP' } });
+    }
+
+    const officialNomor = certNomorConfig?.value || '425.1/0630/SMKN1PLD-KCD Wil.IV';
+
+    // Auto-generate / assign nomor sertifikat jika belum ada (gunakan nomor resmi dari TU)
+    if (!pkl.nomor_sertifikat) {
+      pkl.nomor_sertifikat = officialNomor;
       await prisma.siswaPkl.update({
         where: { id: pkl.id },
-        data: { nomor_sertifikat: generatedNomor },
+        data: { nomor_sertifikat: officialNomor },
       });
-      pkl.nomor_sertifikat = generatedNomor;
     }
 
     const sekolah = await prisma.sekolah.findFirst({
@@ -699,6 +810,14 @@ export class HubinPenilaianService extends HubinCommonHelper {
     return {
       ...pkl,
       sekolah,
+      referensi_sertifikat: {
+        nomor_surat: pkl.nomor_sertifikat || officialNomor,
+        tanggal_terbit: certTanggalConfig?.value || null,
+        durasi_jp: certDurasiConfig?.value || '792',
+        tempat_terbit: certTempatConfig?.value || sekolah?.kota || 'Purwakarta',
+        penandatangan_nama: certPenandatanganNamaConfig?.value || sekolah?.kepala_sekolah || null,
+        penandatangan_nip: certPenandatanganNipConfig?.value || sekolah?.nip_kepala || null,
+      }
     };
   }
 }

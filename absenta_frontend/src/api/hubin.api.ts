@@ -242,15 +242,22 @@ export const hubinApi = {
   // Stats
   getStats: () => requestWithFallback<any>('get', '/dashboard/hubin/stats'),
 
-  // Settings
-  getSettings: () => requestWithFallback<{ 
+  // Settings & Source of Truth Referensi Hubin
+  getSettings: (params?: { tahun_pelajaran_id?: string }) => requestWithFallback<{ 
     folderUrl: string; 
     driveMode: string;
     assessmentMode?: 'DUDI_ONLY' | 'COMPOSITE';
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
-  }>('get', '/hubin/settings', { unwrapData: true }),
+    tahun_pelajaran_id?: string | null;
+    nomorSuratSertifikat?: string;
+    tanggalTerbitSertifikat?: string;
+    durasiJp?: string | number;
+    tempatTerbit?: string;
+    penandatanganNama?: string;
+    penandatanganNip?: string;
+  }>('get', '/hubin/settings', { params, unwrapData: true }),
   updateSettings: (data: { 
     folderUrl?: string; 
     driveMode?: string;
@@ -258,6 +265,13 @@ export const hubinApi = {
     weightDudi?: number;
     weightLaporan?: number;
     weightSidang?: number;
+    tahun_pelajaran_id?: string;
+    nomorSuratSertifikat?: string;
+    tanggalTerbitSertifikat?: string;
+    durasiJp?: string | number;
+    tempatTerbit?: string;
+    penandatanganNama?: string;
+    penandatanganNip?: string;
   }) => requestWithFallback<any>('put', '/hubin/settings', { data, unwrapData: true }),
   deletePhoto: (url: string) => requestWithFallback<any>('delete', '/hubin/upload', { data: { url } }),
 

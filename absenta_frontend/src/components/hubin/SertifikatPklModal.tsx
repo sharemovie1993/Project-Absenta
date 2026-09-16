@@ -148,20 +148,30 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     const scores = [hardTeknis, hardK3lh, hardBisnis, softDisiplin, softInisiatif, softKerjasama, softJujur, softTanggungJawab];
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
 
+    const refSertifikat = (pklData as any)?.referensi_sertifikat;
+    const nomorResmi = pklData?.nomor_sertifikat || refSertifikat?.nomor_surat || defaultData?.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV';
+    const durasiResmi = String(refSertifikat?.durasi_jp || '792');
+    const tempatResmi = refSertifikat?.tempat_terbit || rawSekolah.kota || 'Purwakarta';
+    const tanggalResmi = refSertifikat?.tanggal_terbit 
+      ? `${tempatResmi}, ${refSertifikat.tanggal_terbit}`
+      : `${tempatResmi}, 22 Desember 2025`;
+    const kepalaResmi = refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+    const nipResmi = refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || '197111022008011001';
+
     return {
-      nomor_sertifikat: pklData?.nomor_sertifikat || defaultData?.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV',
-      durasi_jp: '792',
-      tanggal_terbit: `${rawSekolah.kota || 'Purwakarta'}, 22 Desember 2025`,
+      nomor_sertifikat: nomorResmi,
+      durasi_jp: durasiResmi,
+      tanggal_terbit: tanggalResmi,
       sekolah: {
         nama: rawSekolah.nama || 'SEKOLAH MENENGAH KEJURUAN NEGERI 1 PLERED',
         alamat: rawSekolah.alamat || 'Jl. Raya Rawasari Kec. Plered Kab. Purwakarta Telp. (0264) 7504001',
-        kota: rawSekolah.kota || 'Purwakarta',
+        kota: tempatResmi,
         kode_pos: rawSekolah.kode_pos || '41162',
         telepon: rawSekolah.telepon || '(0264) 7504001',
         email: rawSekolah.email || 'smkneple@gmail.com',
         website: rawSekolah.website || 'smknegeri1plered.sch.id',
-        kepala_sekolah: rawSekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-        nip_kepala: rawSekolah.nip_kepala || '197111022008011001',
+        kepala_sekolah: kepalaResmi,
+        nip_kepala: nipResmi,
         logo_url: rawSekolah.logo_url,
         logo_daerah: rawSekolah.logo_daerah,
       },

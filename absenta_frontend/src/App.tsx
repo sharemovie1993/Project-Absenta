@@ -243,6 +243,7 @@ const BkkPage = lazy(() => import('./pages/hubin/BkkPage'));
 const TracerStudyPage = lazy(() => import('./pages/hubin/TracerStudyPage'));
 const TefaPage = lazy(() => import('./pages/hubin/TefaPage'));
 const InputNilaiPklPage = lazy(() => import('./pages/hubin/InputNilaiPklPage'));
+const HubinSettingsPage = lazy(() => import('./pages/hubin/HubinSettingsPage'));
 
 // Parent App Pages
 const ParentApp = lazy(() => import('./apps/parent/App'));
@@ -820,6 +821,13 @@ function App() {
                       <ProtectedRoute requiredCapability={['hubin.pkl.view.list', 'hubin.guidance.manage']}>
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
                           <CetakBerkasHubinPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/hubin/settings" element={
+                      <ProtectedRoute requiredCapability={['hubin.partners.manage', 'hubin.pkl.manage', 'hubin.guidance.manage']}>
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <HubinSettingsPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />

@@ -24,7 +24,8 @@ export class HubinPenilaianController {
 
   async getSettings(request: AuthenticatedRequest, reply: any) {
     try {
-      const data = await this.hubinService.getSettings(request.tenantId!);
+      const { tahun_pelajaran_id } = (request.query || {}) as any;
+      const data = await this.hubinService.getSettings(request.tenantId!, tahun_pelajaran_id);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

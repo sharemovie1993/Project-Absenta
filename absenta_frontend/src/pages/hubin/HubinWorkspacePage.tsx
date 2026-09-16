@@ -70,6 +70,10 @@ export const HubinWorkspacePage: React.FC = React.memo(() => {
       {
         path: '/hubin/tefa',
         check: () => can('hubin.tefa.manage')
+      },
+      {
+        path: '/hubin/settings',
+        check: () => canAny(['hubin.partners.manage', 'hubin.pkl.manage'])
       }
     ];
   }, [can, canAny, isSiswa]);

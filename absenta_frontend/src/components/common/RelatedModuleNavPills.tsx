@@ -135,7 +135,8 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       p.startsWith('/hubin/nilai-pkl') ||
       p.startsWith('/hubin/monitoring') ||
       p.startsWith('/hubin/absensi') ||
-      p.startsWith('/hubin/cetak-berkas')
+      p.startsWith('/hubin/cetak-berkas') ||
+      p.startsWith('/hubin/settings')
     ),
     items: [
       { label: 'Mitra & MoU', shortLabel: 'Mitra', path: '/hubin/mitra', icon: Building2 },
@@ -144,6 +145,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Logbook & Jurnal', shortLabel: 'Logbook', path: '/hubin/monitoring', icon: Activity },
       { label: 'Nilai & Sertifikat', shortLabel: 'Nilai', path: '/hubin/nilai-pkl', icon: Award },
       { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/hubin/cetak-berkas', icon: Printer },
+      { label: 'Pengaturan & Referensi', shortLabel: 'Setting', path: '/hubin/settings', icon: Settings },
     ]
   },
   // 7B. Grup Hubin - Karir, BKK, Alumni & TEFA

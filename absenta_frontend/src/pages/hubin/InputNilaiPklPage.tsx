@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Lock
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
@@ -142,6 +143,7 @@ interface RawPklItem {
 
 export const InputNilaiPklPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<string>('dudi');
   const [selectedKelas, setSelectedKelas] = useState('');
@@ -1742,33 +1744,48 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-                {canEditScheme ? (
-                  <>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowSettingsModal(false);
+                    navigate('/hubin/settings');
+                  }}
+                  className="rounded-xl text-xs font-bold px-3 py-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-1.5"
+                >
+                  <Settings size={14} />
+                  Pusat Pengaturan & Referensi Hubin
+                </Button>
+
+                <div className="flex items-center gap-2">
+                  {canEditScheme ? (
+                    <>
+                      <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold px-4 py-2">
+                        Batal
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={updateSettingsMutation.isPending || (formMode === 'COMPOSITE' && (formWeightDudi + formWeightLaporan + formWeightSidang) !== 100)}
+                        onClick={() => {
+                          updateSettingsMutation.mutate({
+                            assessmentMode: formMode,
+                            weightDudi: formWeightDudi,
+                            weightLaporan: formWeightLaporan,
+                            weightSidang: formWeightSidang
+                          });
+                        }}
+                        className="rounded-xl text-xs font-bold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {updateSettingsMutation.isPending ? 'Menyimpan...' : 'Terapkan Skema'}
+                      </Button>
+                    </>
+                  ) : (
                     <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold px-4 py-2">
-                      Batal
+                      Tutup
                     </Button>
-                    <Button
-                      type="button"
-                      disabled={updateSettingsMutation.isPending || (formMode === 'COMPOSITE' && (formWeightDudi + formWeightLaporan + formWeightSidang) !== 100)}
-                      onClick={() => {
-                        updateSettingsMutation.mutate({
-                          assessmentMode: formMode,
-                          weightDudi: formWeightDudi,
-                          weightLaporan: formWeightLaporan,
-                          weightSidang: formWeightSidang
-                        });
-                      }}
-                      className="rounded-xl text-xs font-bold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {updateSettingsMutation.isPending ? 'Menyimpan...' : 'Terapkan Skema'}
-                    </Button>
-                  </>
-                ) : (
-                  <Button type="button" variant="outline" onClick={() => setShowSettingsModal(false)} className="rounded-xl text-xs font-bold px-4 py-2">
-                    Tutup
-                  </Button>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
