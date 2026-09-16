@@ -42,6 +42,10 @@ export const easyTunnelApi = {
     return requestWithFallback('get', '/system/easy-tunnel/tunnels');
   },
 
+  async getTunnels(): Promise<{ success: boolean; data: Tunnel[] }> {
+    return this.list();
+  },
+
   async get(id: string): Promise<{ success: boolean; data: Tunnel }> {
     return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}`);
   },
@@ -63,6 +67,15 @@ export const easyTunnelApi = {
     return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/stop`);
   },
 
+  async restart(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await this.stop(id);
+    } catch {
+      // ignore if already stopped
+    }
+    return this.start(id);
+  },
+
   async diagnose(id: string): Promise<{ success: boolean; data: { success: boolean; message: string; details: string[] } }> {
     return requestWithFallback('get', `/system/easy-tunnel/tunnels/${id}/diagnose`);
   },
@@ -75,8 +88,16 @@ export const easyTunnelApi = {
     return requestWithFallback('post', `/system/easy-tunnel/tunnels/${id}/edit`, { data });
   },
 
+  async update(id: string, data: { local_port: number; app_name: string }): Promise<{ success: boolean; message: string; data: any }> {
+    return this.edit(id, data);
+  },
+
   async remove(id: string): Promise<{ success: boolean; message: string }> {
     return requestWithFallback('delete', `/system/easy-tunnel/tunnels/${id}`);
+  },
+
+  async delete(id: string): Promise<{ success: boolean; message: string }> {
+    return this.remove(id);
   },
 
   async forceRelease(licenseKey: string): Promise<{ success: boolean; message: string }> {
@@ -104,14 +125,31 @@ export const easyTunnelApi = {
 
   async newOrder(data: {
     school_name: string;
-    plan_id: string;
-    payment_method: string;
+    plan_id?: string;
+    package_id?: string;
+    payment_method?: string;
+    payment_channel?: string;
     renew_license_key?: string;
     subdomain_slug?: string;
+    subdomain?: string;
+    requested_slug?: string;
     app_name?: string;
     local_port?: number;
-  }): Promise<{ success: boolean; data: any }> {
-    return requestWithFallback('post', '/system/easy-tunnel/order/new', { data });
+  }): Promise<{ success: boolean; message?: string; data: any }> {
+    const payload = {
+      ...data,
+      plan_id: data.plan_id || data.package_id,
+      package_id: data.package_id || data.plan_id,
+      payment_method: data.payment_method || data.payment_channel,
+      payment_channel: data.payment_channel || data.payment_method,
+      subdomain_slug: data.subdomain_slug || data.subdomain || data.requested_slug,
+      subdomain: data.subdomain || data.subdomain_slug || data.requested_slug,
+    };
+    return requestWithFallback('post', '/system/easy-tunnel/order/new', { data: payload });
+  },
+
+  async orderLicense(data: any): Promise<{ success: boolean; message?: string; data: any }> {
+    return this.newOrder(data);
   },
 
   async checkPaymentStatus(key: string): Promise<any> {
@@ -136,6 +174,10 @@ export const easyTunnelApi = {
     return requestWithFallback('get', '/system/easy-tunnel/system/info');
   },
 
+  async getSystemInfo(): Promise<{ success: boolean; data: SystemInfo }> {
+    return this.info();
+  },
+
   async installWireguard(): Promise<{ success: boolean; message: string }> {
     return requestWithFallback('post', '/system/easy-tunnel/system/install-wireguard');
   },
@@ -143,6 +185,10 @@ export const easyTunnelApi = {
   // Custom Domain
   async getCustomDomainStatus(): Promise<{ success: boolean; data: CustomDomainStatus }> {
     return requestWithFallback('get', '/system/easy-tunnel/custom-domain/status');
+  },
+
+  async getCustomDomain(): Promise<{ success: boolean; data: CustomDomainStatus }> {
+    return this.getCustomDomainStatus();
   },
 
   async setCustomDomain(customDomain: string): Promise<{ success: boolean; custom_domain: string; custom_domain_status: string; message: string }> {
@@ -153,5 +199,9 @@ export const easyTunnelApi = {
 
   async removeCustomDomain(): Promise<{ success: boolean; message: string }> {
     return requestWithFallback('delete', '/system/easy-tunnel/custom-domain');
+  },
+
+  async deleteCustomDomain(): Promise<{ success: boolean; message: string }> {
+    return this.removeCustomDomain();
   }
 };

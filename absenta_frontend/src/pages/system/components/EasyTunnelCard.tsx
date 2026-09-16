@@ -11,7 +11,8 @@ import {
   WifiOff,
   Copy,
   Server,
-  Zap
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import type { Tunnel } from '../../../api/easyTunnel.api';
@@ -20,9 +21,11 @@ import toast from 'react-hot-toast';
 interface Props {
   tunnel: Tunnel;
   actionLoading: string | null;
+  tunnelBaseDomain?: string;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onRestart: (id: string) => void;
+  onRenew?: (t: Tunnel) => void;
   onEdit: (t: Tunnel) => void;
   onDelete: (id: string, name: string) => void;
   onCheckPing: (id: string) => void;
@@ -31,17 +34,23 @@ interface Props {
 export const EasyTunnelCard: React.FC<Props> = React.memo(({
   tunnel,
   actionLoading,
+  tunnelBaseDomain,
   onStart,
   onStop,
   onRestart,
+  onRenew,
   onEdit,
   onDelete,
   onCheckPing
 }) => {
-  const isConnected = tunnel.status === 'connected';
-  const publicUrl = `https://${tunnel.subdomain}`;
+  const isConnected = tunnel.status === 'connected' || tunnel.wg_status?.status === 'connected';
+  const baseDomain = tunnelBaseDomain || 'absenta.id';
+  const slug = tunnel.slug || (tunnel as any).subdomain || '';
+  const host = slug ? (slug.includes('.') ? slug : `${slug}.${baseDomain}`) : '';
+  const publicUrl = host ? `https://${host}` : '-';
 
   const copyUrl = () => {
+    if (!host) return;
     navigator.clipboard.writeText(publicUrl);
     toast.success('URL tunnel publik disalin!');
   };
@@ -64,13 +73,32 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
                 {isConnected ? 'TERHUBUNG (ONLINE)' : 'TERPUTUS (OFFLINE)'}
               </Badge>
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Port Lokal: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">127.0.0.1:{tunnel.local_port}</span>
-            </p>
+            <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1 flex-wrap">
+              <span>Port Lokal: <strong className="font-mono font-bold text-slate-700 dark:text-slate-300">127.0.0.1:{tunnel.local_port}</strong></span>
+              {tunnel.license_key && (
+                <span className="flex items-center gap-1">
+                  • Lisensi: <code className="font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded">{tunnel.license_key}</code>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 self-end sm:self-center">
+        <div className="flex items-center gap-1.5 self-end sm:self-center flex-wrap justify-end">
+          {onRenew && (
+            <Button
+              type="button"
+              variant="toolbarOutline"
+              size="toolbar"
+              onClick={() => onRenew(tunnel)}
+              disabled={Boolean(actionLoading)}
+              className="rounded-xl border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold text-xs"
+              title="Perpanjang masa aktif lisensi Easy Tunnel ini"
+            >
+              <Sparkles size={12} className="mr-1 text-amber-500" /> Perpanjang Lisensi
+            </Button>
+          )}
+
           {isConnected ? (
             <Button
               type="button"
@@ -102,6 +130,7 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
             onClick={() => onRestart(tunnel.id)}
             disabled={Boolean(actionLoading)}
             className="rounded-xl"
+            title="Restart tunnel"
           >
             <RefreshCw size={12} className={actionLoading === `restart-${tunnel.id}` ? 'animate-spin' : ''} />
           </Button>
@@ -112,6 +141,7 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
             size="sm"
             onClick={() => onEdit(tunnel)}
             className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 rounded-lg"
+            title="Ubah port/nama"
           >
             <Edit2 size={13} />
           </Button>
@@ -120,8 +150,9 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => onDelete(tunnel.id, tunnel.app_name || tunnel.subdomain)}
+            onClick={() => onDelete(tunnel.id, tunnel.app_name || tunnel.subdomain || tunnel.slug)}
             className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-lg"
+            title="Hapus tunnel"
           >
             <Trash2 size={13} />
           </Button>

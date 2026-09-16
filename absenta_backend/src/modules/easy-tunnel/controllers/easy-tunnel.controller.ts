@@ -197,7 +197,14 @@ export const easyTunnelController = {
   async newOrder(request: any, reply: any) {
     try {
       const payload = request.body || {};
-      const result = await requestNewLicense(payload);
+      const normalizedPayload = {
+        ...payload,
+        plan_id: payload.plan_id || payload.package_id,
+        payment_method: payload.payment_method || payload.payment_channel,
+        subdomain_slug: payload.subdomain_slug || payload.subdomain || payload.requested_slug,
+        requested_slug: payload.requested_slug || payload.subdomain_slug || payload.subdomain,
+      };
+      const result = await requestNewLicense(normalizedPayload);
       return reply.send({ success: true, data: result?.data || result });
     } catch (err: any) {
       return reply.status(500).send({ success: false, message: err.message });

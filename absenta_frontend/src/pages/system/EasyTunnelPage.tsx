@@ -303,7 +303,20 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
 
     try {
       setOrderLoading(true);
-      const res = await easyTunnelApi.orderLicense(parsed.data);
+      const payload: any = {
+        school_name: schoolName,
+        package_id: selectedPackage,
+        plan_id: selectedPackage,
+        payment_channel: selectedPayment,
+        payment_method: selectedPayment,
+        subdomain: subdomainSlug,
+        subdomain_slug: subdomainSlug,
+        local_port: localPort
+      };
+      if (renewLicenseKey) {
+        payload.renew_license_key = renewLicenseKey;
+      }
+      const res = await easyTunnelApi.orderLicense(payload);
       if (res.success) {
         setInvoice(res.data);
         setOrderStep(2);
@@ -315,6 +328,62 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
     } finally {
       setOrderLoading(false);
     }
+  };
+
+  const handleVerifyPayment = async () => {
+    if (!invoice?.invoice_number) return;
+    try {
+      setOrderLoading(true);
+      const res = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
+      if (res?.is_paid || res?.status === 'PAID' || res?.data?.is_paid || res?.data?.status === 'PAID') {
+        const key = res.license_key || res.data?.license_key || '';
+        toast.success(`Pembayaran Sukses! Lisensi Anda: ${key}`);
+        if (key) setLicenseKey(key);
+        setOrderStep(3);
+      } else {
+        toast.error('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
+      }
+    } catch (err: unknown) {
+      toast.error('Gagal mengecek status: ' + getErrorMessage(err));
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
+  const handleAutoInstall = async () => {
+    if (!licenseKey) return;
+    setOrderLoading(true);
+    try {
+      const setupRes = await easyTunnelApi.setup({
+        license_key: licenseKey,
+        subdomain_slug: subdomainSlug,
+        local_port: localPort,
+        app_name: appName || schoolName
+      });
+      toast.success(setupRes.message || 'Tunnel berhasil dipasang!');
+      setShowOrderModal(false);
+      queryClient.invalidateQueries({ queryKey: ['easy-tunnels'] });
+    } catch (err: unknown) {
+      toast.error('Gagal memasang tunnel otomatis: ' + getErrorMessage(err));
+      setShowOrderModal(false);
+      setShowSetupModal(true);
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
+  const handleRenewTunnel = (t: Tunnel) => {
+    setRenewLicenseKey(t.license_key || '');
+    setSubdomainSlug(t.slug || (t as any).subdomain || '');
+    setOrderStep(1);
+    setShowOrderModal(true);
+  };
+
+  const handleRenewCloudLicense = (key: string, subdomain?: string) => {
+    setRenewLicenseKey(key);
+    if (subdomain) setSubdomainSlug(subdomain);
+    setOrderStep(1);
+    setShowOrderModal(true);
   };
 
   const handleStart = async (id: string) => {
@@ -533,6 +602,22 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
 
                 <Button
                   type="button"
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => {
+                    const defaultTunnel = tunnels[0];
+                    setRenewLicenseKey(defaultTunnel?.license_key || '');
+                    if (defaultTunnel?.slug) setSubdomainSlug(defaultTunnel.slug);
+                    setOrderStep(1);
+                    setShowOrderModal(true);
+                  }}
+                  className="rounded-xl font-bold border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                >
+                  <Sparkles size={14} className="mr-1.5 text-amber-500" /> Perpanjang Lisensi
+                </Button>
+
+                <Button
+                  type="button"
                   variant="toolbarPrimary"
                   size="toolbar"
                   onClick={() => setShowSetupModal(true)}
@@ -584,6 +669,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                   setLicenseKey(key);
                   setShowSetupModal(true);
                 }}
+                onRenewLicense={handleRenewCloudLicense}
               />
             </Suspense>
 
@@ -616,9 +702,11 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                     <EasyTunnelCard
                       tunnel={tunnel}
                       actionLoading={actionLoading}
+                      tunnelBaseDomain={systemInfo?.tunnel_base_domain || 'absenta.id'}
                       onStart={handleStart}
                       onStop={handleStop}
                       onRestart={handleRestart}
+                      onRenew={handleRenewTunnel}
                       onEdit={(t) => {
                         setSelectedTunnel(t);
                         setEditLocalPort(t.local_port);
@@ -720,8 +808,8 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               setLocalPort={setLocalPort}
               handleOrderSubmit={handleOrderSubmit}
               invoice={invoice}
-              onVerifyPayment={() => {}}
-              onAutoInstall={() => {}}
+              onVerifyPayment={handleVerifyPayment}
+              onAutoInstall={handleAutoInstall}
               licenseKey={licenseKey}
             />
           </Suspense>

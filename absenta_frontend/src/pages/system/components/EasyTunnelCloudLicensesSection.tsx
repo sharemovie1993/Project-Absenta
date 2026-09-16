@@ -1,17 +1,19 @@
 import React from 'react';
 import { Badge, Button } from '@/components/ui';
-import { Key } from 'lucide-react';
+import { Key, Sparkles } from 'lucide-react';
 
 interface Props {
   cloudLicenses: any[];
   tunnels: any[];
   onUseLicense: (licenseKey: string) => void;
+  onRenewLicense?: (licenseKey: string, subdomain?: string) => void;
 }
 
 export const EasyTunnelCloudLicensesSection: React.FC<Props> = React.memo(({
   cloudLicenses,
   tunnels,
-  onUseLicense
+  onUseLicense,
+  onRenewLicense
 }) => {
   if (!cloudLicenses || cloudLicenses.length === 0) return null;
 
@@ -56,17 +58,30 @@ export const EasyTunnelCloudLicensesSection: React.FC<Props> = React.memo(({
                 )}
               </div>
 
-              {!isInstalled && !isExpired && (
-                <Button
-                  type="button"
-                  variant="toolbarPrimary"
-                  size="toolbar"
-                  onClick={() => onUseLicense(lic.license_key)}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
-                >
-                  Gunakan Lisensi Ini
-                </Button>
-              )}
+              <div className="flex items-center gap-2 pt-1 flex-wrap">
+                {!isInstalled && !isExpired && (
+                  <Button
+                    type="button"
+                    variant="toolbarPrimary"
+                    size="toolbar"
+                    onClick={() => onUseLicense(lic.license_key)}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
+                  >
+                    Gunakan
+                  </Button>
+                )}
+                {onRenewLicense && (
+                  <Button
+                    type="button"
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={() => onRenewLicense(lic.license_key, lic.subdomain)}
+                    className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30 font-bold text-xs"
+                  >
+                    <Sparkles size={12} className="mr-1 text-amber-500" /> Perpanjang
+                  </Button>
+                )}
+              </div>
             </div>
           );
         })}

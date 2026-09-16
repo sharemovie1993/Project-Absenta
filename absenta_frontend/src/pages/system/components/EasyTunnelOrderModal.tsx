@@ -98,6 +98,26 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
           </div>
         )}
 
+        {!renewLicenseKey && orderStep === 1 && (
+          <div className="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              Ingin memperpanjang lisensi Easy Tunnel yang sudah dimiliki?
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const entered = window.prompt('Masukkan Kunci Lisensi Easy Tunnel Anda:');
+                if (entered && entered.trim()) {
+                  setRenewLicenseKey(entered.trim());
+                }
+              }}
+              className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+            >
+              + Mode Perpanjang Lisensi
+            </button>
+          </div>
+        )}
+
         {orderLoading ? (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
