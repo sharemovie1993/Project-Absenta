@@ -264,7 +264,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Lokasi File:** [HubinSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/HubinSettingsPage.tsx)
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 837 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [HubinSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/HubinSettingsPage.tsx) (837 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 841 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [HubinSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/HubinSettingsPage.tsx) (841 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 

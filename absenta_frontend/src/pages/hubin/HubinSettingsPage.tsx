@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import { hubinApi } from '../../api/hubin.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
@@ -48,6 +49,7 @@ interface DeskripsiTpItem {
 
 export const HubinSettingsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlTab = searchParams.get('tab');
   const urlTp = searchParams.get('tp');
@@ -277,11 +279,11 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   ], []);
 
   const tabs = useMemo(() => [
-    { id: 'sertifikat', label: '📜 Nomor Surat & Sertifikat' },
-    { id: 'skema', label: '⚖️ Skema & Bobot Penilaian' },
-    { id: 'deskripsi', label: '📝 Master Capaian / TP PKL' },
-    { id: 'storage', label: '☁️ Cloud Storage & Berkas' }
-  ], []);
+    { id: 'sertifikat', label: isMobile ? '📜 Sertifikat' : '📜 Nomor Surat & Sertifikat' },
+    { id: 'skema', label: isMobile ? '⚖️ Skema Nilai' : '⚖️ Skema & Bobot Penilaian' },
+    { id: 'deskripsi', label: isMobile ? '📝 Capaian TP' : '📝 Master Capaian / TP PKL' },
+    { id: 'storage', label: isMobile ? '☁️ Cloud Storage' : '☁️ Cloud Storage & Berkas' }
+  ], [isMobile]);
 
   return (
     <PremiumFeatureGate
@@ -306,17 +308,19 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
             ]
           }}
         >
-          <SectionCard fullWidth className="p-4 sm:p-6 space-y-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
+          <SectionCard fullWidth noPadding className="p-3 sm:p-6 space-y-4 sm:space-y-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm pb-24 sm:pb-8">
             {/* Topbar Tab Switcher */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <TabSwitcher
-                tabs={tabs}
-                activeTab={activeTab}
-                onChange={handleTabChange}
-                ariaLabel="Kategori Pengaturan Hubin"
-              />
+              <div className="w-full sm:w-auto overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                <TabSwitcher
+                  tabs={tabs}
+                  activeTab={activeTab}
+                  onChange={handleTabChange}
+                  ariaLabel="Kategori Pengaturan Hubin"
+                />
+              </div>
               {isFetchingSettings && (
-                <div className="flex items-center gap-1.5 text-xs text-indigo-500 font-medium self-end sm:self-auto">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-500 font-medium self-end sm:self-auto shrink-0">
                   <RefreshCw size={14} className="animate-spin" />
                   <span>Sinkronisasi referensi...</span>
                 </div>
@@ -325,17 +329,17 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
             {/* TAB 1: SERTIFIKAT & NOMOR SURAT RESMI TU */}
             {activeTab === 'sertifikat' && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Selector Konteks Tahun Pelajaran */}
-                <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                      <Calendar size={20} />
+                <div className="p-3 sm:p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center sm:items-start gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Calendar size={18} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Konteks Tahun Pelajaran Angkatan</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Pilih tahun pelajaran untuk mengelola nomor surat resmi dan tanggal arsip sertifikat angkatan tersebut.
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Konteks Tahun Pelajaran Angkatan</h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Pilih tahun pelajaran untuk mengelola nomor surat resmi dan arsip sertifikat.
                       </p>
                     </div>
                   </div>
@@ -352,13 +356,13 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                   {/* Left Column: Form Entri Data */}
                   <div className="lg:col-span-2 space-y-4">
-                    <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+                    <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                        <Award size={18} className="text-amber-500" />
-                        <h3 className="font-bold text-sm">Data Referensi Sertifikat Resmi (Source of Truth)</h3>
+                        <Award size={18} className="text-amber-500 shrink-0" />
+                        <h3 className="font-bold text-xs sm:text-sm">Data Referensi Sertifikat Resmi (Source of Truth)</h3>
                       </div>
 
                       {/* Nomor Surat TU */}
@@ -470,7 +474,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                           variant="primary"
                           onClick={handleSaveSertifikat}
                           disabled={saveSettingsMutation.isPending}
-                          className="w-full sm:w-auto font-bold rounded-xl flex items-center gap-2"
+                          className="w-full sm:w-auto font-bold rounded-xl py-2.5 sm:py-2 flex items-center justify-center gap-2 shadow-sm"
                         >
                           <Save size={16} />
                           {saveSettingsMutation.isPending ? 'Menyimpan...' : 'Simpan Referensi Sertifikat'}
@@ -481,7 +485,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
                   {/* Right Column: Live Pratinjau Format Dokumen */}
                   <div className="space-y-4">
-                    <Card className="p-5 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-md border border-slate-800 space-y-4">
+                    <Card className="p-3.5 sm:p-5 bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-2xl shadow-md border border-slate-800 space-y-4">
                       <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
                         <Sparkles size={16} />
                         <span>Pratinjau Kop & Nomor Surat</span>
@@ -518,17 +522,17 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
             {/* TAB 2: SKEMA & BOBOT PENILAIAN */}
             {activeTab === 'skema' && (
-              <div className="max-w-3xl space-y-6">
+              <div className="max-w-3xl space-y-4 sm:space-y-6">
                 {/* Selector Konteks Tahun Pelajaran untuk Skema Nilai */}
-                <div className="p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                      <Calendar size={20} />
+                <div className="p-3 sm:p-4 bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 rounded-xl sm:rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                  <div className="flex items-center sm:items-start gap-2.5 sm:gap-3">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Calendar size={18} />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">Konteks Tahun Pelajaran Skema Nilai</h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Tentukan skema dan persentase bobot penilaian khusus untuk angkatan/tahun ajaran yang dipilih.
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Konteks Tahun Pelajaran Skema Nilai</h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tentukan skema dan persentase bobot khusus untuk angkatan/tahun ajaran yang dipilih.
                       </p>
                     </div>
                   </div>
@@ -545,10 +549,10 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                   </div>
                 </div>
 
-                <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-6">
+                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4 sm:space-y-6">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <Sliders size={18} className="text-indigo-600 dark:text-indigo-400" />
-                    <h3 className="font-bold text-sm">Pengaturan Skema Evaluasi Nilai PKL</h3>
+                    <Sliders size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <h3 className="font-bold text-xs sm:text-sm">Pengaturan Skema Evaluasi Nilai PKL</h3>
                   </div>
 
                   {/* Mode Penilaian */}
@@ -560,7 +564,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                       <button
                         type="button"
                         onClick={() => setFormMode('DUDI_ONLY')}
-                        className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                        className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                           formMode === 'DUDI_ONLY'
                             ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/30'
                             : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
@@ -584,7 +588,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                       <button
                         type="button"
                         onClick={() => setFormMode('COMPOSITE')}
-                        className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
+                        className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                           formMode === 'COMPOSITE'
                             ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold ring-2 ring-indigo-500/30'
                             : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-600 dark:text-slate-400'
@@ -609,8 +613,8 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
                   {/* Bobot jika COMPOSITE */}
                   {formMode === 'COMPOSITE' && (
-                    <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
-                      <div className="flex items-center justify-between">
+                    <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
                           Rincian Bobot Komponen Penilaian (%):
                         </span>
@@ -677,7 +681,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                     variant="primary"
                     onClick={handleSaveSkema}
                     disabled={saveSettingsMutation.isPending}
-                    className="font-bold rounded-xl flex items-center gap-2"
+                    className="w-full sm:w-auto font-bold rounded-xl py-2.5 sm:py-2 flex items-center justify-center gap-2 shadow-sm"
                   >
                     <Save size={16} />
                     {saveSettingsMutation.isPending ? 'Menyimpan...' : 'Simpan Skema & Bobot'}
@@ -688,11 +692,11 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
             {/* TAB 3: MASTER DESKRIPSI TP */}
             {activeTab === 'deskripsi' && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <FileText size={18} className="text-emerald-500" />
-                    <h3 className="font-bold text-sm">Entri Deskripsi Capaian / TP DUDI</h3>
+                    <FileText size={18} className="text-emerald-500 shrink-0" />
+                    <h3 className="font-bold text-xs sm:text-sm">Entri Deskripsi Capaian / TP DUDI</h3>
                   </div>
 
                   <div>
@@ -732,16 +736,16 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                     variant="primary"
                     onClick={handleSaveDeskripsiTp}
                     disabled={saveDeskripsiTpMutation.isPending}
-                    className="w-full font-bold rounded-xl flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto font-bold rounded-xl py-2.5 sm:py-2 flex items-center justify-center gap-2 shadow-sm"
                   >
                     <Save size={16} />
                     {saveDeskripsiTpMutation.isPending ? 'Menyimpan...' : 'Simpan Master Deskripsi TP'}
                   </Button>
                 </Card>
 
-                <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                    <h3 className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-200">
                       Daftar Capaian Pembelajaran Tersimpan ({deskripsiList.length})
                     </h3>
                   </div>
@@ -773,11 +777,11 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
 
             {/* TAB 4: CLOUD STORAGE */}
             {activeTab === 'storage' && (
-              <div className="max-w-2xl space-y-6">
-                <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+              <div className="max-w-2xl space-y-4 sm:space-y-6">
+                <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200">
-                    <Cloud size={18} className="text-blue-500" />
-                    <h3 className="font-bold text-sm">Penyimpanan Berkas Digital & Cloud Drive</h3>
+                    <Cloud size={18} className="text-blue-500 shrink-0" />
+                    <h3 className="font-bold text-xs sm:text-sm">Penyimpanan Berkas Digital & Cloud Drive</h3>
                   </div>
 
                   <div>
@@ -818,7 +822,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
                     variant="primary"
                     onClick={handleSaveStorage}
                     disabled={saveSettingsMutation.isPending}
-                    className="font-bold rounded-xl flex items-center gap-2"
+                    className="w-full sm:w-auto font-bold rounded-xl py-2.5 sm:py-2 flex items-center justify-center gap-2 shadow-sm"
                   >
                     <Save size={16} />
                     {saveSettingsMutation.isPending ? 'Menyimpan...' : 'Simpan Konfigurasi Storage'}
