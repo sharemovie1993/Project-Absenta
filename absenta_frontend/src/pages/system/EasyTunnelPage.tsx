@@ -3,29 +3,19 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { easyTunnelApi, type Tunnel, type SystemInfo, type CustomDomainStatus } from '../../api/easyTunnel.api';
 import {
-  Wifi,
   WifiOff,
   Plus,
   RefreshCw,
-  Server,
-  Shield,
-  Layers,
-  Key,
-  Globe,
   ShoppingCart,
   Loader2,
-  ExternalLink,
-  Activity
+  Sparkles
 } from 'lucide-react';
 import useConfirm from '../../hooks/useConfirm';
 import toast from 'react-hot-toast';
 import { Button, Card, SectionCard, Badge } from '../../components/ui';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { getMySubscription } from '../../api/mySubscription.api';
 import { isCompleteBundlePlan } from '@/lib/billingUtils';
-import { Sparkles } from 'lucide-react';
 
 // Lazy Loaded Subcomponents (Pilar 13)
 const EasyTunnelCard = lazy(() => import('./components/EasyTunnelCard'));
@@ -303,7 +293,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
 
     try {
       setOrderLoading(true);
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         school_name: schoolName,
         package_id: selectedPackage,
         plan_id: selectedPackage,
@@ -383,7 +373,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
 
   const handleRenewTunnel = (t: Tunnel) => {
     setRenewLicenseKey(t.license_key || '');
-    setSubdomainSlug(t.slug || (t as any).subdomain || '');
+    setSubdomainSlug(t.slug || (t as unknown as { subdomain?: string })?.subdomain || '');
     setOrderStep(1);
     setShowOrderModal(true);
   };
@@ -521,57 +511,10 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
     return (tunnels ?? []).filter(t => t.status === 'connected').length;
   }, [tunnels]);
 
-  const headerStats = useMemo(() => [
-    {
-      title: "Tunnel Terpasang",
-      value: tunnels.length,
-      icon: <Server size={16} className="text-white" />,
-      gradient: "from-indigo-600 to-indigo-800",
-      subtitle: "Node server lokal"
-    },
-    {
-      title: "Status Online",
-      value: activeTunnels,
-      icon: <Wifi size={16} className="text-white" />,
-      gradient: "from-emerald-600 to-teal-800",
-      subtitle: "Terhubung publik"
-    },
-    {
-      title: "Base Domain",
-      value: systemInfo?.tunnel_base_domain || 'absenta.id',
-      icon: <Globe size={16} className="text-white" />,
-      gradient: "from-purple-600 to-pink-800",
-      subtitle: "Gateway VPN publik"
-    }
-  ], [tunnels, activeTunnels, systemInfo]);
-
-  const breadcrumbs = useMemo(() => [
-    { label: 'Infrastruktur Sistem' },
-    { label: 'Easy Tunnel VPN' }
-  ], []);
-
-  const instruction = useMemo(() => ({
-    title: 'Panduan Easy Tunnel Gateway',
-    description: 'Layanan VPN reverse-proxy terowongan aman untuk mengonlinekan server lokal sekolah tanpa IP Publik statis.',
-    items: [
-      { text: 'Pastikan server lokal sekolah terhubung ke internet saat menghubungkan tunnel.' },
-      { text: 'Gunakan custom domain sekolah agar URL portal mudah diingat oleh guru dan siswa.' },
-      { text: 'Status koneksi dimonitor secara real-time dan sertifikat SSL terpasang otomatis.' }
-    ]
-  }), []);
-
   return (
     <InfraErrorBoundary>
-      <SuperAdminPageLayout
-        hardeningModuleKey="system_easytunnel_page"
-        title="Easy Tunnel Gateway &amp; VPN"
-        description="Kelola gateway tunnel aman untuk menghubungkan server lokal sekolah ke internet publik secara instan."
-        breadcrumbs={breadcrumbs}
-        instruction={instruction}
-        stats={headerStats}
-      >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <div className="space-y-6 w-full min-w-0 max-w-full">
+      <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+        <div className="space-y-6 w-full min-w-0 max-w-full pb-12">
             {/* Toolbar Action Bar */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm w-full min-w-0 max-w-full">
               <div className="flex items-center gap-2">
@@ -823,7 +766,6 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
             />
           </Suspense>
         )}
-      </SuperAdminPageLayout>
     </InfraErrorBoundary>
   );
 });
