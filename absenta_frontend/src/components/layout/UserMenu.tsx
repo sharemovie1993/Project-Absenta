@@ -2,16 +2,17 @@ import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { User, Settings, LogOut, ChevronDown, Loader, Search, MessageSquare, Bell, Moon, Sun } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { Button } from '../ui/Button';
-import { cn } from '../../lib/utils';
+import { cn, resolveProfilePhotoUrl } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { guruApi, siswaApi } from '../../api/academic.api';
 import { 
   listSiswaDocuments, listGuruDocuments, 
   getMemberDocPreviewUrl 
 } from '../../api/memberDocs.api';
 import { useTheme } from '../../hooks/useTheme';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useSiswaMe } from '../../hooks/useSiswaMe';
+import { useGuruMe } from '../../hooks/useGuruMe';
 import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
 import toast from 'react-hot-toast';
 
@@ -43,49 +44,67 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
   const isSiswa = roleName === 'SISWA';
   const isGuru = roleName === 'GURU';
 
-  // 1. Kueri profil Guru jika user saat ini adalah guru (agar mendapatkan ID Guru yang valid untuk query berkas)
-  const { data: guruProfile } = useQuery({
-    queryKey: ['my-guru-profile-menu', user?.id],
-    queryFn: async () => {
-      const res = await guruApi.getAll({ limit: 1, ...({ user_id: user?.id } as any) });
-      return res.data?.[0] || null;
-    },
-    enabled: isGuru && !!user?.id,
-  });
-
-  // 2. Kueri profil Siswa jika user saat ini adalah siswa (agar mendapatkan ID Siswa yang valid untuk query berkas)
-  const { data: siswaProfile } = useQuery({
-    queryKey: ['my-siswa-profile-menu', user?.id],
-    queryFn: async () => {
-      const res = await siswaApi.getAll({ limit: 1, ...({ user_id: user?.id } as any) });
-      return res.data?.[0] || null;
-    },
-    enabled: isSiswa && !!user?.id,
-  });
+  // 1. Dapatkan data profil Siswa / Guru yang sedang login secara akurat via hook /me
+  const { siswaProfile } = useSiswaMe();
+  const { guruProfile } = useGuruMe();
 
   const entityId = useMemo(() => {
-    if (isSiswa) return siswaProfile?.id || user?.siswa_id || '';
-    if (isGuru) return guruProfile?.id || user?.guru_profile?.id || '';
+    if (isSiswa) return siswaProfile?.id || user?.siswa_id || (user as any)?.siswa_profile?.id || '';
+    if (isGuru) return guruProfile?.id || user?.guru_profile?.id || (user as any)?.guru?.id || '';
     return '';
   }, [isSiswa, isGuru, siswaProfile, guruProfile, user]);
 
-  // 3. Kueri daftar berkas warga untuk mendeteksi FOTO profil yang diupload
+  // Deteksi apakah sudah ada foto langsung dari field profile/user
+  const hasDirectPhoto = !!(
+    (user as any)?.foto ||
+    (user as any)?.foto_url ||
+    (user as any)?.avatar ||
+    (isSiswa && (siswaProfile?.foto || (siswaProfile as any)?.foto_url || (siswaProfile as any)?.foto_pas)) ||
+    (isGuru && (guruProfile?.foto || (guruProfile as any)?.foto_url))
+  );
+
+  // 2. Kueri daftar berkas warga untuk mendeteksi FOTO profil jika belum ada foto langsung
   const { data: docsData } = useQuery({
-    queryKey: [isSiswa ? 'siswa-docs' : 'guru-docs', entityId],
+    queryKey: [isSiswa ? 'siswa-docs-menu' : 'guru-docs-menu', entityId],
     queryFn: () => isSiswa ? listSiswaDocuments(entityId) : listGuruDocuments(entityId),
-    enabled: !!entityId,
+    enabled: !!entityId && !hasDirectPhoto,
   });
 
   const docs = docsData?.data ?? [];
   const fotoDoc = useMemo(() => docs.find(d => d.kategori === 'FOTO'), [docs]);
 
-  // 4. Bangun URL foto profil dengan token otentikasi
+  // 3. Bangun URL foto profil berurutan: foto langsung -> berkas dokumen FOTO
+  const rawPhoto = useMemo(() => {
+    if ((user as any)?.foto) return (user as any).foto;
+    if ((user as any)?.foto_url) return (user as any).foto_url;
+    if ((user as any)?.avatar) return (user as any).avatar;
+    if (isSiswa) {
+      if (siswaProfile?.foto) return siswaProfile.foto;
+      if ((siswaProfile as any)?.foto_url) return (siswaProfile as any).foto_url;
+      if ((siswaProfile as any)?.foto_pas) return (siswaProfile as any).foto_pas;
+    }
+    if (isGuru) {
+      if (guruProfile?.foto) return guruProfile.foto;
+      if ((guruProfile as any)?.foto_url) return (guruProfile as any).foto_url;
+    }
+    if (fotoDoc && entityId) {
+      const raw = getMemberDocPreviewUrl(isSiswa ? 'SISWA' : 'GURU', entityId, fotoDoc.id);
+      const tok = localStorage.getItem('access_token');
+      return raw && tok ? `${raw}?token=${encodeURIComponent(tok)}` : raw;
+    }
+    return null;
+  }, [user, isSiswa, isGuru, siswaProfile, guruProfile, fotoDoc, entityId]);
+
   const fotoUrl = useMemo(() => {
-    if (!fotoDoc || !entityId) return null;
-    const raw = getMemberDocPreviewUrl(isSiswa ? 'SISWA' : 'GURU', entityId, fotoDoc.id);
-    const tok = localStorage.getItem('access_token');
-    return raw && tok ? `${raw}?token=${encodeURIComponent(tok)}` : raw;
-  }, [fotoDoc, entityId, isSiswa]);
+    if (!rawPhoto) return null;
+    return resolveProfilePhotoUrl(rawPhoto);
+  }, [rawPhoto]);
+
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [fotoUrl]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -147,10 +166,11 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
         aria-expanded={isOpen}
         className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs cursor-pointer group"
       >
-        {fotoUrl ? (
+        {fotoUrl && !imageError ? (
           <img 
             src={fotoUrl} 
             alt={user?.full_name} 
+            onError={() => setImageError(true)}
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-cover shadow-xs border border-slate-100 dark:border-slate-800 shrink-0" 
           />
         ) : (
@@ -181,10 +201,11 @@ export function UserMenu({ onOpenTeacherLocator, onOpenNotifications }: UserMenu
             className="px-4 py-3 border-b border-slate-100 dark:border-slate-800/80 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer transition-colors"
             title="Buka Profil Saya"
           >
-            {fotoUrl ? (
+            {fotoUrl && !imageError ? (
               <img 
                 src={fotoUrl} 
                 alt={user?.full_name} 
+                onError={() => setImageError(true)}
                 className="w-10 h-10 rounded-2xl object-cover border border-slate-100 dark:border-slate-800 shadow-sm shrink-0" 
               />
             ) : (
