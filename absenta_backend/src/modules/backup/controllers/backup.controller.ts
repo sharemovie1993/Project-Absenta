@@ -1,9 +1,11 @@
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
+import { migrationBundleService } from '../services/migration-bundle.service';
 import { Prisma } from '@prisma/client';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 import crypto from 'crypto';
+
 
 function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, tenantId: string): Record<string, any> {
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
@@ -769,4 +771,74 @@ export class BackupController {
       return reply.status(500).send({ success: false, message: 'Gagal mengosongkan data: ' + (err?.message || 'Error') });
     }
   }
+
+  static async exportBundle(req: any, reply: any) {
+    try {
+      const tenantId = req.query?.tenantId || req.body?.tenantId || req.tenantId || req.dataScope?.tenantId;
+      if (!tenantId) {
+        return reply.status(400).send({ success: false, message: 'Tenant ID wajib ditentukan' });
+      }
+
+      const includeAttendance = req.query?.includeAttendance !== 'false' && req.body?.includeAttendance !== false;
+      const includeMedia = req.query?.includeMedia !== 'false' && req.body?.includeMedia !== false;
+
+      const { buffer, filename, manifest } = await migrationBundleService.createExportBundle(tenantId, {
+        includeAttendance,
+        includeMedia
+      });
+
+      reply.header('Content-Type', 'application/octet-stream');
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.header('X-Absenta-Manifest', encodeURIComponent(JSON.stringify(manifest)));
+      return reply.send(buffer);
+    } catch (error: any) {
+      console.error('Error exporting migration bundle:', error);
+      return reply.status(500).send({ success: false, message: 'Gagal mengekspor berkas .absenta: ' + (error?.message || 'Error') });
+    }
+  }
+
+  static async inspectBundle(req: any, reply: any) {
+    try {
+      const filePart = await req.file();
+      if (!filePart) {
+        return reply.status(400).send({ success: false, message: 'Berkas .absenta wajib diunggah' });
+      }
+
+      const buffer = await filePart.toBuffer();
+      if (!buffer || buffer.length === 0) {
+        return reply.status(400).send({ success: false, message: 'Berkas kosong atau tidak terbaca' });
+      }
+
+      const manifest = migrationBundleService.inspectBundle(buffer);
+      return reply.send({ success: true, data: manifest });
+    } catch (error: any) {
+      console.error('Error inspecting bundle:', error);
+      return reply.status(400).send({ success: false, message: error?.message || 'Berkas cadangan tidak valid' });
+    }
+  }
+
+  static async importBundle(req: any, reply: any) {
+    try {
+      const filePart = await req.file();
+      if (!filePart) {
+        return reply.status(400).send({ success: false, message: 'Berkas .absenta wajib diunggah' });
+      }
+
+      const targetTenantId = req.query?.targetTenantId || req.tenantId || req.dataScope?.tenantId;
+      const buffer = await filePart.toBuffer();
+
+      console.log(`[BackupController] Memulai restorasi bundle ke tenant ${targetTenantId || 'auto'}...`);
+      const result = await migrationBundleService.restoreBundle(buffer, {
+        targetTenantId,
+        isInitialFreshSetup: false,
+        clearExisting: false
+      });
+
+      return reply.send({ success: true, data: result, message: result.message });
+    } catch (error: any) {
+      console.error('Error importing bundle:', error);
+      return reply.status(500).send({ success: false, message: 'Gagal memulihkan berkas .absenta: ' + (error?.message || 'Error') });
+    }
+  }
 }
+

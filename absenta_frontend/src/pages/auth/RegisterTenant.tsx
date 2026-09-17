@@ -1,10 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { fetchActiveSystemConfig } from '@/services/systemConfig';
-import { Button, Input, Checkbox, Modal, ModalFooter, Card } from '@/components/ui';
+import { Button, Input, Checkbox, Modal, ModalFooter, Card, Badge } from '@/components/ui';
 import toast from 'react-hot-toast';
-import { registerTenant } from '@/api/auth.api';
+import { registerTenant, inspectInitialBundle, restoreInitialBundle, type MigrationManifest } from '@/api/auth.api';
 import { 
   Loader2, 
   CheckCircle2, 
@@ -29,8 +29,13 @@ import {
   UserPlus,
   Mail,
   Sparkles,
-  Gavel
+  Gavel,
+  UploadCloud,
+  FolderArchive,
+  FileArchive,
+  Database
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import axiosInstance from '@/lib/axiosInstance';
 import { Navbar } from '@/components/layout/Navbar';
@@ -67,6 +72,73 @@ const RegisterTenant = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isSingleTenant, setIsSingleTenant] = useState(false);
+
+  // UniFi/Omada Style Migration State
+  const [registrationMode, setRegistrationMode] = useState<'fresh' | 'restore'>('fresh');
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restoreManifest, setRestoreManifest] = useState<MigrationManifest | null>(null);
+  const [isInspectingBundle, setIsInspectingBundle] = useState(false);
+  const [isRestoringBundle, setIsRestoringBundle] = useState(false);
+  const [bundleRestoreProgress, setBundleRestoreProgress] = useState(0);
+  const [bundleRestoreStep, setBundleRestoreStep] = useState<'upload' | 'preview' | 'restoring' | 'completed'>('upload');
+  const [bundleDragActive, setBundleDragActive] = useState(false);
+  const bundleInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBundleFile = async (selectedFile: File) => {
+    if (!selectedFile.name.endsWith('.absenta') && !selectedFile.name.endsWith('.zip')) {
+      toast.error('Format berkas harus berekstensi .absenta atau .zip');
+      return;
+    }
+    setRestoreFile(selectedFile);
+    setIsInspectingBundle(true);
+    try {
+      const res = await inspectInitialBundle(selectedFile);
+      if (res.success && res.data) {
+        setRestoreManifest(res.data);
+        setBundleRestoreStep('preview');
+        toast.success('Berkas cadangan terverifikasi!');
+      } else {
+        toast.error(res.message || 'Berkas cadangan tidak valid');
+        setRestoreFile(null);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || 'Gagal membaca berkas cadangan');
+      setRestoreFile(null);
+    } finally {
+      setIsInspectingBundle(false);
+    }
+  };
+
+  const handleExecuteBundleRestore = async () => {
+    if (!restoreFile) return;
+    setIsRestoringBundle(true);
+    setBundleRestoreStep('restoring');
+    setBundleRestoreProgress(15);
+
+    const timer = setInterval(() => {
+      setBundleRestoreProgress(prev => (prev < 85 ? prev + Math.floor(Math.random() * 8) + 2 : prev));
+    }, 600);
+
+    try {
+      const res = await restoreInitialBundle(restoreFile);
+      clearInterval(timer);
+      setBundleRestoreProgress(100);
+      if (res.success) {
+        setBundleRestoreStep('completed');
+        toast.success('Pemulihan sistem berhasil!');
+      } else {
+        toast.error(res.message || 'Pemulihan gagal');
+        setBundleRestoreStep('preview');
+      }
+    } catch (err: any) {
+      clearInterval(timer);
+      toast.error(err?.response?.data?.message || err.message || 'Gagal memulihkan sistem dari berkas cadangan');
+      setBundleRestoreStep('preview');
+    } finally {
+      setIsRestoringBundle(false);
+    }
+  };
+
 
   useEffect(() => {
     const checkPreset = async () => {
@@ -405,13 +477,220 @@ const RegisterTenant = () => {
               <Card className="rounded-3xl overflow-hidden border-0 shadow-2xl shadow-slate-200/50 dark:shadow-none bg-white dark:bg-slate-900">
                  <div className="p-6 sm:p-10">
                     <AnimatePresence mode="wait">
-                      {!isSuccess ? (
+                       {!isSuccess ? (
                         <motion.div
                           key="form"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
                         >
+                           {/* UniFi / Omada Style Dual Choice Header */}
+                           <div className="flex p-1.5 mb-8 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80">
+                             <button
+                               type="button"
+                               onClick={() => setRegistrationMode('fresh')}
+                               className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                 registrationMode === 'fresh'
+                                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
+                                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                               }`}
+                             >
+                               <School className="w-4 h-4" />
+                               Setup Sekolah Baru
+                             </button>
+                             <button
+                               type="button"
+                               onClick={() => setRegistrationMode('restore')}
+                               className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                 registrationMode === 'restore'
+                                   ? 'bg-blue-600 text-white shadow-sm'
+                                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                               }`}
+                             >
+                               <FolderArchive className="w-4 h-4" />
+                               Pulihkan dari Backup (.absenta)
+                             </button>
+                           </div>
+
+                           {registrationMode === 'restore' ? (
+                             <div className="space-y-6">
+                               <div className="mb-6">
+                                 <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
+                                   Pulihkan Sistem dari Berkas Cadangan
+                                 </h2>
+                                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                   Pindahkan seluruh data sekolah, akun pengguna, riwayat presensi, dan berkas foto dari server lama ke server ini dengan 1 klik.
+                                 </p>
+                               </div>
+
+                               {bundleRestoreStep === 'upload' && (
+                                 <div className="space-y-4">
+                                   <div
+                                     onDragOver={(e) => { e.preventDefault(); setBundleDragActive(true); }}
+                                     onDragLeave={() => setBundleDragActive(false)}
+                                     onDrop={(e) => {
+                                       e.preventDefault();
+                                       setBundleDragActive(false);
+                                       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                                         handleBundleFile(e.dataTransfer.files[0]);
+                                       }
+                                     }}
+                                     onClick={() => !isInspectingBundle && bundleInputRef.current?.click()}
+                                     className={`border-2 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-4 ${
+                                       bundleDragActive 
+                                         ? 'border-blue-500 bg-blue-500/10 scale-[1.01]' 
+                                         : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-900/50'
+                                     }`}
+                                   >
+                                     <input
+                                       ref={bundleInputRef}
+                                       type="file"
+                                       accept=".absenta,.zip"
+                                       className="hidden"
+                                       onChange={(e) => e.target.files?.[0] && handleBundleFile(e.target.files[0])}
+                                     />
+                                     <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center shadow-inner">
+                                       {isInspectingBundle ? (
+                                         <Loader2 className="w-8 h-8 animate-spin" />
+                                       ) : (
+                                         <UploadCloud className="w-8 h-8" />
+                                       )}
+                                     </div>
+                                     <div>
+                                       <h4 className="font-bold text-base text-slate-900 dark:text-white">
+                                         {isInspectingBundle ? 'Memverifikasi Berkas Cadangan...' : 'Klik atau Tarik Berkas .absenta ke Sini'}
+                                       </h4>
+                                       <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                                         Pilih file arsip migrasi .absenta yang telah diunduh dari server sebelumnya.
+                                       </p>
+                                     </div>
+                                   </div>
+
+                                   <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-start gap-3 text-xs">
+                                     <Info className="w-5 h-5 mt-0.5 shrink-0" />
+                                     <p>
+                                       Format arsip <code>.absenta</code> mengemas basis data sekolah beserta seluruh file media MinIO. Setelah pemulihan tuntas, Anda dapat langsung login menggunakan akun administrator sekolah yang sama.
+                                     </p>
+                                   </div>
+                                 </div>
+                               )}
+
+                               {bundleRestoreStep === 'preview' && restoreManifest && (
+                                 <div className="space-y-6">
+                                   <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5">
+                                     <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
+                                       <div className="flex items-center gap-3">
+                                         <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                                           <School className="w-6 h-6" />
+                                         </div>
+                                         <div>
+                                           <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Sekolah Asal Terverifikasi</span>
+                                           <h4 className="text-base font-black text-slate-900 dark:text-white">{restoreManifest.source_tenant.name}</h4>
+                                           {restoreManifest.source_tenant.npsn && (
+                                             <span className="text-xs text-slate-500 font-mono">NPSN: {restoreManifest.source_tenant.npsn}</span>
+                                           )}
+                                         </div>
+                                       </div>
+                                       <Badge variant="success" className="font-mono text-xs px-3 py-1">
+                                         {restoreManifest.source_tenant.subdomain || 'sekolah'}
+                                       </Badge>
+                                     </div>
+
+                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                                       <div className="p-4 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Total Siswa</span>
+                                         <span className="text-lg font-black text-slate-900 dark:text-white font-mono">{restoreManifest.stats.total_students}</span>
+                                       </div>
+                                       <div className="p-4 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Guru & Staf</span>
+                                         <span className="text-lg font-black text-slate-900 dark:text-white font-mono">{restoreManifest.stats.total_teachers}</span>
+                                       </div>
+                                       <div className="p-4 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Media & Foto</span>
+                                         <span className="text-lg font-black text-slate-900 dark:text-white font-mono">{restoreManifest.stats.total_media_files} file</span>
+                                       </div>
+                                       <div className="p-4 bg-white dark:bg-slate-800/80 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm">
+                                         <span className="text-[10px] font-bold text-slate-400 uppercase block">Ukuran Arsip</span>
+                                         <span className="text-lg font-black text-slate-900 dark:text-white font-mono">
+                                           {((restoreFile?.size || 0) / 1024 / 1024).toFixed(1)} MB
+                                         </span>
+                                       </div>
+                                     </div>
+                                   </div>
+
+                                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300">
+                                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                     <p>
+                                       Konfirmasi: Sistem akan membuat tenant sekolah ini dan mengisi seluruh master data serta foto siswa ke database lokal dan MinIO Object Storage.
+                                     </p>
+                                   </div>
+
+                                   <div className="flex items-center justify-end gap-3 pt-2">
+                                     <Button 
+                                       type="button" 
+                                       variant="outline" 
+                                       onClick={() => { setBundleRestoreStep('upload'); setRestoreFile(null); setRestoreManifest(null); }}
+                                     >
+                                       Pilih Berkas Lain
+                                     </Button>
+                                     <Button 
+                                       type="button" 
+                                       variant="default" 
+                                       onClick={handleExecuteBundleRestore} 
+                                       className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white h-12 px-6 rounded-xl font-bold"
+                                     >
+                                       <ArrowRight className="w-4 h-4" />
+                                       Mulai Pemulihan Sistem
+                                     </Button>
+                                   </div>
+                                 </div>
+                               )}
+
+                               {bundleRestoreStep === 'restoring' && (
+                                 <div className="space-y-6 py-12 text-center">
+                                   <div className="w-20 h-20 mx-auto rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center animate-pulse">
+                                     <RefreshCw className="w-10 h-10 animate-spin" />
+                                   </div>
+                                   <div className="space-y-2 max-w-md mx-auto">
+                                     <h4 className="text-lg font-black text-slate-900 dark:text-white">Sedang Memulihkan Sistem...</h4>
+                                     <p className="text-xs text-slate-500">
+                                       Mengekstrak berkas, memulihkan tabel relasional database, dan menyalin media ke Object Storage MinIO.
+                                     </p>
+                                   </div>
+                                   <div className="w-full max-w-md mx-auto bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-200 dark:border-slate-700">
+                                     <div 
+                                       className="bg-blue-600 h-full rounded-full transition-all duration-500 ease-out" 
+                                       style={{ width: `${bundleRestoreProgress}%` }}
+                                     />
+                                   </div>
+                                   <span className="text-xs font-mono font-bold text-slate-400">{bundleRestoreProgress}% Selesai</span>
+                                 </div>
+                               )}
+
+                               {bundleRestoreStep === 'completed' && (
+                                 <div className="space-y-6 py-12 text-center">
+                                   <div className="w-20 h-20 mx-auto rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                                     <CheckCircle2 className="w-12 h-12" />
+                                   </div>
+                                   <div className="space-y-2 max-w-md mx-auto">
+                                     <h4 className="text-xl font-black text-slate-900 dark:text-white">Sistem Berhasil Dipulihkan!</h4>
+                                     <p className="text-xs text-slate-500">
+                                       Sekolah Anda beserta seluruh data dan media telah siap. Silakan login menggunakan akun administrator sekolah sebelumnya.
+                                     </p>
+                                   </div>
+                                   <Button 
+                                     type="button" 
+                                     variant="default" 
+                                     onClick={() => navigate('/login')} 
+                                     className="w-full max-w-xs mx-auto bg-emerald-600 hover:bg-emerald-700 text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
+                                   >
+                                     Lanjut ke Halaman Login <ArrowRight className="w-4 h-4" />
+                                   </Button>
+                                 </div>
+                               )}
+                             </div>
+                           ) : (
+                             <>
                            <div className="mb-8">
                               <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">Daftar Institusi Baru</h2>
                               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Lengkapi detail untuk membangun sistem absensi mandiri sekolah Anda.</p>
@@ -430,6 +709,7 @@ const RegisterTenant = () => {
                            )}
 
                           <form onSubmit={handleSubmit} className="space-y-6">
+
                              {/* Section: Data Sekolah */}
                              <div className="space-y-6">
                                 <div className="flex items-center gap-3 mb-2">
@@ -659,7 +939,10 @@ const RegisterTenant = () => {
                                 </div>
                              </div>
                           </form>
+                         </>
+                       )}
                         </motion.div>
+
                       ) : (
                         <motion.div 
                           key="success"

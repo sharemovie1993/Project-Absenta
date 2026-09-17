@@ -160,3 +160,53 @@ export async function requestPasswordReset(email: string, tenant_id?: string): P
 export async function confirmPasswordReset(token: string, new_password: string): Promise<ConfirmPasswordResetResponse> {
   return requestWithFallback<ConfirmPasswordResetResponse>('post', '/auth/confirm-password-reset', { data: { token, new_password } });
 }
+
+export interface MigrationManifest {
+  format: 'absenta_migration_bundle';
+  version: string;
+  app_version: string;
+  created_at: string;
+  source_tenant: {
+    id: string;
+    name: string;
+    npsn?: string | null;
+    subdomain?: string | null;
+    custom_domain?: string | null;
+    status?: string | null;
+  };
+  options: {
+    include_attendance: boolean;
+    include_media: boolean;
+  };
+  stats: {
+    total_users: number;
+    total_students: number;
+    total_teachers: number;
+    total_classes: number;
+    total_records: number;
+    total_media_files: number;
+    media_size_bytes: number;
+  };
+  checksum_sha256?: string;
+}
+
+export async function inspectInitialBundle(file: File): Promise<{ success: boolean; data: MigrationManifest; message?: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { default: axios } = await import('@/lib/axiosInstance');
+  const res = await axios.post('/auth/inspect-initial-bundle', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+}
+
+export async function restoreInitialBundle(file: File): Promise<{ success: boolean; data: any; message?: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const { default: axios } = await import('@/lib/axiosInstance');
+  const res = await axios.post('/auth/restore-initial-bundle', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return res.data;
+}
+

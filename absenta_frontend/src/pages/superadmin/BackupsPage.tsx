@@ -9,7 +9,9 @@ import {
   AlertTriangle,
   Zap,
   Info,
-  Loader2
+  Loader2,
+  UploadCloud,
+  DownloadCloud
 } from 'lucide-react';
 import { 
   SectionCard,
@@ -24,9 +26,12 @@ import toast from 'react-hot-toast';
 import { backupApi, type Backup } from '../../api/superadmin-backups.api';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
+import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
+import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
 
 // Lazy load BackupList (Pilar 13)
 const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
+
 
 // Zod Schema Validation Guard (Pilar 25)
 const restoreSchema = z.object({
@@ -35,9 +40,12 @@ const restoreSchema = z.object({
 
 export const BackupsPage: React.FC = React.memo(() => {
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
+  const [migrationModalOpen, setMigrationModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
+
 
   const backupsQuery = useQuery({
     queryKey: ['superadmin-backups-list'],
@@ -153,20 +161,45 @@ export const BackupsPage: React.FC = React.memo(() => {
           fullWidth
           noPadding
         >
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs font-bold text-slate-500">Total {backups.length} snapshot terdaftar</span>
-            <Button 
-              type="button"
-              variant="toolbarOutline"
-              size="toolbar"
-              onClick={loadBackups}
-              disabled={loading}
-              className="gap-2"
-            >
-              <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-              Refresh Arsip
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => setMigrationModalOpen(true)}
+                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+              >
+                <UploadCloud size={13} />
+                Import Paket (.absenta)
+              </Button>
+              {backups.length > 0 && (
+                <Button 
+                  type="button"
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => setExportModalOpen(true)}
+                  className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                >
+                  <DownloadCloud size={13} />
+                  Export Bundle
+                </Button>
+              )}
+              <Button 
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={loadBackups}
+                disabled={loading}
+                className="gap-2"
+              >
+                <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+                Refresh Arsip
+              </Button>
+            </div>
           </div>
+
 
           <Suspense fallback={<PageLoader />}>
             <BackupList 
@@ -255,9 +288,23 @@ export const BackupsPage: React.FC = React.memo(() => {
             </div>
           </div>
         </Modal>
+
+        <MigrationWizardModal
+          isOpen={migrationModalOpen}
+          onClose={() => setMigrationModalOpen(false)}
+          onSuccess={loadBackups}
+        />
+
+        <ExportBundleModal
+          isOpen={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          tenantId={selectedBackup?.tenant_id || backups[0]?.tenant_id}
+          tenantName={selectedBackup?.Tenant?.name || backups[0]?.Tenant?.name}
+        />
       </SuperAdminPageLayout>
     </InfraErrorBoundary>
   );
 });
+
 
 export default BackupsPage;
