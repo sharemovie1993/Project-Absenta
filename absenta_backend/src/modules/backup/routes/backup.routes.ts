@@ -12,8 +12,11 @@ export async function backupRoutes(fastify: any) {
     fastify.get('/academic/backup/export', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportTenantData);
     fastify.post('/academic/backup/import', { bodyLimit: 104857600, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importTenantData);
     fastify.post('/academic/backup/purge-tenant', { preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.purgeTenantData);
+    fastify.post('/academic/backup/export-bundle', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportBundle);
+    fastify.post('/academic/backup/inspect-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.inspectBundle);
+    fastify.post('/academic/backup/import-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importBundle);
     
-    // One-Click Migration Bundle (.absenta) endpoints
+    // One-Click Migration Bundle (.absenta) endpoints (Admin & SuperAdmin)
     fastify.post('/admin/backups/export-bundle', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportBundle);
     fastify.post('/admin/backups/inspect-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.inspectBundle);
     fastify.post('/admin/backups/import-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importBundle);

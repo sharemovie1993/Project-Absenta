@@ -774,7 +774,7 @@ export class BackupController {
 
   static async exportBundle(req: any, reply: any) {
     try {
-      const tenantId = req.query?.tenantId || req.body?.tenantId || req.tenantId || req.dataScope?.tenantId;
+      const tenantId = req.query?.tenantId || req.body?.tenantId || req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id;
       if (!tenantId) {
         return reply.status(400).send({ success: false, message: 'Tenant ID wajib ditentukan' });
       }
@@ -824,7 +824,7 @@ export class BackupController {
         return reply.status(400).send({ success: false, message: 'Berkas .absenta wajib diunggah' });
       }
 
-      const targetTenantId = req.query?.targetTenantId || req.tenantId || req.dataScope?.tenantId;
+      const targetTenantId = req.query?.targetTenantId || req.body?.targetTenantId || req.tenantId || req.dataScope?.tenantId || req.user?.tenantId || req.user?.tenant_id;
       const buffer = await filePart.toBuffer();
 
       console.log(`[BackupController] Memulai restorasi bundle ke tenant ${targetTenantId || 'auto'}...`);

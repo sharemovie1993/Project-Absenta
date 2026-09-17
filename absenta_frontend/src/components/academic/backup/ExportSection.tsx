@@ -14,11 +14,13 @@ import { Button } from '../../ui';
 
 interface ExportSectionProps {
   onExport: () => void;
+  onExportBundle?: () => void;
   loading: boolean;
 }
 
 export const ExportSection: React.FC<ExportSectionProps> = React.memo(({
   onExport,
+  onExportBundle,
   loading
 }) => {
   const features = [
@@ -85,35 +87,53 @@ export const ExportSection: React.FC<ExportSectionProps> = React.memo(({
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-transparent p-4 rounded-2xl border border-blue-200/60 dark:border-blue-900/30 flex items-start gap-3 text-xs">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-600/20">
+        <div className="bg-gradient-to-r from-emerald-500/10 via-blue-500/5 to-transparent p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/30 flex items-start gap-3 text-xs">
+          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
             <Sparkles className="w-4 h-4" />
           </div>
           <div className="space-y-1">
-            <h6 className="font-black text-slate-900 dark:text-slate-100 text-xs">
-              Format Cadangan Terenkripsi
-            </h6>
+            <div className="flex items-center gap-2">
+              <h6 className="font-black text-slate-900 dark:text-slate-100 text-xs">
+                Format Paket Migrasi (.absenta)
+              </h6>
+              <span className="text-[9px] font-black bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                UniFi / Omada Style
+              </span>
+            </div>
             <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-              Sistem akan mengemas seluruh skema & record database ke dalam file `.json` terkompresi. Berkas ini dapat dipulihkan kapan saja melalui modul Restore.
+              Mengemas seluruh database relasional sekolah dan berkas foto (MinIO S3) ke dalam 1 file <code>.absenta</code> mandiri. Siap dipindahkan ke server lain dengan 1 klik!
             </p>
           </div>
         </div>
       </div>
 
       <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+        {onExportBundle && (
+          <Button
+            onClick={onExportBundle}
+            disabled={loading}
+            className="w-full h-14 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-black uppercase tracking-wider text-xs shadow-xl shadow-emerald-500/25 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+            <span>EKSPOR PAKET LENGKAP (.ABSENTA)</span>
+          </Button>
+        )}
+
         <Button
           onClick={onExport}
           disabled={loading}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black uppercase tracking-wider text-xs shadow-xl shadow-blue-500/25 active:scale-[0.99] transition-all cursor-pointer"
+          variant="outline"
+          className="w-full h-11 rounded-2xl text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
         >
           {loading ? (
-            <Loader2 className="mr-2.5 h-4 w-4 animate-spin" />
+            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Download className="mr-2.5 h-4 w-4" />
+            <Download className="mr-2 h-3.5 w-3.5" />
           )}
-          {loading ? 'MENYIAPKAN ARSIP...' : 'UNDUH CADANGAN FULL (.JSON)'}
+          {loading ? 'Menyiapkan Arsip...' : 'Unduh Cadangan Ringkas (.json)'}
         </Button>
-        <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+
+        <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-1">
           <Lock className="w-3 h-3 text-emerald-500" />
           <span>Keamanan & Integritas Data Prioritas Utama</span>
         </div>

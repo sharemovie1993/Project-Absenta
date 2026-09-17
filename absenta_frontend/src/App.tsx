@@ -599,6 +599,11 @@ function App() {
                         <BackupPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/backup" element={
+                      <ProtectedRoute requiredCapability="academic.backups.view.list">
+                        <BackupPage />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/academic/staff-logs" element={
                       <ProtectedRoute requiredCapability="core.sekolah.view.profile">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>

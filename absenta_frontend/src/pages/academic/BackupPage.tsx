@@ -7,10 +7,14 @@ import {
   Database,
   ShieldCheck,
   RefreshCw,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportAcademicData, importAcademicData, purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
+import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
+import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
+import { useAuthStore } from '@/store/authStore';
 import { SectionCard, Loader, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
@@ -89,6 +93,9 @@ const BackupPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
+  const { user } = useAuthStore();
+  const [showExportBundleModal, setShowExportBundleModal] = useState(false);
+  const [showMigrationWizardModal, setShowMigrationWizardModal] = useState(false);
   const [loadingExport, setLoadingExport] = useState(false);
   const [loadingImport, setLoadingImport] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -389,6 +396,40 @@ const BackupPage: React.FC = React.memo(() => {
       <div className="flex flex-col gap-6">
         <ActiveUsersSafetyCard />
 
+        {/* One-Click UniFi/Omada Style Migration Action Card */}
+        <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 text-white shadow-xl shadow-blue-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+          <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="space-y-2 max-w-2xl relative z-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              Migrasi Sistem Instan (UniFi / Omada Style)
+            </div>
+            <h3 className="text-lg md:text-xl font-black tracking-tight">
+              One-Click Cadangan & Pemulihan ({user?.tenant?.name || 'Sekolah'})
+            </h3>
+            <p className="text-xs text-blue-100 font-medium leading-relaxed">
+              Kemas seluruh data sekolah Anda (Database Relasional + Foto Siswa/Guru & Dokumen di MinIO) ke dalam satu berkas <code className="bg-white/20 px-1.5 py-0.5 rounded font-mono font-bold text-white">.absenta</code> mandiri. Anda dapat mengekspor atau memulihkan sistem sekolah ini kapan saja dengan mudah.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0 w-full md:w-auto">
+            <Button
+              onClick={() => setShowExportBundleModal(true)}
+              className="flex-1 md:flex-none h-12 px-5 rounded-2xl bg-white text-blue-900 hover:bg-blue-50 font-black text-xs uppercase tracking-wider shadow-lg shadow-black/10 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <Download className="w-4 h-4 text-blue-600" />
+              <span>Ekspor Paket (.absenta)</span>
+            </Button>
+            <Button
+              onClick={() => setShowMigrationWizardModal(true)}
+              variant="outline"
+              className="flex-1 md:flex-none h-12 px-5 rounded-2xl bg-black/20 hover:bg-black/30 text-white border-white/30 font-black text-xs uppercase tracking-wider backdrop-blur-md cursor-pointer flex items-center justify-center gap-2"
+            >
+              <UploadCloud className="w-4 h-4 text-emerald-300" />
+              <span>Buka Wizard Migrasi</span>
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Export Card */}
           <SectionCard
@@ -400,6 +441,7 @@ const BackupPage: React.FC = React.memo(() => {
           >
             <ExportSection 
               onExport={executeExport}
+              onExportBundle={() => setShowExportBundleModal(true)}
               loading={loadingExport}
             />
           </SectionCard>
@@ -424,6 +466,7 @@ const BackupPage: React.FC = React.memo(() => {
               onToggleClearExisting={setClearExisting}
               onManualPurge={handleManualPurge}
               onImport={executeImport}
+              onOpenMigrationWizard={() => setShowMigrationWizardModal(true)}
             />
           </SectionCard>
         </div>
@@ -528,6 +571,24 @@ const BackupPage: React.FC = React.memo(() => {
           onClose={() => setShowResultModal(false)}
         />
       </Suspense>
+
+      {/* One-Click UniFi/Omada Style Modals */}
+      <ExportBundleModal
+        isOpen={showExportBundleModal}
+        onClose={() => setShowExportBundleModal(false)}
+        tenantId={user?.tenant_id}
+        tenantName={user?.tenant?.name || 'Sekolah'}
+      />
+
+      <MigrationWizardModal
+        isOpen={showMigrationWizardModal}
+        onClose={() => setShowMigrationWizardModal(false)}
+        targetTenantId={user?.tenant_id}
+        onSuccess={() => {
+          loadHistory();
+          queryClient.invalidateQueries();
+        }}
+      />
     </AcademicPageLayout>
   );
 });

@@ -57,6 +57,7 @@ interface ImportSectionProps {
   onToggleClearExisting?: (val: boolean) => void;
   onManualPurge?: () => void;
   onImport: () => void;
+  onOpenMigrationWizard?: () => void;
 }
 
 export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
@@ -70,11 +71,43 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
   clearExisting = false,
   onToggleClearExisting,
   onManualPurge,
-  onImport
+  onImport,
+  onOpenMigrationWizard
 }) => {
   return (
     <div className="flex flex-col h-full justify-between space-y-6 p-6 lg:p-8">
       <div className="space-y-6">
+        {/* Wizard Banner */}
+        {onOpenMigrationWizard && (
+          <div className="p-4 bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent rounded-2xl border border-blue-200 dark:border-blue-900/40 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
+                <UploadCloud className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h6 className="font-black text-xs text-slate-900 dark:text-slate-100 truncate">
+                    Pemulihan Paket Lengkap (.absenta)
+                  </h6>
+                  <span className="text-[9px] font-black bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    UniFi / Omada Style
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
+                  Pulihkan database sekolah & foto MinIO otomatis dengan validasi manifest
+                </p>
+              </div>
+            </div>
+            <Button
+              onClick={onOpenMigrationWizard}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider rounded-xl px-4 py-2 shrink-0 shadow-md shadow-blue-600/20 cursor-pointer"
+            >
+              Buka Wizard
+            </Button>
+          </div>
+        )}
+
         {/* Warning Alert */}
         <div className="flex items-start gap-3.5 p-4 bg-amber-500/10 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/40">
           <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
@@ -82,7 +115,7 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
           </div>
           <div className="space-y-0.5">
             <h5 className="text-xs font-black text-amber-900 dark:text-amber-300 uppercase tracking-wider">
-              Peringatan Pemulihan Data
+              Peringatan Pemulihan Data (.JSON)
             </h5>
             <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 font-medium leading-relaxed">
               Record yang sudah ada di database akan dilewati (*skip*) untuk mencegah duplikasi. Pastikan integritas file terjamin.

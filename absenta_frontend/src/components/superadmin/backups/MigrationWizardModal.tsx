@@ -22,12 +22,14 @@ import { type MigrationManifest } from '@/api/auth.api';
 interface MigrationWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
+  targetTenantId?: string;
   onSuccess?: () => void;
 }
 
 export const MigrationWizardModal: React.FC<MigrationWizardModalProps> = ({
   isOpen,
   onClose,
+  targetTenantId,
   onSuccess
 }) => {
   const [step, setStep] = useState<'upload' | 'preview' | 'restoring' | 'completed'>('upload');
@@ -112,10 +114,10 @@ export const MigrationWizardModal: React.FC<MigrationWizardModalProps> = ({
     }, 600);
 
     try {
-      const res = await backupApi.importBundle(file);
+      const res = await backupApi.importBundle(file, targetTenantId);
       clearInterval(progressTimer);
       setRestoreProgress(100);
-      setRestoreMessage('Seluruh basis data dan media storage berhasil dipulihkan!');
+      setRestoreMessage('Sinkronisasi selesai!');
 
       if (res.success) {
         setStep('completed');

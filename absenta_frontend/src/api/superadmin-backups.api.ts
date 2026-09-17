@@ -31,10 +31,10 @@ export const backupApi = {
       if (!response.ok) throw new Error('Download failed');
       return response.blob();
   },
-  exportBundle: async (tenantId: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
+  exportBundle: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
     const { default: axios } = await import('@/lib/axiosInstance');
     const response = await axios.post('/admin/backups/export-bundle', {
-      tenantId,
+      tenantId: tenantId || undefined,
       includeAttendance: options?.includeAttendance !== false,
       includeMedia: options?.includeMedia !== false,
     }, {
