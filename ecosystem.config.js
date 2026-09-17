@@ -78,8 +78,26 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: backendPort,
+        SERVICE_ROLE: 'api',
         EMBEDDED_WORKERS: 'true',
         AUTOSCALER_MAX_WORKERS: '10',
+        ...backendEnv
+      },
+      watch: false,
+      max_memory_restart: '1G'
+    },
+    {
+      name: 'absenta-wa-service',
+      script: 'dist/workers/wa-worker.js',
+      cwd: path.join(__dirname, 'absenta_backend'),
+      instances: 1,
+      exec_mode: 'fork',
+      windowsHide: true,
+      restart_delay: 5000,
+      max_restarts: 10,
+      env: {
+        NODE_ENV: 'production',
+        SERVICE_ROLE: 'wa-worker',
         ...backendEnv
       },
       watch: false,
