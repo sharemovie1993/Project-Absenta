@@ -6,6 +6,7 @@ import { SimpleFormField } from '../ui/SimpleFormField';
 import { SmartStudentPicker, type Student } from '../common/SmartStudentPicker';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { addPklMonths } from '../../utils/hubinPklLifecycle';
 
 interface HubinPklPlottingModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface HubinPklPlottingModalProps {
   isLoadingGuru?: boolean;
   isLoadingMitra?: boolean;
   editingPkl?: any;
+  filterJurusan?: string;
 }
 
 export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React.memo(({
@@ -45,6 +47,7 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
   isLoadingGuru,
   isLoadingMitra,
   editingPkl,
+  filterJurusan,
 }) => {
   const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
   const [selectedTpId, setSelectedTpId] = useState<string>('');
@@ -72,6 +75,35 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
       if (activeSemester?.id) setSelectedSemesterId(activeSemester.id);
     }
   }, [isOpen, activeTahunPelajaran, activeSemester]);
+
+  const [tanggalMulai, setTanggalMulai] = useState<string>('');
+  const [tanggalSelesai, setTanggalSelesai] = useState<string>('');
+  const [status, setStatus] = useState<string>('AKTIF');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedStudent(null);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (editingPkl) {
+      setTanggalMulai(editingPkl.tanggal_mulai ? new Date(editingPkl.tanggal_mulai).toISOString().substring(0, 10) : '');
+      setTanggalSelesai(editingPkl.tanggal_selesai ? new Date(editingPkl.tanggal_selesai).toISOString().substring(0, 10) : '');
+      setStatus(editingPkl.status || 'AKTIF');
+    } else {
+      setTanggalMulai(new Date().toISOString().substring(0, 10));
+      setTanggalSelesai('');
+      setStatus('AKTIF');
+    }
+  }, [editingPkl, isOpen]);
+
+  const handleApplyDuration = (months: number) => {
+    const base = tanggalMulai || new Date().toISOString().substring(0, 10);
+    const result = addPklMonths(base, months);
+    setTanggalSelesai(result);
+  };
 
   return (
     <Modal
@@ -134,20 +166,51 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
         ) : (
           <SimpleFormField label="Pilih Siswa PKL" required>
             <SmartStudentPicker 
-              onSelect={(s: Student) => setSelectedSiswaId(s.id)}
+              onSelect={(s: Student) => {
+                setSelectedSiswaId(s.id);
+                setSelectedStudent(s);
+              }}
               scope="global"
-              placeholder="Scan RFID, QR, atau ketik nama/NIS..."
+              filterJurusan={filterJurusan}
+              placeholder={filterJurusan ? `Cari siswa jurusan ${filterJurusan}...` : "Scan RFID, QR, atau ketik nama/NIS..."}
               autoFocus
             />
             {selectedSiswaId && (
-              <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-xl flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <UserPlus size={16} />
+              <div className="mt-2 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 rounded-xl flex items-center justify-between gap-3 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <UserPlus size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-emerald-900 dark:text-emerald-200 truncate">
+                      {selectedStudent?.nama_siswa || selectedStudent?.full_name || 'Siswa Terpilih'}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-emerald-700/90 dark:text-emerald-400/90 font-medium">
+                      {selectedStudent?.nis && <span>NIS: {selectedStudent.nis}</span>}
+                      {selectedStudent?.Kelas?.nama_kelas && (
+                        <>
+                          <span>•</span>
+                          <span>Kelas: {selectedStudent.Kelas.nama_kelas}</span>
+                        </>
+                      )}
+                      {!selectedStudent?.nis && !selectedStudent?.Kelas?.nama_kelas && (
+                        <span>ID: {selectedSiswaId}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[11px]">
-                  <p className="font-bold text-blue-800 dark:text-blue-300">Siswa Terpilih (ID: {selectedSiswaId.slice(0,8)}...)</p>
-                  <p className="text-blue-600/80 dark:text-blue-400/80">Silakan lengkapi data mitra dan pembimbing di bawah.</p>
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={() => {
+                    setSelectedSiswaId('');
+                    setSelectedStudent(null);
+                  }}
+                  className="text-xs text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 shrink-0"
+                >
+                  Ganti
+                </Button>
               </div>
             )}
           </SimpleFormField>
@@ -187,19 +250,70 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
               id="plotting-tanggal-mulai"
               type="date"
               name="tanggal_mulai"
-              defaultValue={editingPkl?.tanggal_mulai ? new Date(editingPkl.tanggal_mulai).toISOString().substring(0, 10) : ''}
+              value={tanggalMulai}
+              onChange={(e) => setTanggalMulai(e.target.value)}
               required
             />
           </SimpleFormField>
-          <SimpleFormField htmlFor="plotting-tanggal-selesai" label="Tanggal Selesai PKL (Estimasi)">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="plotting-tanggal-selesai" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Tanggal Selesai PKL (Estimasi)
+              </label>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-slate-400 font-medium mr-0.5">Preset:</span>
+                <button
+                  type="button"
+                  onClick={() => handleApplyDuration(3)}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  title="Set +3 Bulan dari tanggal mulai"
+                >
+                  +3 Bln
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyDuration(4)}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  title="Set +4 Bulan dari tanggal mulai"
+                >
+                  +4 Bln
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyDuration(6)}
+                  className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 cursor-pointer transition-colors"
+                  title="Set +6 Bulan dari tanggal mulai"
+                >
+                  +6 Bln
+                </button>
+              </div>
+            </div>
             <Input
               id="plotting-tanggal-selesai"
               type="date"
               name="tanggal_selesai"
-              defaultValue={editingPkl?.tanggal_selesai ? new Date(editingPkl.tanggal_selesai).toISOString().substring(0, 10) : ''}
+              value={tanggalSelesai}
+              onChange={(e) => setTanggalSelesai(e.target.value)}
             />
-          </SimpleFormField>
+          </div>
         </div>
+
+        {/* Status Dropdown Khusus Saat Edit Detail Penempatan */}
+        {editingPkl && (
+          <SimpleFormField htmlFor="plotting-status" label="Status Penempatan Siswa">
+            <select
+              id="plotting-status"
+              name="status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="AKTIF">🟢 AKTIF (Aktif Praktik)</option>
+              <option value="SELESAI">🔵 SELESAI (Praktik Tuntas)</option>
+              <option value="BATAL">🔴 BATAL (Dibatalkan)</option>
+            </select>
+          </SimpleFormField>
+        )}
 
         {/* Seksi Geofencing Overrides */}
         <div className="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl space-y-3.5 border border-slate-150/50 dark:border-slate-800/40">

@@ -119,14 +119,19 @@ export class HubinPenilaianController {
   async getRekapPklSiswa(request: AuthenticatedRequest, reply: any) {
     try {
       const { kelas_id, status, search, tahun_pelajaran_id, semester_id, pembimbing_id } = request.query as any;
-      const data = await this.hubinService.getRekapPklSiswa(request.tenantId!, { 
-        kelas_id, 
-        status, 
-        search,
-        tahun_pelajaran_id,
-        semester_id,
-        pembimbing_id,
-      });
+      const data = await this.hubinService.getRekapPklSiswa(
+        request.tenantId!, 
+        { 
+          kelas_id, 
+          status, 
+          search,
+          tahun_pelajaran_id,
+          semester_id,
+          pembimbing_id,
+        },
+        request.user?.id,
+        request.organizationalScope
+      );
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

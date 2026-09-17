@@ -3,12 +3,8 @@
  * Standardized constants for SaaS Enterprise Audit Compliance
  */
 
-export const HubinPklStatus = {
-  AKTIF: 'AKTIF',
-  SELESAI: 'SELESAI',
-  MENUNGGU_PENEMPATAN: 'MENUNGGU_PENEMPATAN'
-} as const;
-export type HubinPklStatus = typeof HubinPklStatus[keyof typeof HubinPklStatus];
+export { HubinPklStatus, HubinPklPhase } from '../utils/hubinPklLifecycle';
+export type { HubinPklStatus, HubinPklPhase } from '../utils/hubinPklLifecycle';
 
 export const HubinAbsensiStatus = {
   HADIR: 'HADIR',

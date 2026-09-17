@@ -5,6 +5,11 @@ export interface SertifikatPklPrintData {
   nomor_sertifikat?: string;
   durasi_jp?: number | string;
   tanggal_terbit?: string;
+  // Adaptive assessment config (from HubinSettings)
+  assessment_mode?: 'DUDI_ONLY' | 'COMPOSITE';
+  weight_dudi?: number;
+  weight_laporan?: number;
+  weight_sidang?: number;
   sekolah?: {
     nama?: string;
     alamat?: string;
@@ -35,6 +40,11 @@ export interface SertifikatPklPrintData {
     penanggung_jawab_nama?: string;
     instruktur_nama?: string;
   };
+  /** Pembimbing sekolah – needed for bipartit TTD on COMPOSITE mode */
+  pembimbing?: {
+    nama?: string | null;
+    nip?: string | null;
+  };
   penilaian: {
     hard_kompetensi_teknis?: number | null;
     hard_sop_k3lh?: number | null;
@@ -46,6 +56,9 @@ export interface SertifikatPklPrintData {
     soft_tanggung_jawab?: number | null;
     nilai_akhir_pkl?: number | null;
     predikat_pkl?: string | null;
+    /** Additional scores for COMPOSITE mode */
+    nilai_laporan?: number | null;
+    nilai_sidang?: number | null;
   };
 }
 
@@ -376,6 +389,10 @@ export const renderSertifikatBack = (
 ) => {
   const pageWidth = 297;
   const { siswa, mitra, penilaian } = data;
+  const isComposite = data.assessment_mode === 'COMPOSITE';
+  const wDudi = data.weight_dudi ?? 70;
+  const wLaporan = data.weight_laporan ?? 15;
+  const wSidang = data.weight_sidang ?? 15;
 
   const hardScores = [
     penilaian.hard_kompetensi_teknis ?? 88,
@@ -389,11 +406,35 @@ export const renderSertifikatBack = (
     penilaian.soft_kejujuran ?? 88,
     penilaian.soft_tanggung_jawab ?? 85,
   ];
-  const allScores = [...hardScores, ...softScores];
-  const totalScore = allScores.reduce((acc, s) => acc + s, 0);
-  const avgScore = totalScore / allScores.length;
-  const avgScoreFormatted = (Math.round(avgScore * 100) / 100).toFixed(2).replace('.', ',');
-  const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(avgScore);
+  const dudiScores = [...hardScores, ...softScores];
+  const dudiTotal = dudiScores.reduce((acc, s) => acc + s, 0);
+  const dudiAvg = dudiTotal / dudiScores.length;
+
+  // Compute displayed nilai akhir
+  let displayedNilaiAkhir: number;
+  if (isComposite) {
+    // Use stored nilai_akhir_pkl if available (already computed by backend with weights),
+    // otherwise compute proportionally from whatever is available
+    if (penilaian.nilai_akhir_pkl !== null && penilaian.nilai_akhir_pkl !== undefined) {
+      displayedNilaiAkhir = penilaian.nilai_akhir_pkl;
+    } else {
+      let totalW = 0;
+      let totalScore = 0;
+      totalScore += dudiAvg * wDudi; totalW += wDudi;
+      if (penilaian.nilai_laporan !== null && penilaian.nilai_laporan !== undefined) {
+        totalScore += penilaian.nilai_laporan * wLaporan; totalW += wLaporan;
+      }
+      if (penilaian.nilai_sidang !== null && penilaian.nilai_sidang !== undefined) {
+        totalScore += penilaian.nilai_sidang * wSidang; totalW += wSidang;
+      }
+      displayedNilaiAkhir = totalW > 0 ? totalScore / totalW : dudiAvg;
+    }
+  } else {
+    displayedNilaiAkhir = penilaian.nilai_akhir_pkl ?? dudiAvg;
+  }
+
+  const avgScoreFormatted = (Math.round(displayedNilaiAkhir * 100) / 100).toFixed(2).replace('.', ',');
+  const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(displayedNilaiAkhir);
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(13);
@@ -429,7 +470,8 @@ export const renderSertifikatBack = (
   doc.setFont('Helvetica', 'bold');
   doc.text(mitra.nama.toUpperCase(), leftValX, curY);
 
-  const tableBody = [
+  // Build table body
+  const tableBody: any[] = [
     [
       { content: 'A', styles: { fontStyle: 'bold', halign: 'center' } },
       { content: 'HARD SKILL', colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } }
@@ -486,17 +528,48 @@ export const renderSertifikatBack = (
       { content: String(softScores[4]), styles: { halign: 'center' } },
       { content: getPredikatHuruf(softScores[4]), styles: { halign: 'center' } }
     ],
-    [
-      { content: 'JUMLAH NILAI', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: String(totalScore), styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: '', styles: { halign: 'center' } }
-    ],
-    [
-      { content: 'NILAI AKHIR RATA-RATA', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: avgScoreFormatted, styles: { fontStyle: 'bold', halign: 'center' } },
-      { content: finalPredikat, styles: { fontStyle: 'bold', halign: 'center' } }
-    ]
   ];
+
+  if (isComposite) {
+    // Section C – Evaluasi Akademik Sekolah
+    tableBody.push([
+      { content: 'C', styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: `EVALUASI AKADEMIK SEKOLAH (Bobot: DUDI ${wDudi}% | Laporan ${wLaporan}% | Sidang ${wSidang}%)`, colSpan: 3, styles: { fontStyle: 'bold', halign: 'left' } }
+    ]);
+    tableBody.push([
+      { content: '1', styles: { halign: 'center' } },
+      { content: 'Nilai Rata-Rata DUDI (Hard + Soft Skill)', styles: { halign: 'left' } },
+      { content: (Math.round(dudiAvg * 100) / 100).toFixed(2), styles: { halign: 'center' } },
+      { content: getPredikatHuruf(dudiAvg), styles: { halign: 'center' } }
+    ]);
+    tableBody.push([
+      { content: '2', styles: { halign: 'center' } },
+      { content: 'Laporan PKL', styles: { halign: 'left' } },
+      { content: penilaian.nilai_laporan !== null && penilaian.nilai_laporan !== undefined ? String(penilaian.nilai_laporan) : '-', styles: { halign: 'center' } },
+      { content: getPredikatHuruf(penilaian.nilai_laporan ?? null), styles: { halign: 'center' } }
+    ]);
+    tableBody.push([
+      { content: '3', styles: { halign: 'center' } },
+      { content: 'Sidang / Presentasi PKL', styles: { halign: 'left' } },
+      { content: penilaian.nilai_sidang !== null && penilaian.nilai_sidang !== undefined ? String(penilaian.nilai_sidang) : '-', styles: { halign: 'center' } },
+      { content: getPredikatHuruf(penilaian.nilai_sidang ?? null), styles: { halign: 'center' } }
+    ]);
+  } else {
+    // DUDI_ONLY: tampilkan JUMLAH NILAI 8 aspek
+    const dudiTotal8 = dudiScores.reduce((acc, s) => acc + s, 0);
+    tableBody.push([
+      { content: 'JUMLAH NILAI', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: String(dudiTotal8), styles: { fontStyle: 'bold', halign: 'center' } },
+      { content: '', styles: { halign: 'center' } }
+    ]);
+  }
+
+  // Nilai Akhir Rata-Rata row always at the end
+  tableBody.push([
+    { content: 'NILAI AKHIR RATA-RATA', colSpan: 2, styles: { fontStyle: 'bold', halign: 'center' } },
+    { content: avgScoreFormatted, styles: { fontStyle: 'bold', halign: 'center' } },
+    { content: finalPredikat, styles: { fontStyle: 'bold', halign: 'center' } }
+  ]);
 
   autoTable(doc, {
     startY: curY + 6,
@@ -565,22 +638,52 @@ export const renderSertifikatBack = (
   doc.text('D', 44, legY + 16.5);
   doc.text('Kurang Baik', 54, legY + 16.5);
 
-  // TTD PIC DUDI
-  const picSigX = 230;
-  doc.setFontSize(9);
-  doc.setFont('Helvetica', 'normal');
-  doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 5, { align: 'center' });
+  if (isComposite) {
+    // Bipartit TTD: Pembimbing Sekolah (kiri) | Pembimbing DUDI (kanan)
+    const pembimbingSigX = 130;
+    const picSigX = 240;
+    const lineSigY = footerY + 32;
+    const pembimbingNama = data.pembimbing?.nama || '________________';
 
-  const linePicY = footerY + 32;
-  doc.setLineWidth(0.3);
-  doc.line(picSigX - 35, linePicY, picSigX + 35, linePicY);
-
-  if (mitra.penanggung_jawab_nama) {
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Guru Pembimbing PKL / Kaprog', pembimbingSigX, footerY + 5, { align: 'center' });
+    doc.setLineWidth(0.3);
+    doc.line(pembimbingSigX - 38, lineSigY, pembimbingSigX + 38, lineSigY);
     doc.setFont('Helvetica', 'bold');
-    doc.text(mitra.penanggung_jawab_nama, picSigX, linePicY - 1.5, { align: 'center' });
+    doc.text(pembimbingNama, pembimbingSigX, lineSigY - 1.5, { align: 'center' });
+    if (data.pembimbing?.nip) {
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(`NIP. ${data.pembimbing.nip}`, pembimbingSigX, lineSigY + 4, { align: 'center' });
+    }
+
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 5, { align: 'center' });
+    doc.setLineWidth(0.3);
+    doc.line(picSigX - 38, lineSigY, picSigX + 38, lineSigY);
+    if (mitra.penanggung_jawab_nama) {
+      doc.setFont('Helvetica', 'bold');
+      doc.text(mitra.penanggung_jawab_nama, picSigX, lineSigY - 1.5, { align: 'center' });
+    }
+  } else {
+    // DUDI_ONLY: TTD tunggal (PIC DUDI)
+    const picSigX = 230;
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'normal');
+    doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 5, { align: 'center' });
+
+    const linePicY = footerY + 32;
+    doc.setLineWidth(0.3);
+    doc.line(picSigX - 35, linePicY, picSigX + 35, linePicY);
+
+    if (mitra.penanggung_jawab_nama) {
+      doc.setFont('Helvetica', 'bold');
+      doc.text(mitra.penanggung_jawab_nama, picSigX, linePicY - 1.5, { align: 'center' });
+    }
   }
 };
-
 export const generateSertifikatPdf = async (
   data: SertifikatPklPrintData,
   options?: {

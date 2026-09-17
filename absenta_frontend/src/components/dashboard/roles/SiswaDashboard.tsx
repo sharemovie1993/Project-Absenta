@@ -1128,6 +1128,10 @@ export const SiswaDashboard: React.FC = () => {
                       ? "text-amber-600 dark:text-amber-400 decoration-amber-500"
                       : todayPklAbsensi?.status === 'IZIN'
                       ? "text-blue-600 dark:text-blue-400 decoration-blue-500"
+                      : todayPklAbsensi?.status === 'DISPEN' || todayPklAbsensi?.status === 'DISPENSASI'
+                      ? "text-purple-600 dark:text-purple-400 decoration-purple-500"
+                      : todayPklAbsensi?.status === 'LIBUR'
+                      ? "text-slate-600 dark:text-slate-400 decoration-slate-500"
                       : todayPklAbsensi?.jam_pulang
                       ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-500"
                       : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
@@ -1138,6 +1142,12 @@ export const SiswaDashboard: React.FC = () => {
                       ? `SAKIT${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
                       : todayPklAbsensi?.status === 'IZIN'
                       ? `IZIN${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
+                      : todayPklAbsensi?.status === 'DISPEN' || todayPklAbsensi?.status === 'DISPENSASI'
+                      ? `DISPENSASI${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
+                      : todayPklAbsensi?.status === 'LIBUR'
+                      ? `LIBUR${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
+                      : todayPklAbsensi?.status === 'ALPA'
+                      ? 'ALPA'
                       : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
                       ? todayPklAbsensi?.jam_pulang
                         ? `HADIR (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} – ${formatLocalTimeFromISO(todayPklAbsensi.jam_pulang)})`
@@ -1145,7 +1155,7 @@ export const SiswaDashboard: React.FC = () => {
                       : 'Belum Check-In'
                     }
                   </span>
-                  {todayPklAbsensi && (todayPklAbsensi.jam_masuk || todayPklAbsensi.status === 'HADIR' || todayPklAbsensi.status === 'SAKIT' || todayPklAbsensi.status === 'IZIN') && (
+                  {todayPklAbsensi && (todayPklAbsensi.jam_masuk || todayPklAbsensi.status === 'HADIR' || todayPklAbsensi.status === 'SAKIT' || todayPklAbsensi.status === 'IZIN' || todayPklAbsensi.status === 'DISPEN' || todayPklAbsensi.status === 'DISPENSASI') && (
                     todayPklAbsensi?.is_verified ? (
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 no-underline">
                         <ShieldCheck size={12} />
@@ -1620,34 +1630,93 @@ export const SiswaDashboard: React.FC = () => {
                 <div className="space-y-3">
                   {pklAbsensiHistory.length > 0 ? (
                     pklAbsensiHistory.slice(0, 3).map((item: any) => {
-                      const isHadir = item.status === 'HADIR';
+                      const st = (item.status || '').toUpperCase();
+                      const isHadir = st === 'HADIR' || (item.jam_masuk && st !== 'IZIN' && st !== 'SAKIT');
+                      const isIzin = st === 'IZIN';
+                      const isSakit = st === 'SAKIT';
+                      const isDispen = st === 'DISPEN' || st === 'DISPENSASI';
+                      const isLibur = st === 'LIBUR';
+                      const isAlpa = st === 'ALPA';
+
+                      let label = 'Hadir';
+                      let badgeStyle = 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+                      let containerStyle = 'border-emerald-200/80 dark:border-emerald-900/40';
+                      let iconBoxStyle = 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+                      let iconEl = <CheckCircle2 size={18} />;
+                      let detailText = item.jam_masuk 
+                        ? `Masuk: ${formatLocalTimeFromISO(item.jam_masuk)} ${getTimezoneLabel()}${item.jam_pulang ? ` • Pulang: ${formatLocalTimeFromISO(item.jam_pulang)} ${getTimezoneLabel()}` : ''}`
+                        : 'Hadir PKL';
+
+                      if (isIzin) {
+                        label = 'Izin';
+                        badgeStyle = 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30';
+                        containerStyle = 'border-blue-200/80 dark:border-blue-900/40';
+                        iconBoxStyle = 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+                        iconEl = <FileText size={18} />;
+                        detailText = item.kegiatan ? `Alasan: ${item.kegiatan}` : 'Izin tidak masuk PKL';
+                      } else if (isSakit) {
+                        label = 'Sakit';
+                        badgeStyle = 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30';
+                        containerStyle = 'border-amber-200/80 dark:border-amber-900/40';
+                        iconBoxStyle = 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+                        iconEl = <AlertCircle size={18} />;
+                        detailText = item.kegiatan ? `Keterangan: ${item.kegiatan}` : 'Surat keterangan sakit';
+                      } else if (isDispen) {
+                        label = 'Dispensasi';
+                        badgeStyle = 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30';
+                        containerStyle = 'border-purple-200/80 dark:border-purple-900/40';
+                        iconBoxStyle = 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
+                        iconEl = <Award size={18} />;
+                        detailText = item.kegiatan ? `Dispensasi: ${item.kegiatan}` : 'Dispensasi kegiatan sekolah';
+                      } else if (isLibur) {
+                        label = 'Libur';
+                        badgeStyle = 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
+                        containerStyle = 'border-slate-200/80 dark:border-slate-800';
+                        iconBoxStyle = 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
+                        iconEl = <Calendar size={18} />;
+                        detailText = item.kegiatan || 'Hari libur / off';
+                      } else if (isAlpa) {
+                        label = 'Alpa';
+                        badgeStyle = 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30';
+                        containerStyle = 'border-rose-200/80 dark:border-rose-900/40';
+                        iconBoxStyle = 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30';
+                        iconEl = <AlertCircle size={18} />;
+                        detailText = 'Tanpa keterangan';
+                      } else if (!isHadir) {
+                        label = item.status || 'Belum Presensi';
+                        badgeStyle = 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30';
+                        containerStyle = 'border-slate-200/80 dark:border-slate-800';
+                        iconBoxStyle = 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
+                        iconEl = <AlertCircle size={18} />;
+                        detailText = item.kegiatan || 'Belum check-in';
+                      }
+
                       return (
                         <div
                           key={item.id}
                           className={cn(
                             "p-3.5 sm:p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border flex items-center justify-between gap-3 transition-all",
-                            isHadir ? "border-emerald-200/80 dark:border-emerald-900/40" : "border-rose-200/80 dark:border-rose-900/40"
+                            containerStyle
                           )}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
                             <div className={cn(
                               "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
-                              isHadir ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                              iconBoxStyle
                             )}>
-                              {isHadir ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+                              {iconEl}
                             </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                                {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' }) : '-'}
-                              </h4>
-                              <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 flex-wrap">
-                                <span>{item.jam_masuk ? `Masuk: ${formatLocalTimeFromISO(item.jam_masuk)} ${getTimezoneLabel()}` : 'Belum check-in'}</span>
-                                {item.jam_pulang && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Pulang: {formatLocalTimeFromISO(item.jam_pulang)} ${getTimezoneLabel()}</span>
-                                  </>
-                                )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                                  {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' }) : '-'}
+                                </h4>
+                                <span className={cn("px-1.5 py-0.2 rounded text-[9px] font-black uppercase border", badgeStyle)}>
+                                  {label}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                {detailText}
                               </p>
                             </div>
                           </div>

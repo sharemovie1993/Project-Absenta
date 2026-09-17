@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const createMitraSchema = z.object({
   nama: z.string().min(1, 'Nama mitra industri wajib diisi'),
+  logo_url: z.string().optional().nullable(),
   bidang: z.string().optional().nullable(),
   alamat: z.string().optional().nullable(),
   kontak: z.string().optional().nullable(),

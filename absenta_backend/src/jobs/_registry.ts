@@ -46,3 +46,6 @@ import './sarprasOverdueReminder.job';
 // ── Piket Guru Reminders (SaaS Dynamic Minute Dispatcher) ─────────────────────
 import './piketScheduleDispatcher.job';
 
+// ── Hubin & PKL Lifecycle ─────────────────────────────────────────────────────
+import './pklStatusScheduler.job';
+

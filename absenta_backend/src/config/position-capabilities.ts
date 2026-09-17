@@ -324,12 +324,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'bk.cases.view.list',                  // Ringkasan status kasus (tanpa curhat sensitif BK)
     'bk.referrals.create',                 // Buat rujukan konseling ke BK
 
-    // Akademik & PKL
+    // Akademik & PKL (Monitoring Kelas Binaan)
     'academic.teaching.view',
     'academic.structures.view.list',
     'academic.structures.view.tree',
     'academic.homeroom.manage',
+    'hubin.pkl.view.list',
     'hubin.absensi.view.history',
+    'hubin.absensi.recap',
     'academic.schedules.view.list',
     'affairs.schedules.view.list',
     'attendance.schedules.view.list',
@@ -409,16 +411,24 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   // Kaprog (Ketua Program Keahlian / Jurusan SMK)
   [STRUKTUR_CODES.KAPROG]: [
     'organization.scope.unit_restricted',
+    'dashboard.view.hubin',
     'academic.teaching.rekap',
     'academic.students.view.list',
     'academic.teachers.view.list',
     'academic.teachers.view.detail',
 
-    // Plotting Draf PKL Siswa Jurusannya
+    // Operasional & Manajemen PKL Jurusan
     'hubin.pkl.view.list',
     'hubin.pkl.manage',
+    'hubin.guidance.manage',
     'hubin.absensi.view.history',
     'hubin.absensi.recap',
+    'hubin.absensi.verify',
+    'hubin.logbook.manage',
+    'hubin.mou.view.list',
+    'hubin.tefa.manage',
+    'hubin.tracer.view',
+    'reports.hubin.view',
 
     // Monitoring & Supervisi Jurusan
     'attendance.recap.view.daily',

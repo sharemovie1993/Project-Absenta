@@ -61,8 +61,9 @@ interface SiswaPklWithAbsensi extends SiswaPkl {
 export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { user, subscription } = useAuthStore();
   const queryClient = useQueryClient();
-  const { isHubin, isAdmin, can, isStudent: isCapStudent } = useCapabilities();
+  const { isHubin, isAdmin, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, can, isStudent: isCapStudent, activeGuruId: capGuruId } = useCapabilities();
   const isStudent = isCapStudent || !!user?.isStudent;
+  const activeGuruId = capGuruId || user?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null;
   
   // Konteks Tahun Pelajaran
   const { options: tpOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
@@ -143,7 +144,33 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
 
   const isLoading = isStudent ? isLoadingMe : isLoadingAll;
   const rawPenempatan = useMemo(() => {
-    return Array.isArray(penempatanData?.data) ? (penempatanData.data as SiswaPklWithAbsensi[]) : (penempatanData as { data?: SiswaPklWithAbsensi[] })?.data || [];
+    const list = Array.isArray(penempatanData?.data) 
+      ? (penempatanData.data as SiswaPklWithAbsensi[]) 
+      : (penempatanData as { data?: SiswaPklWithAbsensi[] })?.data || [];
+
+    // Deduplikasi Cerdas Presensi Harian:
+    // Siswa yang bermutasi hanya dipantau presensinya pada penempatan aktif/terkini.
+    // Record penempatan lama yang berstatus SELESAI karena mutasi dikecualikan agar tidak membingungkan guru dengan duplikat data.
+    const studentMap = new Map<string, SiswaPklWithAbsensi>();
+    for (const p of list) {
+      const existing = studentMap.get(p.siswa_id);
+      if (!existing) {
+        studentMap.set(p.siswa_id, p);
+      } else {
+        if (p.status === 'AKTIF' && existing.status !== 'AKTIF') {
+          studentMap.set(p.siswa_id, p);
+        } else if (existing.status === 'AKTIF' && p.status !== 'AKTIF') {
+          // Pertahankan penempatan aktif
+        } else {
+          const pTime = p.tanggal_mulai ? new Date(p.tanggal_mulai).getTime() : new Date((p as any).created_at || 0).getTime();
+          const existingTime = existing.tanggal_mulai ? new Date(existing.tanggal_mulai).getTime() : new Date((existing as any).created_at || 0).getTime();
+          if (pTime > existingTime) {
+            studentMap.set(p.siswa_id, p);
+          }
+        }
+      }
+    }
+    return Array.from(studentMap.values());
   }, [penempatanData]);
   // Empty state guard: deteksi kondisi data PKL kosong untuk Pilar 8
   const isEmpty = !isLoading && rawPenempatan.length === 0 && !isStudent;
@@ -450,9 +477,6 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
 
   const content = (
     <>
-      {/* Operational Divider */}
-      <div className="h-px bg-slate-200 dark:bg-slate-800 w-full mb-3 mt-1" />
-
       {/* If embedded in tab and is student, show placement info at top */}
       {hideLayout && isStudent && studentPkl && (
         <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-xs mb-4">
@@ -473,7 +497,7 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
         </div>
       )}
 
-      <div className="w-full max-w-7xl mx-auto print:hidden">
+      <div className="w-full print:hidden">
         {isStudent ? (
           <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding>
             <div className="p-3 sm:p-5">
@@ -578,6 +602,11 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
               renderActivityText={renderActivityText}
               getDriveThumbnailUrl={getDriveThumbnailUrl}
               isGlobalHubin={isGlobalHubin}
+              isKaprog={isKaprog}
+              kaprogJurusan={kaprogJurusan}
+              isWaliKelas={isWaliKelas}
+              walikelasKelas={walikelasKelas}
+              activeGuruId={activeGuruId}
               selectedTp={selectedTpFilter}
               onTpChange={setSelectedTpFilter}
               tpOptions={tpOptions}
@@ -622,7 +651,7 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
         breadcrumbs={[{ label: 'Dashboard', path: '/dashboard' }, { label: 'Absensi PKL', path: '/hubin/absensi' }]}
         canView={isEnabled}
         permissionMessage="Modul Absensi PKL tidak aktif atau Anda tidak memiliki akses HUBIN."
-        title={isStudent ? "ABSENSI PKL" : "MONITORING ABSENSI"}
+        title={isStudent ? "Presensi PKL" : "Presensi & Jurnal PKL"}
         description={isStudent ? format(new Date(), 'EEEE, dd MMMM yyyy', { locale: localeID }) : "Verifikasi kehadiran & jurnal kegiatan siswa PKL"}
         hardeningModuleKey="hubin_absensi_pkl"
         instruction={{

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../../utils/layoutUtils';
 import { PklStatusBadge } from './PklStatusBadge';
+import { getPklDisplayStatus } from '../../utils/hubinPklLifecycle';
 import { Button } from '../ui';
 import { HubinJurnalStatus } from '../../constants/HubinConstants';
 import type { SiswaPkl, MitraData } from '../../pages/hubin/PenempatanPklPage';
@@ -30,6 +31,9 @@ interface GetColumnsParams {
   onPrintMonitoring?: (row: SiswaPkl) => void;
   onHapus: (row: SiswaPkl) => void;
   onEdit?: (row: SiswaPkl) => void;
+  onSelesai?: (row: SiswaPkl) => void;
+  onMutasi?: (row: SiswaPkl) => void;
+  onFilterSiswaHistory?: (namaSiswa: string) => void;
 }
 
 export const getPenempatanColumns = ({
@@ -44,6 +48,9 @@ export const getPenempatanColumns = ({
   onPrintMonitoring,
   onHapus,
   onEdit,
+  onSelesai,
+  onMutasi,
+  onFilterSiswaHistory,
 }: GetColumnsParams) => [
   {
     key: 'siswa',
@@ -93,6 +100,11 @@ export const getPenempatanColumns = ({
         <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
           <span>Pmb: {row.Pembimbing?.nama_guru || 'Belum ditunjuk'}</span>
         </div>
+        {row.catatan_pkl && row.catatan_pkl.includes('Mutasi:') && (
+          <div className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 w-fit">
+            <span>🏷️ {row.catatan_pkl}</span>
+          </div>
+        )}
       </div>
     )
   },
@@ -113,9 +125,10 @@ export const getPenempatanColumns = ({
     key: 'status',
     label: 'Status',
     sortable: true,
-    render: (status: string) => (
-      <PklStatusBadge status={status} />
-    )
+    render: (_value: unknown, row: SiswaPkl) => {
+      const display = getPklDisplayStatus(row);
+      return <PklStatusBadge status={display.status} />;
+    }
   },
   {
     key: 'kunjungan',
@@ -228,6 +241,9 @@ export const getPenempatanColumns = ({
             onPrintMonitoring={onPrintMonitoring}
             onHapus={onHapus}
             onEdit={onEdit}
+            onSelesai={onSelesai}
+            onMutasi={onMutasi}
+            onFilterSiswaHistory={onFilterSiswaHistory}
             mitraPhone={row.Mitra?.kontak || fullMitra?.kontak}
           />
         </div>

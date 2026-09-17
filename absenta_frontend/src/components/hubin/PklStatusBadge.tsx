@@ -28,6 +28,13 @@ export const PklStatusBadge: React.FC<PklStatusBadgeProps> = React.memo(({ statu
           <span>Selesai</span>
         </span>
       );
+    case 'PERIODE_BERAKHIR':
+      return (
+        <span className={cn("px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-300 rounded-full flex items-center gap-1.5 w-fit border border-amber-200 dark:border-amber-800 shadow-sm", className)}>
+          <AlertCircle size={13} className="shrink-0 text-amber-600 animate-pulse" />
+          <span>Periode Berakhir</span>
+        </span>
+      );
     case 'BATAL':
       return (
         <span className={cn("px-2.5 py-1 text-xs font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 rounded-full flex items-center gap-1.5 w-fit border border-rose-100 dark:border-rose-900/30 shadow-sm", className)}>

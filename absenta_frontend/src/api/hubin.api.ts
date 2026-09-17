@@ -4,6 +4,7 @@ import { importDataFromExcel } from '../utils/import.utils';
 export interface MitraIndustri {
   id: string;
   nama: string;
+  logo_url?: string | null;
   bidang?: string;
   alamat?: string;
   kontak?: string;
@@ -202,6 +203,16 @@ export const hubinApi = {
   getMyPenempatan: () => requestWithFallback<any>('get', '/hubin/penempatan/me'),
   createPenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan', { data }),
   updatePenempatan: (id: string, data: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}`, { data }),
+  mutasiPenempatan: (id: string, data: {
+    tanggal_selesai_lama?: string;
+    mitra_id_baru: string;
+    pembimbing_id_baru?: string;
+    tanggal_mulai_baru: string;
+    tanggal_selesai_baru?: string;
+    catatan_mutasi?: string;
+  }) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/mutasi`, { data }),
+  bulkUpdateStatus: (data: { ids: string[]; status: string; tanggal_selesai_aktual?: string }) =>
+    requestWithFallback<any>('post', '/hubin/penempatan/bulk-status', { data }),
   bulkCreatePenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/bulk', { data }),
   updatePenilaian: (id: string, nilai: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/nilai`, { data: { nilai } }),
   addKunjungan: (id: string, data: any) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/kunjungan`, { data }),

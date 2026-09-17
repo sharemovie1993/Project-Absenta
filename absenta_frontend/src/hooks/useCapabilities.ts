@@ -155,9 +155,13 @@ export function useCapabilities() {
       // Level 3
       isWaliKelas,
       isHomeroomTeacher: isWaliKelas, // canonical alias
+      walikelasKelas: (user as any)?.walikelas_kelas || (user as any)?.guru_profile?.wali_kelas_di || null,
+      walikelasKelasIds: (user as any)?.kelas_ids || ((user as any)?.guru_profile?.wali_kelas_di?.id ? [(user as any).guru_profile.wali_kelas_di.id] : []),
       isBpbk,
       isPembinaEskul,
       isKaprog,
+      kaprogJurusan: user?.kaprog_jurusan || null,
+      kaprogUnitIds: user?.unit_ids || [],
       isKabeng,
 
       // Level 4 & 5
@@ -169,6 +173,7 @@ export function useCapabilities() {
       isKepsek,
       isKepalaSekolah: isKepsek,  // canonical alias
       isBillingAdmin,
+      activeGuruId: (user as any)?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null,
     };
   }, [user, can]);
 

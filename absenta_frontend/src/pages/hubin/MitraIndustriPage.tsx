@@ -38,6 +38,7 @@ import useConfirm from '../../hooks/useConfirm';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { generateAdvancedTemplate } from '../../utils/excel-advanced.utils';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 // Lazy load heavy form component
 const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(module => ({ default: module.MitraFormModal })));
@@ -190,6 +191,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
 
     const data = {
       nama: formData.get('nama') as string,
+      logo_url: formData.get('logo_url') as string || null,
       bidang: formData.get('bidang') as string || null,
       alamat: formData.get('alamat') as string || null,
       kontak: formData.get('kontak') as string || null,
@@ -251,6 +253,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       await generateAdvancedTemplate(
         [
           { header: 'Nama Mitra', key: 'nama', width: 30, required: true },
+          { header: 'URL Logo Perusahaan', key: 'logo_url', width: 35 },
           { header: 'Bidang Industri', key: 'bidang', width: 25 },
           { header: 'Alamat Perusahaan', key: 'alamat', width: 40 },
           { header: 'Kontak Perusahaan', key: 'kontak', width: 20 },
@@ -355,8 +358,25 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
         sortable: true,
         render: (nama: string, row: MitraIndustri) => (
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold uppercase shrink-0">
-              {nama.substring(0, 2)}
+            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+              {row.logo_url ? (
+                <img
+                  src={resolveProfilePhotoUrl(row.logo_url)}
+                  alt={nama}
+                  className="w-full h-full object-contain p-1"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                    const parent = (e.currentTarget as HTMLElement).parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<span class="text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase">${(nama || 'MI').substring(0, 2)}</span>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase">
+                  {(nama || 'MI').substring(0, 2)}
+                </div>
+              )}
             </div>
             <div>
               <p className="font-semibold text-slate-900 dark:text-slate-100">{nama}</p>
@@ -491,8 +511,25 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold uppercase shrink-0">
-              {row.nama?.substring(0, 2) || 'MI'}
+            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center overflow-hidden shrink-0">
+              {row.logo_url ? (
+                <img
+                  src={resolveProfilePhotoUrl(row.logo_url)}
+                  alt={row.nama}
+                  className="w-full h-full object-contain p-1"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                    const parent = (e.currentTarget as HTMLElement).parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<span class="text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase">${(row.nama || 'MI').substring(0, 2)}</span>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs uppercase">
+                  {(row.nama || 'MI').substring(0, 2)}
+                </div>
+              )}
             </div>
             <div className="space-y-0.5 min-w-0">
               <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">

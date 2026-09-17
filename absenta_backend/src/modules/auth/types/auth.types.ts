@@ -55,6 +55,18 @@ export interface UserResponse {
     absensi_mode: string;
   } | null;
   position_codes?: string[];
+  unit_ids?: string[];
+  kelas_ids?: string[];
+  kaprog_jurusan?: {
+    id: string;
+    nama: string;
+    singkatan?: string | null;
+  } | null;
+  walikelas_kelas?: {
+    id: string;
+    nama_kelas: string;
+    tingkat?: number | null;
+  } | null;
   created_at: Date;
   updated_at: Date;
 }

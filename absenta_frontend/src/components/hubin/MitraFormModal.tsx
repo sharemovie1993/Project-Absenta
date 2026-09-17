@@ -1,6 +1,6 @@
 import React from 'react';
 import type { MitraIndustri } from '../../api/hubin.api';
-import { Building2, ShieldAlert, Compass, AlertCircle, Lock, MapPin } from 'lucide-react';
+import { Building2, ShieldAlert, Compass, AlertCircle, Lock, MapPin, Upload, X, Loader2 } from 'lucide-react';
 import { calculateDistance } from '../../utils/hubinUtils';
 import { HUBIN_CONFIG } from '../../constants/HubinConstants';
 import { Modal } from '../ui/Modal';
@@ -9,6 +9,8 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { SimpleFormField } from '../ui/SimpleFormField';
 import { toast } from 'react-hot-toast';
+import axiosInstance from '../../lib/axiosInstance';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 interface MitraFormModalProps {
   isOpen: boolean;
@@ -56,15 +58,57 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = React.memo(({
   } | null>(null);
 
   const [mapView, setMapView] = React.useState<'standard' | 'satellite'>('standard');
+  const [logoUrl, setLogoUrl] = React.useState<string>('');
+  const [isUploadingLogo, setIsUploadingLogo] = React.useState(false);
+  const logoFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const GPS_UPDATE_TOLERANCE_KM = 10; // Batas maksimal perubahan lokasi (10 KM) agar tidak terjadi human error / fraud
 
   React.useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setLogoUrl(editingMitra?.logo_url || '');
+    } else {
+      setLogoUrl('');
       setGpsConfirmation(null);
       setMapView('standard');
     }
-  }, [isOpen]);
+  }, [isOpen, editingMitra]);
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Ukuran file logo maksimal 2 MB');
+      e.target.value = '';
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await axiosInstance.post('/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const fileUrl = res.data?.data?.url || res.data?.url || res.data?.data || '';
+      if (fileUrl) {
+        setLogoUrl(fileUrl);
+        toast.success('Logo perusahaan berhasil diunggah!');
+      } else {
+        toast.error('Gagal mendapatkan tautan berkas logo');
+      }
+    } catch (err: unknown) {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengunggah file logo';
+      toast.error(errorMsg);
+    } finally {
+      setIsUploadingLogo(false);
+      if (logoFileInputRef.current) {
+        logoFileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleGetGPSLocation = React.useCallback(() => {
     if (!navigator.geolocation) {
@@ -172,6 +216,7 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = React.memo(({
           {isEditKontakOnly && editingMitra && (
             <>
               <input type="hidden" name="nama" value={editingMitra.nama} />
+              <input type="hidden" name="logo_url" value={editingMitra.logo_url || ''} />
               <input type="hidden" name="bidang" value={editingMitra.bidang || ''} />
               <input type="hidden" name="mou_url" value={editingMitra.mou_url || ''} />
               <input type="hidden" name="radius" value={editingMitra.radius || HUBIN_CONFIG.DEFAULT_RADIUS_METERS} />
@@ -187,6 +232,83 @@ export const MitraFormModal: React.FC<MitraFormModalProps> = React.memo(({
               <input type="hidden" name="kompetensi_keahlian" value={editingMitra.kompetensi_keahlian || ''} />
             </>
           )}
+
+          {/* Hidden input for logo_url submitted with the form */}
+          <input type="hidden" name="logo_url" value={logoUrl} />
+
+          {/* Section: Logo Perusahaan */}
+          <div className="p-3.5 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200/70 dark:border-slate-800/60">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+              Logo Perusahaan
+              {isEditKontakOnly && <span className="text-slate-400 font-normal ml-1">(🔒 Terkunci)</span>}
+            </label>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="relative w-20 h-20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+                {logoUrl ? (
+                  <img
+                    src={resolveProfilePhotoUrl(logoUrl)}
+                    alt="Logo Perusahaan"
+                    className="w-full h-full object-contain p-1.5"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-slate-300 dark:text-slate-600">
+                    <Building2 size={28} />
+                    <span className="text-[9px] font-semibold mt-1">No Logo</span>
+                  </div>
+                )}
+                {isUploadingLogo && (
+                  <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center backdrop-blur-xs">
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 space-y-2 text-center sm:text-left">
+                <div className="text-xs text-slate-600 dark:text-slate-400">
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">Identitas Visual Mitra Industri</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Format PNG, JPG, WEBP, atau SVG. Maksimum 2 MB.</p>
+                </div>
+                {!isEditKontakOnly && (
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <Button
+                      type="button"
+                      variant="toolbarOutline"
+                      size="sm"
+                      disabled={isUploadingLogo}
+                      onClick={() => logoFileInputRef.current?.click()}
+                      className="text-xs h-8 px-3 gap-1.5 font-medium"
+                    >
+                      <Upload size={13} />
+                      {logoUrl ? 'Ganti Logo' : 'Unggah Logo'}
+                    </Button>
+                    {logoUrl && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isUploadingLogo}
+                        onClick={() => setLogoUrl('')}
+                        className="text-xs h-8 px-2.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/20 gap-1 font-medium"
+                      >
+                        <X size={13} />
+                        Hapus
+                      </Button>
+                    )}
+                    <input
+                      ref={logoFileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+                      className="hidden"
+                      onChange={handleLogoFileChange}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
           <SimpleFormField 
             htmlFor="mitra-nama"

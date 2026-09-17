@@ -3115,6 +3115,7 @@ model MitraIndustri {
   id        String  @id @default(uuid())
   tenant_id String
   nama      String
+  logo_url  String?
   bidang    String?
   alamat    String?
   kontak    String?

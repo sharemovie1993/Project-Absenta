@@ -35,6 +35,8 @@ export class HubinService {
   async updatePenempatan(...args: any[]) { return (this.penempatan as any).updatePenempatan(...args); }
   async bulkCreatePenempatan(...args: any[]) { return (this.penempatan as any).bulkCreatePenempatan(...args); }
   async deletePenempatan(...args: any[]) { return (this.penempatan as any).deletePenempatan(...args); }
+  async mutasiPenempatan(...args: any[]) { return (this.penempatan as any).mutasiPenempatan(...args); }
+  async bulkUpdateStatus(...args: any[]) { return (this.penempatan as any).bulkUpdateStatus(...args); }
 
   // Absensi, Logbook & Jurnal
   async getAbsensiSiswa(...args: any[]) { return (this.absensi as any).getAbsensiSiswa(...args); }
@@ -78,7 +80,9 @@ export class HubinService {
   async getRecentActivity(...args: any[]) { return (this.penilaian as any).getRecentActivity(...args); }
   async verifySiswaPklOwnership(...args: any[]) { return (this.penilaian as any).verifySiswaPklOwnership(...args); }
   async upsertNilaiPklBatch(...args: any[]) { return (this.penilaian as any).upsertNilaiPklBatch(...args); }
-  async getRekapPklSiswa(...args: any[]) { return (this.penilaian as any).getRekapPklSiswa(...args); }
+  async getRekapPklSiswa(tenantId: string, params?: any, userId?: string, org?: any) { 
+    return (this.penilaian as any).getRekapPklSiswa(tenantId, params, userId, org); 
+  }
   async upsertSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).upsertSettingDeskripsiPkl(...args); }
   async getSettingDeskripsiPklList(...args: any[]) { return (this.penilaian as any).getSettingDeskripsiPklList(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }

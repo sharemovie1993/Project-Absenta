@@ -52,6 +52,11 @@ interface HubinManagementViewProps {
   renderActivityText: (str: string | undefined) => React.ReactNode;
   getDriveThumbnailUrl: (url: string | undefined) => string | null;
   isGlobalHubin?: boolean;
+  isKaprog?: boolean;
+  kaprogJurusan?: { id: string; nama: string; singkatan?: string | null } | null;
+  isWaliKelas?: boolean;
+  walikelasKelas?: { id: string; nama_kelas: string; tingkat?: number | null } | null;
+  activeGuruId?: string | null;
   selectedTp?: string;
   onTpChange?: (tpId: string) => void;
   tpOptions?: Array<{ value: string; label: string }>;
@@ -68,18 +73,42 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   renderActivityText,
   getDriveThumbnailUrl,
   isGlobalHubin = false,
+  isKaprog = false,
+  kaprogJurusan,
+  isWaliKelas = false,
+  walikelasKelas,
+  activeGuruId,
   selectedTp,
   onTpChange,
   tpOptions
 }) => {
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'ALL' | 'MY_GUIDANCE'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'NEEDS_VERIFICATION' | 'ATTENDED_TODAY' | 'NOT_ATTENDED_TODAY'>('ALL');
   const [mitraFilter, setMitraFilter] = useState('ALL');
   const [pembimbingFilter, setPembimbingFilter] = useState('ALL');
   const [kelasFilter, setKelasFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Count bimbingan saya
+  const myGuidanceCount = useMemo(() => {
+    if (!activeGuruId) return 0;
+    return (rawPenempatan || []).filter((p: any) => {
+      const pId = p.pembimbing_id || p.Pembimbing?.id;
+      return pId === activeGuruId;
+    }).length;
+  }, [rawPenempatan, activeGuruId]);
+
+  // Count siswa kelas binaan (untuk Wali Kelas mode ALL)
+  const homeroomCount = useMemo(() => {
+    if (!isWaliKelas || isGlobalHubin || isKaprog || !walikelasKelas?.id) return rawPenempatan.length;
+    return (rawPenempatan || []).filter((p: any) => {
+      const kId = p.Siswa?.Kelas?.id || p.Siswa?.kelas_id;
+      return kId === walikelasKelas.id;
+    }).length;
+  }, [rawPenempatan, isWaliKelas, isGlobalHubin, isKaprog, walikelasKelas]);
 
   const toggleRow = useCallback((id: string) => {
     setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
@@ -143,6 +172,19 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   // Filtered Students List
   const filteredPenempatan = useMemo(() => {
     return (rawPenempatan || []).filter((p: any) => {
+      // 0. Scope Filter (Semua Siswa Jurusan vs Bimbingan Saya)
+      if (scopeFilter === 'MY_GUIDANCE' && activeGuruId) {
+        const pId = p.pembimbing_id || p.Pembimbing?.id;
+        if (pId !== activeGuruId) return false;
+      }
+
+      // 0b. Wali Kelas: saat tab "Semua Siswa [Kelas]", hanya tampilkan siswa dari kelas binaan saja
+      // Siswa bimbingan lintas kelas hanya muncul di tab "Bimbingan Saya"
+      if (scopeFilter === 'ALL' && isWaliKelas && !isGlobalHubin && !isKaprog && walikelasKelas?.id) {
+        const kId = p.Siswa?.Kelas?.id || p.Siswa?.kelas_id;
+        if (kId !== walikelasKelas.id) return false;
+      }
+
       // 1. Search Query
       if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
@@ -179,7 +221,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
       }
 
       // 5. Kelas Filter
-      if (kelasFilter !== 'ALL') {
+      if (kelasFilter !== 'ALL' && scopeFilter !== 'MY_GUIDANCE') {
         const kId = p.Siswa?.Kelas?.id || p.Siswa?.kelas_id;
         const kName = p.Siswa?.Kelas?.nama_kelas || p.Siswa?.Kelas?.nama;
         if (kId !== kelasFilter && kName !== kelasFilter) return false;
@@ -187,7 +229,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
       return true;
     });
-  }, [rawPenempatan, searchTerm, statusFilter, mitraFilter, pembimbingFilter, kelasFilter]);
+  }, [rawPenempatan, scopeFilter, activeGuruId, isWaliKelas, isGlobalHubin, isKaprog, walikelasKelas, searchTerm, statusFilter, mitraFilter, pembimbingFilter, kelasFilter]);
 
   const totalItems = filteredPenempatan.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
@@ -198,25 +240,54 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   }, [filteredPenempatan, currentPage, itemsPerPage]);
 
   const needsVerificationCount = useMemo(() => {
-    return (rawPenempatan || []).reduce((acc: number, curr: any) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
-  }, [rawPenempatan]);
+    return filteredPenempatan.reduce((acc: number, curr: any) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
+  }, [filteredPenempatan]);
 
   const attendedTodayCount = useMemo(() => {
-    return (rawPenempatan || []).filter((p: any) => {
+    return filteredPenempatan.filter((p: any) => {
       const lastAbs = p.AbsensiPkl?.[0];
       if (!lastAbs) return false;
       const today = new Date().toISOString().split('T')[0];
       return lastAbs.tanggal.startsWith(today);
     }).length;
-  }, [rawPenempatan]);
+  }, [filteredPenempatan]);
 
   return (
     <div className="space-y-6">
+      {/* Banner Khusus Kaprog: Unit Terkunci */}
+      {isKaprog && (
+        <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+          <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+          <div>
+            <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
+            <span>
+              Monitoring presensi PKL difokuskan otomatis untuk Jurusan{' '}
+              <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>
+              {kaprogJurusan?.singkatan ? ` (${kaprogJurusan.singkatan})` : ''}.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
+      {isWaliKelas && !isKaprog && !isGlobalHubin && (
+        <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
+          <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <div>
+            <span className="font-bold">Mode Wali Kelas (Monitoring Kelas Binaan):</span>{' '}
+            <span>
+              Monitoring presensi PKL difokuskan otomatis untuk kelas{' '}
+              <strong>{walikelasKelas?.nama_kelas || 'Binaan Anda'}</strong>.
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Analytics Cards - Compact Premium Mobile & Desktop Grid */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <AnalyticsCard 
           title={<><span className="hidden sm:inline">Total </span>Siswa</>}
-          value={rawPenempatan.length}
+          value={filteredPenempatan.length}
           icon={<Users size={16} />}
           gradient="from-indigo-600 to-violet-700"
           variant="compact-premium"
@@ -267,6 +338,50 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
         fullWidth
         noPadding
       >
+        {/* Toggle Scope: Semua Siswa Jurusan vs Bimbingan Saya (Khusus jika user adalah guru pembimbing/pejabat) */}
+        {activeGuruId && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800 bg-slate-50/40 dark:bg-slate-900/20">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-200/70 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setScopeFilter('ALL');
+                  setCurrentPage(1);
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all text-xs font-bold",
+                  scopeFilter === 'ALL'
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                {isKaprog ? '🏢 Semua Siswa Jurusan' : (isWaliKelas ? `🏫 Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : '📋 Semua Penempatan')} ({homeroomCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setScopeFilter('MY_GUIDANCE');
+                  setKelasFilter('ALL');
+                  setCurrentPage(1);
+                }}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg transition-all text-xs font-bold flex items-center gap-1",
+                  scopeFilter === 'MY_GUIDANCE'
+                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                )}
+              >
+                👨‍🏫 Bimbingan Saya ({myGuidanceCount})
+              </button>
+            </div>
+            {scopeFilter === 'MY_GUIDANCE' && (
+              <span className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+                🎯 Menampilkan {myGuidanceCount} siswa yang Anda bimbing langsung
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Toolbar Baris Pertama - Filter & Search */}
         <div className="flex flex-col lg:flex-row gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
           {/* 1. Input Pencarian di Sisi Kiri */}
@@ -456,9 +571,16 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-[7px] font-black text-slate-400 uppercase tracking-[0.15em] mb-0.5">Penempatan</p>
-                            <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight truncate">
-                              {p.Mitra?.nama || <span className="text-slate-300 italic font-normal text-[9px]">Belum Ditempatkan</span>}
-                            </p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight truncate">
+                                {p.Mitra?.nama || <span className="text-slate-300 italic font-normal text-[9px]">Belum Ditempatkan</span>}
+                              </p>
+                              {p.status === 'SELESAI' && (
+                                <span className="text-[7px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 uppercase">
+                                  Selesai
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 

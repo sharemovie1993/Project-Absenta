@@ -831,6 +831,9 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    {/* HUBIN Backward Compatibility Aliases */}
+                    <Route path="/hubin/nilai" element={<Navigate to="/hubin/nilai-pkl" replace />} />
+                    <Route path="/hubin/pengaturan" element={<Navigate to="/hubin/settings" replace />} />
 
                     {/* Kurikulum Module */}
 

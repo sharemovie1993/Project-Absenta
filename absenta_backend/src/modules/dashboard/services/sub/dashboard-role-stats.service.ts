@@ -4,6 +4,7 @@ import { AbsensiMode } from '@/constants/enums';
 import { formatTenantTime, getTenantTimezone, getTenantOffsetString, getTenantDayRange } from '@/utils/timezone.utils';
 import { sesiLifecycleService, SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
 import { DashboardCommonHelper } from './dashboard-common.helper';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 
 export class DashboardRoleStatsService {
   private helper = new DashboardCommonHelper();
@@ -12,6 +13,10 @@ export class DashboardRoleStatsService {
   async getHubinStats(tenantId: string, userId?: string) {
     let guruId: string | undefined;
     let isGlobalHubin = false;
+    let isKaprog = false;
+    let kaprogUnitIds: string[] = [];
+    let isWalikelas = false;
+    let walikelasKelasIds: string[] = [];
 
     if (userId) {
       const user = await prisma.user.findUnique({
@@ -22,23 +27,92 @@ export class DashboardRoleStatsService {
             include: {
               rolePermissions: true
             }
+          },
+          organizationalAssignments: {
+            where: { is_active: true },
+            include: { Position: true }
           }
         }
       });
 
       guruId = user?.Guru?.id;
       
-      // Check if user has global hubin management capability
-      // If they do, they see everything. If not, they only see their assigned students.
+      // Mengacu pada position-capabilities.ts & STRUKTUR_CODES:
       const permissions = user?.Role?.rolePermissions.map(rp => rp.permission_id) || [];
-      isGlobalHubin = permissions.includes('hubin.partners.manage') || user?.Role?.name === 'ADMIN';
+      const assignedPositions = user?.organizationalAssignments?.map((oa: any) => oa.Position?.code) || [];
+
+      // 1. Jabatan Struktural Eksekutif Hubin (tenant-wide scope):
+      //    - STRUKTUR_CODES.HUBIN (Waka Hubin & Staf)
+      //    - STRUKTUR_CODES.BKK (Ketua Bursa Kerja Khusus)
+      //    - STRUKTUR_CODES.KEPALA_SEKOLAH (Pimpinan Satuan Pendidikan)
+      const hasHubinExecutivePosition = assignedPositions.some(code => 
+        code === STRUKTUR_CODES.HUBIN || 
+        code === STRUKTUR_CODES.BKK || 
+        code === STRUKTUR_CODES.KEPALA_SEKOLAH
+      );
+
+      // Jabatan Struktural KAPROG (Jurusan Scoped)
+      const kaprogAssignments = user?.organizationalAssignments?.filter((oa: any) => 
+        (oa.Position?.code === STRUKTUR_CODES.KAPROG || oa.Position?.code === 'KAPROG') && oa.unit_id
+      ) || [];
+      isKaprog = !hasHubinExecutivePosition && user?.Role?.name !== 'ADMIN' && kaprogAssignments.length > 0;
+      if (isKaprog) {
+        kaprogUnitIds = kaprogAssignments.map((a: any) => a.unit_id);
+      }
+
+      // Jabatan Struktural WALIKELAS (Kelas Scoped)
+      const walikelasAssignments = user?.organizationalAssignments?.filter((oa: any) => 
+        (oa.Position?.code === STRUKTUR_CODES.WALIKELAS || oa.Position?.code === 'WALIKELAS' || oa.Position?.code === 'WALI_KELAS') && oa.kelas_id
+      ) || [];
+      isWalikelas = !hasHubinExecutivePosition && user?.Role?.name !== 'ADMIN' && !isKaprog && walikelasAssignments.length > 0;
+      if (isWalikelas) {
+        walikelasKelasIds = walikelasAssignments.map((a: any) => a.kelas_id);
+      }
+
+      // 2. Kapabilitas Eksplisit Kanonikal (PoLP)
+      const hasHubinManagementCap = 
+        permissions.includes('dashboard.view.hubin') ||
+        permissions.includes('hubin.pkl.manage') ||
+        permissions.includes('hubin.partners.manage');
+
+      if (isKaprog || isWalikelas) {
+        isGlobalHubin = false;
+      } else {
+        isGlobalHubin = user?.Role?.name === 'ADMIN' ||
+                        hasHubinExecutivePosition ||
+                        hasHubinManagementCap;
+      }
     }
+
+    // Dapatkan Tahun Pelajaran yang sedang aktif di tenant
+    const activeTp = await prisma.tahunPelajaran.findFirst({
+      where: { tenant_id: tenantId, is_active: true }
+    });
 
     const baseWhere: any = { tenant_id: tenantId };
     const pklWhere: any = { tenant_id: tenantId };
 
-    if (!isGlobalHubin && guruId) {
+    if (isKaprog && kaprogUnitIds.length > 0) {
+      pklWhere.Siswa = {
+        OR: [
+          { jurusan_id: { in: kaprogUnitIds } },
+          { Kelas: { jurusan_id: { in: kaprogUnitIds } } }
+        ]
+      };
+    } else if (isWalikelas && walikelasKelasIds.length > 0) {
+      pklWhere.Siswa = {
+        kelas_id: { in: walikelasKelasIds }
+      };
+    } else if (!isGlobalHubin && guruId) {
       pklWhere.pembimbing_id = guruId;
+    }
+
+    // Batasi siswa PKL pada Tahun Pelajaran yang sedang aktif jika ada
+    if (activeTp) {
+      pklWhere.OR = [
+        { SiswaAkademik: { tahun_pelajaran_id: activeTp.id } },
+        { Siswa: { tahun_pelajaran_id: activeTp.id } }
+      ];
     }
 
     const thirtyDaysFromNow = new Date();
@@ -57,6 +131,14 @@ export class DashboardRoleStatsService {
     });
     const totalAlumni = alumniStudents.length;
 
+    const todayDateStr = new Intl.DateTimeFormat('en-CA', { 
+      timeZone: 'Asia/Jakarta', 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit' 
+    }).format(new Date());
+    const todayDate = new Date(`${todayDateStr}T00:00:00.000Z`);
+
     const [
       totalMitra,
       totalSiswaPkl,
@@ -69,7 +151,11 @@ export class DashboardRoleStatsService {
       statusWirausahaCount,
       totalRecruitmentSuccess,
       topMitraGroup,
-      tracedAlumni
+      tracedAlumni,
+      todayAbsensiList,
+      pklGradingList,
+      tefaTotalOrders,
+      tefaActiveOrders
     ] = await Promise.all([
       prisma.mitraIndustri.count({ where: baseWhere }),
       prisma.siswaPkl.count({ where: pklWhere }),
@@ -132,7 +218,34 @@ export class DashboardRoleStatsService {
             }
           }
         }
-      })
+      }),
+      prisma.absensiPkl.findMany({
+        where: {
+          tenant_id: tenantId,
+          tanggal: todayDate,
+          SiswaPkl: pklWhere
+        },
+        select: {
+          id: true,
+          status: true,
+          is_verified: true
+        }
+      }),
+      prisma.siswaPkl.findMany({
+        where: pklWhere,
+        select: {
+          id: true,
+          siswa_id: true,
+          status: true,
+          tanggal_selesai: true,
+          nilai_akhir_pkl: true,
+          nilai_json: true,
+          nomor_sertifikat: true,
+          hard_kompetensi_teknis: true
+        }
+      }),
+      prisma.hubinTefaOrder.count({ where: { ...baseWhere, deleted_at: null } }),
+      prisma.hubinTefaOrder.count({ where: { ...baseWhere, status_proyek: { in: ['PERENCANAAN', 'BERJALAN'] }, deleted_at: null } })
     ]);
 
     // Tracer Coverage
@@ -204,10 +317,96 @@ export class DashboardRoleStatsService {
       take: 5
     });
 
+    const hadirToday = todayAbsensiList.filter(a => a.status === 'HADIR' || a.status === 'TERLAMBAT').length;
+    const sakitToday = todayAbsensiList.filter(a => a.status === 'SAKIT').length;
+    const izinToday = todayAbsensiList.filter(a => a.status === 'IZIN').length;
+    const unverifiedToday = todayAbsensiList.filter(a => !a.is_verified).length;
+
+    // Deduplikasi dan agregasi berbasis siswa_id unik (mencegah double-counting jika siswa mutasi/pindah DUDI)
+    const uniqueSiswaIds = new Set<string>();
+    const activeSiswaIds = new Set<string>();
+    const overdueSiswaIds = new Set<string>();
+    const gradingPerSiswa = new Map<string, { sudahDinilai: boolean; sertifikat: boolean }>();
+
+    for (const p of pklGradingList) {
+      uniqueSiswaIds.add(p.siswa_id);
+      if (p.status === 'AKTIF') {
+        const finishDate = p.tanggal_selesai ? new Date(p.tanggal_selesai) : null;
+        if (finishDate) {
+          finishDate.setHours(23, 59, 59, 999);
+        }
+        const isOverdue = finishDate !== null && finishDate.getTime() < todayDate.getTime();
+        if (isOverdue) {
+          overdueSiswaIds.add(p.siswa_id);
+        } else {
+          activeSiswaIds.add(p.siswa_id);
+        }
+      }
+      const dudiAvg = (p.nilai_json as any)?.dudi_avg;
+      const isGraded = (p.nilai_akhir_pkl !== null && p.nilai_akhir_pkl !== undefined) ||
+                       (dudiAvg !== null && dudiAvg !== undefined) ||
+                       (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined);
+      const hasCert = Boolean(p.nomor_sertifikat && p.nomor_sertifikat.trim() !== '');
+      const curr = gradingPerSiswa.get(p.siswa_id) || { sudahDinilai: false, sertifikat: false };
+      gradingPerSiswa.set(p.siswa_id, {
+        sudahDinilai: curr.sudahDinilai || isGraded,
+        sertifikat: curr.sertifikat || hasCert,
+      });
+    }
+
+    // Jika seorang siswa memiliki record aktif yang masih in-season, jangan masukkan ke overdue
+    for (const id of activeSiswaIds) {
+      overdueSiswaIds.delete(id);
+    }
+
+    // Siswa yang praktiknya selesai (tidak lagi memiliki status AKTIF in-season maupun overdue)
+    const finishedSiswaIds = new Set<string>();
+    for (const p of pklGradingList) {
+      if (p.status === 'SELESAI' && !activeSiswaIds.has(p.siswa_id) && !overdueSiswaIds.has(p.siswa_id)) {
+        finishedSiswaIds.add(p.siswa_id);
+      }
+    }
+
+    const totalUniqueSiswaPkl = uniqueSiswaIds.size;
+    const resolvedPklAktif = activeSiswaIds.size;
+    const resolvedPklOverdue = overdueSiswaIds.size;
+    const resolvedPklSelesai = finishedSiswaIds.size;
+
+    let sudahDinilaiCount = 0;
+    let sertifikatTerbitCount = 0;
+    let selesaiBelumDinilaiCount = 0;
+
+    for (const [sId, info] of gradingPerSiswa.entries()) {
+      if (info.sudahDinilai) sudahDinilaiCount++;
+      if (info.sertifikat) sertifikatTerbitCount++;
+      if (finishedSiswaIds.has(sId) && !info.sudahDinilai) {
+        selesaiBelumDinilaiCount++;
+      }
+    }
+
+    const belumDinilaiCount = Math.max(0, totalUniqueSiswaPkl - sudahDinilaiCount);
+    const persenDinilai = totalUniqueSiswaPkl > 0 ? Math.round((sudahDinilaiCount / totalUniqueSiswaPkl) * 100) : 0;
+
+    // Evaluasi 4 Fase Siklus PKL SSOT
+    let fasePkl: 'IN_SEASON_ACTIVE' | 'ROLLING_MIXED' | 'POST_SEASON_EVALUATION' | 'OFF_SEASON_PREPARATION' = 'OFF_SEASON_PREPARATION';
+    const totalFinishedOrOverdue = resolvedPklSelesai + resolvedPklOverdue;
+    if (resolvedPklAktif > 0 && totalFinishedOrOverdue > 0) {
+      fasePkl = 'ROLLING_MIXED';
+    } else if (resolvedPklAktif > 0) {
+      fasePkl = 'IN_SEASON_ACTIVE';
+    } else if (belumDinilaiCount > 0) {
+      fasePkl = 'POST_SEASON_EVALUATION';
+    } else {
+      fasePkl = 'OFF_SEASON_PREPARATION';
+    }
+
     return {
       totalMitra,
-      totalSiswaPkl,
-      pklAktif,
+      totalSiswaPkl: totalUniqueSiswaPkl,
+      pklAktif: resolvedPklAktif,
+      pklOverdue: resolvedPklOverdue,
+      pklSelesai: resolvedPklSelesai,
+      fasePkl,
       pendingReports,
       mouExpiringCount,
       totalLowonganAktif,
@@ -218,12 +417,37 @@ export class DashboardRoleStatsService {
       topMitra,
       topJurusanTerserap,
       totalRecruitmentSuccess,
+      tahunPelajaran: activeTp ? {
+        id: activeTp.id,
+        nama: activeTp.tahun,
+        is_active: activeTp.is_active
+      } : null,
+      todayPresensi: {
+        hadir: hadirToday,
+        sakit: sakitToday,
+        izin: izinToday,
+        unverified: unverifiedToday,
+        totalHariIni: todayAbsensiList.length
+      },
+      penilaianStats: {
+        sudahDinilai: sudahDinilaiCount,
+        belumDinilai: belumDinilaiCount,
+        totalSiswaPkl: totalUniqueSiswaPkl,
+        persenSelesai: persenDinilai,
+        sertifikatTerbit: sertifikatTerbitCount,
+        selesaiPraktikCount: resolvedPklSelesai,
+        selesaiBelumDinilaiCount: selesaiBelumDinilaiCount
+      },
+      tefaStats: {
+        totalOrders: tefaTotalOrders,
+        activeOrders: tefaActiveOrders
+      },
       recentPkl: recentPkl.map(p => ({
         id: p.id,
-        siswa: p.Siswa.nama_siswa,
-        mitra: p.Mitra.nama,
+        siswa: p.Siswa?.nama_siswa || 'Siswa',
+        mitra: p.Mitra?.nama || 'Mitra',
         status: p.status,
-        tanggal: p.tanggal_mulai.toISOString()
+        tanggal: (p.tanggal_mulai || p.created_at).toISOString()
       }))
     };
   }

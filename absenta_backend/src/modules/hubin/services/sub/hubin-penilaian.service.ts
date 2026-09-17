@@ -557,50 +557,61 @@ export class HubinPenilaianService extends HubinCommonHelper {
       // Auto-Sync to NilaiSiswa for academic report card
       if (nilaiAkhir !== null && mapelPkl) {
         const pklRec = pklMap.get(item.siswa_pkl_id);
-        const targetSiswaId = pklRec?.siswa_id;
-        const targetTpId =
-          item.tahun_pelajaran_id ||
-          pklRec?.SiswaAkademik?.tahun_pelajaran_id ||
-          pklRec?.Siswa?.tahun_pelajaran_id ||
-          activeTp?.id;
-        const targetSemId =
-          item.semester_id ||
-          pklRec?.SiswaAkademik?.semester_id ||
-          pklRec?.Siswa?.semester_id ||
-          activeSem?.id;
+        
+        // Proteksi Mutasi: Jika record ini berstatus SELESAI karena mutasi dan siswa masih punya penempatan AKTIF,
+        // jangan jadikan record mutasi lama ini sebagai penentu nilai rapor semester siswa.
+        const isMutatedRecord = pklRec?.status === 'SELESAI' && pklRec?.catatan_pkl?.includes('Mutasi:');
+        const hasActiveRecordInBatch = scores.some(s => {
+          const r = pklMap.get(s.siswa_pkl_id);
+          return r && r.siswa_id === pklRec?.siswa_id && r.status === 'AKTIF';
+        });
 
-        if (targetSiswaId && targetTpId && targetSemId) {
-          operations.push(
-            prisma.nilaiSiswa.upsert({
-              where: {
-                siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+        if (!isMutatedRecord || !hasActiveRecordInBatch) {
+          const targetSiswaId = pklRec?.siswa_id;
+          const targetTpId =
+            item.tahun_pelajaran_id ||
+            pklRec?.SiswaAkademik?.tahun_pelajaran_id ||
+            pklRec?.Siswa?.tahun_pelajaran_id ||
+            activeTp?.id;
+          const targetSemId =
+            item.semester_id ||
+            pklRec?.SiswaAkademik?.semester_id ||
+            pklRec?.Siswa?.semester_id ||
+            activeSem?.id;
+
+          if (targetSiswaId && targetTpId && targetSemId) {
+            operations.push(
+              prisma.nilaiSiswa.upsert({
+                where: {
+                  siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
+                    siswa_id: targetSiswaId,
+                    mapel_id: mapelPkl.id,
+                    tahun_pelajaran_id: targetTpId,
+                    semester_id: targetSemId,
+                  },
+                },
+                update: {
+                  nilai: nilaiAkhir,
+                  nilai_akhir_sumatif: nilaiAkhir,
+                  nilai_rapor_final: nilaiAkhir,
+                  capaian_kompetensi: item.deskripsi_tp ?? undefined,
+                  catatan_deskripsi: item.catatan_pkl ?? undefined,
+                },
+                create: {
+                  tenant_id: tenantId,
                   siswa_id: targetSiswaId,
                   mapel_id: mapelPkl.id,
                   tahun_pelajaran_id: targetTpId,
                   semester_id: targetSemId,
+                  nilai: nilaiAkhir,
+                  nilai_akhir_sumatif: nilaiAkhir,
+                  nilai_rapor_final: nilaiAkhir,
+                  capaian_kompetensi: item.deskripsi_tp ?? null,
+                  catatan_deskripsi: item.catatan_pkl ?? null,
                 },
-              },
-              update: {
-                nilai: nilaiAkhir,
-                nilai_akhir_sumatif: nilaiAkhir,
-                nilai_rapor_final: nilaiAkhir,
-                capaian_kompetensi: item.deskripsi_tp ?? undefined,
-                catatan_deskripsi: item.catatan_pkl ?? undefined,
-              },
-              create: {
-                tenant_id: tenantId,
-                siswa_id: targetSiswaId,
-                mapel_id: mapelPkl.id,
-                tahun_pelajaran_id: targetTpId,
-                semester_id: targetSemId,
-                nilai: nilaiAkhir,
-                nilai_akhir_sumatif: nilaiAkhir,
-                nilai_rapor_final: nilaiAkhir,
-                capaian_kompetensi: item.deskripsi_tp ?? null,
-                catatan_deskripsi: item.catatan_pkl ?? null,
-              },
-            })
-          );
+              })
+            );
+          }
         }
       }
     }
@@ -626,16 +637,119 @@ export class HubinPenilaianService extends HubinCommonHelper {
       tahun_pelajaran_id?: string;
       semester_id?: string;
       pembimbing_id?: string;
-    }
+    },
+    userId?: string,
+    org?: any
   ) {
-    const cacheKey = `hubin:${tenantId}:pkl_rekap:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}`;
+    const scopeKey = org?.is_unit_restricted && Array.isArray(org.unit_ids) 
+      ? org.unit_ids.sort().join(',') 
+      : (Array.isArray(org?.kelas_ids) && org.kelas_ids.length > 0 ? org.kelas_ids.sort().join(',') : 'all_units');
+    const cacheKey = `hubin:${tenantId}:pkl_rekap:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}:${scopeKey}`;
 
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
         const where: any = { tenant_id: tenantId };
-        if (params?.status) where.status = params.status;
-        if (params?.pembimbing_id) where.pembimbing_id = params.pembimbing_id;
+        const statusMode = params?.status || 'ELIGIBLE';
+
+        if (statusMode === 'ELIGIBLE' || statusMode === 'FLEXIBLE') {
+          where.status = { in: ['AKTIF', 'SELESAI'] };
+        } else if (statusMode !== 'ALL') {
+          where.status = statusMode;
+        }
+
+        const andConditions: any[] = [];
+
+        if (params?.pembimbing_id) {
+          where.pembimbing_id = params.pembimbing_id;
+        } else {
+          // Enterprise Scoping: Unit/Jurusan restriction for Kaprog, Kelas restriction for Walikelas
+          if (org && org.tenant_wide !== true) {
+            const user = userId ? await prisma.user.findUnique({
+              where: { id: userId },
+              include: { Guru: true }
+            }) : null;
+
+            if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+              const scopeOr: any[] = [
+                {
+                  Siswa: {
+                    OR: [
+                      { jurusan_id: { in: org.unit_ids } },
+                      { Kelas: { jurusan_id: { in: org.unit_ids } } }
+                    ]
+                  }
+                }
+              ];
+              if (user?.Guru?.id) {
+                scopeOr.push({ pembimbing_id: user.Guru.id });
+              }
+              andConditions.push({ OR: scopeOr });
+            } else if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
+              const scopeOr: any[] = [
+                {
+                  Siswa: {
+                    kelas_id: { in: org.kelas_ids }
+                  }
+                }
+              ];
+              if (user?.Guru?.id) {
+                scopeOr.push({ pembimbing_id: user.Guru.id });
+              }
+              andConditions.push({ OR: scopeOr });
+            }
+          } else if (userId) {
+            // Fallback legacy checking
+            const user = await prisma.user.findUnique({
+              where: { id: userId },
+              include: {
+                Guru: true,
+                Role: true,
+                organizationalAssignments: {
+                  where: { is_active: true },
+                  include: { Position: true }
+                }
+              }
+            });
+            const isGlobal = user?.Role?.name === 'ADMIN' || user?.organizationalAssignments?.some((oa: any) => oa.Position?.code === 'HUBIN');
+            const kaprogAssignments = user?.organizationalAssignments?.filter((oa: any) => oa.Position?.code === 'KAPROG' && oa.unit_id);
+            const walikelasAssignments = user?.organizationalAssignments?.filter((oa: any) => 
+              (oa.Position?.code === 'WALIKELAS' || oa.Position?.code === 'WALI_KELAS') && oa.kelas_id
+            );
+            if (!isGlobal) {
+              if (kaprogAssignments && kaprogAssignments.length > 0) {
+                const unitIds = kaprogAssignments.map((a: any) => a.unit_id);
+                const scopeOr: any[] = [
+                  {
+                    Siswa: {
+                      OR: [
+                        { jurusan_id: { in: unitIds } },
+                        { Kelas: { jurusan_id: { in: unitIds } } }
+                      ]
+                    }
+                  }
+                ];
+                if (user?.Guru?.id) {
+                  scopeOr.push({ pembimbing_id: user.Guru.id });
+                }
+                andConditions.push({ OR: scopeOr });
+              } else if (walikelasAssignments && walikelasAssignments.length > 0) {
+                const kelasIds = walikelasAssignments.map((a: any) => a.kelas_id);
+                const scopeOr: any[] = [
+                  {
+                    Siswa: {
+                      kelas_id: { in: kelasIds }
+                    }
+                  }
+                ];
+                if (user?.Guru?.id) {
+                  scopeOr.push({ pembimbing_id: user.Guru.id });
+                }
+                andConditions.push({ OR: scopeOr });
+              }
+            }
+          }
+        }
 
         if (params?.kelas_id) {
           where.Siswa = { ...where.Siswa, kelas_id: params.kelas_id };
@@ -652,18 +766,24 @@ export class HubinPenilaianService extends HubinCommonHelper {
           if (params.tahun_pelajaran_id) academicCondition.tahun_pelajaran_id = params.tahun_pelajaran_id;
           if (params.semester_id) academicCondition.semester_id = params.semester_id;
 
-          where.OR = [
-            { SiswaAkademik: academicCondition },
-            {
-              AND: [
-                { siswa_akademik_id: null },
-                { Siswa: academicCondition }
-              ]
-            }
-          ];
+          andConditions.push({
+            OR: [
+              { SiswaAkademik: academicCondition },
+              {
+                AND: [
+                  { siswa_akademik_id: null },
+                  { Siswa: academicCondition }
+                ]
+              }
+            ]
+          });
         }
 
-        const list = await prisma.siswaPkl.findMany({
+        if (andConditions.length > 0) {
+          where.AND = andConditions;
+        }
+
+        let list = await prisma.siswaPkl.findMany({
           where,
           include: {
             Siswa: {
@@ -694,6 +814,48 @@ export class HubinPenilaianService extends HubinCommonHelper {
           },
           orderBy: { Siswa: { nama_siswa: 'asc' } },
         });
+
+        // Mode Fleksibel: Menampilkan siswa aktif maupun siswa yang sudah selesai (siap dinilai).
+        // Setiap siswa hanya tampil 1 baris penempatan valid:
+        // 1. Utamakan penempatan yang berstatus AKTIF
+        // 2. Jika tidak ada yang AKTIF, ambil penempatan SELESAI terbaru (bukan mutasi lama)
+        if (statusMode === 'ELIGIBLE' || statusMode === 'FLEXIBLE') {
+          const studentPlacementMap = new Map<string, typeof list[0]>();
+          for (const item of list) {
+            const existing = studentPlacementMap.get(item.siswa_id);
+            if (!existing) {
+              studentPlacementMap.set(item.siswa_id, item);
+            } else {
+              if (item.status === 'AKTIF' && existing.status !== 'AKTIF') {
+                studentPlacementMap.set(item.siswa_id, item);
+              } else if (existing.status === 'AKTIF' && item.status !== 'AKTIF') {
+                // Pertahankan record aktif
+              } else {
+                const itemTime = item.tanggal_mulai ? new Date(item.tanggal_mulai).getTime() : new Date(item.created_at).getTime();
+                const existingTime = existing.tanggal_mulai ? new Date(existing.tanggal_mulai).getTime() : new Date(existing.created_at).getTime();
+                if (itemTime > existingTime) {
+                  studentPlacementMap.set(item.siswa_id, item);
+                }
+              }
+            }
+          }
+          list = Array.from(studentPlacementMap.values());
+          list.sort((a, b) => (a.Siswa?.nama_siswa || '').localeCompare(b.Siswa?.nama_siswa || ''));
+        } else if (statusMode === 'SELESAI') {
+          // Jika filter khusus SELESAI: jangan sertakan record mutasi dari siswa yang saat ini masih AKTIF di DUDI baru
+          const activePlacements = await prisma.siswaPkl.findMany({
+            where: {
+              tenant_id: tenantId,
+              status: 'AKTIF',
+            },
+            select: { siswa_id: true },
+          });
+          const activeSiswaIdSet = new Set(activePlacements.map((p) => p.siswa_id));
+          list = list.filter((item) => {
+            const isMutatedOld = item.catatan_pkl?.includes('Mutasi:') && activeSiswaIdSet.has(item.siswa_id);
+            return !isMutatedOld;
+          });
+        }
 
         // Agregasi otomatis dari riwayat presensi harian siswa (AbsensiPkl)
         const pklIds = list.map((item) => item.id);
@@ -885,9 +1047,42 @@ export class HubinPenilaianService extends HubinCommonHelper {
       where: { tenant_id: tenantId },
     });
 
+    // --- Fetch assessment mode & bobot for adaptive halaman 2 sertifikat ---
+    const [assessmentModeCfg, assessmentModeTpCfg, weightDudiCfg, weightLaporanCfg, weightSidangCfg,
+           weightDudiTpCfg, weightLaporanTpCfg, weightSidangTpCfg] = await Promise.all([
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_ASSESSMENT_MODE' } }),
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_ASSESSMENT_MODE_${tpId}` } }) : null,
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_DUDI' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_LAPORAN' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_WEIGHT_SIDANG' } }),
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_DUDI_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_LAPORAN_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `HUBIN_PKL_WEIGHT_SIDANG_${tpId}` } }) : null,
+    ]);
+
+    const assessmentMode = (assessmentModeTpCfg?.value || assessmentModeCfg?.value || 'DUDI_ONLY') as 'DUDI_ONLY' | 'COMPOSITE';
+    const weightDudi = Number(weightDudiTpCfg?.value ?? weightDudiCfg?.value ?? 70);
+    const weightLaporan = Number(weightLaporanTpCfg?.value ?? weightLaporanCfg?.value ?? 15);
+    const weightSidang = Number(weightSidangTpCfg?.value ?? weightSidangCfg?.value ?? 15);
+
+    // Extract nilai_laporan & nilai_sidang dari nilai_json
+    const nilaiJson = (pkl.nilai_json as Record<string, any>) || {};
+    const nilaiLaporan: number | null = nilaiJson.nilai_laporan !== undefined ? Number(nilaiJson.nilai_laporan) : null;
+    const nilaiSidang: number | null = nilaiJson.nilai_sidang !== undefined ? Number(nilaiJson.nilai_sidang) : null;
+
     return {
       ...pkl,
       sekolah,
+      // Adaptive penilaian config for halaman 2 sertifikat
+      assessment_mode: assessmentMode,
+      weight_dudi: weightDudi,
+      weight_laporan: weightLaporan,
+      weight_sidang: weightSidang,
+      nilai_laporan: nilaiLaporan,
+      nilai_sidang: nilaiSidang,
+      // Pembimbing sekolah for bipartit signature block
+      pembimbing_nama: pkl.Pembimbing?.nama_guru || null,
+      pembimbing_nip: pkl.Pembimbing?.nip || null,
       referensi_sertifikat: {
         nomor_surat: pkl.nomor_sertifikat || officialNomor,
         tanggal_terbit: certTanggalConfig?.value || null,

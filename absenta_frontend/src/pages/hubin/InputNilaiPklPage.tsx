@@ -22,7 +22,8 @@ import {
   GraduationCap,
   Lock,
   Copy,
-  RotateCcw
+  RotateCcw,
+  ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -37,6 +38,7 @@ import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { useAuthStore } from '../../store/authStore';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { SertifikatPklModal } from '../../components/hubin/SertifikatPklModal';
 
@@ -82,6 +84,7 @@ interface ScoreRow {
   auto_hadir?: number;
   nomor_sertifikat: string;
   deskripsi_tp: string;
+  status?: string;
 }
 
 interface RawPklItem {
@@ -152,6 +155,7 @@ interface RawPklItem {
 }
 
 export const InputNilaiPklPage: React.FC = React.memo(() => {
+  const isMobile = useIsMobile(768);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -172,14 +176,22 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
   // Deskripsi TP Form State
   const [deskripsiTpText, setDeskripsiTpText] = useState('');
 
-  // Role Scoping: Guru Pembimbing vs Admin/Hubin
+  // Role Scoping: Guru Pembimbing vs Admin/Hubin vs Kaprog vs Wali Kelas
   const { user } = useAuthStore();
-  const { can } = useCapabilities();
-  const canManageAll = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage');
-  const activeGuruId = user?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null;
-  const canEditScheme = canManageAll;
-  const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId);
+  const { can, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId } = useCapabilities();
+  const isPrivilegedHubin = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog;
+  const canManageAll = isPrivilegedHubin || isWaliKelas;
+  const activeGuruId = capActiveGuruId || user?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null;
+  const canEditScheme = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
+  const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId) || isKaprog || isWaliKelas;
   const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(canManageAll ? 'ALL' : 'MY_GUIDANCE');
+  const [statusFilter, setStatusFilter] = useState<'ELIGIBLE' | 'AKTIF' | 'SELESAI' | 'ALL'>('ELIGIBLE');
+
+  useEffect(() => {
+    if (isMobile) {
+      setStatusFilter('ELIGIBLE');
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     if (!canManageAll) {
@@ -212,13 +224,26 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
   const { options: mitraOptions } = useDudiOptions();
 
   const { data: pklRekap, isLoading: isLoadingRekap } = useQuery({
-    queryKey: ['pkl-rekap', selectedTp, selectedSemester, guidanceScope, activeGuruId],
+    queryKey: ['pkl-rekap', selectedTp, selectedSemester, guidanceScope, activeGuruId, statusFilter],
     queryFn: () =>
       hubinApi.getRekapPklSiswa({
         tahun_pelajaran_id: selectedTp || undefined,
         semester_id: selectedSemester || undefined,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
         pembimbing_id: guidanceScope === 'MY_GUIDANCE' && activeGuruId ? activeGuruId : undefined,
       }),
+  });
+
+  // Query stabil untuk menghitung jumlah siswa per tab
+  const { data: allPklRekap } = useQuery({
+    queryKey: ['pkl-rekap-counts', selectedTp, selectedSemester, statusFilter],
+    queryFn: () =>
+      hubinApi.getRekapPklSiswa({
+        tahun_pelajaran_id: selectedTp || undefined,
+        semester_id: selectedSemester || undefined,
+        status: statusFilter === 'ALL' ? undefined : statusFilter,
+      }),
+    staleTime: 30000,
   });
 
   // Fetch Hubin Settings (Assessment Mode & Weights)
@@ -311,6 +336,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         auto_hadir: item.auto_hadir ?? 0,
         nomor_sertifikat: item.nomor_sertifikat || '',
         deskripsi_tp: item.deskripsi_tp || '',
+        status: item.status || 'AKTIF',
       })));
     }
   }, [pklRekap]);
@@ -318,7 +344,11 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
   // Smart Class Options: derived from students who have active PKL in this academic context!
   const smartClassOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
-    scores.forEach((s) => {
+    // Wali Kelas mode ALL: hanya tampilkan opsi kelas binaan saja
+    const scoresForOptions = (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id)
+      ? scores.filter((s) => s.kelas_id === walikelasKelas.id)
+      : scores;
+    scoresForOptions.forEach((s) => {
       if (s.kelas_id && s.nama_kelas) {
         const existing = map.get(s.kelas_id);
         if (existing) {
@@ -335,13 +365,44 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         value: k.id,
         label: `${k.name} (${k.count} Siswa)`,
       }));
-  }, [scores]);
+  }, [scores, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
 
   // Displayed scores filtered by selected class
   const displayedScores = useMemo(() => {
-    if (!selectedKelas) return scores;
-    return scores.filter((s) => s.kelas_id === selectedKelas);
-  }, [scores, selectedKelas]);
+    let filtered = scores;
+
+    // Wali Kelas mode ALL: hanya tampilkan siswa kelas binaan saja
+    // Siswa bimbingan lintas kelas hanya muncul di mode MY_GUIDANCE
+    if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
+      filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
+    }
+
+    if (!selectedKelas) return filtered;
+    return filtered.filter((s) => s.kelas_id === selectedKelas);
+  }, [scores, selectedKelas, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+
+  // Count per scope tab (stabel & akurat dari allPklRekap)
+  const allScopedCount = useMemo(() => {
+    const raw = allPklRekap as any;
+    const list = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : raw?.data?.list || [];
+    if (isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
+      return list.filter((item: any) => {
+        const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
+        return kId === walikelasKelas.id;
+      }).length;
+    }
+    return list.length;
+  }, [allPklRekap, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+
+  const myGuidanceCountNilai = useMemo(() => {
+    if (!activeGuruId) return 0;
+    const raw = allPklRekap as any;
+    const list = Array.isArray(raw?.data) ? raw.data : Array.isArray(raw) ? raw : raw?.data?.list || [];
+    return list.filter((item: any) => {
+      const pId = item.pembimbing_id || item.Pembimbing?.id;
+      return pId === activeGuruId;
+    }).length;
+  }, [allPklRekap, activeGuruId]);
 
   // Pagination State for Input Nilai Table
   const [currentPage, setCurrentPage] = useState(1);
@@ -350,7 +411,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
   // Reset to page 1 when scope or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedKelas, selectedTp, selectedSemester, guidanceScope]);
+  }, [selectedKelas, selectedTp, selectedSemester, guidanceScope, statusFilter]);
 
   const totalItems = displayedScores.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
@@ -669,6 +730,35 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         >
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6">
+              {/* Banner Khusus Kaprog: Scope Terkunci ke Jurusan */}
+              {isKaprog && (
+                <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+                  <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <div>
+                    <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
+                    <span>
+                      Rekap nilai PKL dibatasi otomatis untuk Jurusan{' '}
+                      <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>
+                      {kaprogJurusan?.singkatan ? ` (${kaprogJurusan.singkatan})` : ''}.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Khusus Wali Kelas: Scope Terkunci ke Kelas Binaan */}
+              {isWaliKelas && !isKaprog && !isPrivilegedHubin && (
+                <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
+                  <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold">Mode Wali Kelas (Monitoring Kelas Binaan):</span>{' '}
+                    <span>
+                      Rekap nilai PKL disaring khusus untuk siswa kelas{' '}
+                      <strong>{walikelasKelas?.nama_kelas || 'Binaan Anda'}</strong>.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Tab Switcher & Configuration Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
                 <TabSwitcher
@@ -710,9 +800,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                 <div className="space-y-4">
                   {/* Filter & Action Card */}
                   <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
-                    {/* Role Scoping Bar (if user has global hubin rights and is also a teacher/pembimbing) */}
-                    {canManageAll && activeGuruId && (
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    {/* Top Scoping & Status Filter Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                      {canManageAll && activeGuruId ? (
                         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
                           <button
                             type="button"
@@ -726,7 +816,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                           >
-                            Semua Siswa PKL
+                            {isKaprog ? 'Semua Siswa Jurusan' : (isWaliKelas ? `Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : 'Semua Siswa PKL')} ({allScopedCount})
                           </button>
                           <button
                             type="button"
@@ -740,14 +830,69 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                           >
-                            Bimbingan Saya
+                            Bimbingan Saya ({myGuidanceCountNilai})
                           </button>
                         </div>
+                      ) : (
                         <span className="text-[11px] text-slate-400 font-medium">
-                          Mode Akses: {guidanceScope === 'ALL' ? 'Administrator Hubin' : 'Guru Pembimbing Lapangan'}
+                          Mode: {canManageAll ? 'Administrator Hubin' : 'Guru Pembimbing Lapangan'}
                         </span>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Status Penempatan Filter (Desktop only, mobile defaults to ELIGIBLE / Siap Dinilai) */}
+                      {!isMobile && (
+                        <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto overflow-x-auto max-w-full">
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('ELIGIBLE')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'ELIGIBLE'
+                                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Mode Fleksibel: Menampilkan siswa aktif & selesai tanpa duplikat riwayat mutasi (Rekomendasi Penilaian)"
+                          >
+                            🎯 Siap Dinilai (Fleksibel)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('AKTIF')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'AKTIF'
+                                ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Hanya tampilkan penempatan siswa yang berstatus aktif"
+                          >
+                            🟢 Aktif
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('SELESAI')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'SELESAI'
+                                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Hanya tampilkan siswa yang masa PKL-nya telah selesai/ditarik"
+                          >
+                            ✅ Selesai
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('ALL')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'ALL'
+                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Tampilkan semua data penempatan termasuk riwayat mutasi siswa"
+                          >
+                            📋 Semua
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
                       {/* 1. Tahun Pelajaran */}
@@ -932,6 +1077,19 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       NIS: {score.nis}{score.nama_kelas ? ` • ${score.nama_kelas}` : ''}
                                     </p>
                                     <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                    {score.catatan_pkl && score.catatan_pkl.includes('Mutasi:') ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1">
+                                        🏷️ {score.catatan_pkl} (Selesai)
+                                      </span>
+                                    ) : score.status === 'SELESAI' ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1">
+                                        ✅ Selesai
+                                      </span>
+                                    ) : score.status === 'AKTIF' ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 mt-1">
+                                        🟢 Aktif
+                                      </span>
+                                    ) : null}
                                   </td>
 
                                   <td className="p-2">
@@ -1219,9 +1377,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                 <div className="space-y-4">
                   {/* Filter & Action Card */}
                   <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
-                    {/* Role Scoping Bar */}
-                    {canManageAll && activeGuruId && (
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    {/* Top Scoping & Status Filter Bar */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                      {canManageAll && activeGuruId ? (
                         <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
                           <button
                             type="button"
@@ -1235,7 +1393,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                           >
-                            Semua Siswa PKL
+                            {isKaprog ? 'Semua Siswa Jurusan' : (isWaliKelas ? `Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : 'Semua Siswa PKL')} ({allScopedCount})
                           </button>
                           <button
                             type="button"
@@ -1249,14 +1407,69 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
                             }`}
                           >
-                            Bimbingan / Ujian Saya
+                            Bimbingan / Ujian Saya ({myGuidanceCountNilai})
                           </button>
                         </div>
+                      ) : (
                         <span className="text-[11px] text-slate-400 font-medium">
-                          Mode Akses: {guidanceScope === 'ALL' ? 'Administrator Hubin' : 'Guru Penguji / Pembimbing'}
+                          Mode: {canManageAll ? 'Administrator Hubin' : 'Guru Penguji / Pembimbing'}
                         </span>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Status Penempatan Filter (Desktop only, mobile defaults to ELIGIBLE / Siap Dinilai) */}
+                      {!isMobile && (
+                        <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto overflow-x-auto max-w-full">
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('ELIGIBLE')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'ELIGIBLE'
+                                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Mode Fleksibel: Menampilkan siswa aktif & selesai tanpa duplikat riwayat mutasi (Rekomendasi Penilaian)"
+                          >
+                            🎯 Siap Dinilai (Fleksibel)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('AKTIF')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'AKTIF'
+                                ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Hanya tampilkan penempatan siswa yang berstatus aktif"
+                          >
+                            🟢 Aktif
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('SELESAI')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'SELESAI'
+                                ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Hanya tampilkan siswa yang masa PKL-nya telah selesai/ditarik"
+                          >
+                            ✅ Selesai
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStatusFilter('ALL')}
+                            className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
+                              statusFilter === 'ALL'
+                                ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-sm font-bold'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                            title="Tampilkan semua data penempatan termasuk riwayat mutasi siswa"
+                          >
+                            📋 Semua
+                          </button>
+                        </div>
+                      )}
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
                       {/* Filter Kelas */}
@@ -1266,7 +1479,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                         </label>
                         <SearchableSelect
                           id="filter-kelas-sidang"
-                          aria-label="Pilih kelas siswa PKL untuk sidang"
+                          aria-label="Pilih kelas sidang"
                           value={selectedKelas}
                           onValueChange={setSelectedKelas}
                           options={[
@@ -1396,6 +1609,19 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                     <p className="font-bold text-slate-900 dark:text-white">{score.nama_siswa}</p>
                                     <p className="text-[10px] text-slate-400 font-mono">NIS: {score.nis}{score.nama_kelas ? ` • ${score.nama_kelas}` : ''}</p>
                                     <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                    {score.catatan_pkl && score.catatan_pkl.includes('Mutasi:') ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1">
+                                        🏷️ {score.catatan_pkl} (Selesai)
+                                      </span>
+                                    ) : score.status === 'SELESAI' ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1">
+                                        ✅ Selesai
+                                      </span>
+                                    ) : score.status === 'AKTIF' ? (
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40 mt-1">
+                                        🟢 Aktif
+                                      </span>
+                                    ) : null}
                                   </td>
                                   <td className="p-3">
                                     {score.file_portofolio ? (

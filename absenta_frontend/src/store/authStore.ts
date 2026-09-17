@@ -30,9 +30,31 @@ export interface User {
   } | null;
   has_completed_onboarding?: boolean;
   siswa_id?: string;
-  guru_profile?: { id: string };
+  guru_profile?: { 
+    id: string;
+    wali_kelas_di?: {
+      id: string;
+      nama_kelas: string;
+      tingkat?: number | null;
+    } | null;
+    jenis_ptk?: string | null;
+    pangkat_golongan?: string | null;
+    tmt_guru?: string | null;
+  } | null;
   capabilities?: string[];
   position_codes?: string[];
+  unit_ids?: string[];
+  kelas_ids?: string[];
+  kaprog_jurusan?: {
+    id: string;
+    nama: string;
+    singkatan?: string | null;
+  } | null;
+  walikelas_kelas?: {
+    id: string;
+    nama_kelas: string;
+    tingkat?: number | null;
+  } | null;
   features?: string[]; // Tenant level features (CORE, ABSENSI, KOPERASI)
   created_at: string;
   updated_at: string;

@@ -217,6 +217,7 @@ export class HubinMitraService extends HubinCommonHelper {
           }
 
           const dataToSave = {
+            logo_url: cleanStr(row.logo_url),
             bidang: cleanStr(row.bidang),
             alamat: cleanStr(row.alamat),
             kontak: cleanStr(row.kontak),

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, CheckSquare, Square, Calendar, Building2, User } from 'lucide-react';
+import { Users, CheckSquare, Square, Calendar, Building2, User, ShieldCheck } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
@@ -27,9 +27,10 @@ interface HubinPklBulkPlottingModalProps {
   }) => void;
   isPending: boolean;
   onGuruSearch?: (val: string) => void;
-  onMitraSearch?: (val: string) => void;
   isLoadingGuru?: boolean;
   isLoadingMitra?: boolean;
+  filterJurusanId?: string;
+  jurusanNama?: string;
 }
 
 export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps> = React.memo(({
@@ -44,6 +45,8 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
   onMitraSearch,
   isLoadingGuru,
   isLoadingMitra,
+  filterJurusanId,
+  jurusanNama,
 }) => {
   const [selectedKelasId, setSelectedKelasId] = useState('');
   const [selectedSiswaIds, setSelectedSiswaIds] = useState<string[]>([]);
@@ -92,15 +95,22 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
 
   const kelasList = useMemo(() => {
     const dataObj = kelasResponse as { data?: any[] } | undefined;
-    return Array.isArray(kelasResponse?.data) ? kelasResponse.data : dataObj?.data || [];
-  }, [kelasResponse]);
+    const all = Array.isArray(kelasResponse?.data) ? kelasResponse.data : dataObj?.data || [];
+    if (filterJurusanId) {
+      return all.filter((k: any) => k.jurusan_id === filterJurusanId);
+    }
+    return all;
+  }, [kelasResponse, filterJurusanId]);
 
   const kelasOptions = useMemo(() => {
-    return kelasList.map((k: any) => ({
-      label: k.nama_kelas,
-      value: k.id,
-    }));
-  }, [kelasList]);
+    return kelasList.map((k: any) => {
+      const kodeJurusan = k.Jurusan?.kode_jurusan || (k.Jurusan as any)?.singkatan;
+      return {
+        label: `${k.nama_kelas}${kodeJurusan && !filterJurusanId ? ` (${kodeJurusan})` : ''}`,
+        value: k.id,
+      };
+    });
+  }, [kelasList, filterJurusanId]);
 
   // Fetch Students for selected Class
   const { data: siswaResponse, isLoading: isLoadingSiswa } = useQuery({
@@ -213,6 +223,19 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 </SimpleFormField>
               </div>
             </div>
+
+            {/* Kaprog Scope Indicator */}
+            {filterJurusanId && (
+              <div className="p-2.5 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-xl flex items-center gap-2 text-xs text-indigo-900 dark:text-indigo-200">
+                <ShieldCheck size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <div className="text-[11px] leading-snug">
+                  <p className="font-bold">Mode Kaprog Terkunci</p>
+                  <p className="text-indigo-700/80 dark:text-indigo-300/80">
+                    Hanya menampilkan kelas Jurusan {jurusanNama || 'Anda'}.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <SimpleFormField htmlFor="bulk-kelas" label="Pilih Kelas / Rombel" required>
               <SearchableSelect

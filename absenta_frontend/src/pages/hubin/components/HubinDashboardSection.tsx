@@ -40,6 +40,8 @@ interface HubinStats {
   totalMitra: number;
   totalSiswaPkl: number;
   pklAktif: number;
+  pklOverdue?: number;
+  pklSelesai?: number;
   pendingReports: number;
   mouExpiringCount: number;
   totalLowonganAktif: number;
@@ -224,16 +226,23 @@ export const HubinDashboardSection: React.FC<HubinDashboardSectionProps> = React
           value={stats.pklAktif}
           icon={<Users />}
           gradient="from-emerald-500 to-emerald-600"
-          subtitle={`Dari ${stats.totalSiswaPkl} total siswa terdaftar PKL`}
+          subtitle={stats.pklOverdue ? `${stats.pklOverdue} periode berakhir (siap ditarik)` : `Dari ${stats.totalSiswaPkl} total siswa terdaftar PKL`}
           onClick={() => onNavigateTab('penempatan')}
         />
         <AnalyticsCard
-          title="Laporan Jurnal Belum Review"
-          value={stats.pendingReports}
-          icon={<ClipboardList />}
-          gradient="from-amber-500 to-amber-600"
-          subtitle="Presensi/Logbook menunggu verifikasi"
-          onClick={() => onNavigateTab('absensi')}
+          title="Siswa Selesai / Berakhir"
+          value={(() => {
+            const selesai = Number(
+              stats.pklSelesai ?? 
+              stats.penilaianStats?.selesaiPraktikCount ?? 
+              Math.max(0, Number(stats.totalSiswaPkl || 0) - Number(stats.pklAktif || 0))
+            );
+            return selesai + Number(stats.pklOverdue || 0);
+          })()}
+          icon={<GraduationCap />}
+          gradient="from-purple-500 to-indigo-600"
+          subtitle={stats.pklOverdue ? `${stats.pklOverdue} periode berakhir (siap ditarik)` : `${Number(stats.pklSelesai ?? stats.penilaianStats?.selesaiPraktikCount ?? Math.max(0, Number(stats.totalSiswaPkl || 0) - Number(stats.pklAktif || 0)))} tuntas dari plotting PKL`}
+          onClick={() => onNavigateTab('penempatan')}
         />
         <AnalyticsCard
           title="Lowongan BKK Aktif"

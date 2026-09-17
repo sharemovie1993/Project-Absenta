@@ -13,7 +13,8 @@ export interface SearchableSelectOption {
 interface SearchableSelectProps {
   id?: string;
   value?: string;
-  onValueChange: (value: string) => void;
+  onValueChange?: (value: string) => void;
+  onChange?: (value: string) => void;
   options: SearchableSelectOption[];
   placeholder?: string;
   searchPlaceholder?: string;
@@ -23,6 +24,7 @@ interface SearchableSelectProps {
   isLoading?: boolean;
   clearable?: boolean;
   onSearch?: (query: string) => void;
+  onSearchChange?: (query: string) => void;
   searchDelay?: number;
 }
 
@@ -30,6 +32,7 @@ export function SearchableSelect({
   id,
   value,
   onValueChange,
+  onChange,
   options = [],
   placeholder = 'Select option...',
   searchPlaceholder = 'Search...',
@@ -40,6 +43,7 @@ export function SearchableSelect({
   isLoading = false,
   clearable = false,
   onSearch,
+  onSearchChange,
   searchDelay = 300,
 }: SearchableSelectProps & { triggerClassName?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -60,15 +64,25 @@ export function SearchableSelect({
     return String(opt.label ?? opt.value ?? '');
   };
 
+  const activeSearch = onSearch || onSearchChange;
+
+  const effectiveChangeHandler = (val: string) => {
+    if (typeof onValueChange === 'function') {
+      onValueChange(val);
+    } else if (typeof onChange === 'function') {
+      onChange(val);
+    }
+  };
+
   // Debounce search query for external search
   const debouncedSearch = useDebounce(searchQuery, searchDelay);
 
   // Handle external search
   useEffect(() => {
-    if (onSearch && isOpen) {
-      onSearch(debouncedSearch);
+    if (activeSearch && isOpen) {
+      activeSearch(debouncedSearch);
     }
-  }, [debouncedSearch, onSearch, isOpen]);
+  }, [debouncedSearch, activeSearch, isOpen]);
 
   // Derived selected option
   const selectedOption = useMemo(() => {
@@ -100,7 +114,7 @@ export function SearchableSelect({
 
   // Filter options internally
   const filteredOptions = useMemo(() => {
-    if (onSearch) return safeOptions;
+    if (activeSearch) return safeOptions;
     if (!searchQuery) return safeOptions;
     
     const isExactMatch = selectedOption && searchQuery === selectedLabel;
@@ -110,7 +124,7 @@ export function SearchableSelect({
     return safeOptions.filter((opt) =>
       getSafeLabel(opt).toLowerCase().includes(query)
     );
-  }, [safeOptions, searchQuery, onSearch, isOpen, selectedOption, selectedLabel]);
+  }, [safeOptions, searchQuery, activeSearch, isOpen, selectedOption, selectedLabel]);
 
   // Click outside & Escape key to auto-close dropdown
   useEffect(() => {
@@ -177,14 +191,14 @@ export function SearchableSelect({
 
 
   const handleSelect = (val: string, label: string) => {
-    onValueChange(val);
+    effectiveChangeHandler(val);
     setSearchQuery(label);
     setIsOpen(false);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onValueChange('');
+    effectiveChangeHandler('');
     setSearchQuery('');
     inputRef.current?.focus();
   };

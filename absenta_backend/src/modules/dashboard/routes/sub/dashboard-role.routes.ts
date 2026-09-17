@@ -21,6 +21,9 @@ export async function dashboardRoleRoutes(fastify: any) {
                 totalMitra: { type: 'number' },
                 totalSiswaPkl: { type: 'number' },
                 pklAktif: { type: 'number' },
+                pklOverdue: { type: 'number' },
+                pklSelesai: { type: 'number' },
+                fasePkl: { type: 'string' },
                 pendingReports: { type: 'number' },
                 mouExpiringCount: { type: 'number' },
                 totalLowonganAktif: { type: 'number' },
@@ -69,6 +72,44 @@ export async function dashboardRoleRoutes(fastify: any) {
                       status: { type: 'string' },
                       tanggal: { type: 'string' }
                     }
+                  }
+                },
+                todayPresensi: {
+                  type: 'object',
+                  properties: {
+                    hadir: { type: 'number' },
+                    sakit: { type: 'number' },
+                    izin: { type: 'number' },
+                    unverified: { type: 'number' },
+                    totalHariIni: { type: 'number' }
+                  }
+                },
+                penilaianStats: {
+                  type: 'object',
+                  properties: {
+                    sudahDinilai: { type: 'number' },
+                    belumDinilai: { type: 'number' },
+                    totalSiswaPkl: { type: 'number' },
+                    persenSelesai: { type: 'number' },
+                    sertifikatTerbit: { type: 'number' },
+                    selesaiPraktikCount: { type: 'number' },
+                    selesaiBelumDinilaiCount: { type: 'number' }
+                  }
+                },
+                tefaStats: {
+                  type: 'object',
+                  properties: {
+                    totalOrders: { type: 'number' },
+                    activeOrders: { type: 'number' }
+                  }
+                },
+                tahunPelajaran: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    id: { type: 'string' },
+                    nama: { type: 'string' },
+                    is_active: { type: 'boolean' }
                   }
                 }
               }

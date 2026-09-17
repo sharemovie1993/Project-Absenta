@@ -18,6 +18,7 @@ import {
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
+import { resolveProfilePhotoUrl } from '../../lib/utils';
 
 interface MitraDetailModalProps {
   isOpen: boolean;
@@ -63,13 +64,35 @@ export const MitraDetailModal: React.FC<MitraDetailModalProps> = React.memo(({
     >
       <div className="space-y-6 text-xs sm:text-sm">
         
-        {/* Header Section: Company Name, Sector & Active Status */}
+        {/* Header Section: Company Name, Logo, Sector & Active Status */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="space-y-1">
-            <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-150">{mitra.nama}</h2>
-            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold">
-              <Building2 size={13} className="text-indigo-500" />
-              <span>{mitra.bidang || 'Bidang Usaha Tidak Ditentukan'}</span>
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-center overflow-hidden shrink-0 shadow-xs">
+              {mitra.logo_url ? (
+                <img
+                  src={resolveProfilePhotoUrl(mitra.logo_url)}
+                  alt={mitra.nama}
+                  className="w-full h-full object-contain p-1.5"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLElement).style.display = 'none';
+                    const parent = (e.currentTarget as HTMLElement).parentElement;
+                    if (parent) {
+                      parent.innerHTML = `<span class="text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase">${(mitra.nama || 'MI').substring(0, 2)}</span>`;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase">
+                  {(mitra.nama || 'MI').substring(0, 2)}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-150">{mitra.nama}</h2>
+              <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold">
+                <Building2 size={13} className="text-indigo-500" />
+                <span>{mitra.bidang || 'Bidang Usaha Tidak Ditentukan'}</span>
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">

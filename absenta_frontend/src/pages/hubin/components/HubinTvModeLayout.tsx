@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Activity, Clock, ChevronLeft, ChevronRight, Building2, Users, ClipboardList, Briefcase, GraduationCap, AlertTriangle, ArrowRight, TrendingUp
+  Activity, Clock, ChevronLeft, ChevronRight, Building2, Users, ClipboardList, Briefcase, GraduationCap, AlertTriangle, ArrowRight, TrendingUp, Award, CheckCircle2, MapPin
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -181,13 +181,93 @@ export const HubinTvModeLayout: React.FC<HubinTvModeLayoutProps> = React.memo(({
                   </div>
                 )}
 
-                {/* Visual Overview */}
-                <div className="flex-1 min-h-0 bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 shadow-sm flex flex-col justify-center items-center text-center">
-                  <Building2 className="w-16 h-16 text-indigo-500 dark:text-indigo-400 mb-4" />
-                  <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-wider">Kemitraan Industri & Keterserapan Kerja</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mt-2">
-                    Mengelola kolaborasi terpadu bersama {stats?.totalMitra || 0} mitra DU-DI rekanan sekolah, memfasilitasi program PKL terstruktur, lowongan BKK aktif, serta pelacakan alumni tracer study digital.
-                  </p>
+                {/* Live Operasional PKL (Presensi & Penilaian) */}
+                <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            <MapPin size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Presensi PKL Hari Ini</h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Live Check-in & Geofencing DUDI</p>
+                          </div>
+                        </div>
+                        {(stats?.todayPresensi?.unverified || 0) > 0 && (
+                          <Badge variant="warning" className="animate-pulse">
+                            {stats?.todayPresensi?.unverified} Verifikasi
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Hadir</p>
+                          <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats?.todayPresensi?.hadir || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Siswa Fisik</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
+                          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase">Sakit</p>
+                          <p className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-1">{stats?.todayPresensi?.sakit || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Dispensasi</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-center">
+                          <p className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase">Izin</p>
+                          <p className="text-3xl font-black text-sky-600 dark:text-sky-400 mt-1">{stats?.todayPresensi?.izin || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Dispensasi</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                      <span>Total Siswa PKL Aktif: <strong className="text-slate-800 dark:text-white">{stats?.pklAktif || 0}</strong></span>
+                      <span>Tercatat Hari Ini: <strong className="text-emerald-600">{stats?.todayPresensi?.totalHariIni || 0}</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-800/20 border border-slate-100 dark:border-slate-800/60 rounded-3xl p-6 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            <Award size={18} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Progres Penilaian & Rapor</h4>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Aspek Teknis & Soft Skills</p>
+                          </div>
+                        </div>
+                        <span className="text-xl font-black text-emerald-600">
+                          {stats?.penilaianStats?.persenSelesai || 0}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Dinilai</p>
+                          <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{stats?.penilaianStats?.sudahDinilai || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Lengkap</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-500/10 border border-slate-500/20 text-center">
+                          <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">Belum</p>
+                          <p className="text-3xl font-black text-slate-700 dark:text-slate-300 mt-1">{stats?.penilaianStats?.belumDinilai || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Proses</p>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-center">
+                          <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">Sertifikat</p>
+                          <p className="text-3xl font-black text-purple-600 dark:text-purple-400 mt-1">{stats?.penilaianStats?.sertifikatTerbit || 0}</p>
+                          <p className="text-[9px] text-slate-400 mt-1">Nomor Terbit</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+                      <span>Total Siswa PKL: <strong className="text-slate-800 dark:text-white">{stats?.penilaianStats?.totalSiswaPkl || 0}</strong></span>
+                      <span>Selesai Dinilai: <strong className="text-emerald-600">{stats?.penilaianStats?.sudahDinilai || 0}</strong></span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

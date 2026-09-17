@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { hubinApi } from '../../api/hubin.api';
 import { guruApi } from '../../api/academic.api';
 import { HubinJurnalStatus, HubinPklStatus } from '../../constants/HubinConstants';
+import { getPklDisplayStatus } from '../../utils/hubinPklLifecycle';
 import { 
   Search, 
   UserPlus, 
@@ -19,7 +20,10 @@ import {
   MessageCircle,
   Trash2,
   Users,
-  RotateCcw
+  RotateCcw,
+  Clock,
+  GraduationCap,
+  ShieldCheck
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
@@ -62,6 +66,7 @@ const HubinPklKunjunganModal = lazy(() => import('../../components/hubin/HubinPk
 const HubinPklReviewJurnalModal = lazy(() => import('../../components/hubin/HubinPklReviewJurnalModal').then(m => ({ default: m.HubinPklReviewJurnalModal })));
 const HubinPklPrintSurat = lazy(() => import('../../components/hubin/HubinPklPrintSurat').then(m => ({ default: m.HubinPklPrintSurat })));
 const HubinPklPrintMonitoringModal = lazy(() => import('../../components/hubin/HubinPklPrintMonitoringModal').then(m => ({ default: m.HubinPklPrintMonitoringModal })));
+const HubinPklMutasiModal = lazy(() => import('../../components/hubin/HubinPklMutasiModal').then(m => ({ default: m.HubinPklMutasiModal })));
 import type { MonitoringPrintConfig } from '../../components/hubin/HubinPklPrintMonitoringModal';
 
 // ─── Zod Schema Validation Guard (Pilar 25) ───
@@ -86,14 +91,14 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const [mitraSearch, setMitraSearch] = useState('');
   const printTimerRef = useRef<NodeJS.Timeout | null>(null);
   
-  const { isHubin, isAdmin, can } = useCapabilities();
+  const { isHubin, isAdmin, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, can, activeGuruId: capActiveGuruId } = useCapabilities();
   const isGuru = useMemo(() => !!user?.isTeacher, [user]);
   
   const canManage = useMemo(() => {
-    return isAdmin || isHubin || can('hubin.partners.manage') || can('hubin.pkl.manage');
-  }, [isAdmin, isHubin, can]);
+    return isAdmin || isHubin || isKaprog || can('hubin.partners.manage') || can('hubin.pkl.manage');
+  }, [isAdmin, isHubin, isKaprog, can]);
 
-  const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>(canManage ? 'ALL' : 'MY_GUIDANCE');
+  const [activeTab, setActiveTab] = useState<'ALL' | 'MY_GUIDANCE'>((canManage || isWaliKelas) ? 'ALL' : 'MY_GUIDANCE');
   
   // Selected Plotting IDs
   const [selectedSiswaId, setSelectedSiswaId] = useState('');
@@ -113,6 +118,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const [isReviewJurnalOpen, setIsReviewJurnalOpen] = useState(false);
   const [reviewJurnalStatus, setReviewJurnalStatus] = useState<'DISETUJUI' | 'REVISI'>('DISETUJUI');
   const [reviewJurnalCatatan, setReviewJurnalCatatan] = useState('');
+
+  const [isMutasiOpen, setIsMutasiOpen] = useState(false);
+  const [selectedMutasiPkl, setSelectedMutasiPkl] = useState<SiswaPkl | null>(null);
   
   // Selected Data for Modals
   const [selectedPkl, setSelectedPkl] = useState<SiswaPkl | null>(null);
@@ -149,10 +157,20 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
 
   // Konteks Tahun Pelajaran, Kelas & Mitra Filter
   const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions();
+  // Khusus Kaprog: Batasi opsi kelas hanya untuk jurusannya
+  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions({
+    jurusanId: isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined
+  });
   const [selectedTpFilter, setSelectedTpFilter] = useState<string>('');
   const [selectedMitraFilter, setSelectedMitraFilter] = useState<string>('');
   const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('');
+
+  // Khusus Wali Kelas: Otomatis kunci filter kelas ke kelas binaan
+  useEffect(() => {
+    if (isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog) {
+      setSelectedKelasFilter(walikelasKelas.id);
+    }
+  }, [isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog]);
 
   useEffect(() => {
     if (activeTahunPelajaran?.id && !selectedTpFilter) {
@@ -170,6 +188,20 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     ...kelasOptions
   ], [kelasOptions]);
 
+  // Integrated Custom Hooks (Pilar 31 Data Layer)
+  const { options: guruOptions, isLoading: isLoadingGuru } = usePembimbingPklOptions();
+  const rawGuru = useMemo(() => (guruOptions ?? [])?.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
+
+  const activeGuruId = useMemo(() => {
+    if (capActiveGuruId) return capActiveGuruId;
+    if (user?.guru_profile?.id) return user.guru_profile.id;
+    const matchedGuru = rawGuru.find((g: PembimbingData) => g.user_id === user?.id);
+    return matchedGuru?.id || null;
+  }, [capActiveGuruId, rawGuru, user]);
+
+  const effectiveKelasFilter = activeTab === 'MY_GUIDANCE' ? undefined : (selectedKelasFilter || undefined);
+  const effectivePembimbingFilter = activeTab === 'MY_GUIDANCE' && activeGuruId ? activeGuruId : undefined;
+
   const { data: penempatanData, isLoading } = useQuery({
     queryKey: ['penempatan-pkl', { 
       search: searchTerm, 
@@ -177,7 +209,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       limit, 
       tahun_pelajaran_id: selectedTpFilter,
       mitra_id: selectedMitraFilter,
-      kelas_id: selectedKelasFilter
+      kelas_id: effectiveKelasFilter,
+      pembimbing_id: effectivePembimbingFilter
     }],
     queryFn: () => hubinApi.getPenempatan({
       search: searchTerm,
@@ -185,7 +218,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       limit,
       tahun_pelajaran_id: selectedTpFilter || undefined,
       mitra_id: selectedMitraFilter || undefined,
-      kelas_id: selectedKelasFilter || undefined
+      kelas_id: effectiveKelasFilter,
+      pembimbing_id: effectivePembimbingFilter
     }),
     enabled: isEnabled
   });
@@ -229,7 +263,6 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
 
   // Integrated Custom Hooks (Pilar 31 Data Layer)
   const { options: mitraOptions, isLoading: isLoadingMitra } = useDudiOptions(mitraSearch);
-  const { options: guruOptions, isLoading: isLoadingGuru } = usePembimbingPklOptions();
 
   // Mutations
   const createMutation = useMutation({
@@ -238,6 +271,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
       toast.success('Penempatan PKL berhasil dibuat');
       setIsPlottingOpen(false);
       setSelectedSiswaId('');
@@ -245,7 +279,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       setSelectedPembimbingId('');
     },
     onError: (error: unknown) => {
-      const errorMsg = error instanceof Error ? error.message : 'Gagal membuat penempatan';
+      const errorMsg = (error as any)?.response?.data?.message || (error instanceof Error ? error.message : 'Gagal membuat penempatan');
       toast.error(errorMsg);
     },
   });
@@ -256,6 +290,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
       toast.success('Perubahan penempatan berhasil disimpan');
       setIsPlottingOpen(false);
       setSelectedPkl(null);
@@ -264,7 +299,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       setSelectedPembimbingId('');
     },
     onError: (error: unknown) => {
-      const errorMsg = error instanceof Error ? error.message : 'Gagal mengubah penempatan';
+      const errorMsg = (error as any)?.response?.data?.message || (error instanceof Error ? error.message : 'Gagal mengubah penempatan');
       toast.error(errorMsg);
     },
   });
@@ -275,11 +310,12 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
       toast.success('Plotting penempatan kolektif berhasil dibuat');
       setIsBulkPlottingOpen(false);
     },
     onError: (error: unknown) => {
-      const errorMsg = error instanceof Error ? error.message : 'Gagal membuat penempatan kolektif';
+      const errorMsg = (error as any)?.response?.data?.message || (error instanceof Error ? error.message : 'Gagal membuat penempatan kolektif');
       toast.error(errorMsg);
     },
   });
@@ -353,6 +389,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
       toast.success('Penempatan PKL berhasil dihapus');
     },
     onError: (error: unknown) => {
@@ -373,6 +410,23 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     },
     onError: (error: unknown) => {
       const errorMsg = error instanceof Error ? error.message : 'Gagal menyimpan review';
+      toast.error(errorMsg);
+    },
+  });
+
+  const mutasiMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => hubinApi.mutasiPenempatan(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
+      toast.success('Mutasi penempatan siswa berhasil diproses');
+      setIsMutasiOpen(false);
+      setSelectedMutasiPkl(null);
+    },
+    onError: (error: unknown) => {
+      const errorMsg = (error as any)?.response?.data?.message || (error instanceof Error ? error.message : 'Gagal memproses mutasi penempatan');
       toast.error(errorMsg);
     },
   });
@@ -400,7 +454,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       pembimbing_id: selectedPembimbingId || null,
       tanggal_mulai: new Date(formData.get('tanggal_mulai') as string).toISOString(),
       tanggal_selesai: formData.get('tanggal_selesai') ? new Date(formData.get('tanggal_selesai') as string).toISOString() : null,
-      status: selectedPkl ? selectedPkl.status : 'AKTIF',
+      status: (formData.get('status') as string) || (selectedPkl ? selectedPkl.status : 'AKTIF'),
       tahun_pelajaran_id: tpId,
       semester_id: semId,
       is_flexible_location: isFlexible,
@@ -517,29 +571,44 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     deleteKunjunganMutation.mutate({ id: selectedPkl.id, kunjunganId });
   }, [selectedPkl, deleteKunjunganMutation]);
 
-  const rawGuru = useMemo(() => (guruOptions ?? [])?.map(g => (g.raw || {}) as PembimbingData), [guruOptions]);
-
-  const activeGuruId = useMemo(() => {
-    if (user?.guru_profile?.id) return user.guru_profile.id;
-    const matchedGuru = rawGuru.find((g: PembimbingData) => g.user_id === user?.id);
-    return matchedGuru?.id || null;
-  }, [rawGuru, user]);
+  const allActiveList = useMemo(() => {
+    return Array.isArray(allActivePenempatan?.data) ? (allActivePenempatan.data as SiswaPkl[]) : [];
+  }, [allActivePenempatan]);
 
   const isActuallyPembimbing = useMemo(() => {
-    return rawPenempatan?.some((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
-  }, [rawPenempatan, activeGuruId]);
+    if (!activeGuruId) return false;
+    const listToCheck = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
+    return listToCheck.some((p: SiswaPkl) => p.pembimbing_id === activeGuruId);
+  }, [allActiveList, rawPenempatan, activeGuruId]);
+
+  const myGuidanceCount = useMemo(() => {
+    if (!activeGuruId) return 0;
+    const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
+    return list.filter((p: SiswaPkl) => p.pembimbing_id === activeGuruId).length;
+  }, [allActiveList, rawPenempatan, activeGuruId]);
+
+  const allCount = useMemo(() => {
+    const list = allActiveList.length > 0 ? allActiveList : (rawPenempatan || []);
+    if (isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog) {
+      return list.filter((p: SiswaPkl) => {
+        const kId = (p as any).SiswaAkademik?.kelas_id || p.Siswa?.Kelas?.id || (p.Siswa as any)?.kelas_id;
+        return kId === walikelasKelas.id;
+      }).length;
+    }
+    return list.length;
+  }, [allActiveList, rawPenempatan, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog]);
 
   const showTabs = useMemo(() => {
-    // Tab hanya muncul jika dia HUBIN Global DAN sekaligus memiliki siswa bimbingan
-    return canManage && isActuallyPembimbing;
-  }, [canManage, isActuallyPembimbing]);
+    // Tab hanya muncul jika dia HUBIN Global / Kaprog / Wali Kelas DAN sekaligus memiliki siswa bimbingan
+    return (canManage || isWaliKelas) && isActuallyPembimbing;
+  }, [canManage, isWaliKelas, isActuallyPembimbing]);
 
   // Sync activeTab if tabs are hidden
   useEffect(() => {
     if (!showTabs) {
-      setActiveTab(canManage ? 'ALL' : 'MY_GUIDANCE');
+      setActiveTab((canManage || isWaliKelas) ? 'ALL' : 'MY_GUIDANCE');
     }
-  }, [showTabs, canManage]);
+  }, [showTabs, canManage, isWaliKelas]);
 
   const filteredData = useMemo(() => {
     let result = rawPenempatan || [];
@@ -549,7 +618,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     if (selectedMitraFilter) {
       result = result.filter((p: SiswaPkl) => p.mitra_id === selectedMitraFilter);
     }
-    if (selectedKelasFilter) {
+    if (selectedKelasFilter && activeTab !== 'MY_GUIDANCE') {
       result = result.filter((p: SiswaPkl) => {
         const kId = (p as any).SiswaAkademik?.kelas_id || p.Siswa?.Kelas?.id || (p.Siswa as any)?.kelas_id;
         return kId === selectedKelasFilter;
@@ -570,7 +639,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
 
   const handleResetFilters = useCallback(() => {
     setSelectedMitraFilter('');
-    setSelectedKelasFilter('');
+    if (!(isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog)) {
+      setSelectedKelasFilter('');
+    }
     setSearchTerm('');
     if (activeTahunPelajaran?.id) {
       setSelectedTpFilter(activeTahunPelajaran.id);
@@ -578,7 +649,52 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       setSelectedTpFilter('');
     }
     setPage(1);
-  }, [activeTahunPelajaran]);
+  }, [activeTahunPelajaran, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog]);
+
+  // Deteksi siswa yang jadwal PKL-nya telah berakhir (PERIODE_BERAKHIR) namun status masih AKTIF
+  const overdueStudents = useMemo(() => {
+    if (!rawPenempatan) return [];
+    return rawPenempatan.filter((p: SiswaPkl) => {
+      const display = getPklDisplayStatus(p);
+      return display.status === 'PERIODE_BERAKHIR' && p.status === 'AKTIF';
+    });
+  }, [rawPenempatan]);
+
+  const [isBatchCheckingOut, setIsBatchCheckingOut] = useState(false);
+
+  const handleBatchCheckoutOverdue = useCallback(async () => {
+    if (overdueStudents.length === 0) return;
+    const isConfirmed = await confirm({
+      title: 'Tandai Selesai Siswa Berakhir',
+      description: `Apakah Anda yakin ingin menandai SELESAI penempatan untuk ${overdueStudents.length} siswa yang jadwal PKL-nya telah berakhir? Status penempatan akan diperbarui menjadi SELESAI per hari ini.`,
+      confirmText: `Ya, Selesaikan (${overdueStudents.length} Siswa)`,
+      cancelText: 'Batal',
+      style: 'primary'
+    });
+
+    if (isConfirmed) {
+      setIsBatchCheckingOut(true);
+      try {
+        const todayStr = new Date().toISOString().substring(0, 10);
+        await Promise.all(
+          overdueStudents.map(s =>
+            hubinApi.updatePenempatan(s.id, {
+              status: 'SELESAI',
+              tanggal_selesai: s.tanggal_selesai ? s.tanggal_selesai.substring(0, 10) : todayStr
+            })
+          )
+        );
+        queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+        queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+        queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
+        toast.success(`Berhasil menyelesaikan ${overdueStudents.length} penempatan siswa`);
+      } catch (err) {
+        toast.error('Gagal menyelesaikan penempatan siswa');
+      } finally {
+        setIsBatchCheckingOut(false);
+      }
+    }
+  }, [overdueStudents, confirm, queryClient]);
 
   const paginationProps = useMemo(() => {
     if (!pagination) return undefined;
@@ -592,26 +708,39 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     };
   }, [pagination]);
 
-  const stats = useMemo(() => [
-    {
-      title: 'Total Penempatan',
-      value: rawPenempatan?.length || 0,
-      icon: <ClipboardList size={24} />,
-      gradient: 'from-blue-500 to-indigo-600'
-    },
-    {
-      title: 'Penempatan Aktif',
-      value: rawPenempatan?.filter((p: SiswaPkl) => p.status === 'AKTIF').length || 0,
-      icon: <CheckCircle2 size={24} />,
-      gradient: 'from-emerald-400 to-teal-600'
-    },
-    {
-      title: 'Mitra Terlibat',
-      value: Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0,
-      icon: <Building2 size={24} />,
-      gradient: 'from-amber-400 to-orange-600'
-    }
-  ], [rawPenempatan]);
+  const stats = useMemo(() => {
+    const totalCount = rawPenempatan?.length || 0;
+    const activeCount = rawPenempatan?.filter((p: SiswaPkl) => p.status === 'AKTIF').length || 0;
+    const finishedCount = rawPenempatan?.filter((p: SiswaPkl) => p.status === 'SELESAI').length || 0;
+    const mitraCount = Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0;
+
+    return [
+      {
+        title: 'Total Penempatan',
+        value: totalCount,
+        icon: <ClipboardList size={24} />,
+        gradient: 'from-blue-500 to-indigo-600'
+      },
+      {
+        title: 'Penempatan Aktif',
+        value: activeCount,
+        icon: <CheckCircle2 size={24} />,
+        gradient: 'from-emerald-400 to-teal-600'
+      },
+      {
+        title: 'Penempatan Selesai',
+        value: finishedCount,
+        icon: <GraduationCap size={24} />,
+        gradient: 'from-purple-500 to-indigo-600'
+      },
+      {
+        title: 'Mitra Terlibat',
+        value: mitraCount,
+        icon: <Building2 size={24} />,
+        gradient: 'from-amber-400 to-orange-600'
+      }
+    ];
+  }, [rawPenempatan]);
 
   const breadcrumbs = [
     { label: 'Dashboard', path: '/dashboard' },
@@ -706,8 +835,33 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       setSelectedMitraId(row.mitra_id);
       setSelectedPembimbingId(row.pembimbing_id || '');
       setIsPlottingOpen(true);
+    },
+    onSelesai: async (row) => {
+      const isConfirmed = await confirm({
+        title: 'Tandai Selesai PKL',
+        description: `Apakah Anda yakin ingin menandai penempatan PKL untuk ${row.Siswa?.nama_siswa} di ${row.Mitra?.nama} sebagai SELESAI? Status siswa akan diperbarui dan presensi harian ditutup.`,
+        confirmText: 'Ya, Tandai Selesai',
+        cancelText: 'Batal',
+        style: 'primary'
+      });
+      if (isConfirmed) {
+        updateMutation.mutate({
+          id: row.id,
+          data: {
+            status: 'SELESAI',
+            tanggal_selesai: new Date().toISOString().substring(0, 10)
+          }
+        });
+      }
+    },
+    onMutasi: (row) => {
+      setSelectedMutasiPkl(row);
+      setIsMutasiOpen(true);
+    },
+    onFilterSiswaHistory: (namaSiswa: string) => {
+      setSearchTerm(namaSiswa);
     }
-  }), [rawMitra, canManage, hasKolektif, deleteMutation, confirm]);
+  }), [rawMitra, canManage, hasKolektif, deleteMutation, updateMutation, confirm, setSearchTerm]);
 
   const handleConfirmMonitoringPrint = useCallback((config: MonitoringPrintConfig) => {
     if (!selectedMonitoringPkl) return;
@@ -740,18 +894,24 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     return collectiveStudents[0] || null;
   }, [collectiveStudents]);
 
-  const tabOptions = useMemo((): TabOption[] => [
-    ...(isGuru 
+  const tabOptions = useMemo((): TabOption[] => {
+    const allLabel = isKaprog 
+      ? `Semua Siswa ${kaprogJurusan?.singkatan || 'Jurusan'}` 
+      : (isWaliKelas ? `Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : 'Semua Penempatan');
+
+    const guidanceLabel = `Bimbingan Saya (${myGuidanceCount})`;
+    const fullAllLabel = `${allLabel} (${allCount})`;
+
+    return isGuru 
       ? [
-          { id: 'MY_GUIDANCE', label: 'Bimbingan Saya', icon: User },
-          { id: 'ALL', label: 'Semua Penempatan', icon: ClipboardList }
+          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User },
+          { id: 'ALL', label: fullAllLabel, icon: ClipboardList }
         ]
       : [
-          { id: 'ALL', label: 'Semua Penempatan', icon: ClipboardList },
-          { id: 'MY_GUIDANCE', label: 'Bimbingan Saya', icon: User }
-        ]
-    )
-  ], [isGuru]);
+          { id: 'ALL', label: fullAllLabel, icon: ClipboardList },
+          { id: 'MY_GUIDANCE', label: guidanceLabel, icon: User }
+        ];
+  }, [isGuru, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, allCount, myGuidanceCount]);
 
   const isMobile = useIsMobile();
 
@@ -936,6 +1096,57 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const content = (
     <>
       <SectionCard title="Data Penempatan PKL Siswa" icon={ClipboardList} fullWidth noPadding>
+        {/* Banner Khusus Kaprog: Unit Terkunci */}
+        {isKaprog && (
+          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+            <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div>
+              <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
+              <span>
+                Data penempatan dibatasi otomatis untuk Jurusan{' '}
+                <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>
+                {kaprogJurusan?.singkatan ? ` (${kaprogJurusan.singkatan})` : ''}.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
+        {isWaliKelas && !isKaprog && !isAdmin && !isHubin && (
+          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
+            <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-bold">Mode Wali Kelas (Monitoring Kelas Binaan):</span>{' '}
+              <span>
+                Data penempatan dibatasi otomatis untuk siswa kelas{' '}
+                <strong>{walikelasKelas?.nama_kelas || 'Binaan Anda'}</strong>.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Banner Aksi Cepat: Siswa Periode Berakhir */}
+        {overdueStudents.length > 0 && canManage && (
+          <div className="mx-4 mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-900/50 rounded-2xl animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-200">
+              <Clock size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                Terdapat <strong>{overdueStudents.length} siswa</strong> yang jadwal PKL-nya telah berakhir dan menunggu konfirmasi penarikan.
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="xs"
+              variant="warning"
+              onClick={handleBatchCheckoutOverdue}
+              disabled={isBatchCheckingOut}
+              className="shrink-0 text-xs font-bold rounded-xl shadow-sm"
+            >
+              {isBatchCheckingOut ? 'Memproses...' : `⚡ Tandai Selesai (${overdueStudents.length} Siswa)`}
+            </Button>
+          </div>
+        )}
+
         {/* Custom Search & Toolbar */}
         <div className="flex flex-col gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 w-full">
           {/* Tab Filters */}
@@ -980,6 +1191,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
                 }}
                 value={selectedKelasFilter}
                 isLoading={isLoadingKelas}
+                disabled={Boolean(isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog)}
               />
             </div>
 
@@ -1083,7 +1295,33 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           isLoadingGuru={isLoadingGuru}
           isLoadingMitra={isLoadingMitra}
           editingPkl={selectedPkl}
+          filterJurusan={isKaprog && kaprogJurusan ? (kaprogJurusan.singkatan || kaprogJurusan.nama) : undefined}
         />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {isMutasiOpen && (
+          <HubinPklMutasiModal
+            isOpen={isMutasiOpen}
+            onClose={() => {
+              setIsMutasiOpen(false);
+              setSelectedMutasiPkl(null);
+            }}
+            row={selectedMutasiPkl}
+            mitraOptions={mitraOptions}
+            guruOptions={guruOptions}
+            onSubmit={(data) => {
+              if (selectedMutasiPkl) {
+                mutasiMutation.mutate({ id: selectedMutasiPkl.id, data });
+              }
+            }}
+            isPending={mutasiMutation.isPending}
+            isLoadingMitra={isLoadingMitra}
+            isLoadingGuru={isLoadingGuru}
+            onGuruSearch={setGuruSearch}
+            onMitraSearch={setMitraSearch}
+          />
+        )}
       </Suspense>
 
       <Suspense fallback={null}>
@@ -1099,6 +1337,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           onMitraSearch={setMitraSearch}
           isLoadingGuru={isLoadingGuru}
           isLoadingMitra={isLoadingMitra}
+          filterJurusanId={isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined}
+          jurusanNama={isKaprog && kaprogJurusan ? (kaprogJurusan.singkatan || kaprogJurusan.nama) : undefined}
         />
       </Suspense>
 

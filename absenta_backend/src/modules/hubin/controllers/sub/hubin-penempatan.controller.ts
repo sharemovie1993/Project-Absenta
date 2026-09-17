@@ -57,6 +57,7 @@ export class HubinPenempatanController {
       );
       return reply.status(201).send({ success: true, data });
     } catch (error: any) {
+      appLogger.error({ err: error, body: request.body }, 'createPenempatan error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -75,12 +76,13 @@ export class HubinPenempatanController {
       const data = await this.hubinService.updatePenempatan(
         request.tenantId!, 
         id, 
-        parsedBody,
+        parsedBody, 
         request.user.id,
         request.organizationalScope
       );
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
+      appLogger.error({ err: error, body: request.body, id: request.params?.id }, 'updatePenempatan error');
       if (error instanceof z.ZodError) {
         return reply.status(400).send({
           success: false,
@@ -129,5 +131,33 @@ export class HubinPenempatanController {
     }
   }
 
-  // --- ABSENSI ---
+  async mutasiPenempatan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params;
+      const data = await this.hubinService.mutasiPenempatan(
+        request.tenantId!,
+        id,
+        request.body,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, message: 'Mutasi penempatan siswa berhasil diproses', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async bulkUpdateStatus(request: AuthenticatedRequest, reply: any) {
+    try {
+      const data = await this.hubinService.bulkUpdateStatus(
+        request.tenantId!,
+        request.body,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, message: 'Status penempatan berhasil diperbarui', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
 }

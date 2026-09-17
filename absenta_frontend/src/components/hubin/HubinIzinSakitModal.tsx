@@ -69,6 +69,7 @@ export const HubinIzinSakitModal: React.FC<HubinIzinSakitModalProps> = React.mem
       toast.success(res?.message || 'Permohonan izin / sakit berhasil dikirim!');
       queryClient.invalidateQueries({ queryKey: ['my-penempatan'] });
       queryClient.invalidateQueries({ queryKey: ['absensi-pkl-history'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-absensi-dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab'] });
       queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-widget'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });

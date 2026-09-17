@@ -9,7 +9,10 @@ import {
   Edit, 
   Trash2, 
   MessageCircle, 
-  Building2 
+  Building2,
+  CheckCircle,
+  ArrowRightLeft,
+  History
 } from 'lucide-react';
 import type { SiswaPkl } from '../../pages/hubin/types/penempatan.types';
 
@@ -25,6 +28,9 @@ export interface PenempatanRowActionMenuProps {
   onPrintMonitoring?: (row: SiswaPkl) => void;
   onHapus: (row: SiswaPkl) => void;
   onEdit?: (row: SiswaPkl) => void;
+  onSelesai?: (row: SiswaPkl) => void;
+  onMutasi?: (row: SiswaPkl) => void;
+  onFilterSiswaHistory?: (namaSiswa: string) => void;
   siswaPhone?: string;
   mitraPhone?: string;
 }
@@ -41,6 +47,9 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
   onPrintMonitoring,
   onHapus,
   onEdit,
+  onSelesai,
+  onMutasi,
+  onFilterSiswaHistory,
   siswaPhone,
   mitraPhone
 }) => {
@@ -154,6 +163,23 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
                 {row.Mitra?.nama || 'Tanpa Mitra'}
               </p>
             </div>
+
+            {/* Quick Filter: Riwayat Siswa */}
+            {onFilterSiswaHistory && row.Siswa?.nama_siswa && (
+              <div className="border-b border-slate-100 dark:border-slate-800 py-1 bg-indigo-50/30 dark:bg-indigo-950/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onFilterSiswaHistory(row.Siswa!.nama_siswa);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors text-left cursor-pointer"
+                >
+                  <History size={14} className="text-indigo-500 shrink-0" />
+                  <span>Riwayat Siswa Ini</span>
+                </button>
+              </div>
+            )}
 
             {/* Group 1: Pembimbingan & Penilaian */}
             <div className="py-1">
@@ -289,6 +315,34 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
                   >
                     <Edit size={15} className="text-slate-500 shrink-0" />
                     <span>Edit Plotting</span>
+                  </button>
+                )}
+
+                {row.status === 'AKTIF' && onSelesai && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onSelesai(row);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors text-left cursor-pointer"
+                  >
+                    <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                    <span>Tandai Selesai PKL</span>
+                  </button>
+                )}
+
+                {row.status === 'AKTIF' && onMutasi && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onMutasi(row);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors text-left cursor-pointer"
+                  >
+                    <ArrowRightLeft size={15} className="text-amber-500 shrink-0" />
+                    <span>Mutasi / Pindah DUDI</span>
                   </button>
                 )}
 

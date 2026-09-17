@@ -31,6 +31,8 @@ export class HubinController {
   async updatePenempatan(...args: any[]) { return (this.penempatan as any).updatePenempatan(...args); }
   async bulkCreatePenempatan(...args: any[]) { return (this.penempatan as any).bulkCreatePenempatan(...args); }
   async deletePenempatan(...args: any[]) { return (this.penempatan as any).deletePenempatan(...args); }
+  async mutasiPenempatan(...args: any[]) { return (this.penempatan as any).mutasiPenempatan(...args); }
+  async bulkUpdateStatus(...args: any[]) { return (this.penempatan as any).bulkUpdateStatus(...args); }
 
   // Absensi & Logbook
   async getAbsensiSiswa(...args: any[]) { return (this.absensi as any).getAbsensiSiswa(...args); }

@@ -845,6 +845,41 @@ export class AuthService {
     const orgCtx = await organizationalAuthorizationEngine.resolveOrganizationalContext(user.id);
     response.capabilities = await authorizationService.resolveUserCapabilities(user.id, { user });
     response.position_codes = orgCtx.positions.map(p => p.code);
+    response.unit_ids = orgCtx.unit_ids;
+    response.kelas_ids = orgCtx.kelas_ids;
+
+    // Attach kaprog_jurusan if user has KAPROG position
+    if (response.position_codes.includes('KAPROG') && orgCtx.unit_ids.length > 0) {
+      try {
+        const jurusan = await prisma.jurusan.findFirst({
+          where: { id: { in: orgCtx.unit_ids }, tenant_id: user.tenant_id },
+          select: { id: true, nama: true, singkatan: true }
+        });
+        if (jurusan) {
+          response.kaprog_jurusan = jurusan;
+        }
+      } catch (e) {
+        console.warn('[AUTH] Failed to resolve kaprog_jurusan:', e);
+      }
+    }
+
+    // Attach walikelas_kelas if user has WALIKELAS position
+    if (
+      (response.position_codes.includes('WALIKELAS') || response.position_codes.includes('WALI_KELAS')) &&
+      orgCtx.kelas_ids && orgCtx.kelas_ids.length > 0
+    ) {
+      try {
+        const kelas = await prisma.kelas.findFirst({
+          where: { id: { in: orgCtx.kelas_ids }, tenant_id: user.tenant_id },
+          select: { id: true, nama_kelas: true, tingkat: true }
+        });
+        if (kelas) {
+          response.walikelas_kelas = kelas;
+        }
+      } catch (e) {
+        console.warn('[AUTH] Failed to resolve walikelas_kelas:', e);
+      }
+    }
     
     // Attach siswa_id if role is SISWA
     if (response.role?.name === 'SISWA') {
@@ -886,6 +921,12 @@ export class AuthService {
 
       if (waliAssignment?.Kelas) {
         waliKelasDi = waliAssignment.Kelas;
+        if (!response.walikelas_kelas) {
+          response.walikelas_kelas = waliKelasDi;
+        }
+        if (!response.kelas_ids || response.kelas_ids.length === 0) {
+          response.kelas_ids = [waliKelasDi.id];
+        }
       }
 
       response.guru_profile = {
