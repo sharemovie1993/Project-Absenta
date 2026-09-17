@@ -1,4 +1,4 @@
-import { requestWithFallback, downloadBlob } from "../apiUtils";
+import { requestWithFallback } from "../apiUtils";
 
 export interface BackupHistoryItem {
   id: string;
@@ -13,13 +13,6 @@ export interface BackupHistoryItem {
   Tenant?: { name: string; subdomain: string };
 }
 
-export const exportAcademicData = async (): Promise<Blob> => {
-  return downloadBlob('/academic/backup/export');
-};
-
-export const importAcademicData = async (data: any): Promise<{ success: boolean; message: string; details?: any; audit?: any }> => {
-  return requestWithFallback<{ success: boolean; message: string; details?: any; audit?: any }>('post', '/academic/backup/import', { data });
-};
 
 export const getBackupHistory = async (): Promise<BackupHistoryItem[]> => {
   const res = await requestWithFallback<{ success: boolean; data: BackupHistoryItem[] }>('get', '/admin/backups');

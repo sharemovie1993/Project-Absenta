@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Download,
@@ -8,10 +8,13 @@ import {
   ShieldCheck,
   RefreshCw,
   Loader2,
-  Sparkles
+  Sparkles,
+  HardDrive
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { exportAcademicData, importAcademicData, purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
+import { purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
+import { backupApi } from '@/api/superadmin-backups.api';
+import type { MigrationManifest } from '@/api/auth.api';
 import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
 import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
 import { useAuthStore } from '@/store/authStore';
@@ -26,99 +29,28 @@ import { ExportSection } from '@/components/academic/backup/ExportSection';
 import { ImportSection } from '@/components/academic/backup/ImportSection';
 import { ActiveUsersSafetyCard } from '@/components/academic/backup/ActiveUsersSafetyCard';
 
-const ImportResultModal = lazy(() => import('@/components/academic/backup/ImportResultModal').then(module => ({ default: module.ImportResultModal })));
-
-interface BackupStats {
-  master: {
-    sekolah: number;
-    tahunPelajaran: number;
-    semester: number;
-    jurusan: number;
-    mapel: number;
-    kelas: number;
-  };
-  users: {
-    guru: number;
-    siswa: number;
-    orangTua: number;
-    user: number;
-  };
-  academic: {
-    jadwalKBM: number;
-    absenSiswa: number;
-    absenGuru: number;
-    absenGerbang: number;
-  };
-  modules: {
-    suratDigital: number;
-    pelanggaranPrestasi: number;
-    bkKonseling: number;
-    sarprasAsset: number;
-    koperasi: number;
-  };
-  total: number;
-  tableCount: number;
-}
-
-// Tipe eksplisit untuk data JSON backup
-type BackupJsonData = {
-  data?: Record<string, unknown[]>;
-  tables?: Record<string, unknown[]>;
-  meta?: {
-    total_rows?: number;
-    table_row_counts?: Record<string, number>;
-  };
-  [key: string]: unknown;
-};
-
-// Tipe eksplisit untuk hasil import
-type ImportResultDetail = Record<string, number | string | unknown>;
-
-function getRecordCount(data: Record<string, unknown>, ...possibleKeys: string[]): number {
-  if (!data) return 0;
-  for (const k of possibleKeys) {
-    if (Array.isArray(data[k])) return (data[k] as unknown[]).length;
-  }
-  const dataKeys = Object.keys(data);
-  for (const k of possibleKeys) {
-    const matchedKey = dataKeys.find(dk => dk.toLowerCase() === k.toLowerCase());
-    if (matchedKey && Array.isArray(data[matchedKey])) {
-      return (data[matchedKey] as unknown[]).length;
-    }
-  }
-  return 0;
-}
-
 const BackupPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
   const { user } = useAuthStore();
+
   const [showExportBundleModal, setShowExportBundleModal] = useState(false);
   const [showMigrationWizardModal, setShowMigrationWizardModal] = useState(false);
-  const [loadingExport, setLoadingExport] = useState(false);
-  const [loadingImport, setLoadingImport] = useState(false);
+
+  // States for .absenta file inspection and restore
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [previewStats, setPreviewStats] = useState<BackupStats | null>(null);
-  const [isReadingFile, setIsReadingFile] = useState(false);
-  const [parsedData, setParsedData] = useState<BackupJsonData | null>(null);
-  const [clearExisting, setClearExisting] = useState<boolean>(false);
-
-  // States for Progress & Report
+  const [manifest, setManifest] = useState<MigrationManifest | null>(null);
+  const [isInspecting, setIsInspecting] = useState(false);
+  const [loadingImport, setLoadingImport] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [processingStage, setProcessingStage] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle');
-  const [importResult, setImportResult] = useState<ImportResultDetail | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
+  const [restoreMessage, setRestoreMessage] = useState('Memulihkan basis data dan berkas media...');
 
-  // Ref untuk interval progress dan timeout reset – mencegah kebocoran memori
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup semua timer saat komponen di-unmount
   useEffect(() => {
     return () => {
       if (progressIntervalRef.current !== null) clearInterval(progressIntervalRef.current);
-      if (resetTimeoutRef.current !== null) clearTimeout(resetTimeoutRef.current);
     };
   }, []);
 
@@ -131,113 +63,48 @@ const BackupPage: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const executeExport = useCallback(async () => {
-    try {
-      setLoadingExport(true);
-      const blob = await exportAcademicData();
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `academic-backup-${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Ekspor Berhasil: File cadangan telah diunduh.');
-      loadHistory();
-    } catch (err: unknown) {
-      console.error('Export failed:', err);
-      toast.error('Ekspor Gagal: Gagal mengekspor data akademik.');
-    } finally {
-      setLoadingExport(false);
-    }
-  }, [loadHistory]);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
       setImportFile(null);
-      setPreviewStats(null);
-      setParsedData(null);
+      setManifest(null);
       return;
     }
 
     setImportFile(file);
-    setIsReadingFile(true);
-    setImportResult(null);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string) as BackupJsonData;
-        const data = (json.data || json.tables || {}) as Record<string, unknown[]>;
-
-        const allTableKeys = Object.keys(data);
-        let grandTotal = 0;
-        let validTablesCount = 0;
-
-        for (const tk of allTableKeys) {
-          if (Array.isArray(data[tk])) {
-            grandTotal += data[tk].length;
-            if (data[tk].length > 0) validTablesCount++;
-          }
-        }
-
-        const stats: BackupStats = {
-          master: {
-            sekolah: getRecordCount(data, 'Sekolah', 'sekolah'),
-            tahunPelajaran: getRecordCount(data, 'TahunPelajaran', 'tahunPelajaran', 'tahun_pelajaran'),
-            semester: getRecordCount(data, 'Semester', 'semester'),
-            jurusan: getRecordCount(data, 'Jurusan', 'jurusan'),
-            mapel: getRecordCount(data, 'Mapel', 'mapel'),
-            kelas: getRecordCount(data, 'Kelas', 'kelas'),
-          },
-          users: {
-            guru: getRecordCount(data, 'Guru', 'guru'),
-            siswa: getRecordCount(data, 'Siswa', 'siswa'),
-            orangTua: getRecordCount(data, 'OrangTua', 'orangTua', 'orang_tua'),
-            user: getRecordCount(data, 'User', 'user'),
-          },
-          academic: {
-            jadwalKBM: getRecordCount(data, 'JadwalKBM', 'jadwalKBM', 'jadwal_kbm'),
-            absenSiswa: getRecordCount(data, 'AbsenSiswa', 'absenSiswa'),
-            absenGuru: getRecordCount(data, 'AbsenGuru', 'absenGuru'),
-            absenGerbang: getRecordCount(data, 'AbsenGerbangSiswa', 'absenGerbangSiswa') + getRecordCount(data, 'AbsenGerbangGuru', 'absenGerbangGuru'),
-          },
-          modules: {
-            suratDigital: getRecordCount(data, 'SuratMasuk', 'suratMasuk') + getRecordCount(data, 'SuratKeluar', 'suratKeluar') + getRecordCount(data, 'TemplateSurat'),
-            pelanggaranPrestasi: getRecordCount(data, 'PelanggaranSiswa', 'pelanggaranSiswa') + getRecordCount(data, 'PrestasiSiswa', 'prestasiSiswa'),
-            bkKonseling: getRecordCount(data, 'KonselingSiswa', 'konselingSiswa') + getRecordCount(data, 'KasusBK', 'kasusBK'),
-            sarprasAsset: getRecordCount(data, 'SarprasAsset', 'sarprasAsset') + getRecordCount(data, 'SarprasLoan', 'sarprasLoan'),
-            koperasi: getRecordCount(data, 'Member', 'member') + getRecordCount(data, 'SavingTransaction', 'savingTransaction') + getRecordCount(data, 'Sale', 'sale'),
-          },
-          total: Number((json.meta as Record<string, unknown>)?.total_rows) || grandTotal,
-          tableCount: validTablesCount,
-        };
-
-        setPreviewStats(stats);
-        setParsedData(json);
-      } catch (err: unknown) {
-        console.error('Error parsing backup file:', err);
-        toast.error('File Tidak Valid: Tidak dapat mengurai JSON.');
-        setPreviewStats(null);
-        setParsedData(null);
-      } finally {
-        setIsReadingFile(false);
+    setIsInspecting(true);
+    try {
+      const res = await backupApi.inspectBundle(file);
+      if (res.success && res.data) {
+        setManifest(res.data);
+        toast.success(`Paket terverifikasi: ${res.data.source_tenant?.name || 'Sekolah'}`);
+      } else {
+        toast.error(res.message || 'Format berkas .absenta tidak valid');
+        setImportFile(null);
+        setManifest(null);
       }
-    };
-    reader.readAsText(file);
+    } catch (err: any) {
+      console.error('Error inspecting bundle:', err);
+      toast.error(err?.response?.data?.message || err.message || 'Gagal membaca paket .absenta');
+      setImportFile(null);
+      setManifest(null);
+    } finally {
+      setIsInspecting(false);
+    }
+  }, []);
+
+  const handleResetFile = useCallback(() => {
+    setImportFile(null);
+    setManifest(null);
   }, []);
 
   const executeImport = useCallback(async () => {
-    if (!parsedData) return;
+    if (!importFile || !manifest) return;
 
     const ok = await confirm({
-      title: 'Mulai Pemulihan Data?',
-      description: 'Sistem akan memproses file cadangan dan menyisipkan data baru. Record yang duplikat akan dilewati secara otomatis.',
-      confirmText: 'Mulai Sekarang',
+      title: 'Mulai Pemulihan Sistem Sekolah?',
+      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${manifest.stats.total_db_records} record database, ${manifest.stats.total_media_files} file media MinIO). Record yang duplikat akan otomatis dilewati secara aman (Idempotent).`,
+      confirmText: 'Mulai Pemulihan',
       cancelText: 'Batalkan',
       style: 'primary'
     });
@@ -246,64 +113,45 @@ const BackupPage: React.FC = React.memo(() => {
 
     try {
       setLoadingImport(true);
-      setProcessingStage('uploading');
-      setImportProgress(10);
+      setImportProgress(15);
+      setRestoreMessage('Mengunggah & memproses berkas .absenta...');
 
-      // Simpan interval ke ref agar dapat di-cleanup saat unmount
       progressIntervalRef.current = setInterval(() => {
-        setImportProgress(prev => {
-          if (prev >= 90) {
-            if (progressIntervalRef.current !== null) {
-              clearInterval(progressIntervalRef.current);
-              progressIntervalRef.current = null;
-            }
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 200);
+        setImportProgress(prev => (prev < 90 ? prev + 8 : prev));
+      }, 350);
 
-      const importPayload = {
-        ...parsedData,
-        clear_existing: clearExisting
-      };
-      const res = await importAcademicData(importPayload);
+      const res = await backupApi.importBundle(importFile, user?.tenant_id);
 
-      // Hentikan interval setelah selesai
       if (progressIntervalRef.current !== null) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
       setImportProgress(100);
-      setProcessingStage('done');
-
-      // Gunakan audit report lengkap jika tersedia, atau fallback ke res
-      const resObj = res as Record<string, unknown>;
-      const auditPayload = resObj?.audit ? resObj.audit : resObj?.details || res;
-      setImportResult(auditPayload as ImportResultDetail);
-      setShowResultModal(true);
+      setRestoreMessage('Pemulihan data dan berkas media selesai!');
 
       if (res.success) {
-        toast.success(`Impor Berhasil: ${res.message}`);
+        toast.success(res.message || 'Sistem sekolah berhasil dipulihkan!');
         setImportFile(null);
-        setPreviewStats(null);
-        setParsedData(null);
+        setManifest(null);
         loadHistory();
+        queryClient.invalidateQueries();
       } else {
-        toast(`Peringatan Impor: ${res.message}`, { icon: '⚠️' });
+        toast.error(res.message || 'Pemulihan data gagal');
       }
-    } catch (err: unknown) {
-      console.error('Import failed:', err);
-      toast.error('Impor Gagal: Gagal mengimpor data.');
-      setProcessingStage('idle');
+    } catch (err: any) {
+      if (progressIntervalRef.current !== null) {
+        clearInterval(progressIntervalRef.current);
+        progressIntervalRef.current = null;
+      }
+      console.error('Import bundle failed:', err);
+      toast.error(err?.response?.data?.message || err.message || 'Gagal memulihkan sistem');
     } finally {
-      setLoadingImport(false);
-      resetTimeoutRef.current = setTimeout(() => {
+      setTimeout(() => {
+        setLoadingImport(false);
         setImportProgress(0);
-        setProcessingStage('idle');
-      }, 1000);
+      }, 1200);
     }
-  }, [parsedData, clearExisting, confirm, loadHistory]);
+  }, [importFile, manifest, confirm, user?.tenant_id, loadHistory, queryClient]);
 
   const handleManualPurge = useCallback(async () => {
     const ok = await confirm({
@@ -321,14 +169,10 @@ const BackupPage: React.FC = React.memo(() => {
       const res = await purgeTenantData();
       if (res.success) {
         toast.success(res.message || 'Data sekolah berhasil dikosongkan secara manual!');
-        const resObj = res as Record<string, unknown>;
-        const auditPayload = resObj?.audit ? resObj.audit : resObj?.details || res;
-        setImportResult(auditPayload as ImportResultDetail);
-        setShowResultModal(true);
         setImportFile(null);
-        setPreviewStats(null);
-        setParsedData(null);
+        setManifest(null);
         loadHistory();
+        queryClient.invalidateQueries();
       } else {
         toast.error(`Gagal mengosongkan data: ${res.message}`);
       }
@@ -339,26 +183,25 @@ const BackupPage: React.FC = React.memo(() => {
     } finally {
       setLoadingImport(false);
     }
-  }, [confirm, loadHistory]);
+  }, [confirm, loadHistory, queryClient]);
 
-  // headerStats dibungkus useMemo agar tidak memicu re-render yang tidak perlu
   const headerStats = useMemo(() => [
     {
-      title: "Format Backup",
-      value: "JSON (GZIP)",
+      title: "Format Cadangan",
+      value: "Paket .absenta",
       icon: <Database size={14} />,
       gradient: "from-blue-500 to-indigo-600"
     },
     {
-      title: "Enkripsi Data",
-      value: "SHA-256 HMAC",
-      icon: <ShieldCheck size={14} />,
+      title: "Media Storage",
+      value: "MinIO S3 Sync",
+      icon: <HardDrive size={14} />,
       gradient: "from-emerald-500 to-teal-600"
     },
     {
-      title: "Skema Model",
-      value: "Dynamic DMMF",
-      icon: <Database size={14} />,
+      title: "Integritas Berkas",
+      value: "SHA-256 HMAC",
+      icon: <ShieldCheck size={14} />,
       gradient: "from-violet-500 to-purple-600"
     },
     {
@@ -371,7 +214,7 @@ const BackupPage: React.FC = React.memo(() => {
 
   const breadcrumbs = useMemo(() => [
     { label: 'Akademik' },
-    { label: 'Backup & Restore' }
+    { label: 'Cadangan & Pemulihan' }
   ], []);
 
   return (
@@ -433,22 +276,21 @@ const BackupPage: React.FC = React.memo(() => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Export Card */}
           <SectionCard
-            title="Export Pusat Data"
+            title="Ekspor Paket Cadangan (.absenta)"
             icon={Download}
             noPadding
             fullWidth
             className="flex flex-col h-full overflow-hidden"
           >
             <ExportSection 
-              onExport={executeExport}
               onExportBundle={() => setShowExportBundleModal(true)}
-              loading={loadingExport}
+              loading={false}
             />
           </SectionCard>
 
           {/* Import Card */}
           <SectionCard
-            title="Pemulihan Data (Restore)"
+            title="Pemulihan Paket Cadangan (.absenta)"
             icon={UploadCloud}
             noPadding
             fullWidth
@@ -456,14 +298,13 @@ const BackupPage: React.FC = React.memo(() => {
           >
             <ImportSection 
               importFile={importFile}
+              manifest={manifest}
               onFileChange={handleFileChange}
-              isReadingFile={isReadingFile}
+              onResetFile={handleResetFile}
+              isInspecting={isInspecting}
               loadingImport={loadingImport}
-              processingStage={processingStage}
               importProgress={importProgress}
-              previewStats={previewStats}
-              clearExisting={clearExisting}
-              onToggleClearExisting={setClearExisting}
+              restoreMessage={restoreMessage}
               onManualPurge={handleManualPurge}
               onImport={executeImport}
               onOpenMigrationWizard={() => setShowMigrationWizardModal(true)}
@@ -563,14 +404,6 @@ const BackupPage: React.FC = React.memo(() => {
           )}
         </SectionCard>
       </div>
-
-      <Suspense fallback={<div className="flex justify-center p-12"><Loader size="lg" /></div>}>
-        <ImportResultModal 
-          isOpen={showResultModal}
-          result={importResult}
-          onClose={() => setShowResultModal(false)}
-        />
-      </Suspense>
 
       {/* One-Click UniFi/Omada Style Modals */}
       <ExportBundleModal
