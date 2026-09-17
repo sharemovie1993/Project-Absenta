@@ -108,12 +108,16 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
       if (abs) {
         const absDate = typeof abs.tanggal === 'string' ? abs.tanggal.substring(0, 10) : '';
         if (absDate === todayStr) {
-          const isHadir = abs.jam_masuk || abs.status === 'HADIR' || abs.status === 'TERLAMBAT';
+          const st = (abs.status || '').toUpperCase();
+          const isHadir = Boolean(abs.jam_masuk || st === 'HADIR' || st === 'TERLAMBAT');
+          const isSakit = st === 'SAKIT';
+          const isIzin = st === 'IZIN';
+
           if (isHadir) {
             hadirToday++;
-            if (!abs.is_verified) {
-              unverifiedCount++;
-            }
+          }
+          if (!abs.is_verified && (isHadir || isSakit || isIzin)) {
+            unverifiedCount++;
           }
         }
       }
@@ -365,8 +369,10 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
             const abs = item.AbsensiPkl?.[0];
             const isToday = abs && (typeof abs.tanggal === 'string' ? abs.tanggal.substring(0, 10) === todayStr : false);
             const isHadir = isToday && (abs.jam_masuk || abs.status === 'HADIR' || abs.status === 'TERLAMBAT');
-            const isVerified = isToday && isHadir && abs.is_verified;
-            const isPendingVerification = isToday && isHadir && !abs.is_verified;
+            const isSakit = isToday && abs.status === 'SAKIT';
+            const isIzin = isToday && abs.status === 'IZIN';
+            const isVerified = isToday && abs.is_verified;
+            const isPendingVerification = isToday && (isHadir || isSakit || isIzin) && !abs.is_verified;
 
             return (
               <div
@@ -422,6 +428,70 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 animate-pulse">
                             MENUNGGU VERIFIKASI
                           </span>
+                        )}
+                      </div>
+                    ) : isSakit ? (
+                      <div className="flex flex-col sm:items-end gap-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-amber-600 dark:text-amber-400">
+                            Sakit
+                          </span>
+                          {isVerified ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              TERVERIFIKASI
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40 animate-pulse">
+                              MENUNGGU VERIFIKASI
+                            </span>
+                          )}
+                        </div>
+                        {abs.kegiatan && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 italic max-w-xs truncate">
+                            {abs.kegiatan}
+                          </span>
+                        )}
+                        {abs.image_url && (
+                          <a
+                            href={abs.image_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                          >
+                            Lihat Surat Dokter ↗
+                          </a>
+                        )}
+                      </div>
+                    ) : isIzin ? (
+                      <div className="flex flex-col sm:items-end gap-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs font-black text-blue-600 dark:text-blue-400">
+                            Izin
+                          </span>
+                          {isVerified ? (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                              TERVERIFIKASI
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/40 animate-pulse">
+                              MENUNGGU VERIFIKASI
+                            </span>
+                          )}
+                        </div>
+                        {abs.kegiatan && (
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 italic max-w-xs truncate">
+                            {abs.kegiatan}
+                          </span>
+                        )}
+                        {abs.image_url && (
+                          <a
+                            href={abs.image_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                          >
+                            Lihat Surat Izin ↗
+                          </a>
                         )}
                       </div>
                     ) : (

@@ -69,21 +69,46 @@ prisma.$use(async (params, next) => {
     if (tenantId && tenantId !== 'system') {
       // 1. Resolve subscription features directly
       const now = new Date();
+      // Allow a 7-day grace period consistent with tenantEntitlementService
+      const graceThreshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const subscriptions = await prisma.subscription.findMany({
         where: {
           tenant_id: tenantId,
           status: { in: ['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'] as any },
-          end_date: { gt: now },
+          end_date: { gt: graceThreshold },
         },
         include: { Plan: true },
       });
 
       const activeFeatures = new Set<string>(['CORE']);
       for (const sub of subscriptions) {
-        if (sub.Plan?.module_id) activeFeatures.add(sub.Plan.module_id.toUpperCase());
+        const mid = sub.Plan?.module_id ? sub.Plan.module_id.toUpperCase() : '';
+        const sCode = sub.service_code ? sub.service_code.toUpperCase() : '';
+        const pName = sub.Plan?.name ? sub.Plan.name.toUpperCase() : '';
+
+        if (mid) activeFeatures.add(mid);
+
+        // Jika berlangganan PAKET_LENGKAP, buka seluruh akses modul ekosistem
+        if (mid === 'PAKET_LENGKAP' || sCode === 'PAKET_LENGKAP' || pName.includes('PAKET LENGKAP')) {
+          activeFeatures.add('PAKET_LENGKAP');
+          activeFeatures.add('ABSENSI');
+          activeFeatures.add('KOPERASI');
+          activeFeatures.add('HUBIN');
+          activeFeatures.add('SARPRAS');
+          activeFeatures.add('WHATSAPP');
+        }
+
         if (Array.isArray(sub.Plan?.features_json)) {
           sub.Plan.features_json.forEach((f: any) => {
-            if (typeof f === 'string') activeFeatures.add(f.toUpperCase());
+            if (typeof f === 'string') {
+              const feat = f.toUpperCase().trim();
+              activeFeatures.add(feat);
+              // Dukung varian sub-fitur (misal: ABSENSI-MULTI_SESI, ABSENSI-SIMPLE -> modul ABSENSI)
+              if (feat.startsWith('ABSENSI')) activeFeatures.add('ABSENSI');
+              if (feat.startsWith('KOPERASI')) activeFeatures.add('KOPERASI');
+              if (feat.startsWith('HUBIN')) activeFeatures.add('HUBIN');
+              if (feat.startsWith('SARPRAS')) activeFeatures.add('SARPRAS');
+            }
           });
         }
       }

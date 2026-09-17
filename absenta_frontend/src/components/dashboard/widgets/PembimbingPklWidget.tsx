@@ -50,6 +50,8 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
   // Kalkulasi statistik kehadiran siswa bimbingan hari ini
   const stats = useMemo(() => {
     let hadirCount = 0;
+    let sakitCount = 0;
+    let izinCount = 0;
     let pendingVerificationCount = 0;
     const mitraSet = new Set<string>();
 
@@ -62,12 +64,17 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
       if (abs) {
         const absDate = typeof abs.tanggal === 'string' ? abs.tanggal.substring(0, 10) : '';
         if (absDate === todayStr) {
-          const isHadir = abs.jam_masuk || abs.status === 'HADIR' || abs.status === 'TERLAMBAT';
-          if (isHadir) {
-            hadirCount++;
-            if (!abs.is_verified) {
-              pendingVerificationCount++;
-            }
+          const st = (abs.status || '').toUpperCase();
+          const isHadir = Boolean(abs.jam_masuk || st === 'HADIR' || st === 'TERLAMBAT');
+          const isSakit = st === 'SAKIT';
+          const isIzin = st === 'IZIN';
+
+          if (isHadir) hadirCount++;
+          else if (isSakit) sakitCount++;
+          else if (isIzin) izinCount++;
+
+          if (!abs.is_verified && (isHadir || isSakit || isIzin)) {
+            pendingVerificationCount++;
           }
         }
       }
@@ -76,6 +83,8 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
     return {
       totalSiswa: activeList.length,
       hadirCount,
+      sakitCount,
+      izinCount,
       pendingVerificationCount,
       mitraNames: Array.from(mitraSet),
     };
@@ -149,7 +158,11 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
               {stats.hadirCount} / {stats.totalSiswa} Siswa
             </div>
             <p className="text-[10px] text-slate-400 truncate">
-              {stats.hadirCount === stats.totalSiswa ? 'Semua siswa sudah masuk' : `${stats.totalSiswa - stats.hadirCount} belum presensi`}
+              {stats.sakitCount + stats.izinCount > 0 
+                ? `${stats.sakitCount + stats.izinCount} izin/sakit • ${Math.max(0, stats.totalSiswa - stats.hadirCount - stats.sakitCount - stats.izinCount)} belum presensi`
+                : stats.hadirCount === stats.totalSiswa 
+                ? 'Semua siswa sudah masuk' 
+                : `${stats.totalSiswa - stats.hadirCount} belum presensi`}
             </p>
           </div>
         </div>
@@ -205,14 +218,15 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
           <div className="flex items-center gap-2.5">
             <AlertCircle size={17} className="text-amber-400 shrink-0" />
             <p className="text-xs font-bold text-amber-200">
-              Ada {stats.pendingVerificationCount} presensi siswa magang hari ini yang menunggu verifikasi pembimbing.
+              Ada {stats.pendingVerificationCount} kehadiran / izin siswa hari ini yang menunggu verifikasi pembimbing.
             </p>
           </div>
           <Button
             onClick={() => {
               const unverified = activeList.find((p: any) => {
                 const abs = p.AbsensiPkl?.[0];
-                return abs && abs.tanggal?.substring(0, 10) === todayStr && !abs.is_verified && (abs.jam_masuk || abs.status === 'HADIR');
+                const st = (abs?.status || '').toUpperCase();
+                return abs && abs.tanggal?.substring(0, 10) === todayStr && !abs.is_verified && (abs.jam_masuk || st === 'HADIR' || st === 'SAKIT' || st === 'IZIN');
               });
               if (unverified) {
                 setSelectedSiswaForModal(unverified);

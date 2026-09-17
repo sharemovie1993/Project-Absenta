@@ -40,6 +40,7 @@ export class HubinService {
   async getAbsensiSiswa(...args: any[]) { return (this.absensi as any).getAbsensiSiswa(...args); }
   async checkIn(...args: any[]) { return (this.absensi as any).checkIn(...args); }
   async checkOut(...args: any[]) { return (this.absensi as any).checkOut(...args); }
+  async submitIzinSakit(...args: any[]) { return (this.absensi as any).submitIzinSakit(...args); }
   async updateLogbook(...args: any[]) { return (this.absensi as any).updateLogbook(...args); }
   async syncOfflineLogbook(...args: any[]) { return (this.absensi as any).syncOfflineLogbook(...args); }
   async verifyAbsensi(...args: any[]) { return (this.absensi as any).verifyAbsensi(...args); }

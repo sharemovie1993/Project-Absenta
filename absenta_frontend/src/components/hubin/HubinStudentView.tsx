@@ -5,6 +5,7 @@ import { HubinTodayPresensiCards } from './HubinTodayPresensiCards';
 import { HubinTimelineLogbookBuilder } from './HubinTimelineLogbookBuilder';
 import { HubinStudentJurnalTab } from './HubinStudentJurnalTab';
 import { HubinGoogleDriveUploader } from './HubinGoogleDriveUploader';
+import { HubinIzinSakitModal } from './HubinIzinSakitModal';
 
 interface ViewUser {
   full_name?: string;
@@ -22,12 +23,16 @@ interface StudentPklView {
   Siswa?: {
     Kelas?: {
       nama?: string;
+      nama_kelas?: string;
     };
   };
 }
 interface TodayAbsensi {
   jam_masuk?: string;
   jam_pulang?: string;
+  status?: string;
+  kegiatan?: string;
+  is_verified?: boolean;
 }
 interface ViewMutation {
   mutate: (variables: any) => void;
@@ -99,6 +104,8 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
   onPrint,
   isPklAktif = true,
 }) => {
+  const [isIzinModalOpen, setIsIzinModalOpen] = React.useState(false);
+
   const handlePrintClick = React.useCallback(() => {
     onPrint();
   }, [onPrint]);
@@ -168,6 +175,7 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
               studentName={user?.full_name}
               onRefreshLocation={onRefreshLocation}
               isPklAktif={isPklAktif}
+              onOpenIzinModal={() => setIsIzinModalOpen(true)}
             />
 
             {/* Quick Riwayat Link - Ultra-Compact Strip */}
@@ -321,6 +329,17 @@ export const HubinStudentView: React.FC<HubinStudentViewProps> = React.memo(({
           </div>
         </div>
       </TabsContent>
+
+      {studentPkl?.id && (
+        <HubinIzinSakitModal
+          isOpen={isIzinModalOpen}
+          onClose={() => setIsIzinModalOpen(false)}
+          siswaPklId={studentPkl.id}
+          studentName={user?.full_name}
+          studentEmail={user?.email}
+          studentClassName={studentPkl?.Siswa?.Kelas?.nama_kelas || studentPkl?.Siswa?.Kelas?.nama}
+        />
+      )}
     </>
   );
 });

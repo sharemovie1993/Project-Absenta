@@ -461,15 +461,19 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
     };
 
     // Single-page document rendering: Header first
-    const headerEndY = drawKopSurat(
-      doc,
-      pageWidth,
-      sekolah,
-      tenantInfo,
-      logoDaerahBase64,
-      logoSekolahBase64,
-      includeSchoolLogo
-    );
+    const isCustomFullPage = module === 'hubin' && ['pkl_sertifikat', 'pkl_certificate', 'pkl_rapor'].includes(printType);
+
+    const headerEndY = isCustomFullPage
+      ? 0
+      : drawKopSurat(
+          doc,
+          pageWidth,
+          sekolah,
+          tenantInfo,
+          logoDaerahBase64,
+          logoSekolahBase64,
+          includeSchoolLogo
+        );
 
     let currentY = headerEndY;
 
@@ -488,9 +492,9 @@ export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Pr
       currentY = renderHubinPdf(doc, classOptions, headerEndY, pageWidth, pageHeight);
     }
 
-    // ── monthly_recap & monthly_matrix: tanda tangan sudah dirender di pdfAttendance.ts ──
+    // ── monthly_recap, monthly_matrix & custom hubin docs: tanda tangan & layout sudah self-contained ──
     // Skip blok tanda tangan generic agar tidak double render
-    if (['monthly_recap', 'monthly_matrix'].includes(printType)) {
+    if (['monthly_recap', 'monthly_matrix', 'pkl_sertifikat', 'pkl_certificate', 'pkl_rapor'].includes(printType)) {
       if (classIndex < totalClasses - 1) doc.addPage();
       continue;
     }

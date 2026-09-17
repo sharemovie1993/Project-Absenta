@@ -1,6 +1,6 @@
 import { 
   GraduationCap, Clock, BookOpen, Shield, HeartHandshake, 
-  Mail, MessageSquare, ShoppingCart, Building2, Globe, Settings,
+  Mail, MessageSquare, ShoppingCart, Building2, Globe, Settings, FileText,
   LucideIcon
 } from 'lucide-react';
 
@@ -76,8 +76,27 @@ export const ABSENTA_APPS_REGISTRY: AbsentaApp[] = [
       gradient: 'from-indigo-600 to-violet-600',
     },
     defaultPath: '/kurikulum/jadwal',
-    pathPrefixes: ['/kurikulum', '/cbt', '/rapor', '/jadwal', '/jam-kbm', '/supervisi', '/kosp'],
+    pathPrefixes: ['/kurikulum', '/cbt', '/jadwal', '/jam-kbm', '/supervisi', '/kosp'],
     category: 'KURIKULUM',
+  },
+
+  // 4. Rapor
+  {
+    id: 'rapor',
+    name: 'Rapor',
+    description: 'E-Rapor Kurikulum Merdeka, penilaian siswa, leger kelas, dan cetak rapor',
+    icon: FileText,
+    iconName: 'FileText',
+    color: {
+      bg: 'bg-sky-500/10 dark:bg-sky-500/20',
+      text: 'text-sky-600 dark:text-sky-400',
+      badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-200',
+      hover: 'hover:border-sky-300 dark:hover:border-sky-700 hover:bg-sky-50/50 dark:hover:bg-sky-950/20',
+      gradient: 'from-sky-600 to-indigo-600',
+    },
+    defaultPath: '/rapor/cetak',
+    pathPrefixes: ['/rapor'],
+    category: 'RAPOR',
   },
 
   // 4. Kesiswaan

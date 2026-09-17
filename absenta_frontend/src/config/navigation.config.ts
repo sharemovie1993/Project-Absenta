@@ -247,7 +247,11 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     defaultPath: '/attendance/monitoring',
     crossModulePaths: [
       '/bpbk/cases',
-      '/kesiswaan/pelanggaran'
+      '/kesiswaan/pelanggaran',
+      '/rapor/dashboard',
+      '/rapor/cetak',
+      '/rapor/nilai',
+      '/rapor/p5'
     ]
   },
   {

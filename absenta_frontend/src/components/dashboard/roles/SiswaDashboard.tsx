@@ -355,9 +355,10 @@ export const SiswaDashboard: React.FC = () => {
   const todayPklAbsensi = useMemo(() => {
     const todayStr = todayIso;
     return pklAbsensiHistory.find((a: any) => {
+      const rawTanggalStr = typeof a.tanggal === 'string' ? a.tanggal.substring(0, 10) : '';
       const dateFromTanggal = a.tanggal ? toLocalDate(new Date(a.tanggal)) : '';
-      const dateFromJamMasuk = a.jam_masuk ? toLocalDate(new Date(a.jam_masuk)) : '';
-      return dateFromTanggal === todayStr || dateFromJamMasuk === todayStr;
+      const dateFromJamMasuk = a.jam_masuk ? (typeof a.jam_masuk === 'string' ? a.jam_masuk.substring(0, 10) : toLocalDate(new Date(a.jam_masuk))) : '';
+      return rawTanggalStr === todayStr || dateFromTanggal === todayStr || dateFromJamMasuk === todayStr;
     }) || null;
   }, [pklAbsensiHistory, todayIso]);
 
@@ -1097,28 +1098,54 @@ export const SiswaDashboard: React.FC = () => {
       {activeTab === 'ringkasan' && (
         isAktifPkl ? (
           /* ── STATUS PKL HARI INI ── */
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-emerald-500/20">
+          <div className={cn(
+            "relative overflow-hidden rounded-3xl p-5 sm:p-6 text-slate-800 dark:text-slate-100 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border transition-all",
+            todayPklAbsensi?.status === 'SAKIT'
+              ? "bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-amber-500/15 dark:from-slate-900 dark:via-amber-950/30 dark:to-slate-900 border-amber-500/30"
+              : todayPklAbsensi?.status === 'IZIN'
+              ? "bg-gradient-to-r from-blue-500/15 via-indigo-500/5 to-blue-500/15 dark:from-slate-900 dark:via-blue-950/30 dark:to-slate-900 border-blue-500/30"
+              : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
+              ? "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 border-emerald-500/20"
+              : "bg-gradient-to-r from-emerald-500/10 via-indigo-500/10 to-emerald-500/10 dark:from-slate-900 dark:via-emerald-950/40 dark:to-slate-900 border-emerald-500/20"
+          )}>
             <div className="space-y-3 max-w-2xl min-w-0">
               <div className="space-y-1.5">
-                <span className="inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                <span className={cn(
+                  "inline-block px-3 py-1 rounded-full text-[10px] font-black tracking-wider border",
+                  todayPklAbsensi?.status === 'SAKIT'
+                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                    : todayPklAbsensi?.status === 'IZIN'
+                    ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                    : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                )}>
                   STATUS PKL – {todayFormattedDate}
                 </span>
                 <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap">
                   <span>Presensi PKL:</span>
                   <span className={cn(
                     "underline underline-offset-4 font-mono font-black",
-                    todayPklAbsensi?.jam_pulang ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-500" :
-                    todayPklAbsensi?.jam_masuk ? "text-blue-600 dark:text-blue-400 decoration-blue-500" :
-                    "text-rose-600 dark:text-rose-400 decoration-rose-500"
+                    todayPklAbsensi?.status === 'SAKIT'
+                      ? "text-amber-600 dark:text-amber-400 decoration-amber-500"
+                      : todayPklAbsensi?.status === 'IZIN'
+                      ? "text-blue-600 dark:text-blue-400 decoration-blue-500"
+                      : todayPklAbsensi?.jam_pulang
+                      ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-500"
+                      : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
+                      ? "text-blue-600 dark:text-blue-400 decoration-blue-500"
+                      : "text-rose-600 dark:text-rose-400 decoration-rose-500"
                   )}>
-                    {todayPklAbsensi?.jam_masuk
+                    {todayPklAbsensi?.status === 'SAKIT'
+                      ? `SAKIT${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
+                      : todayPklAbsensi?.status === 'IZIN'
+                      ? `IZIN${todayPklAbsensi.kegiatan ? ` (${todayPklAbsensi.kegiatan})` : ''}`
+                      : todayPklAbsensi?.jam_masuk || todayPklAbsensi?.status === 'HADIR'
                       ? todayPklAbsensi?.jam_pulang
                         ? `HADIR (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} – ${formatLocalTimeFromISO(todayPklAbsensi.jam_pulang)})`
                         : `Sedang PKL (${formatLocalTimeFromISO(todayPklAbsensi.jam_masuk)} ${getTimezoneLabel()})`
                       : 'Belum Check-In'
                     }
                   </span>
-                  {todayPklAbsensi?.jam_masuk && (
+                  {todayPklAbsensi && (todayPklAbsensi.jam_masuk || todayPklAbsensi.status === 'HADIR' || todayPklAbsensi.status === 'SAKIT' || todayPklAbsensi.status === 'IZIN') && (
                     todayPklAbsensi?.is_verified ? (
                       <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 no-underline">
                         <ShieldCheck size={12} />
@@ -1146,7 +1173,14 @@ export const SiswaDashboard: React.FC = () => {
             </div>
             <button
               onClick={() => navigate('/hubin/absensi')}
-              className="shrink-0 px-5 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-md shadow-emerald-500/30 transition-all active:scale-95 cursor-pointer"
+              className={cn(
+                "shrink-0 px-5 py-2.5 rounded-2xl text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer",
+                todayPklAbsensi?.status === 'SAKIT'
+                  ? "bg-amber-600 hover:bg-amber-700 shadow-amber-600/30"
+                  : todayPklAbsensi?.status === 'IZIN'
+                  ? "bg-blue-600 hover:bg-blue-700 shadow-blue-600/30"
+                  : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/30"
+              )}
             >
               <Briefcase size={14} />
               Buka Presensi PKL

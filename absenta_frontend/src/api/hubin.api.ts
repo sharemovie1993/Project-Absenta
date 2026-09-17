@@ -237,6 +237,8 @@ export const hubinApi = {
     requestWithFallback<any>('post', '/hubin/absensi/check-out', { data }),
   updateLogbook: (siswaPklId: string, kegiatan: string, absensiId?: string, image_url?: string) => 
     requestWithFallback<any>('put', `/hubin/absensi/${siswaPklId}/logbook`, { data: { kegiatan, absensiId, image_url } }),
+  submitIzinSakitPkl: (data: { siswaPklId: string; status: 'SAKIT' | 'IZIN'; tanggal_mulai: string; tanggal_selesai?: string; keterangan: string; image_url?: string }) =>
+    requestWithFallback<any>('post', '/hubin/absensi/izin-sakit', { data }),
   verifyAbsensi: (id: string) => requestWithFallback<any>('put', `/hubin/absensi/${id}/verify`),
 
   // Stats

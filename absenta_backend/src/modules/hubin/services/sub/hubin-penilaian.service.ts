@@ -695,7 +695,47 @@ export class HubinPenilaianService extends HubinCommonHelper {
           orderBy: { Siswa: { nama_siswa: 'asc' } },
         });
 
-        return list;
+        // Agregasi otomatis dari riwayat presensi harian siswa (AbsensiPkl)
+        const pklIds = list.map((item) => item.id);
+        const absensiCounts = pklIds.length > 0 ? await prisma.absensiPkl.groupBy({
+          by: ['siswa_pkl_id', 'status'],
+          where: {
+            tenant_id: tenantId,
+            siswa_pkl_id: { in: pklIds },
+          },
+          _count: {
+            id: true,
+          },
+        }) : [];
+
+        const countMap = new Map<string, { sakit: number; izin: number; alpa: number; hadir: number }>();
+        for (const row of absensiCounts) {
+          if (!countMap.has(row.siswa_pkl_id)) {
+            countMap.set(row.siswa_pkl_id, { sakit: 0, izin: 0, alpa: 0, hadir: 0 });
+          }
+          const c = countMap.get(row.siswa_pkl_id)!;
+          const st = (row.status || '').toUpperCase();
+          if (st === 'SAKIT') c.sakit += row._count.id;
+          else if (st === 'IZIN') c.izin += row._count.id;
+          else if (st === 'ALPA') c.alpa += row._count.id;
+          else if (st === 'HADIR' || st === 'TERLAMBAT') c.hadir += row._count.id;
+        }
+
+        const enrichedList = list.map((item) => {
+          const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
+          return {
+            ...item,
+            auto_sakit: stats.sakit,
+            auto_izin: stats.izin,
+            auto_alpa: stats.alpa,
+            auto_hadir: stats.hadir,
+            sakit_pkl: item.sakit_pkl !== null && item.sakit_pkl !== undefined && item.sakit_pkl > 0 ? item.sakit_pkl : stats.sakit,
+            izin_pkl: item.izin_pkl !== null && item.izin_pkl !== undefined && item.izin_pkl > 0 ? item.izin_pkl : stats.izin,
+            alpa_pkl: item.alpa_pkl !== null && item.alpa_pkl !== undefined && item.alpa_pkl > 0 ? item.alpa_pkl : stats.alpa,
+          };
+        });
+
+        return enrichedList;
       },
       CACHE_TTL.DASHBOARD
     );

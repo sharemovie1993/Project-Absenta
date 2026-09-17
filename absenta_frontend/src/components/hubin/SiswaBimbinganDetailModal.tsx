@@ -162,7 +162,7 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
       else if (st === 'SAKIT') sakit++;
       else if (st === 'IZIN') izin++;
 
-      if (!a.is_verified && (a.jam_masuk || st === 'HADIR')) {
+      if (!a.is_verified && (a.jam_masuk || st === 'HADIR' || st === 'SAKIT' || st === 'IZIN')) {
         unverified++;
       }
     });
@@ -314,7 +314,10 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                           year: 'numeric'
                         });
 
-                        const isHadir = abs.jam_masuk || abs.status === 'HADIR' || abs.status === 'TERLAMBAT';
+                        const st = (abs.status || '').toUpperCase();
+                        const isHadir = Boolean(abs.jam_masuk || st === 'HADIR' || st === 'TERLAMBAT');
+                        const isSakit = st === 'SAKIT';
+                        const isIzin = st === 'IZIN';
                         const photoIn = resolveAttachmentUrl(abs.image_url);
                         const photoOut = resolveAttachmentUrl(abs.image_url_out);
 
@@ -322,7 +325,7 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                           <div
                             key={abs.id}
                             className={`p-3 rounded-2xl border transition-all ${
-                              !abs.is_verified && isHadir
+                              !abs.is_verified && (isHadir || isSakit || isIzin)
                                 ? 'bg-amber-50/30 dark:bg-amber-950/10 border-amber-300/60 dark:border-amber-900/50'
                                 : 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800'
                             }`}
@@ -334,19 +337,21 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                                   {dateFormatted}
                                 </span>
                                 <Badge
-                                  variant={isHadir ? 'success' : 'secondary'}
+                                  variant={isHadir ? 'success' : isSakit ? 'warning' : isIzin ? 'info' : 'secondary'}
                                   className="text-[9px] font-black uppercase px-1.5 py-0.2"
                                 >
                                   {abs.status || 'HADIR'}
                                 </Badge>
-                                {abs.is_outside_radius ? (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
-                                    ⚠️ Luar Radius ({Math.round(abs.distance_meters || 0)}m)
-                                  </span>
-                                ) : (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
-                                    📍 Lokasi DUDI
-                                  </span>
+                                {!isSakit && !isIzin && (
+                                  abs.is_outside_radius ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
+                                      ⚠️ Luar Radius ({Math.round(abs.distance_meters || 0)}m)
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                                      📍 Lokasi DUDI
+                                    </span>
+                                  )
                                 )}
                               </div>
 
@@ -371,38 +376,62 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                               </div>
                             </div>
 
-                            {/* Row 2: Jam Masuk/Pulang & Thumbnail Foto */}
-                            <div className="flex items-center justify-between gap-3 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500">
-                              <div className="flex items-center gap-3 sm:gap-4 font-medium">
-                                <span className="flex items-center gap-1">
-                                  <LogIn size={12} className="text-emerald-500" />
-                                  <span>Masuk: <strong className="text-slate-800 dark:text-slate-200">{formatWaktu(abs.jam_masuk)}</strong></span>
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <LogOut size={12} className="text-rose-500" />
-                                  <span>Pulang: <strong className="text-slate-800 dark:text-slate-200">{formatWaktu(abs.jam_pulang)}</strong></span>
-                                </span>
-                              </div>
+                            {/* Row 2: Jam Masuk/Pulang atau Keterangan Sakit/Izin */}
+                            {(isSakit || isIzin) ? (
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-700 dark:text-slate-300">
+                                    Alasan {isSakit ? 'Sakit' : 'Izin'}:
+                                  </span>
+                                  <span className="italic text-slate-600 dark:text-slate-400">
+                                    {abs.kegiatan || 'Tidak ada keterangan'}
+                                  </span>
+                                </div>
 
-                              {/* Thumbnail Foto Masuk */}
-                              {photoIn && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewPhotoUrl(photoIn)}
-                                  className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform group cursor-pointer shrink-0"
-                                  title="Lihat foto selfie check-in"
-                                >
-                                  <img
-                                    src={photoIn}
-                                    alt="Selfie"
-                                    className="w-full h-full object-cover"
-                                  />
-                                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                    <Camera size={11} className="text-white" />
-                                  </div>
-                                </button>
-                              )}
-                            </div>
+                                {abs.image_url && (
+                                  <a
+                                    href={abs.image_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                                  >
+                                    <span>Lihat Surat {isSakit ? 'Dokter' : 'Izin'} ↗</span>
+                                  </a>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-3 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500">
+                                <div className="flex items-center gap-3 sm:gap-4 font-medium">
+                                  <span className="flex items-center gap-1">
+                                    <LogIn size={12} className="text-emerald-500" />
+                                    <span>Masuk: <strong className="text-slate-800 dark:text-slate-200">{formatWaktu(abs.jam_masuk)}</strong></span>
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <LogOut size={12} className="text-rose-500" />
+                                    <span>Pulang: <strong className="text-slate-800 dark:text-slate-200">{formatWaktu(abs.jam_pulang)}</strong></span>
+                                  </span>
+                                </div>
+
+                                {/* Thumbnail Foto Masuk */}
+                                {photoIn && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewPhotoUrl(photoIn)}
+                                    className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform group cursor-pointer shrink-0"
+                                    title="Lihat foto selfie check-in"
+                                  >
+                                    <img
+                                      src={photoIn}
+                                      alt="Selfie"
+                                      className="w-full h-full object-cover"
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                      <Camera size={11} className="text-white" />
+                                    </div>
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}

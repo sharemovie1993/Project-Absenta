@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { GenerateGenericPdfOptions } from '../pdfGeneric';
 import { renderSertifikatFront, renderSertifikatBack, SertifikatPklPrintData } from './pdfSertifikatPkl';
+import { renderRaporPklPage1, renderRaporPklPage2, RaporPklItemData } from './pdfRaporPkl';
 
 export const renderHubinPdf = (
   doc: jsPDF,
@@ -73,6 +74,71 @@ export const renderHubinPdf = (
         // Render back page
         doc.addPage('a4', 'landscape');
         renderSertifikatBack(doc, certData);
+      });
+
+      return pageHeight - 20;
+    }
+  }
+
+  // Handle Rapor PKL 2 Halaman Print Type
+  if (printType === 'pkl_rapor') {
+    const penempatanList = filterData?.penempatanList || filterData?.penempatanMap?.[options.selectedClassId] || [];
+
+    if (penempatanList.length > 0) {
+      penempatanList.forEach((p: any, idx: number) => {
+        const itemData: RaporPklItemData = {
+          siswa: {
+            id: p.Siswa?.id || p.siswa_id || '',
+            nama_siswa: p.Siswa?.nama_siswa || 'Siswa',
+            nis: p.Siswa?.nis || '-',
+            nisn: p.Siswa?.nisn || '-',
+            nama_kelas: p.Siswa?.Kelas?.nama_kelas || '',
+            program_keahlian: p.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
+            konsentrasi_keahlian: p.Siswa?.Jurusan?.nama || p.Siswa?.Kelas?.nama_kelas || '',
+          },
+          pkl: {
+            mitra_nama: p.Mitra?.nama || p.mitra_nama || 'DUDI MITRA',
+            mitra_alamat: p.alamat_dudi || p.Mitra?.alamat || '',
+            tanggal_mulai: p.tanggal_mulai,
+            tanggal_selesai: p.tanggal_selesai,
+            instruktur_nama: p.instruktur_nama || p.Mitra?.pic_nama || p.penanggung_jawab_nama || '',
+            pembimbing_nama: p.Pembimbing?.nama || '',
+            pembimbing_nip: p.Pembimbing?.nip || '',
+            catatan_pkl: p.catatan_pkl || '',
+            deskripsi_tp: p.deskripsi_tp || p.Mitra?.deskripsi_tp || '',
+            sakit_pkl: p.sakit_pkl ?? 0,
+            izin_pkl: p.izin_pkl ?? 0,
+            alpa_pkl: p.alpa_pkl ?? 0,
+          },
+          penilaian: {
+            hard_kompetensi_teknis: p.hard_kompetensi_teknis ?? null,
+            hard_sop_k3lh: p.hard_sop_k3lh ?? null,
+            hard_alur_bisnis: p.hard_alur_bisnis ?? null,
+            soft_kedisiplinan: p.soft_kedisiplinan ?? null,
+            soft_kerajinan_inisiatif: p.soft_kerajinan_inisiatif ?? null,
+            soft_kerjasama: p.soft_kerjasama ?? null,
+            soft_kejujuran: p.soft_kejujuran ?? null,
+            soft_tanggung_jawab: p.soft_tanggung_jawab ?? null,
+            nilai_akhir_pkl: p.nilai_akhir_pkl ?? null,
+            predikat_pkl: p.predikat_pkl || null,
+          },
+          sekolah: {
+            nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
+            kota: sekolah?.kota || 'Purwakarta',
+            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
+            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
+          },
+          wali_kelas: p.Siswa?.Kelas?.WaliKelas?.Guru ? {
+            nama: p.Siswa.Kelas.WaliKelas.Guru.nama,
+            nip: p.Siswa.Kelas.WaliKelas.Guru.nip,
+          } : undefined,
+          tanggal_terbit: `${sekolah?.kota || 'Purwakarta'}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+        };
+
+        // Render Page 1 (add page if not first)
+        renderRaporPklPage1(doc, itemData, idx > 0);
+        // Render Page 2
+        renderRaporPklPage2(doc, itemData);
       });
 
       return pageHeight - 20;

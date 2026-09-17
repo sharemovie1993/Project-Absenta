@@ -117,9 +117,16 @@ export class HubinAbsensiService extends HubinCommonHelper {
     });
 
     if (existing) {
+      if (existing.status === 'SAKIT' || existing.status === 'IZIN') {
+        throw new Error(`Anda sudah memiliki status ${existing.status} untuk hari ini. Tidak dapat melakukan check-in hadir.`);
+      }
+      if (existing.jam_masuk) {
+        throw new Error('Anda sudah melakukan check-in masuk hari ini.');
+      }
       const res = await prisma.absensiPkl.update({
         where: { id: existing.id },
         data: {
+          status: 'HADIR',
           jam_masuk: new Date(),
           latitude_masuk: data.latitude,
           longitude_masuk: data.longitude,
@@ -169,6 +176,14 @@ export class HubinAbsensiService extends HubinCommonHelper {
 
     if (!existing) {
       throw new Error('Anda belum melakukan Check-In hari ini');
+    }
+
+    if (existing.status === 'SAKIT' || existing.status === 'IZIN') {
+      throw new Error(`Anda tercatat berstatus ${existing.status} hari ini, tidak dapat melakukan check-out.`);
+    }
+
+    if (!existing.jam_masuk) {
+      throw new Error('Anda belum melakukan Check-In masuk hari ini.');
     }
 
     // Anti-Fraud: Accuracy Validation
@@ -267,6 +282,99 @@ export class HubinAbsensiService extends HubinCommonHelper {
     });
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return res;
+  }
+
+  async submitIzinSakit(
+    tenantId: string,
+    siswaPklId: string,
+    data: {
+      status: 'SAKIT' | 'IZIN';
+      tanggal_mulai: string;
+      tanggal_selesai?: string;
+      keterangan: string;
+      image_url?: string;
+    }
+  ) {
+    if (!siswaPklId) throw new Error('ID penempatan PKL wajib diisi');
+    if (!data.tanggal_mulai) throw new Error('Tanggal mulai wajib diisi');
+    if (!data.keterangan?.trim()) throw new Error('Keterangan / alasan izin wajib diisi');
+
+    const pkl = await prisma.siswaPkl.findFirst({
+      where: { id: siswaPklId, tenant_id: tenantId }
+    });
+    if (!pkl) throw new Error('Data penempatan PKL tidak ditemukan');
+
+    const startDate = new Date(data.tanggal_mulai);
+    const endDate = data.tanggal_selesai ? new Date(data.tanggal_selesai) : new Date(data.tanggal_mulai);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Format tanggal tidak valid');
+    }
+
+    if (endDate < startDate) {
+      throw new Error('Tanggal selesai tidak boleh lebih awal dari tanggal mulai');
+    }
+
+    const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 30) {
+      throw new Error('Rentang pengajuan izin maksimal 30 hari dalam satu permohonan');
+    }
+
+    const createdRecords = [];
+    const currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      const dateOnlyStr = currentDate.toISOString().split('T')[0];
+      const dateOnly = new Date(dateOnlyStr);
+
+      const existing = await prisma.absensiPkl.findFirst({
+        where: {
+          tenant_id: tenantId,
+          siswa_pkl_id: siswaPklId,
+          tanggal: dateOnly
+        }
+      });
+
+      if (existing) {
+        if (existing.jam_masuk || existing.status === 'HADIR' || existing.status === 'TERLAMBAT') {
+          throw new Error(`Anda sudah melakukan check-in HADIR pada tanggal ${dateOnlyStr}. Tidak dapat mengajukan izin atau sakit pada tanggal yang sama.`);
+        }
+        const updated = await prisma.absensiPkl.update({
+          where: { id: existing.id },
+          data: {
+            status: data.status,
+            kegiatan: data.keterangan,
+            image_url: data.image_url || existing.image_url,
+            is_verified: false,
+            verified_by: null,
+            verifikasi_at: null
+          }
+        });
+        createdRecords.push(updated);
+      } else {
+        const created = await prisma.absensiPkl.create({
+          data: {
+            tenant_id: tenantId,
+            siswa_pkl_id: siswaPklId,
+            tanggal: dateOnly,
+            status: data.status,
+            kegiatan: data.keterangan,
+            image_url: data.image_url || null,
+            is_verified: false
+          }
+        });
+        createdRecords.push(created);
+      }
+
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return {
+      success: true,
+      message: `Berhasil mengajukan ${data.status.toLowerCase()} untuk ${createdRecords.length} hari`,
+      data: createdRecords
+    };
   }
 
   async syncOfflineLogbook(

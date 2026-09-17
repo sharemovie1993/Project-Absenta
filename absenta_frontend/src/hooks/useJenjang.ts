@@ -39,9 +39,14 @@ export function useJenjang() {
   });
 
   const tenant = tenantResponse?.data;
-  const rawJenjang = tenant?.jenjang || '';
+  const rawJenjang = tenant?.jenjang || (user as any)?.tenant?.jenjang || (user as any)?.jenjang || 'SMK';
   const durasiSmk = tenant?.durasi_smk || '3_TAHUN';
   const has4TahunJurusan = Boolean((tenant as any)?.has_4_tahun_jurusan);
+
+  const isJenjangSmk = useMemo(() => {
+    const key = (rawJenjang || '').toUpperCase();
+    return key === 'SMK' || key === 'MAK';
+  }, [rawJenjang]);
 
   const config = useMemo(() => {
     const key = rawJenjang.toUpperCase();
@@ -75,6 +80,7 @@ export function useJenjang() {
     config,
     tingkatList,
     kelompokOptions,
+    isJenjangSmk,
     isLoading,
     sekolah: tenant
   };

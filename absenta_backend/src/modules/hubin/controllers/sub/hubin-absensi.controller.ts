@@ -106,6 +106,27 @@ export class HubinAbsensiController {
     }
   }
 
+  async submitIzinSakit(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { siswaPklId, ...data } = request.body;
+      const isManager = await this.hasHubinManageCaps(request);
+      if (!isManager) {
+        const siswaId = await studentResolverService.resolveSiswaId(request.tenantId!, request.user.id);
+        if (!siswaId) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Profil siswa tidak ditemukan' });
+        }
+        const isOwner = await this.hubinService.verifySiswaPklOwnership(request.tenantId!, siswaPklId, siswaId);
+        if (!isOwner) {
+          return reply.status(403).send({ success: false, message: 'Forbidden: Anda hanya dapat mengajukan izin untuk penempatan Anda sendiri' });
+        }
+      }
+      const result = await this.hubinService.submitIzinSakit(request.tenantId!, siswaPklId, data);
+      return reply.status(200).send({ success: true, ...result });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  }
+
   async updateLogbook(request: AuthenticatedRequest, reply: any) {
     try {
       const { siswaPklId } = request.params;

@@ -79,6 +79,7 @@ export class HubinPenempatanService extends HubinCommonHelper {
       andConditions.push({
         OR: [
           { Siswa: { nama_siswa: { contains: params.search, mode: 'insensitive' } } },
+          { Siswa: { nis: { contains: params.search, mode: 'insensitive' } } },
           { Mitra: { nama: { contains: params.search, mode: 'insensitive' } } },
           { Pembimbing: { nama_guru: { contains: params.search, mode: 'insensitive' } } },
         ]
@@ -135,7 +136,17 @@ export class HubinPenempatanService extends HubinCommonHelper {
         include: {
           Siswa: { 
             include: { 
-              Kelas: { select: { id: true, nama_kelas: true } },
+              Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+              Jurusan: {
+                select: {
+                  id: true,
+                  nama: true,
+                  kode: true,
+                  ProgramKeahlian: {
+                    select: { id: true, nama: true }
+                  }
+                }
+              },
               TahunPelajaran: { select: { id: true, tahun: true } }
             } 
           },
@@ -148,8 +159,21 @@ export class HubinPenempatanService extends HubinCommonHelper {
               semester: { select: { id: true, nama_semester: true } }
             }
           },
-          Mitra: { select: { nama: true, latitude: true, longitude: true, radius: true, alamat: true } },
-          Pembimbing: { select: { nama_guru: true, no_hp: true } },
+          Mitra: { 
+            select: { 
+              id: true, 
+              nama: true, 
+              latitude: true, 
+              longitude: true, 
+              radius: true, 
+              alamat: true, 
+              pic_nama: true,
+              SettingDeskripsiPkl: {
+                select: { id: true, deskripsi_tp: true, jurusan_id: true }
+              }
+            } 
+          },
+          Pembimbing: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
           AbsensiPkl: {
             orderBy: { tanggal: 'desc' },
             take: 1
@@ -161,8 +185,45 @@ export class HubinPenempatanService extends HubinCommonHelper {
       })
     ]);
 
+    const pklIds = data.map((item: any) => item.id);
+    const absensiCounts = pklIds.length > 0 ? await prisma.absensiPkl.groupBy({
+      by: ['siswa_pkl_id', 'status'],
+      where: {
+        tenant_id: tenantId,
+        siswa_pkl_id: { in: pklIds },
+      },
+      _count: { id: true },
+    }) : [];
+
+    const countMap = new Map<string, { sakit: number; izin: number; alpa: number; hadir: number }>();
+    for (const row of absensiCounts) {
+      if (!countMap.has(row.siswa_pkl_id)) {
+        countMap.set(row.siswa_pkl_id, { sakit: 0, izin: 0, alpa: 0, hadir: 0 });
+      }
+      const c = countMap.get(row.siswa_pkl_id)!;
+      const st = (row.status || '').toUpperCase();
+      if (st === 'SAKIT') c.sakit += row._count.id;
+      else if (st === 'IZIN') c.izin += row._count.id;
+      else if (st === 'ALPA') c.alpa += row._count.id;
+      else if (st === 'HADIR' || st === 'TERLAMBAT') c.hadir += row._count.id;
+    }
+
+    const enrichedData = data.map((item: any) => {
+      const stats = countMap.get(item.id) || { sakit: 0, izin: 0, alpa: 0, hadir: 0 };
+      return {
+        ...item,
+        auto_sakit: stats.sakit,
+        auto_izin: stats.izin,
+        auto_alpa: stats.alpa,
+        auto_hadir: stats.hadir,
+        sakit_pkl: item.sakit_pkl !== null && item.sakit_pkl !== undefined && item.sakit_pkl > 0 ? item.sakit_pkl : stats.sakit,
+        izin_pkl: item.izin_pkl !== null && item.izin_pkl !== undefined && item.izin_pkl > 0 ? item.izin_pkl : stats.izin,
+        alpa_pkl: item.alpa_pkl !== null && item.alpa_pkl !== undefined && item.alpa_pkl > 0 ? item.alpa_pkl : stats.alpa,
+      };
+    });
+
     return {
-      data,
+      data: enrichedData,
       pagination: {
         total,
         page,

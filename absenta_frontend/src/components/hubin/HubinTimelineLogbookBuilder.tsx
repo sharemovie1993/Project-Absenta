@@ -12,6 +12,7 @@ interface LogbookTimelineItem {
 interface TodayAbsensi {
   jam_masuk?: string;
   jam_pulang?: string;
+  status?: string;
 }
 
 interface HubinTimelineLogbookBuilderProps {
@@ -27,6 +28,8 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
   onOpenAddModal,
   todayAbsensi
 }) => {
+  const isIzinOrSakit = todayAbsensi?.status === 'SAKIT' || todayAbsensi?.status === 'IZIN';
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-full">
       {/* Header with Title & Summary - Compact */}
@@ -47,7 +50,11 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
           onClick={onOpenAddModal}
           variant="primary"
           size="sm"
-          className="rounded-xl px-3 h-8 font-black text-[9px] uppercase tracking-wider flex items-center gap-1.5 group shrink-0 cursor-pointer shadow-xs"
+          disabled={isIzinOrSakit}
+          className={`rounded-xl px-3 h-8 font-black text-[9px] uppercase tracking-wider flex items-center gap-1.5 group shrink-0 shadow-xs ${
+            isIzinOrSakit ? 'opacity-50 cursor-not-allowed bg-slate-200 dark:bg-slate-800 text-slate-400' : 'cursor-pointer'
+          }`}
+          title={isIzinOrSakit ? 'Jurnal tidak aktif saat sedang izin atau sakit' : undefined}
         >
           <Plus size={13} />
           Catat Baru
@@ -61,8 +68,12 @@ export const HubinTimelineLogbookBuilder: React.FC<HubinTimelineLogbookBuilderPr
             <div className="w-10 h-10 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center justify-center mx-auto mb-2 text-slate-300 dark:text-slate-700">
               <BookOpen size={20} />
             </div>
-            <p className="font-black uppercase tracking-widest text-[9px] mb-0.5">Jurnal Masih Kosong</p>
-            <p className="text-[8px] opacity-70">Tekan "Catat Baru" untuk mengisi pekerjaan hari ini.</p>
+            <p className="font-black uppercase tracking-widest text-[9px] mb-0.5">
+              {isIzinOrSakit ? `Status Hari Ini: ${todayAbsensi?.status}` : 'Jurnal Masih Kosong'}
+            </p>
+            <p className="text-[8px] opacity-70">
+              {isIzinOrSakit ? 'Anda sedang berstatus izin/sakit. Pengisian jurnal harian tidak diwajibkan.' : 'Tekan "Catat Baru" untuk mengisi pekerjaan hari ini.'}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">

@@ -17,6 +17,7 @@ import {
   CheckCircle,
   Printer,
   Loader2,
+  Building2,
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Card } from '../../components/ui/Card';
@@ -24,6 +25,9 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
+import { hubinApi } from '../../api/hubin.api';
+import { sekolahApi } from '../../api/academic/sekolah.api';
+import { getMyTenant } from '../../api/tenants.api';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
@@ -32,9 +36,11 @@ import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { useStrukturKurikulumOptions } from '../../hooks/useStrukturKurikulumOptions';
 import { useJenjang } from '../../hooks/useJenjang';
+import { useGuruMe } from '../../hooks/useGuruMe';
 import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
 import { generateRaporPdf, generateP5RaporPdf, generateRaporKelasBatchPdf } from '../../utils/print/modules/pdfRapor';
+import { generateRaporPklSinglePdf, generateRaporPklBatchPdf, RaporPklItemData } from '../../utils/print/modules/pdfRaporPkl';
 
 // Import Hardened Types, Subcomponents & Schemas
 import {
@@ -89,15 +95,32 @@ export default React.memo(function CetakRaporPage() {
 
   // ── User Auth & Wali Kelas Operational Context ──
   const { user } = useAuthStore();
+  const { guruProfile } = useGuruMe();
+
   const userKelasId = useMemo(() => {
-    const u = user as { wali_kelas_kelas_id?: string; kelas_id?: string; assigned_kelas_id?: string } | null;
-    return u?.wali_kelas_kelas_id || u?.kelas_id || u?.assigned_kelas_id || null;
-  }, [user]);
+    const direct = guruProfile?.wali_kelas_di?.id || (user as any)?.guru_profile?.wali_kelas_di?.id;
+    if (direct) return direct;
+    const u = user as any;
+    return (
+      u?.wali_kelas_kelas_id ||
+      u?.kelas_id ||
+      u?.assigned_kelas_id ||
+      null
+    );
+  }, [guruProfile, user]);
+
+  // Wali Kelas murni: guru yang ditugaskan sebagai wali kelas tapi bukan admin/kurikulum/kepsek
+  const isPureWaliKelas = useMemo(() => {
+    if (isAdmin || isKurikulum || isKepalaSekolah) return false;
+    return isHomeroomTeacher || Boolean(userKelasId);
+  }, [isAdmin, isKurikulum, isKepalaSekolah, isHomeroomTeacher, userKelasId]);
 
   const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+  const [isBatchPklPrinting, setIsBatchPklPrinting] = useState(false);
 
   // ── Centralized System Hooks ──
-  const { isJenjangSmk } = useJenjang();
+  const { isJenjangSmk: hookIsSmk } = useJenjang();
+  const isJenjangSmk = hookIsSmk ?? true;
   const { rawList: classList, isLoading: isLoadingClasses } = useKelasOptions({
     filterByJenjang: false,
     onlyActive: false,
@@ -126,14 +149,18 @@ export default React.memo(function CetakRaporPage() {
 
   // Auto-select class: prioritize Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
-    if (!selectedKelas && classList && classList.length > 0) {
-      if (userKelasId && (classList as KelasOptionItem[])?.some((k) => k.id === userKelasId)) {
+    if (userKelasId && (classList as KelasOptionItem[])?.some((k) => k.id === userKelasId)) {
+      if (isPureWaliKelas) {
         setSelectedKelas(userKelasId);
-      } else {
-        setSelectedKelas(classList[0].id);
+        return;
       }
+      if (!selectedKelas) {
+        setSelectedKelas(userKelasId);
+      }
+    } else if (!selectedKelas && classList && classList.length > 0) {
+      setSelectedKelas(classList[0].id);
     }
-  }, [classList, selectedKelas, userKelasId]);
+  }, [classList, selectedKelas, userKelasId, isPureWaliKelas]);
 
   const activeYear = useMemo<AcademicYear | null>(() => {
     const targetId = selectedTahunPelajaran || activeTp?.id;
@@ -187,7 +214,13 @@ export default React.memo(function CetakRaporPage() {
 
   // ── Enhanced Kelas Options with Wali Kelas Label & Highlighting ──
   const kelasOptions = useMemo<SearchableSelectOption[]>(() => {
-    return (classList as KelasOptionItem[] ?? [])?.map((k) => {
+    const all = (classList as KelasOptionItem[] ?? []);
+    // Role-based filtering: jika login sebagai Wali Kelas murni dan memiliki kelas binaan, filter hanya kelasnya
+    const targetList = isPureWaliKelas && userKelasId && all.some((k) => k.id === userKelasId)
+      ? all.filter((k) => k.id === userKelasId)
+      : all;
+
+    return targetList.map((k) => {
       const isWali = Boolean(userKelasId && k.id === userKelasId);
       const namePart = k.nama_kelas || k.nama || k.nama_lengkap || 'Rombel';
       const tingkatPart = k.tingkat ? `Kelas ${k.tingkat} - ` : '';
@@ -199,7 +232,7 @@ export default React.memo(function CetakRaporPage() {
         raw: k,
       };
     });
-  }, [classList, userKelasId]);
+  }, [classList, userKelasId, isPureWaliKelas]);
 
   // ── Filtered students ──
   const filteredStudents = useMemo<LegerStudent[]>(() => {
@@ -428,6 +461,196 @@ export default React.memo(function CetakRaporPage() {
     }
   }, [selectedKelas, activeYear, activeSemester, filteredStudents, classList]);
 
+  const handlePrintRaporPkl = useCallback(
+    async (student: LegerStudent) => {
+      const key = `pkl_${student.id}`;
+      setPdfLoading((prev) => ({ ...prev, [key]: true }));
+      try {
+        const res = await hubinApi.getPenempatan({
+          search: student.nis || student.nama_siswa,
+          kelas_id: selectedKelas,
+          limit: 20,
+        });
+
+        const placementList = (res?.data as { list?: any[] })?.list || (res?.data as any[]) || [];
+        const placement = placementList.find(
+          (p: any) =>
+            p.siswa_id === student.id ||
+            p.Siswa?.id === student.id ||
+            p.Siswa?.nis === student.nis
+        );
+
+        if (!placement) {
+          toast.warning(`Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`);
+          return;
+        }
+
+        const [sekolahRes, tenantRes] = await Promise.allSettled([
+          sekolahApi.getProfile(),
+          getMyTenant().catch(() => null),
+        ]);
+        const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+        const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+        const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
+
+        const raporItem: RaporPklItemData = {
+          siswa: {
+            id: student.id,
+            nama_siswa: student.nama_siswa,
+            nis: student.nis || placement.Siswa?.nis || '-',
+            nisn: placement.Siswa?.nisn || '-',
+            nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || placement.Siswa?.Kelas?.nama_kelas || '',
+            program_keahlian: placement.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
+            konsentrasi_keahlian: placement.Siswa?.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
+          },
+          pkl: {
+            mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
+            mitra_alamat: placement.alamat_dudi || placement.Mitra?.alamat || '',
+            tanggal_mulai: placement.tanggal_mulai,
+            tanggal_selesai: placement.tanggal_selesai,
+            instruktur_nama: placement.instruktur_nama || placement.Mitra?.pic_nama || placement.penanggung_jawab_nama || '',
+            pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
+            pembimbing_nip: placement.Pembimbing?.nip || '',
+            catatan_pkl: placement.catatan_pkl || '',
+            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
+            sakit_pkl: placement.sakit_pkl ?? (placement.auto_sakit ?? (student.sakit ?? 0)),
+            izin_pkl: placement.izin_pkl ?? (placement.auto_izin ?? (student.izin ?? 0)),
+            alpa_pkl: placement.alpa_pkl ?? (placement.auto_alpa ?? (student.alpa ?? 0)),
+          },
+          penilaian: {
+            hard_kompetensi_teknis: placement.hard_kompetensi_teknis ?? null,
+            hard_sop_k3lh: placement.hard_sop_k3lh ?? null,
+            hard_alur_bisnis: placement.hard_alur_bisnis ?? null,
+            soft_kedisiplinan: placement.soft_kedisiplinan ?? null,
+            soft_kerajinan_inisiatif: placement.soft_kerajinan_inisiatif ?? null,
+            soft_kerjasama: placement.soft_kerjasama ?? null,
+            soft_kejujuran: placement.soft_kejujuran ?? null,
+            soft_tanggung_jawab: placement.soft_tanggung_jawab ?? null,
+            nilai_akhir_pkl: placement.nilai_akhir_pkl ?? null,
+            predikat_pkl: placement.predikat_pkl || null,
+          },
+          sekolah: {
+            nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
+            kota: sekolah?.kota || 'Purwakarta',
+            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
+            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
+          },
+          wali_kelas: {
+            nama: (user as any)?.nama || (user as any)?.name || 'Wali Kelas',
+            nip: (user as any)?.nip || '',
+          },
+          tahun_pelajaran: activeYear?.nama || '',
+          semester: activeSemester?.nama || '',
+        };
+
+        const { blobUrl } = await generateRaporPklSinglePdf(raporItem);
+        window.open(blobUrl, '_blank');
+        toast.success(`Pratinjau Rapor PKL ${student.nama_siswa} (2 Halaman) dibuka di tab baru`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(`Gagal membuat PDF Rapor PKL: ${msg}`);
+      } finally {
+        setPdfLoading((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
+    },
+    [selectedKelas, classList, activeYear, activeSemester, user]
+  );
+
+  const handleBatchPrintRaporPkl = useCallback(async () => {
+    if (!selectedKelas) {
+      toast.error('Pilih rombel / kelas terlebih dahulu');
+      return;
+    }
+    setIsBatchPklPrinting(true);
+    toast.info('Menyiapkan kompilasi Rapor PKL Sekelas...');
+    try {
+      const res = await hubinApi.getPenempatan({
+        kelas_id: selectedKelas,
+        limit: 200,
+      });
+      const placementList = (res?.data as { list?: any[] })?.list || (res?.data as any[]) || [];
+
+      if (!placementList || placementList.length === 0) {
+        toast.warning('Tidak ada siswa di kelas ini yang memiliki data penempatan PKL.');
+        return;
+      }
+
+      const [sekolahRes, tenantRes] = await Promise.allSettled([
+        sekolahApi.getProfile(),
+        getMyTenant().catch(() => null),
+      ]);
+      const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+      const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+      const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
+
+      const raporItems: RaporPklItemData[] = placementList.map((placement: any) => {
+        const s = placement.Siswa || {};
+        return {
+          siswa: {
+            id: s.id || placement.siswa_id,
+            nama_siswa: s.nama_siswa || 'Siswa',
+            nis: s.nis || '-',
+            nisn: s.nisn || '-',
+            nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || s.Kelas?.nama_kelas || '',
+            program_keahlian: s.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
+            konsentrasi_keahlian: s.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
+          },
+          pkl: {
+            mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
+            mitra_alamat: placement.alamat_dudi || placement.Mitra?.alamat || '',
+            tanggal_mulai: placement.tanggal_mulai,
+            tanggal_selesai: placement.tanggal_selesai,
+            instruktur_nama: placement.instruktur_nama || placement.Mitra?.pic_nama || placement.penanggung_jawab_nama || '',
+            pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
+            pembimbing_nip: placement.Pembimbing?.nip || '',
+            catatan_pkl: placement.catatan_pkl || '',
+            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
+            sakit_pkl: placement.sakit_pkl ?? 0,
+            izin_pkl: placement.izin_pkl ?? 0,
+            alpa_pkl: placement.alpa_pkl ?? 0,
+          },
+          penilaian: {
+            hard_kompetensi_teknis: placement.hard_kompetensi_teknis ?? null,
+            hard_sop_k3lh: placement.hard_sop_k3lh ?? null,
+            hard_alur_bisnis: placement.hard_alur_bisnis ?? null,
+            soft_kedisiplinan: placement.soft_kedisiplinan ?? null,
+            soft_kerajinan_inisiatif: placement.soft_kerajinan_inisiatif ?? null,
+            soft_kerjasama: placement.soft_kerjasama ?? null,
+            soft_kejujuran: placement.soft_kejujuran ?? null,
+            soft_tanggung_jawab: placement.soft_tanggung_jawab ?? null,
+            nilai_akhir_pkl: placement.nilai_akhir_pkl ?? null,
+            predikat_pkl: placement.predikat_pkl || null,
+          },
+          sekolah: {
+            nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
+            kota: sekolah?.kota || 'Purwakarta',
+            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
+            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
+          },
+          wali_kelas: {
+            nama: (user as any)?.nama || (user as any)?.name || 'Wali Kelas',
+            nip: (user as any)?.nip || '',
+          },
+          tahun_pelajaran: activeYear?.nama || '',
+          semester: activeSemester?.nama || '',
+        };
+      });
+
+      const { blobUrl } = await generateRaporPklBatchPdf(raporItems, currentKelasObj?.nama_kelas || 'Kelas');
+      window.open(blobUrl, '_blank');
+      toast.success(`Pratinjau Rapor PKL Sekelas (${raporItems.length} Siswa, 2 Halaman per Siswa) dibuka di tab baru`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(`Gagal membuat PDF Batch Rapor PKL: ${msg}`);
+    } finally {
+      setIsBatchPklPrinting(false);
+    }
+  }, [selectedKelas, classList, activeYear, activeSemester, user]);
+
   const breadcrumbs = useMemo(
     () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
     []
@@ -541,6 +764,23 @@ export default React.memo(function CetakRaporPage() {
                   <span className="sm:hidden">CETAK 1 FILE</span>
                 </Button>
 
+                {isJenjangSmk && (
+                  <Button
+                    onClick={handleBatchPrintRaporPkl}
+                    disabled={isBatchPklPrinting}
+                    className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-md shadow-teal-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
+                    title="Cetak seluruh Rapor PKL siswa sekelas dalam 1 file PDF gabungan (2 halaman per siswa)"
+                  >
+                    {isBatchPklPrinting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
+                    ) : (
+                      <Building2 className="w-4 h-4 mr-2 flex-shrink-0" />
+                    )}
+                    <span className="hidden sm:inline">CETAK RAPOR PKL KELAS</span>
+                    <span className="sm:hidden">RAPOR PKL</span>
+                  </Button>
+                )}
+
                 <Button
                   onClick={handleExportLeger}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
@@ -581,6 +821,7 @@ export default React.memo(function CetakRaporPage() {
           onOpenSummaryModal={handleOpenSummaryModal}
           onPrintRapor={handlePrintRapor}
           onPrintP5={handlePrintP5}
+          onPrintRaporPkl={handlePrintRaporPkl}
           onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
           getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
           getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}

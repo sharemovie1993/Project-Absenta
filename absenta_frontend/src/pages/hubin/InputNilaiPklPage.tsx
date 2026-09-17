@@ -20,7 +20,9 @@ import {
   Info,
   BookOpen,
   GraduationCap,
-  Lock
+  Lock,
+  Copy,
+  RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -74,6 +76,10 @@ interface ScoreRow {
   sakit_pkl: number;
   izin_pkl: number;
   alpa_pkl: number;
+  auto_sakit?: number;
+  auto_izin?: number;
+  auto_alpa?: number;
+  auto_hadir?: number;
   nomor_sertifikat: string;
   deskripsi_tp: string;
 }
@@ -137,6 +143,10 @@ interface RawPklItem {
   sakit_pkl?: number;
   izin_pkl?: number;
   alpa_pkl?: number;
+  auto_sakit?: number;
+  auto_izin?: number;
+  auto_alpa?: number;
+  auto_hadir?: number;
   nomor_sertifikat?: string;
   deskripsi_tp?: string;
 }
@@ -292,9 +302,13 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         nilai_akhir_pkl: item.nilai_akhir_pkl ?? null,
         predikat_pkl: item.predikat_pkl || '-',
         catatan_pkl: item.catatan_pkl || '',
-        sakit_pkl: item.sakit_pkl ?? 0,
-        izin_pkl: item.izin_pkl ?? 0,
-        alpa_pkl: item.alpa_pkl ?? 0,
+        sakit_pkl: item.sakit_pkl !== null && item.sakit_pkl !== undefined && item.sakit_pkl > 0 ? item.sakit_pkl : (item.auto_sakit ?? 0),
+        izin_pkl: item.izin_pkl !== null && item.izin_pkl !== undefined && item.izin_pkl > 0 ? item.izin_pkl : (item.auto_izin ?? 0),
+        alpa_pkl: item.alpa_pkl !== null && item.alpa_pkl !== undefined && item.alpa_pkl > 0 ? item.alpa_pkl : (item.auto_alpa ?? 0),
+        auto_sakit: item.auto_sakit ?? 0,
+        auto_izin: item.auto_izin ?? 0,
+        auto_alpa: item.auto_alpa ?? 0,
+        auto_hadir: item.auto_hadir ?? 0,
         nomor_sertifikat: item.nomor_sertifikat || '',
         deskripsi_tp: item.deskripsi_tp || '',
       })));
@@ -359,7 +373,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['rapor'] });
       queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
-      toast.success('Nilai PKL dan Rapor Akademik siswa berhasil disimpan & disinkronkan!');
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab'] });
+      toast.success('Nilai PKL, identitas instruktur, dan presensi berhasil disimpan!');
     },
     onError: () => {
       toast.error('Gagal menyimpan nilai PKL');
@@ -453,6 +469,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         } else {
           target.predikat_pkl = '-';
         }
+      } else if (field === 'sakit_pkl' || field === 'izin_pkl' || field === 'alpa_pkl') {
+        const numVal = val === '' || val === null || val === undefined ? 0 : Math.max(0, parseInt(String(val), 10) || 0);
+        (target as Record<string, unknown>)[field] = numVal;
       } else {
         (target as Record<string, unknown>)[field] = val;
       }
@@ -461,6 +480,33 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
       return clone;
     });
   }, [effectiveSettings]);
+
+  // Helper: Salin Nama Instruktur & PIC ke semua siswa di Mitra DUDI yang sama
+  const handleApplyToSameMitra = useCallback((mitraNama: string, instruktur: string, pic?: string) => {
+    if (!mitraNama || !instruktur) return;
+    setScores(prev => prev.map(s => {
+      if (s.mitra_nama === mitraNama) {
+        return {
+          ...s,
+          instruktur_nama: instruktur,
+          ...(pic ? { penanggung_jawab_nama: pic } : {})
+        };
+      }
+      return s;
+    }));
+    toast.success(`Data instruktur diterapkan ke seluruh siswa di ${mitraNama}`);
+  }, []);
+
+  // Helper: Sinkronkan S/I/A dari Presensi Harian Siswa PKL (AbsensiPkl)
+  const handleSyncFromDailyAttendance = useCallback(() => {
+    setScores(prev => prev.map(s => ({
+      ...s,
+      sakit_pkl: s.auto_sakit ?? 0,
+      izin_pkl: s.auto_izin ?? 0,
+      alpa_pkl: s.auto_alpa ?? 0,
+    })));
+    toast.success('Presensi PKL (S/I/A) berhasil ditarik & disinkronkan dari data absensi harian siswa!');
+  }, []);
 
   const handleProcessPaste = useCallback(() => {
     if (!pasteRawText.trim()) return;
@@ -570,9 +616,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         nilai_akhir_pkl: s.nilai_akhir_pkl,
         predikat_pkl: s.predikat_pkl,
         catatan_pkl: s.catatan_pkl,
-        sakit_pkl: s.sakit_pkl,
-        izin_pkl: s.izin_pkl,
-        alpa_pkl: s.alpa_pkl,
+        sakit_pkl: Number(s.sakit_pkl) || 0,
+        izin_pkl: Number(s.izin_pkl) || 0,
+        alpa_pkl: Number(s.alpa_pkl) || 0,
         nomor_sertifikat: s.nomor_sertifikat,
         deskripsi_tp: s.deskripsi_tp,
         instruktur_nama: s.instruktur_nama,
@@ -818,6 +864,10 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                             <tr>
                               <th className="p-3 text-center w-12">No</th>
                               <th className="p-3 min-w-[160px]">Siswa & Mitra DUDI</th>
+                              <th className="p-3 min-w-[150px]">
+                                <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Instruktur & PIC</span>
+                                <span className="text-[9px] font-normal text-indigo-500 uppercase tracking-tight">DUDI / Lapangan</span>
+                              </th>
                               <th className="p-3 text-center min-w-[85px]">
                                 <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Teknis</span>
                                 <span className="text-[9px] font-normal text-indigo-500 uppercase tracking-tight">Hard Skill</span>
@@ -852,6 +902,20 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                               </th>
                               <th className="p-3 text-center min-w-[80px]">Nilai Akhir</th>
                               <th className="p-3 text-center min-w-[80px]">Predikat</th>
+                              <th className="p-3 text-center min-w-[130px]">
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Presensi PKL</span>
+                                  <button
+                                    type="button"
+                                    onClick={handleSyncFromDailyAttendance}
+                                    className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors cursor-pointer"
+                                    title="Tarik & sinkronkan Sakit/Izin/Alpa dari presensi harian siswa"
+                                  >
+                                    <RotateCcw size={12} />
+                                  </button>
+                                </div>
+                                <span className="text-[9px] font-normal text-amber-600 dark:text-amber-400 uppercase tracking-tight">S / I / A (Hari)</span>
+                              </th>
                               <th className="p-3 min-w-[150px]">Catatan Evaluasi</th>
                               <th className="p-3 text-center min-w-[100px]">Aksi</th>
                             </tr>
@@ -868,6 +932,43 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                       NIS: {score.nis}{score.nama_kelas ? ` • ${score.nama_kelas}` : ''}
                                     </p>
                                     <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                  </td>
+
+                                  <td className="p-2">
+                                    <div className="space-y-1">
+                                      <input
+                                        id={`score-instruktur-${globalIndex}`}
+                                        aria-label={`Nama instruktur ${score.nama_siswa}`}
+                                        type="text"
+                                        placeholder="Nama Instruktur..."
+                                        value={score.instruktur_nama || ''}
+                                        onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
+                                        className="w-full min-w-[130px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium px-2 py-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                        title="Nama Instruktur Industri / Pembimbing Lapangan"
+                                      />
+                                      <div className="flex items-center gap-1">
+                                        <input
+                                          id={`score-pic-${globalIndex}`}
+                                          aria-label={`Penanggung jawab DUDI ${score.nama_siswa}`}
+                                          type="text"
+                                          placeholder="PIC / Pimpinan DUDI..."
+                                          value={score.penanggung_jawab_nama || ''}
+                                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
+                                          className="w-full text-[10px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md px-1.5 py-0.5 text-slate-700 dark:text-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                          title="Penanggung Jawab / Pimpinan Mitra DUDI (Opsional)"
+                                        />
+                                        {score.mitra_nama && score.instruktur_nama && (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
+                                            className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded transition-colors cursor-pointer"
+                                            title={`Terapkan instruktur ini ke semua siswa di ${score.mitra_nama}`}
+                                          >
+                                            <Copy size={12} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
                                   </td>
 
                                   <td className="p-2 text-center">
@@ -974,6 +1075,56 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                     <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
                                       {score.predikat_pkl}
                                     </span>
+                                  </td>
+
+                                  <td className="p-2 text-center">
+                                    <div className="inline-flex items-center gap-1 bg-slate-50 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700/80">
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[8px] font-black text-amber-600 dark:text-amber-400 leading-none mb-0.5" title="Sakit">S</span>
+                                        <input
+                                          id={`score-sakit-${globalIndex}`}
+                                          aria-label={`Sakit ${score.nama_siswa}`}
+                                          type="number"
+                                          min={0}
+                                          max={365}
+                                          placeholder="0"
+                                          value={score.sakit_pkl || ''}
+                                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'sakit_pkl', e.target.value)}
+                                          className="w-8 h-7 text-xs font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          title="Ketidakhadiran Sakit (Hari)"
+                                        />
+                                      </div>
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[8px] font-black text-blue-600 dark:text-blue-400 leading-none mb-0.5" title="Izin">I</span>
+                                        <input
+                                          id={`score-izin-${globalIndex}`}
+                                          aria-label={`Izin ${score.nama_siswa}`}
+                                          type="number"
+                                          min={0}
+                                          max={365}
+                                          placeholder="0"
+                                          value={score.izin_pkl || ''}
+                                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'izin_pkl', e.target.value)}
+                                          className="w-8 h-7 text-xs font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          title="Ketidakhadiran Izin (Hari)"
+                                        />
+                                      </div>
+                                      <div className="flex flex-col items-center">
+                                        <span className="text-[8px] font-black text-rose-600 dark:text-rose-400 leading-none mb-0.5" title="Alpa">A</span>
+                                        <input
+                                          id={`score-alpa-${globalIndex}`}
+                                          aria-label={`Alpa ${score.nama_siswa}`}
+                                          type="number"
+                                          min={0}
+                                          max={365}
+                                          placeholder="0"
+                                          value={score.alpa_pkl || ''}
+                                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'alpa_pkl', e.target.value)}
+                                          className="w-8 h-7 text-xs font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                          title="Ketidakhadiran Alpa / Tanpa Keterangan (Hari)"
+                                        />
+                                      </div>
+                                    </div>
                                   </td>
 
                                   <td className="p-2">

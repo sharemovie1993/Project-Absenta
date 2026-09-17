@@ -6,6 +6,7 @@ import {
   Loader2,
   Award,
   BookOpen,
+  Building2,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -20,6 +21,7 @@ interface LegerStudentTableProps {
   onOpenSummaryModal: (student: LegerStudent) => void;
   onPrintRapor: (student: LegerStudent) => void;
   onPrintP5: (student: LegerStudent) => void;
+  onPrintRaporPkl?: (student: LegerStudent) => void;
   onOpenTranskripModal: (student: LegerStudent) => void;
   getPdfSklUrl: (siswaId: string) => string;
   getPdfUkkUrl: (siswaId: string) => string;
@@ -33,6 +35,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   onOpenSummaryModal,
   onPrintRapor,
   onPrintP5,
+  onPrintRaporPkl,
   onOpenTranskripModal,
   getPdfSklUrl,
   getPdfUkkUrl,
@@ -73,6 +76,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
             {(students ?? []).map((student) => {
               const isRaporLoading = !!pdfLoading[`rapor_${student.id}`];
               const isP5Loading = !!pdfLoading[`p5_${student.id}`];
+              const isPklLoading = !!pdfLoading[`pkl_${student.id}`];
 
               return (
                 <tr
@@ -166,6 +170,24 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         P5 (PDF)
                       </Button>
 
+                      {/* RAPOR PKL (PDF) — Khusus SMK */}
+                      {isJenjangSmk !== false && onPrintRaporPkl && (
+                        <Button
+                          size="sm"
+                          onClick={() => onPrintRaporPkl(student)}
+                          disabled={isPklLoading}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-60 whitespace-nowrap flex-shrink-0"
+                          title="Cetak Rapor Praktik Kerja Lapangan 2 Halaman"
+                        >
+                          {isPklLoading ? (
+                            <Loader2 size={13} className="animate-spin mr-1" />
+                          ) : (
+                            <Building2 size={13} className="mr-1" />
+                          )}
+                          PKL (PDF)
+                        </Button>
+                      )}
+
                       {/* SKL */}
                       <Button
                         variant="outline"
@@ -177,7 +199,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                       </Button>
 
                       {/* UKK — Khusus SMK */}
-                      {isJenjangSmk && (
+                      {isJenjangSmk !== false && (
                         <Button
                           variant="outline"
                           size="sm"
