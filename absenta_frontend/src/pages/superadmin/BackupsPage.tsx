@@ -75,9 +75,22 @@ export const BackupsPage: React.FC = React.memo(() => {
   const backups = backupsQuery.data || [];
   const loading = backupsQuery.isLoading;
 
+  const replicationQuery = useQuery({
+    queryKey: ['superadmin-replication-status-summary'],
+    queryFn: async () => {
+      const res = await backupApi.getReplicationStatus().catch(() => null);
+      return res?.data || null;
+    },
+    staleTime: 60 * 1000,
+  });
+  const replicationStatus = replicationQuery.data;
+
   const loadBackups = useCallback(async () => {
-    await backupsQuery.refetch();
-  }, [backupsQuery]);
+    await Promise.all([
+      backupsQuery.refetch(),
+      replicationQuery.refetch()
+    ]);
+  }, [backupsQuery, replicationQuery]);
 
   const handleDownload = useCallback(async (backup: Backup) => {
     const toastId = toast.loading('Mengunduh paket arsip cadangan...');
@@ -227,11 +240,19 @@ export const BackupsPage: React.FC = React.memo(() => {
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setReplicationModalOpen(true)}
-                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
+                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink relative"
                 title="Konfigurasi Replikasi Storage MinIO / Cloud Mirror"
               >
                 <Layers size={13} />
                 <span>Replikasi</span>
+                {replicationStatus?.replica?.enabled && (
+                  <span 
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      replicationStatus.replica.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
+                    }`}
+                    title={replicationStatus.replica.status === 'ONLINE' ? 'Replikasi Dual-Storage Aktif (HA)' : 'Replika Offline'}
+                  />
+                )}
               </Button>
               {backups.length > 0 && (
                 <Button 
@@ -264,6 +285,7 @@ export const BackupsPage: React.FC = React.memo(() => {
             <BackupList 
               items={backups}
               loading={loading}
+              replicationStatus={replicationStatus}
               onRefresh={loadBackups}
               onDownload={handleDownload}
               onRestore={handleRestoreClick}

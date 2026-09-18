@@ -17,11 +17,12 @@ import {
   Badge 
 } from '../../ui';
 import { format } from 'date-fns';
-import type { Backup } from '../../../api/superadmin-backups.api';
+import type { Backup, ReplicationStatusSummary } from '../../../api/superadmin-backups.api';
 
 interface BackupListProps {
   items: Backup[];
   loading: boolean;
+  replicationStatus?: ReplicationStatusSummary | null;
   onRefresh: () => void;
   onDownload: (backup: Backup) => void;
   onRestore: (backup: Backup) => void;
@@ -30,6 +31,7 @@ interface BackupListProps {
 export const BackupList: React.FC<BackupListProps> = ({
   items,
   loading,
+  replicationStatus,
   onRefresh,
   onDownload,
   onRestore
@@ -195,7 +197,8 @@ export const BackupList: React.FC<BackupListProps> = ({
     { 
       label: 'Status Arsip', 
       key: 'status', 
-      render: (v: unknown) => {
+      render: (v: unknown, item: unknown) => {
+        const b = item as Backup;
         const status = String(v);
         const variants: Record<string, 'success' | 'destructive' | 'secondary' | 'outline' | 'default' | 'info' | 'warning' | 'error'> = {
           'READY': 'success',
@@ -209,10 +212,39 @@ export const BackupList: React.FC<BackupListProps> = ({
           'FAILED': 'GAGAL',
           'PURGED': 'DIBERSIHKAN'
         };
+
+        const isS3 = Boolean(b.file_path?.startsWith('s3://'));
+        const isReplicaOnline = Boolean(
+          replicationStatus?.replica?.enabled && 
+          replicationStatus?.replica?.status === 'ONLINE'
+        );
+
         return (
-          <Badge variant={variants[status] || 'secondary'} className="font-bold text-[10px]">
-            {labels[status] || status}
-          </Badge>
+          <div className="flex flex-col items-start gap-1 py-0.5">
+            <Badge variant={variants[status] || 'secondary'} className="font-bold text-[10px]">
+              {labels[status] || status}
+            </Badge>
+
+            {status === 'READY' && isS3 && (
+              isReplicaOnline ? (
+                <span 
+                  className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 px-1.5 py-0.5 rounded cursor-help"
+                  title={`Tersedia di 2 Node Storage:\n• Primer: ${replicationStatus?.primary.endpoint || 'Mesin 1'}\n• Replika: ${replicationStatus?.replica.endpoint || 'Mesin 2'}`}
+                >
+                  <Layers size={9} className="text-emerald-500 shrink-0" />
+                  <span>2/2 Sync (HA)</span>
+                </span>
+              ) : (
+                <span 
+                  className="inline-flex items-center gap-1 text-[9px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded cursor-help"
+                  title={`Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'})`}
+                >
+                  <HardDrive size={9} className="text-blue-500 shrink-0" />
+                  <span>Mesin 1 (Primer)</span>
+                </span>
+              )
+            )}
+          </div>
         );
       } 
     },
@@ -320,12 +352,19 @@ export const BackupList: React.FC<BackupListProps> = ({
               </span>
             )}
           </div>
-          <Badge 
-            variant={b.status === 'READY' ? 'success' : b.status === 'RESTORED' ? 'info' : 'destructive'} 
-            className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
-          >
-            {b.status}
-          </Badge>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge 
+              variant={b.status === 'READY' ? 'success' : b.status === 'RESTORED' ? 'info' : b.status === 'PURGED' ? 'secondary' : 'destructive'} 
+              className="text-[9px] font-bold px-1.5 py-0.5"
+            >
+              {b.status === 'PURGED' ? 'DIBERSIHKAN' : b.status}
+            </Badge>
+            {b.status === 'READY' && b.file_path?.startsWith('s3://') && (
+              <span className="text-[8.5px] font-mono text-slate-400">
+                {replicationStatus?.replica?.enabled && replicationStatus?.replica?.status === 'ONLINE' ? '2/2 Sync' : 'Mesin 1'}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
@@ -343,7 +382,12 @@ export const BackupList: React.FC<BackupListProps> = ({
               size="xs"
               variant="outline"
               onClick={() => onDownload(b)}
-              className="h-7 px-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer"
+              disabled={b.status === 'PURGED'}
+              className={`h-7 px-2 text-[11px] font-bold border flex items-center ${
+                b.status === 'PURGED'
+                  ? 'opacity-40 cursor-not-allowed text-slate-400 border-slate-200 dark:border-slate-800'
+                  : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer'
+              }`}
             >
               <Download size={11} className="mr-1" />
               Unduh
