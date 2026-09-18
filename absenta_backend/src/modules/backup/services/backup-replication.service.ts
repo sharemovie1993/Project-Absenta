@@ -36,6 +36,7 @@ export interface ReplicationStatusSummary {
     status: 'ONLINE' | 'OFFLINE' | 'DISABLED';
     totalObjects: number;
     totalBytes: number;
+    keys?: string[];
     lastSyncedAt?: string | null;
   };
 }
@@ -229,6 +230,7 @@ class BackupReplicationService {
     let replicaStatus: 'ONLINE' | 'OFFLINE' | 'DISABLED' = replicaCfg.enabled ? 'OFFLINE' : 'DISABLED';
     let replicaObjects = 0;
     let replicaBytes = 0;
+    let replicaKeys: string[] = [];
 
     // Parallel probes with fail-fast timeout (2.5s) to avoid hanging when a node is down
     const probePrimary = async () => {
@@ -257,6 +259,9 @@ class BackupReplicationService {
           replicaStatus = 'ONLINE';
           replicaObjects = res.KeyCount || 0;
           replicaBytes = (res.Contents || []).reduce((acc, item) => acc + (item.Size || 0), 0);
+          replicaKeys = (res.Contents || [])
+            .map(item => item.Key)
+            .filter((k): k is string => Boolean(k));
         } catch {
           replicaStatus = 'OFFLINE';
         }
@@ -280,6 +285,7 @@ class BackupReplicationService {
         status: replicaStatus,
         totalObjects: replicaObjects,
         totalBytes: replicaBytes,
+        keys: replicaKeys,
         lastSyncedAt: replicaCfg.lastSyncedAt,
       },
     };

@@ -29,6 +29,65 @@ interface BackupListProps {
   onRestore: (backup: Backup) => void;
 }
 
+export const getReplicaSyncStatus = (
+  filePath: string | undefined,
+  replicationStatus: ReplicationStatusSummary | null | undefined
+) => {
+  const isS3 = Boolean(filePath?.startsWith('s3://'));
+  if (!isS3) return null;
+
+  const isReplicaEnabled = Boolean(replicationStatus?.replica?.enabled);
+  const isReplicaOnline = Boolean(isReplicaEnabled && replicationStatus?.replica?.status === 'ONLINE');
+  const replicaKeys = replicationStatus?.replica?.keys || [];
+  
+  const s3Key = filePath ? filePath.replace(/^s3:\/\/[^/]+\//, '') : '';
+  const filename = filePath ? filePath.split('/').pop() || '' : '';
+
+  const existsInReplica = Boolean(
+    isReplicaOnline &&
+    replicaKeys.length > 0 &&
+    (replicaKeys.includes(s3Key) || (filename && replicaKeys.some(k => k.endsWith(filename))))
+  );
+
+  if (existsInReplica) {
+    return {
+      type: 'HA_SYNCED' as const,
+      label: '2/2 Sync (HA)',
+      tooltip: `Tersedia di 2 Node Storage (HA Terverifikasi):\n• Primer: ${replicationStatus?.primary.endpoint || 'Mesin 1'}\n• Replika: ${replicationStatus?.replica.endpoint || 'Mesin 2'}`,
+      badgeClass: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800/80',
+      iconClass: 'text-emerald-500',
+    };
+  }
+
+  if (isReplicaOnline) {
+    return {
+      type: 'PRIMARY_ONLY' as const,
+      label: '1/2 (Primer Saja)',
+      tooltip: `Berkas hanya ada di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'}).\nBelum tersinkron ke Mesin 2 (${replicationStatus?.replica.endpoint || 'Mesin 2'} kosong atau belum disinkron).`,
+      badgeClass: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800/80',
+      iconClass: 'text-amber-500',
+    };
+  }
+
+  if (isReplicaEnabled) {
+    return {
+      type: 'REPLICA_OFFLINE' as const,
+      label: 'Mesin 2 Offline',
+      tooltip: `Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'}).\nMesin 2 Replika sedang OFFLINE.`,
+      badgeClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/80',
+      iconClass: 'text-rose-500',
+    };
+  }
+
+  return {
+    type: 'PRIMARY_STANDALONE' as const,
+    label: 'Mesin 1 (Primer)',
+    tooltip: `Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'})`,
+    badgeClass: 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700',
+    iconClass: 'text-blue-500',
+  };
+};
+
 export const BackupList: React.FC<BackupListProps> = ({
   items,
   loading,
@@ -214,11 +273,7 @@ export const BackupList: React.FC<BackupListProps> = ({
           'PURGED': 'DIBERSIHKAN'
         };
 
-        const isS3 = Boolean(b.file_path?.startsWith('s3://'));
-        const isReplicaOnline = Boolean(
-          replicationStatus?.replica?.enabled && 
-          replicationStatus?.replica?.status === 'ONLINE'
-        );
+        const syncStatus = getReplicaSyncStatus(b.file_path, replicationStatus);
 
         return (
           <div className="flex flex-col items-start gap-1 py-0.5">
@@ -226,24 +281,18 @@ export const BackupList: React.FC<BackupListProps> = ({
               {labels[status] || status}
             </Badge>
 
-            {status === 'READY' && isS3 && (
-              isReplicaOnline ? (
-                <span 
-                  className="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 px-1.5 py-0.5 rounded cursor-help"
-                  title={`Tersedia di 2 Node Storage:\n• Primer: ${replicationStatus?.primary.endpoint || 'Mesin 1'}\n• Replika: ${replicationStatus?.replica.endpoint || 'Mesin 2'}`}
-                >
-                  <Layers size={9} className="text-emerald-500 shrink-0" />
-                  <span>2/2 Sync (HA)</span>
-                </span>
-              ) : (
-                <span 
-                  className="inline-flex items-center gap-1 text-[9px] font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded cursor-help"
-                  title={`Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'})`}
-                >
-                  <HardDrive size={9} className="text-blue-500 shrink-0" />
-                  <span>Mesin 1 (Primer)</span>
-                </span>
-              )
+            {status === 'READY' && syncStatus && (
+              <span 
+                className={`inline-flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border cursor-help ${syncStatus.badgeClass}`}
+                title={syncStatus.tooltip}
+              >
+                {syncStatus.type === 'HA_SYNCED' ? (
+                  <Layers size={9} className={syncStatus.iconClass} />
+                ) : (
+                  <HardDrive size={9} className={syncStatus.iconClass} />
+                )}
+                <span>{syncStatus.label}</span>
+              </span>
             )}
           </div>
         );
@@ -360,11 +409,20 @@ export const BackupList: React.FC<BackupListProps> = ({
             >
               {b.status === 'PURGED' ? 'DIBERSIHKAN' : b.status}
             </Badge>
-            {b.status === 'READY' && b.file_path?.startsWith('s3://') && (
-              <span className="text-[8.5px] font-mono text-slate-400">
-                {replicationStatus?.replica?.enabled && replicationStatus?.replica?.status === 'ONLINE' ? '2/2 Sync' : 'Mesin 1'}
-              </span>
-            )}
+            {b.status === 'READY' && (() => {
+              const syncStatus = getReplicaSyncStatus(b.file_path, replicationStatus);
+              if (!syncStatus) return null;
+              return (
+                <span className={`text-[8.5px] font-mono font-bold ${
+                  syncStatus.type === 'HA_SYNCED' ? 'text-emerald-600 dark:text-emerald-400' :
+                  syncStatus.type === 'PRIMARY_ONLY' ? 'text-amber-600 dark:text-amber-400' :
+                  syncStatus.type === 'REPLICA_OFFLINE' ? 'text-rose-600 dark:text-rose-400' :
+                  'text-slate-400'
+                }`}>
+                  {syncStatus.label}
+                </span>
+              );
+            })()}
           </div>
         </div>
 

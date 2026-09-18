@@ -110,6 +110,7 @@ export interface ReplicationStatusSummary {
     status: 'ONLINE' | 'OFFLINE' | 'DISABLED';
     totalObjects: number;
     totalBytes: number;
+    keys?: string[];
     lastSyncedAt?: string | null;
   };
 }

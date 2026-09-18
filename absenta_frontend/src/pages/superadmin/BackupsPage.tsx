@@ -81,7 +81,7 @@ export const BackupsPage: React.FC = React.memo(() => {
       const res = await backupApi.getReplicationStatus().catch(() => null);
       return res?.data || null;
     },
-    staleTime: 60 * 1000,
+    staleTime: 10 * 1000,
   });
   const replicationStatus = replicationQuery.data;
 
@@ -245,14 +245,31 @@ export const BackupsPage: React.FC = React.memo(() => {
               >
                 <Layers size={13} />
                 <span>Replikasi</span>
-                {replicationStatus?.replica?.enabled && (
-                  <span 
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      replicationStatus.replica.status === 'ONLINE' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'
-                    }`}
-                    title={replicationStatus.replica.status === 'ONLINE' ? 'Replikasi Dual-Storage Aktif (HA)' : 'Replika Offline'}
-                  />
-                )}
+                {replicationStatus?.replica?.enabled && (() => {
+                  const isOnline = replicationStatus.replica.status === 'ONLINE';
+                  const totalPrimary = replicationStatus.primary?.totalObjects || 0;
+                  const totalReplica = replicationStatus.replica?.totalObjects || 0;
+                  const isOutdated = isOnline && (totalReplica < totalPrimary);
+
+                  return (
+                    <span 
+                      className={`inline-block w-2 h-2 rounded-full ${
+                        !isOnline 
+                          ? 'bg-rose-500' 
+                          : isOutdated 
+                            ? 'bg-amber-500 animate-pulse' 
+                            : 'bg-emerald-500 animate-pulse'
+                      }`}
+                      title={
+                        !isOnline 
+                          ? 'Replika Offline' 
+                          : isOutdated 
+                            ? `Perlu Sinkronisasi: Mesin 2 memiliki ${totalReplica}/${totalPrimary} arsip` 
+                            : 'Replikasi Dual-Storage Aktif & Sinkron (HA)'
+                      }
+                    />
+                  );
+                })()}
               </Button>
               {backups.length > 0 && (
                 <Button 
