@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Download, 
   RefreshCw, 
@@ -8,7 +8,7 @@ import {
   Clock, 
   Search, 
   Filter, 
-  Sparkles,
+  Sparkles, 
   RotateCcw
 } from 'lucide-react';
 import { 
@@ -37,6 +37,8 @@ export const BackupList: React.FC<BackupListProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTenant, setSelectedTenant] = useState('ALL');
   const [onlyLatest, setOnlyLatest] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Daftar unik sekolah untuk opsi filter dropdown
   const uniqueTenants = useMemo(() => {
@@ -101,6 +103,25 @@ export const BackupList: React.FC<BackupListProps> = ({
       return true;
     });
   }, [items, selectedTenant, onlyLatest, searchQuery, latestBackupIdPerTenant]);
+
+  // Reset ke halaman pertama saat filter berubah
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedTenant, onlyLatest]);
+
+  const totalItems = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredItems.slice(start, start + itemsPerPage);
+  }, [filteredItems, currentPage, itemsPerPage]);
 
   const columns = [
     { 
@@ -348,9 +369,20 @@ export const BackupList: React.FC<BackupListProps> = ({
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       <Table
         columns={columns}
-        data={filteredItems}
+        data={paginatedItems}
         loading={loading}
         renderMobileCard={renderMobileCard}
+        pagination={{
+          currentPage,
+          totalPages,
+          totalItems,
+          itemsPerPage,
+          onPageChange: (page) => setCurrentPage(page),
+          onLimitChange: (limit) => {
+            setItemsPerPage(limit);
+            setCurrentPage(1);
+          }
+        }}
         emptyMessage={
           searchQuery || selectedTenant !== 'ALL' || onlyLatest
             ? "Tidak ada arsip cadangan yang cocok dengan kriteria filter."
