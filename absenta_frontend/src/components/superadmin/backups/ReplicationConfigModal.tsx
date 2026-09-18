@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Server, 
   HardDrive, 
-  ShieldCheck, 
   RefreshCw, 
-  Check, 
-  AlertTriangle, 
-  Eye, 
-  EyeOff, 
   Zap, 
   Plug, 
   Save, 
   CheckCircle2, 
   XCircle, 
-  ArrowRight,
   Layers,
-  Clock
+  Clock,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Modal, Button, Input, Label, Badge, Checkbox } from '@/components/ui';
 import toast from 'react-hot-toast';
 import { 
   backupApi, 
-  type ReplicationConfig, 
   type ReplicationStatusSummary 
 } from '@/api/superadmin-backups.api';
 import { format } from 'date-fns';
@@ -42,6 +38,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [showSecret, setShowSecret] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Form State
   const [enabled, setEnabled] = useState(false);
@@ -110,7 +107,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
 
     setTesting(true);
     setTestResult(null);
-    const toastId = toast.loading('Menguji keterjangkauan MinIO target...');
+    const toastId = toast.loading('Menguji koneksi MinIO...');
 
     try {
       const res = await backupApi.testReplicationConnection({
@@ -128,7 +125,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
           latencyMs: res.data?.latencyMs || 0,
           message: res.message || 'Koneksi berhasil terhubung'
         });
-        toast.success(res.message || 'Koneksi ke MinIO target berhasil!', { id: toastId });
+        toast.success(res.message || 'Koneksi MinIO target berhasil!', { id: toastId });
       } else {
         setTestResult({
           success: false,
@@ -152,7 +149,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
 
   const handleSave = async () => {
     setSaving(true);
-    const toastId = toast.loading('Menyimpan konfigurasi replikasi...');
+    const toastId = toast.loading('Menyimpan konfigurasi...');
 
     try {
       const res = await backupApi.saveReplicationConfig({
@@ -165,7 +162,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
         forcePathStyle
       });
 
-      toast.success(res.message || 'Pengaturan replikasi berhasil disimpan!', { id: toastId });
+      toast.success(res.message || 'Pengaturan replikasi disimpan!', { id: toastId });
       await loadData();
       if (onRefreshList) onRefreshList();
     } catch (err: any) {
@@ -178,11 +175,11 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
 
   const handleSyncNow = async () => {
     setSyncing(true);
-    const toastId = toast.loading('Memulai sinkronisasi seluruh cadangan ke MinIO target...');
+    const toastId = toast.loading('Memulai sinkronisasi seluruh arsip...');
 
     try {
       const res = await backupApi.syncReplication();
-      toast.success(res.message || 'Sinkronisasi berhasil diselesaikan!', { id: toastId });
+      toast.success(res.message || 'Sinkronisasi berhasil!', { id: toastId });
       await loadData();
       if (onRefreshList) onRefreshList();
     } catch (err: any) {
@@ -193,117 +190,110 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
     }
   };
 
+  const primaryHost = (statusSummary?.primary.endpoint || 'http://10.10.10.250:9000').replace(/^https?:\/\//, '');
+  const replicaHost = (endpoint || 'Belum diatur').replace(/^https?:\/\//, '');
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Pengaturan Replikasi Storage (MinIO Mirroring)"
-      className="max-w-2xl"
+      title="Replikasi Storage MinIO"
+      className="max-w-xl"
+      contentClassName="p-4 sm:p-6"
     >
-      <div className="space-y-6">
-        {/* Status Arsitektur Dual-Storage */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Storage Primer */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500 flex items-center gap-1.5">
-                <HardDrive size={13} className="text-blue-500" />
-                MinIO Primer (Mesin 1)
-              </span>
-              <Badge variant={statusSummary?.primary.status === 'ONLINE' ? 'success' : 'destructive'} className="text-[9px] font-bold">
-                {statusSummary?.primary.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
-              </Badge>
+      <div className="space-y-4">
+        {/* Status Arsitektur Dual-Storage Ringkas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {/* Primer */}
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
+            <div className="min-w-0 pr-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <HardDrive size={13} className="text-blue-500 shrink-0" />
+                <span className="truncate">Primer ({primaryHost})</span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono pl-4.5">
+                {statusSummary?.primary.totalObjects || 0} arsip • {statusSummary?.primary.bucket || bucket}
+              </div>
             </div>
-            <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate" title={statusSummary?.primary.endpoint || 'http://10.10.10.250:9000'}>
-              {statusSummary?.primary.endpoint || 'http://10.10.10.250:9000'}
-            </p>
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 font-mono">
-              <span>Bucket: {statusSummary?.primary.bucket || 'absenta-platform-backups'}</span>
-              <span>{statusSummary?.primary.totalObjects || 0} Objek</span>
-            </div>
+            <Badge 
+              variant={statusSummary?.primary.status === 'ONLINE' ? 'success' : 'destructive'} 
+              className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+            >
+              {statusSummary?.primary.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
+            </Badge>
           </div>
 
-          {/* Storage Replika */}
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold tracking-wider uppercase text-slate-500 flex items-center gap-1.5">
-                <Layers size={13} className="text-emerald-500" />
-                MinIO Replika (Mesin 2)
-              </span>
-              <Badge 
-                variant={
-                  !enabled ? 'secondary' :
-                  statusSummary?.replica.status === 'ONLINE' ? 'success' : 'destructive'
-                } 
-                className="text-[9px] font-bold"
-              >
-                {!enabled ? 'NON-AKTIF' : statusSummary?.replica.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
-              </Badge>
+          {/* Replika */}
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800">
+            <div className="min-w-0 pr-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                <Layers size={13} className="text-emerald-500 shrink-0" />
+                <span className="truncate">Replika ({replicaHost})</span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono pl-4.5">
+                {statusSummary?.replica.totalObjects || 0} arsip • {bucket}
+              </div>
             </div>
-            <p className="text-xs font-mono font-bold text-slate-800 dark:text-slate-200 truncate" title={endpoint || 'Belum dikonfigurasi'}>
-              {endpoint || 'Belum dikonfigurasi'}
-            </p>
-            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 dark:border-slate-800/60 font-mono">
-              <span>Bucket: {bucket}</span>
-              <span>{statusSummary?.replica.totalObjects || 0} Objek</span>
-            </div>
+            <Badge 
+              variant={
+                !enabled ? 'secondary' :
+                statusSummary?.replica.status === 'ONLINE' ? 'success' : 'destructive'
+              } 
+              className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+            >
+              {!enabled ? 'NON-AKTIF' : statusSummary?.replica.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
+            </Badge>
           </div>
         </div>
 
-        {/* Sakelar Aktifkan Replikasi */}
-        <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900/50 bg-blue-50/50 dark:bg-blue-950/20 flex items-start gap-3">
+        {/* Sakelar Replikasi Ringkas (Clean Toggle) */}
+        <div className="p-3 rounded-xl border border-blue-200/80 dark:border-blue-900/50 bg-blue-50/40 dark:bg-blue-950/20 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Label htmlFor="enable-replication-toggle" className="font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm cursor-pointer block truncate">
+              Aktifkan Replikasi Otomatis
+            </Label>
+            <p className="text-[11px] text-slate-500 truncate">
+              Duplikasi otomatis snapshot <code className="font-bold">.absenta</code> ke storage target
+            </p>
+          </div>
           <Checkbox
             id="enable-replication-toggle"
             checked={enabled}
             onCheckedChange={(checked: boolean) => setEnabled(checked)}
-            className="mt-0.5"
+            className="shrink-0"
           />
-          <div className="space-y-1">
-            <Label htmlFor="enable-replication-toggle" className="font-bold text-slate-900 dark:text-slate-100 text-sm cursor-pointer">
-              Aktifkan Replikasi Otomatis ke MinIO Sekunder
-            </Label>
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              Setiap kali sistem menyelesaikan pencadangan platform (cronjob / manual), berkas snapshot <code className="font-bold">.absenta</code> akan langsung diduplikasi ke server target secara otomatis.
-            </p>
-          </div>
         </div>
 
-        {/* Form Pengaturan Target */}
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+        {/* Form Target MinIO (Clean & Compact) */}
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Target Endpoint URL <span className="text-red-500">*</span>
+                Target Endpoint <span className="text-red-500">*</span>
               </Label>
               <Input
-                placeholder="http://10.10.10.251:9000"
+                placeholder="http://10.10.10.20:9000"
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
-                className="font-mono text-xs"
+                className="font-mono text-xs h-9"
               />
-              <span className="text-[10px] text-slate-400">
-                IP dan port MinIO Server kedua di LAN Anda
-              </span>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Nama Bucket Target <span className="text-red-500">*</span>
+                Target Bucket <span className="text-red-500">*</span>
               </Label>
               <Input
                 placeholder="absenta-platform-backups"
                 value={bucket}
                 onChange={(e) => setBucket(e.target.value)}
-                className="font-mono text-xs"
+                className="font-mono text-xs h-9"
               />
-              <span className="text-[10px] text-slate-400">
-                Otomatis dibuat jika belum ada di server target
-              </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Access Key ID <span className="text-red-500">*</span>
               </Label>
@@ -311,11 +301,11 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
                 placeholder="minioadmin"
                 value={accessKeyId}
                 onChange={(e) => setAccessKeyId(e.target.value)}
-                className="font-mono text-xs"
+                className="font-mono text-xs h-9"
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
                 Secret Access Key <span className="text-red-500">*</span>
               </Label>
@@ -325,12 +315,13 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
                   placeholder="Ketik secret key baru..."
                   value={secretAccessKey}
                   onChange={(e) => setSecretAccessKey(e.target.value)}
-                  className="font-mono text-xs pr-9"
+                  className="font-mono text-xs h-9 pr-9"
                 />
                 <button
                   type="button"
                   onClick={() => setShowSecret(!showSecret)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  aria-label="Toggle secret key visibility"
                 >
                   {showSecret ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
@@ -338,61 +329,72 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Region
-              </Label>
-              <Input
-                placeholder="us-east-1"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="font-mono text-xs"
-              />
-            </div>
+          {/* Opsi Lanjutan (Collapsible to remove clutter) */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1 transition-colors cursor-pointer py-1"
+            >
+              {showAdvanced ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              <span>{showAdvanced ? 'Sembunyikan Opsi Lanjutan' : 'Tampilkan Opsi Lanjutan (Region & Path Style)'}</span>
+            </button>
 
-            <div className="flex items-center pt-6">
-              <Checkbox
-                id="force-path-style-check"
-                checked={forcePathStyle}
-                onCheckedChange={(checked: boolean) => setForcePathStyle(checked)}
-                className="mr-2"
-              />
-              <Label htmlFor="force-path-style-check" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
-                Force Path Style S3 (Wajib untuk MinIO On-Premise)
-              </Label>
-            </div>
+            {showAdvanced && (
+              <div className="mt-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200/70 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Region
+                  </Label>
+                  <Input
+                    placeholder="us-east-1"
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    className="font-mono text-xs h-8.5"
+                  />
+                </div>
+
+                <div className="flex items-center pt-2 sm:pt-6">
+                  <Checkbox
+                    id="force-path-style-check"
+                    checked={forcePathStyle}
+                    onCheckedChange={(checked: boolean) => setForcePathStyle(checked)}
+                    className="mr-2"
+                  />
+                  <Label htmlFor="force-path-style-check" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
+                    Force Path Style (MinIO)
+                  </Label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Feedback Uji Koneksi */}
         {testResult && (
-          <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs font-medium ${
+          <div className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-medium ${
             testResult.success 
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-950/30 dark:border-emerald-900/60 dark:text-emerald-300' 
               : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-950/30 dark:border-red-900/60 dark:text-red-300'
           }`}>
-            {testResult.success ? <CheckCircle2 size={16} className="shrink-0 text-emerald-600" /> : <XCircle size={16} className="shrink-0 text-red-600" />}
-            <span>{testResult.message}</span>
+            {testResult.success ? <CheckCircle2 size={15} className="shrink-0 text-emerald-600" /> : <XCircle size={15} className="shrink-0 text-red-600" />}
+            <span className="truncate">{testResult.message}</span>
           </div>
         )}
 
-        {/* Sync Manual Action Bar */}
+        {/* Sync Manual Action Bar (Clean) */}
         {enabled && (
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="space-y-0.5 text-left w-full sm:w-auto">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="min-w-0 pr-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
-                <Zap size={14} className="text-amber-500" />
-                <span>Sinkronisasi Manual Seketika</span>
+                <Zap size={13} className="text-amber-500 shrink-0" />
+                <span className="truncate">Sinkronkan Semua Arsip</span>
               </div>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[10px] text-slate-400 truncate">
                 {statusSummary?.replica.lastSyncedAt ? (
-                  <span className="flex items-center gap-1">
-                    <Clock size={11} />
-                    Terakhir disinkronkan: {format(new Date(statusSummary.replica.lastSyncedAt), 'dd/MM/yyyy HH:mm')} WIB
-                  </span>
+                  `Terakhir: ${format(new Date(statusSummary.replica.lastSyncedAt), 'dd/MM/yy HH:mm')}`
                 ) : (
-                  'Belum pernah melakukan sinkronisasi massal.'
+                  'Belum pernah sinkronisasi massal'
                 )}
               </p>
             </div>
@@ -401,33 +403,33 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
               variant="outline"
               onClick={handleSyncNow}
               disabled={syncing || loading}
-              className="h-8.5 px-3 text-xs font-bold border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 shrink-0 w-full sm:w-auto cursor-pointer"
+              className="h-7 sm:h-8 px-2.5 text-[11px] font-bold border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 shrink-0 cursor-pointer"
             >
-              <RefreshCw size={13} className={`mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}
+              <RefreshCw size={12} className={`mr-1 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'Menyinkronkan...' : 'Sync Sekarang'}
             </Button>
           </div>
         )}
 
-        {/* Footer Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-900">
+        {/* Footer Buttons (Responsive & Clean) */}
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <Button
             type="button"
             variant="outline"
             onClick={handleTestConnection}
             disabled={testing || loading}
-            className="w-full sm:w-auto h-9 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+            className="h-8.5 sm:h-9 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
           >
             <Plug size={13} className={`mr-1.5 ${testing ? 'animate-pulse text-blue-500' : ''}`} />
-            {testing ? 'Menguji...' : 'Uji Koneksi Target'}
+            {testing ? 'Menguji...' : 'Uji Koneksi'}
           </Button>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="h-9 text-xs flex-1 sm:flex-none cursor-pointer"
+              className="h-8.5 sm:h-9 text-xs flex-1 sm:flex-none cursor-pointer"
             >
               Tutup
             </Button>
@@ -436,10 +438,10 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
               variant="default"
               onClick={handleSave}
               disabled={saving || loading}
-              className="h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none cursor-pointer"
+              className="h-8.5 sm:h-9 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none cursor-pointer"
             >
               <Save size={13} className="mr-1.5" />
-              {saving ? 'Menyimpan...' : 'Simpan Pengaturan'}
+              {saving ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </div>
         </div>
@@ -447,3 +449,4 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
     </Modal>
   );
 };
+

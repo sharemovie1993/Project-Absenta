@@ -170,29 +170,29 @@ export const BackupsPage: React.FC = React.memo(() => {
           fullWidth
           noPadding
         >
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <span className="text-xs font-bold text-slate-500">Total {backups.length} snapshot terdaftar</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Button 
                 type="button"
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setMigrationModalOpen(true)}
-                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs"
               >
                 <UploadCloud size={13} />
-                Import Paket (.absenta)
+                <span>Import Paket</span>
               </Button>
               <Button 
                 type="button"
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setReplicationModalOpen(true)}
-                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs"
                 title="Konfigurasi Replikasi Storage MinIO / Cloud Mirror"
               >
                 <Layers size={13} />
-                Replikasi Storage
+                <span>Replikasi</span>
               </Button>
               {backups.length > 0 && (
                 <Button 
@@ -200,10 +200,10 @@ export const BackupsPage: React.FC = React.memo(() => {
                   variant="toolbarOutline"
                   size="toolbar"
                   onClick={() => setExportModalOpen(true)}
-                  className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                  className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs"
                 >
                   <DownloadCloud size={13} />
-                  Export Bundle
+                  <span>Export</span>
                 </Button>
               )}
               <Button 
@@ -212,10 +212,10 @@ export const BackupsPage: React.FC = React.memo(() => {
                 size="toolbar"
                 onClick={loadBackups}
                 disabled={loading}
-                className="gap-2"
+                className="gap-1.5 text-xs"
               >
                 <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
-                Refresh Arsip
+                <span>Refresh</span>
               </Button>
             </div>
           </div>

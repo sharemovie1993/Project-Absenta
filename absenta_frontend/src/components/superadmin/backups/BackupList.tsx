@@ -36,7 +36,7 @@ export const BackupList: React.FC<BackupListProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTenant, setSelectedTenant] = useState('ALL');
-  const [onlyLatest, setOnlyLatest] = useState(false);
+  const [onlyLatest, setOnlyLatest] = useState(true);
 
   // Daftar unik sekolah untuk opsi filter dropdown
   const uniqueTenants = useMemo(() => {
@@ -234,12 +234,82 @@ export const BackupList: React.FC<BackupListProps> = ({
     }
   ];
 
+  const renderMobileCard = (row: any) => {
+    const b = row as Backup;
+    const tenantKey = b.tenant_id || 'system';
+    const isLatest = b.id === latestBackupIdPerTenant.get(tenantKey);
+    const bytes = parseInt(b.file_size_bytes) || 0;
+    const formattedSize = bytes > 1024 * 1024 
+      ? `${(bytes / 1024 / 1024).toFixed(2)} MB` 
+      : `${(bytes / 1024).toFixed(1)} KB`;
+    const dateObj = new Date(b.snapshot_date);
+
+    return (
+      <div key={b.id} className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/70 dark:border-slate-800 shadow-xs flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">
+              {b.Tenant?.name || 'System Platform'}
+            </span>
+            {isLatest && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8.5px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-300/80 dark:border-emerald-800/80 shrink-0">
+                <Sparkles size={8} />
+                TERBARU
+              </span>
+            )}
+          </div>
+          <Badge 
+            variant={b.status === 'READY' ? 'success' : b.status === 'RESTORED' ? 'info' : 'destructive'} 
+            className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+          >
+            {b.status}
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="flex items-center gap-1">
+              <Calendar size={11} className="text-blue-500" />
+              {format(dateObj, 'dd/MM/yy HH:mm')}
+            </span>
+            <span>•</span>
+            <span>{formattedSize}</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => onDownload(b)}
+              className="h-7 px-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer"
+            >
+              <Download size={11} className="mr-1" />
+              Unduh
+            </Button>
+            {b.status === 'READY' && (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => onRestore(b)}
+                className="h-7 px-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 cursor-pointer"
+              >
+                <RotateCcw size={11} className="mr-1" />
+                Pulih
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       <Table
         columns={columns}
         data={filteredItems}
         loading={loading}
+        renderMobileCard={renderMobileCard}
         emptyMessage={
           searchQuery || selectedTenant !== 'ALL' || onlyLatest
             ? "Tidak ada arsip cadangan yang cocok dengan kriteria filter."
@@ -248,47 +318,50 @@ export const BackupList: React.FC<BackupListProps> = ({
         compact={true}
         hoverable={true}
         toolbarLeft={
-          <div className="flex flex-wrap items-center gap-3 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 w-full">
             {/* Input Pencarian Nama Sekolah / ID */}
-            <div className="relative min-w-[220px] max-w-sm flex-1">
+            <div className="relative w-full sm:max-w-xs flex-1">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari nama sekolah, ID, atau checksum..."
+                placeholder="Cari sekolah atau ID..."
                 className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
               />
             </div>
 
-            {/* Dropdown Filter Sekolah */}
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2.5 py-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400" />
-              <select
-                value={selectedTenant}
-                onChange={(e) => setSelectedTenant(e.target.value)}
-                className="text-xs bg-transparent text-slate-700 dark:text-slate-300 font-bold focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="ALL">Semua Sekolah ({items?.length || 0})</option>
-                {uniqueTenants?.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {/* Dropdown Filter Sekolah */}
+              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2.5 py-1.5 flex-1 sm:flex-none">
+                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <select
+                  value={selectedTenant}
+                  onChange={(e) => setSelectedTenant(e.target.value)}
+                  className="text-xs bg-transparent text-slate-700 dark:text-slate-300 font-bold focus:outline-none cursor-pointer pr-1 w-full"
+                >
+                  <option value="ALL">Semua Sekolah ({items?.length || 0})</option>
+                  {uniqueTenants?.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Toggle Sakelar "Hanya Tampilkan Snapshot Terbaru" */}
-            <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
-              <input
-                type="checkbox"
-                checked={onlyLatest}
-                onChange={(e) => setOnlyLatest(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
-              />
-              <span className="flex items-center gap-1 text-[11px]">
-                <Sparkles size={12} className="text-amber-500" />
-                Hanya Snapshot Terbaru Tiap Sekolah
-              </span>
-            </label>
+              {/* Toggle Sakelar "Hanya Tampilkan Snapshot Terbaru" */}
+              <button
+                type="button"
+                onClick={() => setOnlyLatest(!onlyLatest)}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer shrink-0 ${
+                  onlyLatest
+                    ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+                    : 'bg-slate-50 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-800 text-slate-500'
+                }`}
+                title="Hanya tampilkan snapshot terbaru per sekolah"
+              >
+                <Sparkles size={12} className={onlyLatest ? "text-blue-600 dark:text-blue-400" : "text-slate-400"} />
+                <span className="text-[11px]">Terbaru Saja</span>
+              </button>
+            </div>
           </div>
         }
       />
