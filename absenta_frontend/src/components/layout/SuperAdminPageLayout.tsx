@@ -20,6 +20,8 @@ interface SuperAdminStat {
   gradient: string;
   subtitle?: string;
   onClick?: () => void;
+  variant?: 'card' | 'ghost' | 'sub-cards' | 'premium' | 'compact-premium';
+  mobileCompact?: boolean;
 }
 
 interface SuperAdminPageLayoutProps {
@@ -55,7 +57,7 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
   const { user } = useAuth();
 
 
-  // Set Instruction Panel Content
+  // Daftarkan data instruksi ke context saat komponen dimuat
   useEffect(() => {
     if (instruction) {
       setInstructionData(instruction);
@@ -194,7 +196,7 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
 
       {/* Renders dynamic interactive certification badge at Layout-level */}
       {hardeningConfig && resolvedKey && (
-        <div className="animate-in fade-in slide-in-from-top-1 duration-200 py-0.5">
+        <div className="animate-in fade-in slide-in-from-top-1 duration-200 py-0.5 hidden sm:block">
           <HardeningInspector 
             pageName={hardeningConfig.displayName}
             standards={hardeningConfig.standards}
@@ -215,7 +217,7 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
               )} />
             ))
           ) : (
-            stats.map((stat, idx) => (
+            stats?.map((stat, idx) => (
               <MemoizedAnalyticsCard
                 key={idx}
                 title={stat.title}
@@ -225,6 +227,8 @@ export const SuperAdminPageLayout: React.FC<SuperAdminPageLayoutProps> = ({
                 gradient={stat.gradient}
                 subtitle={stat.subtitle}
                 onClick={stat.onClick}
+                variant={stat.variant || "compact-premium"}
+                mobileCompact={stat.mobileCompact ?? true}
               />
             ))
           )}

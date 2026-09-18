@@ -21,12 +21,13 @@ import {
   Label,
   Button,
   Badge,
-  PageLoader
+  PageLoader,
+  SearchableSelect
 } from '../../components/ui';
 import toast from 'react-hot-toast';
 import { backupApi, type Backup } from '../../api/superadmin-backups.api';
 import { getAllTenants } from '@/api/tenants.api';
-import { format } from 'date-fns';
+import { formatDateTime } from '../../utils/layoutUtils';
 import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
@@ -94,9 +95,10 @@ export const BackupsPage: React.FC = React.memo(() => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
       toast.success('File cadangan berhasil diunduh', { id: toastId });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[handleDownload] Error:', err);
-      const msg = err?.response?.data?.message || err?.message || 'Download gagal';
+      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
+      const msg = errorObj?.response?.data?.message || errorObj?.message || 'Download gagal';
       toast.error(`Download gagal: ${msg}`, { id: toastId });
     }
   }, []);
@@ -140,16 +142,27 @@ export const BackupsPage: React.FC = React.memo(() => {
       value: backups.length,
       icon: <Archive size={14} className="text-white" />,
       gradient: "from-slate-600 to-slate-800",
-      subtitle: "Snapshot cadangan aktif"
+      subtitle: "Snapshot cadangan aktif",
+      variant: "compact-premium" as const,
+      mobileCompact: true
     },
     {
       title: "Total Size",
       value: `${(backups.reduce((acc, b) => acc + (parseInt(b.file_size_bytes) || 0), 0) / 1024 / 1024).toFixed(1)} MB`,
       icon: <Database size={14} className="text-white" />,
       gradient: "from-blue-500 to-indigo-600",
-      subtitle: "Beban penyimpanan cloud"
+      subtitle: "Beban penyimpanan cloud",
+      variant: "compact-premium" as const,
+      mobileCompact: true
     }
   ], [backups]);
+
+  const tenantSelectOptions = useMemo(() => {
+    return (allTenants || [])?.map(t => ({
+      value: t.id,
+      label: `${t.name}${t.subdomain ? ` (${t.subdomain})` : ''}`
+    })) || [];
+  }, [allTenants]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Sistem' },
@@ -185,13 +198,13 @@ export const BackupsPage: React.FC = React.memo(() => {
         >
           <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
             <span className="text-xs font-bold text-slate-500">Total {backups.length} snapshot terdaftar</span>
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap max-w-full">
               <Button 
                 type="button"
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setMigrationModalOpen(true)}
-                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs"
+                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
               >
                 <UploadCloud size={13} />
                 <span>Import Paket</span>
@@ -201,7 +214,7 @@ export const BackupsPage: React.FC = React.memo(() => {
                 variant="toolbarOutline"
                 size="toolbar"
                 onClick={() => setReplicationModalOpen(true)}
-                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs"
+                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
                 title="Konfigurasi Replikasi Storage MinIO / Cloud Mirror"
               >
                 <Layers size={13} />
@@ -213,7 +226,7 @@ export const BackupsPage: React.FC = React.memo(() => {
                   variant="toolbarOutline"
                   size="toolbar"
                   onClick={() => setExportModalOpen(true)}
-                  className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs"
+                  className="gap-1.5 border-emerald-200 dark:border-emerald-900 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
                 >
                   <DownloadCloud size={13} />
                   <span>Export</span>
@@ -225,7 +238,7 @@ export const BackupsPage: React.FC = React.memo(() => {
                 size="toolbar"
                 onClick={loadBackups}
                 disabled={loading}
-                className="gap-1.5 text-xs"
+                className="gap-1.5 text-xs whitespace-nowrap shrink-0 sm:shrink"
               >
                 <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                 <span>Refresh</span>
@@ -249,12 +262,12 @@ export const BackupsPage: React.FC = React.memo(() => {
           isOpen={restoreModalOpen} 
           onClose={() => !isRestoring && setRestoreModalOpen(false)} 
           title="Pemulihan Arsip Cadangan"
-          className="max-w-lg"
-          contentClassName="p-4 sm:p-6"
+          className="max-w-lg w-full"
+          contentClassName="p-4 sm:p-6 w-full max-w-full min-w-0"
         >
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs w-full max-w-full min-w-0">
             {/* Kartu Informasi Arsip Terpilih */}
-            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/70 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/70 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3 w-full max-w-full min-w-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
                   <Archive size={18} />
@@ -264,8 +277,8 @@ export const BackupsPage: React.FC = React.memo(() => {
                   <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                     {selectedBackup?.Tenant?.name || 'System Platform'}
                   </h4>
-                  <p className="text-[10px] text-slate-400 font-mono">
-                    Snapshot: {selectedBackup?.snapshot_date ? format(new Date(selectedBackup.snapshot_date), 'dd/MM/yyyy HH:mm') : '-'}
+                  <p className="text-[10px] text-slate-400 font-mono truncate">
+                    Snapshot: {selectedBackup?.snapshot_date ? formatDateTime(selectedBackup.snapshot_date) : '-'}
                   </p>
                 </div>
               </div>
@@ -275,11 +288,11 @@ export const BackupsPage: React.FC = React.memo(() => {
             </div>
 
             {/* Pilihan Mode Pemulihan */}
-            <div className="space-y-2">
+            <div className="space-y-2 w-full max-w-full min-w-0">
               <Label className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 Tujuan Pemulihan
               </Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-full min-w-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -321,29 +334,25 @@ export const BackupsPage: React.FC = React.memo(() => {
 
             {/* Target Sekolah Input / Selector */}
             {restoreMode === 'DIFFERENT_TENANT' ? (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 w-full max-w-full min-w-0">
                 <Label htmlFor="targetTenantSelect" className="text-xs font-bold text-slate-700 dark:text-slate-300">
                   Pilih Sekolah / Tenant Target <span className="text-rose-500">*</span>
                 </Label>
-                <select
+                <SearchableSelect
                   id="targetTenantSelect"
                   value={newTenantId}
-                  onChange={(e) => setNewTenantId(e.target.value)}
-                  className="w-full h-9.5 px-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                >
-                  <option value="">-- Pilih Sekolah Tujuan --</option>
-                  {allTenants.map(t => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setNewTenantId(val)}
+                  options={tenantSelectOptions}
+                  placeholder="-- Pilih Sekolah Tujuan --"
+                  searchPlaceholder="Cari sekolah atau ID tenant..."
+                  className="w-full max-w-full min-w-0"
+                />
                 <p className="text-[10px] text-slate-400">
                   Disarankan memilih tenant baru atau kosong untuk mencegah konflik data.
                 </p>
               </div>
             ) : (
-              <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200/70 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200/70 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1 w-full max-w-full min-w-0">
                 <div className="flex items-center justify-between font-bold text-slate-800 dark:text-slate-200">
                   <span>Target Restorasi:</span>
                   <span className="font-mono text-blue-600 dark:text-blue-400">{selectedBackup?.Tenant?.name}</span>
@@ -403,7 +412,7 @@ export const BackupsPage: React.FC = React.memo(() => {
           onClose={() => setExportModalOpen(false)}
           tenantId={selectedBackup?.tenant_id}
           tenantName={selectedBackup?.Tenant?.name}
-          tenants={allTenants.map(t => ({ id: t.id, name: t.name }))}
+          tenants={(allTenants || [])?.map(t => ({ id: t.id, name: t.name })) || []}
         />
 
         <ReplicationConfigModal
