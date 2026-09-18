@@ -12,7 +12,9 @@ import {
   Loader2,
   UploadCloud,
   DownloadCloud,
-  Layers
+  Layers,
+  Camera,
+  AlertOctagon
 } from 'lucide-react';
 import { 
   SectionCard,
@@ -33,6 +35,8 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
 import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
 import { ReplicationConfigModal } from '@/components/superadmin/backups/ReplicationConfigModal';
+import { CreateSnapshotModal } from '@/components/superadmin/backups/CreateSnapshotModal';
+import { FactoryResetModal } from '@/components/superadmin/backups/FactoryResetModal';
 
 // Lazy load BackupList (Pilar 13)
 const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
@@ -48,6 +52,8 @@ export const BackupsPage: React.FC = React.memo(() => {
   const [migrationModalOpen, setMigrationModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [replicationModalOpen, setReplicationModalOpen] = useState(false);
+  const [createSnapshotModalOpen, setCreateSnapshotModalOpen] = useState(false);
+  const [factoryResetModalOpen, setFactoryResetModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
   const [restoreMode, setRestoreMode] = useState<'SAME_TENANT' | 'DIFFERENT_TENANT'>('SAME_TENANT');
@@ -229,8 +235,19 @@ export const BackupsPage: React.FC = React.memo(() => {
                 type="button"
                 variant="toolbarOutline"
                 size="toolbar"
+                onClick={() => setCreateSnapshotModalOpen(true)}
+                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink font-bold"
+                title="Buat snapshot cadangan baru langsung ke MinIO & Cloud Storage"
+              >
+                <Camera size={13} />
+                <span>Buat Snapshot</span>
+              </Button>
+              <Button 
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
                 onClick={() => setMigrationModalOpen(true)}
-                className="gap-1.5 border-blue-200 dark:border-blue-900 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink"
+                className="gap-1.5 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs whitespace-nowrap shrink-0 sm:shrink"
               >
                 <UploadCloud size={13} />
                 <span>Import Paket</span>
@@ -309,6 +326,17 @@ export const BackupsPage: React.FC = React.memo(() => {
               >
                 <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
                 <span>Refresh</span>
+              </Button>
+              <Button 
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => setFactoryResetModalOpen(true)}
+                className="gap-1.5 border-rose-200 dark:border-rose-900/60 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs whitespace-nowrap shrink-0 sm:shrink font-bold"
+                title="Reset sistem ke Fresh Deploy Baseline (Kondisi Pabrik)"
+              >
+                <AlertOctagon size={13} />
+                <span>Reset Pabrik</span>
               </Button>
             </div>
           </div>
@@ -487,6 +515,19 @@ export const BackupsPage: React.FC = React.memo(() => {
           isOpen={replicationModalOpen}
           onClose={() => setReplicationModalOpen(false)}
           onRefreshList={loadBackups}
+        />
+
+        <CreateSnapshotModal
+          isOpen={createSnapshotModalOpen}
+          onClose={() => setCreateSnapshotModalOpen(false)}
+          onSuccess={loadBackups}
+          tenants={(allTenants || []).map(t => ({ id: t.id, name: t.name, subdomain: t.subdomain }))}
+        />
+
+        <FactoryResetModal
+          isOpen={factoryResetModalOpen}
+          onClose={() => setFactoryResetModalOpen(false)}
+          onSuccess={loadBackups}
         />
       </SuperAdminPageLayout>
     </InfraErrorBoundary>

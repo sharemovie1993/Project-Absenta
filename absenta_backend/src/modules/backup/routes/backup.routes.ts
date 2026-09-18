@@ -7,6 +7,8 @@ export async function backupRoutes(fastify: any) {
     fastify.get('/admin/backups', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.list);
     fastify.get('/admin/backups/:id/download', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.download);
     fastify.post('/admin/backups/:id/restore', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.restore);
+    fastify.post('/admin/backups/create-snapshot', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.createManualSnapshot);
+    fastify.post('/admin/backups/factory-reset', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.factoryResetToFreshBaseline);
 
     // Tenant One-Click .absenta Bundle endpoints (Academic & Settings)
     fastify.get('/academic/backup/export', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.exportBundle);

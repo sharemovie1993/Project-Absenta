@@ -82,6 +82,16 @@ export const backupApi = {
       replicatedKeys: string[];
       message: string;
     }>>('post', '/admin/backups/replication/sync', { data: { targetTier } });
+  },
+  createManualSnapshot: async (tenantId: string) => {
+    return requestWithFallback<StandardApiResponse<Backup>>('post', '/admin/backups/create-snapshot', { data: { tenantId } });
+  },
+  factoryResetToFreshBaseline: async (confirmation: string) => {
+    return requestWithFallback<StandardApiResponse<{
+      deletedTenantsCount: number;
+      baselineSnapshot?: Backup | null;
+      message: string;
+    }>>('post', '/admin/backups/factory-reset', { data: { confirmation } });
   }
 };
 

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
@@ -409,6 +409,259 @@ export class BackupController {
       return reply.send({ success: true, data: result, message: result.message });
     } catch (err: any) {
       return reply.status(500).send({ success: false, message: err?.message || 'Gagal menjalankan sinkronisasi replikasi' });
+    }
+  }
+
+  /**
+   * Helper internal untuk mengemas tenant menjadi paket .absenta,
+   * menyimpannya ke S3/MinIO, mereplikasi ke Tier 2 & Tier 3, dan mencatatnya di DB.
+   */
+  static async createPlatformSnapshot(tenantId: string) {
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new Error(`Tenant tidak ditemukan: ${tenantId}`);
+
+    const folderName = tenant.id === 'system' 
+      ? 'system'
+      : tenant.subdomain 
+        ? tenant.subdomain.toLowerCase().replace(/[^a-z0-9_-]/g, '')
+        : (tenant.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 25));
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const snapshotFilename = `${dateStr}_${hours}-${minutes}_${folderName}.absenta`;
+    const snapshotKey = `${folderName}/${snapshotFilename}`;
+    const latestKey = `${folderName}/latest.absenta`;
+
+    const { buffer, manifest } = await migrationBundleService.createExportBundle(tenant.id, {
+      includeAttendance: true,
+      includeMedia: true
+    });
+
+    const S3_ENDPOINT = process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000';
+    const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || 'minioadmin';
+    const S3_SECRET_KEY = process.env.S3_SECRET_KEY || 'minioadmin';
+    const BACKUP_BUCKET = process.env.S3_BUCKET || 'absenta-platform-backups';
+
+    const s3 = new S3Client({
+      endpoint: S3_ENDPOINT,
+      region: 'us-east-1',
+      credentials: { accessKeyId: S3_ACCESS_KEY, secretAccessKey: S3_SECRET_KEY },
+      forcePathStyle: true
+    });
+
+    // Upload snapshot bertanggal ke S3/MinIO
+    await s3.send(new PutObjectCommand({
+      Bucket: BACKUP_BUCKET,
+      Key: snapshotKey,
+      Body: buffer,
+      ContentType: 'application/octet-stream',
+      Metadata: {
+        'tenant-id': tenant.id,
+        'tenant-name': encodeURIComponent(tenant.name),
+        'snapshot-date': now.toISOString(),
+        'checksum-sha256': manifest.checksum_sha256 || ''
+      }
+    }));
+
+    // Upload penunjuk cepat latest.absenta
+    await s3.send(new PutObjectCommand({
+      Bucket: BACKUP_BUCKET,
+      Key: latestKey,
+      Body: buffer,
+      ContentType: 'application/octet-stream',
+      Metadata: {
+        'tenant-id': tenant.id,
+        'tenant-name': encodeURIComponent(tenant.name),
+        'is-latest': 'true',
+        'source-file': snapshotFilename,
+        'checksum-sha256': manifest.checksum_sha256 || ''
+      }
+    }));
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 365);
+
+    const backupRecord = await prisma.tenantBackup.create({
+      data: {
+        Tenant: { connect: { id: tenant.id } },
+        file_path: `s3://${BACKUP_BUCKET}/${snapshotKey}`,
+        file_size_bytes: BigInt(buffer.length),
+        checksum_sha256: manifest.checksum_sha256 || 'none',
+        status: BackupStatus.READY,
+        expires_at: expiresAt,
+        snapshot_date: now
+      },
+      include: {
+        Tenant: { select: { name: true, subdomain: true } }
+      }
+    });
+
+    // Replikasi otomatis ke Tier 2 (LAN) dan Tier 3 (Cloudflare R2) jika aktif
+    await backupReplicationService.replicateFileIfEnabled(snapshotKey).catch(e => console.warn('[createPlatformSnapshot] Replication warn:', e));
+    await backupReplicationService.replicateFileIfEnabled(latestKey).catch(e => console.warn('[createPlatformSnapshot] Replication warn:', e));
+
+    return backupRecord;
+  }
+
+  static async createManualSnapshot(req: any, reply: any) {
+    try {
+      const tenantId = req.body?.tenantId || 'system';
+      const targetTenant = await prisma.tenant.findUnique({
+        where: { id: tenantId }
+      });
+      if (!targetTenant) {
+        return reply.status(404).send({ success: false, message: `Tenant tidak ditemukan: ${tenantId}` });
+      }
+
+      console.log(`[BackupController] Snapshot manual diminta untuk: ${targetTenant.name} (${tenantId})...`);
+      const backupRecord = await BackupController.createPlatformSnapshot(tenantId);
+
+      return reply.send({
+        success: true,
+        message: `Snapshot cadangan untuk ${targetTenant.name} berhasil dibuat`,
+        data: JSON.parse(JSON.stringify(backupRecord, (_k, v) => typeof v === 'bigint' ? v.toString() : v))
+      });
+    } catch (err: any) {
+      console.error('[BackupController.createManualSnapshot] Error:', err);
+      return reply.status(500).send({ success: false, message: err?.message || 'Gagal membuat snapshot cadangan' });
+    }
+  }
+
+  static async factoryResetToFreshBaseline(req: any, reply: any) {
+    try {
+      const confirmation = req.body?.confirmation;
+      if (confirmation !== 'RESET PABRIK ABSENTA') {
+        return reply.status(400).send({
+          success: false,
+          message: 'Konfirmasi tidak valid. Harap ketik "RESET PABRIK ABSENTA" secara tepat untuk melanjutkan.'
+        });
+      }
+
+      console.log('[FactoryReset] ⚠️ Memulai proses Reset Pabrik (Fresh Deploy Baseline)...');
+
+      // 1. Ambil seluruh tenant non-system
+      const nonSystemTenants = await prisma.tenant.findMany({
+        where: { id: { not: 'system' } }
+      });
+      console.log(`[FactoryReset] Ditemukan ${nonSystemTenants.length} tenant sekolah yang akan dibersihkan.`);
+
+      // 2. Buat safety snapshot otomatis untuk tenant sekolah yang ada sebelum dibersihkan
+      for (const t of nonSystemTenants) {
+        try {
+          console.log(`[FactoryReset] Membuat auto-safety backup untuk ${t.name}...`);
+          await BackupController.createPlatformSnapshot(t.id);
+        } catch (safetyErr: any) {
+          console.warn(`[FactoryReset] Warning: Gagal membuat auto-safety snapshot untuk ${t.name}:`, safetyErr?.message || safetyErr);
+        }
+      }
+
+      // 3. Hapus seluruh data relasi tenant non-system secara terurut
+      const purgeModelsOrder = getDynamicTenantModels().slice().reverse();
+      for (const t of nonSystemTenants) {
+        console.log(`[FactoryReset] Membersihkan data tenant: ${t.name} (${t.id})...`);
+        for (const mName of purgeModelsOrder) {
+          if (mName === 'User' || mName === 'Tenant') continue;
+          const pModel = (prisma as any)[mName];
+          if (!pModel) continue;
+
+          const tenantField = getTenantFieldName(mName);
+          if (!tenantField) continue;
+
+          try {
+            await pModel.deleteMany({ where: { [tenantField]: t.id } });
+          } catch (delErr: any) {
+            console.warn(`[FactoryReset] Skip delete tabel ${mName} untuk tenant ${t.id}:`, delErr?.message);
+          }
+        }
+
+        // Hapus user tenant non-system
+        try {
+          await prisma.user.deleteMany({ where: { tenant_id: t.id } });
+        } catch (userErr: any) {
+          console.warn(`[FactoryReset] Gagal menghapus user tenant ${t.id}:`, userErr?.message);
+        }
+
+        // Hapus tenant itu sendiri
+        try {
+          await prisma.tenant.delete({ where: { id: t.id } });
+        } catch (tenantErr: any) {
+          console.warn(`[FactoryReset] Gagal menghapus tenant ${t.id}:`, tenantErr?.message);
+        }
+      }
+
+      // 4. Pastikan tenant "system" siap & aktif
+      await prisma.tenant.upsert({
+        where: { id: 'system' },
+        update: { status: 'ACTIVE' },
+        create: { id: 'system', name: 'System Tenant', status: 'ACTIVE' }
+      });
+
+      // 5. Jalankan Seeder Kebijakan (RBAC Policies & Roles)
+      console.log('[FactoryReset] 🔐 Menjalankan Seeder Policy & RBAC...');
+      const { seedPolicies } = await import('@/database/seeds/seed_policies');
+      await seedPolicies();
+
+      // 6. Pastikan Superadmin akun ada & aktif (superadmin@system.com / superadmin123)
+      const superadminRole = await prisma.role.findFirst({
+        where: { name: 'SUPERADMIN', tenant_id: 'system' }
+      });
+      if (superadminRole) {
+        const bcrypt = await import('bcrypt');
+        const hashedPassword = await bcrypt.hash('superadmin123', 10);
+        await prisma.user.upsert({
+          where: { tenant_id_email: { tenant_id: 'system', email: 'superadmin@system.com' } },
+          update: { role_id: superadminRole.id, email_verified: true, status: 'ACTIVE' },
+          create: {
+            tenant_id: 'system',
+            email: 'superadmin@system.com',
+            password: hashedPassword,
+            full_name: 'System Superadmin',
+            role_id: superadminRole.id,
+            status: 'ACTIVE',
+            email_verified: true
+          }
+        });
+      }
+
+      // 7. Reseed National Presets (Kurikulum, Sarpras, Jurusan, Mapel)
+      console.log('[FactoryReset] 📚 Menjalankan Seeder Master Preset Nasional...');
+      try {
+        const { seedKurikulumStandards } = await import('@/database/seeds/seed_kurikulum_standards');
+        const { seedSarprasCatalog } = await import('@/database/seeds/seed_sarpras_catalog');
+        const { seedJurusanPresets } = await import('@/database/seeds/seed_jurusan_presets');
+        const { seedMapelPresets } = await import('@/database/seeds/seed_mapel_presets');
+        await seedKurikulumStandards(prisma as any);
+        await seedSarprasCatalog(prisma as any);
+        await seedJurusanPresets(prisma as any);
+        await seedMapelPresets(prisma as any);
+      } catch (presetErr: any) {
+        console.warn('[FactoryReset] Warning master presets:', presetErr?.message);
+      }
+
+      // 8. Buat Golden Baseline Snapshot untuk System Platform
+      console.log('[FactoryReset] 🌟 Membuat Golden Baseline Snapshot (System Platform)...');
+      let baselineSnapshot = null;
+      try {
+        baselineSnapshot = await BackupController.createPlatformSnapshot('system');
+      } catch (baseErr) {
+        console.warn('[FactoryReset] Warning: Gagal membuat baseline snapshot otomatis:', baseErr);
+      }
+
+      console.log('[FactoryReset] ✅ Reset Pabrik Berhasil Selesai!');
+      return reply.send({
+        success: true,
+        message: 'Sistem berhasil direset ke Fresh Deploy Baseline (Kondisi Pabrik). Seluruh data sekolah telah dibersihkan dan master data dasar siap.',
+        deletedTenantsCount: nonSystemTenants.length,
+        baselineSnapshot: baselineSnapshot ? JSON.parse(JSON.stringify(baselineSnapshot, (_k, v) => typeof v === 'bigint' ? v.toString() : v)) : null
+      });
+    } catch (err: any) {
+      console.error('[FactoryReset] Fatal Error:', err);
+      return reply.status(500).send({
+        success: false,
+        message: 'Gagal melakukan reset pabrik: ' + (err?.message || 'Internal Server Error')
+      });
     }
   }
 }
