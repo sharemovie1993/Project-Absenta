@@ -63,13 +63,13 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
     setLoading(true);
     setTestResult(null);
     try {
-      const [configRes, statusRes] = await Promise.all([
+      const [configRes, statusRes] = await Promise.allSettled([
         backupApi.getReplicationConfig(),
-        backupApi.getReplicationStatus().catch(() => null)
+        backupApi.getReplicationStatus()
       ]);
 
-      if (configRes?.data) {
-        const c = configRes.data;
+      if (configRes.status === 'fulfilled' && configRes.value?.data) {
+        const c = configRes.value.data;
         setEnabled(c.enabled);
         setEndpoint(c.endpoint || '');
         setBucket(c.bucket || 'absenta-platform-backups');
@@ -79,10 +79,10 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
         setForcePathStyle(c.forcePathStyle !== false);
       }
 
-      if (statusRes?.data) {
-        setStatusSummary(statusRes.data);
+      if (statusRes.status === 'fulfilled' && statusRes.value?.data) {
+        setStatusSummary(statusRes.value.data);
       }
-    } catch (err: any) {
+    } catch {
       toast.error('Gagal memuat konfigurasi replikasi');
     } finally {
       setLoading(false);
@@ -190,8 +190,8 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
     }
   };
 
-  const primaryHost = (statusSummary?.primary.endpoint || 'http://10.10.10.250:9000').replace(/^https?:\/\//, '');
-  const replicaHost = (endpoint || 'Belum diatur').replace(/^https?:\/\//, '');
+  const primaryHost = (statusSummary?.primary.endpoint || 'Node Primer').replace(/^https?:\/\//, '');
+  const replicaHost = (statusSummary?.replica.endpoint || endpoint || 'Belum diatur').replace(/^https?:\/\//, '');
 
   return (
     <Modal
@@ -216,10 +216,13 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
               </div>
             </div>
             <Badge 
-              variant={statusSummary?.primary.status === 'ONLINE' ? 'success' : 'destructive'} 
-              className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+              variant={
+                loading ? 'secondary' :
+                statusSummary?.primary.status === 'ONLINE' ? 'success' : 'destructive'
+              } 
+              className={`text-[9px] font-bold px-1.5 py-0.5 shrink-0 ${loading ? 'animate-pulse' : ''}`}
             >
-              {statusSummary?.primary.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
+              {loading ? 'MEMERIKSA...' : statusSummary?.primary.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
             </Badge>
           </div>
 
@@ -236,12 +239,13 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
             </div>
             <Badge 
               variant={
+                loading ? 'secondary' :
                 !enabled ? 'secondary' :
                 statusSummary?.replica.status === 'ONLINE' ? 'success' : 'destructive'
               } 
-              className="text-[9px] font-bold px-1.5 py-0.5 shrink-0"
+              className={`text-[9px] font-bold px-1.5 py-0.5 shrink-0 ${loading ? 'animate-pulse' : ''}`}
             >
-              {!enabled ? 'NON-AKTIF' : statusSummary?.replica.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
+              {loading ? 'MEMERIKSA...' : !enabled ? 'NON-AKTIF' : statusSummary?.replica.status === 'ONLINE' ? 'ONLINE' : 'OFFLINE'}
             </Badge>
           </div>
         </div>
@@ -272,7 +276,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
                 Target Endpoint <span className="text-red-500">*</span>
               </Label>
               <Input
-                placeholder="http://10.10.10.20:9000"
+                placeholder="http://192.168.1.50:9000"
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
                 className="font-mono text-xs h-9"

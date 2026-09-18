@@ -20,7 +20,7 @@ import { prisma } from '../../src/utils/prisma';
 import { MigrationBundleService } from '../../src/modules/backup/services/migration-bundle.service';
 import { backupReplicationService } from '../../src/modules/backup/services/backup-replication.service';
 
-const S3_ENDPOINT = process.env.S3_BACKUP_ENDPOINT || 'http://10.10.10.250:9000';
+const S3_ENDPOINT = process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000';
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || 'minioadmin';
 const S3_SECRET_KEY = process.env.S3_SECRET_KEY || 'minioadmin';
 const BACKUP_BUCKET = 'absenta-platform-backups';

@@ -49,7 +49,7 @@ class BackupReplicationService {
 
   public getPrimaryConfig() {
     return {
-      endpoint: process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://10.10.10.250:9000',
+      endpoint: process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000',
       region: process.env.S3_REGION || 'us-east-1',
       accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
       secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin',
@@ -142,6 +142,7 @@ class BackupReplicationService {
         secretAccessKey: cfg.secretAccessKey,
       },
       forcePathStyle: cfg.forcePathStyle !== false,
+      maxAttempts: 1,
     });
   }
 
@@ -177,20 +178,26 @@ class BackupReplicationService {
 
     const start = Date.now();
     try {
-      // Test HeadBucket
+      // Test HeadBucket with fast timeout (3s)
       try {
-        await client.send(new HeadBucketCommand({ Bucket: targetBucket }));
+        await client.send(new HeadBucketCommand({ Bucket: targetBucket }), {
+          abortSignal: AbortSignal.timeout(3000),
+        });
       } catch (headErr: any) {
         // If bucket does not exist (404 / NotFound), try creating it automatically
         if (headErr?.name === 'NotFound' || headErr?.$metadata?.httpStatusCode === 404) {
-          await client.send(new CreateBucketCommand({ Bucket: targetBucket }));
+          await client.send(new CreateBucketCommand({ Bucket: targetBucket }), {
+            abortSignal: AbortSignal.timeout(3000),
+          });
         } else {
           throw headErr;
         }
       }
 
-      // Test ListObjects
-      await client.send(new ListObjectsV2Command({ Bucket: targetBucket, MaxKeys: 1 }));
+      // Test ListObjects with fast timeout (3s)
+      await client.send(new ListObjectsV2Command({ Bucket: targetBucket, MaxKeys: 1 }), {
+        abortSignal: AbortSignal.timeout(3000),
+      });
       const latencyMs = Date.now() - start;
 
       return {
@@ -200,7 +207,9 @@ class BackupReplicationService {
       };
     } catch (err: any) {
       const latencyMs = Date.now() - start;
-      const msg = err?.message || 'Gagal terhubung ke target MinIO';
+      const msg = err?.name === 'AbortError' 
+        ? 'Koneksi timeout (target tidak merespons dalam 3 detik)' 
+        : (err?.message || 'Gagal terhubung ke target MinIO');
       return {
         success: false,
         latencyMs,
@@ -217,31 +226,44 @@ class BackupReplicationService {
     let primaryObjects = 0;
     let primaryBytes = 0;
 
-    try {
-      const primaryClient = this.createClient(primaryCfg);
-      const res = await primaryClient.send(new ListObjectsV2Command({ Bucket: primaryCfg.bucket }));
-      primaryStatus = 'ONLINE';
-      primaryObjects = res.KeyCount || 0;
-      primaryBytes = (res.Contents || []).reduce((acc, item) => acc + (item.Size || 0), 0);
-    } catch {
-      primaryStatus = 'OFFLINE';
-    }
-
     let replicaStatus: 'ONLINE' | 'OFFLINE' | 'DISABLED' = replicaCfg.enabled ? 'OFFLINE' : 'DISABLED';
     let replicaObjects = 0;
     let replicaBytes = 0;
 
-    if (replicaCfg.enabled && replicaCfg.endpoint && replicaCfg.accessKeyId) {
+    // Parallel probes with fail-fast timeout (2.5s) to avoid hanging when a node is down
+    const probePrimary = async () => {
       try {
-        const replicaClient = this.createClient(replicaCfg);
-        const res = await replicaClient.send(new ListObjectsV2Command({ Bucket: replicaCfg.bucket }));
-        replicaStatus = 'ONLINE';
-        replicaObjects = res.KeyCount || 0;
-        replicaBytes = (res.Contents || []).reduce((acc, item) => acc + (item.Size || 0), 0);
+        const primaryClient = this.createClient(primaryCfg);
+        const res = await primaryClient.send(
+          new ListObjectsV2Command({ Bucket: primaryCfg.bucket }),
+          { abortSignal: AbortSignal.timeout(2500) }
+        );
+        primaryStatus = 'ONLINE';
+        primaryObjects = res.KeyCount || 0;
+        primaryBytes = (res.Contents || []).reduce((acc, item) => acc + (item.Size || 0), 0);
       } catch {
-        replicaStatus = 'OFFLINE';
+        primaryStatus = 'OFFLINE';
       }
-    }
+    };
+
+    const probeReplica = async () => {
+      if (replicaCfg.enabled && replicaCfg.endpoint && replicaCfg.accessKeyId) {
+        try {
+          const replicaClient = this.createClient(replicaCfg);
+          const res = await replicaClient.send(
+            new ListObjectsV2Command({ Bucket: replicaCfg.bucket }),
+            { abortSignal: AbortSignal.timeout(2500) }
+          );
+          replicaStatus = 'ONLINE';
+          replicaObjects = res.KeyCount || 0;
+          replicaBytes = (res.Contents || []).reduce((acc, item) => acc + (item.Size || 0), 0);
+        } catch {
+          replicaStatus = 'OFFLINE';
+        }
+      }
+    };
+
+    await Promise.allSettled([probePrimary(), probeReplica()]);
 
     return {
       primary: {

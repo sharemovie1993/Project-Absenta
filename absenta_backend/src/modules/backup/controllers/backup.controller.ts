@@ -92,7 +92,7 @@ export class BackupController {
           const bucket = withoutPrefix.substring(0, slashIndex);
           const key = withoutPrefix.substring(slashIndex + 1);
 
-          const s3Endpoint = process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://10.10.10.250:9000';
+          const s3Endpoint = process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://localhost:9000';
           const s3Client = new S3Client({
             endpoint: s3Endpoint,
             region: process.env.S3_REGION || 'us-east-1',
