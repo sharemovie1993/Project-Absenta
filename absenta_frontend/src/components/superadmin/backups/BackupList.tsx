@@ -9,7 +9,8 @@ import {
   Search, 
   Filter, 
   Sparkles, 
-  RotateCcw
+  RotateCcw,
+  Layers
 } from 'lucide-react';
 import { 
   Button, 
