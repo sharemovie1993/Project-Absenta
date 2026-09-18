@@ -5,11 +5,14 @@ export interface Backup {
   tenant_id: string;
   snapshot_date: string;
   file_size_bytes: string; // BigInt serialized
+  file_path?: string;
+  checksum_sha256?: string;
   status: 'READY' | 'RESTORED' | 'PURGED';
   expires_at: string;
   Tenant?: {
       name: string;
-      domain: string;
+      subdomain?: string;
+      domain?: string;
   }
 }
 
@@ -21,15 +24,11 @@ export const backupApi = {
     return requestWithFallback<StandardApiResponse>('post', `/admin/backups/${id}/restore`, { data: { newTenantId } });
   },
   downloadBlob: async (id: string) => {
-      const token = localStorage.getItem('token');
-      // Adjust URL if needed (e.g. /api prefix)
-      const response = await fetch(`/api/admin/backups/${id}/download`, {
-          headers: {
-              'Authorization': `Bearer ${token}`
-          }
-      });
-      if (!response.ok) throw new Error('Download failed');
-      return response.blob();
+    const { default: axios } = await import('@/lib/axiosInstance');
+    const response = await axios.get(`/admin/backups/${id}/download`, {
+      responseType: 'blob'
+    });
+    return response.data as Blob;
   },
   exportBundle: async (tenantId?: string, options?: { includeAttendance?: boolean; includeMedia?: boolean }) => {
     const { default: axios } = await import('@/lib/axiosInstance');

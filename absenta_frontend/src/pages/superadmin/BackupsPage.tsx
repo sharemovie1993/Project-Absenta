@@ -64,22 +64,25 @@ export const BackupsPage: React.FC = React.memo(() => {
   }, [backupsQuery]);
 
   const handleDownload = useCallback(async (backup: Backup) => {
+    const toastId = toast.loading('Mengunduh paket arsip cadangan...');
     try {
       const blob = await backupApi.downloadBlob(backup.id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       const safeName = (backup.Tenant?.name || 'tenant').toLowerCase().replace(/[^a-z0-9]/g, '_');
-      const isBundle = (backup as any).file_path?.includes('.absenta');
+      const isBundle = backup.file_path?.includes('.absenta') ?? true;
       const ext = isBundle ? 'absenta' : 'json.gz';
-      a.download = `backup_${safeName}_${backup.id.substring(0,8)}.${ext}`;
+      a.download = `backup_${safeName}_${backup.id.substring(0, 8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-      toast.success('File cadangan berhasil diunduh');
-    } catch {
-      toast.error('Download gagal');
+      toast.success('File cadangan berhasil diunduh', { id: toastId });
+    } catch (err: any) {
+      console.error('[handleDownload] Error:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Download gagal';
+      toast.error(`Download gagal: ${msg}`, { id: toastId });
     }
   }, []);
 

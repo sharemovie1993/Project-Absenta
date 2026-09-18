@@ -28,6 +28,8 @@ export interface ModelRestoreSummary {
   gap: number;
 }
 
+import { PassThrough } from 'stream';
+
 export class BackupController {
   static async list(req: any, reply: any) {
       const tenantId = req.tenantId || req.dataScope?.tenantId;
@@ -67,7 +69,21 @@ export class BackupController {
 
           reply.header('Content-Type', 'application/octet-stream');
           reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-          return reply.send(s3Res.Body);
+          if (s3Res.ContentLength) {
+            reply.header('Content-Length', s3Res.ContentLength);
+          }
+
+          const pass = new PassThrough();
+          if (s3Res.Body && typeof (s3Res.Body as any).pipe === 'function') {
+            (s3Res.Body as any).pipe(pass);
+          } else if (s3Res.Body && typeof (s3Res.Body as any).transformToByteArray === 'function') {
+            const arr = await (s3Res.Body as any).transformToByteArray();
+            pass.write(Buffer.from(arr));
+            pass.end();
+          } else {
+            pass.end();
+          }
+          return reply.send(pass);
         } catch (s3Err: any) {
           console.error('[BackupController.download] S3 GetObject failed:', s3Err);
           return reply.status(500).send({ success: false, message: 'File not found in S3 / MinIO storage: ' + (s3Err.message || '') });
