@@ -69,7 +69,10 @@ export const BackupsPage: React.FC = React.memo(() => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup_${backup.Tenant?.name || 'tenant'}_${backup.id.substring(0,8)}.json.gz`;
+      const safeName = (backup.Tenant?.name || 'tenant').toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const isBundle = (backup as any).file_path?.includes('.absenta');
+      const ext = isBundle ? 'absenta' : 'json.gz';
+      a.download = `backup_${safeName}_${backup.id.substring(0,8)}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

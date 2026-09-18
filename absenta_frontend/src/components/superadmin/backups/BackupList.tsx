@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Download, 
   RefreshCw, 
   Database, 
-  Calendar,
-  HardDrive,
-  Clock,
-  ExternalLink,
-  ChevronRight
+  Calendar, 
+  HardDrive, 
+  Clock, 
+  Search, 
+  Filter, 
+  Sparkles,
+  RotateCcw
 } from 'lucide-react';
 import { 
   Button, 
@@ -32,42 +34,145 @@ export const BackupList: React.FC<BackupListProps> = ({
   onDownload,
   onRestore
 }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTenant, setSelectedTenant] = useState('ALL');
+  const [onlyLatest, setOnlyLatest] = useState(false);
+
+  // Daftar unik sekolah untuk opsi filter dropdown
+  const uniqueTenants = useMemo(() => {
+    const map = new Map<string, string>();
+    items?.forEach(b => {
+      const tenantId = b.tenant_id || 'system';
+      const name = b.Tenant?.name || (tenantId === 'system' ? 'System Platform' : tenantId);
+      if (!map.has(tenantId)) {
+        map.set(tenantId, name);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [items]);
+
+  // Pemetaan ID snapshot paling mutakhir per tenant
+  const latestBackupIdPerTenant = useMemo(() => {
+    const map = new Map<string, string>();
+    const latestTimeMap = new Map<string, number>();
+
+    items?.forEach(b => {
+      const tenantKey = b.tenant_id || 'system';
+      const time = new Date(b.snapshot_date).getTime();
+      const currentHighest = latestTimeMap.get(tenantKey) || 0;
+
+      if (time > currentHighest) {
+        latestTimeMap.set(tenantKey, time);
+        map.set(tenantKey, b.id);
+      }
+    });
+
+    return map;
+  }, [items]);
+
+  // Filter items berdasarkan pencarian, pilihan tenant, dan toggle "Hanya Terbaru"
+  const filteredItems = useMemo(() => {
+    return (items || []).filter(b => {
+      // 1. Filter Tenant Dropdown
+      if (selectedTenant !== 'ALL') {
+        const tenantKey = b.tenant_id || 'system';
+        if (tenantKey !== selectedTenant) return false;
+      }
+
+      // 2. Filter Hanya Terbaru
+      if (onlyLatest) {
+        const tenantKey = b.tenant_id || 'system';
+        const latestId = latestBackupIdPerTenant.get(tenantKey);
+        if (b.id !== latestId) return false;
+      }
+
+      // 3. Search Query
+      if (searchQuery.trim() !== '') {
+        const q = searchQuery.toLowerCase();
+        const schoolName = (b.Tenant?.name || '').toLowerCase();
+        const tenantId = (b.tenant_id || '').toLowerCase();
+        const backupId = (b.id || '').toLowerCase();
+        const checksum = ((b as any).checksum_sha256 || '').toLowerCase();
+        if (!schoolName.includes(q) && !tenantId.includes(q) && !backupId.includes(q) && !checksum.includes(q)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [items, selectedTenant, onlyLatest, searchQuery, latestBackupIdPerTenant]);
+
   const columns = [
     { 
-      label: 'Tenant / Source', 
+      label: 'Tenant / Instansi Sekolah', 
       key: 'tenant', 
       render: (_: unknown, item: unknown) => {
         const b = item as Backup;
+        const tenantKey = b.tenant_id || 'system';
+        const isLatest = b.id === latestBackupIdPerTenant.get(tenantKey);
+
         return (
-          <div className="flex flex-col gap-1">
-            <span className="font-bold text-slate-900 dark:text-slate-100">{b.Tenant?.name || 'Unknown'}</span>
-            <span className="text-[10px] text-slate-400 font-mono tracking-tight uppercase">{b.tenant_id}</span>
+          <div className="flex flex-col gap-1 py-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-900 dark:text-slate-100 text-xs">
+                {b.Tenant?.name || 'System Tenant'}
+              </span>
+              {isLatest && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-300/80 dark:border-emerald-800/80">
+                  <Sparkles size={9} />
+                  TERBARU
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono tracking-tight">
+              <span>ID: {b.tenant_id ? `${b.tenant_id.substring(0, 16)}...` : 'system'}</span>
+              {(b as any).file_path?.includes('.absenta') && (
+                <span className="bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-1.5 py-0.2 rounded font-bold">
+                  .absenta
+                </span>
+              )}
+            </div>
           </div>
         );
       } 
     },
     { 
-      label: 'Snapshot Info', 
+      label: 'Waktu Snapshot', 
       key: 'snapshot_date', 
-      render: (v: string) => (
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400">
-          <Calendar size={12} className="text-blue-500" />
-          {format(new Date(v), 'dd MMM yyyy, HH:mm')}
-        </div>
-      ) 
+      render: (v: string) => {
+        const dateObj = new Date(v);
+        return (
+          <div className="flex flex-col text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+            <span className="flex items-center gap-1.5 text-slate-800 dark:text-slate-200">
+              <Calendar size={12} className="text-blue-500 shrink-0" />
+              {format(dateObj, 'dd MMM yyyy')}
+            </span>
+            <span className="text-[10px] text-slate-400 font-normal pl-4">
+              Pukul {format(dateObj, 'HH:mm')} WIB
+            </span>
+          </div>
+        );
+      } 
     },
     { 
-      label: 'File Size', 
+      label: 'Ukuran Berkas', 
       key: 'file_size_bytes', 
-      render: (v: string) => (
-        <Badge variant="outline" className="font-mono bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-          <HardDrive size={10} className="mr-1" />
-          {(parseInt(v) / 1024 / 1024).toFixed(2)} MB
-        </Badge>
-      ) 
+      render: (v: string) => {
+        const bytes = parseInt(v) || 0;
+        const formatted = bytes > 1024 * 1024 
+          ? `${(bytes / 1024 / 1024).toFixed(2)} MB` 
+          : `${(bytes / 1024).toFixed(1)} KB`;
+
+        return (
+          <Badge variant="outline" className="font-mono text-xs bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold">
+            <HardDrive size={11} className="mr-1 text-slate-400" />
+            {formatted}
+          </Badge>
+        );
+      } 
     },
     { 
-      label: 'Status Archive', 
+      label: 'Status Arsip', 
       key: 'status', 
       render: (v: unknown) => {
         const status = String(v);
@@ -77,59 +182,52 @@ export const BackupList: React.FC<BackupListProps> = ({
           'FAILED': 'destructive'
         };
         return (
-          <Badge variant={variants[status] || 'secondary'}>
+          <Badge variant={variants[status] || 'secondary'} className="font-bold text-[10px]">
             {status}
           </Badge>
         );
       } 
     },
     { 
-      label: 'Expiry', 
+      label: 'Kedaluwarsa', 
       key: 'expires_at', 
       render: (v: string) => (
-        <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400">
-          <Clock size={12} />
-          {format(new Date(v), 'dd/MM/yyyy')}
+        <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400">
+          <Clock size={11} className="text-slate-400" />
+          {v ? format(new Date(v), 'dd/MM/yyyy') : '-'}
         </div>
       ) 
     },
     { 
-      label: 'Aksi', 
+      label: 'Aksi Superadmin', 
       key: 'actions', 
       render: (_: unknown, item: unknown) => {
         const b = item as Backup;
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button 
               size="sm" 
-              variant="ghost" 
+              variant="outline" 
               onClick={() => onDownload(b)}
-              className="w-8 h-8 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-              title="Download Archive"
+              className="h-8 px-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Unduh Paket Arsip (.absenta)"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh</span>
             </Button>
             
             {b.status === 'READY' && (
               <Button 
                 size="sm" 
-                variant="ghost" 
+                variant="outline" 
                 onClick={() => onRestore(b)}
-                className="w-8 h-8 p-0 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                title="Restore to Empty Tenant"
+                className="h-8 px-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Pulihkan ke Tenant Target"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Pulihkan</span>
               </Button>
             )}
-            
-            <Button 
-              size="sm" 
-              variant="ghost" 
-              className="w-8 h-8 p-0 text-slate-300 hover:text-slate-900"
-              title="View Raw Metadata"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </Button>
           </div>
         );
       } 
@@ -140,30 +238,57 @@ export const BackupList: React.FC<BackupListProps> = ({
     <div className="flex flex-col h-full bg-white dark:bg-slate-950">
       <Table
         columns={columns}
-        data={items}
+        data={filteredItems}
         loading={loading}
-        emptyMessage="Tidak ada arsip cadangan (cold archive) ditemukan."
+        emptyMessage={
+          searchQuery || selectedTenant !== 'ALL' || onlyLatest
+            ? "Tidak ada arsip cadangan yang cocok dengan kriteria filter."
+            : "Belum ada riwayat snapshot cadangan di sistem."
+        }
         compact={true}
         hoverable={true}
         toolbarLeft={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="toolbarPrimary"
-              size="toolbar"
-              onClick={onRefresh}
-              disabled={loading}
-              className="shadow-sm hover:shadow-blue-500/20"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 mr-2 ${loading ? 'animate-spin text-blue-100' : ''}`} />
-              Refresh Archive
-            </Button>
-            
-            <div className="h-4 w-px bg-slate-200 dark:bg-slate-800 mx-1"></div>
-            
-            <div className="flex items-center gap-1 px-2 py-1 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-100 dark:border-slate-800">
-               <Database size={12} className="text-blue-500" />
-               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Cold Storage Mode</span>
+          <div className="flex flex-wrap items-center gap-3 w-full">
+            {/* Input Pencarian Nama Sekolah / ID */}
+            <div className="relative min-w-[220px] max-w-sm flex-1">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama sekolah, ID, atau checksum..."
+                className="w-full pl-9 pr-3 py-1.5 rounded-xl text-xs bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+              />
             </div>
+
+            {/* Dropdown Filter Sekolah */}
+            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800 rounded-xl px-2.5 py-1">
+              <Filter className="w-3.5 h-3.5 text-slate-400" />
+              <select
+                value={selectedTenant}
+                onChange={(e) => setSelectedTenant(e.target.value)}
+                className="text-xs bg-transparent text-slate-700 dark:text-slate-300 font-bold focus:outline-none cursor-pointer pr-1"
+              >
+                <option value="ALL">Semua Sekolah ({items?.length || 0})</option>
+                {uniqueTenants?.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Toggle Sakelar "Hanya Tampilkan Snapshot Terbaru" */}
+            <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors">
+              <input
+                type="checkbox"
+                checked={onlyLatest}
+                onChange={(e) => setOnlyLatest(e.target.checked)}
+                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 cursor-pointer"
+              />
+              <span className="flex items-center gap-1 text-[11px]">
+                <Sparkles size={12} className="text-amber-500" />
+                Hanya Snapshot Terbaru Tiap Sekolah
+              </span>
+            </label>
           </div>
         }
       />

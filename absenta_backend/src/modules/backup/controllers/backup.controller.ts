@@ -1,3 +1,5 @@
+import path from 'path';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
@@ -41,6 +43,38 @@ export class BackupController {
       const backup = await backupService.getBackupById(id);
       if (!backup) return reply.status(404).send({ success: false, message: 'Backup not found' });
 
+      // Handle S3 / MinIO Storage
+      if (backup.file_path && backup.file_path.startsWith('s3://')) {
+        try {
+          const withoutPrefix = backup.file_path.replace('s3://', '');
+          const slashIndex = withoutPrefix.indexOf('/');
+          const bucket = withoutPrefix.substring(0, slashIndex);
+          const key = withoutPrefix.substring(slashIndex + 1);
+
+          const s3Endpoint = process.env.S3_BACKUP_ENDPOINT || process.env.S3_ENDPOINT || 'http://10.10.10.250:9000';
+          const s3Client = new S3Client({
+            endpoint: s3Endpoint,
+            region: process.env.S3_REGION || 'us-east-1',
+            credentials: {
+              accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
+              secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin'
+            },
+            forcePathStyle: true
+          });
+
+          const s3Res = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+          const filename = path.basename(key) || `${id}.absenta`;
+
+          reply.header('Content-Type', 'application/octet-stream');
+          reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+          return reply.send(s3Res.Body);
+        } catch (s3Err: any) {
+          console.error('[BackupController.download] S3 GetObject failed:', s3Err);
+          return reply.status(500).send({ success: false, message: 'File not found in S3 / MinIO storage: ' + (s3Err.message || '') });
+        }
+      }
+
+      // Fallback: Local Disk Storage
       const storage = new LocalDiskStorage();
       try {
           const stream = storage.read(backup.file_path);

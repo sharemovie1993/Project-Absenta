@@ -7125,7 +7125,7 @@
     "usesPageLayout": false,
     "usesUiComponents": true,
     "usesMemo": true,
-    "noAnyType": true,
+    "noAnyType": false,
     "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
