@@ -16,6 +16,7 @@ import { SectionCard, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
 import { useCapabilities } from '@/hooks/useCapabilities';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { formatDate } from '@/utils/layoutUtils';
 
 // Modular Components
@@ -27,6 +28,7 @@ const BackupPage: React.FC = React.memo(() => {
   const confirm = useConfirm();
   const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
   const { user } = useAuthStore();
+  const isMobile = useIsMobile();
 
   // Export State
   const [includeAttendance, setIncludeAttendance] = useState(true);
@@ -308,7 +310,58 @@ const BackupPage: React.FC = React.memo(() => {
                 Riwayat ekspor dan pemulihan data akan tercatat secara otomatis di sini.
               </p>
             </div>
+          ) : isMobile ? (
+            /* Mobile Card Deck View */
+            <div className="flex flex-col gap-3">
+              {historyList?.map((item) => {
+                const isRestore = item.restore_status === 'COMPLETED' || item.file_path.includes('restore');
+                const bytes = Number(item.file_size_bytes) || 0;
+                const sizeFormatted = bytes > 1024 * 1024 
+                  ? `${(bytes / (1024 * 1024)).toFixed(2)} MB` 
+                  : `${(bytes / 1024).toFixed(1)} KB`;
+
+                return (
+                  <div 
+                    key={item.id}
+                    className="p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200">
+                        {formatDate(item.snapshot_date, { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                      <Badge 
+                        variant={item.restore_status === 'COMPLETED' ? 'success' : item.status === 'READY' ? 'info' : 'secondary'}
+                        className="font-bold text-[10px]"
+                      >
+                        {item.restore_status === 'COMPLETED' ? 'SELESAI' : item.status}
+                      </Badge>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        isRestore 
+                          ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' 
+                          : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                      }`}>
+                        {isRestore ? 'Pemulihan (Restore)' : 'Ekspor (.absenta)'}
+                      </span>
+                      <span className="font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
+                        {sizeFormatted}
+                      </span>
+                    </div>
+
+                    {item.checksum_sha256 && (
+                      <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>SHA-256</span>
+                        <span className="font-mono">{item.checksum_sha256.substring(0, 16)}...</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            /* Desktop Table View */
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-bold uppercase text-[9px] tracking-wider border-b border-slate-200/80 dark:border-slate-800">
@@ -321,7 +374,7 @@ const BackupPage: React.FC = React.memo(() => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {historyList.map((item) => {
+                  {historyList?.map((item) => {
                     const isRestore = item.restore_status === 'COMPLETED' || item.file_path.includes('restore');
                     const bytes = Number(item.file_size_bytes) || 0;
                     const sizeFormatted = bytes > 1024 * 1024 

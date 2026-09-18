@@ -6,7 +6,7 @@
     "usesUiComponents": true,
     "usesMemo": true,
     "noAnyType": false,
-    "safeMapping": false,
+    "safeMapping": true,
     "strictColors": true,
     "tableSorting": true,
     "emptyState": true,

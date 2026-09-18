@@ -36,7 +36,7 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
   onManualPurge,
 }) => {
   return (
-    <div className="flex flex-col h-full justify-between p-6 space-y-6">
+    <div className="flex flex-col h-full justify-between p-4 sm:p-6 space-y-5 sm:space-y-6">
       <div className="space-y-4">
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
           Pilih atau tarik berkas paket cadangan <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-slate-800 dark:text-slate-200">.absenta</code> untuk mengembalikan basis data dan media sekolah.
@@ -44,7 +44,7 @@ export const ImportSection: React.FC<ImportSectionProps> = React.memo(({
 
         {/* Dropzone */}
         {!importFile ? (
-          <div className="group relative border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 rounded-2xl p-8 text-center transition-all duration-200 cursor-pointer">
+          <div className="group relative border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 rounded-2xl p-6 sm:p-8 text-center transition-all duration-200 cursor-pointer">
             <input
               type="file"
               accept=".absenta,.zip"

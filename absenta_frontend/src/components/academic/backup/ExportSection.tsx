@@ -27,8 +27,8 @@ export const ExportSection: React.FC<ExportSectionProps> = React.memo(({
   loading
 }) => {
   return (
-    <div className="flex flex-col h-full justify-between p-6 space-y-6">
-      <div className="space-y-5">
+    <div className="flex flex-col h-full justify-between p-4 sm:p-6 space-y-5 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-5">
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
           Kemas seluruh data sekolah Anda ke dalam satu berkas arsip <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-slate-800 dark:text-slate-200">.absenta</code>. Berkas ini dapat disimpan sebagai cadangan aman atau dipulihkan ke server baru kapan saja.
         </p>
