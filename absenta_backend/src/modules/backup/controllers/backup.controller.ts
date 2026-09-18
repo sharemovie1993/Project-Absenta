@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
@@ -5,7 +6,8 @@ import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { migrationBundleService } from '../services/migration-bundle.service';
 import { backupReplicationService } from '../services/backup-replication.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, BackupStatus } from '@prisma/client';
+import { prisma } from '@/utils/prisma';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 
 
@@ -35,6 +37,35 @@ export class BackupController {
   static async list(req: any, reply: any) {
       const tenantId = req.tenantId || req.dataScope?.tenantId;
       const backups = await backupService.listRecentBackups(tenantId);
+
+      // Auto-reconciliation: verifikasi keberadaan berkas fisik disk lokal secara instan
+      const storageBase = process.env.STORAGE_LOCAL_DIR
+        ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+        : process.cwd();
+      const localBaseDir = path.resolve(storageBase, 'backups');
+
+      for (const b of backups) {
+        if (b.status === BackupStatus.READY) {
+          if (b.file_path && !b.file_path.startsWith('s3://')) {
+            const absPath = path.isAbsolute(b.file_path) 
+              ? b.file_path 
+              : path.resolve(localBaseDir, b.file_path);
+            const directPath = path.resolve(storageBase, b.file_path);
+
+            if (!fs.existsSync(absPath) && !fs.existsSync(directPath)) {
+              b.status = BackupStatus.PURGED;
+              // Update database secara asynchronous tanpa memblokir response
+              prisma.tenantBackup.update({
+                where: { id: b.id },
+                data: { status: BackupStatus.PURGED }
+              }).catch(err => {
+                console.error(`[BackupController.list] Failed to auto-purge missing file backup ${b.id}:`, err);
+              });
+            }
+          }
+        }
+      }
+
       const data = JSON.parse(JSON.stringify(backups, (_key, value) => 
           typeof value === 'bigint' ? value.toString() : value
       ));
@@ -44,7 +75,14 @@ export class BackupController {
   static async download(req: any, reply: any) {
       const { id } = req.params;
       const backup = await backupService.getBackupById(id);
-      if (!backup) return reply.status(404).send({ success: false, message: 'Backup not found' });
+      if (!backup) return reply.status(404).send({ success: false, message: 'Arsip cadangan tidak ditemukan di database' });
+
+      if (backup.status === BackupStatus.PURGED) {
+        return reply.status(404).send({ 
+          success: false, 
+          message: 'Berkas fisik cadangan sudah kedaluwarsa atau telah dibersihkan dari penyimpanan server' 
+        });
+      }
 
       // Handle S3 / MinIO Storage
       if (backup.file_path && backup.file_path.startsWith('s3://')) {
@@ -87,7 +125,22 @@ export class BackupController {
           return reply.send(pass);
         } catch (s3Err: any) {
           console.error('[BackupController.download] S3 GetObject failed:', s3Err);
-          return reply.status(500).send({ success: false, message: 'File not found in S3 / MinIO storage: ' + (s3Err.message || '') });
+          const isNotFound = s3Err.name === 'NoSuchKey' || s3Err.$metadata?.httpStatusCode === 404;
+          if (isNotFound) {
+            try {
+              await prisma.tenantBackup.update({
+                where: { id },
+                data: { status: BackupStatus.PURGED }
+              });
+            } catch (dbErr) {
+              console.error('[BackupController.download] Failed to update status to PURGED:', dbErr);
+            }
+            return reply.status(404).send({ 
+              success: false, 
+              message: 'Berkas fisik arsip tidak ditemukan di penyimpanan MinIO/S3 (berkas telah dibersihkan atau kedaluwarsa)' 
+            });
+          }
+          return reply.status(500).send({ success: false, message: 'Gagal mengunduh berkas dari cloud storage: ' + (s3Err.message || '') });
         }
       }
 
@@ -98,8 +151,20 @@ export class BackupController {
           reply.header('Content-Type', 'application/gzip');
           reply.header('Content-Disposition', `attachment; filename="${id}.json.gz"`);
           return reply.send(stream);
-      } catch (e) {
-          return reply.status(500).send({ success: false, message: 'File not found on disk' });
+      } catch (e: any) {
+          console.error('[BackupController.download] Local storage read failed:', e);
+          try {
+            await prisma.tenantBackup.update({
+              where: { id },
+              data: { status: BackupStatus.PURGED }
+            });
+          } catch (dbErr) {
+            console.error('[BackupController.download] Failed to update status to PURGED:', dbErr);
+          }
+          return reply.status(404).send({ 
+            success: false, 
+            message: 'Berkas fisik arsip tidak ditemukan pada disk server (arsip telah kedaluwarsa atau dibersihkan)' 
+          });
       }
   }
 
@@ -113,6 +178,13 @@ export class BackupController {
           const backup = await backupService.getBackupById(id);
           if (!backup) return reply.status(404).send({ success: false, message: 'Backup not found' });
           
+          if (backup.status === BackupStatus.PURGED) {
+              return reply.status(400).send({ 
+                  success: false, 
+                  message: 'Arsip cadangan ini telah dibersihkan/kedaluwarsa sehingga tidak dapat dipulihkan lagi.' 
+              });
+          }
+
           if (backup.restore_status === 'IN_PROGRESS') {
               return reply.status(409).send({ success: false, message: 'Restore already in progress for this backup' });
           }

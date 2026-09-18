@@ -179,11 +179,18 @@ export const BackupList: React.FC<BackupListProps> = ({
         const variants: Record<string, 'success' | 'destructive' | 'secondary' | 'outline' | 'default' | 'info' | 'warning' | 'error'> = {
           'READY': 'success',
           'RESTORED': 'info',
-          'FAILED': 'destructive'
+          'FAILED': 'destructive',
+          'PURGED': 'secondary'
+        };
+        const labels: Record<string, string> = {
+          'READY': 'READY',
+          'RESTORED': 'RESTORED',
+          'FAILED': 'GAGAL',
+          'PURGED': 'DIBERSIHKAN'
         };
         return (
           <Badge variant={variants[status] || 'secondary'} className="font-bold text-[10px]">
-            {status}
+            {labels[status] || status}
           </Badge>
         );
       } 
@@ -231,14 +238,20 @@ export const BackupList: React.FC<BackupListProps> = ({
       key: 'actions', 
       render: (_: unknown, item: unknown) => {
         const b = item as Backup;
+        const isPurged = b.status === 'PURGED';
         return (
           <div className="flex items-center gap-2">
             <Button 
               size="sm" 
               variant="outline" 
               onClick={() => onDownload(b)}
-              className="h-8 px-2.5 text-xs font-bold text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
-              title="Unduh Paket Arsip (.absenta)"
+              disabled={isPurged}
+              className={`h-8 px-2.5 text-xs font-bold flex items-center gap-1.5 shadow-xs ${
+                isPurged 
+                  ? 'opacity-40 cursor-not-allowed text-slate-400 border-slate-200 dark:border-slate-800' 
+                  : 'text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/60 hover:bg-blue-50 dark:hover:bg-blue-950/30 cursor-pointer'
+              }`}
+              title={isPurged ? 'Berkas fisik sudah dibersihkan/kedaluwarsa' : 'Unduh Paket Arsip (.absenta)'}
             >
               <Download className="w-3.5 h-3.5" />
               <span>Unduh</span>
@@ -249,8 +262,8 @@ export const BackupList: React.FC<BackupListProps> = ({
                 size="sm" 
                 variant="outline" 
                 onClick={() => onRestore(b)}
-                className="h-8 px-2.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
-                title="Pulihkan ke Tenant Target"
+                className="h-8 px-2.5 text-xs font-bold text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 flex items-center gap-1.5 cursor-pointer shadow-xs"
+                title="Pulihkan Snapshot ke Sekolah Ini atau Sekolah Lain"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Pulihkan</span>

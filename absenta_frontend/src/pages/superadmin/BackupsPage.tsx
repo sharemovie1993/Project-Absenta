@@ -97,11 +97,24 @@ export const BackupsPage: React.FC = React.memo(() => {
       toast.success('File cadangan berhasil diunduh', { id: toastId });
     } catch (err: unknown) {
       console.error('[handleDownload] Error:', err);
-      const errorObj = err as { response?: { data?: { message?: string } }; message?: string };
-      const msg = errorObj?.response?.data?.message || errorObj?.message || 'Download gagal';
+      let msg = 'Download gagal';
+      const errorObj = err as { response?: { data?: unknown }; message?: string };
+      if (errorObj?.response?.data instanceof Blob) {
+        try {
+          const text = await errorObj.response.data.text();
+          const json = JSON.parse(text);
+          msg = json.message || msg;
+        } catch {
+          msg = errorObj?.message || 'Berkas fisik arsip tidak ditemukan di penyimpanan server';
+        }
+      } else {
+        const fallbackObj = errorObj?.response?.data as { message?: string } | undefined;
+        msg = fallbackObj?.message || errorObj?.message || 'Download gagal';
+      }
       toast.error(`Download gagal: ${msg}`, { id: toastId });
+      loadBackups();
     }
-  }, []);
+  }, [loadBackups]);
 
   const handleRestoreClick = useCallback((backup: Backup) => {
     setSelectedBackup(backup);
