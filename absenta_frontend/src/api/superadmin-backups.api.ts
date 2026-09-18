@@ -37,7 +37,8 @@ export const backupApi = {
       includeAttendance: options?.includeAttendance !== false,
       includeMedia: options?.includeMedia !== false,
     }, {
-      responseType: 'blob'
+      responseType: 'blob',
+      timeout: 600000 // 10 menit
     });
     return response.data;
   },
@@ -46,7 +47,8 @@ export const backupApi = {
     formData.append('file', file);
     const { default: axios } = await import('@/lib/axiosInstance');
     const res = await axios.post('/admin/backups/inspect-bundle', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000 // 3 menit
     });
     return res.data;
   },
@@ -57,7 +59,8 @@ export const backupApi = {
     const params = targetTenantId ? { targetTenantId } : {};
     const res = await axios.post('/admin/backups/import-bundle', formData, {
       params,
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 600000 // 10 menit untuk dataset ribuan siswa & guru
     });
     return res.data;
   },
@@ -81,17 +84,17 @@ export const backupApi = {
       replicatedCount: number;
       replicatedKeys: string[];
       message: string;
-    }>>('post', '/admin/backups/replication/sync', { data: { targetTier } });
+    }>>('post', '/admin/backups/replication/sync', { data: { targetTier } }, { timeout: 600000 });
   },
   createManualSnapshot: async (tenantId: string) => {
-    return requestWithFallback<StandardApiResponse<Backup>>('post', '/admin/backups/create-snapshot', { data: { tenantId } });
+    return requestWithFallback<StandardApiResponse<Backup>>('post', '/admin/backups/create-snapshot', { data: { tenantId } }, { timeout: 600000 });
   },
   factoryResetToFreshBaseline: async (confirmation: string) => {
     return requestWithFallback<StandardApiResponse<{
       deletedTenantsCount: number;
       baselineSnapshot?: Backup | null;
       message: string;
-    }>>('post', '/admin/backups/factory-reset', { data: { confirmation } });
+    }>>('post', '/admin/backups/factory-reset', { data: { confirmation } }, { timeout: 600000 });
   }
 };
 

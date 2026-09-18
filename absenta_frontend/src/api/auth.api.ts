@@ -195,7 +195,8 @@ export async function inspectInitialBundle(file: File): Promise<{ success: boole
   formData.append('file', file);
   const { default: axios } = await import('@/lib/axiosInstance');
   const res = await axios.post('/auth/inspect-initial-bundle', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000
   });
   return res.data;
 }
@@ -205,7 +206,8 @@ export async function restoreInitialBundle(file: File): Promise<{ success: boole
   formData.append('file', file);
   const { default: axios } = await import('@/lib/axiosInstance');
   const res = await axios.post('/auth/restore-initial-bundle', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 600000 // 10 menit
   });
   return res.data;
 }

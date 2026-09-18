@@ -382,22 +382,28 @@ export class MigrationBundleService {
       if (!pModel) continue;
 
       let count = 0;
-      for (const rawRow of rows) {
-        try {
-          const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId);
-          if (cleanData.id) {
-            await pModel.upsert({
-              where: { id: cleanData.id },
-              update: cleanData,
-              create: cleanData
-            });
-          } else {
-            await pModel.create({ data: cleanData });
-          }
-          count++;
-        } catch (err: any) {
-          // Lanjutkan proses jika ada baris berkonflik
-        }
+      const CHUNK_SIZE = 25;
+      for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+        const chunk = rows.slice(i, i + CHUNK_SIZE);
+        await Promise.all(
+          chunk.map(async (rawRow: any) => {
+            try {
+              const cleanData = sanitizeRowForModel(modelName, rawRow, effectiveTenantId);
+              if (cleanData.id) {
+                await pModel.upsert({
+                  where: { id: cleanData.id },
+                  update: cleanData,
+                  create: cleanData
+                });
+              } else {
+                await pModel.create({ data: cleanData });
+              }
+              count++;
+            } catch (err: any) {
+              // Lanjutkan proses jika ada baris berkonflik
+            }
+          })
+        );
       }
       restoredCounts[modelName] = count;
     }
