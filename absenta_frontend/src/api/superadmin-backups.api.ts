@@ -60,6 +60,57 @@ export const backupApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     return res.data;
+  },
+  getReplicationConfig: async () => {
+    return requestWithFallback<StandardApiResponse<ReplicationConfig>>('get', '/admin/backups/replication/config', {});
+  },
+  saveReplicationConfig: async (data: Partial<ReplicationConfig>) => {
+    return requestWithFallback<StandardApiResponse<ReplicationConfig>>('post', '/admin/backups/replication/config', { data });
+  },
+  testReplicationConnection: async (data?: Partial<ReplicationConfig>) => {
+    return requestWithFallback<StandardApiResponse<{ latencyMs: number; message: string }>>('post', '/admin/backups/replication/test', { data });
+  },
+  getReplicationStatus: async () => {
+    return requestWithFallback<StandardApiResponse<ReplicationStatusSummary>>('get', '/admin/backups/replication/status', {});
+  },
+  syncReplication: async () => {
+    return requestWithFallback<StandardApiResponse<{
+      totalPrimary: number;
+      alreadyInTarget: number;
+      replicatedCount: number;
+      replicatedKeys: string[];
+      message: string;
+    }>>('post', '/admin/backups/replication/sync', {});
   }
 };
+
+export interface ReplicationConfig {
+  enabled: boolean;
+  endpoint: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  region: string;
+  forcePathStyle: boolean;
+  lastSyncedAt?: string | null;
+}
+
+export interface ReplicationStatusSummary {
+  primary: {
+    endpoint: string;
+    bucket: string;
+    status: 'ONLINE' | 'OFFLINE';
+    totalObjects: number;
+    totalBytes: number;
+  };
+  replica: {
+    enabled: boolean;
+    endpoint: string;
+    bucket: string;
+    status: 'ONLINE' | 'OFFLINE' | 'DISABLED';
+    totalObjects: number;
+    totalBytes: number;
+    lastSyncedAt?: string | null;
+  };
+}
 

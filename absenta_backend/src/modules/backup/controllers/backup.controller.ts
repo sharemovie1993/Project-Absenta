@@ -4,6 +4,7 @@ import { LocalDiskStorage } from '@/infra/storage/LocalDiskStorage';
 import { getRestoreQueue } from '../restore.queue';
 import { backupService } from '../services/backup.service';
 import { migrationBundleService } from '../services/migration-bundle.service';
+import { backupReplicationService } from '../services/backup-replication.service';
 import { Prisma } from '@prisma/client';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
 
@@ -287,6 +288,54 @@ export class BackupController {
     } catch (error: any) {
       console.error('Error importing bundle:', error);
       return reply.status(500).send({ success: false, message: 'Gagal memulihkan berkas .absenta: ' + (error?.message || 'Error') });
+    }
+  }
+
+  // --- REPLICATION CONTROLLERS ---
+  static async getReplicationConfig(_req: any, reply: any) {
+    try {
+      const config = backupReplicationService.getConfig(true);
+      return reply.send({ success: true, data: config });
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err?.message || 'Gagal memuat konfigurasi replikasi' });
+    }
+  }
+
+  static async saveReplicationConfig(req: any, reply: any) {
+    try {
+      const payload = req.body || {};
+      const updated = backupReplicationService.saveConfig(payload);
+      return reply.send({ success: true, data: updated, message: 'Konfigurasi replikasi berhasil disimpan' });
+    } catch (err: any) {
+      return reply.status(400).send({ success: false, message: err?.message || 'Gagal menyimpan konfigurasi replikasi' });
+    }
+  }
+
+  static async testReplicationConnection(req: any, reply: any) {
+    try {
+      const payload = req.body || {};
+      const result = await backupReplicationService.testConnection(payload);
+      return reply.send({ success: result.success, data: result, message: result.message });
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err?.message || 'Uji koneksi gagal' });
+    }
+  }
+
+  static async getReplicationStatus(_req: any, reply: any) {
+    try {
+      const status = await backupReplicationService.getStatusSummary();
+      return reply.send({ success: true, data: status });
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err?.message || 'Gagal memuat status replikasi' });
+    }
+  }
+
+  static async triggerReplicationSync(_req: any, reply: any) {
+    try {
+      const result = await backupReplicationService.syncAll();
+      return reply.send({ success: true, data: result, message: result.message });
+    } catch (err: any) {
+      return reply.status(500).send({ success: false, message: err?.message || 'Gagal menjalankan sinkronisasi replikasi' });
     }
   }
 }

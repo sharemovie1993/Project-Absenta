@@ -31,6 +31,13 @@ export async function backupRoutes(fastify: any) {
     fastify.post('/admin/backups/inspect-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.inspectBundle);
     fastify.post('/admin/backups/import-bundle', { bodyLimit: 209715200, preHandler: [requireCapability("academic.backups.restore"), determineDataScope()] }, BackupController.importBundle);
 
+    // Replication & Storage Mirroring Endpoints (SuperAdmin)
+    fastify.get('/admin/backups/replication/config', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.getReplicationConfig);
+    fastify.post('/admin/backups/replication/config', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.saveReplicationConfig);
+    fastify.post('/admin/backups/replication/test', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.testReplicationConnection);
+    fastify.get('/admin/backups/replication/status', { preHandler: [requireCapability("academic.backups.view.list"), determineDataScope()] }, BackupController.getReplicationStatus);
+    fastify.post('/admin/backups/replication/sync', { preHandler: [requireCapability("academic.backups.create"), determineDataScope()] }, BackupController.triggerReplicationSync);
+
     // SSE Endpoint (Must be registered)
     fastify.register(restoreProgressRoutes, { prefix: '/admin/backups' }); 
 

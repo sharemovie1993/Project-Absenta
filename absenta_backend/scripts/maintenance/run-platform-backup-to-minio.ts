@@ -18,6 +18,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { prisma } from '../../src/utils/prisma';
 import { MigrationBundleService } from '../../src/modules/backup/services/migration-bundle.service';
+import { backupReplicationService } from '../../src/modules/backup/services/backup-replication.service';
 
 const S3_ENDPOINT = process.env.S3_BACKUP_ENDPOINT || 'http://10.10.10.250:9000';
 const S3_ACCESS_KEY = process.env.S3_ACCESS_KEY || 'minioadmin';
@@ -161,6 +162,11 @@ async function runPlatformBackupSimulation() {
           expires_at: expiresAt
         }
       });
+
+      // 5. Replikasi otomatis ke MinIO Sekunder (jika aktif)
+      await backupReplicationService.replicateFileIfEnabled(snapshotKey);
+      await backupReplicationService.replicateFileIfEnabled(latestKey);
+
       console.log(`   ✅ Selesai untuk ${tenant.name}.\n`);
     }
 

@@ -11,7 +11,8 @@ import {
   Info,
   Loader2,
   UploadCloud,
-  DownloadCloud
+  DownloadCloud,
+  Layers
 } from 'lucide-react';
 import { 
   SectionCard,
@@ -28,6 +29,7 @@ import { SuperAdminPageLayout } from '../../components/layout/SuperAdminPageLayo
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
 import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
+import { ReplicationConfigModal } from '@/components/superadmin/backups/ReplicationConfigModal';
 
 // Lazy load BackupList (Pilar 13)
 const BackupList = lazy(() => import('../../components/superadmin/backups/BackupList').then(m => ({ default: m.BackupList })));
@@ -42,6 +44,7 @@ export const BackupsPage: React.FC = React.memo(() => {
   const [restoreModalOpen, setRestoreModalOpen] = useState(false);
   const [migrationModalOpen, setMigrationModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [replicationModalOpen, setReplicationModalOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState<Backup | null>(null);
   const [newTenantId, setNewTenantId] = useState('');
   const [isRestoring, setIsRestoring] = useState(false);
@@ -180,6 +183,17 @@ export const BackupsPage: React.FC = React.memo(() => {
                 <UploadCloud size={13} />
                 Import Paket (.absenta)
               </Button>
+              <Button 
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => setReplicationModalOpen(true)}
+                className="gap-1.5 border-purple-200 dark:border-purple-900 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+                title="Konfigurasi Replikasi Storage MinIO / Cloud Mirror"
+              >
+                <Layers size={13} />
+                Replikasi Storage
+              </Button>
               {backups.length > 0 && (
                 <Button 
                   type="button"
@@ -306,6 +320,12 @@ export const BackupsPage: React.FC = React.memo(() => {
           onClose={() => setExportModalOpen(false)}
           tenantId={selectedBackup?.tenant_id || backups[0]?.tenant_id}
           tenantName={selectedBackup?.Tenant?.name || backups[0]?.Tenant?.name}
+        />
+
+        <ReplicationConfigModal
+          isOpen={replicationModalOpen}
+          onClose={() => setReplicationModalOpen(false)}
+          onRefreshList={loadBackups}
         />
       </SuperAdminPageLayout>
     </InfraErrorBoundary>
