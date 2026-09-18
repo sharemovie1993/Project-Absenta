@@ -36,55 +36,64 @@ export const getReplicaSyncStatus = (
   const isS3 = Boolean(filePath?.startsWith('s3://'));
   if (!isS3) return null;
 
-  const isReplicaEnabled = Boolean(replicationStatus?.replica?.enabled);
-  const isReplicaOnline = Boolean(isReplicaEnabled && replicationStatus?.replica?.status === 'ONLINE');
-  const replicaKeys = replicationStatus?.replica?.keys || [];
-  
   const s3Key = filePath ? filePath.replace(/^s3:\/\/[^/]+\//, '') : '';
   const filename = filePath ? filePath.split('/').pop() || '' : '';
 
-  const existsInReplica = Boolean(
-    isReplicaOnline &&
-    replicaKeys.length > 0 &&
-    (replicaKeys.includes(s3Key) || (filename && replicaKeys.some(k => k.endsWith(filename))))
-  );
+  const checkNodeSync = (node?: { enabled: boolean; status: string; keys?: string[] }) => {
+    if (!node?.enabled || node.status !== 'ONLINE') return false;
+    const keys = node.keys || [];
+    return keys.length > 0 && (keys.includes(s3Key) || (Boolean(filename) && keys.some(k => k.endsWith(filename))));
+  };
 
-  if (existsInReplica) {
+  const tier2 = replicationStatus?.tier2 || replicationStatus?.replica;
+  const tier3 = replicationStatus?.tier3;
+
+  const inTier2 = checkNodeSync(tier2);
+  const inTier3 = checkNodeSync(tier3);
+
+  const activeReplicasCount = (tier2?.enabled ? 1 : 0) + (tier3?.enabled ? 1 : 0);
+  const totalNodesCount = 1 + activeReplicasCount;
+  const syncedNodesCount = 1 + (inTier2 ? 1 : 0) + (inTier3 ? 1 : 0);
+
+  if (activeReplicasCount === 0) {
+    return {
+      type: 'PRIMARY_STANDALONE' as const,
+      label: 'Mesin 1 (Primer)',
+      tooltip: `Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'})`,
+      badgeClass: 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700',
+      iconClass: 'text-blue-500',
+    };
+  }
+
+  if (syncedNodesCount === totalNodesCount) {
+    const is3Tier = totalNodesCount === 3;
     return {
       type: 'HA_SYNCED' as const,
-      label: '2/2 Sync (HA)',
-      tooltip: `Tersedia di 2 Node Storage (HA Terverifikasi):\n• Primer: ${replicationStatus?.primary.endpoint || 'Mesin 1'}\n• Replika: ${replicationStatus?.replica.endpoint || 'Mesin 2'}`,
+      label: is3Tier ? '3/3 Sync (HA Max)' : '2/2 Sync (HA)',
+      tooltip: `Tersedia di ${totalNodesCount} Node Storage (HA Terverifikasi):\n• Primer: ${replicationStatus?.primary.endpoint || 'Mesin 1'}\n• Tier 2 (LAN): ${tier2?.endpoint || 'Mesin 2'}${is3Tier ? `\n• Tier 3 (Cloud): ${tier3?.endpoint || 'Cloudflare R2'}` : ''}`,
       badgeClass: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800/80',
       iconClass: 'text-emerald-500',
     };
   }
 
-  if (isReplicaOnline) {
-    return {
-      type: 'PRIMARY_ONLY' as const,
-      label: '1/2 (Primer Saja)',
-      tooltip: `Berkas hanya ada di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'}).\nBelum tersinkron ke Mesin 2 (${replicationStatus?.replica.endpoint || 'Mesin 2'} kosong atau belum disinkron).`,
-      badgeClass: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800/80',
-      iconClass: 'text-amber-500',
-    };
+  const missingNodes: string[] = [];
+  if (tier2?.enabled && !inTier2) {
+    missingNodes.push(tier2.status === 'ONLINE' ? 'Tier 2 (Belum Sync)' : 'Tier 2 (Offline)');
+  }
+  if (tier3?.enabled && !inTier3) {
+    missingNodes.push(tier3.status === 'ONLINE' ? 'Tier 3 (Belum Sync)' : 'Tier 3 (Offline)');
   }
 
-  if (isReplicaEnabled) {
-    return {
-      type: 'REPLICA_OFFLINE' as const,
-      label: 'Mesin 2 Offline',
-      tooltip: `Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'}).\nMesin 2 Replika sedang OFFLINE.`,
-      badgeClass: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/80',
-      iconClass: 'text-rose-500',
-    };
-  }
+  const hasOffline = (tier2?.enabled && tier2.status !== 'ONLINE') || (tier3?.enabled && tier3.status !== 'ONLINE');
 
   return {
-    type: 'PRIMARY_STANDALONE' as const,
-    label: 'Mesin 1 (Primer)',
-    tooltip: `Tersimpan di MinIO Primer (${replicationStatus?.primary.endpoint || 'Mesin 1'})`,
-    badgeClass: 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700',
-    iconClass: 'text-blue-500',
+    type: hasOffline ? ('REPLICA_OFFLINE' as const) : ('PARTIALLY_SYNCED' as const),
+    label: `${syncedNodesCount}/${totalNodesCount} Sync`,
+    tooltip: `Tersimpan di ${syncedNodesCount} dari ${totalNodesCount} Node Storage.\nStatus node replika:\n${missingNodes.map(m => `• ${m}`).join('\n')}`,
+    badgeClass: hasOffline
+      ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/80'
+      : 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800/80',
+    iconClass: hasOffline ? 'text-rose-500' : 'text-amber-500',
   };
 };
 
@@ -415,8 +424,8 @@ export const BackupList: React.FC<BackupListProps> = ({
               return (
                 <span className={`text-[8.5px] font-mono font-bold ${
                   syncStatus.type === 'HA_SYNCED' ? 'text-emerald-600 dark:text-emerald-400' :
-                  syncStatus.type === 'PRIMARY_ONLY' ? 'text-amber-600 dark:text-amber-400' :
                   syncStatus.type === 'REPLICA_OFFLINE' ? 'text-rose-600 dark:text-rose-400' :
+                  syncStatus.type === 'PARTIALLY_SYNCED' ? 'text-amber-600 dark:text-amber-400' :
                   'text-slate-400'
                 }`}>
                   {syncStatus.label}

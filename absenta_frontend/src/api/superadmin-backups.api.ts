@@ -67,25 +67,27 @@ export const backupApi = {
   saveReplicationConfig: async (data: Partial<ReplicationConfig>) => {
     return requestWithFallback<StandardApiResponse<ReplicationConfig>>('post', '/admin/backups/replication/config', { data });
   },
-  testReplicationConnection: async (data?: Partial<ReplicationConfig>) => {
+  testReplicationConnection: async (data?: { tier?: 'tier2' | 'tier3'; config?: Partial<NodeConfig> } | any) => {
     return requestWithFallback<StandardApiResponse<{ latencyMs: number; message: string }>>('post', '/admin/backups/replication/test', { data });
   },
   getReplicationStatus: async () => {
     return requestWithFallback<StandardApiResponse<ReplicationStatusSummary>>('get', '/admin/backups/replication/status', {});
   },
-  syncReplication: async () => {
+  syncReplication: async (targetTier?: 'all' | 'tier2' | 'tier3') => {
     return requestWithFallback<StandardApiResponse<{
       totalPrimary: number;
-      alreadyInTarget: number;
+      tier2Result?: { replicatedCount: number; alreadyInTarget: number };
+      tier3Result?: { replicatedCount: number; alreadyInTarget: number };
       replicatedCount: number;
       replicatedKeys: string[];
       message: string;
-    }>>('post', '/admin/backups/replication/sync', {});
+    }>>('post', '/admin/backups/replication/sync', { data: { targetTier } });
   }
 };
 
-export interface ReplicationConfig {
+export interface NodeConfig {
   enabled: boolean;
+  name?: string;
   endpoint: string;
   bucket: string;
   accessKeyId: string;
@@ -95,23 +97,36 @@ export interface ReplicationConfig {
   lastSyncedAt?: string | null;
 }
 
+export interface MultiTierReplicationConfig {
+  tier2: NodeConfig;
+  tier3: NodeConfig;
+}
+
+export type ReplicationConfig = MultiTierReplicationConfig;
+
+export interface NodeStatus {
+  enabled: boolean;
+  name: string;
+  endpoint: string;
+  bucket: string;
+  status: 'ONLINE' | 'OFFLINE' | 'DISABLED';
+  totalObjects: number;
+  totalBytes: number;
+  keys?: string[];
+  lastSyncedAt?: string | null;
+}
+
 export interface ReplicationStatusSummary {
   primary: {
+    name?: string;
     endpoint: string;
     bucket: string;
     status: 'ONLINE' | 'OFFLINE';
     totalObjects: number;
     totalBytes: number;
   };
-  replica: {
-    enabled: boolean;
-    endpoint: string;
-    bucket: string;
-    status: 'ONLINE' | 'OFFLINE' | 'DISABLED';
-    totalObjects: number;
-    totalBytes: number;
-    keys?: string[];
-    lastSyncedAt?: string | null;
-  };
+  tier2: NodeStatus;
+  tier3: NodeStatus;
+  replica?: NodeStatus; // backward compatibility
 }
 

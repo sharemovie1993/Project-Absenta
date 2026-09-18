@@ -245,28 +245,44 @@ export const BackupsPage: React.FC = React.memo(() => {
               >
                 <Layers size={13} />
                 <span>Replikasi</span>
-                {replicationStatus?.replica?.enabled && (() => {
-                  const isOnline = replicationStatus.replica.status === 'ONLINE';
-                  const totalPrimary = replicationStatus.primary?.totalObjects || 0;
-                  const totalReplica = replicationStatus.replica?.totalObjects || 0;
-                  const isOutdated = isOnline && (totalReplica < totalPrimary);
+                {(() => {
+                  const tier2 = replicationStatus?.tier2 || replicationStatus?.replica;
+                  const tier3 = replicationStatus?.tier3;
+                  const activeReplicas = [
+                    tier2?.enabled ? { name: 'Tier 2 (LAN)', ...tier2 } : null,
+                    tier3?.enabled ? { name: 'Tier 3 (Cloud)', ...tier3 } : null
+                  ].filter(Boolean) as { name: string; status: string; totalObjects?: number }[];
+
+                  if (activeReplicas.length === 0) return null;
+
+                  const anyOffline = activeReplicas.some(r => r.status !== 'ONLINE');
+                  const totalPrimary = replicationStatus?.primary?.totalObjects || 0;
+                  const outdatedReplicas = activeReplicas.filter(r => r.status === 'ONLINE' && (r.totalObjects || 0) < totalPrimary);
+
+                  if (anyOffline) {
+                    const offlineNames = activeReplicas.filter(r => r.status !== 'ONLINE').map(r => r.name).join(', ');
+                    return (
+                      <span 
+                        className="inline-block w-2 h-2 rounded-full bg-rose-500"
+                        title={`Replika Offline: ${offlineNames}`}
+                      />
+                    );
+                  }
+
+                  if (outdatedReplicas.length > 0) {
+                    const msg = outdatedReplicas.map(r => `${r.name}: ${r.totalObjects || 0}/${totalPrimary}`).join('; ');
+                    return (
+                      <span 
+                        className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse"
+                        title={`Perlu Sinkronisasi (${msg})`}
+                      />
+                    );
+                  }
 
                   return (
                     <span 
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        !isOnline 
-                          ? 'bg-rose-500' 
-                          : isOutdated 
-                            ? 'bg-amber-500 animate-pulse' 
-                            : 'bg-emerald-500 animate-pulse'
-                      }`}
-                      title={
-                        !isOnline 
-                          ? 'Replika Offline' 
-                          : isOutdated 
-                            ? `Perlu Sinkronisasi: Mesin 2 memiliki ${totalReplica}/${totalPrimary} arsip` 
-                            : 'Replikasi Dual-Storage Aktif & Sinkron (HA)'
-                      }
+                      className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+                      title={`Replikasi Multi-Tier Aktif & Sinkron (${activeReplicas.length + 1} Node Terhubung)`}
                     />
                   );
                 })()}

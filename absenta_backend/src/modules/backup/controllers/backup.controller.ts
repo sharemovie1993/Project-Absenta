@@ -402,9 +402,10 @@ export class BackupController {
     }
   }
 
-  static async triggerReplicationSync(_req: any, reply: any) {
+  static async triggerReplicationSync(req: any, reply: any) {
     try {
-      const result = await backupReplicationService.syncAll();
+      const targetTier = req.body?.targetTier;
+      const result = await backupReplicationService.syncAll(targetTier);
       return reply.send({ success: true, data: result, message: result.message });
     } catch (err: any) {
       return reply.status(500).send({ success: false, message: err?.message || 'Gagal menjalankan sinkronisasi replikasi' });
