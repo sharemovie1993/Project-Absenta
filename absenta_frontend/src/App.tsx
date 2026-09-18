@@ -1189,13 +1189,16 @@ function App() {
                             <RevenueDashboardPage />
                           </ProtectedRoute>
                         } />
-                        <Route path="/superadmin/backups" element={
-                          <ProtectedRoute requiredCapability="academic.backups.view.list">
-                            <BackupsPage />
-                          </ProtectedRoute>
-                        } />
                       </>
                     )}
+
+                    {/* Superadmin Platform Backups (ALWAYS ACCESSIBLE TO SUPERADMIN) */}
+                    <Route path="/superadmin/backups" element={
+                      <ProtectedRoute requiredCapability="academic.backups.view.list">
+                        <BackupsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/superadmin/backup" element={<Navigate to="/superadmin/backups" replace />} />
 
                     {/* Preset Global Master Routes (ALWAYS ACCESSIBLE TO SUPERADMIN) */}
                     <Route path="/superadmin/mapel-presets" element={<MapelPresetsPage />} />
