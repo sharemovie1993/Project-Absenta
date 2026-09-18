@@ -1,11 +1,21 @@
 /**
- * 🛡️ Platform Backup Runner to MinIO Self-Hosted S3
- * ----------------------------------------------------
- * Mensimulasikan proses pencadangan otomatis platform level-SaaS
- * langsung ke server MinIO self-hosted (10.10.10.250:9000).
+ * 🛡️ Platform Backup Runner to MinIO Self-Hosted S3 (Human-Friendly Hierarchical Edition)
+ * ---------------------------------------------------------------------------------------
+ * Menyusun struktur pencadangan platform yang rapi, hierarkis, dan manusiawi:
+ *   absenta-platform-backups/
+ *   ├── [subdomain-sekolah]/
+ *   │   ├── latest.absenta                 <-- [1 KLIK CEPAT] Selalu backup paling mutakhir
+ *   │   └── YYYY-MM-DD_HH-mm_[slug].absenta <-- Riwayat snapshot bertanggal
  */
 
-import { S3Client, ListBucketsCommand, CreateBucketCommand, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { 
+  S3Client, 
+  ListBucketsCommand, 
+  CreateBucketCommand, 
+  PutObjectCommand, 
+  ListObjectsV2Command,
+  DeleteObjectsCommand 
+} from '@aws-sdk/client-s3';
 import { prisma } from '../../src/utils/prisma';
 import { MigrationBundleService } from '../../src/modules/backup/services/migration-bundle.service';
 
@@ -40,16 +50,34 @@ async function ensureBackupBucketExists() {
   }
 }
 
+async function cleanupMessyRootObjects() {
+  console.log(`🧹 Membersihkan berkas lama yang bertumpuk berantakan di root bucket...`);
+  const objects = await s3Client.send(new ListObjectsV2Command({ Bucket: BACKUP_BUCKET }));
+  const messyRootKeys = (objects.Contents || [])
+    .filter(obj => obj.Key && !obj.Key.includes('/'))
+    .map(obj => ({ Key: obj.Key! }));
+
+  if (messyRootKeys.length > 0) {
+    await s3Client.send(new DeleteObjectsCommand({
+      Bucket: BACKUP_BUCKET,
+      Delete: { Objects: messyRootKeys }
+    }));
+    console.log(`✅ ${messyRootKeys.length} berkas mentah di root telah dibersihkan.`);
+  } else {
+    console.log(`✅ Root bucket sudah bersih.`);
+  }
+}
+
 async function runPlatformBackupSimulation() {
   console.log('\n🚀 =========================================================');
-  console.log('   SIMULASI AUTOMATED PLATFORM BACKUP KE MINIO SELF-HOSTED');
+  console.log('   SISTEM PENCADANGAN PLATFORM TERSTRUKTUR (MANUSIAWI)');
+  console.log('   Target: MinIO Server (10.10.10.250:9000)');
   console.log('=========================================================\n');
 
   try {
-    // 1. Pastikan bucket target tersedia
     await ensureBackupBucketExists();
+    await cleanupMessyRootObjects();
 
-    // 2. Ambil semua tenant sekolah aktif di database
     const tenants = await prisma.tenant.findMany({
       where: {
         AND: [
@@ -59,67 +87,111 @@ async function runPlatformBackupSimulation() {
       }
     });
 
-    console.log(`📋 Ditemukan ${tenants.length} tenant sekolah yang akan dicadangkan.`);
+    console.log(`\n📋 Ditemukan ${tenants.length} tenant sekolah yang akan dicadangkan.\n`);
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const timestampStr = `${dateStr}_${hours}-${minutes}`;
 
     for (const tenant of tenants) {
-      console.log(`\n📦 [1/3] Mengemas data instansi: "${tenant.name}" (${tenant.id})...`);
-      
-      const { buffer, manifest, filename } = await migrationService.createExportBundle(tenant.id, {
+      // 1. Tentukan nama folder sekolah yang rapi & mudah dikenali manusia
+      const folderName = tenant.subdomain 
+        ? tenant.subdomain.toLowerCase().replace(/[^a-z0-9_-]/g, '')
+        : (tenant.name.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 25));
+
+      console.log(`📂 [1/3] Menyiapkan folder sekolah: "${folderName}/" untuk "${tenant.name}"...`);
+
+      const { buffer, manifest } = await migrationService.createExportBundle(tenant.id, {
         includeAttendance: true,
         includeMedia: true
       });
 
       const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2);
-      console.log(`   ➔ Berhasil dikemas: ${filename} (${sizeMB} MB, ${manifest.stats.total_records} record, ${manifest.stats.total_media_files} media)`);
+      const snapshotFilename = `${dateStr}_${hours}-${minutes}_${folderName}.absenta`;
+      const snapshotKey = `${folderName}/${snapshotFilename}`;
+      const latestKey = `${folderName}/latest.absenta`;
 
-      // 3. Upload paket .absenta ke MinIO bucket 'absenta-platform-backups'
-      console.log(`📤 [2/3] Mengunggah paket .absenta ke MinIO (${BACKUP_BUCKET}/${filename})...`);
+      console.log(`   ➔ Berhasil dikemas: ${sizeMB} MB (${manifest.stats.total_records} baris data, ${manifest.stats.total_media_files} media)`);
+
+      // 2. Upload Arsip Bertanggal (History)
+      console.log(`📤 [2/3] Mengunggah arsip riwayat: "${snapshotKey}"...`);
       await s3Client.send(new PutObjectCommand({
         Bucket: BACKUP_BUCKET,
-        Key: filename,
+        Key: snapshotKey,
         Body: buffer,
         ContentType: 'application/octet-stream',
         Metadata: {
           'tenant-id': tenant.id,
           'tenant-name': encodeURIComponent(tenant.name),
+          'snapshot-date': now.toISOString(),
           'checksum-sha256': manifest.checksum_sha256 || ''
         }
       }));
-      console.log(`   ➔ Berhasil diunggah ke MinIO S3!`);
+
+      // 3. Upload / Perbarui Shortcut "latest.absenta"
+      console.log(`⭐       Memperbarui penunjuk cepat: "${latestKey}" (Paling Baru)...`);
+      await s3Client.send(new PutObjectCommand({
+        Bucket: BACKUP_BUCKET,
+        Key: latestKey,
+        Body: buffer,
+        ContentType: 'application/octet-stream',
+        Metadata: {
+          'tenant-id': tenant.id,
+          'tenant-name': encodeURIComponent(tenant.name),
+          'is-latest': 'true',
+          'source-file': snapshotFilename,
+          'checksum-sha256': manifest.checksum_sha256 || ''
+        }
+      }));
 
       // 4. Catat riwayat ke database TenantBackup
-      console.log(`📝 [3/3] Mencatat audit snapshot ke database...`);
+      console.log(`📝 [3/3] Menyimpan data audit log ke database...`);
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 30); // Retensi 30 hari
 
       await prisma.tenantBackup.create({
         data: {
           Tenant: { connect: { id: tenant.id } },
-          file_path: `s3://${BACKUP_BUCKET}/${filename}`,
+          file_path: `s3://${BACKUP_BUCKET}/${snapshotKey}`,
           file_size_bytes: BigInt(buffer.length),
           checksum_sha256: manifest.checksum_sha256 || 'none',
           status: 'READY',
           expires_at: expiresAt
         }
       });
-      console.log(`   ➔ Snapshot audit tersimpan.`);
+      console.log(`   ✅ Selesai untuk ${tenant.name}.\n`);
     }
 
-    // 5. Tampilkan isi bucket sekarang
-    console.log(`\n📋 Daftar berkas cadangan di bucket "${BACKUP_BUCKET}":`);
+    // 5. Tampilkan Struktur Folder yang Terbentuk di MinIO
+    console.log(`\n📁 ================= STRUKTUR FOLDER MINIO =================`);
     const objects = await s3Client.send(new ListObjectsV2Command({ Bucket: BACKUP_BUCKET }));
-    objects.Contents?.forEach((obj, idx) => {
+    
+    // Grouping by folder
+    const folders: Record<string, string[]> = {};
+    objects.Contents?.forEach(obj => {
+      const parts = (obj.Key || '').split('/');
+      const f = parts[0];
+      const filename = parts.slice(1).join('/');
+      if (!folders[f]) folders[f] = [];
       const mb = ((obj.Size || 0) / (1024 * 1024)).toFixed(2);
-      console.log(`   ${idx + 1}. ${obj.Key} (${mb} MB, Modified: ${obj.LastModified?.toISOString()})`);
+      folders[f].push(`${filename} (${mb} MB)`);
     });
 
+    for (const [fName, files] of Object.entries(folders)) {
+      console.log(`📂 ${fName}/`);
+      files.forEach(file => console.log(`    ├── 📄 ${file}`));
+    }
+
     console.log('\n🎉 =========================================================');
-    console.log('   SIMULASI SUKSES 100%!');
-    console.log(`   Buka MinIO Web Console: http://10.10.10.250:9001/browser/${BACKUP_BUCKET}`);
+    console.log('   PENCADANGAN MANUSIAWI SELESAI DENGAN SEMPURNA!');
+    console.log('   👉 Cek MinIO Web Console sekarang:');
+    console.log(`      http://10.10.10.250:9001/browser/${BACKUP_BUCKET}`);
     console.log('=========================================================\n');
 
   } catch (error: any) {
-    console.error('❌ Simulasi Backup Gagal:', error);
+    console.error('❌ Terjadi Kesalahan:', error);
   } finally {
     await prisma.$disconnect();
   }
