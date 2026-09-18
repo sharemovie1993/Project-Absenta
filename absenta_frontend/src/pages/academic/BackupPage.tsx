@@ -4,21 +4,15 @@ import {
   Download,
   UploadCloud,
   History,
-  Database,
-  ShieldCheck,
   RefreshCw,
-  Loader2,
-  Sparkles,
-  HardDrive
+  Loader2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { purgeTenantData, getBackupHistory, BackupHistoryItem } from '@/api/academic/backup.api';
 import { backupApi } from '@/api/superadmin-backups.api';
 import type { MigrationManifest } from '@/api/auth.api';
-import { ExportBundleModal } from '@/components/superadmin/backups/ExportBundleModal';
-import { MigrationWizardModal } from '@/components/superadmin/backups/MigrationWizardModal';
 import { useAuthStore } from '@/store/authStore';
-import { SectionCard, Loader, Button, Badge } from '@/components/ui';
+import { SectionCard, Button, Badge } from '@/components/ui';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import useConfirm from '@/hooks/useConfirm';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -27,7 +21,6 @@ import { formatDate } from '@/utils/layoutUtils';
 // Modular Components
 import { ExportSection } from '@/components/academic/backup/ExportSection';
 import { ImportSection } from '@/components/academic/backup/ImportSection';
-import { ActiveUsersSafetyCard } from '@/components/academic/backup/ActiveUsersSafetyCard';
 
 const BackupPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -35,8 +28,10 @@ const BackupPage: React.FC = React.memo(() => {
   const { isKurikulum, isTuHead, isAdmin, can } = useCapabilities();
   const { user } = useAuthStore();
 
-  const [showExportBundleModal, setShowExportBundleModal] = useState(false);
-  const [showMigrationWizardModal, setShowMigrationWizardModal] = useState(false);
+  // Export State
+  const [includeAttendance, setIncludeAttendance] = useState(true);
+  const [includeMedia, setIncludeMedia] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
 
   // States for .absenta file inspection and restore
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -62,6 +57,43 @@ const BackupPage: React.FC = React.memo(() => {
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const handleExport = useCallback(async () => {
+    const tenantId = user?.tenant_id;
+    if (!tenantId) {
+      toast.error('ID Sekolah tidak ditemukan');
+      return;
+    }
+
+    setIsExporting(true);
+    const toastId = toast.loading('Sedang mengemas database dan file media...');
+
+    try {
+      const blob = await backupApi.exportBundle(tenantId, {
+        includeAttendance,
+        includeMedia
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const timestamp = new Date().toISOString().slice(0, 10);
+      const rawName = user?.tenant?.name || 'sekolah';
+      const cleanName = rawName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      a.download = `absenta_backup_${cleanName}_${timestamp}.absenta`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+      toast.success('Paket cadangan .absenta berhasil diunduh!', { id: toastId });
+      loadHistory();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || err.message || 'Gagal mengunduh paket cadangan', { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  }, [user, includeAttendance, includeMedia, loadHistory]);
 
   const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -102,8 +134,8 @@ const BackupPage: React.FC = React.memo(() => {
     if (!importFile || !manifest) return;
 
     const ok = await confirm({
-      title: 'Mulai Pemulihan Sistem Sekolah?',
-      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${manifest.stats.total_db_records} record database, ${manifest.stats.total_media_files} file media MinIO). Record yang duplikat akan otomatis dilewati secara aman (Idempotent).`,
+      title: 'Mulai Pemulihan Data Sekolah?',
+      description: `Sistem akan memulihkan data sekolah "${manifest.source_tenant.name}" (${manifest.stats.total_db_records} data database, ${manifest.stats.total_media_files} file media). Data duplikat akan otomatis dilewati secara aman.`,
       confirmText: 'Mulai Pemulihan',
       cancelText: 'Batalkan',
       style: 'primary'
@@ -114,7 +146,7 @@ const BackupPage: React.FC = React.memo(() => {
     try {
       setLoadingImport(true);
       setImportProgress(15);
-      setRestoreMessage('Mengunggah & memproses berkas .absenta...');
+      setRestoreMessage('Mengunggah & mengekstrak berkas .absenta...');
 
       progressIntervalRef.current = setInterval(() => {
         setImportProgress(prev => (prev < 90 ? prev + 8 : prev));
@@ -168,7 +200,7 @@ const BackupPage: React.FC = React.memo(() => {
       setLoadingImport(true);
       const res = await purgeTenantData();
       if (res.success) {
-        toast.success(res.message || 'Data sekolah berhasil dikosongkan secara manual!');
+        toast.success(res.message || 'Data sekolah berhasil dikosongkan!');
         setImportFile(null);
         setManifest(null);
         loadHistory();
@@ -185,33 +217,6 @@ const BackupPage: React.FC = React.memo(() => {
     }
   }, [confirm, loadHistory, queryClient]);
 
-  const headerStats = useMemo(() => [
-    {
-      title: "Format Cadangan",
-      value: "Paket .absenta",
-      icon: <Database size={14} />,
-      gradient: "from-blue-500 to-indigo-600"
-    },
-    {
-      title: "Media Storage",
-      value: "MinIO S3 Sync",
-      icon: <HardDrive size={14} />,
-      gradient: "from-emerald-500 to-teal-600"
-    },
-    {
-      title: "Integritas Berkas",
-      value: "SHA-256 HMAC",
-      icon: <ShieldCheck size={14} />,
-      gradient: "from-violet-500 to-purple-600"
-    },
-    {
-      title: "Proteksi Duplikasi",
-      value: "Idempotent Skip",
-      icon: <ShieldCheck size={14} />,
-      gradient: "from-amber-500 to-orange-600"
-    }
-  ], []);
-
   const breadcrumbs = useMemo(() => [
     { label: 'Setelan', path: '/settings' },
     { label: 'Cadangan & Pemulihan' }
@@ -219,60 +224,13 @@ const BackupPage: React.FC = React.memo(() => {
 
   return (
     <AcademicPageLayout
-      title="Pusat Cadangan Data"
-      description="Kelola ekspor cadangan data dan pemulihan data sistem sekolah secara aman, dinamis, dan terintegrasi."
+      title="Cadangan & Pemulihan Data"
+      description="Ekspor seluruh data sekolah ke paket arsip .absenta atau pulihkan sistem dari berkas cadangan."
       breadcrumbs={breadcrumbs}
-      stats={headerStats}
-      isLoadingStats={false}
-      instruction={{
-        title: "Panduan Backup & Restore",
-        description: "Gunakan fitur ini untuk menjaga integritas data sekolah Anda.",
-        items: [
-          { text: "Lakukan backup rutin paket arsip (.absenta) minimal satu bulan sekali." },
-          { text: "Simpan file .absenta cadangan di tempat yang aman dan terenkripsi." },
-          { text: "Proses pemulihan data akan melewati record yang sudah ada di sistem." }
-        ]
-      }}
       hardeningModuleKey="academic_backup"
-      // Static audit compliance guard: toolbarLeft={<div />}
     >
       <div className="flex flex-col gap-6">
-        <ActiveUsersSafetyCard />
-
-        {/* One-Click UniFi/Omada Style Migration Action Card */}
-        <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-emerald-600 text-white shadow-xl shadow-blue-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
-          <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-          <div className="space-y-2 max-w-2xl relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[10px] font-black uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              Migrasi Sistem Instan (UniFi / Omada Style)
-            </div>
-            <h3 className="text-lg md:text-xl font-black tracking-tight">
-              One-Click Cadangan & Pemulihan ({user?.tenant?.name || 'Sekolah'})
-            </h3>
-            <p className="text-xs text-blue-100 font-medium leading-relaxed">
-              Kemas seluruh data sekolah Anda (Database Relasional + Foto Siswa/Guru & Dokumen di MinIO) ke dalam satu berkas <code className="bg-white/20 px-1.5 py-0.5 rounded font-mono font-bold text-white">.absenta</code> mandiri. Anda dapat mengekspor atau memulihkan sistem sekolah ini kapan saja dengan mudah.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 relative z-10 shrink-0 w-full md:w-auto">
-            <Button
-              onClick={() => setShowExportBundleModal(true)}
-              className="flex-1 md:flex-none h-12 px-5 rounded-2xl bg-white text-blue-900 hover:bg-blue-50 font-black text-xs uppercase tracking-wider shadow-lg shadow-black/10 cursor-pointer flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4 text-blue-600" />
-              <span>Ekspor Paket (.absenta)</span>
-            </Button>
-            <Button
-              onClick={() => setShowMigrationWizardModal(true)}
-              variant="outline"
-              className="flex-1 md:flex-none h-12 px-5 rounded-2xl bg-black/20 hover:bg-black/30 text-white border-white/30 font-black text-xs uppercase tracking-wider backdrop-blur-md cursor-pointer flex items-center justify-center gap-2"
-            >
-              <UploadCloud className="w-4 h-4 text-emerald-300" />
-              <span>Buka Wizard Migrasi</span>
-            </Button>
-          </div>
-        </div>
-
+        {/* Two Columns: Export on Left, Restore on Right */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
           {/* Export Card */}
           <SectionCard
@@ -283,8 +241,12 @@ const BackupPage: React.FC = React.memo(() => {
             className="flex flex-col h-full overflow-hidden"
           >
             <ExportSection 
-              onExportBundle={() => setShowExportBundleModal(true)}
-              loading={false}
+              includeAttendance={includeAttendance}
+              setIncludeAttendance={setIncludeAttendance}
+              includeMedia={includeMedia}
+              setIncludeMedia={setIncludeMedia}
+              onExport={handleExport}
+              loading={isExporting}
             />
           </SectionCard>
 
@@ -307,14 +269,13 @@ const BackupPage: React.FC = React.memo(() => {
               restoreMessage={restoreMessage}
               onManualPurge={handleManualPurge}
               onImport={executeImport}
-              onOpenMigrationWizard={() => setShowMigrationWizardModal(true)}
             />
           </SectionCard>
         </div>
 
         {/* Real-time Dynamic Backup & Restore Audit History Table */}
         <SectionCard
-          title="Riwayat Aktivitas Backup & Pemulihan"
+          title="Riwayat Aktivitas Cadangan"
           icon={History}
           fullWidth
           action={
@@ -326,41 +287,41 @@ const BackupPage: React.FC = React.memo(() => {
               className="text-xs flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingHistory ? 'animate-spin' : ''}`} />
-              Muat Ulang
+              Segarkan
             </Button>
           }
         >
           {isLoadingHistory ? (
-            <div className="flex items-center justify-center py-12 gap-2 text-xs font-bold text-slate-400">
+            <div className="flex items-center justify-center py-10 gap-2 text-xs font-medium text-slate-400">
               <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-              Memuat riwayat aktivitas backup...
+              Memuat riwayat aktivitas...
             </div>
           ) : historyList.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-14 h-14 bg-slate-100 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-slate-400 mb-3">
-                <History size={28} />
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <div className="w-10 h-10 bg-slate-100 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 mb-2">
+                <History size={20} />
               </div>
-              <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">
-                Belum Ada Riwayat Aktivitas Backup
-              </h4>
-              <p className="text-[11px] text-slate-400 mt-1 max-w-sm">
-                Riwayat ekspor dan pemulihan data akan tercatat secara otomatis di sini setelah Anda melakukan aktivitas backup/restore.
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                Belum ada riwayat aktivitas pencadangan
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Riwayat ekspor dan pemulihan data akan tercatat secara otomatis di sini.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-black uppercase text-[9px] tracking-wider border-b border-slate-200/80 dark:border-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-900/60 text-slate-500 font-bold uppercase text-[9px] tracking-wider border-b border-slate-200/80 dark:border-slate-800">
                   <tr>
                     <th className="py-3 px-4">Waktu Snapshot</th>
                     <th className="py-3 px-4">Jenis Aktivitas</th>
-                    <th className="py-3 px-4">Ukuran File</th>
+                    <th className="py-3 px-4">Ukuran Berkas</th>
                     <th className="py-3 px-4">Checksum SHA-256</th>
-                    <th className="py-3 px-4 text-center">Status Pemulihan</th>
+                    <th className="py-3 px-4 text-center">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                  {historyList?.map((item) => {
+                  {historyList.map((item) => {
                     const isRestore = item.restore_status === 'COMPLETED' || item.file_path.includes('restore');
                     const bytes = Number(item.file_size_bytes) || 0;
                     const sizeFormatted = bytes > 1024 * 1024 
@@ -373,12 +334,12 @@ const BackupPage: React.FC = React.memo(() => {
                           {formatDate(item.snapshot_date, { day: '2-digit', month: 'short', year: 'numeric' })}
                         </td>
                         <td className="py-3 px-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             isRestore 
                               ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800' 
                               : 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                           }`}>
-                            {isRestore ? 'Pemulihan Data (Restore)' : 'Ekspor Snapshot Full'}
+                            {isRestore ? 'Pemulihan Data (Restore)' : 'Ekspor Cadangan (.absenta)'}
                           </span>
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-slate-600 dark:text-slate-400">
@@ -390,9 +351,9 @@ const BackupPage: React.FC = React.memo(() => {
                         <td className="py-3 px-4 text-center">
                           <Badge 
                             variant={item.restore_status === 'COMPLETED' ? 'success' : item.status === 'READY' ? 'info' : 'secondary'}
-                            className="font-black text-[10px]"
+                            className="font-bold text-[10px]"
                           >
-                            {item.restore_status === 'COMPLETED' ? 'DISINKRONKAN' : item.status}
+                            {item.restore_status === 'COMPLETED' ? 'SELESAI' : item.status}
                           </Badge>
                         </td>
                       </tr>
@@ -404,24 +365,6 @@ const BackupPage: React.FC = React.memo(() => {
           )}
         </SectionCard>
       </div>
-
-      {/* One-Click UniFi/Omada Style Modals */}
-      <ExportBundleModal
-        isOpen={showExportBundleModal}
-        onClose={() => setShowExportBundleModal(false)}
-        tenantId={user?.tenant_id}
-        tenantName={user?.tenant?.name || 'Sekolah'}
-      />
-
-      <MigrationWizardModal
-        isOpen={showMigrationWizardModal}
-        onClose={() => setShowMigrationWizardModal(false)}
-        targetTenantId={user?.tenant_id}
-        onSuccess={() => {
-          loadHistory();
-          queryClient.invalidateQueries();
-        }}
-      />
     </AcademicPageLayout>
   );
 });

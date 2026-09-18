@@ -2,127 +2,139 @@ import React from 'react';
 import { 
   Download, 
   Database, 
-  ShieldCheck, 
-  FileCheck, 
-  History, 
-  CheckCircle2, 
+  Clock, 
+  Image, 
   Loader2,
-  Lock,
-  Sparkles
+  ShieldCheck
 } from 'lucide-react';
 import { Button } from '../../ui';
 
 interface ExportSectionProps {
-  onExportBundle: () => void;
+  includeAttendance: boolean;
+  setIncludeAttendance: (val: boolean) => void;
+  includeMedia: boolean;
+  setIncludeMedia: (val: boolean) => void;
+  onExport: () => void;
   loading: boolean;
 }
 
 export const ExportSection: React.FC<ExportSectionProps> = React.memo(({
-  onExportBundle,
+  includeAttendance,
+  setIncludeAttendance,
+  includeMedia,
+  setIncludeMedia,
+  onExport,
   loading
 }) => {
-  const features = [
-    { 
-      label: 'Data Master Sekolah', 
-      desc: 'Sekolah, TP, Semester, Jurusan, Mapel', 
-      icon: Database,
-      color: 'text-blue-500 bg-blue-500/10 border-blue-500/20'
-    },
-    { 
-      label: 'Basis Data Pengguna', 
-      desc: 'Guru, Siswa, Orang Tua, User', 
-      icon: ShieldCheck,
-      color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'
-    },
-    { 
-      label: 'Kelas & Jadwal', 
-      desc: 'Kelas, Wali Kelas, Jadwal KBM', 
-      icon: FileCheck,
-      color: 'text-violet-500 bg-violet-500/10 border-violet-500/20'
-    },
-    { 
-      label: 'Struktur & Operasional', 
-      desc: 'Organisasi, Presensi, Pelanggaran', 
-      icon: History,
-      color: 'text-amber-500 bg-amber-500/10 border-amber-500/20'
-    }
-  ];
-
   return (
-    <div className="flex flex-col h-full justify-between space-y-6 p-6 lg:p-8">
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <h4 className="text-[11px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">
-              Cakupan Data Paket Cadangan
-            </h4>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            {features.map((item, i) => {
-              const Icon = item.icon;
-              return (
-                <div 
-                  key={i} 
-                  className="flex items-center gap-3.5 p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 hover:border-emerald-300 dark:hover:border-emerald-800 transition-all duration-200 shadow-sm hover:shadow-md group"
-                >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shrink-0 transition-transform group-hover:scale-105 ${item.color}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h5 className="text-xs font-black text-slate-800 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
-                      {item.label}
-                    </h5>
-                    <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
-                      {item.desc}
-                    </p>
-                  </div>
-                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+    <div className="flex flex-col h-full justify-between p-6 space-y-6">
+      <div className="space-y-5">
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+          Kemas seluruh data sekolah Anda ke dalam satu berkas arsip <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-slate-800 dark:text-slate-200">.absenta</code>. Berkas ini dapat disimpan sebagai cadangan aman atau dipulihkan ke server baru kapan saja.
+        </p>
 
-        <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent p-4 rounded-2xl border border-emerald-200/60 dark:border-emerald-900/30 flex items-start gap-3 text-xs">
-          <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
-            <Sparkles className="w-4 h-4" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h6 className="font-black text-slate-900 dark:text-slate-100 text-xs">
-                Format Arsip Mandiri (.absenta)
-              </h6>
-              <span className="text-[9px] font-black bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                UniFi / Omada Style
-              </span>
+        {/* Option Checkboxes */}
+        <div className="space-y-3">
+          <label className="text-[11px] font-black text-slate-400 uppercase tracking-wider block">
+            Komponen yang Disertakan
+          </label>
+
+          {/* Database Relasional (Wajib) */}
+          <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <Database className="w-4 h-4" />
+              </div>
+              <div>
+                <h6 className="text-xs font-bold text-slate-800 dark:text-slate-200">Basis Data Relasional</h6>
+                <p className="text-[10px] text-slate-400">Data siswa, guru, kelas, mapel, tahun ajaran, dan struktur</p>
+              </div>
             </div>
-            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-              Mengemas seluruh database relasional sekolah dan berkas foto (MinIO S3) ke dalam 1 file <code>.absenta</code> mandiri terkompresi. Siap dipindahkan ke server lain dengan 1 klik!
-            </p>
+            <span className="text-[10px] font-bold text-slate-400 bg-slate-200/60 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+              Wajib
+            </span>
           </div>
+
+          {/* Riwayat Presensi (Opsional) */}
+          <label 
+            className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              includeAttendance 
+                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60' 
+                : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-800 opacity-70'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                includeAttendance ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200/60 text-slate-400'
+              }`}>
+                <Clock className="w-4 h-4" />
+              </div>
+              <div>
+                <h6 className="text-xs font-bold text-slate-800 dark:text-slate-200">Riwayat Presensi & Log</h6>
+                <p className="text-[10px] text-slate-400">Rekap sesi harian, absensi mata pelajaran, dan jurnal</p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={includeAttendance}
+              onChange={(e) => setIncludeAttendance(e.target.checked)}
+              disabled={loading}
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+            />
+          </label>
+
+          {/* Berkas Media S3 / MinIO (Opsional) */}
+          <label 
+            className={`flex items-center justify-between p-3.5 rounded-2xl border cursor-pointer transition-all ${
+              includeMedia 
+                ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60' 
+                : 'bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/80 dark:border-slate-800 opacity-70'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                includeMedia ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-slate-200/60 text-slate-400'
+              }`}>
+                <Image className="w-4 h-4" />
+              </div>
+              <div>
+                <h6 className="text-xs font-bold text-slate-800 dark:text-slate-200">Berkas Media & Foto (MinIO)</h6>
+                <p className="text-[10px] text-slate-400">Foto profil guru/siswa, berkas lampiran, dan surat keluar</p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={includeMedia}
+              onChange={(e) => setIncludeMedia(e.target.checked)}
+              disabled={loading}
+              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+            />
+          </label>
         </div>
       </div>
 
-      <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+      {/* Action Button */}
+      <div className="space-y-2 pt-2">
         <Button
-          onClick={onExportBundle}
+          onClick={onExport}
           disabled={loading}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-black uppercase tracking-wider text-xs shadow-xl shadow-emerald-500/25 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2"
+          className="w-full h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
         >
           {loading ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Mengemas Paket Cadangan...</span>
+            </>
           ) : (
-            <Sparkles className="w-4 h-4 text-emerald-200 animate-pulse" />
+            <>
+              <Download className="w-4 h-4" />
+              <span>Unduh Paket Cadangan (.absenta)</span>
+            </>
           )}
-          <span>{loading ? 'MENYIAPKAN PAKET...' : 'UNDUH PAKET CADANGAN (.ABSENTA)'}</span>
         </Button>
-
-        <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-1">
-          <Lock className="w-3 h-3 text-emerald-500" />
-          <span>Keamanan & Integritas Data Prioritas Utama</span>
-        </div>
+        <p className="text-[10px] text-center text-slate-400 font-medium">
+          Checksum SHA-256 otomatis disertakan untuk verifikasi integritas data
+        </p>
       </div>
     </div>
   );
