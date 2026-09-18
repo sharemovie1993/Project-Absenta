@@ -154,8 +154,31 @@ export function InAppSidebar({
       }
     });
 
-    // Pastikan menu Katalog Layanan hadir sebagai menu mandiri di aplikasi Setelan
+    // Pastikan menu Cadangan Data & Katalog Layanan hadir sebagai menu mandiri di aplikasi Setelan
     if (activeApp.id === 'settings') {
+      const hasBackup = result.some(r => r.path === '/settings/backup' || r.path === '/academic/backup' || r.path === '/backup');
+      if (!hasBackup) {
+        const backupItem: ParsedMenuItem = {
+          id: 'menu-backup-settings',
+          label: 'Cadangan Data',
+          path: '/settings/backup',
+          icon: iconForName('Database') || iconForName('Archive'),
+          isDivider: false
+        };
+        const subIndex = result.findIndex(r => r.path === '/service-center' || r.path === '/catalog' || r.label.toLowerCase().includes('langganan'));
+        if (subIndex > -1) {
+          result.splice(subIndex, 0, backupItem);
+        } else {
+          result.push(backupItem);
+        }
+      } else {
+        result.forEach(r => {
+          if (r.path === '/academic/backup' || r.path === '/backup') {
+            r.path = '/settings/backup';
+          }
+        });
+      }
+
       const hasCatalog = result.some(r => r.path === '/catalog' || r.path === '/services');
       if (!hasCatalog) {
         const subIndex = result.findIndex(r => r.path === '/service-center' || r.path === '/billing/my-subscription' || r.label.toLowerCase().includes('langganan'));
@@ -172,6 +195,11 @@ export function InAppSidebar({
           result.push(catalogItem);
         }
       }
+    }
+
+    // Pastikan menu backup tidak muncul di aplikasi Akademik
+    if (activeApp.id === 'academic') {
+      return result.filter(r => !r.path.includes('/backup'));
     }
 
     return result;

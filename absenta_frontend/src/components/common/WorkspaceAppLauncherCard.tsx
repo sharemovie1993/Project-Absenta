@@ -122,12 +122,12 @@ const DEFAULT_ADMIN_PRIMARY: FlatMenuItem[] = [
   { id: 'trn', title: 'Kenaikan Kelas', path: '/academic/transition', icon: 'Layers' },
   { id: 'sto', title: 'Struktur Organ.', path: '/academic/struktur-organisasi', icon: 'Building2' },
   { id: 'chk', title: 'Cetak Berkas', path: '/academic/prep-checklist', icon: 'Printer' },
-  { id: 'bak', title: 'Backup Data', path: '/academic/backup', icon: 'Archive' },
   { id: 'log', title: 'Log Aktivitas', path: '/academic/staff-logs', icon: 'Clock' },
-  // ⚙️ Sistem & Operasional (4 menu)
+  // ⚙️ Sistem & Operasional (5 menu)
   { id: 'usr', title: 'Kelola User', path: '/users', icon: 'UserCog' },
   { id: 'kpt', title: 'Kepatuhan App', path: '/management/platform-compliance', icon: 'ShieldCheck' },
   { id: 'stg', title: 'Pengaturan', path: '/settings', icon: 'Settings' },
+  { id: 'bak', title: 'Backup Data', path: '/settings/backup', icon: 'Archive' },
   { id: 'ops', title: 'Operasional Absen', path: '/attendance/ops', icon: 'Activity' },
 ];
 
@@ -462,7 +462,6 @@ export const WorkspaceAppLauncherCard: React.FC<WorkspaceAppLauncherCardProps> =
           p.includes('/academic/transition') ||
           p.includes('/academic/struktur-organisasi') ||
           p.includes('/academic/prep-checklist') ||
-          p.includes('/academic/backup') ||
           p.includes('/academic/staff-logs')
         ) {
           cPrep.push(item);

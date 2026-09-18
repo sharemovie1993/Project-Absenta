@@ -142,10 +142,10 @@ const AcademicDashboard: React.FC = React.memo(() => {
       color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30'
     },
     {
-      title: 'Backup & Seed',
-      description: 'Arsip & sinkronisasi data sistem',
-      icon: Database,
-      path: '/academic/backup',
+      title: 'Log Aktivitas Staf',
+      description: 'Rekam jejak tindakan dan audit sistem',
+      icon: Clock,
+      path: '/academic/staff-logs',
       gradient: 'from-slate-500 to-slate-700',
       color: 'text-slate-500 bg-slate-50 dark:bg-slate-950/30'
     }

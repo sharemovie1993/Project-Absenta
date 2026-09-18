@@ -594,16 +594,8 @@ function App() {
                         <StrukturOrganisasiPage />
                       </ProtectedRoute>
                     } />
-                    <Route path="/academic/backup" element={
-                      <ProtectedRoute requiredCapability="academic.backups.view.list">
-                        <BackupPage />
-                      </ProtectedRoute>
-                    } />
-                    <Route path="/backup" element={
-                      <ProtectedRoute requiredCapability="academic.backups.view.list">
-                        <BackupPage />
-                      </ProtectedRoute>
-                    } />
+                    <Route path="/academic/backup" element={<Navigate to="/settings/backup" replace />} />
+                    <Route path="/backup" element={<Navigate to="/settings/backup" replace />} />
                     <Route path="/academic/staff-logs" element={
                       <ProtectedRoute requiredCapability="core.sekolah.view.profile">
                         <Suspense fallback={<div className="p-8"><Loader /></div>}>
@@ -1447,6 +1439,11 @@ function App() {
                     <Route path="/settings/whatsapp" element={
                       <ProtectedRoute requiredCapability="core.tenants.update">
                         <WhatsappSettingsPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/settings/backup" element={
+                      <ProtectedRoute requiredCapability="academic.backups.view.list">
+                        <BackupPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/settings/system-update" element={

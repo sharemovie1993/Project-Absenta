@@ -213,14 +213,14 @@ const BackupPage: React.FC = React.memo(() => {
   ], []);
 
   const breadcrumbs = useMemo(() => [
-    { label: 'Akademik' },
+    { label: 'Setelan', path: '/settings' },
     { label: 'Cadangan & Pemulihan' }
   ], []);
 
   return (
     <AcademicPageLayout
       title="Pusat Cadangan Data"
-      description="Kelola ekspor cadangan data dan pemulihan data sistem akademik secara aman, dinamis, dan terintegrasi."
+      description="Kelola ekspor cadangan data dan pemulihan data sistem sekolah secara aman, dinamis, dan terintegrasi."
       breadcrumbs={breadcrumbs}
       stats={headerStats}
       isLoadingStats={false}
@@ -228,8 +228,8 @@ const BackupPage: React.FC = React.memo(() => {
         title: "Panduan Backup & Restore",
         description: "Gunakan fitur ini untuk menjaga integritas data sekolah Anda.",
         items: [
-          { text: "Lakukan backup rutin minimal satu bulan sekali." },
-          { text: "Simpan file .json cadangan di tempat yang aman dan terenkripsi." },
+          { text: "Lakukan backup rutin paket arsip (.absenta) minimal satu bulan sekali." },
+          { text: "Simpan file .absenta cadangan di tempat yang aman dan terenkripsi." },
           { text: "Proses pemulihan data akan melewati record yang sudah ada di sistem." }
         ]
       }}

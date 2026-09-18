@@ -196,7 +196,6 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       p.startsWith('/academic/transition') ||
       p.startsWith('/academic/struktur-organisasi') ||
       p.startsWith('/academic/prep-checklist') ||
-      p.startsWith('/academic/backup') ||
       p.startsWith('/academic/staff-logs')
     ),
     items: [
@@ -205,7 +204,6 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Kenaikan Kelas', shortLabel: 'Kenaikan', path: '/academic/transition', icon: Layers },
       { label: 'Struktur Organisasi', shortLabel: 'Struktur Org', path: '/academic/struktur-organisasi', icon: Building2 },
       { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/academic/prep-checklist', icon: Printer },
-      { label: 'Backup Database', shortLabel: 'Backup', path: '/academic/backup', icon: Archive },
       { label: 'Log Aktivitas Staf', shortLabel: 'Log Staf', path: '/academic/staff-logs', icon: Clock },
     ]
   },
@@ -222,6 +220,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Kelola User', shortLabel: 'User', path: '/users', icon: UserCog },
       { label: 'Kepatuhan Platform', shortLabel: 'Kepatuhan', path: '/management/platform-compliance', icon: ShieldCheck },
       { label: 'Pengaturan Sekolah', shortLabel: 'Pengaturan', path: '/settings', icon: Settings },
+      { label: 'Cadangan Data', shortLabel: 'Backup', path: '/settings/backup', icon: Archive },
       { label: 'Operasional Absensi', shortLabel: 'Ops Absen', path: '/attendance/ops', icon: Activity },
     ]
   },

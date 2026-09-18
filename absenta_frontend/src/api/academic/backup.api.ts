@@ -20,5 +20,5 @@ export const getBackupHistory = async (): Promise<BackupHistoryItem[]> => {
 };
 
 export const purgeTenantData = async (): Promise<{ success: boolean; message: string; details?: any; audit?: any }> => {
-  return requestWithFallback<{ success: boolean; message: string; details?: any; audit?: any }>('post', '/academic/backup/purge-tenant');
+  return requestWithFallback<{ success: boolean; message: string; details?: any; audit?: any }>('post', '/settings/backup/purge-tenant');
 };

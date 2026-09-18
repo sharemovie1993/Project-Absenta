@@ -245,8 +245,7 @@ async function main() {
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/academic/prep-checklist', required_capability: 'academic.years.view.list' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
-        // Klaster 3: Sistem & Log Aktivitas
-        { label: 'Cadangan Data', icon: 'Database', path: '/academic/backup', required_capability: 'academic.backups.create' },
+        // Klaster 3: Log Aktivitas
         { label: 'Log Aktivitas', icon: 'History', path: '/academic/staff-logs', required_capability: 'core.sekolah.view.profile' },
       ]
     },
@@ -447,7 +446,11 @@ async function main() {
         { label: 'Gateway WhatsApp', icon: 'MessageSquare', path: '/settings/whatsapp', required_capability: 'whatsapp.manage.config', required_features: ['WHATSAPP'] },
         // Divider 1
         { label: 'divider', icon: null, path: null },
-        // Klaster 2: Layanan & Bantuan
+        // Klaster 2: Pemeliharaan & Data
+        { label: 'Cadangan Data', icon: 'Database', path: '/settings/backup', required_capability: 'academic.backups.create' },
+        // Divider 2
+        { label: 'divider', icon: null, path: null },
+        // Klaster 3: Layanan & Bantuan
         { label: 'Langganan', icon: 'Crown', path: '/service-center', required_capability: 'billing.subscriptions.view.active' },
         { label: 'Kepatuhan Sistem', icon: 'Smartphone', path: '/management/platform-compliance', required_capability: 'core.system.config.update, core.sekolah.view.profile' },
         { label: 'Bantuan Teknis', icon: 'HelpCircle', path: '/support', required_capability: 'support.tickets.view, core.sekolah.view.profile' },
