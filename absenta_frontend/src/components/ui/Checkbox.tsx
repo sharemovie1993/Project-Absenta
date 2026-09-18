@@ -5,7 +5,8 @@ import { CheckIcon, MinusIcon } from '@heroicons/react/24/outline';
 interface CheckboxProps {
   id?: string;
   checked: boolean | 'indeterminate';
-  onCheckedChange: (checked: boolean) => void;
+  onCheckedChange?: (checked: boolean) => void;
+  onChange?: (checked: any) => void;
   disabled?: boolean;
   className?: string;
   label?: string;
@@ -15,11 +16,12 @@ export function Checkbox({
   id, 
   checked, 
   onCheckedChange, 
+  onChange,
   disabled = false, 
   className,
   label,
   ...props
-}: CheckboxProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: CheckboxProps & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onChange'>) {
   const isChecked = checked === true;
   const isIndeterminate = checked === 'indeterminate';
 
@@ -32,14 +34,12 @@ export function Checkbox({
         aria-checked={checked === 'indeterminate' ? 'mixed' : checked}
         disabled={disabled}
         {...props}
-        onClick={() => {
-            // Logic: if indeterminate or unchecked -> make it checked. If checked -> make it unchecked.
-            // Or usually: Indeterminate -> Checked -> Unchecked
-            // But simpler: Indeterminate/Unchecked -> Checked. Checked -> Unchecked.
-            if (isIndeterminate) {
-                onCheckedChange(true);
-            } else {
-                onCheckedChange(!isChecked);
+        onClick={(e) => {
+            const nextVal = isIndeterminate ? true : !isChecked;
+            if (typeof onCheckedChange === 'function') {
+                onCheckedChange(nextVal);
+            } else if (typeof onChange === 'function') {
+                onChange(nextVal);
             }
         }}
         className={cn(

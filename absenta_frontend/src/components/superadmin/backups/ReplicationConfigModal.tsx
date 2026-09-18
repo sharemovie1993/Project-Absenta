@@ -255,7 +255,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
           <Checkbox
             id="enable-replication-toggle"
             checked={enabled}
-            onChange={(checked: boolean) => setEnabled(checked)}
+            onCheckedChange={(checked: boolean) => setEnabled(checked)}
             className="mt-0.5"
           />
           <div className="space-y-1">
@@ -355,7 +355,7 @@ export const ReplicationConfigModal: React.FC<ReplicationConfigModalProps> = ({
               <Checkbox
                 id="force-path-style-check"
                 checked={forcePathStyle}
-                onChange={(checked: boolean) => setForcePathStyle(checked)}
+                onCheckedChange={(checked: boolean) => setForcePathStyle(checked)}
                 className="mr-2"
               />
               <Label htmlFor="force-path-style-check" className="text-xs text-slate-700 dark:text-slate-300 cursor-pointer font-medium">
