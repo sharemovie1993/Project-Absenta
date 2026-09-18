@@ -191,12 +191,40 @@ export const BackupList: React.FC<BackupListProps> = ({
     { 
       label: 'Kedaluwarsa', 
       key: 'expires_at', 
-      render: (v: string) => (
-        <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400">
-          <Clock size={11} className="text-slate-400" />
-          {v ? format(new Date(v), 'dd/MM/yyyy') : '-'}
-        </div>
-      ) 
+      render: (v: string) => {
+        if (!v) return <span className="text-slate-400 font-mono text-[11px]">-</span>;
+
+        const expDate = new Date(v);
+        if (isNaN(expDate.getTime())) return <span className="text-slate-400 font-mono text-[11px]">-</span>;
+
+        const now = new Date();
+        const diffMs = expDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+        let remainingText = '';
+        let badgeColor = 'text-slate-500 dark:text-slate-400';
+
+        if (diffDays < 0) {
+          remainingText = 'kedaluwarsa';
+          badgeColor = 'text-rose-500 dark:text-rose-400 font-semibold';
+        } else if (diffDays === 0) {
+          remainingText = 'hari ini';
+          badgeColor = 'text-amber-600 dark:text-amber-400 font-semibold';
+        } else {
+          remainingText = `${diffDays} hari`;
+          if (diffDays <= 3) {
+            badgeColor = 'text-amber-600 dark:text-amber-400 font-semibold';
+          }
+        }
+
+        return (
+          <div className="flex items-center gap-1.5 text-[11px] font-mono font-medium text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            <Clock size={11} className="text-slate-400 shrink-0" />
+            <span>{format(expDate, 'dd/MM/yyyy')}</span>
+            <span className={`text-[10px] ${badgeColor}`}>({remainingText})</span>
+          </div>
+        );
+      }
     },
     { 
       label: 'Aksi Superadmin', 
