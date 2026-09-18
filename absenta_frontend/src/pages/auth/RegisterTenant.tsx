@@ -33,7 +33,8 @@ import {
   UploadCloud,
   FolderArchive,
   FileArchive,
-  Database
+  Database,
+  AlertTriangle
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'framer-motion';
