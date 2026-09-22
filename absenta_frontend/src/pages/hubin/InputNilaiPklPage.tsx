@@ -1453,7 +1453,22 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
+                      {/* 1 & 2. Tahun Pelajaran & Semester */}
+                      <AcademicContextBar
+                        id="filter-sidang"
+                        tahunPelajaranId={selectedTp}
+                        semesterId={selectedSemester}
+                        onTahunPelajaranChange={setSelectedTp}
+                        onSemesterChange={setSelectedSemester}
+                        tpOptions={tpOptions}
+                        semesterOptions={semesterOptions}
+                        isLoadingTp={isLoadingTp}
+                        isLoadingSem={isLoadingSem}
+                        variant="filter"
+                        className="contents"
+                      />
+
                       {/* Filter Kelas */}
                       <div>
                         <label htmlFor="filter-kelas-sidang" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
