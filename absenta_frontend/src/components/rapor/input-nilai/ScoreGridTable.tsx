@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { Copy, Trash2, ClipboardPaste, Save, Download, FileSpreadsheet, Upload } from 'lucide-react';
+import { Copy, Trash2, ClipboardPaste, Save, Download, FileSpreadsheet, Upload, ShieldAlert, Lock, Eye } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { StudentScoreItem } from '../../../types/inputNilai.types';
@@ -7,6 +7,9 @@ import { StudentScoreItem } from '../../../types/inputNilai.types';
 interface ScoreGridTableProps {
   scores: StudentScoreItem[];
   entryMode: 'sumatif' | 'kategori';
+  subjectName?: string;
+  className?: string;
+  teacherName?: string;
   kkmThreshold: number;
   onKkmThresholdChange: (newVal: number) => void;
   onScoreChange: (index: number, field: keyof StudentScoreItem, val: any) => void;
@@ -22,11 +25,16 @@ interface ScoreGridTableProps {
   isSaving: boolean;
   isLoading: boolean;
   isUploading?: boolean;
+  isReadOnly?: boolean;
+  readOnlyReason?: string;
 }
 
 export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
   scores,
   entryMode,
+  subjectName,
+  className: rombelName,
+  teacherName,
   kkmThreshold,
   onKkmThresholdChange,
   onScoreChange,
@@ -42,60 +50,75 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
   isSaving,
   isLoading,
   isUploading,
+  isReadOnly = false,
+  readOnlyReason,
 }) => {
   return (
-    <Card className="w-full p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-4">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-3">
+    <Card className="w-full p-4 sm:p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-3">
+      {/* Sleek, De-noised Header Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-3">
         <div>
-          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
-            Lembar Pengisian Nilai Kelas
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+              {subjectName || 'Lembar Nilai'}
+              {rombelName && <span className="text-slate-400 font-normal"> • {rombelName}</span>}
+            </h3>
             <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
               {scores.length} Siswa
             </span>
-          </h3>
-          <p className="text-[11px] text-slate-400">
-            {entryMode === 'sumatif' 
-              ? 'Formula Rapor: Nilai Akhir = (Rata-rata(S1,S2,S3) + Sumatif Akhir) / 2' 
-              : 'Input nilai langsung per kategori.'}
-          </p>
-          <div className="flex items-center gap-2.5 mt-2 text-[10px] flex-wrap">
-            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
-              <label htmlFor="kkm-threshold-input" className="font-bold text-slate-600 dark:text-slate-300">Batas KKM Mapel Ini:</label>
-              <input
-                id="kkm-threshold-input"
-                aria-label="Batas KKM Mapel Ini"
-                type="number"
-                min={50}
-                max={95}
-                value={kkmThreshold}
-                onChange={(e) => onKkmThresholdChange(parseInt(e.target.value, 10) || 70)}
-                className="w-12 text-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-md font-black text-indigo-600 dark:text-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 py-0.5"
-              />
-              <span className="text-[9px] text-slate-400 font-semibold">(Tersimpan per Mapel)</span>
+            {isReadOnly && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-md">
+                <Lock size={11} className="text-amber-600 dark:text-amber-400" />
+                <span>Hanya Baca {teacherName ? `• Pengampu: ${teacherName}` : ''}</span>
+              </span>
+            )}
+          </div>
+
+          {/* Compact Legend & KKM Row */}
+          <div className="flex items-center gap-3 mt-1.5 text-[10px] text-slate-400 flex-wrap">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-500 dark:text-slate-400">KKM:</span>
+              {isReadOnly ? (
+                <span className="font-bold text-slate-700 dark:text-slate-200">{kkmThreshold}</span>
+              ) : (
+                <input
+                  id="kkm-threshold-input"
+                  aria-label="Batas KKM Mapel Ini"
+                  type="number"
+                  min={50}
+                  max={95}
+                  value={kkmThreshold}
+                  onChange={(e) => onKkmThresholdChange(parseInt(e.target.value, 10) || 70)}
+                  className="w-10 text-center bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-bold text-indigo-600 dark:text-indigo-400 py-0.5"
+                />
+              )}
             </div>
 
-            <span className="font-semibold text-slate-400">Status Pewarnaan:</span>
-            <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 font-black border border-rose-300 dark:border-rose-800">
-              🔴 &lt; {kkmThreshold} (Remedial)
-            </span>
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
-              ⚪ {kkmThreshold} - {Math.max(84, kkmThreshold + 14)} (Tuntas)
-            </span>
-            <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
-              🟢 ≥ {Math.max(85, kkmThreshold + 15)} (Sangat Baik)
-            </span>
+            <span className="text-slate-300 dark:text-slate-700">•</span>
+
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" /> &lt;{kkmThreshold} Remedial
+              </span>
+              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" /> {kkmThreshold}–{Math.max(84, kkmThreshold + 14)} Tuntas
+              </span>
+              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> ≥{Math.max(85, kkmThreshold + 15)} Sangat Baik
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Toolbar Action Group (Import / Export / Paste / Save) */}
-        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start lg:justify-end pt-2 lg:pt-0">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
           {onExportEraporKemendikbud && (
             <Button
               type="button"
               aria-label="Unduh format e-Rapor Kemendikbud"
               onClick={onExportEraporKemendikbud}
               variant="outline"
-              className="border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl font-bold text-xs"
+              className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs"
               title="Unduh file Excel terformat e-Rapor resmi Dinas Pendidikan"
             >
               <Download className="w-3.5 h-3.5 mr-1" />
@@ -103,7 +126,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             </Button>
           )}
 
-          {onDownloadTemplate && (
+          {!isReadOnly && onDownloadTemplate && (
             <Button
               type="button"
               aria-label="Unduh template Excel"
@@ -117,7 +140,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             </Button>
           )}
 
-          {onUploadSubmit && (
+          {!isReadOnly && onUploadSubmit && (
             <label className="cursor-pointer inline-flex items-center justify-center px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
               <Upload className="w-3.5 h-3.5 mr-1 text-indigo-500" />
               {isUploading ? 'Mengunggah...' : 'Upload Excel'}
@@ -135,7 +158,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             </label>
           )}
 
-          {entryMode === 'sumatif' && (
+          {!isReadOnly && entryMode === 'sumatif' && (
             <Button 
               type="button"
               aria-label="Paste nilai dari Excel"
@@ -148,16 +171,18 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             </Button>
           )}
 
-          <Button 
-            type="button"
-            aria-label="Simpan perubahan nilai"
-            onClick={onSaveSubmit}
-            disabled={isSaving}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs"
-          >
-            <Save className="w-3.5 h-3.5 mr-1" />
-            {isSaving ? 'MENYIMPAN...' : 'SIMPAN PERUBAHAN'}
-          </Button>
+          {!isReadOnly && (
+            <Button 
+              type="button"
+              aria-label="Simpan perubahan nilai"
+              onClick={onSaveSubmit}
+              disabled={isSaving}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs"
+            >
+              <Save className="w-3.5 h-3.5 mr-1" />
+              {isSaving ? 'MENYIMPAN...' : 'SIMPAN PERUBAHAN'}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -183,26 +208,28 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                     <th className="py-3 px-3">
                       <div className="flex items-center justify-between gap-2">
                         <span>Capaian Kompetensi (CP)</span>
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            aria-label="Salin CP baris pertama ke semua siswa"
-                            onClick={() => onCopyCpToAll(scores[0]?.deskripsi_cp || '')}
-                            title="Salin CP Baris Pertama ke Semua Siswa"
-                            className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-all"
-                          >
-                            <Copy size={11} /> 1-Klik Salin ke Semua
-                          </button>
-                          <button
-                            type="button"
-                            aria-label="Kosongkan semua CP"
-                            onClick={onClearCpAll}
-                            title="Kosongkan Semua CP"
-                            className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 flex items-center gap-1 transition-all"
-                          >
-                            <Trash2 size={11} /> Kosongkan CP
-                          </button>
-                        </div>
+                        {!isReadOnly && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              aria-label="Salin CP baris pertama ke semua siswa"
+                              onClick={() => onCopyCpToAll(scores[0]?.deskripsi_cp || '')}
+                              title="Salin CP Baris Pertama ke Semua Siswa"
+                              className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-all"
+                            >
+                              <Copy size={11} /> 1-Klik Salin ke Semua
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Kosongkan semua CP"
+                              onClick={onClearCpAll}
+                              title="Kosongkan Semua CP"
+                              className="text-[10px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 px-2 py-0.5 rounded border border-rose-200 dark:border-rose-800 flex items-center gap-1 transition-all"
+                            >
+                              <Trash2 size={11} /> Kosongkan CP
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </th>
                   </>
@@ -244,11 +271,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             aria-label={`Sumatif 1 untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.sumatif_1 ?? ''}
                             onChange={(e) => onScoreChange(idx, 'sumatif_1', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 0)}
-                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${getScoreInputStyle(sc.sumatif_1)}`}
-                            placeholder="0-100"
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.sumatif_1)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
                         <td className="py-1.5 px-1">
@@ -257,11 +290,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             aria-label={`Sumatif 2 untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.sumatif_2 ?? ''}
                             onChange={(e) => onScoreChange(idx, 'sumatif_2', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 1)}
-                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${getScoreInputStyle(sc.sumatif_2)}`}
-                            placeholder="0-100"
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.sumatif_2)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
                         <td className="py-1.5 px-1">
@@ -270,11 +309,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             aria-label={`Sumatif 3 untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.sumatif_3 ?? ''}
                             onChange={(e) => onScoreChange(idx, 'sumatif_3', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 2)}
-                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${getScoreInputStyle(sc.sumatif_3)}`}
-                            placeholder="0-100"
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.sumatif_3)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
                         <td className="py-2 px-2 text-center font-mono font-bold bg-slate-50 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300">
@@ -286,11 +331,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             aria-label={`Sumatif Akhir untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.sumatif_akhir ?? ''}
                             onChange={(e) => onScoreChange(idx, 'sumatif_akhir', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 3)}
-                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${getScoreInputStyle(sc.sumatif_akhir)}`}
-                            placeholder="0-100"
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.sumatif_akhir)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
                         <td className="py-2 px-2 text-center font-mono font-black text-sm bg-indigo-50/50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300">
@@ -302,21 +353,29 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                               id={`input-grid-${idx}-4`}
                               aria-label={`Capaian Kompetensi untuk ${sc.nama}`}
                               rows={2}
+                              disabled={isReadOnly}
+                              readOnly={isReadOnly}
                               value={sc.deskripsi_cp ?? ''}
                               onChange={(e) => onScoreChange(idx, 'deskripsi_cp', e.target.value)}
                               onKeyDown={(e) => onKeyDownGrid(e, idx, 4)}
-                              placeholder="Deskripsi Capaian Kompetensi (CP)..."
-                              className="w-full text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-y"
+                              placeholder={isReadOnly ? '(Belum diisi oleh guru pengampu)' : 'Deskripsi Capaian Kompetensi (CP)...'}
+                              className={`w-full text-xs border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 ${
+                                isReadOnly
+                                  ? 'bg-slate-50/70 dark:bg-slate-800/40 cursor-default select-text resize-none'
+                                  : 'bg-slate-50 dark:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-y'
+                              }`}
                             />
-                            <button
-                              type="button"
-                              aria-label={`Salin CP ${sc.nama} ke siswa di bawahnya`}
-                              onClick={() => onCopyCpToAll(sc.deskripsi_cp || '')}
-                              title="Salin CP ini ke semua siswa di bawahnya"
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
-                            >
-                              <Copy size={13} />
-                            </button>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                aria-label={`Salin CP ${sc.nama} ke siswa di bawahnya`}
+                                onClick={() => onCopyCpToAll(sc.deskripsi_cp || '')}
+                                title="Salin CP ini ke semua siswa di bawahnya"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                              >
+                                <Copy size={13} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </>
@@ -328,11 +387,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             aria-label={`Nilai Kategori untuk ${sc.nama}`}
                             type="text"
                             inputMode="decimal"
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.nilai ?? ''}
                             onChange={(e) => onScoreChange(idx, 'nilai', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 0)}
-                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all ${getScoreInputStyle(sc.nilai)}`}
-                            placeholder="0-100"
+                            className={`w-full text-center border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 font-mono font-bold ${
+                              isReadOnly
+                                ? 'cursor-default select-text'
+                                : 'focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all'
+                            } ${getScoreInputStyle(sc.nilai)}`}
+                            placeholder={isReadOnly ? '-' : '0-100'}
                           />
                         </td>
                         <td className="py-1.5 px-3">
@@ -340,11 +405,17 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                             id={`input-grid-${idx}-1`}
                             aria-label={`Deskripsi Rapor Kategori untuk ${sc.nama}`}
                             rows={2}
+                            disabled={isReadOnly}
+                            readOnly={isReadOnly}
                             value={sc.deskripsi ?? ''}
                             onChange={(e) => onScoreChange(idx, 'deskripsi', e.target.value)}
                             onKeyDown={(e) => onKeyDownGrid(e, idx, 1)}
-                            placeholder="Catatan / Deskripsi Kategori..."
-                            className="w-full text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-y"
+                            placeholder={isReadOnly ? '(Belum diisi oleh guru pengampu)' : 'Catatan / Deskripsi Kategori...'}
+                            className={`w-full text-xs border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-slate-800 dark:text-slate-200 ${
+                              isReadOnly
+                                ? 'bg-slate-50/70 dark:bg-slate-800/40 cursor-default select-text resize-none'
+                                : 'bg-slate-50 dark:bg-slate-800/80 focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-y'
+                            }`}
                           />
                         </td>
                       </>

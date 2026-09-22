@@ -69,7 +69,16 @@ export const raporApi = {
     const response = await api.get('/rapor/nilai/progress', { params });
     return response.data;
   },
+  getMonitoringProgressGuru: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get('/rapor/nilai/monitoring/guru', { params });
+    return response.data;
+  },
+  getClassSubjectProgress: async (kelasId: string, params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get(`/rapor/nilai/monitoring/kelas/${kelasId}`, { params });
+    return response.data;
+  },
   downloadTemplateBlob: async (params: { kelas_id: string; mapel_id: string; jenis_nilai_id?: string; mode?: string }) => {
+
     const response = await api.get('/rapor/nilai/import/template', {
       params,
       responseType: 'blob'

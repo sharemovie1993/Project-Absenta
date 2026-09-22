@@ -1,6 +1,5 @@
 import React from 'react';
 import { 
-  User, 
   Building2, 
   Calendar, 
   MessageCircle, 
@@ -18,6 +17,8 @@ import { Button } from '../ui';
 import { HubinJurnalStatus } from '../../constants/HubinConstants';
 import type { SiswaPkl, MitraData } from '../../pages/hubin/PenempatanPklPage';
 import { PenempatanRowActionMenu } from './PenempatanRowActionMenu';
+import { SiswaIdentityCell } from '../common/SiswaIdentityCell';
+
 
 interface GetColumnsParams {
   rawMitra: MitraData[];
@@ -34,6 +35,7 @@ interface GetColumnsParams {
   onSelesai?: (row: SiswaPkl) => void;
   onMutasi?: (row: SiswaPkl) => void;
   onFilterSiswaHistory?: (namaSiswa: string) => void;
+  onEditMitraKontak?: (mitraId: string) => void;
 }
 
 export const getPenempatanColumns = ({
@@ -51,6 +53,7 @@ export const getPenempatanColumns = ({
   onSelesai,
   onMutasi,
   onFilterSiswaHistory,
+  onEditMitraKontak,
 }: GetColumnsParams) => [
   {
     key: 'siswa',
@@ -59,34 +62,19 @@ export const getPenempatanColumns = ({
     render: (_value: unknown, row: SiswaPkl) => {
       const tpTahun = (row as any).SiswaAkademik?.tahunPelajaran?.tahun || (row as any).Siswa?.TahunPelajaran?.tahun;
       const semNama = (row as any).SiswaAkademik?.semester?.nama_semester;
+      const tpLabel = tpTahun ? `${tpTahun}${semNama ? ` (${semNama})` : ''}` : undefined;
       return (
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0">
-            <User size={18} />
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900 dark:text-slate-100">{row.Siswa?.nama_siswa}</p>
-            <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 mt-0.5">
-              <span>NIS: {row.Siswa?.nis}</span>
-              {row.Siswa?.Kelas?.nama_kelas && (
-                <>
-                  <span>•</span>
-                  <span className="font-medium text-slate-600 dark:text-slate-300">{row.Siswa.Kelas.nama_kelas}</span>
-                </>
-              )}
-              {tpTahun && (
-                <>
-                  <span>•</span>
-                  <span className="text-[10px] font-semibold text-indigo-650 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded border border-indigo-100/50 dark:border-indigo-900/30">
-                    TP {tpTahun}{semNama ? ` (${semNama})` : ''}
-                  </span>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <SiswaIdentityCell
+          foto={row.Siswa?.foto}
+          nama={row.Siswa?.nama_siswa}
+          nis={row.Siswa?.nis}
+          kelas={row.Siswa?.Kelas?.nama_kelas}
+          tahunPelajaran={tpLabel}
+          size="sm"
+        />
       );
     }
+
   },
   {
     key: 'mitra',
@@ -94,8 +82,20 @@ export const getPenempatanColumns = ({
     render: (_value: unknown, row: SiswaPkl) => (
       <div className="space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200 text-xs">
-          <Building2 size={14} className="text-indigo-500" />
-          {row.Mitra?.nama}
+          <Building2 size={14} className="text-indigo-500 shrink-0" />
+          {onEditMitraKontak && row.mitra_id ? (
+            <button
+              type="button"
+              onClick={() => onEditMitraKontak(row.mitra_id)}
+              className="text-left font-semibold text-slate-800 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline inline-flex items-center gap-1 group cursor-pointer"
+              title="Klik untuk melihat / perbarui kontak & PIC DUDI"
+            >
+              <span>{row.Mitra?.nama}</span>
+              <Edit size={11} className="text-slate-400 group-hover:text-indigo-600 transition-colors shrink-0" />
+            </button>
+          ) : (
+            <span>{row.Mitra?.nama}</span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-50 dark:bg-slate-950/20 px-2 py-0.5 rounded border border-slate-100 dark:border-slate-800 w-fit">
           <span>Pmb: {row.Pembimbing?.nama_guru || 'Belum ditunjuk'}</span>
@@ -244,6 +244,7 @@ export const getPenempatanColumns = ({
             onSelesai={onSelesai}
             onMutasi={onMutasi}
             onFilterSiswaHistory={onFilterSiswaHistory}
+            onEditMitraKontak={onEditMitraKontak}
             mitraPhone={row.Mitra?.kontak || fullMitra?.kontak}
           />
         </div>

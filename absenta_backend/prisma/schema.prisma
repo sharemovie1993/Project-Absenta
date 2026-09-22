@@ -14,9 +14,9 @@ model Tenant {
   absensi_mode AbsensiMode @default(MULTI_SESI)
 
   // Konfigurasi Absensi Siswa (Gerbang)
-  jam_masuk_default                  String  @default("07:00") // Format HH:mm
-  jam_pulang_default                 String  @default("14:00") // Format HH:mm
-  toleransi_keterlambatan_menit      Int     @default(15) // Durasi toleransi siswa gerbang dalam menit
+  jam_masuk_default             String @default("07:00") // Format HH:mm
+  jam_pulang_default            String @default("14:00") // Format HH:mm
+  toleransi_keterlambatan_menit Int    @default(15) // Durasi toleransi siswa gerbang dalam menit
 
   // Konfigurasi Absensi Guru & Tendik (Gerbang)
   jam_masuk_guru_default             String? @default("06:45") // Format HH:mm
@@ -24,11 +24,11 @@ model Tenant {
   toleransi_keterlambatan_guru_menit Int?    @default(5) // Durasi toleransi guru gerbang dalam menit
 
   // Konfigurasi Sesi KBM Kelas
-  toleransi_kbm_siswa_menit          Int?    @default(10) // Toleransi keterlambatan siswa masuk kelas KBM (menit)
-  toleransi_kbm_guru_inval_menit     Int?    @default(10) // Batas toleransi guru masuk kelas sebelum pemicu Radar Inval (menit)
+  toleransi_kbm_siswa_menit      Int? @default(10) // Toleransi keterlambatan siswa masuk kelas KBM (menit)
+  toleransi_kbm_guru_inval_menit Int? @default(10) // Batas toleransi guru masuk kelas sebelum pemicu Radar Inval (menit)
 
-  hari_sekolah                       Hari[]  @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
-  durasi_smk                         String? @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
+  hari_sekolah Hari[]  @default([SENIN, SELASA, RABU, KAMIS, JUMAT])
+  durasi_smk   String? @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
 
   AbsensiKejadianKhusus AbsensiKejadianKhusus[]
   StudentCardConfig     StudentCardConfig?
@@ -44,6 +44,7 @@ model Tenant {
   updated_at                DateTime                 @updatedAt
   AbsenGerbangSiswa         AbsenGerbangSiswa[]
   AbsenGerbangGuru          AbsenGerbangGuru[]
+  LogAksesGerbang           LogAksesGerbang[]
   AbsenGuru                 AbsenGuru[]
   AbsenSiswa                AbsenSiswa[]
   activityLogs              ActivityLog[]
@@ -110,7 +111,7 @@ model Tenant {
   HubinTefaOrder     HubinTefaOrder[]
   WaTenantConnection WaTenantConnection?
   WaAuthSession      WaAuthSession[]
-  WaLidMapping        WaLidMapping[]
+  WaLidMapping       WaLidMapping[]
 
   // BK & Prestasi
   JenisPrestasi       JenisPrestasi[]
@@ -314,20 +315,20 @@ model JenisPelanggaran {
 }
 
 model PelanggaranSiswa {
-  id                 String          @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenant_id          String
   siswa_id           String
   siswa_akademik_id  String?
   kelas_id           String?
   tahun_pelajaran_id String?
   semester_id        String?
-  tanggal            DateTime        @db.Date
+  tanggal            DateTime @db.Date
   jenis_pelanggaran  String
-  poin               Int             @default(0)
-  status             String          @default("BARU") // BARU, PROSES, SELESAI
+  poin               Int      @default(0)
+  status             String   @default("BARU") // BARU, PROSES, SELESAI
   keterangan         String?
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa          Siswa           @relation(fields: [siswa_id], references: [id])
@@ -348,25 +349,25 @@ model PelanggaranSiswa {
 }
 
 model SupervisiGuru {
-  id                  String          @id @default(uuid())
+  id                  String   @id @default(uuid())
   tenant_id           String
   guru_id             String
   supervisor_id       String?
-  tahun_pelajaran_id String?
-  semester_id        String?
-  tanggal             DateTime        @db.Date
+  tahun_pelajaran_id  String?
+  semester_id         String?
+  tanggal             DateTime @db.Date
   mapel               String?
   kelas               String?
   jam_ke              Int?
-  status              String          @default("SCHEDULED") // SCHEDULED, COMPLETED
+  status              String   @default("SCHEDULED") // SCHEDULED, COMPLETED
   catatan             String?
   nilai               Int?
-  target_pembelajaran String?         @db.Text
+  target_pembelajaran String?  @db.Text
   nilai_self          Int?
-  catatan_self        String?         @db.Text
-  is_self_evaluated   Boolean         @default(false)
-  created_at          DateTime        @default(now())
-  updated_at          DateTime        @updatedAt
+  catatan_self        String?  @db.Text
+  is_self_evaluated   Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Guru           Guru            @relation(fields: [guru_id], references: [id])
@@ -477,24 +478,24 @@ model User {
   Tenant                    Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   organizationalAssignments OrganizationalAssignment[]
 
-  Member               Member?
-  SiswaDocument        SiswaDocument[]
-  SarprasLoan          SarprasLoan[]          @relation("Peminjam")
-  KonselingSiswa       KonselingSiswa[]
-  SarprasLoanApproved  SarprasLoan[]          @relation("Approver")
-  createdInternalThreads InternalThread[]     @relation("InternalThreadCreator")
-  internalParticipants   InternalParticipant[]
-  internalMessages       InternalMessage[]
-  receivedDispositions SuratMasuk[]
-  createdLetters       SuratKeluar[]          @relation("createdLetters")
-  approvedLetters      SuratKeluar[]          @relation("approvedLetters")
-  templateSuratCreator TemplateSurat[]        @relation("templateSuratCreator")
-  guruBkBookings       BkKonsultasiBooking[]  @relation("guruBkBookings")
-  GuruDocument         GuruDocument[]
-  permohonanIzinDiajukan PermohonanIzinSiswa[] @relation("PermohonanIzinDiajukan")
-  permohonanIzinDiproses PermohonanIzinSiswa[] @relation("PermohonanIzinDiproses")
-  permohonanIzinGuruDiajukan PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiajukan")
-  permohonanIzinGuruDiproses PermohonanIzinGuru[] @relation("PermohonanIzinGuruDiproses")
+  Member                     Member?
+  SiswaDocument              SiswaDocument[]
+  SarprasLoan                SarprasLoan[]         @relation("Peminjam")
+  KonselingSiswa             KonselingSiswa[]
+  SarprasLoanApproved        SarprasLoan[]         @relation("Approver")
+  createdInternalThreads     InternalThread[]      @relation("InternalThreadCreator")
+  internalParticipants       InternalParticipant[]
+  internalMessages           InternalMessage[]
+  receivedDispositions       SuratMasuk[]
+  createdLetters             SuratKeluar[]         @relation("createdLetters")
+  approvedLetters            SuratKeluar[]         @relation("approvedLetters")
+  templateSuratCreator       TemplateSurat[]       @relation("templateSuratCreator")
+  guruBkBookings             BkKonsultasiBooking[] @relation("guruBkBookings")
+  GuruDocument               GuruDocument[]
+  permohonanIzinDiajukan     PermohonanIzinSiswa[] @relation("PermohonanIzinDiajukan")
+  permohonanIzinDiproses     PermohonanIzinSiswa[] @relation("PermohonanIzinDiproses")
+  permohonanIzinGuruDiajukan PermohonanIzinGuru[]  @relation("PermohonanIzinGuruDiajukan")
+  permohonanIzinGuruDiproses PermohonanIzinGuru[]  @relation("PermohonanIzinGuruDiproses")
   RefreshTokens              RefreshToken[]
 
   @@unique([tenant_id, email])
@@ -753,7 +754,7 @@ model Jurusan {
   singkatan             String?
   warna                 String?
   program_keahlian_id   String? // FK ke ProgramKeahlian (Konsentrasi Keahlian)
-  durasi_jurusan        String? @default("DEFAULT_SEKOLAH") // DEFAULT_SEKOLAH | 3_TAHUN | 4_TAHUN
+  durasi_jurusan        String?                    @default("DEFAULT_SEKOLAH") // DEFAULT_SEKOLAH | 3_TAHUN | 4_TAHUN
   created_at            DateTime                   @default(now())
   updated_at            DateTime                   @updatedAt
   Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -878,13 +879,14 @@ model Guru {
   IzinKeluarSiswa       IzinKeluarSiswa[]
   GuruDocument          GuruDocument[]
   AbsenGerbangGuru      AbsenGerbangGuru[]
+  LogAksesGerbang       LogAksesGerbang[]
   GuruTimeOff           GuruTimeOff[]
   JadwalPiketGuru       JadwalPiketGuru[]
   JadwalKontrakKbm      JadwalKontrakKbm[]
   PermohonanIzinGuru    PermohonanIzinGuru[]
   PermohonanInvalGuru   PermohonanIzinGuru[]       @relation("GuruInvalPermohonan")
 
-  Member Member?
+  Member                 Member?
   JurnalWaliKelas        JurnalWaliKelas[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
 
@@ -1065,6 +1067,7 @@ model Siswa {
   created_at          DateTime              @default(now())
   updated_at          DateTime              @updatedAt
   AbsenGerbangSiswa   AbsenGerbangSiswa[]
+  LogAksesGerbang     LogAksesGerbang[]
   OrangTuaSiswa       OrangTuaSiswa[]
   Kelas               Kelas?                @relation(fields: [kelas_id], references: [id])
   Jurusan             Jurusan?              @relation(fields: [jurusan_id], references: [id])
@@ -1268,30 +1271,30 @@ model AbsenSiswa {
 }
 
 model Sekolah {
-  id             String        @id @default(uuid())
-  tenant_id      String
-  nama           String
-  npsn           String?
-  nss            String?
-  kode_sekolah   String?
-  jenjang        String?
-  durasi_smk     String?       @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
-  kurikulum      String?       @default("MERDEKA")
-  akreditasi     String?
-  alamat         String?
-  kelurahan      String?
-  kecamatan      String?
-  kota           String?
-  provinsi       String?
-  kode_pos       String?
-  telepon        String?
-  email          String?
-  website        String?
-  kepala_sekolah String?
-  nip_kepala     String?
-  logo_url       String?
-  tahun_berdiri  Int?
-  timezone       String?
+  id                     String        @id @default(uuid())
+  tenant_id              String
+  nama                   String
+  npsn                   String?
+  nss                    String?
+  kode_sekolah           String?
+  jenjang                String?
+  durasi_smk             String?       @default("3_TAHUN") // 3_TAHUN | 4_TAHUN
+  kurikulum              String?       @default("MERDEKA")
+  akreditasi             String?
+  alamat                 String?
+  kelurahan              String?
+  kecamatan              String?
+  kota                   String?
+  provinsi               String?
+  kode_pos               String?
+  telepon                String?
+  email                  String?
+  website                String?
+  kepala_sekolah         String?
+  nip_kepala             String?
+  logo_url               String?
+  tahun_berdiri          Int?
+  timezone               String?
   latitude               Float?
   longitude              Float?
   sk_wali_kelas_template Json?
@@ -1388,28 +1391,28 @@ model AbsenGerbangSiswa {
 }
 
 model AbsenGerbangGuru {
-  id                          String      @default(uuid())
+  id                          String    @default(uuid())
   tenant_id                   String
   sesi_gerbang_id             String
   guru_id                     String
-  arah                        String      // 'GERBANG_DATANG' | 'GERBANG_PULANG'
-  status                      String      @default("HADIR") // HADIR, TERLAMBAT, ALPA, SAKIT, IZIN
-  waktu_tap                   DateTime?   @db.Timestamptz
-  is_terlambat                Boolean     @default(false)
+  arah                        String // 'GERBANG_DATANG' | 'GERBANG_PULANG'
+  status                      String    @default("HADIR") // HADIR, TERLAMBAT, ALPA, SAKIT, IZIN
+  waktu_tap                   DateTime? @db.Timestamptz
+  is_terlambat                Boolean   @default(false)
   menit_keterlambatan         Int?
-  poin_kehadiran              Int         @default(0)
+  poin_kehadiran              Int       @default(0)
   tahun_pelajaran_id_snapshot String?
-  verification_method         String?     // 'RFID' | 'FACE' | 'MANUAL' | 'OFFLINE_SYNC'
+  verification_method         String? // 'RFID' | 'FACE' | 'MANUAL' | 'OFFLINE_SYNC'
   verification_score          Float?
   verification_threshold      Float?
   verification_result         Boolean?
   catatan                     String?
-  created_at                  DateTime    @default(now()) @db.Timestamptz
-  updated_at                  DateTime    @updatedAt @db.Timestamptz
+  created_at                  DateTime  @default(now()) @db.Timestamptz
+  updated_at                  DateTime  @updatedAt @db.Timestamptz
 
-  SesiGerbang                 SesiGerbang @relation(fields: [sesi_gerbang_id], references: [id])
-  Guru                        Guru        @relation(fields: [guru_id], references: [id])
-  Tenant                      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SesiGerbang SesiGerbang @relation(fields: [sesi_gerbang_id], references: [id])
+  Guru        Guru        @relation(fields: [guru_id], references: [id])
+  Tenant      Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
   @@id([id, created_at])
   @@unique([sesi_gerbang_id, guru_id, arah])
@@ -1417,6 +1420,61 @@ model AbsenGerbangGuru {
   @@index([tenant_id, sesi_gerbang_id, guru_id, arah])
   @@index([tenant_id, guru_id, arah])
   @@index([tenant_id, created_at])
+}
+
+model LogAksesGerbang {
+  id        String   @id @default(uuid())
+  tenant_id String
+  tanggal   DateTime @db.Date
+
+  // === Siapa yang masuk ===
+  tipe_orang String  @default("SISWA") // 'SISWA' | 'GURU' | 'TAMU'
+  siswa_id   String?
+  guru_id    String?
+
+  // Snapshot identitas (denormalisasi untuk query cepat)
+  nama_snapshot  String?
+  kelas_snapshot String?
+
+  // Khusus Tamu
+  nama_tamu      String?
+  instansi_tamu  String?
+  keperluan_tamu String?
+  kontak_tamu    String?
+
+  // === Detail akses ===
+  arah              String // 'MASUK' | 'KELUAR'
+  waktu_akses       DateTime @db.Timestamptz
+  metode_verifikasi String? // 'RFID' | 'MANUAL' | 'FACE' | 'QR' | 'FORM_TAMU'
+  token_input       String?
+
+  // === Konteks hari non-sekolah ===
+  alasan_non_sekolah String?
+  catatan            String?
+
+  // === Buku Tamu: Umum vs Khusus (Kedinasan / VIP) ===
+  kategori_buku     String   @default("UMUM") // 'UMUM' | 'KHUSUS'
+  jabatan_tamu      String?  // Jabatan tamu dinas (misal: Pengawas Pembina)
+  pejabat_dituju    String?  // Pihak yang ditemui (misal: Kepala Sekolah)
+  nomor_surat_tugas String?  // No. Surat Tugas Kedinasan
+  pesan_kesan       String?  // Saran / masukan / pesan kesan tamu dinas
+  titik_pencatat    String   @default("GERBANG") // 'GERBANG' | 'TATA_USAHA'
+
+  // === Siapa yang merekam ===
+  recorded_by String?
+
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa  Siswa? @relation(fields: [siswa_id], references: [id], onDelete: SetNull)
+  Guru   Guru?  @relation(fields: [guru_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id, tanggal])
+  @@index([tenant_id, created_at])
+  @@index([tenant_id, siswa_id])
+  @@index([tenant_id, guru_id])
+  @@index([tenant_id, tipe_orang])
+  @@map("log_akses_gerbang")
 }
 
 model SiswaFaceTemplate {
@@ -1471,16 +1529,16 @@ model Config {
 
 // Global Master Data Wilayah Indonesia (Cross-Tenant)
 model RefWilayah {
-  kode        String       @id @db.VarChar(20)
-  nama        String       @db.VarChar(150)
-  tingkat     Int          // 1 = Provinsi, 2 = Kabupaten/Kota, 3 = Kecamatan, 4 = Kelurahan/Desa
-  parent_kode String?      @db.VarChar(20)
-  
-  Parent      RefWilayah?  @relation("WilayahHierarchy", fields: [parent_kode], references: [kode], onDelete: Cascade)
-  Children    RefWilayah[] @relation("WilayahHierarchy")
+  kode        String  @id @db.VarChar(20)
+  nama        String  @db.VarChar(150)
+  tingkat     Int // 1 = Provinsi, 2 = Kabupaten/Kota, 3 = Kecamatan, 4 = Kelurahan/Desa
+  parent_kode String? @db.VarChar(20)
 
-  created_at  DateTime     @default(now())
-  updated_at  DateTime     @updatedAt
+  Parent   RefWilayah?  @relation("WilayahHierarchy", fields: [parent_kode], references: [kode], onDelete: Cascade)
+  Children RefWilayah[] @relation("WilayahHierarchy")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([tingkat])
   @@index([parent_kode])
@@ -1742,7 +1800,7 @@ model PlanChangeRequest {
 }
 
 model GuruMapel {
-  id                 String          @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenant_id          String
   guru_id            String
   mapel_id           String
@@ -1750,7 +1808,7 @@ model GuruMapel {
   jurusan_id         String?
   tahun_pelajaran_id String?
   semester_id        String?
-  created_at         DateTime        @default(now())
+  created_at         DateTime @default(now())
 
   Guru           Guru            @relation(fields: [guru_id], references: [id])
   Mapel          Mapel           @relation(fields: [mapel_id], references: [id])
@@ -1770,15 +1828,15 @@ model GuruMapel {
 }
 
 model GuruTimeOff {
-  id                 String          @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenant_id          String
   guru_id            String
   tahun_pelajaran_id String?
   semester_id        String?
   hari               Hari
-  slot_index         Int?            // null = Full Day Time-Off, atau 1..10 untuk jam tertentu
+  slot_index         Int? // null = Full Day Time-Off, atau 1..10 untuk jam tertentu
   keterangan         String?
-  created_at         DateTime        @default(now())
+  created_at         DateTime @default(now())
 
   Guru           Guru            @relation(fields: [guru_id], references: [id], onDelete: Cascade)
   Tenant         Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -2293,7 +2351,7 @@ model MasterRuangan {
 }
 
 model JadwalKontrakKbm {
-  id                 String   @id @default(uuid())
+  id                 String  @id @default(uuid())
   tenant_id          String
   tahun_pelajaran_id String
   semester_id        String
@@ -2302,16 +2360,16 @@ model JadwalKontrakKbm {
   mapel_id           String?
   ruangan_id         String?
 
-  jumlah_kartu       Int      @default(1)
-  durasi_jp          Int      @default(2)
-  total_jp           Int      @default(2)
-  aturan_blok        String   @default("DOBEL") // TUNGGAL, DOBEL, TIGA, EMPAT, BLOK_PENUH
-  is_pembiasaan      Boolean  @default(false)
+  jumlah_kartu  Int     @default(1)
+  durasi_jp     Int     @default(2)
+  total_jp      Int     @default(2)
+  aturan_blok   String  @default("DOBEL") // TUNGGAL, DOBEL, TIGA, EMPAT, BLOK_PENUH
+  is_pembiasaan Boolean @default(false)
 
-  asc_lesson_id      String?
+  asc_lesson_id String?
 
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
@@ -2348,20 +2406,20 @@ model AscImportLog {
 }
 
 model JadwalPiketGuru {
-  id                 String         @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenant_id          String
   tahun_pelajaran_id String
   semester_id        String
   guru_id            String
   hari               Hari
-  pos_piket          String?        @default("Piket Umum")
-  slot_mulai         Int?           @default(1)
-  slot_selesai       Int?           @default(10)
+  pos_piket          String?  @default("Piket Umum")
+  slot_mulai         Int?     @default(1)
+  slot_selesai       Int?     @default(10)
   jam_mulai          String?
   jam_selesai        String?
   catatan            String?
-  created_at         DateTime       @default(now()) @db.Timestamptz
-  updated_at         DateTime       @updatedAt @db.Timestamptz
+  created_at         DateTime @default(now()) @db.Timestamptz
+  updated_at         DateTime @updatedAt @db.Timestamptz
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
@@ -2419,17 +2477,17 @@ model AnggotaKegiatanEskul {
 }
 
 model StrukturKurikulum {
-  id                 String    @id @default(uuid())
+  id                 String   @id @default(uuid())
   tenant_id          String
   mapel_id           String
   tahun_pelajaran_id String
   semester_id        String?
   tingkat            Int
   jurusan_id         String?
-  jp_per_minggu      Int       @default(2)
+  jp_per_minggu      Int      @default(2)
   kelompok           String? // Nasional, Kejuruan, Pilihan
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   Tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
@@ -2746,7 +2804,7 @@ model CoopStockIn {
   shippingFee   Decimal  @default(0) // Ongkos kirim (dicatat sebagai beban operasional terpisah)
 
   items        CoopStockInItem[]
-  CoopSupplier CoopSupplier? @relation(fields: [supplierId], references: [id])
+  CoopSupplier CoopSupplier?     @relation(fields: [supplierId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2766,7 +2824,7 @@ model CoopStockInItem {
 model CoopSupplier {
   id       String  @id @default(uuid())
   tenantId String
-  name     String  // Nama supplier / toko / agen
+  name     String // Nama supplier / toko / agen
   contact  String? // Nama kontak person
   phone    String? // Nomor telepon / WhatsApp
   email    String? // Email supplier
@@ -3141,11 +3199,11 @@ model MitraIndustri {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  Tenant        Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  SiswaPkl      SiswaPkl[]
-  MoUHistory    HubinMoUHistory[]
-  Lowongan      HubinLowongan[]
-  TefaOrder     HubinTefaOrder[]
+  Tenant              Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  SiswaPkl            SiswaPkl[]
+  MoUHistory          HubinMoUHistory[]
+  Lowongan            HubinLowongan[]
+  TefaOrder           HubinTefaOrder[]
   SertifikatUkk       SertifikatUkk[]
   SettingDeskripsiPkl SettingDeskripsiPkl[]
 
@@ -3325,21 +3383,21 @@ model SiswaPkl {
   hard_alur_bisnis       Float?
 
   // Aspek Nilai Soft Skill (0-100)
-  soft_kedisiplinan         Float?
+  soft_kedisiplinan        Float?
   soft_kerajinan_inisiatif Float?
-  soft_kerjasama            Float?
-  soft_kejujuran            Float?
-  soft_tanggung_jawab       Float?
+  soft_kerjasama           Float?
+  soft_kejujuran           Float?
+  soft_tanggung_jawab      Float?
 
   // Kalkulasi & Output Rapor / Sertifikat PKL
   nilai_akhir_pkl  Float?
   predikat_pkl     String?
-  catatan_pkl      String?  @db.Text
-  sakit_pkl        Int?     @default(0)
-  izin_pkl         Int?     @default(0)
-  alpa_pkl         Int?     @default(0)
+  catatan_pkl      String? @db.Text
+  sakit_pkl        Int?    @default(0)
+  izin_pkl         Int?    @default(0)
+  alpa_pkl         Int?    @default(0)
   nomor_sertifikat String?
-  deskripsi_tp     String?  @db.Text
+  deskripsi_tp     String? @db.Text
 
   // Geofencing Override (Untuk Branch Office / Lokasi Khusus per Siswa)
   lat_override         Float?
@@ -3736,10 +3794,10 @@ model WhatsappConfig {
 // ==========================================
 
 enum InternalThreadType {
-  DIRECT       // 1-on-1 Chat
-  GROUP        // Group Chat (Guru Kelas, Tim Panitia, dll)
-  DISPOSISI    // Disposisi Tugas / Laporan Piket
-  KONSULTASI   // Konsultasi Walas / BK / Akademik
+  DIRECT // 1-on-1 Chat
+  GROUP // Group Chat (Guru Kelas, Tim Panitia, dll)
+  DISPOSISI // Disposisi Tugas / Laporan Piket
+  KONSULTASI // Konsultasi Walas / BK / Akademik
 }
 
 enum InternalThreadCategory {
@@ -3771,20 +3829,20 @@ model InternalThread {
   id              String                 @id @default(uuid())
   tenant_id       String
   type            InternalThreadType     @default(DIRECT)
-  title           String?                // Opsional untuk Direct, wajib untuk Disposisi/Topik
+  title           String? // Opsional untuk Direct, wajib untuk Disposisi/Topik
   category        InternalThreadCategory @default(UMUM)
   priority        InternalThreadPriority @default(NORMAL)
   status          InternalThreadStatus   @default(ACTIVE)
   is_confidential Boolean                @default(false) // Flag kerahasiaan konseling BK
-  context_ref     Json?                  // Tautan konteks: { type: 'SISWA' | 'SESI_KBM' | 'PELANGGARAN', id: string, label: string }
+  context_ref     Json? // Tautan konteks: { type: 'SISWA' | 'SESI_KBM' | 'PELANGGARAN', id: string, label: string }
   created_by_id   String
   created_at      DateTime               @default(now())
   updated_at      DateTime               @updatedAt
 
-  Tenant          Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Creator         User                   @relation("InternalThreadCreator", fields: [created_by_id], references: [id])
-  Participants    InternalParticipant[]
-  Messages        InternalMessage[]
+  Tenant       Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Creator      User                  @relation("InternalThreadCreator", fields: [created_by_id], references: [id])
+  Participants InternalParticipant[]
+  Messages     InternalMessage[]
 
   @@index([tenant_id, created_at])
   @@index([tenant_id, type])
@@ -3794,19 +3852,19 @@ model InternalThread {
 }
 
 model InternalParticipant {
-  id              String                 @id @default(uuid())
-  tenant_id       String
-  thread_id       String
-  user_id         String
-  role_label      String?                // e.g. "Wali Kelas", "Guru Piket", "Siswa"
-  last_read_at    DateTime?
-  is_muted        Boolean                @default(false)
-  created_at      DateTime               @default(now())
-  updated_at      DateTime               @updatedAt
+  id           String    @id @default(uuid())
+  tenant_id    String
+  thread_id    String
+  user_id      String
+  role_label   String? // e.g. "Wali Kelas", "Guru Piket", "Siswa"
+  last_read_at DateTime?
+  is_muted     Boolean   @default(false)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
-  Tenant          Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Thread          InternalThread         @relation(fields: [thread_id], references: [id], onDelete: Cascade)
-  User            User                   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Thread InternalThread @relation(fields: [thread_id], references: [id], onDelete: Cascade)
+  User   User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([thread_id, user_id])
   @@index([tenant_id, user_id])
@@ -3814,18 +3872,18 @@ model InternalParticipant {
 }
 
 model InternalMessage {
-  id              String                 @id @default(uuid())
+  id              String   @id @default(uuid())
   tenant_id       String
   thread_id       String
   sender_id       String
-  content         String                 @db.Text
-  attachments     Json?                  // Array of { type: 'IMAGE' | 'DOCUMENT' | 'AUDIO_VOICE_NOTE', url: string, name: string, size: number, duration?: number }
-  is_system_event Boolean                @default(false) // e.g. "Status disposisi diubah menjadi SELESAI"
-  created_at      DateTime               @default(now())
+  content         String   @db.Text
+  attachments     Json? // Array of { type: 'IMAGE' | 'DOCUMENT' | 'AUDIO_VOICE_NOTE', url: string, name: string, size: number, duration?: number }
+  is_system_event Boolean  @default(false) // e.g. "Status disposisi diubah menjadi SELESAI"
+  created_at      DateTime @default(now())
 
-  Tenant          Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Thread          InternalThread         @relation(fields: [thread_id], references: [id], onDelete: Cascade)
-  Sender          User                   @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+  Tenant Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Thread InternalThread @relation(fields: [thread_id], references: [id], onDelete: Cascade)
+  Sender User           @relation(fields: [sender_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id, thread_id, created_at])
   @@map("internal_messages")
@@ -4149,25 +4207,25 @@ model JenisNilaiMaster {
 }
 
 model NilaiSiswa {
-  id                  String            @id @default(uuid())
+  id                  String   @id @default(uuid())
   tenant_id           String
   siswa_id            String
   mapel_id            String
   tahun_pelajaran_id  String
   semester_id         String
   jenis_nilai_id      String?
-  nilai               Float             @default(0)
+  nilai               Float    @default(0)
   sumatif_1           Float?
   sumatif_2           Float?
   sumatif_3           Float?
   rata_rata_sumatif   Float?
   nilai_akhir_sumatif Float?
   nilai_rapor_final   Float?
-  capaian_kompetensi  String?           @db.Text
-  catatan_deskripsi   String?           @db.Text
+  capaian_kompetensi  String?  @db.Text
+  catatan_deskripsi   String?  @db.Text
   sesi_absensi_id     String?
-  created_at          DateTime          @default(now())
-  updated_at          DateTime          @updatedAt
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   Tenant         Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Siswa          Siswa             @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
@@ -4331,19 +4389,19 @@ model PerangkatAjar {
 // ─── Bahan Ajar Preset (Platform-Level Global Library) ───────────────────────
 model BahanAjarPreset {
   id               String   @id @default(uuid())
-  kode_mapel_ref   String   // e.g. "B.INDONESIA", "MATEMATIKA"
-  nama_mapel_ref   String   // e.g. "Bahasa Indonesia"
-  fase             String   // "E"
-  tingkat          Int?     // 10
-  judul_modul      String   // "Modul 1: Mengungkap Fakta Alam Secara Objektif"
+  kode_mapel_ref   String // e.g. "B.INDONESIA", "MATEMATIKA"
+  nama_mapel_ref   String // e.g. "Bahasa Indonesia"
+  fase             String // "E"
+  tingkat          Int? // 10
+  judul_modul      String // "Modul 1: Mengungkap Fakta Alam Secara Objektif"
   deskripsi        String?  @db.Text
   total_alokasi_jp Int      @default(18)
   total_pertemuan  Int      @default(6)
-  pendekatan       String?  // e.g. "Deep Learning (Mindful, Meaningful, Joyful)"
-  sumber           String?  // e.g. "modulguruku.com / Kemendikbud 2024"
+  pendekatan       String? // e.g. "Deep Learning (Mindful, Meaningful, Joyful)"
+  sumber           String? // e.g. "modulguruku.com / Kemendikbud 2024"
   url_sumber       String?
   tags             String[] // ["Fase E", "Kelas 10", "LHO", "Kurikulum Merdeka"]
-  konten_json      Json     // Rincian per pertemuan (Apersepsi, Pertanyaan Pemantik, Teks Bacaan, LKPD, dsb)
+  konten_json      Json // Rincian per pertemuan (Apersepsi, Pertanyaan Pemantik, Teks Bacaan, LKPD, dsb)
   status           String   @default("PUBLISHED") // "DRAFT" | "PUBLISHED"
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
@@ -4360,9 +4418,9 @@ model AlurTujuanPembelajaran {
   mapel_id           String
   tahun_pelajaran_id String
   semester_id        String
-  fase               String   // "A", "B", "C", "D", "E", "F"
-  tingkat            Int?     // 10, 11, 12
-  nama_atp           String   // e.g. "ATP Dasar-dasar Otomotif Fase E"
+  fase               String // "A", "B", "C", "D", "E", "F"
+  tingkat            Int? // 10, 11, 12
+  nama_atp           String // e.g. "ATP Dasar-dasar Otomotif Fase E"
   deskripsi          String?  @db.Text
   total_alokasi_jp   Int      @default(0)
   status             String   @default("PUBLISHED") // "DRAFT", "PUBLISHED"
@@ -4383,17 +4441,17 @@ model AlurTujuanPembelajaran {
 }
 
 model TujuanPembelajaran {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  atp_id             String
-  kode_tp            String   // e.g. "TP 1.1", "TP 1.2"
-  judul_materi       String   // e.g. "Pengenalan Komponen Motor Bakar"
-  deskripsi_tp       String   @db.Text // Capaian Pembelajaran & Indikator Kompetensi
-  alokasi_jp         Int      @default(2)
-  urutan             Int      @default(1)
-  is_completed       Boolean  @default(false)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  id           String   @id @default(uuid())
+  tenant_id    String
+  atp_id       String
+  kode_tp      String // e.g. "TP 1.1", "TP 1.2"
+  judul_materi String // e.g. "Pengenalan Komponen Motor Bakar"
+  deskripsi_tp String   @db.Text // Capaian Pembelajaran & Indikator Kompetensi
+  alokasi_jp   Int      @default(2)
+  urutan       Int      @default(1)
+  is_completed Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   Tenant                 Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   AlurTujuanPembelajaran AlurTujuanPembelajaran @relation(fields: [atp_id], references: [id], onDelete: Cascade)
@@ -4495,13 +4553,13 @@ model GlobalJurusanPreset {
 
 model GlobalTopikPreset {
   id          String   @id @default(uuid())
-  jenjang     String   // PAUD, SD, MI, SMP, MTs, SMA, MA, SMK, MAK, SLB, ALL
-  nama_mapel  String   // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
-  kode_mapel  String?  // Matching kode_mapel di GlobalMapelPreset / GlobalKurikulumStandard
-  fase        String?  // PAUD, A, B, C, D, E, F
-  tingkat     Int?     // Kelas 1 - 12
-  judul_topik String   // Nama topik / materi pokok
-  deskripsi   String?  // Ringkasan cakupan materi (opsional)
+  jenjang     String // PAUD, SD, MI, SMP, MTs, SMA, MA, SMK, MAK, SLB, ALL
+  nama_mapel  String // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
+  kode_mapel  String? // Matching kode_mapel di GlobalMapelPreset / GlobalKurikulumStandard
+  fase        String? // PAUD, A, B, C, D, E, F
+  tingkat     Int? // Kelas 1 - 12
+  judul_topik String // Nama topik / materi pokok
+  deskripsi   String? // Ringkasan cakupan materi (opsional)
   kategori    String   @default("UMUM") // UMUM, KEJURUAN, P5, MULOK
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -4511,18 +4569,17 @@ model GlobalTopikPreset {
   @@index([kode_mapel])
 }
 
-
 model GlobalPerangkatAjarLibrary {
   id              String   @id @default(uuid())
-  jenjang         String   // PAUD, SD, SMP, SMA, SMK, SLB, ALL
-  nama_mapel      String   // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
+  jenjang         String // PAUD, SD, SMP, SMA, SMK, SLB, ALL
+  nama_mapel      String // e.g. "Matematika", "IPAS", "Rekayasa Perangkat Lunak", "P5"
   kode_mapel      String?
-  tingkat         Int?     // Kelas 1 - 12
-  fase            String?  // PAUD, A, B, C, D, E, F
-  jenis           String   // MODUL_AJAR, ATP, MODUL_PROJEK, PROTA, PROMES, KKTP
-  judul           String   // Judul dokumen template
-  topik           String?  // Topik / materi pokok
-  file_url        String   // Path file PDF pre-generated
+  tingkat         Int? // Kelas 1 - 12
+  fase            String? // PAUD, A, B, C, D, E, F
+  jenis           String // MODUL_AJAR, ATP, MODUL_PROJEK, PROTA, PROMES, KKTP
+  judul           String // Judul dokumen template
+  topik           String? // Topik / materi pokok
+  file_url        String // Path file PDF pre-generated
   html_content    String?  @db.Text // Content HTML master untuk kustomisasi
   downloads_count Int      @default(0)
   created_at      DateTime @default(now())
@@ -4530,8 +4587,6 @@ model GlobalPerangkatAjarLibrary {
 
   @@index([jenjang, nama_mapel, jenis])
 }
-
-
 
 // =============================================================================
 // KALENDER AKADEMIK � Modul Kurikulum
@@ -4685,8 +4740,8 @@ model JurnalWaliKelas {
   kelas_id       String
   guru_id        String
   tanggal        DateTime @db.Date
-  jam            String?  @db.VarChar(20)  // e.g. "14:30 WIB"
-  kategori       String   @db.VarChar(50)  // PEMBINAAN_KELAS, KOORDINASI_BK, RAPAT_ORTU, KASUS_SELESAI, LAINNYA
+  jam            String?  @db.VarChar(20) // e.g. "14:30 WIB"
+  kategori       String   @db.VarChar(50) // PEMBINAAN_KELAS, KOORDINASI_BK, RAPAT_ORTU, KASUS_SELESAI, LAINNYA
   judul          String
   konten         String   @db.Text
   tags           String[]
@@ -4709,26 +4764,26 @@ model JurnalWaliKelas {
 // Permohonan izin yang diajukan orang tua via app/form, disetujui oleh Wali Kelas.
 // Berbeda dari IzinKeluarSiswa (piket) — ini adalah permohonan akademik resmi.
 model PermohonanIzinSiswa {
-  id                String    @id @default(uuid())
+  id                String   @id @default(uuid())
   tenant_id         String
   siswa_id          String
-  tipe_izin         String    @db.VarChar(30)  // SAKIT, IZIN_KELUARGA, DISPENSASI, PULANG_AWAL
-  tanggal_mulai     DateTime  @db.Date
-  tanggal_selesai   DateTime  @db.Date
-  alasan            String    @db.Text
-  status            String    @default("PENDING") @db.VarChar(20)  // PENDING, DISETUJUI, DITOLAK
-  diajukan_oleh     String    // user_id (ortu atau guru yang input manual)
-  diproses_oleh     String?   // user_id wali kelas yang approve/tolak
-  catatan_penolakan String?   @db.Text
-  attachment_url    String?   // URL file lampiran
-  attachment_type   String?   @db.VarChar(30)  // doctor_note, family_letter, dispensasi
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
+  tipe_izin         String   @db.VarChar(30) // SAKIT, IZIN_KELUARGA, DISPENSASI, PULANG_AWAL
+  tanggal_mulai     DateTime @db.Date
+  tanggal_selesai   DateTime @db.Date
+  alasan            String   @db.Text
+  status            String   @default("PENDING") @db.VarChar(20) // PENDING, DISETUJUI, DITOLAK
+  diajukan_oleh     String // user_id (ortu atau guru yang input manual)
+  diproses_oleh     String? // user_id wali kelas yang approve/tolak
+  catatan_penolakan String?  @db.Text
+  attachment_url    String? // URL file lampiran
+  attachment_type   String?  @db.VarChar(30) // doctor_note, family_letter, dispensasi
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
-  Tenant            Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Siswa             Siswa     @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
-  Pengaju           User      @relation("PermohonanIzinDiajukan", fields: [diajukan_oleh], references: [id])
-  Pemroses          User?     @relation("PermohonanIzinDiproses", fields: [diproses_oleh], references: [id])
+  Tenant   Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa    Siswa  @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  Pengaju  User   @relation("PermohonanIzinDiajukan", fields: [diajukan_oleh], references: [id])
+  Pemroses User?  @relation("PermohonanIzinDiproses", fields: [diproses_oleh], references: [id])
 
   @@index([tenant_id])
   @@index([siswa_id])
@@ -4740,38 +4795,38 @@ model PermohonanIzinSiswa {
 // ── Permohonan Izin / Dinas Guru ──────────────────────────────────────────────
 // Permohonan izin/dinas yang diajukan oleh guru atau diinput piket, disetujui oleh Kepsek/Kurikulum/Guru Piket.
 model PermohonanIzinGuru {
-  id                 String    @id @default(uuid())
-  tenant_id          String
-  guru_id            String
-  tipe_izin          String    @db.VarChar(30) // SAKIT, IZIN_PRIBADI, DINAS_LUAR, CUTI, LAINNYA
-  tipe_durasi        String    @default("SEHARIAN") @db.VarChar(20) // SEHARIAN, MULTI_HARI, SEBAGIAN_SESI
-  tanggal_mulai      DateTime  @db.Date
-  tanggal_selesai    DateTime  @db.Date
-  jam_mulai          String?   @db.VarChar(10) // "07:15" jika izin sebagian sesi
-  jam_selesai        String?   @db.VarChar(10) // "11:40"
-  alasan             String    @db.Text
-  attachment_url     String?   // Surat tugas / dokter
-  attachment_type    String?   @db.VarChar(50) // surat_tugas, surat_dokter, keterangan
-  
+  id              String   @id @default(uuid())
+  tenant_id       String
+  guru_id         String
+  tipe_izin       String   @db.VarChar(30) // SAKIT, IZIN_PRIBADI, DINAS_LUAR, CUTI, LAINNYA
+  tipe_durasi     String   @default("SEHARIAN") @db.VarChar(20) // SEHARIAN, MULTI_HARI, SEBAGIAN_SESI
+  tanggal_mulai   DateTime @db.Date
+  tanggal_selesai DateTime @db.Date
+  jam_mulai       String?  @db.VarChar(10) // "07:15" jika izin sebagian sesi
+  jam_selesai     String?  @db.VarChar(10) // "11:40"
+  alasan          String   @db.Text
+  attachment_url  String? // Surat tugas / dokter
+  attachment_type String?  @db.VarChar(50) // surat_tugas, surat_dokter, keterangan
+
   // ── FITUR PENUGASAN KELAS KOSONG ──
-  instruksi_tugas    String?   @db.Text // Instruksi tugas/materi yang ditinggalkan guru
-  file_tugas_url     String?   // File lembar kerja / PDF modul tugas
-  tugas_per_kelas    Json?     // Array rincian tugas spesifik per kelas: [{ kelas_id, mapel_id, instruksi, file_url }]
+  instruksi_tugas String? @db.Text // Instruksi tugas/materi yang ditinggalkan guru
+  file_tugas_url  String? // File lembar kerja / PDF modul tugas
+  tugas_per_kelas Json? // Array rincian tugas spesifik per kelas: [{ kelas_id, mapel_id, instruksi, file_url }]
 
-  status             String    @default("PENDING") @db.VarChar(20) // PENDING, DISETUJUI, DITOLAK, DIBATALKAN
-  guru_inval_id      String?   // ID Guru pengganti (Inval) yang ditugaskan piket/kurikulum
-  diajukan_oleh      String    // user_id pengaju
-  diproses_oleh      String?   // user_id pemroses (Kepsek / Kurikulum / Guru Piket)
-  diproses_at        DateTime?
-  catatan_penolakan  String?   @db.Text
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
+  status            String    @default("PENDING") @db.VarChar(20) // PENDING, DISETUJUI, DITOLAK, DIBATALKAN
+  guru_inval_id     String? // ID Guru pengganti (Inval) yang ditugaskan piket/kurikulum
+  diajukan_oleh     String // user_id pengaju
+  diproses_oleh     String? // user_id pemroses (Kepsek / Kurikulum / Guru Piket)
+  diproses_at       DateTime?
+  catatan_penolakan String?   @db.Text
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
 
-  Tenant             Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  Guru               Guru      @relation(fields: [guru_id], references: [id], onDelete: Cascade)
-  GuruInval          Guru?     @relation("GuruInvalPermohonan", fields: [guru_inval_id], references: [id])
-  Pengaju            User      @relation("PermohonanIzinGuruDiajukan", fields: [diajukan_oleh], references: [id])
-  Pemroses           User?     @relation("PermohonanIzinGuruDiproses", fields: [diproses_oleh], references: [id])
+  Tenant    Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Guru      Guru   @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  GuruInval Guru?  @relation("GuruInvalPermohonan", fields: [guru_inval_id], references: [id])
+  Pengaju   User   @relation("PermohonanIzinGuruDiajukan", fields: [diajukan_oleh], references: [id])
+  Pemroses  User?  @relation("PermohonanIzinGuruDiproses", fields: [diproses_oleh], references: [id])
 
   @@index([tenant_id])
   @@index([guru_id])
@@ -4815,7 +4870,6 @@ model MeetingMessage {
   message     String   @db.Text
   created_at  DateTime @default(now())
 
-
   Tenant  Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   Session MeetingSession? @relation(fields: [session_id], references: [id], onDelete: SetNull)
 
@@ -4830,18 +4884,18 @@ model MeetingMessage {
 // Guru di semua tenant dapat melihat dan mengimpor (clone) ke ATP personal mereka.
 model AtpTemplate {
   id               String   @id @default(uuid())
-  kode_mapel_ref   String   // Kode referensi mapel bebas, e.g. "MATEMATIKA", "B.INDONESIA"
-  nama_mapel_ref   String   // Nama tampilan mata pelajaran untuk UI
-  fase             String   // "A" | "B" | "C" | "D" | "E" | "F"
-  tingkat          Int?     // 10 / 11 / 12 (opsional, untuk SMK/SMA)
-  nama_template    String   // Judul template, e.g. "ATP Matematika Fase E - Kemendikbud 2024"
+  kode_mapel_ref   String // Kode referensi mapel bebas, e.g. "MATEMATIKA", "B.INDONESIA"
+  nama_mapel_ref   String // Nama tampilan mata pelajaran untuk UI
+  fase             String // "A" | "B" | "C" | "D" | "E" | "F"
+  tingkat          Int? // 10 / 11 / 12 (opsional, untuk SMK/SMA)
+  nama_template    String // Judul template, e.g. "ATP Matematika Fase E - Kemendikbud 2024"
   deskripsi        String?  @db.Text
-  sumber           String?  // e.g. "Kemendikbudristek", "MGMP Jabar", "Absenta Official"
-  url_sumber       String?  // URL referensi eksternal (opsional)
+  sumber           String? // e.g. "Kemendikbudristek", "MGMP Jabar", "Absenta Official"
+  url_sumber       String? // URL referensi eksternal (opsional)
   tags             String[] // e.g. ["SMK", "Fase E", "Kurikulum Merdeka"]
   total_alokasi_jp Int      @default(0)
   status           String   @default("DRAFT") // "DRAFT" | "PUBLISHED"
-  created_by       String?  // User ID SUPERADMIN yang membuat (opsional)
+  created_by       String? // User ID SUPERADMIN yang membuat (opsional)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
@@ -4857,8 +4911,8 @@ model AtpTemplate {
 model AtpTpTemplate {
   id              String   @id @default(uuid())
   atp_template_id String
-  kode_tp         String   // e.g. "TP 1.1", "TP 1.2"
-  judul_materi    String   // Judul topik/materi
+  kode_tp         String // e.g. "TP 1.1", "TP 1.2"
+  judul_materi    String // Judul topik/materi
   deskripsi_tp    String   @db.Text // Capaian Pembelajaran & indikator
   alokasi_jp      Int      @default(2)
   urutan          Int      @default(1)
@@ -4875,13 +4929,13 @@ model RefreshToken {
   id          String    @id @default(uuid())
   user_id     String
   tenant_id   String    @default("system")
-  token_hash  String    @unique   // SHA-256 hash dari token (tidak simpan raw token)
+  token_hash  String    @unique // SHA-256 hash dari token (tidak simpan raw token)
   expires_at  DateTime
-  revoked_at  DateTime?           // NULL = masih valid, NOT NULL = sudah di-revoke
+  revoked_at  DateTime? // NULL = masih valid, NOT NULL = sudah di-revoke
   created_at  DateTime  @default(now())
-  device_hint String?             // opsional: user agent / device info
+  device_hint String? // opsional: user agent / device info
 
-  User        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  User User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([token_hash])

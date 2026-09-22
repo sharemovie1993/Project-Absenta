@@ -644,7 +644,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const scopeKey = org?.is_unit_restricted && Array.isArray(org.unit_ids) 
       ? org.unit_ids.sort().join(',') 
       : (Array.isArray(org?.kelas_ids) && org.kelas_ids.length > 0 ? org.kelas_ids.sort().join(',') : 'all_units');
-    const cacheKey = `hubin:${tenantId}:pkl_rekap:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}:${scopeKey}`;
+    const cacheKey = `hubin:${tenantId}:pkl_rekap_v2:${params?.kelas_id || 'all'}:${params?.tahun_pelajaran_id || 'all'}:${params?.semester_id || 'all'}:${params?.pembimbing_id || 'all'}:${params?.status || 'all'}:${params?.search || 'all'}:${scopeKey}`;
 
     return await cacheService.getOrSet(
       cacheKey,
@@ -794,6 +794,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
                 nisn: true,
                 tempat_lahir: true,
                 tanggal_lahir: true,
+                foto: true,
                 kelas_id: true,
                 Kelas: { select: { id: true, nama_kelas: true } },
               },
@@ -1030,6 +1031,15 @@ export class HubinPenilaianService extends HubinCommonHelper {
     }
     if (!certDurasiConfig) {
       certDurasiConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_DURASI_JP' } });
+    }
+    if (!certTempatConfig) {
+      certTempatConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_TEMPAT_TERBIT' } });
+    }
+    if (!certPenandatanganNamaConfig) {
+      certPenandatanganNamaConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_PENANDATANGAN_NAMA' } });
+    }
+    if (!certPenandatanganNipConfig) {
+      certPenandatanganNipConfig = await prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'HUBIN_PKL_PENANDATANGAN_NIP' } });
     }
 
     const officialNomor = certNomorConfig?.value || '425.1/0630/SMKN1PLD-KCD Wil.IV';

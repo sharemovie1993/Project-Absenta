@@ -21,11 +21,32 @@ export function useDudiOptions(search?: string) {
   }, [query.data]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
-    return rawList.map((m: MitraIndustri) => ({
-      value: m.id,
-      label: `${m.nama}${m.bidang ? ` (${m.bidang})` : ''}`,
-      raw: m
-    }));
+    return rawList.map((m: MitraIndustri) => {
+      const terisi = m._count?.SiswaPkl ?? 0;
+      const kuota = m.kuota_pkl ?? 0;
+      let slotText = '';
+      if (kuota > 0) {
+        if (terisi >= kuota) {
+          slotText = ` • [PENUH: ${terisi}/${kuota}]`;
+        } else {
+          slotText = ` • (Sisa ${kuota - terisi}/${kuota} slot)`;
+        }
+      } else if (terisi > 0) {
+        slotText = ` • (${terisi} siswa aktif)`;
+      }
+
+      return {
+        value: m.id,
+        label: `${m.nama}${m.bidang ? ` (${m.bidang})` : ''}${slotText}`,
+        raw: {
+          ...m,
+          terisi,
+          kuota,
+          sisa: Math.max(0, kuota - terisi),
+          isPenuh: kuota > 0 && terisi >= kuota,
+        }
+      };
+    });
   }, [rawList]);
 
   return {

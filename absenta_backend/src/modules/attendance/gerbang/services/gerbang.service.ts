@@ -1,6 +1,7 @@
 import { gerbangTapEngineService } from './gerbang-tap-engine.service';
 import { gerbangFaceService } from './gerbang-face.service';
 import { gerbangSyncService } from './gerbang-sync.service';
+import { gerbangAuditService, GuestAccessInput, SecurityLogFilters } from './gerbang-audit.service';
 import { GerbangTapInput, FaceVerifyInput, FaceEnrollInput } from '../types/gerbang.types';
 import { AbsensiMode } from '../../../../constants/enums';
 
@@ -72,6 +73,20 @@ export class GerbangService {
   async processOfflineTap(tenantId: string, input: GerbangTapInput, tapTime: Date): Promise<any> {
     return gerbangSyncService.processOfflineTap(tenantId, input, tapTime);
   }
+
+  // --- Domain 4: Security Audit & Guest Access ---
+  async recordGuestAccess(input: GuestAccessInput, userId: string, tenantId: string): Promise<any> {
+    return gerbangAuditService.recordGuestAccess(input, userId, tenantId);
+  }
+
+  async getSecurityLogs(tenantId: string, filters?: SecurityLogFilters): Promise<any> {
+    return gerbangAuditService.getSecurityLogs(tenantId, filters);
+  }
+
+  async getSecurityLogStats(tenantId: string, dateRange?: { startDate?: string; endDate?: string }): Promise<any> {
+    return gerbangAuditService.getSecurityLogStats(tenantId, dateRange);
+  }
 }
 
 export const gerbangService = GerbangService.getInstance();
+

@@ -40,6 +40,7 @@ import { PklStatusBadge } from './PklStatusBadge';
 import type { AbsensiPkl } from '../../api/hubin.api';
 
 import { HubinAbsensiStatus } from '../../constants/HubinConstants';
+import { SiswaIdentityCell } from '../common/SiswaIdentityCell';
 
 interface HubinManagementViewProps {
   rawPenempatan: any[];
@@ -539,28 +540,16 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
                     {/* Compact Header (Always Visible) */}
                     <div className="flex flex-col lg:flex-row lg:items-center p-3 lg:p-3.5 gap-4 lg:gap-10 w-full">
                       {/* Student Info Group */}
-                      <div className="flex items-center gap-3 lg:w-[280px] shrink-0">
-                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shadow-inner shrink-0 group-hover:scale-105 transition-all duration-500 ${
-                          needsVerification 
-                            ? 'bg-gradient-to-br from-amber-50 to-amber-100 text-amber-600 dark:from-amber-900/20 dark:to-amber-950/20 dark:text-amber-400'
-                            : 'bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-500 dark:from-slate-800 dark:to-slate-900 dark:text-indigo-400'
-                        }`}>
-                          {(p.Siswa?.nama_siswa || p.Siswa?.full_name || '??').substring(0, 2).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-bold text-slate-800 dark:text-slate-100 uppercase text-[12px] tracking-tight leading-none truncate mb-1.5">
-                            {p.Siswa?.nama_siswa || p.Siswa?.full_name}
-                          </h4>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50/50 dark:bg-indigo-950/30 px-1.5 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-900/30">
-                              {p.Siswa?.Kelas?.nama_kelas || 'Umum'}
-                            </span>
-                            <span className="text-[8px] font-bold text-slate-400">
-                              {p.Siswa?.nis || '-'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                      <SiswaIdentityCell
+                        foto={p.Siswa?.foto}
+                        nama={p.Siswa?.nama_siswa || p.Siswa?.full_name}
+                        nis={p.Siswa?.nis}
+                        kelas={p.Siswa?.Kelas?.nama_kelas || 'Umum'}
+                        size="sm"
+                        className="lg:w-[280px] shrink-0"
+                        nameClassName="uppercase text-[12px] tracking-tight"
+                        showMeta={true}
+                      />
 
                       {/* Info Grid (Partner & Status) */}
                       <div className="flex-1 flex flex-col lg:flex-row items-start lg:items-center gap-4 lg:gap-12 min-w-0">

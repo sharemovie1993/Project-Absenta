@@ -280,18 +280,37 @@ export class NilaiCrudService {
       if (guru) guruId = guru.id;
     }
 
-    const whereJadwal: any = { tenant_id: tenantId };
+    const whereJadwal: any = { 
+      tenant_id: tenantId,
+      tahun_pelajaran_id: tp.id,
+      semester_id: sem.id,
+    };
     if (guruId) {
       whereJadwal.guru_id = guruId;
     }
 
-    const schedules = await prisma.jadwalKBM.findMany({
+    let schedules = await prisma.jadwalKBM.findMany({
       where: whereJadwal,
       include: {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
       }
     });
+
+    // Fallback jika semester_id di jadwal KBM belum terikat spesifik, tetap kunci pada tahun pelajaran yang sama
+    if (schedules.length === 0) {
+      schedules = await prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tp.id,
+          ...(guruId ? { guru_id: guruId } : {}),
+        },
+        include: {
+          Kelas: { select: { id: true, nama_kelas: true } },
+          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } }
+        }
+      });
+    }
 
     const taskMap = new Map<string, { kelas_id: string; nama_kelas: string; mapel_id: string; nama_mapel: string; kode_mapel: string | null }>();
     schedules.forEach((s) => {
@@ -391,14 +410,26 @@ export class NilaiCrudService {
       };
     });
 
+    let totalSiswaAll = 0;
+    let totalSiswaTerisiAll = 0;
+    detailedTasks.forEach(t => {
+      totalSiswaAll += t.total_siswa;
+      totalSiswaTerisiAll += t.siswa_terisi;
+    });
+
     const totalTasks = uniqueTasks.length;
-    const percentage = totalTasks > 0 ? Number(((completedTasks / totalTasks) * 100).toFixed(1)) : 0;
+    // Persentase riil: jika ada siswa yang terisi, hitung proporsi siswa terisi terhadap total siswa
+    const percentage = totalSiswaAll > 0 
+      ? Number(((totalSiswaTerisiAll / totalSiswaAll) * 100).toFixed(1)) 
+      : 0;
 
     return {
       total_tasks: totalTasks,
       completed_tasks: completedTasks,
       partial_tasks: partialTasks,
       empty_tasks: emptyTasks,
+      total_siswa: totalSiswaAll,
+      siswa_terisi: totalSiswaTerisiAll,
       percentage,
       tasks: detailedTasks
     };

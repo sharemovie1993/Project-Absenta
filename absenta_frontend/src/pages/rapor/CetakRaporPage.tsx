@@ -6,6 +6,7 @@
  * responsivitas Pilar 30, pratinjau PDF tab baru (window.open).
  */
 import React, { useMemo, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileSpreadsheet,
@@ -55,6 +56,8 @@ import {
 import { RaporSummaryModal } from '../../components/rapor/cetak-rapor/RaporSummaryModal';
 import { TranskripModal } from '../../components/rapor/cetak-rapor/TranskripModal';
 import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStudentTable';
+import { ClassSubjectProgressCard } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
+
 
 const PAGE_INSTRUCTION =
   'Pilih Rombel / Kelas untuk merekap ranking leger, mengisi absensi & catatan wali kelas, serta mencetak lembar e-Rapor resmi Kemendikbud.';
@@ -75,10 +78,16 @@ interface KelasOptionItem {
 
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
-  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, can } = useCapabilities();
+  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, can, walikelasKelas, walikelasKelasIds } = useCapabilities();
+
+  // ── URL Search Params ──
+  const [searchParams] = useSearchParams();
+  const kelasParam = searchParams.get('kelas_id') || searchParams.get('kelas') || '';
+  const tpParam = searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || '';
+  const semParam = searchParams.get('semester_id') || searchParams.get('sem_id') || '';
 
   // ── State ──
-  const [selectedKelas, setSelectedKelas] = useState('');
+  const [selectedKelas, setSelectedKelas] = useState<string>(() => kelasParam);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<LegerStudent | null>(null);
@@ -98,6 +107,8 @@ export default React.memo(function CetakRaporPage() {
   const { guruProfile } = useGuruMe();
 
   const userKelasId = useMemo(() => {
+    if (walikelasKelas?.id) return walikelasKelas.id;
+    if (walikelasKelasIds && walikelasKelasIds.length > 0) return walikelasKelasIds[0];
     const direct = guruProfile?.wali_kelas_di?.id || (user as any)?.guru_profile?.wali_kelas_di?.id;
     if (direct) return direct;
     const u = user as any;
@@ -107,7 +118,7 @@ export default React.memo(function CetakRaporPage() {
       u?.assigned_kelas_id ||
       null
     );
-  }, [guruProfile, user]);
+  }, [walikelasKelas, walikelasKelasIds, guruProfile, user]);
 
   // Wali Kelas murni: guru yang ditugaskan sebagai wali kelas tapi bukan admin/kurikulum/kepsek
   const isPureWaliKelas = useMemo(() => {
@@ -132,23 +143,27 @@ export default React.memo(function CetakRaporPage() {
   const { options: tpOptions, activeTahunPelajaran: activeTp } = useTahunPelajaranOptions();
   const { options: semesterOptions, activeSemester: activeSem } = useSemesterOptions();
 
-  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState('');
-  const [selectedSemester, setSelectedSemester] = useState('');
+  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>(() => tpParam);
+  const [selectedSemester, setSelectedSemester] = useState<string>(() => semParam);
 
   React.useEffect(() => {
-    if (!selectedTahunPelajaran && activeTp?.id) {
+    if (!selectedTahunPelajaran && !tpParam && activeTp?.id) {
       setSelectedTahunPelajaran(activeTp.id);
     }
-  }, [activeTp, selectedTahunPelajaran]);
+  }, [activeTp, selectedTahunPelajaran, tpParam]);
 
   React.useEffect(() => {
-    if (!selectedSemester && activeSem?.id) {
+    if (!selectedSemester && !semParam && activeSem?.id) {
       setSelectedSemester(activeSem.id);
     }
-  }, [activeSem, selectedSemester]);
+  }, [activeSem, selectedSemester, semParam]);
 
-  // Auto-select class: prioritize Wali Kelas assigned class, fallback to first class
+  // Auto-select class: prioritize URL param, then Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
+    if (kelasParam && (classList as KelasOptionItem[])?.some((k) => k.id === kelasParam)) {
+      setSelectedKelas(kelasParam);
+      return;
+    }
     if (userKelasId && (classList as KelasOptionItem[])?.some((k) => k.id === userKelasId)) {
       if (isPureWaliKelas) {
         setSelectedKelas(userKelasId);
@@ -160,7 +175,7 @@ export default React.memo(function CetakRaporPage() {
     } else if (!selectedKelas && classList && classList.length > 0) {
       setSelectedKelas(classList[0].id);
     }
-  }, [classList, selectedKelas, userKelasId, isPureWaliKelas]);
+  }, [classList, selectedKelas, userKelasId, isPureWaliKelas, kelasParam]);
 
   const activeYear = useMemo<AcademicYear | null>(() => {
     const targetId = selectedTahunPelajaran || activeTp?.id;
@@ -211,6 +226,19 @@ export default React.memo(function CetakRaporPage() {
     queryFn: () => raporApi.getTranskripNilai(selectedTranskripStudent!.id),
     enabled: !!selectedTranskripStudent?.id,
   });
+
+  // ── Class Subject Progress (Kelengkapan Nilai Mapel Kelas Binaan) ──
+  const { data: classProgressRes, isLoading: isLoadingClassProgress } = useQuery({
+    queryKey: ['class-subject-progress', selectedKelas, activeYear?.id, activeSemester?.id],
+    queryFn: () =>
+      raporApi.getClassSubjectProgress(selectedKelas, {
+        tahun_pelajaran_id: activeYear?.id,
+        semester_id: activeSemester?.id,
+      }),
+    enabled: !!selectedKelas && !!activeYear?.id && !!activeSemester?.id,
+  });
+  const classProgressData = classProgressRes?.data || null;
+
 
   // ── Enhanced Kelas Options with Wali Kelas Label & Highlighting ──
   const kelasOptions = useMemo<SearchableSelectOption[]>(() => {
@@ -794,26 +822,49 @@ export default React.memo(function CetakRaporPage() {
           </div>
 
           {/* Tahun Pelajaran, Semester & Struktur Kurikulum Badge Info */}
-          {activeYear && activeSemester && (
-            <div className="mt-3 hidden sm:flex flex-wrap gap-2">
-              <Badge variant="outline" className="text-[10px] font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 whitespace-nowrap">
-                <BookOpen size={10} className="mr-1 flex-shrink-0" />
-                {activeYear.nama}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {isPureWaliKelas ? (
+              <Badge variant="outline" className="text-[10px] font-bold border-indigo-300 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40">
+                Mode Wali Kelas • {currentKelasObj?.nama_kelas || 'Kelas Binaan'}
               </Badge>
-              <Badge variant="outline" className="text-[10px] font-semibold border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-400 whitespace-nowrap">
-                {activeSemester.nama}
+            ) : (
+              <Badge variant="outline" className="text-[10px] font-bold border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/40">
+                Mode Supervisi Kurikulum &amp; Manajemen
               </Badge>
-              {kurikulumStrukturList && kurikulumStrukturList.length > 0 && (
-                <Badge variant="outline" className="text-[10px] font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 whitespace-nowrap">
-                  Kurikulum: {kurikulumStrukturList.length} Mapel ({kurikulumTotalJp} JP)
+            )}
+
+            {activeYear && activeSemester && (
+              <>
+                <Badge variant="outline" className="text-[10px] font-semibold border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400 whitespace-nowrap">
+                  <BookOpen size={10} className="mr-1 flex-shrink-0" />
+                  {activeYear.nama}
                 </Badge>
-              )}
-            </div>
-          )}
+                <Badge variant="outline" className="text-[10px] font-semibold border-purple-200 text-purple-600 dark:border-purple-800 dark:text-purple-400 whitespace-nowrap">
+                  {activeSemester.nama}
+                </Badge>
+                {kurikulumStrukturList && kurikulumStrukturList.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 whitespace-nowrap">
+                    Kurikulum: {kurikulumStrukturList.length} Mapel ({kurikulumTotalJp} JP)
+                  </Badge>
+                )}
+              </>
+            )}
+          </div>
         </Card>
+
+        {/* Monitoring Kelengkapan Nilai Mata Pelajaran Kelas Binaan */}
+        {selectedKelas && (
+          <ClassSubjectProgressCard
+            data={classProgressData}
+            isLoading={isLoadingClassProgress}
+            tahunPelajaranId={activeYear?.id}
+            semesterId={activeSemester?.id}
+          />
+        )}
 
         {/* Student List & Leger Table */}
         <LegerStudentTable
+
           students={filteredStudents}
           isLoading={isLoadingLeger}
           isJenjangSmk={isJenjangSmk}

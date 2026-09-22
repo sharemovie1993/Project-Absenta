@@ -2,6 +2,7 @@ import { prisma } from '../../../../utils/prisma';
 import { Hari } from '@prisma/client';
 import { cacheInvalidationService } from '../../../../utils/cache-invalidation.service';
 import { appLogger } from '../../../../utils/app-logger';
+import { isSchoolDay } from '../../../../utils/school-day.utils';
 
 export class JadwalPiketService {
   /**
@@ -563,69 +564,7 @@ export class JadwalPiketService {
    * 3. Kalender Akademik (Libur Nasional / Libur Semester / Cuti Bersama di KalenderAkademik)
    */
   async checkSchoolWorkingDay(tenantId: string, dateTarget: Date, timezone: string = 'Asia/Jakarta'): Promise<{ isWorkingDay: boolean; reason?: string }> {
-    const hariEnum = this.getHariEnum(dateTarget, timezone);
-
-    // 1. Cek konfigurasi hari operasional tenant
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { hari_sekolah: true, name: true }
-    });
-
-    const operationalDays = (tenant?.hari_sekolah && tenant.hari_sekolah.length > 0)
-      ? tenant.hari_sekolah
-      : [Hari.SENIN, Hari.SELASA, Hari.RABU, Hari.KAMIS, Hari.JUMAT];
-
-    if (!operationalDays.includes(hariEnum)) {
-      return {
-        isWorkingDay: false,
-        reason: `Bukan hari operasional sekolah (${hariEnum}). Sekolah menerapkan sistem ${operationalDays.length} hari kerja.`
-      };
-    }
-
-    // Normalisasi rentang tanggal target (UTC date boundary)
-    const targetDateStart = new Date(dateTarget);
-    targetDateStart.setUTCHours(0, 0, 0, 0);
-    const targetDateEnd = new Date(dateTarget);
-    targetDateEnd.setUTCHours(23, 59, 59, 999);
-
-    // 2. Cek Kejadian Khusus Global (Libur Darurat / Kebencanaan)
-    const globalSpecialEvent = await prisma.absensiKejadianKhusus.findFirst({
-      where: {
-        tenant_id: tenantId,
-        tanggal: {
-          gte: targetDateStart,
-          lte: targetDateEnd
-        },
-        kelas_id: null,
-        mode_kejadian: 'LIBUR'
-      }
-    });
-
-    if (globalSpecialEvent) {
-      return {
-        isWorkingDay: false,
-        reason: `Sekolah diliburkan secara global (Kejadian Khusus: ${globalSpecialEvent.keterangan || 'Libur Darurat'})`
-      };
-    }
-
-    // 3. Cek Kalender Akademik (Libur Terjadwal / Libur Nasional)
-    const academicHoliday = await prisma.kalenderAkademik.findFirst({
-      where: {
-        tenant_id: tenantId,
-        tanggal_mulai: { lte: targetDateEnd },
-        tanggal_selesai: { gte: targetDateStart },
-        jenis: { startsWith: 'LIBUR' }
-      }
-    });
-
-    if (academicHoliday) {
-      return {
-        isWorkingDay: false,
-        reason: `Hari Libur Akademik Terjadwal (${academicHoliday.judul})`
-      };
-    }
-
-    return { isWorkingDay: true };
+    return isSchoolDay(tenantId, dateTarget, timezone);
   }
 
   /**

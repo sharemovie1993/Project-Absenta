@@ -115,8 +115,15 @@ async downloadSiswaDocument(request: any, reply: any) {
         return reply.status(404).send({ success: false, message: 'Berkas fisik dokumen tidak ditemukan pada storage' });
       }
 
+      const etag = `"${doc.id}-${doc.updated_at ? new Date(doc.updated_at).getTime() : '1'}"`;
+      if (request.headers && request.headers['if-none-match'] === etag) {
+        return reply.status(304).send();
+      }
+
       const buffer = await storageService.readFileBuffer(doc.file_storage_path);
       reply.header('Content-Type', doc.mime_type || 'image/png');
+      reply.header('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
+      reply.header('ETag', etag);
       reply.header('Content-Disposition', `inline; filename="${encodeURIComponent(doc.file_original_name || 'document')}"`);
       return reply.send(buffer);
     } catch (error: any) {

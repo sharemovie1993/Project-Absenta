@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { hubinApi } from '../../api/hubin.api';
+import { hubinApi, type MitraIndustri } from '../../api/hubin.api';
 import { guruApi } from '../../api/academic.api';
 import { HubinJurnalStatus, HubinPklStatus } from '../../constants/HubinConstants';
 import { getPklDisplayStatus } from '../../utils/hubinPklLifecycle';
@@ -38,6 +38,7 @@ import { SectionCard, Table, Button, Input, Loader } from '../../components/ui';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
+import { SiswaIdentityCell } from '../../components/common/SiswaIdentityCell';
 import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
@@ -67,6 +68,7 @@ const HubinPklReviewJurnalModal = lazy(() => import('../../components/hubin/Hubi
 const HubinPklPrintSurat = lazy(() => import('../../components/hubin/HubinPklPrintSurat').then(m => ({ default: m.HubinPklPrintSurat })));
 const HubinPklPrintMonitoringModal = lazy(() => import('../../components/hubin/HubinPklPrintMonitoringModal').then(m => ({ default: m.HubinPklPrintMonitoringModal })));
 const HubinPklMutasiModal = lazy(() => import('../../components/hubin/HubinPklMutasiModal').then(m => ({ default: m.HubinPklMutasiModal })));
+const MitraFormModal = lazy(() => import('../../components/hubin/MitraFormModal').then(m => ({ default: m.MitraFormModal })));
 import type { MonitoringPrintConfig } from '../../components/hubin/HubinPklPrintMonitoringModal';
 
 // ─── Zod Schema Validation Guard (Pilar 25) ───
@@ -121,6 +123,10 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
 
   const [isMutasiOpen, setIsMutasiOpen] = useState(false);
   const [selectedMutasiPkl, setSelectedMutasiPkl] = useState<SiswaPkl | null>(null);
+
+  // In-Context Edit Kontak Mitra DUDI
+  const [editingMitraForKontak, setEditingMitraForKontak] = useState<MitraIndustri | null>(null);
+  const [isEditMitraKontakOpen, setIsEditMitraKontakOpen] = useState(false);
   
   // Selected Data for Modals
   const [selectedPkl, setSelectedPkl] = useState<SiswaPkl | null>(null);
@@ -413,6 +419,77 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       toast.error(errorMsg);
     },
   });
+
+  // In-Context Mitra Edit Mutation & Handlers
+  const updateMitraMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<MitraIndustri> }) => hubinApi.updateMitra(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['mitra-industri-raw-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['mitra-options'] });
+      queryClient.invalidateQueries({ queryKey: ['mitra-industri'] });
+      toast.success('Informasi kontak & PIC DUDI berhasil diperbarui');
+      setIsEditMitraKontakOpen(false);
+      setEditingMitraForKontak(null);
+    },
+    onError: (error: unknown) => {
+      const errorMsg = (error as any)?.response?.data?.message || (error instanceof Error ? error.message : 'Gagal memperbarui informasi DUDI');
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleOpenEditMitraKontak = useCallback((mitraId: string) => {
+    const found = (rawMitra as any[])?.find(m => m.id === mitraId);
+    if (found) {
+      setEditingMitraForKontak(found as MitraIndustri);
+      setIsEditMitraKontakOpen(true);
+    } else {
+      const pklMatch = rawPenempatan.find((p: SiswaPkl) => p.mitra_id === mitraId);
+      if (pklMatch?.Mitra) {
+        setEditingMitraForKontak(pklMatch.Mitra as unknown as MitraIndustri);
+        setIsEditMitraKontakOpen(true);
+      }
+    }
+  }, [rawMitra, rawPenempatan]);
+
+  const handleMitraKontakSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingMitraForKontak) return;
+
+    const formData = new FormData(e.currentTarget);
+    const payload: Partial<MitraIndustri> = {
+      kontak: (formData.get('kontak') as string) || undefined,
+      alamat: (formData.get('alamat') as string) || undefined,
+      pic_nama: (formData.get('pic_nama') as string) || undefined,
+      pic_jabatan: (formData.get('pic_jabatan') as string) || undefined,
+      pic_telepon: (formData.get('pic_telepon') as string) || undefined,
+      pic_email: (formData.get('pic_email') as string) || undefined,
+    };
+
+    const latVal = formData.get('latitude') as string;
+    const lonVal = formData.get('longitude') as string;
+    if (latVal && !isNaN(Number(latVal))) payload.latitude = Number(latVal);
+    if (lonVal && !isNaN(Number(lonVal))) payload.longitude = Number(lonVal);
+
+    if (canManage) {
+      const namaVal = formData.get('nama') as string;
+      if (namaVal) payload.nama = namaVal;
+      payload.bidang = (formData.get('bidang') as string) || undefined;
+      payload.mou_nomor = (formData.get('mou_nomor') as string) || undefined;
+      payload.mou_status = (formData.get('mou_status') as string) || undefined;
+      const tMulai = formData.get('mou_tanggal_mulai') as string;
+      const tSelesai = formData.get('mou_tanggal_berakhir') as string;
+      if (tMulai) payload.mou_tanggal_mulai = new Date(tMulai).toISOString();
+      if (tSelesai) payload.mou_tanggal_berakhir = new Date(tSelesai).toISOString();
+      payload.mou_url = (formData.get('mou_url') as string) || undefined;
+      const kuota = formData.get('kuota_pkl') as string;
+      if (kuota) payload.kuota_pkl = parseInt(kuota, 10);
+      const radius = formData.get('radius') as string;
+      if (radius) payload.radius = parseInt(radius, 10);
+    }
+
+    updateMitraMutation.mutate({ id: editingMitraForKontak.id, data: payload });
+  }, [editingMitraForKontak, canManage, updateMitraMutation]);
 
   const mutasiMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => hubinApi.mutasiPenempatan(id, data),
@@ -860,8 +937,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     },
     onFilterSiswaHistory: (namaSiswa: string) => {
       setSearchTerm(namaSiswa);
-    }
-  }), [rawMitra, canManage, hasKolektif, deleteMutation, updateMutation, confirm, setSearchTerm]);
+    },
+    onEditMitraKontak: handleOpenEditMitraKontak
+  }), [rawMitra, canManage, hasKolektif, deleteMutation, updateMutation, confirm, setSearchTerm, handleOpenEditMitraKontak]);
 
   const handleConfirmMonitoringPrint = useCallback((config: MonitoringPrintConfig) => {
     if (!selectedMonitoringPkl) return;
@@ -946,17 +1024,15 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 shrink-0">
-              <User size={18} />
-            </div>
-            <div className="space-y-0.5 min-w-0">
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                {row.Siswa?.nama_siswa}
-              </h4>
-              <p className="text-[10px] font-bold text-slate-400 font-mono">
-                NIS: {row.Siswa?.nis || '-'}
-              </p>
-            </div>
+            <SiswaIdentityCell
+              foto={row.Siswa?.foto}
+              nama={row.Siswa?.nama_siswa}
+              nis={row.Siswa?.nis}
+              kelas={row.Siswa?.Kelas?.nama_kelas}
+              size="md"
+              nameClassName="font-extrabold text-xs uppercase tracking-tight"
+              showMeta={true}
+            />
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <PklStatusBadge status={row.status} />
@@ -1015,6 +1091,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
                 setSelectedPembimbingId(r.pembimbing_id || '');
                 setIsPlottingOpen(true);
               }}
+              onEditMitraKontak={handleOpenEditMitraKontak}
               siswaPhone={siswaPhone}
               mitraPhone={mitraPhone}
             />
@@ -1025,7 +1102,18 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200 min-w-0">
               <Building2 size={13} className="text-indigo-500 shrink-0" />
-              <span className="truncate">{row.Mitra?.nama}</span>
+              {row.mitra_id ? (
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditMitraKontak(row.mitra_id)}
+                  className="truncate hover:text-indigo-600 dark:hover:text-indigo-400 text-left hover:underline cursor-pointer"
+                  title="Klik untuk melihat / perbarui kontak & PIC DUDI"
+                >
+                  {row.Mitra?.nama}
+                </button>
+              ) : (
+                <span className="truncate">{row.Mitra?.nama}</span>
+              )}
             </div>
             <span className="text-[10px] font-bold text-slate-500 shrink-0">
               Pmb: {row.Pembimbing?.nama_guru || 'Belum ada'}
@@ -1423,6 +1511,22 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
             }}
             selectedPkl={selectedMonitoringPkl}
             onConfirmPrint={handleConfirmMonitoringPrint}
+          />
+        )}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {isEditMitraKontakOpen && editingMitraForKontak && (
+          <MitraFormModal
+            isOpen={isEditMitraKontakOpen}
+            onClose={() => {
+              setIsEditMitraKontakOpen(false);
+              setEditingMitraForKontak(null);
+            }}
+            onSubmit={handleMitraKontakSubmit}
+            editingMitra={editingMitraForKontak}
+            isPending={updateMitraMutation.isPending}
+            isEditKontakOnly={!canManage}
           />
         )}
       </Suspense>

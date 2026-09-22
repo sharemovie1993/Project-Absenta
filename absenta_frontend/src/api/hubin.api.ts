@@ -26,6 +26,9 @@ export interface MitraIndustri {
   mou_status?: string;
   kuota_pkl?: number;
   kompetensi_keahlian?: string;
+  _count?: {
+    SiswaPkl?: number;
+  };
 }
 
 export interface HubinMoUHistory {
@@ -187,9 +190,9 @@ export interface AbsensiPkl {
 
 export const hubinApi = {
   // Mitra
-  getMitra: (params?: { search?: string; page?: number; limit?: number }) => 
+  getMitra: (params?: { search?: string; page?: number; limit?: number; mou_status?: string }) => 
     requestWithFallback<any>('get', '/hubin/mitra', { params }),
-  getMitraList: (params?: { search?: string; page?: number; limit?: number }) => 
+  getMitraList: (params?: { search?: string; page?: number; limit?: number; mou_status?: string }) => 
     requestWithFallback<any>('get', '/hubin/mitra', { params }),
   createMitra: (data: Partial<MitraIndustri>) => requestWithFallback<any>('post', '/hubin/mitra', { data }),
   updateMitra: (id: string, data: Partial<MitraIndustri>) => requestWithFallback<any>('put', `/hubin/mitra/${id}`, { data }),

@@ -865,16 +865,31 @@ export class AuthService {
 
     // Attach walikelas_kelas if user has WALIKELAS position
     if (
-      (response.position_codes.includes('WALIKELAS') || response.position_codes.includes('WALI_KELAS')) &&
-      orgCtx.kelas_ids && orgCtx.kelas_ids.length > 0
+      response.position_codes.includes('WALIKELAS') || response.position_codes.includes('WALI_KELAS')
     ) {
       try {
-        const kelas = await prisma.kelas.findFirst({
-          where: { id: { in: orgCtx.kelas_ids }, tenant_id: user.tenant_id },
-          select: { id: true, nama_kelas: true, tingkat: true }
+        const waliAssignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            user_id: user.id,
+            tenant_id: user.tenant_id,
+            is_active: true,
+            Position: {
+              code: { in: ['WALIKELAS', 'WALI_KELAS', 'WALI'] }
+            },
+            kelas_id: { not: null },
+          },
+          include: {
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+              },
+            },
+          },
         });
-        if (kelas) {
-          response.walikelas_kelas = kelas;
+        if (waliAssignment?.Kelas) {
+          response.walikelas_kelas = waliAssignment.Kelas;
         }
       } catch (e) {
         console.warn('[AUTH] Failed to resolve walikelas_kelas:', e);
@@ -929,12 +944,23 @@ export class AuthService {
         }
       }
 
+      // Check active PKL guidance count for this teacher
+      const activePklCount = await prisma.siswaPkl.count({
+        where: {
+          tenant_id: user.tenant_id,
+          pembimbing_id: guru.id,
+          status: 'AKTIF',
+        }
+      });
+
       response.guru_profile = {
         id: guru.id,
         wali_kelas_di: waliKelasDi,
         jenis_ptk: guru.jenis_ptk,
         pangkat_golongan: guru.pangkat_golongan,
         tmt_guru: guru.tmt_guru,
+        is_pembimbing_pkl: activePklCount > 0,
+        active_pkl_count: activePklCount,
       };
     }
   }

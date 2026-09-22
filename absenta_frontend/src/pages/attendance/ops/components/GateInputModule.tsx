@@ -19,6 +19,8 @@ import { PageLoader, Card } from '../../../../components/ui';
 
 import { GerbangStatusHero } from '../../../../components/attendance/gerbang/GerbangStatusHero';
 import { GerbangKeyRfidInput } from '../../../../components/attendance/gerbang/GerbangKeyRfidInput';
+import { GuestAccessModal } from '../../../../components/attendance/gerbang/GuestAccessModal';
+import { UserPlus } from 'lucide-react';
 
 import { type Student } from '../../../../components/common/SmartStudentPicker';
 
@@ -69,6 +71,7 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
   const inputDirection = direction || internalDirection;
   
   const [isBypassMode, setIsBypassMode] = useState(false);
+  const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
 
   // HID / RFID / 2D Barcode Scanner Input State
   const [hidToken, setHidToken] = useState('');
@@ -160,22 +163,29 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
       if (tapRes.success) {
         const sInfo = (tapRes as Record<string, unknown>).data?.siswa_info;
         const gInfo = (tapRes as Record<string, unknown>).data?.guru_info;
+        const isAudit = !!(tapRes as any).is_security_audit;
         
         let successMsg = '';
         let personName = '';
         if (sInfo?.nama) {
           personName = sInfo.nama;
           const kelasLabel = sInfo.nama_kelas ? ` - ${sInfo.nama_kelas}` : '';
-          successMsg = `PRESENSI BERHASIL: ${sInfo.nama}${kelasLabel}`;
+          successMsg = isAudit
+            ? `AUDIT KEAMANAN: ${sInfo.nama}${kelasLabel} (${(tapRes as any).data?.arah || 'MASUK'})`
+            : `PRESENSI BERHASIL: ${sInfo.nama}${kelasLabel}`;
         } else if (gInfo?.nama) {
           personName = gInfo.nama;
-          successMsg = `PRESENSI BERHASIL: ${gInfo.nama} (${gInfo.jenis_ptk || 'Pegawai'})`;
+          successMsg = isAudit
+            ? `AUDIT KEAMANAN: ${gInfo.nama} (${(tapRes as any).data?.arah || 'MASUK'})`
+            : `PRESENSI BERHASIL: ${gInfo.nama} (${gInfo.jenis_ptk || 'Pegawai'})`;
         } else {
           personName = targetName || 'Siswa/Guru';
-          successMsg = (tapRes as Record<string, unknown>).message || `PRESENSI BERHASIL: ${personName}`;
+          successMsg = isAudit
+            ? `AUDIT KEAMANAN: ${personName}`
+            : (tapRes as Record<string, unknown>).message || `PRESENSI BERHASIL: ${personName}`;
         }
 
-        toast.success(successMsg, { position: 'bottom-center' });
+        toast.success(successMsg, { position: 'bottom-center', icon: isAudit ? '🔒' : undefined });
         addTapFeedback('success', successMsg, timeStr);
         await playBeep('success');
         await refreshStats();
@@ -303,7 +313,34 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
             onSubmit={handleScanToken} 
           />
         </Suspense>
+
+        {/* Quick Guest Access Button */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+          <span className="text-slate-400 font-medium">Ada tamu atau pihak luar berkunjung?</span>
+          <button
+            type="button"
+            onClick={() => setIsGuestModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/40 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold rounded-lg border border-purple-200 dark:border-purple-800 transition-colors self-end sm:self-auto"
+          >
+            <UserPlus size={14} />
+            Catat Tamu
+          </button>
+        </div>
       </div>
+
+      {/* Guest Access Modal */}
+      <GuestAccessModal
+        isOpen={isGuestModalOpen}
+        onClose={() => setIsGuestModalOpen(false)}
+        onSuccess={async (guest) => {
+          const guestName = guest?.nama_tamu || guest?.nama || guest?.nama_snapshot || 'Tamu';
+          const direction = guest?.arah || 'MASUK';
+          const msg = `TAMU TERCATAT: ${guestName} (${direction})`;
+          toast.success(msg, { icon: '🧑‍💼' });
+          addTapFeedback('success', msg, new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+          await refreshStats();
+        }}
+      />
 
       {/* Live Result History Stream (Slide Down Animation - Latest Scan on TOP) */}
       {tapHistory.length > 0 && (

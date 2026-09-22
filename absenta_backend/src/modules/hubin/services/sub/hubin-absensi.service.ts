@@ -39,6 +39,21 @@ export class HubinAbsensiService extends HubinCommonHelper {
     };
   }
 
+  calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371e3; // Earth radius in meters
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+      Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  }
+
   async checkIn(tenantId: string, siswaPklId: string, data: { latitude: number; longitude: number; accuracy?: number; kegiatan?: string; image_url?: string; is_dinas_luar?: boolean; address_snapshot?: string }) {
     const today = await this.getTodayDateForTenant(tenantId);
 
@@ -108,6 +123,10 @@ export class HubinAbsensiService extends HubinCommonHelper {
       }
     }
 
+    const hasMitraGps = Boolean(targetLat && targetLon);
+    // Presensi otomatis terverifikasi sistem JIKA mitra memiliki titik GPS dan siswa presensi di dalam radius resmi
+    const isAutoVerified = hasMitraGps && !isOutsideRadius;
+
     // Check if already checked in today
     const existing = await prisma.absensiPkl.findFirst({
       where: {
@@ -134,7 +153,8 @@ export class HubinAbsensiService extends HubinCommonHelper {
           image_url: data.image_url,
           is_outside_radius: isOutsideRadius,
           distance_meters: distanceMeters,
-          address_snapshot: data.address_snapshot || existing.address_snapshot
+          address_snapshot: data.address_snapshot || existing.address_snapshot,
+          is_verified: isAutoVerified
         }
       });
       await cacheInvalidationService.invalidateHubinCache(tenantId);
@@ -155,8 +175,8 @@ export class HubinAbsensiService extends HubinCommonHelper {
         is_outside_radius: isOutsideRadius,
         distance_meters: distanceMeters,
         address_snapshot: data.address_snapshot,
-        // Jika di luar radius, otomatis belum terverifikasi meskipun ada bypass global (opsional)
-        is_verified: isOutsideRadius ? false : false 
+        // Presensi dalam radius otomatis terverifikasi sistem; luar radius atau tanpa GPS butuh verifikasi guru
+        is_verified: isAutoVerified
       }
     });
     await cacheInvalidationService.invalidateHubinCache(tenantId);
@@ -235,6 +255,9 @@ export class HubinAbsensiService extends HubinCommonHelper {
         isOutsideRadius = true;
       }
     }
+
+    const finalVerified = isOutsideRadius ? false : existing.is_verified;
+
     const res = await prisma.absensiPkl.update({
       where: { id: existing.id },
       data: {
@@ -244,6 +267,7 @@ export class HubinAbsensiService extends HubinCommonHelper {
         kegiatan: data.kegiatan || existing.kegiatan,
         image_url_out: data.image_url || existing.image_url_out,
         is_outside_radius: isOutsideRadius,
+        is_verified: finalVerified,
         address_snapshot: data.address_snapshot || existing.address_snapshot
       }
     });

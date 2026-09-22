@@ -202,6 +202,14 @@ export const TefaSection: React.FC = React.memo(() => {
     value: m.id,
     label: m.nama
   })) || [], [mitras]);
+
+  const statusOptions = useMemo(() => [
+    { value: '', label: 'Semua Status' },
+    { value: 'PERENCANAAN', label: 'Perencanaan' },
+    { value: 'BERJALAN', label: 'Sedang Berjalan' },
+    { value: 'SELESAI', label: 'Selesai' },
+    { value: 'BATAL', label: 'Dibatalkan' },
+  ], []);
   const isMobile = useIsMobile();
 
   const renderMobileCard = (order: HubinTefaOrder) => {

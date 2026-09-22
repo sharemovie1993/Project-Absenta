@@ -12,11 +12,11 @@ interface PresensiLocationCardProps {
   onRefresh?: () => void;
 }
 const formatDistance = (meters: number | null) => {
-  if (meters === null) return 'No Mitra GPS';
+  if (meters === null) return 'Presensi Foto Selfie';
   if (meters >= 1000) {
-    return `${(meters / 1000).toFixed(1)} KM`;
+    return `${(meters / 1000).toFixed(1)} KM (Luar Radius)`;
   }
-  return `${Math.round(meters)} M`;
+  return `${Math.round(meters)} M (Luar Radius)`;
 };
 
 export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = React.memo(({ 
@@ -25,6 +25,13 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = React.m
   location,
   onRefresh
 }) => {
+  const isGpsNotSet = distanceInfo.distance === null;
+  const badgeClasses = distanceInfo.inRange
+    ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+    : isGpsNotSet
+    ? 'bg-indigo-50/80 border-indigo-200 text-indigo-700 dark:bg-indigo-950/40 dark:border-indigo-800/60 dark:text-indigo-300'
+    : 'bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-300';
+
   return (
     <div className="w-full px-4 py-3 flex flex-col items-center space-y-1">
       <div className="flex items-center gap-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest">
@@ -39,7 +46,7 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = React.m
         <div 
           role="button"
           tabIndex={0}
-          className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border cursor-pointer transition-all hover:scale-105 active:scale-95 ${distanceInfo.inRange ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 border-rose-500/40 text-rose-600 dark:text-rose-400'}`}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full border cursor-pointer transition-all hover:scale-105 active:scale-95 ${badgeClasses}`}
           onClick={onRefresh}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -47,14 +54,14 @@ export const PresensiLocationCard: React.FC<PresensiLocationCardProps> = React.m
               onRefresh?.();
             }
           }}
-          title="Klik untuk memperbarui GPS"
+          title={isGpsNotSet ? 'Presensi foto selfie aktif' : distanceInfo.inRange ? 'Posisi dalam radius mitra' : 'Posisi di luar radius (dapat presensi dengan foto selfie)'}
         >
           <span className="text-[8px] font-black uppercase tracking-wider">Jarak:</span>
           <span className="text-[9px] font-black">
-            {location ? (distanceInfo.inRange ? 'OK' : formatDistance(distanceInfo.distance)) : 'Mencari...'}
+            {location ? (distanceInfo.inRange ? 'OK (Dalam Radius)' : formatDistance(distanceInfo.distance)) : 'Mencari GPS...'}
           </span>
           {location ? (
-            <div className={`w-1.5 h-1.5 rounded-full ${distanceInfo.inRange ? 'bg-emerald-500' : 'bg-rose-500 animate-pulse'}`} />
+            <div className={`w-1.5 h-1.5 rounded-full ${distanceInfo.inRange ? 'bg-emerald-500' : isGpsNotSet ? 'bg-indigo-500' : 'bg-amber-500'}`} />
           ) : (
             <RefreshCw size={9} className="animate-spin text-slate-500" />
           )}

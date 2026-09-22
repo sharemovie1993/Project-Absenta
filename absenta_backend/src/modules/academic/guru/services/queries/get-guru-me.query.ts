@@ -77,8 +77,19 @@ export async function getGuruMeQuery(userId: string, tenantId: string): Promise<
     ? { id: unitAssignment.Unit.id, nama: unitAssignment.Unit.nama }
     : undefined;
 
+  // 4. Hitung jumlah siswa PKL aktif yang dibimbing guru ini
+  const activePklCount = await prisma.siswaPkl.count({
+    where: {
+      tenant_id: tenantId,
+      pembimbing_id: rawGuru.id,
+      status: 'AKTIF',
+    },
+  });
+
   return {
     ...guru,
+    is_pembimbing_pkl: activePklCount > 0,
+    active_pkl_count: activePklCount,
     jabatan_list: jabatanList,
     jabatan: jabatanFormatted || guru.jabatan || null,
     wali_kelas_di: waliKelasDi,

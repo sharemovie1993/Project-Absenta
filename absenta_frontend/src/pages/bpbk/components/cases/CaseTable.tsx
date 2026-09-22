@@ -5,6 +5,8 @@ import type { Column } from '@/components/ui/Table';
 import { type KasusBK } from '@/api/bpbk.api';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
+import { SiswaIdentityCell } from '@/components/common/SiswaIdentityCell';
+
 
 interface CaseTableProps {
   data: KasusBK[];
@@ -72,10 +74,15 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
       key: 'siswa',
       label: 'Siswa',
       render: (_, item: KasusBK) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
-          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
-        </div>
+        <SiswaIdentityCell
+          foto={item.Siswa?.foto}
+          nama={item.Siswa?.nama_siswa}
+          nis={item.Siswa?.nis}
+          kelas={item.Siswa?.Kelas?.nama_kelas}
+          size="xs"
+          nameClassName="font-bold text-xs"
+          showMeta={false}
+        />
       )
     },
     {
@@ -202,16 +209,20 @@ export const CaseTable: React.FC<CaseTableProps> = React.memo(({
         className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="space-y-0.5">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
               {new Date(item.tanggal_kasus).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
             </span>
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight">
-              {item.Siswa?.nama_siswa}
-            </h4>
-            <p className="text-[10px] font-bold text-slate-500 font-mono">
-              Kelas: {item.Siswa?.Kelas?.nama_kelas || '-'}
-            </p>
+            <SiswaIdentityCell
+              foto={item.Siswa?.foto}
+              nama={item.Siswa?.nama_siswa}
+              nis={item.Siswa?.nis}
+              kelas={item.Siswa?.Kelas?.nama_kelas}
+              size="sm"
+              nameClassName="font-extrabold text-xs uppercase tracking-tight"
+              showMeta={true}
+              className="mt-1"
+            />
           </div>
           <div className="flex flex-col items-end gap-1">
             <Badge variant="outline" className={`text-[8px] font-black uppercase ${getStatusColor(item.status)}`}>

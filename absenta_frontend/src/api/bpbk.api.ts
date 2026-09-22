@@ -178,6 +178,7 @@ export interface KasusBK {
     id: string;
     nama_siswa: string;
     nis: string;
+    foto?: string | null;
     Kelas?: {
       nama_kelas: string;
     };

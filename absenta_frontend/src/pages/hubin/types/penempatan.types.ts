@@ -6,6 +6,8 @@ export interface SiswaData {
   nama_siswa: string;
   nis: string;
   no_hp?: string;
+  foto?: string | null;
+  foto_url?: string | null;
   Kelas?: {
     id: string;
     nama_kelas: string;

@@ -17,6 +17,8 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
 import { cn } from '@/lib/utils';
+import { SiswaIdentityCell } from '../../../components/common/SiswaIdentityCell';
+
 
 const Modal = lazy(() => import('../../../components/ui/Modal').then(m => ({ default: m.Modal })));
 const SmartStudentPicker = lazy(() => import('../../../components/common/SmartStudentPicker').then(m => ({ default: m.SmartStudentPicker })));
@@ -203,18 +205,16 @@ export const PrestasiSection: React.FC = React.memo(() => {
       className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
     >
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-950/40 flex items-center justify-center text-amber-600 dark:text-amber-400 border border-amber-500/20">
-            <Trophy size={18} />
-          </div>
-          <div>
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight line-clamp-1">
-              {item.Siswa?.nama_siswa || '-'}
-            </h4>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              {item.Siswa?.Kelas?.nama_kelas || '-'}
-            </p>
-          </div>
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <SiswaIdentityCell
+            foto={item.Siswa?.foto}
+            nama={item.Siswa?.nama_siswa}
+            nis={item.Siswa?.nis}
+            kelas={item.Siswa?.Kelas?.nama_kelas}
+            size="md"
+            nameClassName="font-extrabold text-xs uppercase tracking-tight line-clamp-1"
+            showMeta={true}
+          />
         </div>
         <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-xs font-black rounded-xl border border-emerald-500/20">
           +{item.poin} Poin
@@ -281,10 +281,15 @@ export const PrestasiSection: React.FC = React.memo(() => {
       key: 'siswa',
       label: 'Profil Siswa',
       render: (_, item: PrestasiSiswa) => (
-        <div>
-          <div className="font-bold text-slate-800 dark:text-white text-xs">{item.Siswa?.nama_siswa}</div>
-          <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas || '-'}</div>
-        </div>
+        <SiswaIdentityCell
+          foto={item.Siswa?.foto}
+          nama={item.Siswa?.nama_siswa}
+          nis={item.Siswa?.nis}
+          kelas={item.Siswa?.Kelas?.nama_kelas}
+          size="xs"
+          nameClassName="font-bold text-xs"
+          showMeta={false}
+        />
       )
     },
     {

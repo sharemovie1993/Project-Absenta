@@ -717,5 +717,136 @@ export async function getTeacherLocatorApi(params?: {
   });
 }
 
+// ── Security Audit Logs & Guest Access API ──────────────────────────────────
+
+export interface SchoolDayCheckResponse {
+  success: boolean;
+  isAuditMode: boolean;
+  isWorkingDay: boolean;
+  reason: string;
+}
+
+export interface GuestAccessPayload {
+  nama_tamu: string;
+  instansi_tamu?: string;
+  keperluan_tamu: string;
+  kontak_tamu?: string;
+  arah: 'MASUK' | 'KELUAR';
+  catatan?: string;
+  tipe_orang?: 'SISWA' | 'GURU' | 'TAMU' | 'ALUMNI' | 'ORANG_TUA' | string;
+  siswa_id?: string | null;
+  guru_id?: string | null;
+  kelas_snapshot?: string | null;
+  kategori_buku?: 'UMUM' | 'KHUSUS';
+  jabatan_tamu?: string | null;
+  pejabat_dituju?: string | null;
+  nomor_surat_tugas?: string | null;
+  pesan_kesan?: string | null;
+  titik_pencatat?: 'GERBANG' | 'TATA_USAHA' | string;
+}
+
+export interface LogAksesItem {
+  id: string;
+  tenant_id: string;
+  tanggal: string;
+  tipe_orang: 'SISWA' | 'GURU' | 'TAMU' | 'ALUMNI' | 'ORANG_TUA' | string;
+  siswa_id?: string | null;
+  guru_id?: string | null;
+  nama_snapshot?: string | null;
+  kelas_snapshot?: string | null;
+  nama_tamu?: string | null;
+  instansi_tamu?: string | null;
+  keperluan_tamu?: string | null;
+  kontak_tamu?: string | null;
+  arah: 'MASUK' | 'KELUAR';
+  waktu_akses: string;
+  metode_verifikasi?: string | null;
+  token_input?: string | null;
+  alasan_non_sekolah?: string | null;
+  catatan?: string | null;
+  kategori_buku?: 'UMUM' | 'KHUSUS' | string;
+  jabatan_tamu?: string | null;
+  pejabat_dituju?: string | null;
+  nomor_surat_tugas?: string | null;
+  pesan_kesan?: string | null;
+  titik_pencatat?: 'GERBANG' | 'TATA_USAHA' | string;
+  created_at: string;
+}
+
+export interface SecurityLogFilters {
+  startDate?: string;
+  endDate?: string;
+  tipe_orang?: 'SISWA' | 'GURU' | 'TAMU' | 'ALUMNI' | 'ORANG_TUA' | 'SEMUA' | string;
+  arah?: 'MASUK' | 'KELUAR' | 'SEMUA' | string;
+  kategori_buku?: 'UMUM' | 'KHUSUS' | 'SEMUA' | string;
+  titik_pencatat?: 'GERBANG' | 'TATA_USAHA' | 'SEMUA' | string;
+  search?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SecurityLogResponse {
+  success: boolean;
+  data: LogAksesItem[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+  };
+}
+
+export interface SecurityLogStatsResponse {
+  success: boolean;
+  data: {
+    total: number;
+    siswa: number;
+    guru: number;
+    tamu: number;
+    masuk: number;
+    keluar: number;
+    umum?: number;
+    khusus?: number;
+    periode: {
+      start: string;
+      end: string;
+    };
+  };
+}
+
+export async function checkSchoolDay(date?: string): Promise<SchoolDayCheckResponse> {
+  return requestWithFallback<SchoolDayCheckResponse>('get', '/attendance/gerbang/school-day-check', {
+    params: date ? { date } : undefined,
+  });
+}
+
+export async function recordGuestAccess(payload: GuestAccessPayload): Promise<any> {
+  return requestWithFallback('post', '/attendance/gerbang/log-akses/tamu', {
+    data: payload,
+  });
+}
+
+export async function getSecurityLogs(params?: SecurityLogFilters): Promise<SecurityLogResponse> {
+  return requestWithFallback<SecurityLogResponse>('get', '/attendance/gerbang/log-akses', {
+    params,
+  });
+}
+
+export async function getSecurityLogStats(params?: { startDate?: string; endDate?: string }): Promise<SecurityLogStatsResponse> {
+  return requestWithFallback<SecurityLogStatsResponse>('get', '/attendance/gerbang/log-akses/stats', {
+    params,
+  });
+}
+
+export async function updateSecurityLog(id: string, payload: Partial<GuestAccessPayload>): Promise<any> {
+  return requestWithFallback('put', `/attendance/gerbang/log-akses/${id}`, {
+    data: payload,
+  });
+}
+
+export async function deleteSecurityLog(id: string): Promise<any> {
+  return requestWithFallback('delete', `/attendance/gerbang/log-akses/${id}`);
+}
+
 
 

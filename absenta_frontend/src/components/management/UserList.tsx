@@ -349,6 +349,28 @@ const UserList: React.FC<UserListProps> = ({
         key: 'role',
         label: 'Role',
         render: (value, row) => getRoleBadge(row.role?.name || 'Unknown')
+      }, {
+        key: 'kelas',
+        label: 'Kelas',
+        render: (_: unknown, row: User) => {
+          const isSiswa = row.role?.name === 'SISWA';
+          const kelasNama = row.kelas || row.siswa?.kelas?.nama_kelas;
+          if (!isSiswa) {
+            return <span className="text-slate-400 dark:text-slate-600 text-xs font-mono">-</span>;
+          }
+          if (kelasNama) {
+            return (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50">
+                {kelasNama}
+              </span>
+            );
+          }
+          return (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
+              Belum Diplot
+            </span>
+          );
+        }
       }, ...(isSuper ? [{
         key: 'tenant',
         label: 'Tenant',

@@ -25,6 +25,7 @@ import { Button, Badge, Loader, Input, SectionCard } from '../../../ui';
 import { hubinApi } from '../../../../api/hubin.api';
 import { toLocalDate, formatLocalTimeFromISO, getTimezoneLabel } from '../../../../utils/attendance/time';
 import { SiswaBimbinganDetailModal } from '../../../hubin/SiswaBimbinganDetailModal';
+import { SiswaIdentityCell } from '../../../common/SiswaIdentityCell';
 
 const formatWaktu = (raw?: string | null) => {
   if (!raw || raw === '-') return '-';
@@ -67,8 +68,11 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
 
   // Query Data Siswa Bimbingan
   const { data: penempatanRes, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['hubin-penempatan-pembimbing-tab'],
-    queryFn: () => hubinApi.getPenempatan({ limit: 100 }),
+    queryKey: ['hubin-penempatan-pembimbing-tab', guruId],
+    queryFn: () => hubinApi.getPenempatan({
+      limit: 100,
+      ...(guruId ? { pembimbing_id: guruId } : {})
+    }),
     staleTime: 30 * 1000,
   });
 
@@ -79,8 +83,12 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
   }, [penempatanRes]);
 
   const activeList = useMemo(() => {
-    return rawList.filter((p: any) => p.status === 'AKTIF');
-  }, [rawList]);
+    return rawList.filter((p: any) => {
+      if (p.status !== 'AKTIF') return false;
+      if (guruId && p.pembimbing_id && p.pembimbing_id !== guruId) return false;
+      return true;
+    });
+  }, [rawList, guruId]);
 
   // Mutation Verifikasi Langsung
   const verifyMutation = useMutation({
@@ -380,32 +388,28 @@ export const StaffPembimbingPklTab: React.FC<StaffPembimbingPklTabProps> = ({
                 className="p-3 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3 transition-all hover:border-indigo-500/40"
               >
                 {/* Siswa & Mitra Info */}
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-black text-xs sm:text-sm flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
-                    {(item.Siswa?.nama_siswa || 'S')[0].toUpperCase()}
-                  </div>
-                  <div className="space-y-0.5 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">
-                        {item.Siswa?.nama_siswa || 'Nama Siswa'}
-                      </h4>
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                        {item.Siswa?.Kelas?.nama_kelas || 'Kelas'}
-                      </span>
-                    </div>
+                <div className="space-y-1.5 min-w-0">
+                  <SiswaIdentityCell
+                    foto={item.Siswa?.foto}
+                    nama={item.Siswa?.nama_siswa || 'Nama Siswa'}
+                    nis={item.Siswa?.nis}
+                    kelas={item.Siswa?.Kelas?.nama_kelas || 'Kelas'}
+                    size="md"
+                    nameClassName="text-sm font-black text-slate-900 dark:text-white truncate"
+                    showMeta={true}
+                  />
 
-                    <div className="flex items-center gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Building2 size={12} className="text-indigo-500 shrink-0" />
-                        <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">{item.Mitra?.nama || 'Mitra DUDI'}</span>
+                  <div className="flex items-center gap-2.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 flex-wrap pl-13">
+                    <span className="flex items-center gap-1">
+                      <Building2 size={12} className="text-indigo-500 shrink-0" />
+                      <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">{item.Mitra?.nama || 'Mitra DUDI'}</span>
+                    </span>
+                    {item.Mitra?.alamat && (
+                      <span className="hidden sm:flex items-center gap-1 text-[11px] text-slate-400 truncate max-w-xs">
+                        <MapPin size={11} className="shrink-0" />
+                        <span className="truncate">{item.Mitra.alamat}</span>
                       </span>
-                      {item.Mitra?.alamat && (
-                        <span className="hidden sm:flex items-center gap-1 text-[11px] text-slate-400 truncate max-w-xs">
-                          <MapPin size={11} className="shrink-0" />
-                          <span className="truncate">{item.Mitra.alamat}</span>
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
                 </div>
 

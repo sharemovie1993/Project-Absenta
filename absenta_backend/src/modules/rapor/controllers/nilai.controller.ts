@@ -315,4 +315,48 @@ export class NilaiController {
       return sendError(reply, 500, error.message || 'Gagal memuat progres pengisian nilai', error);
     }
   }
+
+  static async getSchoolWideTeacherProgress(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { tahun_pelajaran_id, semester_id } = req.query;
+
+      const result = await NilaiService.getSchoolWideTeacherProgress(
+        tenant_id,
+        { tahun_pelajaran_id, semester_id }
+      );
+
+      return sendResponse(reply, 200, true, 'Monitoring progres nilai guru se-sekolah berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, error.message || 'Gagal memuat monitoring nilai guru', error);
+    }
+  }
+
+  static async getClassSubjectProgress(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { kelas_id } = req.params;
+      const { tahun_pelajaran_id, semester_id } = req.query;
+
+      if (!kelas_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'Parameter kelas_id wajib disertakan',
+        });
+      }
+
+      const result = await NilaiService.getClassSubjectProgress(
+        tenant_id,
+        kelas_id,
+        { tahun_pelajaran_id, semester_id }
+      );
+
+      return sendResponse(reply, 200, true, 'Kelengkapan nilai mata pelajaran kelas berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      return sendError(reply, 500, error.message || 'Gagal memuat kelengkapan nilai kelas', error);
+    }
+  }
 }
+

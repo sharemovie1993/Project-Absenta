@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, CheckSquare, Square, Calendar, Building2, User, ShieldCheck } from 'lucide-react';
+import { Users, CheckSquare, Square, Calendar, Building2, User, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
@@ -85,6 +85,15 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       if (activeSemester?.id) setSelectedSemesterId(activeSemester.id);
     }
   }, [isOpen, activeTahunPelajaran, activeSemester]);
+
+  const selectedMitra = useMemo(() => {
+    return mitraOptions.find(m => m.value === selectedMitraId)?.raw as any;
+  }, [mitraOptions, selectedMitraId]);
+
+  const isOverQuota = useMemo(() => {
+    if (!selectedMitra || !selectedMitra.kuota || selectedMitra.kuota === 0) return false;
+    return selectedSiswaIds.length > selectedMitra.sisa;
+  }, [selectedMitra, selectedSiswaIds.length]);
 
   // Fetch Classes
   const { data: kelasResponse, isLoading: isLoadingKelas } = useQuery({
@@ -338,6 +347,50 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                   onSearch={onMitraSearch}
                   isLoading={isLoadingMitra}
                 />
+                {selectedMitra && (
+                  <div className={`mt-2 p-2.5 rounded-xl border text-xs transition-all ${
+                    isOverQuota || selectedMitra.isPenuh 
+                      ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40 text-amber-800 dark:text-amber-300' 
+                      : 'bg-slate-50 border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Users size={13} className={isOverQuota || selectedMitra.isPenuh ? 'text-amber-600' : 'text-indigo-600'} />
+                        <span>Kapasitas:</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold">{selectedMitra.terisi} / {selectedMitra.kuota || '∞'} Siswa</span>
+                        {selectedMitra.kuota > 0 ? (
+                          isOverQuota ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/50 dark:text-amber-300">
+                              ⚠️ Over (+{selectedSiswaIds.length - selectedMitra.sisa})
+                            </span>
+                          ) : selectedMitra.isPenuh ? (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/50 dark:text-rose-300">
+                              Penuh
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300">
+                              ✓ Sisa {selectedMitra.sisa} Slot
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-[10px] text-slate-400 italic">Belum dibatasi</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Referensi Keahlian Mitra (Opsional / Info Saja) */}
+                    {selectedMitra.kompetensi_keahlian && (
+                      <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>Fokus Keahlian:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[170px]" title={selectedMitra.kompetensi_keahlian}>
+                          {selectedMitra.kompetensi_keahlian}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </SimpleFormField>
 
               <SimpleFormField htmlFor="bulk-pembimbing" label="Guru Pembimbing Lapangan">
@@ -371,6 +424,15 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 />
               </SimpleFormField>
             </div>
+
+            {isOverQuota && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex gap-2.5 items-start text-xs text-amber-800 dark:text-amber-300">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Perhatian Over-Kuota</span>: Penempatan {selectedSiswaIds.length} siswa akan melebihi sisa kapasitas mitra ini ({selectedMitra?.sisa} slot tersisa). Sistem tetap mengizinkan penempatan ini sebagai dispensasi kemitraan DUDI.
+                </div>
+              </div>
+            )}
 
             <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-150/40 dark:border-slate-800/40 rounded-xl flex gap-3 items-start mt-6">
               <Building2 className="text-indigo-500 shrink-0 mt-0.5" size={18} />

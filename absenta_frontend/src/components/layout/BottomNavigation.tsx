@@ -63,7 +63,12 @@ export const BottomNavigation: React.FC = React.memo(() => {
   const jenisPtk = (guruProfile?.jenis_ptk || (user?.guru_profile as any)?.jenis_ptk || (user as any)?.jenis_ptk || '').toUpperCase();
   const isTuStaff = isTU || user?.role === 'TU' || jenisPtk === 'TENAGA_KEPENDIDIKAN' || (guruProfile?.is_tu ?? false);
   const isPendidik = !isTuStaff && !isKepsek && (jenisPtk === 'PENDIDIK' || !jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps));
-  const isPembimbingPkl = !isHubin && can('hubin.guidance.manage');
+  const isPembimbingPkl = !isHubin && !isKepsek && can('hubin.guidance.manage') && Boolean(
+    (guruProfile as any)?.is_pembimbing_pkl || 
+    ((guruProfile as any)?.active_pkl_count && (guruProfile as any).active_pkl_count > 0) ||
+    ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
+    ((user?.guru_profile as any)?.active_pkl_count > 0)
+  );
   const isPureGerbangStaff = roleName === 'GERBANG' || roleName === 'PETUGAS_GERBANG' || isGerbang && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum;
   const isWaliKelas = isWaliKelasFromCaps || !!guruProfile?.wali_kelas_di?.id || !!(user?.guru_profile as any)?.wali_kelas_di?.id;
   const waliKelasNama = guruProfile?.wali_kelas_di?.nama_kelas || (user?.guru_profile as any)?.wali_kelas_di?.nama_kelas || '';

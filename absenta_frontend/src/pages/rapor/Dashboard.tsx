@@ -1,132 +1,297 @@
-import React from 'react';
-import { BookOpen, FileText, CheckSquare, Award, Clock, Users, ArrowUpRight, ShieldAlert } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { 
+  FileText, 
+  CheckSquare, 
+  Award, 
+  Users, 
+  BookOpen, 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock, 
+  Calculator, 
+  Printer, 
+  UserCheck,
+  GraduationCap,
+  Info
+} from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
-import { Card } from '@/components/ui/Card';
-import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { TvModeToggle } from '@/components/ui/TvModeToggle';
+import { cn } from '@/lib/utils';
+import { raporApi } from '@/api/rapor.api';
+import { useCapabilities } from '@/hooks/useCapabilities';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
 
-const mockChartData = [
-  { name: 'X-RPL-1', Nilai: 84 },
-  { name: 'X-TKJ-1', Nilai: 81 },
-  { name: 'XI-RPL-1', Nilai: 86 },
-  { name: 'XI-TKJ-1', Nilai: 83 },
-  { name: 'XII-RPL-1', Nilai: 88 },
-  { name: 'XII-TKJ-1', Nilai: 85 },
-];
-
-const mockRecentReports = [
-  { id: 1, kelas: 'XII-RPL-1', wali: 'Dian Wijaya, S.Kom', inputStatus: '100% Selesai', totalSiswa: 36 },
-  { id: 2, kelas: 'XI-TKJ-1', wali: 'Hendra Saputra, S.Pd', inputStatus: '85% Input', totalSiswa: 34 },
-  { id: 3, kelas: 'X-RPL-1', wali: 'Amalia Rahma, S.Pd', inputStatus: '60% Input', totalSiswa: 32 },
-];
+import { useSemesterOptions } from '@/hooks/useSemesterOptions';
+import { TeacherMonitoringTable } from '@/components/rapor/dashboard/TeacherMonitoringTable';
+import { PersonalTeacherProgressWidget } from '@/components/rapor/dashboard/PersonalTeacherProgressWidget';
+import { ClassSubjectProgressCard } from '@/components/rapor/cetak-rapor/ClassSubjectProgressCard';
 
 export default React.memo(function RaporDashboard() {
-  const [chartData, setChartData] = React.useState(mockChartData);
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const { isAdmin, isKurikulum, isKepsek, isWaliKelas, walikelasKelas, walikelasKelasIds } = useCapabilities();
+  const userKelasId = walikelasKelas?.id || (walikelasKelasIds && walikelasKelasIds.length > 0 ? walikelasKelasIds[0] : null);
+  const canViewSchoolMonitoring = isAdmin || isKurikulum || isKepsek;
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setChartData(prev => 
-        prev.map(item => ({
-          ...item,
-          Nilai: Math.max(70, Math.min(95, item.Nilai + (Math.random() > 0.5 ? 1 : -1)))
-        }))
-      );
-    }, 15000);
+  // ── Tab Switcher (Khusus Akun Kurikulum/Admin/Kepsek) ──
+  const [activeTab, setActiveTab] = useState<'monitoring' | 'personal'>('monitoring');
 
-    return () => clearInterval(interval);
-  }, []);
+  // ── Context Selector TP & Semester ──
+  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>('');
+  const [selectedSemester, setSelectedSemester] = useState<string>('');
+
+  const { options: tpOptions, rawList: tpRawList, activeYear: activeTp, isLoading: isLoadingTp } = useTahunPelajaranOptions();
+  const { options: semesterOptions, rawList: semesterRawList, activeSemester: activeSem, isLoading: isLoadingSem } = useSemesterOptions({
+    tahunPelajaranId: selectedTahunPelajaran || undefined,
+  });
+
+  // Auto-set TP aktif saat pertama load
+  useEffect(() => {
+    if (!selectedTahunPelajaran && activeTp?.id) {
+      setSelectedTahunPelajaran(activeTp.id);
+    }
+  }, [activeTp, selectedTahunPelajaran]);
+
+  // Auto-set Semester aktif saat pertama load
+  useEffect(() => {
+    if (!selectedSemester && activeSem?.id) {
+      setSelectedSemester(activeSem.id);
+    }
+  }, [activeSem, selectedSemester]);
+
+  const activeYear = useMemo(() => {
+    const id = selectedTahunPelajaran || activeTp?.id;
+    if (!id) return null;
+    const found = tpRawList?.find((y) => y.id === id);
+    const tahun = found?.tahun || (found as any)?.nama || activeTp?.tahun || id;
+    return { id, tahun, nama: `TP ${tahun}` };
+  }, [activeTp, selectedTahunPelajaran, tpRawList]);
+
+  const activeSemester = useMemo(() => {
+    const id = selectedSemester || activeSem?.id;
+    if (!id) return null;
+    const found = semesterRawList?.find((s) => s.id === id);
+    const namaSemester = found?.nama_semester || activeSem?.nama_semester || id;
+    return { id, nama_semester: namaSemester, nama: `Semester ${namaSemester}` };
+  }, [activeSem, selectedSemester, semesterRawList]);
+
+  // ── Query 1: Monitoring Seluruh Guru (Untuk Kurikulum / Admin / Kepsek) ──
+  const { data: schoolMonitoringRes, isLoading: isLoadingSchool } = useQuery({
+    queryKey: ['school-teacher-monitoring', activeYear?.id, activeSemester?.id],
+    queryFn: () =>
+      raporApi.getMonitoringProgressGuru({
+        tahun_pelajaran_id: activeYear?.id,
+        semester_id: activeSemester?.id,
+      }),
+    enabled: !!canViewSchoolMonitoring && !!activeYear?.id && !!activeSemester?.id,
+  });
+
+  const schoolData = schoolMonitoringRes?.data;
+  const schoolMeta = schoolData?.meta;
+  const schoolTeachers = schoolData?.teachers || [];
+
+  // ── Query 2: Progres Pribadi Guru (Untuk Semua Akun Pengampu) ──
+  const { data: personalProgressRes, isLoading: isLoadingPersonal } = useQuery({
+    queryKey: ['personal-teacher-progress', activeYear?.id, activeSemester?.id],
+    queryFn: () =>
+      raporApi.getTeacherProgress({
+        tahun_pelajaran_id: activeYear?.id,
+        semester_id: activeSemester?.id,
+      }),
+    enabled: !!activeYear?.id && !!activeSemester?.id,
+  });
+
+  const personalProgress = personalProgressRes?.data || null;
+
+  // ── Query 3: Kelengkapan Nilai Mapel Kelas Binaan (Khusus Wali Kelas) ──
+  const { data: homeroomProgressRes, isLoading: isLoadingHomeroomProgress } = useQuery({
+    queryKey: ['homeroom-subject-progress', userKelasId, activeYear?.id, activeSemester?.id],
+    queryFn: () =>
+      raporApi.getClassSubjectProgress(userKelasId!, {
+        tahun_pelajaran_id: activeYear?.id,
+        semester_id: activeSemester?.id,
+      }),
+    enabled: !!isWaliKelas && !!userKelasId && !!activeYear?.id && !!activeSemester?.id,
+  });
+
+  const homeroomProgressData = homeroomProgressRes?.data || null;
 
   return (
-    <AcademicPageLayout 
-      title="Dashboard E-Rapor" 
-      description="Monitoring progres pengisian nilai, verifikasi wali kelas, dan pembagian rapor"
+    <AcademicPageLayout
+      title="Dashboard E-Rapor"
+      description="Pusat monitoring progres pengisian nilai rapor, kelengkapan mata pelajaran, dan verifikasi wali kelas"
       topSlot={<WorkspaceAppLauncherCard workspaceId="RAPOR_WORKSPACE" />}
-      toolbar={<TvModeToggle />}
+      toolbar={
+        <div className={`flex items-center gap-2 flex-wrap ${isMobile ? 'w-full' : ''}`}>
+          {/* Selector TP */}
+          <div className={isMobile ? 'flex-1 min-w-[130px]' : 'w-40 sm:w-44'}>
+            <SearchableSelect
+              id="dash-filter-tp"
+              aria-label="Pilih tahun pelajaran"
+              value={selectedTahunPelajaran}
+              onValueChange={(val) => {
+                setSelectedTahunPelajaran(val);
+                setSelectedSemester('');
+              }}
+              options={tpOptions}
+              placeholder="Tahun Pelajaran"
+              isLoading={isLoadingTp}
+            />
+          </div>
+
+          {/* Selector Semester */}
+          <div className={isMobile ? 'flex-1 min-w-[120px]' : 'w-36 sm:w-40'}>
+            <SearchableSelect
+              id="dash-filter-semester"
+              aria-label="Pilih semester"
+              value={selectedSemester}
+              onValueChange={setSelectedSemester}
+              options={semesterOptions}
+              placeholder="Semester"
+              isLoading={isLoadingSem}
+            />
+          </div>
+
+          <TvModeToggle />
+        </div>
+      }
     >
-      <div className="space-y-6">
-        
-        {/* Metrik Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <AnalyticsCard 
-            title="Rapor Terproses" 
-            value="12 Kelas" 
-            icon={<FileText />} 
-            gradient="from-sky-500 to-sky-700 text-white" 
-            subtitle="Total 18 kelas" 
-          />
-          <AnalyticsCard 
-            title="Siswa Dinilai" 
-            value="384 / 412" 
-            icon={<Users />} 
-            gradient="from-indigo-500 to-indigo-700 text-white" 
-            subtitle="93% nilai terinput" 
-          />
-          <AnalyticsCard 
-            title="Rata-rata Nilai" 
-            value="84.2" 
-            icon={<Award />} 
-            gradient="from-emerald-500 to-emerald-700 text-white" 
-            subtitle="+2.4% dibanding semester lalu" 
-          />
-          <AnalyticsCard 
-            title="Status Cetak Rapor" 
-            value="Siap 6 Kelas" 
-            icon={<CheckSquare />} 
-            gradient="from-amber-500 to-amber-700 text-white" 
-            subtitle="Menunggu lock wali" 
-          />
-        </div>
+      <div className="space-y-5">
+        {/* ── SEGMENTED TAB SWITCHER (Untuk Kurikulum / Admin / Kepsek) ── */}
+        {canViewSchoolMonitoring && (
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-2xl w-full sm:w-fit border border-slate-200/80 dark:border-slate-700/60 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('monitoring')}
+              className={cn(
+                "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                activeTab === 'monitoring'
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <Users size={14} />
+              <span>Monitoring Guru ({schoolTeachers.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('personal')}
+              className={cn(
+                "flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                activeTab === 'personal'
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+              )}
+            >
+              <UserCheck size={14} />
+              <span>Progres Rapor Saya</span>
+            </button>
+          </div>
+        )}
 
-        {/* Chart & Status Wali Kelas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 p-6 border-none shadow-sm dark:bg-slate-900/40">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Rata-rata Nilai per Kelas</h3>
-                <p className="text-xs text-slate-450 dark:text-slate-450">Beban rata-rata capaian kompetensi siswa per rombongan belajar</p>
-              </div>
-              <ArrowUpRight size={16} className="text-slate-400" />
+        {/* ── TAB 1: MONITORING SEKOLAH (Kurikulum / Admin View) ── */}
+        {canViewSchoolMonitoring && activeTab === 'monitoring' && (
+          <div className="space-y-5">
+            {/* 4 Analytics Cards (Compact 2x2 grid di Mobile) */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+              <AnalyticsCard
+                title="Rombel KBM"
+                value={`${schoolMeta?.total_tasks || 0} Tugas`}
+                icon={<BookOpen size={18} />}
+                gradient="from-sky-500 to-sky-700 text-white"
+                subtitle={`${schoolMeta?.total_guru || 0} Guru Pengampu`}
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Penyelesaian"
+                value={`${schoolMeta?.percentage || 0}%`}
+                icon={<Award size={18} />}
+                gradient="from-indigo-500 to-indigo-700 text-white"
+                subtitle={`${schoolMeta?.completed_tasks || 0} dari ${schoolMeta?.total_tasks || 0} tuntas`}
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Guru Tuntas"
+                value={`${schoolMeta?.guru_completed || 0} Guru`}
+                icon={<CheckCircle2 size={18} />}
+                gradient="from-emerald-500 to-emerald-700 text-white"
+                subtitle="Seluruh rombel selesai"
+                mobileCompact={true}
+              />
+              <AnalyticsCard
+                title="Perlu Pengingat"
+                value={`${(schoolMeta?.guru_empty || 0) + (schoolMeta?.guru_partial || 0)} Guru`}
+                icon={<AlertCircle size={18} />}
+                gradient="from-rose-500 to-rose-700 text-white"
+                subtitle={`${schoolMeta?.guru_empty || 0} belum ada input`}
+                mobileCompact={true}
+              />
             </div>
-            <div className="h-72 w-full">
-              <ResponsiveContainer minWidth={0} width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-slate-800" />
-                  <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[60, 100]} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.05)' }} />
-                  <Bar dataKey="Nilai" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={20} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
 
-          {/* Agenda Kanan */}
-          <Card className="p-6 border-none shadow-sm dark:bg-slate-900/40 space-y-6">
-            <div>
-              <h3 className="text-sm font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">Status Input Wali Kelas</h3>
-              <p className="text-xs text-slate-450 dark:text-slate-450">Progress penginputan nilai rapor semester aktif</p>
-            </div>
-            <div className="space-y-4">
-              {mockRecentReports.map((item) => (
-                <div key={item.id} className="flex items-start justify-between p-3.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-xl">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">{item.kelas}</h4>
-                    <p className="text-[10px] text-slate-500">Wali: {item.wali}</p>
-                    <p className="text-[9px] text-slate-400">{item.totalSiswa} Siswa</p>
-                  </div>
-                  {item.inputStatus === '100% Selesai' ? (
-                    <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full flex-shrink-0">Selesai</span>
-                  ) : (
-                    <span className="text-[9px] font-black uppercase bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full flex-shrink-0">{item.inputStatus}</span>
-                  )}
+            {/* Informational banner bila tidak ada jadwal KBM pada periode yang dipilih */}
+            {!isLoadingSchool && schoolTeachers.length === 0 && (
+              <div className="p-4 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl flex items-start gap-3">
+                <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div className="text-xs text-amber-800 dark:text-amber-300">
+                  <p className="font-bold">
+                    Tidak Ditemukan Jadwal KBM [{activeYear?.nama} • {activeSemester?.nama}]
+                  </p>
+                  <p className="mt-0.5 text-amber-700 dark:text-amber-400">
+                    Belum ada rombongan belajar atau jadwal mengajar guru yang terdaftar pada periode akademik ini. Seluruh statistik monitoring bernilai 0.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+              </div>
+            )}
 
+            {/* Matriks Tabel Monitoring Seluruh Guru */}
+            <TeacherMonitoringTable
+              teachers={schoolTeachers}
+              isLoading={isLoadingSchool}
+              tahunPelajaranId={activeYear?.id}
+              semesterId={activeSemester?.id}
+            />
+          </div>
+        )}
+
+        {/* ── TAB 2 (Atau default jika bukan kurikulum): PROGRES PRIBADI GURU & SHORTCUT WALI KELAS ── */}
+        {(!canViewSchoolMonitoring || activeTab === 'personal') && (
+          <div className="space-y-5">
+            <PersonalTeacherProgressWidget
+              progressInfo={personalProgress}
+              isLoading={isLoadingPersonal}
+              isWaliKelas={isWaliKelas}
+              tahunPelajaranId={activeYear?.id}
+              semesterId={activeSemester?.id}
+            />
+
+            {/* Kelengkapan Nilai Seluruh Mapel di Kelas Binaan (Khusus Wali Kelas) */}
+            {isWaliKelas && userKelasId && (
+              <div className="space-y-2.5 pt-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap size={15} className="text-indigo-600 dark:text-indigo-400" />
+                    <span>Kelengkapan Nilai Mata Pelajaran ({walikelasKelas?.nama_kelas || 'Kelas Binaan'}):</span>
+                  </h3>
+                  <span className="text-[11px] text-slate-400 hidden sm:inline">
+                    Klik kartu mapel untuk membuka lembar nilai siswa
+                  </span>
+                </div>
+                <ClassSubjectProgressCard
+                  data={homeroomProgressData}
+                  isLoading={isLoadingHomeroomProgress}
+                  tahunPelajaranId={activeYear?.id}
+                  semesterId={activeSemester?.id}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </AcademicPageLayout>
   );

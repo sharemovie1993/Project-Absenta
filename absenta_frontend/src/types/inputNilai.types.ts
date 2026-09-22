@@ -26,6 +26,8 @@ export interface TeacherProgressInfo {
   completed_tasks: number;
   partial_tasks: number;
   empty_tasks: number;
+  total_siswa?: number;
+  siswa_terisi?: number;
   percentage: number;
   tasks: TeacherTaskItem[];
 }

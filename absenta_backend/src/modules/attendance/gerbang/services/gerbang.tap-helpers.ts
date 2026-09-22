@@ -203,3 +203,7 @@ export async function getIntegrationStatus(tenantId: string, tenantMode: Absensi
   };
 }
 
+export function mapArahToAudit(arah: string): 'MASUK' | 'KELUAR' {
+  return arah === 'GERBANG_PULANG' || arah === 'KELUAR' ? 'KELUAR' : 'MASUK';
+}
+

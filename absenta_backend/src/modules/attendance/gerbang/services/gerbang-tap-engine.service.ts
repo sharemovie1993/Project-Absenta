@@ -15,6 +15,8 @@ import { gerbangDb } from './repositories/gerbang.db';
 import { resolveTapTime, buildTapResponseData, buildErrorResponse } from './gerbang.tap-helpers';
 import { processTapTransaction } from './gerbang.tap-transaction';
 import { emitDomainEvent } from '@/infra/event-bus';
+import { isSchoolDay } from '@/utils/school-day.utils';
+import { gerbangAuditService } from './gerbang-audit.service';
 
 export class GerbangTapEngineService {
   private static instance: GerbangTapEngineService;
@@ -149,6 +151,20 @@ export class GerbangTapEngineService {
           error_type: 'STUDENT_NOT_FOUND',
           message: `Data tidak ditemukan di sistem untuk ID/NIP/NIS/RFID: "${rawId || input.rfid}"`,
         } as any, processingInfo);
+      }
+
+      // ── Cek Hari Kerja Sekolah (Audit Log Mode jika Hari Libur / Non-Sekolah) ──
+      const schoolDay = await isSchoolDay(tenantId);
+      if (!schoolDay.isWorkingDay) {
+        return await gerbangAuditService.recordSecurityAccess({
+          input,
+          siswa,
+          guru,
+          isGuru,
+          userId,
+          tenantId,
+          reason: schoolDay.reason,
+        });
       }
 
       const sessionInfo = await getOrCreateSessionInfo(tenantId);

@@ -446,4 +446,153 @@ export async function gerbangRoutes(fastify: any) {
       }
     }
   });
+
+  // ── Security Audit Logs & Guest Access Routes ─────────────────────────────
+
+  // Cek status hari sekolah aktif vs hari libur (audit mode)
+  fastify.get('/school-day-check', {
+    preHandler: [allowBothModes, determineDataScope()],
+    handler: gerbangController.checkSchoolDay.bind(gerbangController),
+    schema: {
+      description: 'Check whether current date is an active school working day or holiday audit mode',
+      tags: ['Gerbang', 'Audit'],
+      querystring: {
+        type: 'object',
+        properties: {
+          date: { type: 'string', description: 'Target date (ISO / YYYY-MM-DD)' }
+        }
+      }
+    }
+  });
+
+  // Ambil data log akses keamanan gerbang
+  fastify.get('/log-akses', {
+    preHandler: [
+      allowBothModes,
+      elevatedScopeMiddleware,
+      requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
+      determineDataScope(),
+    ],
+    handler: gerbangController.getSecurityLogs.bind(gerbangController),
+    schema: {
+      description: 'Get gate security audit logs with pagination and filters',
+      tags: ['Gerbang', 'Audit'],
+      querystring: {
+        type: 'object',
+        properties: {
+          startDate: { type: 'string' },
+          endDate: { type: 'string' },
+          tipe_orang: { type: 'string' },
+          arah: { type: 'string' },
+          search: { type: 'string' },
+          limit: { type: 'integer' },
+          offset: { type: 'integer' }
+        }
+      }
+    }
+  });
+
+  // Ambil ringkasan statistik log akses keamanan
+  fastify.get('/log-akses/stats', {
+    preHandler: [
+      allowBothModes,
+      elevatedScopeMiddleware,
+      requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.reports.view', 'attendance.gate.tap.entry']),
+      determineDataScope(),
+    ],
+    handler: gerbangController.getSecurityLogStats.bind(gerbangController),
+    schema: {
+      description: 'Get gate security audit logs statistics',
+      tags: ['Gerbang', 'Audit'],
+      querystring: {
+        type: 'object',
+        properties: {
+          startDate: { type: 'string' },
+          endDate: { type: 'string' }
+        }
+      }
+    }
+  });
+
+  // Catat akses tamu / pengunjung
+  fastify.post('/log-akses/tamu', {
+    preHandler: [
+      allowBothModes,
+      requireCapability(['attendance.gate.tap.entry', 'attendance.scan']),
+      determineDataScope(),
+    ],
+    handler: gerbangController.recordGuest.bind(gerbangController),
+    schema: {
+      description: 'Record guest / visitor access at gate',
+      tags: ['Gerbang', 'Audit'],
+      body: {
+        type: 'object',
+        required: ['nama_tamu', 'keperluan_tamu'],
+        properties: {
+          nama_tamu: { type: 'string' },
+          instansi_tamu: { type: 'string' },
+          keperluan_tamu: { type: 'string' },
+          kontak_tamu: { type: 'string' },
+          arah: { type: 'string', enum: ['MASUK', 'KELUAR'] },
+          catatan: { type: 'string' }
+        }
+      }
+    }
+  });
+
+  // Perbarui log akses (nama tamu, instansi, keperluan, dll)
+  fastify.put('/log-akses/:id', {
+    preHandler: [
+      allowBothModes,
+      elevatedScopeMiddleware,
+      requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
+      determineDataScope(),
+    ],
+    handler: gerbangController.updateLog.bind(gerbangController),
+    schema: {
+      description: 'Update gate security audit log entry',
+      tags: ['Gerbang', 'Audit'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string' }
+        }
+      },
+      body: {
+        type: 'object',
+        properties: {
+          nama_tamu: { type: 'string' },
+          instansi_tamu: { type: 'string' },
+          keperluan_tamu: { type: 'string' },
+          kontak_tamu: { type: 'string' },
+          arah: { type: 'string', enum: ['MASUK', 'KELUAR'] },
+          catatan: { type: 'string' }
+        }
+      }
+    }
+  });
+
+  // Hapus log akses
+  fastify.delete('/log-akses/:id', {
+    preHandler: [
+      allowBothModes,
+      elevatedScopeMiddleware,
+      requireCapability(['attendance.gate.view.logs', 'attendance.sessions.create', 'attendance.gate.tap.entry']),
+      determineDataScope(),
+    ],
+    handler: gerbangController.deleteLog.bind(gerbangController),
+    schema: {
+      description: 'Delete gate security audit log entry',
+      tags: ['Gerbang', 'Audit'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string' }
+        }
+      }
+    }
+  });
 }
+

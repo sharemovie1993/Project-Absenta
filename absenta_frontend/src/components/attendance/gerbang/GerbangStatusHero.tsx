@@ -26,6 +26,8 @@ interface GerbangStatusHeroProps {
   setIsBypassMode: (val: boolean) => void;
   onRefreshConfig: () => void;
   loadingConfig: boolean;
+  isAuditMode?: boolean;
+  auditReason?: string;
 }
 
 const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
@@ -37,6 +39,8 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
   setIsBypassMode,
   onRefreshConfig,
   loadingConfig,
+  isAuditMode = false,
+  auditReason,
 }) => {
   const navigate = useNavigate();
   const { tenantId } = useTenant();
@@ -50,7 +54,11 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
       {/* Status Indicator Background Stripe */}
       <div
         className={`h-1.5 w-full ${
-          timeStatus?.status === 'TERLAMBAT' ? 'bg-red-500' : 'bg-green-500'
+          isAuditMode
+            ? 'bg-purple-600'
+            : timeStatus?.status === 'TERLAMBAT'
+            ? 'bg-red-500'
+            : 'bg-green-500'
         }`}
       />
 
@@ -170,6 +178,14 @@ const GerbangStatusHeroComponent: React.FC<GerbangStatusHeroProps> = ({
         <div className="bg-amber-50 dark:bg-amber-900/30 border-t border-amber-200 dark:border-amber-800 px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-400 animate-in slide-in-from-top-2">
           <ShieldAlert size={14} />
           MODE BYPASS AKTIF: Semua scan akan dicatat sebagai HADIR (Tepat Waktu) secara manual.
+        </div>
+      )}
+
+      {/* Audit Mode Active Banner */}
+      {isAuditMode && (
+        <div className="bg-purple-50 dark:bg-purple-900/30 border-t border-purple-200 dark:border-purple-800 px-4 py-2 flex items-center justify-center gap-2 text-xs font-bold text-purple-700 dark:text-purple-300 animate-in slide-in-from-top-2">
+          <ShieldAlert size={14} className="text-purple-600 dark:text-purple-400" />
+          <span>MODE AUDIT KEAMANAN: {auditReason || 'Hari Non-Sekolah / Libur'}. Tap dicatat sebagai log keamanan gerbang, bukan kehadiran.</span>
         </div>
       )}
 

@@ -308,7 +308,7 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
 
       {/* ── WIDGET MONITORING BIMBINGAN PKL (KHUSUS GURU PEMBIMBING) ── */}
       {isPembimbingPkl && (
-        <PembimbingPklWidget onNavigateTab={onNavigateTab} />
+        <PembimbingPklWidget guruId={guruId} onNavigateTab={onNavigateTab} />
       )}
 
       {/* ── MATRIKS JADWAL GURU 1 MINGGU (STRICTLY ONLY FOR TEACHERS WITH PENDIDIK PTK) ──────────── */}

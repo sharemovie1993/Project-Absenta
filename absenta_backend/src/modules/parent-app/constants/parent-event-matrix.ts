@@ -10,7 +10,8 @@ export enum ParentEventType {
   NO_ACTIVE_STUDENT = 'NO_ACTIVE_STUDENT',
   SESSION_PRESENT = 'SESSION_PRESENT',
   BK_SUMMONS_ISSUED = 'BK_SUMMONS_ISSUED',
-  BK_CASE_ALERT = 'BK_CASE_ALERT'
+  BK_CASE_ALERT = 'BK_CASE_ALERT',
+  STUDENT_HOLIDAY_ACCESS = 'STUDENT_HOLIDAY_ACCESS'
 }
 
 export enum NotificationChannel {
@@ -86,5 +87,11 @@ export const PARENT_EVENT_MATRIX: Record<ParentEventType, ParentEventConfig> = {
     channels: [NotificationChannel.PWA],
     titleTemplate: 'Catatan Perkembangan BK',
     messageTemplate: 'Terdapat catatan perkembangan baru untuk siswa {nama_siswa} di sistem Bimbingan Konseling.'
+  },
+  [ParentEventType.STUDENT_HOLIDAY_ACCESS]: {
+    channels: [NotificationChannel.PWA],
+    titleTemplate: 'Aktivitas Hari Libur',
+    messageTemplate: '{nama_siswa} terdeteksi {arah} sekolah pada hari libur ({alasan}).'
   }
 };
+

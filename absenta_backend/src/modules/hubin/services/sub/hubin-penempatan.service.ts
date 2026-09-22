@@ -19,62 +19,23 @@ export class HubinPenempatanService extends HubinCommonHelper {
     let where: any = { tenant_id: tenantId };
     let andConditions: any[] = [];
 
-    // Enterprise Scoping Logic
-    if (org) {
-      if (org.tenant_wide !== true) {
-        if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { Guru: true }
-          });
-          const scopeOr: any[] = [
-            {
-              Siswa: {
-                OR: [
-                  { jurusan_id: { in: org.unit_ids } },
-                  { Kelas: { jurusan_id: { in: org.unit_ids } } }
-                ]
-              }
-            }
-          ];
-          if (user?.Guru?.id) {
-            scopeOr.push({ pembimbing_id: user.Guru.id });
-          }
-          andConditions.push({ OR: scopeOr });
-        } else if (Array.isArray(org.kelas_ids) && org.kelas_ids.length > 0) {
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { Guru: true }
-          });
-          const scopeOr: any[] = [
-            {
-              Siswa: {
-                kelas_id: { in: org.kelas_ids }
-              }
-            }
-          ];
-          if (user?.Guru?.id) {
-            scopeOr.push({ pembimbing_id: user.Guru.id });
-          }
-          andConditions.push({ OR: scopeOr });
-        } else {
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { Guru: true }
-          });
-          if (user?.Guru?.id) {
-            andConditions.push({ pembimbing_id: user.Guru.id });
-          }
-        }
-      }
-    } else if (userId) {
-      // Fallback untuk legacy / non-middleware calls
+    // Enterprise Scoping & Domain-Isolated Authorization Logic
+    let isGlobalHubin = false;
+    let currentGuruId: string | null = null;
+    let kaprogUnitIds: string[] = [];
+    let walikelasKelasIds: string[] = [];
+
+    if (userId) {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        include: { 
+        include: {
           Guru: true,
           Role: {
-            include: { rolePermissions: true }
+            include: {
+              rolePermissions: {
+                include: { Permission: true }
+              }
+            }
           },
           organizationalAssignments: {
             where: { is_active: true },
@@ -83,48 +44,66 @@ export class HubinPenempatanService extends HubinCommonHelper {
         }
       });
 
-      const isGlobalHubin = user?.Role?.name === 'ADMIN' || 
-                           user?.organizationalAssignments?.some((oa: any) => oa.Position?.code === 'HUBIN') ||
-                           user?.Role?.rolePermissions?.some((rp: any) => rp.permission_id === 'hubin.partners.manage');
+      if (user) {
+        currentGuruId = user.Guru?.id || null;
+        const roleName = user.Role?.name;
+        const isGlobalAdmin = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+        const positions = (user.organizationalAssignments || []).map(a => a.Position?.code).filter(Boolean);
+        const isHubinLeader = positions.includes('HUBIN') || positions.includes('KEPALA_SEKOLAH');
+        const perms = (user.Role?.rolePermissions || []).map(rp => rp.Permission?.id || (rp as any).permission_id).filter(Boolean);
+        const hasHubinManage = perms.includes('hubin.pkl.manage') || perms.includes('hubin.partners.manage');
 
-      const kaprogAssignments = user?.organizationalAssignments?.filter((oa: any) => oa.Position?.code === 'KAPROG' && oa.unit_id);
-      const walikelasAssignments = user?.organizationalAssignments?.filter((oa: any) => 
-        (oa.Position?.code === 'WALIKELAS' || oa.Position?.code === 'WALI_KELAS') && oa.kelas_id
-      );
+        isGlobalHubin = isGlobalAdmin || isHubinLeader || hasHubinManage;
 
-      if (!isGlobalHubin) {
-        if (kaprogAssignments && kaprogAssignments.length > 0) {
-          const unitIds = kaprogAssignments.map((a: any) => a.unit_id);
-          const scopeOr: any[] = [
-            {
-              Siswa: {
-                OR: [
-                  { jurusan_id: { in: unitIds } },
-                  { Kelas: { jurusan_id: { in: unitIds } } }
-                ]
-              }
+        kaprogUnitIds = (user.organizationalAssignments || [])
+          .filter(a => a.Position?.code === 'KAPROG' && a.unit_id)
+          .map(a => a.unit_id!);
+
+        walikelasKelasIds = (user.organizationalAssignments || [])
+          .filter(a => (a.Position?.code === 'WALIKELAS' || a.Position?.code === 'WALI_KELAS') && a.kelas_id)
+          .map(a => a.kelas_id!);
+      }
+    }
+
+    if (!isGlobalHubin) {
+      // Prioritas 1: Kaprog (Jurusan siswa atau pembimbing)
+      if (kaprogUnitIds.length > 0 || (org?.is_unit_restricted && Array.isArray(org.unit_ids) && org.unit_ids.length > 0)) {
+        const unitIds = kaprogUnitIds.length > 0 ? kaprogUnitIds : org.unit_ids;
+        const scopeOr: any[] = [
+          {
+            Siswa: {
+              OR: [
+                { jurusan_id: { in: unitIds } },
+                { Kelas: { jurusan_id: { in: unitIds } } }
+              ]
             }
-          ];
-          if (user?.Guru?.id) {
-            scopeOr.push({ pembimbing_id: user.Guru.id });
           }
-          andConditions.push({ OR: scopeOr });
-        } else if (walikelasAssignments && walikelasAssignments.length > 0) {
-          const kelasIds = walikelasAssignments.map((a: any) => a.kelas_id);
-          const scopeOr: any[] = [
-            {
-              Siswa: {
-                kelas_id: { in: kelasIds }
-              }
-            }
-          ];
-          if (user?.Guru?.id) {
-            scopeOr.push({ pembimbing_id: user.Guru.id });
-          }
-          andConditions.push({ OR: scopeOr });
-        } else if (user?.Guru?.id) {
-          andConditions.push({ pembimbing_id: user.Guru.id });
+        ];
+        if (currentGuruId) {
+          scopeOr.push({ pembimbing_id: currentGuruId });
         }
+        andConditions.push({ OR: scopeOr });
+      } else if (walikelasKelasIds.length > 0 || (Array.isArray(org?.kelas_ids) && org.kelas_ids.length > 0)) {
+        // Prioritas 2: Wali Kelas
+        const kelasIds = walikelasKelasIds.length > 0 ? walikelasKelasIds : org.kelas_ids;
+        const scopeOr: any[] = [
+          {
+            Siswa: {
+              kelas_id: { in: kelasIds }
+            }
+          }
+        ];
+        if (currentGuruId) {
+          scopeOr.push({ pembimbing_id: currentGuruId });
+        }
+        andConditions.push({ OR: scopeOr });
+      } else if (currentGuruId) {
+        // Prioritas 3: Guru Pembimbing biasa (atau guru struktural lain seperti Gerbang/Piket yang kebetulan punya akun Guru)
+        // Hanya boleh melihat penempatan di mana guru ini adalah PEMBIMBING!
+        andConditions.push({ pembimbing_id: currentGuruId });
+      } else {
+        // Staf non-guru tanpa jabatan Hubin: Tidak memiliki hak akses ke data penempatan PKL siswa
+        andConditions.push({ id: '__unauthorized_no_guru__' });
       }
     }
 
@@ -400,10 +379,26 @@ export class HubinPenempatanService extends HubinCommonHelper {
       siswa_akademik_id: siswaAkademikId,
     };
 
+    // Cek kapasitas kuota mitra
+    const mitra = data.mitra_id ? await prisma.mitraIndustri.findUnique({
+      where: { id: data.mitra_id },
+      select: { nama: true, kuota_pkl: true }
+    }) : null;
+    const currentActiveCount = data.mitra_id ? await prisma.siswaPkl.count({
+      where: { tenant_id: tenantId, mitra_id: data.mitra_id, status: 'AKTIF' }
+    }) : 0;
+    const isOverQuota = (mitra?.kuota_pkl || 0) > 0 && currentActiveCount >= (mitra?.kuota_pkl || 0);
+
     const result = await prisma.siswaPkl.create({
       data: createData,
     });
-    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', result.id, { siswa_nama: siswa?.nama_siswa });
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', result.id, { 
+      siswa_nama: siswa?.nama_siswa,
+      mitra_nama: mitra?.nama,
+      is_over_quota: isOverQuota,
+      kuota_pkl: mitra?.kuota_pkl || 0,
+      terisi_saat_plotting: currentActiveCount + 1
+    });
     await cacheInvalidationService.invalidateHubinCache(tenantId, data.siswa_id);
     return result;
   }
@@ -565,6 +560,15 @@ export class HubinPenempatanService extends HubinCommonHelper {
       }
     }
 
+    const firstMitraId = items[0]?.mitra_id;
+    const mitra = firstMitraId ? await prisma.mitraIndustri.findUnique({
+      where: { id: firstMitraId },
+      select: { nama: true, kuota_pkl: true }
+    }) : null;
+    let runningActiveCount = firstMitraId ? await prisma.siswaPkl.count({
+      where: { tenant_id: tenantId, mitra_id: firstMitraId, status: 'AKTIF' }
+    }) : 0;
+
     const results = [];
     for (const item of items) {
       const siswa = await prisma.siswa.findUnique({
@@ -622,7 +626,16 @@ export class HubinPenempatanService extends HubinCommonHelper {
         }
       });
 
-      this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', res.id, { siswa_nama: siswa?.nama_siswa });
+      runningActiveCount++;
+      const isOverQuota = (mitra?.kuota_pkl || 0) > 0 && runningActiveCount > (mitra?.kuota_pkl || 0);
+
+      this.log(tenantId, actorUserId || null, 'HUBIN_PKL_PLACE', 'SiswaPkl', res.id, { 
+        siswa_nama: siswa?.nama_siswa,
+        mitra_nama: mitra?.nama,
+        is_over_quota: isOverQuota,
+        kuota_pkl: mitra?.kuota_pkl || 0,
+        terisi_saat_plotting: runningActiveCount
+      });
       results.push(res);
     }
     await cacheInvalidationService.invalidateHubinCache(tenantId);

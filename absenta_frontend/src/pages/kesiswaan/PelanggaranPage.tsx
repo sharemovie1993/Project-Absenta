@@ -21,7 +21,6 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
-  User,
   Calendar,
   Trash2,
   Edit2,
@@ -33,6 +32,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Loader } from '../../components/ui/Loader';
+import { SiswaIdentityCell } from '../../components/common/SiswaIdentityCell';
+
 import { z } from 'zod';
 
 import { useAuthStore } from '../../store/authStore';
@@ -357,18 +358,15 @@ export default React.memo(function PelanggaranPage() {
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-sm text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700">
-              {item.Siswa?.nama_siswa?.charAt(0) || 'S'}
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight line-clamp-1">
-                {item.Siswa?.nama_siswa || '-'}
-              </h4>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                {item.Siswa?.Kelas?.nama_kelas || '-'}
-              </p>
-            </div>
-          </div>
+            <SiswaIdentityCell
+              foto={item.Siswa?.foto}
+              nama={item.Siswa?.nama_siswa}
+              nis={item.Siswa?.nis}
+              kelas={item.Siswa?.Kelas?.nama_kelas}
+              size="md"
+              nameClassName="font-extrabold text-xs uppercase tracking-tight"
+              showMeta={true}
+            />
           <Badge variant={statusInfo.variant} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg flex items-center gap-1">
             {statusInfo.icon}
             <span>{statusInfo.label}</span>
@@ -442,15 +440,15 @@ export default React.memo(function PelanggaranPage() {
       key: 'siswa',
       label: 'Profil Siswa',
       render: (_: unknown, item: Pelanggaran) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center font-black text-xs text-gray-400 border border-gray-100">
-             {item.Siswa?.nama_siswa?.charAt(0)}
-          </div>
-          <div>
-            <div className="font-black text-gray-900 dark:text-white text-xs uppercase tracking-tight">{item.Siswa?.nama_siswa}</div>
-            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{item.Siswa?.Kelas?.nama_kelas}</div>
-          </div>
-        </div>
+        <SiswaIdentityCell
+          foto={item.Siswa?.foto}
+          nama={item.Siswa?.nama_siswa}
+          nis={item.Siswa?.nis}
+          kelas={item.Siswa?.Kelas?.nama_kelas}
+          size="xs"
+          nameClassName="font-black text-xs uppercase tracking-tight"
+          showMeta={false}
+        />
       )
     },
     {

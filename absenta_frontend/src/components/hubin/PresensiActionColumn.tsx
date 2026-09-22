@@ -14,6 +14,8 @@ interface PresensiActionColumnProps {
   onAction: () => void;
   isDisabled: boolean;
   isLoading: boolean;
+  statusHint?: string;
+  isHighlighted?: boolean;
 }
 
 export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.memo(({
@@ -24,7 +26,9 @@ export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.m
   isChecked,
   onAction,
   isDisabled,
-  isLoading
+  isLoading,
+  statusHint,
+  isHighlighted = false
 }) => {
   const isIN = type === 'IN';
 
@@ -65,25 +69,35 @@ export const PresensiActionColumn: React.FC<PresensiActionColumnProps> = React.m
           </span>
         </div>
       ) : (
-        <Button
-          onClick={onAction}
-          disabled={isDisabled || isLoading}
-          isLoading={isLoading}
-          className={`w-full h-11 sm:h-12 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all duration-300 ${
-            !isDisabled 
-              ? (isIN 
-                  ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/20' 
-                  : 'bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-500/20') 
-              : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 border border-slate-200 dark:border-slate-700 cursor-not-allowed grayscale'
-          }`}
-        >
-          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
-            <div className={`p-1 rounded-md ${!isDisabled ? 'bg-white/10' : 'bg-slate-200 dark:bg-slate-700'}`}>
-              <Camera size={14} className={!isDisabled ? 'text-white' : 'text-slate-400'} />
+        <div className="w-full flex flex-col items-center space-y-1.5">
+          <Button
+            onClick={onAction}
+            disabled={isDisabled || isLoading}
+            isLoading={isLoading}
+            className={`w-full h-11 sm:h-12 rounded-xl font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all duration-300 ${
+              !isDisabled 
+                ? (isIN 
+                    ? 'bg-gradient-to-br from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-lg shadow-emerald-500/25 ring-2 ring-emerald-500/20 active:scale-[0.98]' 
+                    : 'bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-500/25 ring-2 ring-indigo-500/20 active:scale-[0.98]') 
+                : isHighlighted
+                ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 opacity-80 cursor-not-allowed'
+                : 'bg-slate-50 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 border border-slate-200/90 dark:border-slate-800 cursor-not-allowed'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+              <div className={`p-1 rounded-md ${!isDisabled ? 'bg-white/10' : 'bg-slate-200/80 dark:bg-slate-800'}`}>
+                <Camera size={14} className={!isDisabled ? 'text-white' : 'text-slate-500 dark:text-slate-400'} />
+              </div>
+              <span className="font-bold">{isIN ? 'Check-In Masuk' : 'Check-Out Pulang'}</span>
             </div>
-            <span>{isIN ? 'Check-In Masuk' : 'Check-Out Pulang'}</span>
-          </div>
-        </Button>
+          </Button>
+
+          {statusHint && (
+            <span className="text-[8px] sm:text-[9px] font-semibold text-center text-slate-500 dark:text-slate-400 leading-tight px-1">
+              {statusHint}
+            </span>
+          )}
+        </div>
       )}
     </div>
   );

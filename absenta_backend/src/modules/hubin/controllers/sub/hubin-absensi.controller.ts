@@ -17,7 +17,7 @@ export class HubinAbsensiController {
     if (role === 'ADMIN' || role === 'SUPERADMIN') return true;
     const authResult = await authorizationService.isUserAuthorized(
       String(request.user.id),
-      ['hubin.pkl.manage', 'hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'organization.scope.tenant_wide'],
+      ['hubin.pkl.manage', 'hubin.partners.manage'],
       { user: request.user }
     );
     return !!authResult.allowed;

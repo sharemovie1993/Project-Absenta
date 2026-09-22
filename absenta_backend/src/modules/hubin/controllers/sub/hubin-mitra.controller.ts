@@ -12,11 +12,12 @@ export class HubinMitraController {
   private hubinService = new HubinService();
   async getMitra(request: AuthenticatedRequest, reply: any) {
     try {
-      const { search, page, limit } = request.query;
+      const { search, page, limit, mou_status } = request.query;
       const data = await this.hubinService.getMitra(request.tenantId!, { 
         search, 
         page: page ? parseInt(page) : undefined, 
-        limit: limit ? parseInt(limit) : undefined 
+        limit: limit ? parseInt(limit) : undefined,
+        mou_status
       });
       return reply.status(200).send({ success: true, ...data });
     } catch (error: any) {

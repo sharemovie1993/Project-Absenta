@@ -32,6 +32,7 @@ import { PklStatusBadge } from '../../components/hubin/PklStatusBadge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { SiswaIdentityCell } from '../../components/common/SiswaIdentityCell';
 
 // Real lazy-loaded detail modal for future monitoring drill-down expansion
 const MonitoringDetailModal = lazy(() => import('../../components/hubin/MitraDetailModal').then(m => ({ default: m.MitraDetailModal })));
@@ -48,6 +49,8 @@ interface AbsensiRecord {
 interface SiswaInfo {
   nama_siswa?: string;
   full_name?: string;
+  nis?: string;
+  foto?: string | null;
   Kelas?: { nama_kelas?: string; nama?: string };
 }
 
@@ -69,6 +72,8 @@ interface MonitoringItem {
   id: string;
   siswa: string;
   kelas: string;
+  nis?: string;
+  foto?: string | null;
   perusahaan: string;
   lokasi: string;
   status: string;
@@ -160,6 +165,8 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
         id: p.id,
         siswa: p.Siswa?.nama_siswa || p.Siswa?.full_name || 'N/A',
         kelas: p.Siswa?.Kelas?.nama_kelas || 'XII - PKL',
+        nis: p.Siswa?.nis,
+        foto: p.Siswa?.foto,
         perusahaan: p.Mitra?.nama || 'N/A',
         lokasi: p.Mitra?.alamat || '-',
         status: todayAbsen ? todayAbsen.status : 'BELUM ABSEN',
@@ -258,10 +265,15 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
       label: 'Siswa / Kelas',
       sortable: true,
       render: (siswa: string, row: MonitoringItem) => (
-        <div>
-          <div className="font-semibold text-slate-900 dark:text-slate-100">{siswa}</div>
-          <div className="text-xs text-slate-400 mt-0.5 font-medium">{row.kelas}</div>
-        </div>
+        <SiswaIdentityCell
+          foto={row.foto}
+          nama={siswa}
+          nis={row.nis}
+          kelas={row.kelas}
+          size="sm"
+          nameClassName="font-semibold text-slate-900 dark:text-slate-100"
+          showMeta={true}
+        />
       )
     },
     {
@@ -327,13 +339,16 @@ export const MonitoringPklSection: React.FC<{ hideLayout?: boolean }> = React.me
         className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
       >
         <div className="flex items-start justify-between gap-2">
-          <div className="space-y-0.5 min-w-0">
-            <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-              {row.siswa}
-            </h4>
-            <p className="text-[10px] font-bold text-slate-400 font-mono">
-              Kelas: {row.kelas}
-            </p>
+          <div className="min-w-0 flex-1">
+            <SiswaIdentityCell
+              foto={row.foto}
+              nama={row.siswa}
+              nis={row.nis}
+              kelas={row.kelas}
+              size="md"
+              nameClassName="font-extrabold text-xs uppercase tracking-tight truncate"
+              showMeta={true}
+            />
           </div>
           <PklStatusBadge status={row.status} />
         </div>

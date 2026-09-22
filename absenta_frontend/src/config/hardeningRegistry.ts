@@ -58,6 +58,61 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  gate_security_audit: {
+    moduleName: 'gate_security_audit',
+    displayName: 'Log Akses Keamanan Gerbang & Buku Tamu',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Membungkus halaman dengan InfraErrorBoundary agar kegagalan rendering tidak mematikan antarmuka utama.',
+        status: 'VERIFIED',
+        details: 'LogAksesGerbangPage terbungkus di dalam InfraErrorBoundary.'
+      },
+      {
+        id: 'architectural_table_toolbar_standard',
+        name: 'Standarisasi Toolbar Kontekstual Tabel',
+        description: 'Mengintegrasikan filter pencarian, kategori, arah, dan rentang tanggal dalam toolbarLeft Table.',
+        status: 'VERIFIED',
+        details: 'Toolbar filter terintegrasi di dalam slot resmi Table.'
+      },
+      {
+        id: 'architectural_table_pagination',
+        name: 'Standarisasi Pagination Tabel',
+        description: 'Mewajibkan implementasi pagination server-side pada tabel riwayat akses.',
+        status: 'VERIFIED',
+        details: 'Pagination server-side terintegrasi pada Table.'
+      },
+      {
+        id: 'architectural_container_consistency',
+        name: 'Konsistensi Kontainer UI',
+        description: 'Mewajibkan penggunaan SectionCard fullWidth noPadding untuk membungkus tabel master data.',
+        status: 'VERIFIED',
+        details: 'SectionCard digunakan sebagai kontainer utama.'
+      },
+      {
+        id: 'architectural_advanced_select',
+        name: 'Komponen Seleksi Canggih (SearchableSelect)',
+        description: 'Menggunakan SearchableSelect untuk filter kategori dan arah akses.',
+        status: 'VERIFIED',
+        details: 'SearchableSelect digunakan untuk filter kategori & arah.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Definisi kolom, statCards, dan breadcrumbs dimemosisasi menggunakan useMemo.',
+        status: 'VERIFIED',
+        details: 'useMemo terpasang pada columns, stats, breadcrumbs, dan handlers.'
+      },
+      {
+        id: 'architectural_feedback_standard',
+        name: 'Sistem Feedback & Dialog Modern',
+        description: 'Menggunakan useConfirm modal untuk konfirmasi aksi hapus dan toast untuk notifikasi.',
+        status: 'VERIFIED',
+        details: 'useConfirm & react-hot-toast terintegrasi.'
+      }
+    ]
+  },
   academic_siswa: {
     moduleName: 'academic_siswa',
     displayName: 'Database Master Siswa (Akademik)',

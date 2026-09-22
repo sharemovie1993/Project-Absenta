@@ -62,6 +62,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.gate.tap.exit',
     'attendance.gate.face.verify',
     'attendance.gate.bypass',
+    'attendance.gate.view.logs',
     'attendance.markGateAbsence',
     'attendance.getNotPresentStudents',
 
@@ -555,6 +556,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'attendance.sessions.update.attendance',
     'attendance.sessions.tap',
     'attendance.reports.view',
+    'attendance.gate.view.logs',
 
     // Monitoring BK
     'bk.cases.view.list',
@@ -692,7 +694,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'affairs.achievements.view.list',
     'attendance.piket.view', 'attendance.reports.view',
     'attendance.sessions.view.list', 'attendance.sessions.view.detail',
-    'attendance.recap.view.daily', 'attendance.recap.view.monthly', 'attendance.recap.view.global',
+    'attendance.recap.view.daily', 'attendance.recap.view.monthly', 'attendance.recap.view.global', 'attendance.gate.view.logs',
     'sarpras.inventory.view.list', 'sarpras.loans.view.list', 'sarpras.repairs.view.list',
     'billing.subscriptions.view.active',
     'hubin.pkl.view.list', 'hubin.absensi.view.history', 'hubin.absensi.recap', 'hubin.mou.view.list', 'hubin.tracer.view',

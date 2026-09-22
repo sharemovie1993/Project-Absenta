@@ -11,7 +11,7 @@ import { CACHE_KEYS, CACHE_TTL } from '@/constants/cache-keys';
 import { HubinCommonHelper } from './hubin-common.helper';
 
 export class HubinMitraService extends HubinCommonHelper {
-  async getMitra(tenantId: string, params?: { search?: string; page?: number; limit?: number }) {
+  async getMitra(tenantId: string, params?: { search?: string; page?: number; limit?: number; mou_status?: string }) {
     const page = params?.page || 1;
     const limit = params?.limit || 100;
     const skip = (page - 1) * limit;
@@ -26,15 +26,107 @@ export class HubinMitraService extends HubinCommonHelper {
       ];
     }
 
-    const [total, data] = await Promise.all([
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    if (params?.mou_status && params.mou_status !== 'ALL') {
+      if (params.mou_status === 'AKTIF') {
+        where.AND = [
+          ...(where.AND || []),
+          { mou_status: 'AKTIF' },
+          {
+            OR: [
+              { mou_tanggal_berakhir: null },
+              { mou_tanggal_berakhir: { gt: thirtyDaysFromNow } }
+            ]
+          }
+        ];
+      } else if (params.mou_status === 'EXPIRING_SOON') {
+        where.AND = [
+          ...(where.AND || []),
+          { mou_status: 'AKTIF' },
+          { mou_tanggal_berakhir: { gte: now, lte: thirtyDaysFromNow } }
+        ];
+      } else if (params.mou_status === 'EXPIRED') {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { mou_status: 'EXPIRED' },
+              {
+                AND: [
+                  { mou_tanggal_berakhir: { not: null } },
+                  { mou_tanggal_berakhir: { lt: now } }
+                ]
+              }
+            ]
+          }
+        ];
+      } else if (params.mou_status === 'NONE') {
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { mou_nomor: null },
+              { mou_nomor: '' },
+              { mou_status: 'TIDAK_AKTIF' }
+            ]
+          }
+        ];
+      }
+    }
+
+    const [total, data, totalAktif, totalExpiringSoon, totalExpired] = await Promise.all([
       prisma.mitraIndustri.count({ where }),
       prisma.mitraIndustri.findMany({
         where,
         orderBy: { nama: 'asc' },
         skip,
         take: limit,
+        include: {
+          _count: {
+            select: {
+              SiswaPkl: {
+                where: { status: 'AKTIF' }
+              }
+            }
+          }
+        }
+      }),
+      prisma.mitraIndustri.count({
+        where: {
+          tenant_id: tenantId,
+          mou_status: 'AKTIF',
+          OR: [
+            { mou_tanggal_berakhir: null },
+            { mou_tanggal_berakhir: { gt: thirtyDaysFromNow } }
+          ]
+        }
+      }),
+      prisma.mitraIndustri.count({
+        where: {
+          tenant_id: tenantId,
+          mou_status: 'AKTIF',
+          mou_tanggal_berakhir: { gte: now, lte: thirtyDaysFromNow }
+        }
+      }),
+      prisma.mitraIndustri.count({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { mou_status: 'EXPIRED' },
+            {
+              AND: [
+                { mou_tanggal_berakhir: { not: null } },
+                { mou_tanggal_berakhir: { lt: now } }
+              ]
+            }
+          ]
+        }
       })
     ]);
+
+    const totalAll = await prisma.mitraIndustri.count({ where: { tenant_id: tenantId } });
 
     return {
       data,
@@ -43,6 +135,12 @@ export class HubinMitraService extends HubinCommonHelper {
         page,
         limit,
         totalPages: Math.ceil(total / limit)
+      },
+      stats: {
+        total: totalAll,
+        aktif: totalAktif,
+        expiringSoon: totalExpiringSoon,
+        expired: totalExpired
       }
     };
   }
@@ -100,19 +198,26 @@ export class HubinMitraService extends HubinCommonHelper {
           throw new Error('Anda tidak memiliki otoritas untuk memperbarui data mitra ini');
         }
 
-        // Proteksi Data: Pembimbing hanya boleh update kontak/lokasi
+        // Proteksi Data: Pembimbing hanya boleh update kontak, PIC, dan alamat/lokasi
         const safeData = {
           alamat: data.alamat,
           kontak: data.kontak,
+          pic_nama: data.pic_nama,
+          pic_jabatan: data.pic_jabatan,
+          pic_telepon: data.pic_telepon,
+          pic_email: data.pic_email,
           latitude: data.latitude,
           longitude: data.longitude,
           radius: data.radius
         };
         
-        return await prisma.mitraIndustri.update({
+        const updated = await prisma.mitraIndustri.update({
           where: { id, tenant_id: tenantId },
           data: safeData,
         });
+        this.log(tenantId, userId || null, 'HUBIN_MITRA_CONTACT_UPDATED', 'MitraIndustri', id, { nama: updated.nama, updated_by: 'PEMBIMBING' });
+        await cacheInvalidationService.invalidateHubinCache(tenantId);
+        return updated;
       }
     }
 

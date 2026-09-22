@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserPlus, Calendar } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { UserPlus, Calendar, Users, AlertTriangle } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
@@ -104,6 +104,10 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
     const result = addPklMonths(base, months);
     setTanggalSelesai(result);
   };
+
+  const selectedMitra = useMemo(() => {
+    return mitraOptions.find(m => m.value === selectedMitraId)?.raw as any;
+  }, [mitraOptions, selectedMitraId]);
 
   return (
     <Modal
@@ -228,6 +232,45 @@ export const HubinPklPlottingModal: React.FC<HubinPklPlottingModalProps> = React
               onSearch={onMitraSearch}
               isLoading={isLoadingMitra}
             />
+            {selectedMitra && (
+              <div className={`mt-2 p-2.5 rounded-xl border text-xs transition-all ${
+                selectedMitra.isPenuh 
+                  ? 'bg-amber-50/80 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/40 text-amber-800 dark:text-amber-300' 
+                  : 'bg-slate-50 border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Users size={13} className={selectedMitra.isPenuh ? 'text-amber-600' : 'text-indigo-600'} />
+                    <span>Kapasitas:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold">{selectedMitra.terisi} / {selectedMitra.kuota || '∞'} Siswa</span>
+                    {selectedMitra.kuota > 0 ? (
+                      selectedMitra.isPenuh ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/50 dark:text-amber-300">
+                          ⚠️ Penuh (Over-Kuota)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/50 dark:text-emerald-300">
+                          ✓ Sisa {selectedMitra.sisa} Slot
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[10px] text-slate-400 italic">Kuota belum dibatasi</span>
+                    )}
+                  </div>
+                </div>
+                {/* Referensi Keahlian Mitra (Opsional / Info Saja) */}
+                {selectedMitra.kompetensi_keahlian && (
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>Fokus Keahlian:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[170px]" title={selectedMitra.kompetensi_keahlian}>
+                      {selectedMitra.kompetensi_keahlian}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </SimpleFormField>
 
           <SimpleFormField htmlFor="plotting-pembimbing" label="Guru Pembimbing">

@@ -16,6 +16,8 @@ import { useDebounce } from '../../../hooks/useDebounce';
 import { formatDate } from '../../../utils/layoutUtils';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../../components/academic/shared/MobileAcademicList';
+import { SiswaIdentityCell } from '../../../components/common/SiswaIdentityCell';
+
 
 const siswaKasusFilterSchema = z.object({
   search: z.string().optional(),
@@ -75,17 +77,18 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
       render: (_: unknown, item: unknown) => {
         const row = item as Siswa;
         return (
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-400">
-              {row.nama_siswa?.charAt(0)}
-            </div>
-            <div>
-              <div className="font-bold text-slate-800 dark:text-white text-xs">{row.nama_siswa}</div>
-              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{row.nis}</div>
-            </div>
-          </div>
+          <SiswaIdentityCell
+            foto={row.foto}
+            nama={row.nama_siswa}
+            nis={row.nis}
+            kelas={row.Kelas?.nama_kelas}
+            size="xs"
+            showMeta={false}
+            nameClassName="font-bold text-xs"
+          />
         );
       }
+
     },
     {
       key: 'kelas',
@@ -170,18 +173,14 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center font-black text-xs text-slate-500 shrink-0">
-              {row.nama_siswa?.charAt(0)}
-            </div>
-            <div className="space-y-0.5 min-w-0">
-              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase tracking-tight truncate">
-                {row.nama_siswa}
-              </h4>
-              <p className="text-[10px] font-bold text-slate-400 font-mono">
-                NIS: {row.nis || '-'} • {row.Kelas?.nama_kelas || '-'}
-              </p>
-            </div>
-          </div>
+            <SiswaIdentityCell
+              foto={row.foto}
+              nama={row.nama_siswa}
+              nis={row.nis}
+              kelas={row.Kelas?.nama_kelas}
+              size="sm"
+              nameClassName="font-extrabold text-xs uppercase tracking-tight"
+            />
           <Badge variant={net > 75 ? "error" : net > 30 ? "warning" : "success"} className="text-[10px] font-black uppercase shrink-0">
             {net} Poin
           </Badge>

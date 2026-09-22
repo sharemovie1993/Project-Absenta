@@ -88,3 +88,16 @@ export async function handleGateTapDomainEvent(payload: any) {
     console.warn('[EventBus] Gate reconciliation handling failed', e);
   }
 }
+
+export async function handleGerbangAuditUpdate(io: any, ioApi: any, payload: any) {
+  try {
+    const tenantId = payload?.tenant_id;
+    if (tenantId) {
+      io.to(`tenant:${tenantId}`).emit('gerbang_audit_update', payload);
+      if (ioApi) {
+        ioApi.to(`tenant:${tenantId}`).emit('gerbang_audit_update', payload);
+      }
+    }
+  } catch (e) {
+  }
+}

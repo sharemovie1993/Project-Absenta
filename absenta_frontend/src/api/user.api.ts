@@ -19,6 +19,16 @@ export interface User {
     id: string;
     name: string;
   };
+  kelas?: string | null;
+  siswa?: {
+    id: string;
+    nis?: string;
+    kelas?: {
+      id: string;
+      nama_kelas: string;
+      tingkat?: number;
+    } | null;
+  } | null;
 }
 
 export interface RoleItem {

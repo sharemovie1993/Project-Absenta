@@ -13,8 +13,10 @@ import { SectionCard } from '@/components/ui';
 // Lazy Loaded View Modes (Pilar 13)
 const ModeSimpleView = lazy(() => import('./components/ModeSimpleView'));
 const ModeMultiSesiView = lazy(() => import('./components/ModeMultiSesiView'));
+const AuditModeOpsView = lazy(() => import('./components/AuditModeOpsView').then(m => ({ default: m.AuditModeOpsView })));
 const CatatPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = lazy(() => import('../../../components/kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
+import { useGerbangAuditMode } from '../../../hooks/attendance/useGerbangAuditMode';
 
 export const AttendanceOpsPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
@@ -46,6 +48,8 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
     can('attendance.sessions.create') ||
     can('attendance.scan');
 
+  const { isAuditMode, auditReason } = useGerbangAuditMode();
+
   // Shared Props
   const sharedProps = {
     user,
@@ -65,20 +69,26 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
   ], []);
 
   const instruction = React.useMemo(() => ({
-    title: "Panduan Operasional Presensi",
-    description: "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung di gerbang atau ruang KBM.",
-    items: [
+    title: isAuditMode ? "Panduan Audit Keamanan Gerbang" : "Panduan Operasional Presensi",
+    description: isAuditMode
+      ? "Terminal gerbang saat ini berjalan dalam Mode Audit Keamanan (Hari Non-Sekolah). Akses dicatat sebagai log keamanan."
+      : "Gunakan halaman ini untuk mencatat kehadiran siswa secara langsung di gerbang atau ruang KBM.",
+    items: isAuditMode ? [
+      { text: "Tempelkan kartu RFID siswa/guru untuk mencatat akses masuk atau keluar." },
+      { text: "Gunakan tombol Catat Tamu untuk pengunjung eksternal." },
+      { text: "Tap di hari libur tidak memengaruhi rekap absensi harian KBM." }
+    ] : [
       { text: "Pastikan koneksi internet terhubung untuk sinkronisasi real-time." },
       { text: "Gunakan scanner barcode / QR atau tap kartu RFID siswa." },
       { text: "Gunakan tombol Tindak Masal untuk konfirmasi pembinaan siswa terlambat." }
     ]
-  }), []);
+  }), [isAuditMode]);
 
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
-        title="Operasional Presensi"
-        description="Pencatatan Kehadiran Realtime & POS Scanner"
+        title={isAuditMode ? "Audit Keamanan Gerbang" : "Operasional Presensi"}
+        description={isAuditMode ? "Terminal Akses Hari Libur & Pencatatan Tamu" : "Pencatatan Kehadiran Realtime & POS Scanner"}
         breadcrumbs={breadcrumbs}
         instruction={instruction}
         hardeningModuleKey="attendance_ops"
@@ -98,7 +108,9 @@ export const AttendanceOpsPage: React.FC = React.memo(() => {
                   </div>
                 </div>
               }>
-                {absensiMode === 'SIMPLE' ? (
+                {isAuditMode ? (
+                  <AuditModeOpsView reason={auditReason} user={user} />
+                ) : absensiMode === 'SIMPLE' ? (
                   <ModeSimpleView {...sharedProps} />
                 ) : (
                   <ModeMultiSesiView {...sharedProps} />

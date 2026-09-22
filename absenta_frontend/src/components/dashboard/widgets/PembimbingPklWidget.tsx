@@ -20,18 +20,23 @@ import { toLocalDate } from '../../../utils/attendance/time';
 import { SiswaBimbinganDetailModal } from '../../hubin/SiswaBimbinganDetailModal';
 
 interface PembimbingPklWidgetProps {
+  guruId?: string;
   onNavigateTab?: (tabId: string) => void;
 }
 
-export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavigateTab }) => {
+export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ guruId, onNavigateTab }) => {
   const navigate = useNavigate();
   const todayStr = useMemo(() => toLocalDate(), []);
   const [selectedSiswaForModal, setSelectedSiswaForModal] = React.useState<any>(null);
   const [modalInitialTab, setModalInitialTab] = React.useState<'presensi' | 'logbook'>('presensi');
 
   const { data: penempatanRes, isLoading } = useQuery({
-    queryKey: ['hubin-penempatan-pembimbing-widget'],
-    queryFn: () => hubinApi.getPenempatan({ limit: 100 }),
+    queryKey: ['hubin-penempatan-pembimbing-widget', guruId],
+    queryFn: () => hubinApi.getPenempatan({
+      limit: 100,
+      status: 'AKTIF',
+      ...(guruId ? { pembimbing_id: guruId } : {})
+    }),
     staleTime: 30 * 1000,
     refetchInterval: 60 * 1000,
   });
@@ -42,10 +47,14 @@ export const PembimbingPklWidget: React.FC<PembimbingPklWidgetProps> = ({ onNavi
     return [];
   }, [penempatanRes]);
 
-  // Hanya siswa dengan status AKTIF
+  // Hanya siswa dengan status AKTIF dan dibimbing oleh guru ini
   const activeList = useMemo(() => {
-    return rawList.filter((p: any) => p.status === 'AKTIF');
-  }, [rawList]);
+    return rawList.filter((p: any) => {
+      if (p.status !== 'AKTIF') return false;
+      if (guruId && p.pembimbing_id && p.pembimbing_id !== guruId) return false;
+      return true;
+    });
+  }, [rawList, guruId]);
 
   // Kalkulasi statistik kehadiran siswa bimbingan hari ini
   const stats = useMemo(() => {

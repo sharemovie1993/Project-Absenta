@@ -38,6 +38,16 @@ export interface UserResponse {
     id: string;
     name: string;
   } | null;
+  siswa?: {
+    id: string;
+    nis: string;
+    kelas?: {
+      id: string;
+      nama_kelas: string;
+      tingkat?: number;
+    } | null;
+  } | null;
+  kelas?: string | null;
   status: string;
   created_at: Date;
   updated_at: Date;
@@ -80,6 +90,7 @@ export class UserService {
       whereClause.OR = [
         { email: { contains: params.search, mode: 'insensitive' } },
         { full_name: { contains: params.search, mode: 'insensitive' } },
+        { Siswa: { Kelas: { nama_kelas: { contains: params.search, mode: 'insensitive' } } } },
       ];
     }
 
@@ -102,6 +113,19 @@ export class UserService {
       include: {
         Role: true,
         Tenant: true,
+        Siswa: {
+          select: {
+            id: true,
+            nis: true,
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         created_at: 'desc',
@@ -123,6 +147,16 @@ export class UserService {
         id: user.Tenant.id,
         name: user.Tenant.name,
       } : null,
+      siswa: user.Siswa ? {
+        id: user.Siswa.id,
+        nis: user.Siswa.nis,
+        kelas: user.Siswa.Kelas ? {
+          id: user.Siswa.Kelas.id,
+          nama_kelas: user.Siswa.Kelas.nama_kelas,
+          tingkat: user.Siswa.Kelas.tingkat,
+        } : null,
+      } : null,
+      kelas: user.Siswa?.Kelas?.nama_kelas || null,
       status: user.status,
       created_at: user.created_at,
       updated_at: user.updated_at,

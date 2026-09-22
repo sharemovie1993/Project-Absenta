@@ -41,6 +41,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { SertifikatPklModal } from '../../components/hubin/SertifikatPklModal';
+import { SiswaIdentityCell } from '../../components/common/SiswaIdentityCell';
 
 // Zod Schema Validation Guard (Pilar 25)
 const scoreFieldSchema = z.number().min(0).max(100).nullable();
@@ -49,10 +50,15 @@ const deskripsiTpSchema = z.object({
   deskripsi_tp: z.string().min(5, 'Deskripsi TP minimal 5 karakter'),
 });
 
+const scoreSchema = z.object({
+  score: z.number().min(0).max(100).optional(),
+});
+
 interface ScoreRow {
   siswa_pkl_id: string;
   nama_siswa: string;
   nis: string;
+  foto?: string | null;
   kelas_id?: string;
   nama_kelas?: string;
   mitra_nama: string;
@@ -305,6 +311,7 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
         siswa_pkl_id: item.id || item.siswa_pkl_id || '',
         nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
         nis: item.Siswa?.nis || item.nis || '',
+        foto: item.Siswa?.foto || item.foto || null,
         kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id || '',
         nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '',
         mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
@@ -1072,21 +1079,26 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 <tr key={score.siswa_pkl_id || index} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                                   <td className="p-3 text-center font-mono font-bold text-slate-400">{globalIndex}</td>
                                   <td className="p-3">
-                                    <p className="font-bold text-slate-900 dark:text-white">{score.nama_siswa}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono">
-                                      NIS: {score.nis}{score.nama_kelas ? ` • ${score.nama_kelas}` : ''}
-                                    </p>
-                                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                    <SiswaIdentityCell
+                                      foto={score.foto}
+                                      nama={score.nama_siswa}
+                                      nis={score.nis}
+                                      kelas={score.nama_kelas}
+                                      size="sm"
+                                      nameClassName="font-bold text-slate-900 dark:text-white"
+                                      showMeta={true}
+                                    />
+                                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 pl-12">🏢 {score.mitra_nama}</p>
                                     {score.catatan_pkl && score.catatan_pkl.includes('Mutasi:') ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1 ml-12">
                                         🏷️ {score.catatan_pkl} (Selesai)
                                       </span>
                                     ) : score.status === 'SELESAI' ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1 ml-12">
                                         ✅ Selesai
                                       </span>
                                     ) : score.status === 'AKTIF' ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-900/40 mt-1 ml-12">
                                         🟢 Aktif
                                       </span>
                                     ) : null}
@@ -1606,19 +1618,26 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                                 <tr key={`sidang-${score.siswa_pkl_id || index}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                                   <td className="p-3 text-center font-mono font-bold text-slate-400">{globalIndex}</td>
                                   <td className="p-3">
-                                    <p className="font-bold text-slate-900 dark:text-white">{score.nama_siswa}</p>
-                                    <p className="text-[10px] text-slate-400 font-mono">NIS: {score.nis}{score.nama_kelas ? ` • ${score.nama_kelas}` : ''}</p>
-                                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-0.5">🏢 {score.mitra_nama}</p>
+                                    <SiswaIdentityCell
+                                      foto={score.foto}
+                                      nama={score.nama_siswa}
+                                      nis={score.nis}
+                                      kelas={score.nama_kelas}
+                                      size="sm"
+                                      nameClassName="font-bold text-slate-900 dark:text-white"
+                                      showMeta={true}
+                                    />
+                                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 pl-12">🏢 {score.mitra_nama}</p>
                                     {score.catatan_pkl && score.catatan_pkl.includes('Mutasi:') ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1 ml-12">
                                         🏷️ {score.catatan_pkl} (Selesai)
                                       </span>
                                     ) : score.status === 'SELESAI' ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1 ml-12">
                                         ✅ Selesai
                                       </span>
                                     ) : score.status === 'AKTIF' ? (
-                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40 mt-1">
+                                      <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-800/40 mt-1 ml-12">
                                         🟢 Aktif
                                       </span>
                                     ) : null}

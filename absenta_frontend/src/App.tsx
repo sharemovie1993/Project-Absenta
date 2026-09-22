@@ -128,6 +128,7 @@ const TripaySimulatorPage = lazy(() => import('./pages/billing/TripaySimulatorPa
 const GuruMonitoringPage = lazy(() => import('./pages/attendance/GuruMonitoringPage'));
 const FaceTemplatePage = lazy(() => import('./pages/attendance/FaceTemplatePage'));
 const DeviceManagementPage = lazy(() => import('./pages/attendance/DeviceManagementPage'));
+const LogAksesGerbangPage = lazy(() => import('./pages/attendance/LogAksesGerbangPage').then(m => ({ default: m.LogAksesGerbangPage })));
 const RekapBulananSiswaPage = lazy(() => import('./pages/attendance/rekap/RekapBulananSiswaPage'));
 
 const RekapBulananKelasPage = lazy(() => import('./pages/attendance/rekap/RekapBulananKelasPage'));
@@ -1375,6 +1376,11 @@ function App() {
                     <Route path="/attendance/devices" element={
                       <ProtectedRoute requiredCapability="attendance.sessions.view.list">
                         <DeviceManagementPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/attendance/log-akses" element={
+                      <ProtectedRoute requiredCapability={['attendance.gate.view.logs', 'attendance.gate.tap.entry', 'attendance.gate.tap.exit', 'attendance.sessions.create']}>
+                        <LogAksesGerbangPage />
                       </ProtectedRoute>
                     } />
 

@@ -84,7 +84,7 @@ export type AttendanceCapability =
   | 'attendance.gate.face.verify'
   | 'attendance.gate.tap.entry'
   | 'attendance.gate.tap.exit'
-  | 'attendance.gate.face.verify'
+  | 'attendance.gate.view.logs'
   | 'attendance.manage.petugas'
   | 'attendance.officers.manage'
   | 'attendance.officers.view'

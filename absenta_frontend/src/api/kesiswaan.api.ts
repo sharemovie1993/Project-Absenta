@@ -32,6 +32,7 @@ export interface PrestasiSiswa {
     id: string;
     nama_siswa: string;
     nis: string;
+    foto?: string | null;
     Kelas?: {
       nama_kelas: string;
     };
@@ -50,6 +51,7 @@ export interface Pelanggaran {
   Siswa?: {
     nama_siswa: string;
     nis: string;
+    foto?: string | null;
     Kelas?: {
       nama_kelas: string;
     }

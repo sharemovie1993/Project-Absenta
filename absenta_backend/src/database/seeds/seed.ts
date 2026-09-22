@@ -320,6 +320,7 @@ async function main() {
         { label: 'Mesin Scanner', icon: 'Cpu', path: '/attendance/devices', required_capability: 'attendance.manage.session' },
         { label: 'Perekaman Wajah', icon: 'Camera', path: '/attendance/rekam-wajah', required_capability: 'attendance.manage.session, attendance.gate.face.verify' },
         { label: 'Dispensasi', icon: 'CalendarDays', path: '/attendance/settings', required_capability: 'attendance.manage.session' },
+        { label: 'Log Akses Gerbang', icon: 'ShieldCheck', path: '/attendance/log-akses', required_capability: 'attendance.gate.view.logs, attendance.gate.tap.entry, attendance.sessions.create' },
       ]
     },
 

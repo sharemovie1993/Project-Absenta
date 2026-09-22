@@ -19,7 +19,8 @@ const registryPaths = {
   attendanceopspage: 'src/pages/attendance/ops/AttendanceOpsPage.tsx',
   myattendancepage: 'src/pages/attendance/MyAttendancePage.tsx',
   rekaphariansiswapage: 'src/pages/attendance/rekap/RekapHarianSiswaPage.tsx',
-  rekapbulanansiswapage: 'src/pages/attendance/rekap/RekapBulananSiswaPage.tsx'
+  rekapbulanansiswapage: 'src/pages/attendance/rekap/RekapBulananSiswaPage.tsx',
+  gate_security_audit: 'src/pages/attendance/LogAksesGerbangPage.tsx'
 };
 
 // Fungsi pencarian dinamis cerdas untuk mendeteksi lokasi file secara otomatis

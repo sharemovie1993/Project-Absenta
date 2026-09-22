@@ -31,6 +31,7 @@ export interface PenempatanRowActionMenuProps {
   onSelesai?: (row: SiswaPkl) => void;
   onMutasi?: (row: SiswaPkl) => void;
   onFilterSiswaHistory?: (namaSiswa: string) => void;
+  onEditMitraKontak?: (mitraId: string) => void;
   siswaPhone?: string;
   mitraPhone?: string;
 }
@@ -50,6 +51,7 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
   onSelesai,
   onMutasi,
   onFilterSiswaHistory,
+  onEditMitraKontak,
   siswaPhone,
   mitraPhone
 }) => {
@@ -221,6 +223,23 @@ export const PenempatanRowActionMenu: React.FC<PenempatanRowActionMenuProps> = R
                 </button>
               )}
             </div>
+
+            {/* Aksi Khusus: Info & Kontak PIC DUDI */}
+            {onEditMitraKontak && row.mitra_id && (
+              <div className="border-t border-slate-100 dark:border-slate-800 py-1 bg-indigo-50/20 dark:bg-indigo-950/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    onEditMitraKontak(row.mitra_id);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors text-left cursor-pointer"
+                >
+                  <Building2 size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>Info & Kontak PIC DUDI</span>
+                </button>
+              </div>
+            )}
 
             {/* Group 2: Surat & Dokumen */}
             <div className="border-t border-slate-100 dark:border-slate-800 py-1">

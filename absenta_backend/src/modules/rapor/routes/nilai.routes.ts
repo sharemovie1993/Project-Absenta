@@ -17,6 +17,9 @@ export default async function nilaiRoutes(fastify: any) {
   fastify.get('/export-erafor', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.exportErapor);
   fastify.get('/export-erapor-kemendikbud', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.exportEraporKemendikbud);
   fastify.get('/progress', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getTeacherProgress);
+  fastify.get('/monitoring/guru', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getSchoolWideTeacherProgress);
+  fastify.get('/monitoring/kelas/:kelas_id', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.getClassSubjectProgress);
   fastify.post('/import', { preHandler: [requireCapability('academic.schedules.manage'), determineDataScope()]}, NilaiController.importNilai);
   fastify.get('/import/template', { preHandler: [requireCapability('academic.teaching.view'), determineDataScope()]}, NilaiController.downloadTemplate);
 }
+

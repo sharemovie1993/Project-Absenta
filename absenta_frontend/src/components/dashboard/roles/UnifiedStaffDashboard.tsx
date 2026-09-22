@@ -237,7 +237,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
     !!((user?.guru_profile as any)?.wali_kelas_di?.id);
 
   const isGlobalHubin = isHubin;
-  const isPembimbingPkl = !isHubin && can('hubin.guidance.manage');
+  // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance,
+  // DAN secara nyata memiliki penugasan siswa bimbingan PKL aktif (active_pkl_count > 0)
+  const isPembimbingPkl = !isHubin && !isKepsek && can('hubin.guidance.manage') && Boolean(
+    guruProfile?.is_pembimbing_pkl || 
+    (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
+    ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
+    ((user?.guru_profile as any)?.active_pkl_count > 0)
+  );
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
     || isSarpras || isHubin || isToolman || isKaprog || isKabeng
@@ -257,8 +264,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return 'ringkasan';
   }, [isAdminRole, isKepsek, isPendidik, isPureGerbangStaff, isTuStaff]);
 
-  // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab
-  const activeTab = searchParams.get('tab') || defaultTabId;
+  // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
+  const requestedTab = searchParams.get('tab');
+  const activeTab = (requestedTab === 'pembimbing_pkl' && !isPembimbingPkl)
+    ? defaultTabId
+    : (requestedTab || defaultTabId);
 
   const handleTabChange = React.useCallback((newTab: string) => {
     setSearchParams({ tab: newTab }, { replace: true });

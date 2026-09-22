@@ -31,3 +31,5 @@ export { usePiketIzinKeluarOptions, usePiketIzinOptions, usePiketOptions } from 
 export { useTenantSettings } from '../../hooks/useTenantSettings';
 export { useSystemConfig } from '../../hooks/useSystemConfig';
 export { MethodPickerModal, type MethodPickerModalProps, type MethodOption } from './MethodPickerModal';
+export { SiswaIdentityCell, type SiswaIdentityCellProps } from './SiswaIdentityCell';
+

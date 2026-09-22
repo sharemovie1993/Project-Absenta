@@ -26,6 +26,7 @@ import { Modal, Button, Badge, Loader } from '../ui';
 import { hubinApi, type AbsensiPkl } from '../../api/hubin.api';
 import { resolveAttachmentUrl, getDriveThumbnailUrl } from '../../utils/hubinUtils';
 import { formatDate } from '../../utils/layoutUtils';
+import { SiswaIdentityCell } from '../common/SiswaIdentityCell';
 import { formatLocalTimeFromISO, formatLocalDateTime, getTimezoneLabel, getVirtualDate } from '../../utils/attendance/time';
 
 const formatWaktu = (raw?: string | null) => {
@@ -180,27 +181,22 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
         size="4xl"
         contentClassName="p-3 sm:p-5 pt-2 sm:pt-3"
         title={
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs sm:text-sm shrink-0">
-              {(siswaPkl.Siswa?.nama_siswa || 'S')[0].toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight truncate">
-                  {siswaPkl.Siswa?.nama_siswa}
-                </h3>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  {siswaPkl.Siswa?.Kelas?.nama_kelas || 'Kelas'}
-                </span>
-                <span className="text-[11px] font-mono font-bold text-slate-400">
-                  NIS: {siswaPkl.Siswa?.nis}
-                </span>
+          <div className="flex items-center justify-between gap-3 w-full pr-6">
+            <SiswaIdentityCell
+              foto={siswaPkl.Siswa?.foto}
+              nama={siswaPkl.Siswa?.nama_siswa}
+              nis={siswaPkl.Siswa?.nis}
+              kelas={siswaPkl.Siswa?.Kelas?.nama_kelas || 'Kelas'}
+              size="md"
+              nameClassName="text-sm sm:text-base font-black text-slate-900 dark:text-white leading-tight truncate"
+              showMeta={true}
+            />
+            {siswaPkl.Mitra?.nama && (
+              <div className="hidden sm:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium shrink-0 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 rounded-lg border border-slate-100 dark:border-slate-800">
+                <Building2 size={13} className="text-indigo-500 shrink-0" />
+                <span className="truncate max-w-[200px]">{siswaPkl.Mitra?.nama}</span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 mt-0.5 truncate">
-                <Building2 size={12} className="text-indigo-500 shrink-0" />
-                <span className="truncate">{siswaPkl.Mitra?.nama}</span>
-              </p>
-            </div>
+            )}
           </div>
         }
       >
@@ -344,11 +340,17 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                                 </Badge>
                                 {!isSakit && !isIzin && (
                                   abs.is_outside_radius ? (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
-                                      ⚠️ Luar Radius ({Math.round(abs.distance_meters || 0)}m)
-                                    </span>
+                                    abs.distance_meters !== null && abs.distance_meters !== undefined ? (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
+                                        ⚠️ Luar Radius ({Math.round(abs.distance_meters)}m)
+                                      </span>
+                                    ) : (
+                                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-900/40">
+                                        ⚠️ GPS Mitra Belum Disetel
+                                      </span>
+                                    )
                                   ) : (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
                                       📍 Lokasi DUDI
                                     </span>
                                   )
@@ -376,7 +378,69 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                               </div>
                             </div>
 
-                            {/* Row 2: Jam Masuk/Pulang atau Keterangan Sakit/Izin */}
+                            {/* Card Info Lokasi & Audit Khusus Presensi Luar Radius / Dispensasi */}
+                            {!isSakit && !isIzin && abs.is_outside_radius && (
+                              <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 space-y-1.5 text-xs">
+                                {abs.address_snapshot ? (
+                                  <div className="flex items-start gap-1.5 text-slate-700 dark:text-slate-300">
+                                    <MapPin size={13} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                    <div className="leading-snug">
+                                      <span className="font-bold text-[11px] text-amber-800 dark:text-amber-300 mr-1">Alamat Terdeteksi:</span>
+                                      <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{abs.address_snapshot}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                                    <MapPin size={13} className="shrink-0" />
+                                    <span>Presensi dilakukan di luar radius resmi mitra industri.</span>
+                                  </div>
+                                )}
+
+                                {abs.latitude_masuk && abs.longitude_masuk && (
+                                  <div className="flex items-center justify-between gap-2 flex-wrap pt-1.5 border-t border-amber-200/60 dark:border-amber-900/40 text-[10px]">
+                                    <span className="text-slate-500 dark:text-slate-400 font-mono">
+                                      Koordinat: {abs.latitude_masuk.toFixed(5)}, {abs.longitude_masuk.toFixed(5)}
+                                    </span>
+                                    <a
+                                      href={`https://www.google.com/maps?q=${abs.latitude_masuk},${abs.longitude_masuk}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 hover:underline"
+                                      title="Buka titik koordinat di Google Maps"
+                                    >
+                                      <span>Buka di Google Maps</span>
+                                      <ExternalLink size={10} />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Info Lokasi Bersih untuk Presensi di Area Mitra (Dalam Radius DUDI) */}
+                            {!isSakit && !isIzin && !abs.is_outside_radius && (
+                              <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                <div className="flex items-center gap-1.5 truncate max-w-[280px] sm:max-w-md">
+                                  <MapPin size={11} className="text-emerald-500 shrink-0" />
+                                  <span className="truncate">
+                                    {abs.address_snapshot || 'Terverifikasi di area radius mitra industri'}
+                                  </span>
+                                </div>
+                                {abs.latitude_masuk && abs.longitude_masuk && (
+                                  <a
+                                    href={`https://www.google.com/maps?q=${abs.latitude_masuk},${abs.longitude_masuk}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 font-bold text-indigo-600 dark:text-indigo-400 hover:underline shrink-0"
+                                    title="Buka titik koordinat di Google Maps"
+                                  >
+                                    <span>Peta</span>
+                                    <ExternalLink size={9} />
+                                  </a>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Row 2: Jam Masuk/Pulang & Thumbnail Foto */}
                             {(isSakit || isIzin) ? (
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs text-slate-500">
                                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -412,26 +476,97 @@ export const SiswaBimbinganDetailModal: React.FC<SiswaBimbinganDetailModalProps>
                                   </span>
                                 </div>
 
-                                {/* Thumbnail Foto Masuk */}
-                                {photoIn && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setPreviewPhotoUrl(photoIn)}
-                                    className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform group cursor-pointer shrink-0"
-                                    title="Lihat foto selfie check-in"
-                                  >
-                                    <img
-                                      src={photoIn}
-                                      alt="Selfie"
-                                      className="w-full h-full object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                      <Camera size={11} className="text-white" />
+                                {/* Thumbnail Foto Masuk & Pulang */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {photoIn && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewPhotoUrl(photoIn)}
+                                        className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform group cursor-pointer"
+                                        title="Lihat foto selfie masuk (klik perbesar)"
+                                      >
+                                        <img
+                                          src={photoIn}
+                                          alt="Foto Masuk"
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                          <Camera size={11} className="text-white" />
+                                        </div>
+                                      </button>
+                                      <span className="text-[8px] font-bold text-slate-400 uppercase hidden sm:inline">Masuk</span>
                                     </div>
-                                  </button>
-                                )}
+                                  )}
+
+                                  {photoOut && (
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => setPreviewPhotoUrl(photoOut)}
+                                        className="relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 hover:scale-105 transition-transform group cursor-pointer"
+                                        title="Lihat foto selfie pulang (klik perbesar)"
+                                      >
+                                        <img
+                                          src={photoOut}
+                                          alt="Foto Pulang"
+                                          className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                          <Camera size={11} className="text-white" />
+                                        </div>
+                                      </button>
+                                      <span className="text-[8px] font-bold text-slate-400 uppercase hidden sm:inline">Pulang</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
+
+                            {/* Ringkasan Catatan / Aktivitas Siswa jika ada */}
+                            {!isSakit && !isIzin && abs.kegiatan && (() => {
+                              let activitySnippets: string[] = [];
+                              try {
+                                const parsed = JSON.parse(abs.kegiatan);
+                                if (Array.isArray(parsed)) {
+                                  activitySnippets = parsed.map((item: any) => `${item.time ? `[${item.time}] ` : ''}${item.text || ''}`);
+                                } else if (typeof abs.kegiatan === 'string') {
+                                  activitySnippets = [abs.kegiatan];
+                                }
+                              } catch (e) {
+                                activitySnippets = [abs.kegiatan];
+                              }
+
+                              if (activitySnippets.length === 0) return null;
+
+                              return (
+                                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-start gap-1.5 text-xs">
+                                  <FileText size={12} className="text-indigo-500 shrink-0 mt-0.5" />
+                                  <div className="space-y-0.5 w-full">
+                                    <span className="font-bold text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+                                      Catatan / Aktivitas Siswa:
+                                    </span>
+                                    {activitySnippets.slice(0, 2).map((act, idx) => (
+                                      <p key={idx} className="text-[11px] leading-snug line-clamp-1 italic text-slate-700 dark:text-slate-300 font-medium">
+                                        {act}
+                                      </p>
+                                    ))}
+                                    {activitySnippets.length > 2 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTab('logbook');
+                                          if (abs.tanggal) setSelectedDate(formatDate(abs.tanggal, 'yyyy-MM-dd'));
+                                        }}
+                                        className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                                      >
+                                        +{activitySnippets.length - 2} aktivitas lainnya (lihat di Logbook)
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
