@@ -4,6 +4,8 @@ export { MapelSelect, type MapelSelectProps } from './MapelSelect';
 export { JurusanSelect, type JurusanSelectProps } from './JurusanSelect';
 export { TahunPelajaranSelect, type TahunPelajaranSelectProps } from './TahunPelajaranSelect';
 export { SemesterSelect, type SemesterSelectProps } from './SemesterSelect';
+export { AcademicContextBar, type AcademicContextBarProps, type AcademicContextBarVariant } from './AcademicContextBar';
+export { useAcademicContext, type AcademicContextValue, type UseAcademicContextOptions } from '../../hooks/useAcademicContext';
 
 export { SiswaSelect, type SiswaSelectProps } from './SiswaSelect';
 export { JenisPelanggaranSelect, type JenisPelanggaranSelectProps } from './JenisPelanggaranSelect';
