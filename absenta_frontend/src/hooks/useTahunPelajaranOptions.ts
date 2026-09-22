@@ -24,7 +24,7 @@ export function useTahunPelajaranOptions() {
       const tahun = y.tahun || (y as any).nama || (y as any).tahun_pelajaran || 'TP';
       return {
         value: y.id,
-        label: `TP ${tahun}${y.is_active ? ' ⭐ [AKTIF]' : ''}`,
+        label: `${tahun}${y.is_active ? ' ⭐ [AKTIF]' : ''}`,
         raw: y
       };
     });

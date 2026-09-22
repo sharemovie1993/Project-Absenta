@@ -1,10 +1,3 @@
-/**
- * CetakRaporPage.tsx
- * Halaman Cetak Rapor & Leger — Hardened Enterprise v6
- * Lulus audit 100%: < 300 baris, zero :any, AnalyticsCard stats,
- * ?.map inline guard, SearchableSelect, aksesiibilitas aria,
- * responsivitas Pilar 30, pratinjau PDF tab baru (window.open).
- */
 import React, { useMemo, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +18,7 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
+import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { raporApi } from '../../api/rapor.api';
 import { hubinApi } from '../../api/hubin.api';
 import { sekolahApi } from '../../api/academic/sekolah.api';
@@ -33,8 +27,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useStrukturKurikulumOptions } from '../../hooks/useStrukturKurikulumOptions';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useGuruMe } from '../../hooks/useGuruMe';
@@ -140,23 +133,6 @@ export default React.memo(function CetakRaporPage() {
     kelasId: selectedKelas,
     onlyActive: false,
   });
-  const { options: tpOptions, activeTahunPelajaran: activeTp } = useTahunPelajaranOptions();
-  const { options: semesterOptions, activeSemester: activeSem } = useSemesterOptions();
-
-  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>(() => tpParam);
-  const [selectedSemester, setSelectedSemester] = useState<string>(() => semParam);
-
-  React.useEffect(() => {
-    if (!selectedTahunPelajaran && !tpParam && activeTp?.id) {
-      setSelectedTahunPelajaran(activeTp.id);
-    }
-  }, [activeTp, selectedTahunPelajaran, tpParam]);
-
-  React.useEffect(() => {
-    if (!selectedSemester && !semParam && activeSem?.id) {
-      setSelectedSemester(activeSem.id);
-    }
-  }, [activeSem, selectedSemester, semParam]);
 
   // Auto-select class: prioritize URL param, then Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
@@ -177,21 +153,31 @@ export default React.memo(function CetakRaporPage() {
     }
   }, [classList, selectedKelas, userKelasId, isPureWaliKelas, kelasParam]);
 
+  // ── Konteks Akademik (TP + Semester) — via hook reusable ──
+  const {
+    selectedTahunPelajaran,
+    selectedSemester,
+    handleTpChange: handleAcademicTpChange,
+    handleSemesterChange,
+    tpOptions,
+    semesterOptions,
+    activeYear: academicActiveYear,
+    activeSemester: academicActiveSemester,
+  } = useAcademicContext({
+    initialTpId: tpParam,
+    initialSemId: semParam,
+  });
+
+  // Petakan ke type AcademicYear / Semester yang dipakai di halaman ini
   const activeYear = useMemo<AcademicYear | null>(() => {
-    const targetId = selectedTahunPelajaran || activeTp?.id;
-    if (!targetId) return null;
-    const matched = (tpOptions ?? [])?.find(t => t.value === targetId);
-    const rawTp = matched?.raw as { tahun?: string } | undefined;
-    return { id: targetId, nama: rawTp?.tahun || activeTp?.tahun || targetId, is_active: true };
-  }, [activeTp, selectedTahunPelajaran, tpOptions]);
+    if (!academicActiveYear) return null;
+    return { id: academicActiveYear.id, nama: academicActiveYear.tahun, is_active: true };
+  }, [academicActiveYear]);
 
   const activeSemester = useMemo<Semester | null>(() => {
-    const targetId = selectedSemester || activeSem?.id;
-    if (!targetId) return null;
-    const matched = (semesterOptions ?? [])?.find(s => s.value === targetId);
-    const rawSem = matched?.raw as { nama_semester?: string } | undefined;
-    return { id: targetId, nama: rawSem?.nama_semester || activeSem?.nama_semester || targetId, is_active: true };
-  }, [activeSem, selectedSemester, semesterOptions]);
+    if (!academicActiveSemester) return null;
+    return { id: academicActiveSemester.id, nama: academicActiveSemester.nama_semester, is_active: true };
+  }, [academicActiveSemester]);
 
   // ── Hook Struktur Kurikulum Rombel ──
   const currentKelasObj = useMemo<KelasOptionItem | undefined>(() => {
@@ -723,35 +709,17 @@ export default React.memo(function CetakRaporPage() {
                 />
               </div>
 
-              {/* Tahun Pelajaran Selector */}
-              <div className="space-y-1 w-full max-w-full min-w-0 sm:w-auto">
-                <label htmlFor="select-tp" className="text-[10px] font-bold text-slate-500 uppercase block">
-                  Tahun Pelajaran
-                </label>
-                <SearchableSelect
-                  id="select-tp"
-                  value={selectedTahunPelajaran}
-                  onValueChange={setSelectedTahunPelajaran}
-                  options={tpOptions}
-                  placeholder="Pilih TP"
-                  className="w-full max-w-full min-w-0 sm:min-w-[150px]"
-                />
-              </div>
-
-              {/* Semester Selector */}
-              <div className="space-y-1 w-full max-w-full min-w-0 sm:w-auto">
-                <label htmlFor="select-sem" className="text-[10px] font-bold text-slate-500 uppercase block">
-                  Semester
-                </label>
-                <SearchableSelect
-                  id="select-sem"
-                  value={selectedSemester}
-                  onValueChange={setSelectedSemester}
-                  options={semesterOptions}
-                  placeholder="Pilih Semester"
-                  className="w-full max-w-full min-w-0 sm:min-w-[140px]"
-                />
-              </div>
+              {/* Tahun Pelajaran + Semester Selector */}
+              <AcademicContextBar
+                id="cetak-rapor"
+                tahunPelajaranId={selectedTahunPelajaran}
+                semesterId={selectedSemester}
+                onTahunPelajaranChange={handleAcademicTpChange}
+                onSemesterChange={handleSemesterChange}
+                tpOptions={tpOptions}
+                semesterOptions={semesterOptions}
+                variant="filter"
+              />
 
               {/* Search siswa */}
               {selectedKelas && (

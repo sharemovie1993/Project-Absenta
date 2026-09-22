@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { 
   FileText, 
   CheckSquare, 
@@ -18,22 +17,19 @@ import {
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
+import { AcademicContextBar } from '@/components/common/AcademicContextBar';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { cn } from '@/lib/utils';
 import { raporApi } from '@/api/rapor.api';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
-
-import { useSemesterOptions } from '@/hooks/useSemesterOptions';
+import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { TeacherMonitoringTable } from '@/components/rapor/dashboard/TeacherMonitoringTable';
 import { PersonalTeacherProgressWidget } from '@/components/rapor/dashboard/PersonalTeacherProgressWidget';
 import { ClassSubjectProgressCard } from '@/components/rapor/cetak-rapor/ClassSubjectProgressCard';
 
 export default React.memo(function RaporDashboard() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isAdmin, isKurikulum, isKepsek, isWaliKelas, walikelasKelas, walikelasKelasIds } = useCapabilities();
   const userKelasId = walikelasKelas?.id || (walikelasKelasIds && walikelasKelasIds.length > 0 ? walikelasKelasIds[0] : null);
@@ -42,44 +38,19 @@ export default React.memo(function RaporDashboard() {
   // ── Tab Switcher (Khusus Akun Kurikulum/Admin/Kepsek) ──
   const [activeTab, setActiveTab] = useState<'monitoring' | 'personal'>('monitoring');
 
-  // ── Context Selector TP & Semester ──
-  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>('');
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
-
-  const { options: tpOptions, rawList: tpRawList, activeYear: activeTp, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const { options: semesterOptions, rawList: semesterRawList, activeSemester: activeSem, isLoading: isLoadingSem } = useSemesterOptions({
-    tahunPelajaranId: selectedTahunPelajaran || undefined,
-  });
-
-  // Auto-set TP aktif saat pertama load
-  useEffect(() => {
-    if (!selectedTahunPelajaran && activeTp?.id) {
-      setSelectedTahunPelajaran(activeTp.id);
-    }
-  }, [activeTp, selectedTahunPelajaran]);
-
-  // Auto-set Semester aktif saat pertama load
-  useEffect(() => {
-    if (!selectedSemester && activeSem?.id) {
-      setSelectedSemester(activeSem.id);
-    }
-  }, [activeSem, selectedSemester]);
-
-  const activeYear = useMemo(() => {
-    const id = selectedTahunPelajaran || activeTp?.id;
-    if (!id) return null;
-    const found = tpRawList?.find((y) => y.id === id);
-    const tahun = found?.tahun || (found as any)?.nama || activeTp?.tahun || id;
-    return { id, tahun, nama: `TP ${tahun}` };
-  }, [activeTp, selectedTahunPelajaran, tpRawList]);
-
-  const activeSemester = useMemo(() => {
-    const id = selectedSemester || activeSem?.id;
-    if (!id) return null;
-    const found = semesterRawList?.find((s) => s.id === id);
-    const namaSemester = found?.nama_semester || activeSem?.nama_semester || id;
-    return { id, nama_semester: namaSemester, nama: `Semester ${namaSemester}` };
-  }, [activeSem, selectedSemester, semesterRawList]);
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran,
+    selectedSemester,
+    handleTpChange,
+    handleSemesterChange,
+    tpOptions,
+    semesterOptions,
+    isLoadingTp,
+    isLoadingSem,
+    activeYear,
+    activeSemester,
+  } = useAcademicContext();
 
   // ── Query 1: Monitoring Seluruh Guru (Untuk Kurikulum / Admin / Kepsek) ──
   const { data: schoolMonitoringRes, isLoading: isLoadingSchool } = useQuery({
@@ -129,35 +100,18 @@ export default React.memo(function RaporDashboard() {
       topSlot={<WorkspaceAppLauncherCard workspaceId="RAPOR_WORKSPACE" />}
       toolbar={
         <div className={`flex items-center gap-2 flex-wrap ${isMobile ? 'w-full' : ''}`}>
-          {/* Selector TP */}
-          <div className={isMobile ? 'flex-1 min-w-[130px]' : 'w-40 sm:w-44'}>
-            <SearchableSelect
-              id="dash-filter-tp"
-              aria-label="Pilih tahun pelajaran"
-              value={selectedTahunPelajaran}
-              onValueChange={(val) => {
-                setSelectedTahunPelajaran(val);
-                setSelectedSemester('');
-              }}
-              options={tpOptions}
-              placeholder="Tahun Pelajaran"
-              isLoading={isLoadingTp}
-            />
-          </div>
-
-          {/* Selector Semester */}
-          <div className={isMobile ? 'flex-1 min-w-[120px]' : 'w-36 sm:w-40'}>
-            <SearchableSelect
-              id="dash-filter-semester"
-              aria-label="Pilih semester"
-              value={selectedSemester}
-              onValueChange={setSelectedSemester}
-              options={semesterOptions}
-              placeholder="Semester"
-              isLoading={isLoadingSem}
-            />
-          </div>
-
+          <AcademicContextBar
+            id="dash-rapor"
+            tahunPelajaranId={selectedTahunPelajaran}
+            semesterId={selectedSemester}
+            onTahunPelajaranChange={handleTpChange}
+            onSemesterChange={handleSemesterChange}
+            tpOptions={tpOptions}
+            semesterOptions={semesterOptions}
+            isLoadingTp={isLoadingTp}
+            isLoadingSem={isLoadingSem}
+            variant="toolbar"
+          />
           <TvModeToggle />
         </div>
       }

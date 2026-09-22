@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
@@ -20,14 +20,14 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button } from '../../components/ui/Button';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
+import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { cn } from '../../lib/utils';
 import { raporApi } from '../../api/rapor.api';
 import { kelasApi, mapelApi, tahunPelajaranApi, semesterApi, siswaApi } from '../../api/academic.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useMapelOptions } from '../../hooks/useMapelOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useJenjang } from '../../hooks/useJenjang';
 import { toast } from 'sonner';
 import { generateStyledExcelTemplate } from '../../utils/excel-advanced.utils';
@@ -107,68 +107,43 @@ export default React.memo(function InputNilaiPage() {
   });
   const { options: mapelOptions, rawList: mapelList, isLoading: isLoadingMapel } = useMapelOptions();
 
-  // ── Academic Context State — dideklarasikan sebelum hooks yang bergantung padanya ──
-  const [selectedTahunPelajaran, setSelectedTahunPelajaran] = useState<string>(() => tpParam);
-  const [selectedSemester, setSelectedSemester] = useState<string>(() => semParam);
-
-  const { options: tpOptions, rawList: tpRawList, activeYear: activeTp, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const { options: semesterOptions, rawList: semesterRawList, activeSemester: activeSem, isLoading: isLoadingSem } = useSemesterOptions({
-    tahunPelajaranId: selectedTahunPelajaran || undefined,
+  // ── Konteks Akademik (TP + Semester) — via hook reusable ──
+  const {
+    selectedTahunPelajaran,
+    setSelectedTahunPelajaran,
+    selectedSemester,
+    setSelectedSemester,
+    handleTpChange,
+    handleSemesterChange,
+    tpOptions,
+    semesterOptions,
+    isLoadingTp,
+    isLoadingSem,
+    activeYear,
+    activeSemester,
+    semesterRawList,
+  } = useAcademicContext({
+    initialTpId: tpParam,
+    initialSemId: semParam,
+    onTpChange: useCallback(() => {
+      if (activeRoleTab === 'wali_kelas' && waliKelasId) {
+        setSelectedKelas(waliKelasId);
+      } else {
+        setSelectedKelas('');
+      }
+      setSelectedMapel('');
+      setScores([]);
+    }, [activeRoleTab, waliKelasId]),
+    onSemesterChange: useCallback(() => {
+      if (activeRoleTab === 'wali_kelas' && waliKelasId) {
+        setSelectedKelas(waliKelasId);
+      } else {
+        setSelectedKelas('');
+      }
+      setSelectedMapel('');
+      setScores([]);
+    }, [activeRoleTab, waliKelasId]),
   });
-
-  // Auto-set TP aktif saat pertama load jika belum ada parameter URL
-  useEffect(() => {
-    if (!selectedTahunPelajaran && !tpParam && activeTp?.id) {
-      setSelectedTahunPelajaran(activeTp.id);
-    }
-  }, [activeTp, selectedTahunPelajaran, tpParam]);
-
-  // Auto-set Semester aktif saat pertama load atau saat TP berubah jika belum ada parameter URL
-  useEffect(() => {
-    if (!selectedSemester && !semParam && activeSem?.id) {
-      setSelectedSemester(activeSem.id);
-    }
-  }, [activeSem, selectedSemester, semParam]);
-
-  // Reset semester saat TP berubah manual
-  const handleTpChange = useCallback((val: string) => {
-    setSelectedTahunPelajaran(val);
-    setSelectedSemester('');
-    if (activeRoleTab === 'wali_kelas' && waliKelasId) {
-      setSelectedKelas(waliKelasId);
-    } else {
-      setSelectedKelas('');
-    }
-    setSelectedMapel('');
-    setScores([]);
-  }, [activeRoleTab, waliKelasId]);
-
-  const handleSemesterChange = useCallback((val: string) => {
-    setSelectedSemester(val);
-    if (activeRoleTab === 'wali_kelas' && waliKelasId) {
-      setSelectedKelas(waliKelasId);
-    } else {
-      setSelectedKelas('');
-    }
-    setSelectedMapel('');
-    setScores([]);
-  }, [activeRoleTab, waliKelasId]);
-
-  const activeYear = useMemo(() => {
-    const id = selectedTahunPelajaran || activeTp?.id;
-    if (!id) return null;
-    const found = tpRawList.find(y => y.id === id);
-    const tahun = found?.tahun || (found as any)?.nama || activeTp?.tahun || id;
-    return { id, tahun, nama: `TP ${tahun}` };
-  }, [activeTp, selectedTahunPelajaran, tpRawList]);
-
-  const activeSemester = useMemo(() => {
-    const id = selectedSemester || activeSem?.id;
-    if (!id) return null;
-    const found = semesterRawList.find(s => s.id === id);
-    const namaSemester = found?.nama_semester || activeSem?.nama_semester || id;
-    return { id, nama_semester: namaSemester, nama: `Semester ${namaSemester}` };
-  }, [activeSem, selectedSemester, semesterRawList]);
 
   const { data: categories } = useQuery({
     queryKey: ['kategori-nilai'],
@@ -892,28 +867,18 @@ export default React.memo(function InputNilaiPage() {
         <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
           {/* Kiri: Dropdown TP & Semester + navigasi cepat */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-44 sm:w-48">
-              <SearchableSelect
-                id="filter-tp-rapor"
-                aria-label="Pilih tahun pelajaran"
-                value={selectedTahunPelajaran}
-                onValueChange={handleTpChange}
-                options={tpOptions}
-                placeholder="Tahun Pelajaran"
-                isLoading={isLoadingTp}
-              />
-            </div>
-            <div className="w-40 sm:w-44">
-              <SearchableSelect
-                id="filter-semester-rapor"
-                aria-label="Pilih semester"
-                value={selectedSemester}
-                onValueChange={handleSemesterChange}
-                options={semesterOptions}
-                placeholder="Semester"
-                isLoading={isLoadingSem}
-              />
-            </div>
+            <AcademicContextBar
+              id="input-nilai"
+              tahunPelajaranId={selectedTahunPelajaran}
+              semesterId={selectedSemester}
+              onTahunPelajaranChange={handleTpChange}
+              onSemesterChange={handleSemesterChange}
+              tpOptions={tpOptions}
+              semesterOptions={semesterOptions}
+              isLoadingTp={isLoadingTp}
+              isLoadingSem={isLoadingSem}
+              variant="toolbar"
+            />
 
             <button
               type="button"
