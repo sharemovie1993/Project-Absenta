@@ -31,11 +31,17 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
   }, [filteredList, rawList]);
 
   const options: SearchableSelectOption[] = useMemo(() => {
-    return filteredList.map((s) => ({
-      value: s.id,
-      label: `Semester ${s.nama_semester}${s.TahunPelajaran?.tahun ? ` (TP ${s.TahunPelajaran.tahun})` : ''}${s.is_active ? ' ⭐ [AKTIF]' : ''}`,
-      raw: s
-    }));
+    return filteredList.map((s) => {
+      const rawName = s.nama_semester || (s as any).nama || '';
+      const cleanName = rawName.replace(/^semester\s+/i, '').trim();
+      // Jika hanya angka (misal '1' / '2'), beri prefix 'Semester ' agar tetap jelas
+      const displayName = /^\d+$/.test(cleanName) ? `Semester ${cleanName}` : (cleanName || 'Semester');
+      return {
+        value: s.id,
+        label: `${displayName}${s.is_active ? ' ⭐ [AKTIF]' : ''}`,
+        raw: s
+      };
+    });
   }, [filteredList]);
 
   return {
