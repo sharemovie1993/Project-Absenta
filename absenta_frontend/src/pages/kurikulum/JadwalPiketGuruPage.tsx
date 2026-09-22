@@ -22,8 +22,8 @@ import { getMyTenant } from '../../api/tenants.api';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
+import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { useGuruOptions } from '../../hooks/useGuruOptions';
 import { useJurusanOptions } from '../../hooks/useJurusanOptions';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
@@ -59,23 +59,23 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
   const [activeHari, setActiveHari] = useState<Hari>('SENIN');
   const [piketFilterMode, setPiketFilterMode] = useState<'ALL' | 'MY_PIKET'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTpId, setSelectedTpId] = useState<string>('');
-  const [selectedSemId, setSelectedSemId] = useState<string>('');
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
 
-  // Standardized Options Hooks (Pilar 31)
-  const { rawList: tahunPelajaranList, activeYear: activeTp } = useTahunPelajaranOptions();
-  const { rawList: semesterList, activeSemester: activeSem } = useSemesterOptions({ tahunPelajaranId: selectedTpId });
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran: selectedTpId,
+    selectedSemester: selectedSemId,
+    handleTpChange: setSelectedTpId,
+    handleSemesterChange: setSelectedSemId,
+    tpOptions,
+    semesterOptions,
+    tpRawList: tahunPelajaranList,
+    semesterRawList: semesterList,
+  } = useAcademicContext();
+
   const { rawList: guruList } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: jurusanList } = useJurusanOptions();
 
-  useEffect(() => {
-    if (activeTp && !selectedTpId) setSelectedTpId(activeTp.id);
-  }, [activeTp, selectedTpId]);
-
-  useEffect(() => {
-    if (activeSem && !selectedSemId) setSelectedSemId(activeSem.id);
-  }, [activeSem, selectedSemId]);
 
   const { list: schedules, isLoading: loading, refetch: fetchSchedules } = usePiketGuruOptions(
     selectedTpId && selectedSemId ? { tahun_pelajaran_id: selectedTpId, semester_id: selectedSemId } : undefined
@@ -148,13 +148,7 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
     { label: 'Jadwal Piket Guru' }
   ], []);
 
-  const tpOptions = useMemo(() => {
-    return (tahunPelajaranList ?? [])?.map(tp => ({ value: tp.id, label: `TP ${tp.tahun} ${tp.is_active ? '(Aktif)' : ''}` }));
-  }, [tahunPelajaranList]);
 
-  const semOptions = useMemo(() => {
-    return (semesterList ?? [])?.map(sem => ({ value: sem.id, label: `${sem.nama_semester} ${sem.is_active ? '(Aktif)' : ''}` }));
-  }, [semesterList]);
 
   return (
     <InfraErrorBoundary>
@@ -211,28 +205,16 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
             {/* Filter Bar */}
             <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-48">
-                    <SearchableSelect
-                      id="piket-tp-filter"
-                      aria-label="Filter Tahun Pelajaran"
-                      value={selectedTpId}
-                      onValueChange={setSelectedTpId}
-                      options={tpOptions}
-                      placeholder="Pilih TP"
-                    />
-                  </div>
-                  <div className="w-44">
-                    <SearchableSelect
-                      id="piket-sem-filter"
-                      aria-label="Filter Semester"
-                      value={selectedSemId}
-                      onValueChange={setSelectedSemId}
-                      options={semOptions}
-                      placeholder="Pilih Semester"
-                    />
-                  </div>
-                </div>
+                <AcademicContextBar
+                  id="piket"
+                  tahunPelajaranId={selectedTpId}
+                  semesterId={selectedSemId}
+                  onTahunPelajaranChange={setSelectedTpId}
+                  onSemesterChange={setSelectedSemId}
+                  tpOptions={tpOptions}
+                  semesterOptions={semesterOptions}
+                  variant="toolbar"
+                />
 
                 <div className="flex items-center gap-2">
                   <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-800">
