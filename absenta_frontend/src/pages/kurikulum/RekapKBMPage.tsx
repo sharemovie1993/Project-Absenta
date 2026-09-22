@@ -110,8 +110,6 @@ export default function RekapKBMPage() {
   const isMobile = useIsMobile();
   const { isKurikulum, isKaprog, isAdmin, can } = useCapabilities();
 
-  const [tahunPelajaranId, setTahunPelajaranId] = useState<string>('');
-  const [semesterId, setSemesterId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'BAIK' | 'PERHATIAN' | 'RENDAH'>('ALL');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
