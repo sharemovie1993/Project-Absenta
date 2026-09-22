@@ -1251,7 +1251,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           {/* Filter Controls Grid */}
           <div className="flex flex-col lg:flex-row flex-wrap items-center gap-2.5 w-full">
             {/* Filter Tahun Pelajaran */}
-            <div className="w-full lg:w-48 shrink-0">
+            <div className="w-full lg:w-56 shrink-0">
               <SearchableSelect
                 id="filter-tp"
                 options={tpFilterOptions}

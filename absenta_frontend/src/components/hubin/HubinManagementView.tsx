@@ -409,7 +409,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
           {/* 2. Filter Tahun Pelajaran (SearchableSelect) */}
           {tpOptions && tpOptions.length > 0 && (
-            <div className="w-full lg:w-48 shrink-0">
+            <div className="w-full lg:w-56 shrink-0">
               <SearchableSelect
                 value={selectedTp || ''}
                 onValueChange={(val) => onTpChange && onTpChange(val)}

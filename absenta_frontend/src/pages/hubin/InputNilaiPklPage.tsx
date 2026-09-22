@@ -35,8 +35,7 @@ import { hubinApi } from '../../api/hubin.api';
 import { kelasApi } from '../../api/academic.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext, AcademicContextBar } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -205,26 +204,20 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     }
   }, [canManageAll]);
 
-  // Academic Year & Semester Options
-  const { options: tpOptions, activeYear, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const [selectedTp, setSelectedTp] = useState<string>('');
-
-  useEffect(() => {
-    if (activeYear?.id && !selectedTp) {
-      setSelectedTp(activeYear.id);
-    }
-  }, [activeYear, selectedTp]);
-
-  const { options: semesterOptions, activeSemester, isLoading: isLoadingSem } = useSemesterOptions({
-    tahunPelajaranId: selectedTp || undefined,
+  // Academic Year & Semester Context
+  const {
+    selectedTahunPelajaran: selectedTp,
+    selectedSemester,
+    handleTpChange: setSelectedTp,
+    handleSemesterChange: setSelectedSemester,
+    tpOptions,
+    semesterOptions,
+    isLoadingTp,
+    isLoadingSem,
+  } = useAcademicContext({
+    onTpChange: () => setSelectedKelas(''),
+    onSemesterChange: () => setSelectedKelas(''),
   });
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
-
-  useEffect(() => {
-    if (activeSemester?.id && !selectedSemester) {
-      setSelectedSemester(activeSemester.id);
-    }
-  }, [activeSemester, selectedSemester]);
 
   // Integrated Custom Hooks (Pilar 31 Data Layer)
   const { options: mitraOptions } = useDudiOptions();
@@ -902,43 +895,20 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
-                      {/* 1. Tahun Pelajaran */}
-                      <div>
-                        <label htmlFor="filter-tp-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                          Tahun Pelajaran
-                        </label>
-                        <SearchableSelect
-                          id="filter-tp-pkl"
-                          aria-label="Pilih tahun pelajaran"
-                          value={selectedTp}
-                          onValueChange={(val) => {
-                            setSelectedTp(val);
-                            setSelectedKelas('');
-                          }}
-                          options={tpOptions}
-                          placeholder="Pilih Tahun Pelajaran"
-                          isLoading={isLoadingTp}
-                        />
-                      </div>
-
-                      {/* 2. Semester */}
-                      <div>
-                        <label htmlFor="filter-semester-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                          Semester
-                        </label>
-                        <SearchableSelect
-                          id="filter-semester-pkl"
-                          aria-label="Pilih semester"
-                          value={selectedSemester}
-                          onValueChange={(val) => {
-                            setSelectedSemester(val);
-                            setSelectedKelas('');
-                          }}
-                          options={semesterOptions}
-                          placeholder="Pilih Semester"
-                          isLoading={isLoadingSem}
-                        />
-                      </div>
+                      {/* 1 & 2. Tahun Pelajaran & Semester */}
+                      <AcademicContextBar
+                        id="filter-pkl"
+                        tahunPelajaranId={selectedTp}
+                        semesterId={selectedSemester}
+                        onTahunPelajaranChange={setSelectedTp}
+                        onSemesterChange={setSelectedSemester}
+                        tpOptions={tpOptions}
+                        semesterOptions={semesterOptions}
+                        isLoadingTp={isLoadingTp}
+                        isLoadingSem={isLoadingSem}
+                        variant="filter"
+                        className="contents"
+                      />
 
                       {/* 3. Smart Filter Kelas */}
                       <div>
