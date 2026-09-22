@@ -31,8 +31,7 @@ import { useAuthStore } from '../../store/authStore';
 import useConfirm from '../../hooks/useConfirm';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useMapelOptions, useGuruOptions } from '../../components/common';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 
 import {
   uploadPerangkatSchema,
@@ -123,8 +122,6 @@ export default function PerangkatAjarPage() {
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL');
   const [search, setSearch] = useState<string>('');
   const debouncedSearch = useDebounce(search, 400);
-  const [selectedTahun, setSelectedTahun] = useState<string>('');
-  const [selectedSemester, setSelectedSemester] = useState<string>('');
   const [selectedGuru, setSelectedGuru] = useState<string>('');
   const [filterJenis, setFilterJenis] = useState<string>('');
   const [filterMapel, setFilterMapel] = useState<string>('');
@@ -171,9 +168,19 @@ export default function PerangkatAjarPage() {
     catatan_reviewer: '',
   });
 
-  // Canonical Reference Options Hooks
-  const { options: tahunOptions, rawList: tahunPelajaranList, activeYear } = useTahunPelajaranOptions();
-  const { options: semesterOptions, rawList: semesterList, activeSemester } = useSemesterOptions({ tahunPelajaranId: selectedTahun || activeYear?.id });
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran: selectedTahun,
+    selectedSemester,
+    handleTpChange: setSelectedTahun,
+    handleSemesterChange: setSelectedSemester,
+    tpOptions: tahunOptions,
+    semesterOptions,
+    activeYear,
+    activeSemester,
+    tpRawList: tahunPelajaranList,
+    semesterRawList: semesterList,
+  } = useAcademicContext();
   const { options: canonicalMapelOptions, rawList: mapelRawList } = useMapelOptions();
   const { options: canonicalGuruOptions, rawList: guruRawList } = useGuruOptions({ jenisPtk: 'PENDIDIK' });
 

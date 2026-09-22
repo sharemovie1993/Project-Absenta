@@ -26,8 +26,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { kurikulumApi } from '../../api/kurikulum.api';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useGuruOptions } from '../../hooks/useGuruOptions';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -119,20 +118,15 @@ export default function RekapKBMPage() {
   const [expandedGuruIds, setExpandedGuruIds] = useState<Set<string>>(new Set());
   const [selectedGuruDetail, setSelectedGuruDetail] = useState<RekapKBMRecord | null>(null);
 
-  const { options: tahunOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
-  const { options: semesterOptions, activeSemester } = useSemesterOptions({ tahunPelajaranId: tahunPelajaranId || activeTahunPelajaran?.id });
-
-  React.useEffect(() => {
-    if (activeTahunPelajaran?.id && !tahunPelajaranId) {
-      setTahunPelajaranId(activeTahunPelajaran.id);
-    }
-  }, [activeTahunPelajaran, tahunPelajaranId]);
-
-  React.useEffect(() => {
-    if (activeSemester?.id && !semesterId) {
-      setSemesterId(activeSemester.id);
-    }
-  }, [activeSemester, semesterId]);
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran: tahunPelajaranId,
+    selectedSemester: semesterId,
+    handleTpChange: setTahunPelajaranId,
+    handleSemesterChange: setSemesterId,
+    tpOptions: tahunOptions,
+    semesterOptions,
+  } = useAcademicContext();
 
   const { data: rekapData, isLoading, refetch } = useQuery({
     queryKey: ['rekap-kbm-guru', semesterId, tahunPelajaranId],

@@ -2,13 +2,11 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { formatDate } from '@/utils/date.utils';
-import React, { useState, useMemo, useCallback } from 'react';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { JadwalNavPill } from '@/components/kurikulum/JadwalNavPill';
 import { useJadwalKontrakKbm } from '../../hooks/kurikulum/useJadwalKontrakKbm';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '../../hooks/useSemesterOptions';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import type { JadwalKontrakKbmItem } from '../../api/kurikulum/jadwal-kontrak-kbm.api';
 import {
@@ -38,19 +36,23 @@ const JadwalKontrakKbmPage: React.FC = () => {
   const authLoading = !isAuthenticated;
 
   // === Filter states ===
-  const [selectedTahunId, setSelectedTahunId] = useState('');
-  const [selectedSemesterId, setSelectedSemesterId] = useState('');
   const [selectedKelasId, setSelectedKelasId] = useState('');
   const [selectedGuruId, setSelectedGuruId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran: selectedTahunId,
+    selectedSemester: selectedSemesterId,
+    handleTpChange: setSelectedTahunId,
+    handleSemesterChange: setSelectedSemesterId,
+    tpOptions: tahunOptions,
+    semesterOptions,
+  } = useAcademicContext();
+
   const canView = useMemo(() => isAdmin || isKurikulum || can('academic.teaching.view'), [isAdmin, isKurikulum, can]);
   const canManage = useMemo(() => isAdmin || isKurikulum || can('academic.teaching.manage'), [isAdmin, isKurikulum, can]);
-
-  // === Hooks untuk dropdown filter ===
-  const { options: tahunOptions } = useTahunPelajaranOptions();
-  const { options: semesterOptions } = useSemesterOptions({ tahunPelajaranId: selectedTahunId });
 
   // === Main data hook ===
   const {

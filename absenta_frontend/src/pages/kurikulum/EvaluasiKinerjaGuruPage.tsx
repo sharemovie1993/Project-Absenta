@@ -37,8 +37,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { kurikulumApi } from '@/api/kurikulum.api';
-import { useTahunPelajaranOptions } from '@/hooks/useTahunPelajaranOptions';
-import { useSemesterOptions } from '@/hooks/useSemesterOptions';
+import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
@@ -118,28 +117,21 @@ export const EvaluasiKinerjaGuruPage: React.FC = React.memo(() => {
   const isMobile = useIsMobile();
   const { isKurikulum, isAdmin, isKepsek } = useCapabilities();
 
-  const [tahunPelajaranId, setTahunPelajaranId] = useState<string>('');
-  const [semesterId, setSemesterId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [predikatFilter, setPredikatFilter] = useState<'ALL' | 'A' | 'B' | 'C' | 'D'>('ALL');
   const [statusKepegawaianFilter, setStatusKepegawaianFilter] = useState<string>('ALL');
   const [selectedGuruDetail, setSelectedGuruDetail] = useState<TeacherEvaluationRecord | null>(null);
   const [showCharts, setShowCharts] = useState<boolean>(!isMobile);
 
-  const { options: tahunOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
-  const { options: semesterOptions, activeSemester } = useSemesterOptions({ tahunPelajaranId: tahunPelajaranId || activeTahunPelajaran?.id });
-
-  React.useEffect(() => {
-    if (activeTahunPelajaran?.id && !tahunPelajaranId) {
-      setTahunPelajaranId(activeTahunPelajaran.id);
-    }
-  }, [activeTahunPelajaran, tahunPelajaranId]);
-
-  React.useEffect(() => {
-    if (activeSemester?.id && !semesterId) {
-      setSemesterId(activeSemester.id);
-    }
-  }, [activeSemester, semesterId]);
+  // ── Konteks Akademik (TP + Semester) ──
+  const {
+    selectedTahunPelajaran: tahunPelajaranId,
+    selectedSemester: semesterId,
+    handleTpChange: setTahunPelajaranId,
+    handleSemesterChange: setSemesterId,
+    tpOptions: tahunOptions,
+    semesterOptions,
+  } = useAcademicContext();
 
   // Query Data Evaluasi Kinerja Guru dari API
   const { data: evaluasiData, isLoading, refetch } = useQuery({
