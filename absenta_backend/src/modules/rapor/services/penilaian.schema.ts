@@ -51,6 +51,7 @@ export const raporSiswaUpsertSchema = z.object({
   alpa: z.number().int().min(0).default(0),
   catatan_wali: z.string().max(2000).optional().nullable(),
   keputusan_transisi: z.string().max(255).optional().nullable(),
+  catatan_kokurikuler: z.string().max(2000).optional().nullable(),
 });
 
 export const sertifikatUkkUpsertSchema = z.object({

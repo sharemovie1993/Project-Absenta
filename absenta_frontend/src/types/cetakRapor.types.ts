@@ -23,6 +23,11 @@ export const SummaryFormSchema = z.object({
     .max(200, 'Keputusan maksimal 200 karakter')
     .optional()
     .default(''),
+  catatan_kokurikuler: z
+    .string()
+    .max(1000, 'Catatan kokurikuler maksimal 1000 karakter')
+    .optional()
+    .default(''),
 });
 
 export type SummaryFormData = z.infer<typeof SummaryFormSchema>;
@@ -38,6 +43,7 @@ export interface LegerStudent {
   alpa: number;
   catatan_wali: string;
   keputusan_transisi: string;
+  catatan_kokurikuler?: string;
   referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
 }
 
@@ -77,6 +83,7 @@ export interface RawLegerEntry {
   alpa?: number;
   catatan_wali?: string;
   keputusan_transisi?: string;
+  catatan_kokurikuler?: string;
   referensi_absensi_harian?: { sakit: number; izin: number; alpa: number };
 }
 

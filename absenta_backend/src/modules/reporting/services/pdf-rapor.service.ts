@@ -545,12 +545,16 @@ export class PdfRaporService {
 
     // --- HALAMAN 2 (PELENGKAP, KOKURIKULER, KENAIKAN KELAS, TTD) ---
     let sectionIdx = 2;
+    const defaultKokurikuler =
+      'Peserta didik secara konsisten mengikuti Pembiasaan Pagi dengan disiplin (Mandiri), aktif menjaga ketertiban dan bekerja sama dengan teman (Gotong Royong), serta menunjukkan sikap hormat, sopan, dan peduli terhadap lingkungan sekolah (Beriman dan Bertakwa serta Berakhlak Mulia, Berkebinekaan Global).';
+    const kokurikulerText = (data as any).catatan_kokurikuler || defaultKokurikuler;
+
     const kokurikulerSectionHtml = showKokurikuler
       ? `
         <div style="margin-bottom: 12px;">
           <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">II. KOKURIKULER</div>
           <div style="border: 1px solid #111; padding: 8px 10px; font-size: 10.5px; text-align: justify; line-height: 1.45;">
-            Peserta didik secara konsisten mengikuti Pembiasaan Pagi dengan disiplin (Mandiri), aktif menjaga ketertiban dan bekerja sama dengan teman (Gotong Royong), serta menunjukkan sikap hormat, sopan, dan peduli terhadap lingkungan sekolah (Beriman dan Bertakwa serta Berakhlak Mulia, Berkebinekaan Global).
+            ${kokurikulerText}
           </div>
         </div>
       `

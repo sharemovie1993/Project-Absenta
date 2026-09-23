@@ -117,7 +117,18 @@ export const raporApi = {
   },
 
   // === RAPOR SUMMARY & LEGER ===
-  upsertRaporSummary: async (data: { siswa_id: string; kelas_id: string; tahun_pelajaran_id: string; semester_id: string; sakit?: number; izin?: number; alpa?: number; catatan_wali?: string | null; keputusan_transisi?: string | null }) => {
+  upsertRaporSummary: async (data: {
+    siswa_id: string;
+    kelas_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    sakit?: number;
+    izin?: number;
+    alpa?: number;
+    catatan_wali?: string | null;
+    keputusan_transisi?: string | null;
+    catatan_kokurikuler?: string | null;
+  }) => {
     const response = await api.post('/rapor', data);
     return response.data;
   },

@@ -91,6 +91,7 @@ export default React.memo(function CetakRaporPage() {
     alpa: 0,
     catatan_wali: '',
     keputusan_transisi: '',
+    catatan_kokurikuler: '',
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof SummaryFormData, string>>>({});
   const [pdfLoading, setPdfLoading] = useState<Record<string, boolean>>({});
@@ -179,6 +180,27 @@ export default React.memo(function CetakRaporPage() {
     if (!academicActiveSemester) return null;
     return { id: academicActiveSemester.id, nama: academicActiveSemester.nama_semester, is_active: true };
   }, [academicActiveSemester]);
+
+  // Query Settings Rapor (untuk saklar kokurikuler, arsip sumatif, dll)
+  const { data: settingsRes } = useQuery({
+    queryKey: ['rapor-settings', selectedTahunPelajaran, selectedSemester],
+    queryFn: () =>
+      raporApi.getRaporSettings({
+        tahun_pelajaran_id: selectedTahunPelajaran,
+        semester_id: selectedSemester,
+      }),
+    enabled: Boolean(selectedTahunPelajaran),
+  });
+
+  const tampilkanKokurikuler = useMemo(() => {
+    if (settingsRes?.data?.tampilkan_kokurikuler !== undefined) {
+      return Boolean(settingsRes.data.tampilkan_kokurikuler);
+    }
+    const rawYear = academicActiveYear?.tahun || '';
+    const match = rawYear.match(/^(\d{4})/);
+    const startYear = match ? parseInt(match[1], 10) : 2025;
+    return startYear >= 2025;
+  }, [settingsRes, academicActiveYear]);
 
   // Hook cetak PDF terpadu
   const { printLeger } = useRaporPdf({
@@ -296,6 +318,7 @@ export default React.memo(function CetakRaporPage() {
           alpa: found?.alpa ?? s.alpa ?? 0,
           catatan_wali: found?.catatan_wali ?? '',
           keputusan_transisi: found?.keputusan_transisi ?? '',
+          catatan_kokurikuler: found?.catatan_kokurikuler ?? '',
           referensi_absensi_harian: found?.referensi_absensi_harian || { sakit: 0, izin: 0, alpa: 0 },
         };
       })
@@ -332,6 +355,7 @@ export default React.memo(function CetakRaporPage() {
       alpa: student.alpa ?? 0,
       catatan_wali: student.catatan_wali ?? '',
       keputusan_transisi: student.keputusan_transisi ?? '',
+      catatan_kokurikuler: student.catatan_kokurikuler ?? '',
     });
     setFormErrors({});
     setIsSummaryModalOpen(true);
@@ -372,6 +396,7 @@ export default React.memo(function CetakRaporPage() {
         alpa: validation.data.alpa,
         catatan_wali: validation.data.catatan_wali,
         keputusan_transisi: validation.data.keputusan_transisi,
+        catatan_kokurikuler: validation.data.catatan_kokurikuler,
       });
     },
     [selectedStudent, activeYear, activeSemester, summaryForm, selectedKelas, summaryMutation]
@@ -884,6 +909,7 @@ export default React.memo(function CetakRaporPage() {
         onFormChange={handleSummaryFormChange}
         onSubmit={handleSummarySubmit}
         isSaving={summaryMutation.isPending}
+        tampilkanKokurikuler={tampilkanKokurikuler}
       />
 
       {/* Transkrip Modal */}

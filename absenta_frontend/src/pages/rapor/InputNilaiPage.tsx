@@ -19,6 +19,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button } from '../../components/ui/Button';
+import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { cn } from '../../lib/utils';
@@ -170,6 +171,27 @@ export default React.memo(function InputNilaiPage() {
       }
     },
   });
+
+  // Query Settings Rapor (untuk saklar kokurikuler, format cetak, dll)
+  const { data: settingsRes } = useQuery({
+    queryKey: ['rapor-settings', selectedTahunPelajaran, selectedSemester],
+    queryFn: () =>
+      raporApi.getRaporSettings({
+        tahun_pelajaran_id: selectedTahunPelajaran,
+        semester_id: selectedSemester,
+      }),
+    enabled: Boolean(selectedTahunPelajaran),
+  });
+
+  const tampilkanKokurikuler = useMemo(() => {
+    if (settingsRes?.data?.tampilkan_kokurikuler !== undefined) {
+      return Boolean(settingsRes.data.tampilkan_kokurikuler);
+    }
+    const rawYear = activeYear?.nama || '';
+    const match = rawYear.match(/^(\d{4})/);
+    const startYear = match ? parseInt(match[1], 10) : 2025;
+    return startYear >= 2025;
+  }, [settingsRes, activeYear]);
 
   const classes: ClassItem[] = useMemo(() => (classList as unknown as ClassItem[]) || [], [classList]);
   const subjects: SubjectItem[] = useMemo(() => (mapelList as unknown as SubjectItem[]) || [], [mapelList]);
@@ -1061,10 +1083,28 @@ export default React.memo(function InputNilaiPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
                   <button
                     type="button"
-                    onClick={() => navigate(`/rapor/cetak?kelas_id=${waliKelasId || ''}&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`)}
+                    onClick={() =>
+                      navigate(
+                        `/rapor/cetak?kelas_id=${waliKelasId || ''}&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
+                      )
+                    }
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    title="Buka Lembar Pengisian Catatan Rapor & Kokurikuler Siswa"
+                  >
+                    <UserCheck size={14} />
+                    <span>{tampilkanKokurikuler ? 'Isi Catatan & Kokurikuler' : 'Isi Catatan Rapor'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        `/rapor/cetak?kelas_id=${waliKelasId || ''}&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
+                      )
+                    }
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200/60 dark:border-indigo-800 transition-all cursor-pointer"
                     title="Buka Leger & Cetak Rapor"
                   >
@@ -1072,6 +1112,22 @@ export default React.memo(function InputNilaiPage() {
                     <span>Leger &amp; Cetak Rapor</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Panduan Kelengkapan Rapor Wali Kelas (Hormat pada Saklar Kokurikuler) */}
+              <div className="p-3 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2 text-indigo-950 dark:text-indigo-200">
+                  <Sparkles size={15} className="text-indigo-600 shrink-0 mt-0.5" />
+                  <div className="text-[11px] leading-relaxed">
+                    <span className="font-bold">Kelengkapan Rapor Kelas Binaan:</span>{' '}
+                    {tampilkanKokurikuler
+                      ? 'Selain nilai mapel, Anda bertugas mengisi Presensi, Catatan Wali Kelas, dan Evaluasi Kokurikuler (Pembiasaan Pagi). Klik tombol di atas untuk mengisi.'
+                      : 'Selain nilai mapel, Anda bertugas mengisi Presensi & Catatan Wali Kelas (Evaluasi kokurikuler dinonaktifkan pada pengaturan dokumen tahun ajaran ini).'}
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-[9px] font-bold border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 shrink-0">
+                  {tampilkanKokurikuler ? 'Kokurikuler: Aktif' : 'Kokurikuler: Nonaktif'}
+                </Badge>
               </div>
 
               {/* Alert jika belum ada Jadwal KBM pada TP / Semester terpilih */}

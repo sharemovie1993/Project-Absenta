@@ -394,7 +394,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 900 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CetakRaporPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/CetakRaporPage.tsx) (900 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 926 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CetakRaporPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/CetakRaporPage.tsx) (926 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -404,7 +404,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1172 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx) (1172 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1228 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx) (1228 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 

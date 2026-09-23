@@ -15,6 +15,7 @@ interface RaporSummaryModalProps {
   onFormChange: (field: keyof SummaryFormData, val: string | number) => void;
   onSubmit: (e: React.FormEvent) => void;
   isSaving: boolean;
+  tampilkanKokurikuler?: boolean;
 }
 
 const ABSENSI_FIELDS: Array<{ field: 'sakit' | 'izin' | 'alpa'; label: string }> = [
@@ -33,6 +34,7 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
   onFormChange,
   onSubmit,
   isSaving,
+  tampilkanKokurikuler = true,
 }) => {
   if (!isOpen || !selectedStudent) return null;
 
@@ -156,6 +158,52 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
               </p>
             )}
           </div>
+
+          {/* Form Kokurikuler & Pembiasaan Pagi (Hormat pada saklar tampilkanKokurikuler) */}
+          {tampilkanKokurikuler && (
+            <div className="space-y-1.5 w-full max-w-full min-w-0 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="input-summary-kokurikuler"
+                  className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase block"
+                >
+                  Evaluasi Kokurikuler & Pembiasaan Pagi (Karakter)
+                </label>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onFormChange(
+                      'catatan_kokurikuler',
+                      'Peserta didik secara konsisten mengikuti Pembiasaan Pagi dengan disiplin (Mandiri), aktif menjaga ketertiban dan bekerja sama dengan teman (Gotong Royong), serta menunjukkan sikap hormat, sopan, dan peduli terhadap lingkungan sekolah (Beriman dan Bertakwa serta Berakhlak Mulia, Berkebinekaan Global).'
+                    )
+                  }
+                  className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  title="Gunakan narasi pembiasaan pagi standar"
+                >
+                  <Sparkles size={10} />
+                  Gunakan Template Default
+                </button>
+              </div>
+              <textarea
+                id="input-summary-kokurikuler"
+                rows={3}
+                maxLength={1000}
+                placeholder="Contoh: Peserta didik secara konsisten mengikuti Pembiasaan Pagi dengan disiplin (Mandiri)..."
+                value={summaryForm.catatan_kokurikuler ?? ''}
+                onChange={(e) => onFormChange('catatan_kokurikuler', e.target.value)}
+                className="w-full max-w-full min-w-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-white p-2.5 focus:ring-1 focus:ring-indigo-500 resize-none"
+              />
+              <div className="flex items-center justify-between text-[10px] text-slate-400">
+                <span>Muncul pada Bagian II. Kokurikuler (Halaman 2 Rapor)</span>
+                <span>{(summaryForm.catatan_kokurikuler || '').length}/1000</span>
+              </div>
+              {formErrors.catatan_kokurikuler && (
+                <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                  <AlertCircle size={10} /> {formErrors.catatan_kokurikuler}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Form Keputusan Kenaikan / Transisi */}
           <div className="space-y-1 w-full max-w-full min-w-0">

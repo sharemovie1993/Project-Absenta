@@ -16,6 +16,7 @@ export class RaporService {
       alpa?: number;
       catatan_wali?: string | null;
       keputusan_transisi?: string | null;
+      catatan_kokurikuler?: string | null;
     }
   ) {
     const result = await prisma.raporSiswa.upsert({
@@ -47,6 +48,14 @@ export class RaporService {
       },
     });
 
+    if (data.catatan_kokurikuler !== undefined) {
+      await this.updateConfig(
+        tenantId,
+        `RAPOR_KOKURIKULER_${data.tahun_pelajaran_id}_${data.semester_id}_${data.siswa_id}`,
+        data.catatan_kokurikuler || ''
+      );
+    }
+
     // Invalidate leger cache for this class
     void cacheInvalidationService.invalidateRaporCache(tenantId);
     return result;
@@ -75,15 +84,23 @@ export class RaporService {
       throw new Error('Siswa belum memiliki kelas');
     }
 
-    // 2. Ambil catatan & kehadiran rapor
-    const raporSummary = await prisma.raporSiswa.findFirst({
-      where: {
-        tenant_id: tenantId,
-        siswa_id: filter.siswa_id,
-        tahun_pelajaran_id: filter.tahun_pelajaran_id,
-        semester_id: filter.semester_id,
-      },
-    });
+    // 2. Ambil catatan, kehadiran & kokurikuler rapor
+    const [raporSummary, kokurikulerCfg] = await Promise.all([
+      prisma.raporSiswa.findFirst({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: filter.siswa_id,
+          tahun_pelajaran_id: filter.tahun_pelajaran_id,
+          semester_id: filter.semester_id,
+        },
+      }),
+      prisma.config.findFirst({
+        where: {
+          tenant_id: tenantId,
+          key: `RAPOR_KOKURIKULER_${filter.tahun_pelajaran_id}_${filter.semester_id}_${filter.siswa_id}`,
+        },
+      }),
+    ]);
 
     // 3. Ambil Struktur Kurikulum untuk tingkat & jurusan siswa
     const strukturList = await prisma.strukturKurikulum.findMany({
@@ -261,6 +278,7 @@ export class RaporService {
       referensi_absensi_harian: referensiAbsensiHarian,
       catatan_wali: raporSummary?.catatan_wali || '',
       keputusan_transisi: raporSummary?.keputusan_transisi || '',
+      catatan_kokurikuler: kokurikulerCfg?.value || '',
       nilai_akademik: Object.values(mapelGrades),
     };
   }
@@ -314,6 +332,22 @@ export class RaporService {
     });
     const raporSummaryMap = new Map<string, any>();
     listRaporSummary.forEach((r) => raporSummaryMap.set(r.siswa_id, r));
+
+    // Load kokurikuler configs for students in this semester & TP
+    const kokurikulerConfigs = await prisma.config.findMany({
+      where: {
+        tenant_id: tenantId,
+        key: {
+          startsWith: `RAPOR_KOKURIKULER_${params.tahun_pelajaran_id}_${params.semester_id}_`,
+        },
+      },
+    });
+    const kokurikulerMap = new Map<string, string>();
+    kokurikulerConfigs.forEach((c) => {
+      const prefix = `RAPOR_KOKURIKULER_${params.tahun_pelajaran_id}_${params.semester_id}_`;
+      const sId = c.key.replace(prefix, '');
+      kokurikulerMap.set(sId, c.value);
+    });
 
     // Daily attendance reference map (1 semester)
     const referensiMap = new Map<string, { sakit: number; izin: number; alpa: number }>();
@@ -430,6 +464,7 @@ export class RaporService {
         alpa: raporRec?.alpa || 0,
         catatan_wali: raporRec?.catatan_wali || '',
         keputusan_transisi: raporRec?.keputusan_transisi || '',
+        catatan_kokurikuler: kokurikulerMap.get(siswa.id) || '',
         referensi_absensi_harian: refPresensi,
         rank: 0,
       };
