@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **203 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **154 Halaman** | 76% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **46 Halaman** | 23% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **155 Halaman** | 76% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **45 Halaman** | 22% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
@@ -395,16 +395,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 981 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [CetakRaporPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/CetakRaporPage.tsx) (981 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
-
----
-
-### 📄 Halaman: `InputNilaiPage.tsx`
-* **Lokasi File:** [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx)
-* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1228 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx) (1228 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -1369,6 +1359,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TermsOfServicePage.tsx`
 * **Lokasi File:** [TermsOfServicePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/public/TermsOfServicePage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `InputNilaiPage.tsx`
+* **Lokasi File:** [InputNilaiPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/InputNilaiPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
