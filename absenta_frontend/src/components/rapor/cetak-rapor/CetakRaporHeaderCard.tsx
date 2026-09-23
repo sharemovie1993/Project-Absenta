@@ -8,24 +8,24 @@ import {
   Building2,
   ChevronDown,
   X,
+  GraduationCap,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
-import { AcademicContextBar } from '../../common/AcademicContextBar';
 
 export interface CetakRaporHeaderCardProps {
   selectedKelas: string;
   onSelectKelas: (kelasId: string) => void;
   kelasOptions: SearchableSelectOption[];
   isLoadingClasses: boolean;
-  selectedTahunPelajaran: string;
-  selectedSemester: string;
-  onTahunPelajaranChange: (tpId: string) => void;
-  onSemesterChange: (semId: string) => void;
-  tpOptions: SearchableSelectOption[];
-  semesterOptions: SearchableSelectOption[];
+  selectedTahunPelajaran?: string;
+  selectedSemester?: string;
+  onTahunPelajaranChange?: (tpId: string) => void;
+  onSemesterChange?: (semId: string) => void;
+  tpOptions?: SearchableSelectOption[];
+  semesterOptions?: SearchableSelectOption[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   hasLegerData: boolean;
@@ -50,12 +50,6 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
   onSelectKelas,
   kelasOptions,
   isLoadingClasses,
-  selectedTahunPelajaran,
-  selectedSemester,
-  onTahunPelajaranChange,
-  onSemesterChange,
-  tpOptions,
-  semesterOptions,
   searchQuery,
   onSearchQueryChange,
   hasLegerData,
@@ -72,7 +66,6 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
   currentKelasNama,
   kurikulumStrukturListLength = 0,
   kurikulumTotalJp = 0,
-  onNavigateInputNilai,
 }) => {
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const batchMenuRef = useRef<HTMLDivElement>(null);
@@ -93,49 +86,78 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
   }, [isBatchMenuOpen]);
 
   return (
-    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full min-w-0 space-y-4">
-      {/* Baris 1: Filter Konteks Akademik & Aksi Cetak Massal */}
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 w-full">
-        {/* Kiri: Tiga Selektor Rombel, TP, & Semester */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 max-w-3xl">
-          {/* 1. Pilih Kelas */}
-          <div>
-            <label htmlFor="select-kelas" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-              Pilih Kelas:
+    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full min-w-0 space-y-3.5">
+      {/* Baris 1: Kontrol Utama Terpadu (Pilih Kelas, Cari Siswa, & Tombol Aksi) */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3 w-full">
+        {/* Sisi Kiri: Rombel Selector & Pencarian Siswa Sejajar Sempurna */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 flex-1 min-w-0">
+          {/* Pilih Kelas Rombel */}
+          <div className="w-full sm:w-72 md:w-80 shrink-0">
+            <label
+              htmlFor="select-kelas"
+              className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+            >
+              <GraduationCap size={13} className="text-indigo-500" />
+              <span>Pilih Kelas Rombel:</span>
             </label>
             <SearchableSelect
               id="select-kelas"
               value={selectedKelas}
               onValueChange={onSelectKelas}
               options={kelasOptions}
-              placeholder={isLoadingClasses ? 'Memuat kelas...' : 'Pilih Kelas'}
+              placeholder={isLoadingClasses ? 'Memuat rombel...' : '-- Pilih Kelas --'}
               searchPlaceholder="Cari kelas..."
               isLoading={isLoadingClasses}
             />
           </div>
 
-          {/* 2 & 3. AcademicContextBar (Tahun Pelajaran & Semester) */}
-          <div className="sm:col-span-2">
-            <AcademicContextBar
-              id="cetak-rapor"
-              tahunPelajaranId={selectedTahunPelajaran}
-              semesterId={selectedSemester}
-              onTahunPelajaranChange={onTahunPelajaranChange}
-              onSemesterChange={onSemesterChange}
-              tpOptions={tpOptions}
-              semesterOptions={semesterOptions}
-              variant="filter"
-            />
+          {/* Cari Siswa */}
+          <div className="w-full sm:w-64 md:w-72 flex-1 max-w-md">
+            <label
+              htmlFor="search-siswa"
+              className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1"
+            >
+              <span className="flex items-center gap-1.5">
+                <Search size={12} className="text-slate-400" />
+                <span>Cari Siswa:</span>
+              </span>
+              {totalStudents !== undefined && (
+                <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 lowercase">
+                  ({totalStudents} siswa)
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                id="search-siswa"
+                type="text"
+                placeholder="Ketik nama siswa atau NIS..."
+                value={searchQuery}
+                onChange={(e) => onSearchQueryChange(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-medium pl-9 pr-7 py-2 h-[38px] text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => onSearchQueryChange('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                  title="Hapus pencarian"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Kanan: Aksi Cetak Sekaligus & Dokumen Ekspor (Selalu tampil seimbang) */}
+        {/* Sisi Kanan: Aksi Cetak Sekaligus & Dokumen Ekspor Selalu Tampil Sejajar */}
         <div className="flex items-center gap-2 shrink-0 self-start lg:self-end flex-wrap">
           {/* Tombol Utama: Cetak Sekaligus 1 File PDF */}
           <Button
             onClick={onBatchPrintRapor}
             disabled={isBatchPrinting || !hasLegerData || isLoadingLeger}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all h-10 px-4 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all h-[38px] px-4 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             title={
               !selectedKelas
                 ? 'Pilih kelas terlebih dahulu'
@@ -158,7 +180,7 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
               variant="outline"
               onClick={() => setIsBatchMenuOpen((prev) => !prev)}
               disabled={!hasLegerData || isLoadingLeger}
-              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-10 px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-[38px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               title="Opsi cetak buku leger, rapor PKL, dan ekspor excel"
             >
               <BookOpen className="w-4 h-4 text-slate-500" />
@@ -245,41 +267,9 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
         </div>
       </div>
 
-      {/* Baris 2: Toolbar Operasional Siswa (Search Siswa + Status Badges + Shortcut Input Nilai) */}
-      <div className="border-t border-slate-100 dark:border-slate-800/80 pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        {/* Sisi Kiri: Search Input yang presisi dan senada */}
-        <div className="flex items-center gap-3 flex-1 max-w-md">
-          <div className="relative flex-1">
-            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              id="search-siswa"
-              type="text"
-              placeholder="Cari nama siswa atau NIS..."
-              value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-xs font-medium pl-9 pr-8 py-2 text-slate-800 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => onSearchQueryChange('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-                title="Hapus pencarian"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
-
-          {totalStudents !== undefined && (
-            <span className="text-[11px] font-semibold text-slate-400 shrink-0 whitespace-nowrap">
-              {totalStudents} Siswa
-            </span>
-          )}
-        </div>
-
-        {/* Sisi Kanan: Badges & Quick Action Link */}
-        <div className="flex items-center gap-2 flex-wrap shrink-0">
+      {/* Baris 2: Status Bar Elegan & Ringkas */}
+      <div className="border-t border-slate-100 dark:border-slate-800/80 pt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
           {isPureWaliKelas ? (
             <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40">
               Mode Wali Kelas • {currentKelasNama || 'Kelas Binaan'}
@@ -295,18 +285,10 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
               Kurikulum: {kurikulumStrukturListLength} Mapel ({kurikulumTotalJp} JP)
             </Badge>
           )}
+        </div>
 
-          {onNavigateInputNilai && (
-            <button
-              type="button"
-              onClick={onNavigateInputNilai}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer border border-slate-200/80 dark:border-slate-700"
-              title="Buka Lembar Input Nilai Kelas Ini"
-            >
-              <BookOpen size={13} className="text-indigo-500" />
-              <span>Input Nilai</span>
-            </button>
-          )}
+        <div className="text-[11px] font-medium text-slate-400">
+          Siap pratinjau rapor PDF, cetak buku leger, dan monitoring keterisian nilai
         </div>
       </div>
     </Card>

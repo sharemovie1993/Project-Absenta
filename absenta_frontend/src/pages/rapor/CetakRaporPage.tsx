@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, UserCheck, Sparkles } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui/SectionCard';
+import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
 import { useAuthStore } from '../../store/authStore';
@@ -154,6 +155,8 @@ export default React.memo(function CetakRaporPage() {
     handleSemesterChange,
     tpOptions,
     semesterOptions,
+    isLoadingTp,
+    isLoadingSem,
     activeYear: academicActiveYear,
     activeSemester: academicActiveSemester,
   } = useAcademicContext({
@@ -524,8 +527,21 @@ export default React.memo(function CetakRaporPage() {
       hardeningModuleKey="cetakraporpage"
       topSlot={
         <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
-          {/* Kiri: Navigasi Cepat Antarmuka e-Rapor */}
+          {/* Kiri: Dropdown TP & Semester + Navigasi Cepat Antarmuka e-Rapor */}
           <div className="flex items-center gap-2 flex-wrap">
+            <AcademicContextBar
+              id="cetak-rapor"
+              tahunPelajaranId={selectedTahunPelajaran}
+              semesterId={selectedSemester}
+              onTahunPelajaranChange={handleAcademicTpChange}
+              onSemesterChange={handleSemesterChange}
+              tpOptions={tpOptions}
+              semesterOptions={semesterOptions}
+              isLoadingTp={isLoadingTp}
+              isLoadingSem={isLoadingSem}
+              variant="toolbar"
+            />
+
             <button
               type="button"
               onClick={() =>
