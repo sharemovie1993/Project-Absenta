@@ -1,6 +1,7 @@
 import { ReportingController } from '../controllers/reporting.controller';
 import { requireCapability } from '../../../middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
+import { RoleName } from '../../../constants/enums';
 
 export async function reportingRoutes(fastify: any) {
   const reportingController = new ReportingController();
@@ -200,7 +201,7 @@ export async function reportingRoutes(fastify: any) {
   });
 
   fastify.get('/pdf/rapor/:siswaId', {
-    preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()],
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
     handler: reportingController.printRapor.bind(reportingController),
   });
 
@@ -220,7 +221,7 @@ export async function reportingRoutes(fastify: any) {
   });
 
   fastify.get('/pdf/p5/:siswaId', {
-    preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()],
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
     handler: reportingController.printP5Rapor.bind(reportingController),
   });
 }

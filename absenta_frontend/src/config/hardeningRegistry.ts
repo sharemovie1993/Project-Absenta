@@ -1272,8 +1272,52 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'Direct callback onOpenJurnal terintegrasi di action footer.'
       }
     ]
+  },
+  p5_rapor_page: {
+    moduleName: 'p5_rapor_page',
+    displayName: 'Projek Penguatan Profil Pelajar Pancasila (P5)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Halaman dibungkus dengan InfraErrorBoundary agar error rendering tidak merusak antarmuka utama.',
+        status: 'VERIFIED',
+        details: 'P5Page terbungkus dalam InfraErrorBoundary.'
+      },
+      {
+        id: 'academic_context_integration',
+        name: 'Integrasi Konteks Akademik (Tahun Pelajaran & Semester)',
+        description: 'Menggunakan AcademicContextBar dan useAcademicContext() agar data P5 tersinkronisasi dengan Tahun Pelajaran dan Semester yang aktif.',
+        status: 'VERIFIED',
+        details: 'AcademicContextBar + useAcademicContext() terintegrasi di toolbar.'
+      },
+      {
+        id: 'bulk_input_efficiency',
+        name: 'Input Massal Efisien (Bulk Set Kualifikasi)',
+        description: 'Menyediakan tombol Set Cepat BSH/SB/MB agar guru dapat mengisi penilaian awal seluruh kelas dalam 1 klik.',
+        status: 'VERIFIED',
+        details: 'handleBulkSetKualifikasi() tersedia di atas tabel penilaian.'
+      },
+      {
+        id: 'pdf_print_integration',
+        name: 'Integrasi Cetak Rapor P5 (PDF per Siswa)',
+        description: 'Setiap baris siswa dilengkapi tombol cetak PDF Rapor P5 individual yang memanggil endpoint /reporting/pdf/p5/:siswaId.',
+        status: 'VERIFIED',
+        details: 'handlePrintStudentP5() terintegrasi di kolom aksi tabel dan mobile card.'
+      },
+      {
+        id: 'zod_schema_validation',
+        name: 'Validasi Input Zod (Schema Guard)',
+        description: 'Form tambah projek P5 dan form penilaian dilindungi oleh Zod schema validation.',
+        status: 'VERIFIED',
+        details: 'createProjekSchema dan bulkScoresSchema terintegrasi pada handler submit.'
+      }
+    ]
   }
 };
+
+
+
 
 
 export const getHardeningConfig = (moduleKey: string): ModuleHardeningConfig => {
