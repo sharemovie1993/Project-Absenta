@@ -62,6 +62,7 @@ import { PiketOperations } from '../../piket/PiketOperations';
 import { PiketPrintSlip } from '../../piket/PiketPrintSlip';
 import { usePiketIzinKeluarOptions } from '../../../hooks/usePiketIzinKeluarOptions';
 import { tenantApi } from '../../../api/tenants.api';
+import { raporApi } from '../../../api/rapor.api';
 import { useNavStore } from '../../../store/navStore';
 
 // Staff Dashboard Modular Tabs
@@ -156,6 +157,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
     isKoperasi,
+    isFasilitatorP5,
+    fasilitatorP5Count,
   } = useCapabilities();
 
   // ── 2. Base Data ──────────────────────────────────────────────────────────────
@@ -166,6 +169,17 @@ export const UnifiedStaffDashboard: React.FC = () => {
     staleTime: 10 * 60 * 1000,
   });
   const guruProfile = guruProfileRes?.data as any;
+
+  // Query P5 Projects for facilitator role
+  const { data: myP5ProjectsRes } = useQuery({
+    queryKey: ['my-p5-projects-hero', user?.id],
+    queryFn: () => raporApi.getMyP5Projects(),
+    enabled: !!user?.id && !isAdmin && !isKepsek,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isFasilitatorP5Actual = isFasilitatorP5 || Boolean(myP5ProjectsRes?.data && myP5ProjectsRes.data.length > 0);
+  const p5ProjectCount = Math.max(fasilitatorP5Count || 0, myP5ProjectsRes?.data?.length || 0);
 
   const guruId = user?.guru_profile?.id || guruProfile?.id;
   const { timelineItems, isLoading: timelineLoading, refetch: refetchTimeline } = useStaffTimeline(guruId);
@@ -271,8 +285,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     : (requestedTab || defaultTabId);
 
   const handleTabChange = React.useCallback((newTab: string) => {
+    if (newTab === 'p5_projek') {
+      navigate('/rapor/p5');
+      return;
+    }
     setSearchParams({ tab: newTab }, { replace: true });
-  }, [setSearchParams]);
+  }, [setSearchParams, navigate]);
 
   const { setActiveWorkspaceId } = useNavStore();
 
@@ -575,6 +593,93 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
   }, [jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isPembimbingPkl, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff]);
 
+  const peranBadges = useMemo(() => {
+    if (isKepsek) {
+      return [{ label: 'Kepala Sekolah', color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' }];
+    }
+    const badges: Array<{ label: string; icon?: any; color: string }> = [];
+
+    if (isWaliKelas) {
+      badges.push({
+        label: `Wali Kelas ${waliKelasNama || ''}`.trim(),
+        color: 'bg-blue-500/25 text-blue-100 border-blue-400/30',
+      });
+    }
+    if (isPembimbingPkl) {
+      badges.push({
+        label: 'Pembimbing PKL',
+        color: 'bg-cyan-500/25 text-cyan-100 border-cyan-400/30',
+      });
+    }
+    if (isFasilitatorP5Actual) {
+      badges.push({
+        label: p5ProjectCount > 1 ? `Fasilitator P5 (${p5ProjectCount} Projek)` : 'Fasilitator P5',
+        icon: Sparkles,
+        color: 'bg-amber-500/25 text-amber-100 border-amber-400/30',
+      });
+    }
+    if (isKurikulum) {
+      badges.push({ label: 'Tim Kurikulum', color: 'bg-purple-500/25 text-purple-100 border-purple-400/30' });
+    }
+    if (isKesiswaan) {
+      badges.push({ label: 'Tim Kesiswaan', color: 'bg-pink-500/25 text-pink-100 border-pink-400/30' });
+    }
+    if (isSarpras) {
+      badges.push({ label: 'Pengelola Sarpras', color: 'bg-orange-500/25 text-orange-100 border-orange-400/30' });
+    }
+    if (isHubin) {
+      badges.push({ label: 'Hubin / PKL', color: 'bg-teal-500/25 text-teal-100 border-teal-400/30' });
+    }
+    if (isKaprog) {
+      badges.push({ label: 'Ketua Program Keahlian', color: 'bg-indigo-500/25 text-indigo-100 border-indigo-400/30' });
+    }
+    if (isKabeng) {
+      badges.push({ label: 'Kepala Bengkel', color: 'bg-rose-500/25 text-rose-100 border-rose-400/30' });
+    }
+    if (isToolman) {
+      badges.push({ label: 'Toolman Lab', color: 'bg-amber-500/25 text-amber-100 border-amber-400/30' });
+    }
+    if (isBpbk) {
+      badges.push({ label: 'Guru BK', color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' });
+    }
+    if (isBkk) {
+      badges.push({ label: 'Pengelola BKK', color: 'bg-sky-500/25 text-sky-100 border-sky-400/30' });
+    }
+    if (isGerbang) {
+      badges.push({ label: 'Petugas Gerbang', color: 'bg-red-500/25 text-red-100 border-red-400/30' });
+    }
+    if (isTUKepala) {
+      badges.push({ label: 'Kepala Tata Usaha', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    } else if (isTUKepegawaian) {
+      badges.push({ label: 'TU Kepegawaian & Dapodik', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    } else if (isTUPersuratan) {
+      badges.push({ label: 'TU Persuratan & Agenda', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    } else if (isTUKeuangan) {
+      badges.push({ label: 'TU Keuangan & SPP', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    } else if (isTUSarpras) {
+      badges.push({ label: 'TU Sarpras & KIB', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    } else if (isTU) {
+      badges.push({ label: 'Staf Tata Usaha', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+    }
+
+    if (badges.length === 0) {
+      if (jabatan) {
+        badges.push({ label: jabatan, color: 'bg-white/15 text-white border-white/20' });
+      } else {
+        badges.push({
+          label: isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran',
+          color: 'bg-white/15 text-white border-white/20',
+        });
+      }
+    }
+    return badges;
+  }, [
+    isKepsek, isWaliKelas, waliKelasNama, isPembimbingPkl, isFasilitatorP5Actual, p5ProjectCount,
+    isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isKabeng, isToolman, isBpbk, isBkk,
+    isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU,
+    jabatan, isTuStaff,
+  ]);
+
   const teacherInitials = useMemo(() => {
     const name = user?.full_name || user?.name || 'Hendra Wijaya';
     const parts = name.trim().split(/\s+/);
@@ -664,6 +769,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
     // 7.1 Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
       list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase, badge: 'PKL' });
+    }
+
+    // 7.2 Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
+    if (isFasilitatorP5Actual && !isKepsek) {
+      list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles, badge: 'P5' });
     }
 
     // 8. Koperasi (hanya jika ada SK Pengelola Koperasi / Admin)
@@ -872,10 +982,24 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </div>
             )}
 
-            {/* 3. JABATAN */}
-            <p className="text-xs sm:text-sm font-semibold text-white/90 pt-0.5">
-              {jabatanLabel}
-            </p>
+            {/* 3. JABATAN / PERAN (BADGES MODERN) */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-1">
+              {peranBadges.map((badge, idx) => {
+                const IconComponent = badge.icon;
+                return (
+                  <span
+                    key={idx}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-lg border backdrop-blur-md shadow-xs select-none",
+                      badge.color
+                    )}
+                  >
+                    {IconComponent && <IconComponent size={12} className="shrink-0 text-amber-300" />}
+                    <span>{badge.label}</span>
+                  </span>
+                );
+              })}
+            </div>
           </div>
 
           {/* Right Action: Sesuai Role Pengguna */}

@@ -51,6 +51,12 @@ export class P5Service {
       include: {
         TahunPelajaran: true,
         Semester: true,
+        Fasilitator: {
+          include: {
+            Guru: { select: { id: true, nama_guru: true, nip: true } },
+            Kelas: { include: { Kelas: { select: { id: true, nama_kelas: true, tingkat: true } } } },
+          },
+        },
       },
       orderBy: { created_at: 'desc' },
     });
@@ -59,6 +65,143 @@ export class P5Service {
   static async deleteProjek(tenantId: string, id: string) {
     return prisma.p5Projek.deleteMany({
       where: { id, tenant_id: tenantId },
+    });
+  }
+
+  // === FASILITATOR P5 TIM ===
+  static async getMyProjects(
+    tenantId: string,
+    guruId: string,
+    filter?: { tahun_pelajaran_id?: string; semester_id?: string }
+  ) {
+    const fasilitatorAssignments = await prisma.p5Fasilitator.findMany({
+      where: {
+        tenant_id: tenantId,
+        guru_id: guruId,
+        Projek: {
+          ...(filter?.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
+          ...(filter?.semester_id ? { semester_id: filter.semester_id } : {}),
+        },
+      },
+      include: {
+        Projek: {
+          include: {
+            TahunPelajaran: true,
+            Semester: true,
+          },
+        },
+        Kelas: {
+          include: {
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    return fasilitatorAssignments.map((f) => ({
+      fasilitator_id: f.id,
+      guru_id: f.guru_id,
+      projek: f.Projek,
+      covered_classes: f.Kelas.map((k) => k.Kelas),
+      covered_class_ids: f.Kelas.map((k) => k.kelas_id),
+    }));
+  }
+
+  static async getFasilitator(tenantId: string, projekId: string) {
+    return prisma.p5Fasilitator.findMany({
+      where: {
+        tenant_id: tenantId,
+        projek_id: projekId,
+      },
+      include: {
+        Guru: {
+          select: {
+            id: true,
+            nama_guru: true,
+            nip: true,
+          },
+        },
+        Kelas: {
+          include: {
+            Kelas: {
+              select: {
+                id: true,
+                nama_kelas: true,
+                tingkat: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { created_at: 'asc' },
+    });
+  }
+
+  static async upsertFasilitator(
+    tenantId: string,
+    projekId: string,
+    data: {
+      guru_id: string;
+      kelas_ids: string[];
+    }
+  ) {
+    return prisma.$transaction(async (tx) => {
+      // 1. Upsert P5Fasilitator
+      const fasilitator = await tx.p5Fasilitator.upsert({
+        where: {
+          projek_id_guru_id: {
+            projek_id: projekId,
+            guru_id: data.guru_id,
+          },
+        },
+        update: {},
+        create: {
+          tenant_id: tenantId,
+          projek_id: projekId,
+          guru_id: data.guru_id,
+        },
+      });
+
+      // 2. Delete existing class coverage
+      await tx.p5FasilitatorKelas.deleteMany({
+        where: { fasilitator_id: fasilitator.id },
+      });
+
+      // 3. Insert new class coverage
+      if (data.kelas_ids && data.kelas_ids.length > 0) {
+        await tx.p5FasilitatorKelas.createMany({
+          data: data.kelas_ids.map((kId) => ({
+            fasilitator_id: fasilitator.id,
+            kelas_id: kId,
+          })),
+        });
+      }
+
+      // Return full updated record
+      return tx.p5Fasilitator.findUnique({
+        where: { id: fasilitator.id },
+        include: {
+          Guru: true,
+          Kelas: { include: { Kelas: true } },
+        },
+      });
+    });
+  }
+
+  static async removeFasilitator(tenantId: string, projekId: string, guruId: string) {
+    return prisma.p5Fasilitator.deleteMany({
+      where: {
+        tenant_id: tenantId,
+        projek_id: projekId,
+        guru_id: guruId,
+      },
     });
   }
 
@@ -112,28 +255,28 @@ export class P5Service {
       }>;
     }
   ) {
-    const operations = data.scores.map((score) => {
+    const operations = data.scores.map((s) => {
       return prisma.p5NilaiSiswa.upsert({
         where: {
           siswa_id_projek_id_dimensi_sub_elemen: {
-            siswa_id: score.siswa_id,
+            siswa_id: s.siswa_id,
             projek_id: data.projek_id,
             dimensi: data.dimensi,
             sub_elemen: data.sub_elemen,
           },
         },
         update: {
-          kualifikasi: score.kualifikasi,
-          catatan_proses: score.catatan_proses || null,
+          kualifikasi: s.kualifikasi,
+          catatan_proses: s.catatan_proses || null,
         },
         create: {
           tenant_id: tenantId,
           projek_id: data.projek_id,
-          siswa_id: score.siswa_id,
+          siswa_id: s.siswa_id,
           dimensi: data.dimensi,
           sub_elemen: data.sub_elemen,
-          kualifikasi: score.kualifikasi,
-          catatan_proses: score.catatan_proses || null,
+          kualifikasi: s.kualifikasi,
+          catatan_proses: s.catatan_proses || null,
         },
       });
     });

@@ -194,6 +194,24 @@ export const raporApi = {
     return response.data;
   },
 
+  // === P5 FASILITATOR TIM ===
+  getMyP5Projects: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get('/rapor/p5/projek/my-projects', { params });
+    return response.data;
+  },
+  getP5Fasilitator: async (projekId: string) => {
+    const response = await api.get(`/rapor/p5/projek/${projekId}/fasilitator`);
+    return response.data;
+  },
+  upsertP5Fasilitator: async (projekId: string, data: { guru_id: string; kelas_ids: string[] }) => {
+    const response = await api.post(`/rapor/p5/projek/${projekId}/fasilitator`, data);
+    return response.data;
+  },
+  removeP5Fasilitator: async (projekId: string, guruId: string) => {
+    const response = await api.delete(`/rapor/p5/projek/${projekId}/fasilitator/${guruId}`);
+    return response.data;
+  },
+
   // === PDF DOWNLOAD URL GENERATORS ===
   getPdfRaporUrl: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
     const token = getAuthToken();
@@ -249,4 +267,26 @@ export interface RaporSettings {
   ukuran_kertas: 'A4' | 'F4';
   tampilkan_kop: boolean;
   tampilkan_qr: boolean;
+}
+
+export interface P5FasilitatorItem {
+  id: string;
+  tenant_id: string;
+  projek_id: string;
+  guru_id: string;
+  created_at: string;
+  Guru?: {
+    id: string;
+    nama_guru: string;
+    nip?: string;
+  };
+  Kelas?: Array<{
+    fasilitator_id: string;
+    kelas_id: string;
+    Kelas: {
+      id: string;
+      nama_kelas: string;
+      tingkat: number;
+    };
+  }>;
 }

@@ -151,6 +151,7 @@ model Tenant {
   KelulusanSiswa           KelulusanSiswa[]
   P5Projek                 P5Projek[]
   P5NilaiSiswa             P5NilaiSiswa[]
+  P5Fasilitator            P5Fasilitator[]
   PerangkatAjar            PerangkatAjar[]
   AlurTujuanPembelajaran   AlurTujuanPembelajaran[]
   TujuanPembelajaran       TujuanPembelajaran[]
@@ -823,6 +824,7 @@ model Kelas {
   RaporSiswa                RaporSiswa[]
   AbsensiKejadianKhusus     AbsensiKejadianKhusus[]
   JurnalWaliKelas           JurnalWaliKelas[]
+  P5FasilitatorKelas        P5FasilitatorKelas[]
 
   @@index([tenant_id])
 }
@@ -889,6 +891,7 @@ model Guru {
   Member                 Member?
   JurnalWaliKelas        JurnalWaliKelas[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  P5Fasilitator          P5Fasilitator[]
 
   @@index([tenant_id])
   @@index([tenant_id, no_rfid])
@@ -4327,8 +4330,39 @@ model P5Projek {
   TahunPelajaran TahunPelajaran @relation(fields: [tahun_pelajaran_id], references: [id])
   Semester       Semester       @relation(fields: [semester_id], references: [id])
   Nilai          P5NilaiSiswa[]
+  Fasilitator    P5Fasilitator[]
 
   @@index([tenant_id])
+}
+
+model P5Fasilitator {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  projek_id  String
+  guru_id    String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  Tenant Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Projek P5Projek           @relation(fields: [projek_id], references: [id], onDelete: Cascade)
+  Guru   Guru               @relation(fields: [guru_id], references: [id], onDelete: Cascade)
+  Kelas  P5FasilitatorKelas[]
+
+  @@unique([projek_id, guru_id])
+  @@index([tenant_id])
+  @@index([tenant_id, guru_id])
+  @@index([tenant_id, projek_id])
+}
+
+model P5FasilitatorKelas {
+  fasilitator_id String
+  kelas_id       String
+
+  Fasilitator P5Fasilitator @relation(fields: [fasilitator_id], references: [id], onDelete: Cascade)
+  Kelas       Kelas         @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+
+  @@id([fasilitator_id, kelas_id])
+  @@index([kelas_id])
 }
 
 model P5NilaiSiswa {

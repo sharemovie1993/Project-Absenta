@@ -147,4 +147,83 @@ export class P5Controller {
       return sendError(reply, 500, 'Gagal memuat nilai projek P5', error);
     }
   }
+
+  // === TIM FASILITATOR ===
+  static async getMyProjects(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const userId = req.user!.id || req.user!.userId;
+      const { tahun_pelajaran_id, semester_id } = req.query;
+
+      // Find guru corresponding to logged in user
+      const guru = await req.server.prisma.guru.findFirst({
+        where: { user_id: userId, tenant_id },
+      });
+
+      if (!guru) {
+        return sendResponse(reply, 200, true, 'User bukan akun guru terdaftar', []);
+      }
+
+      const result = await P5Service.getMyProjects(tenant_id, guru.id, {
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      return sendResponse(reply, 200, true, 'Daftar projek binaan guru berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'P5 Fasilitator controller error');
+      return sendError(reply, 500, 'Gagal memuat projek fasilitator guru', error);
+    }
+  }
+
+  static async getFasilitator(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id: projek_id } = req.params;
+
+      const result = await P5Service.getFasilitator(tenant_id, projek_id);
+      return sendResponse(reply, 200, true, 'Daftar tim fasilitator projek berhasil dimuat', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'P5 Fasilitator controller error');
+      return sendError(reply, 500, 'Gagal memuat tim fasilitator projek', error);
+    }
+  }
+
+  static async upsertFasilitator(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id: projek_id } = req.params;
+      const { guru_id, kelas_ids } = req.body;
+
+      if (!guru_id) {
+        return reply.status(400).send({
+          success: false,
+          message: 'guru_id wajib diisi',
+        });
+      }
+
+      const result = await P5Service.upsertFasilitator(tenant_id, projek_id, {
+        guru_id,
+        kelas_ids: Array.isArray(kelas_ids) ? kelas_ids : [],
+      });
+
+      return sendResponse(reply, 200, true, 'Tim fasilitator projek berhasil diperbarui', result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'P5 Fasilitator controller error');
+      return sendError(reply, 500, 'Gagal memperbarui tim fasilitator projek', error);
+    }
+  }
+
+  static async removeFasilitator(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id: projek_id, guru_id } = req.params;
+
+      await P5Service.removeFasilitator(tenant_id, projek_id, guru_id);
+      return sendResponse(reply, 200, true, 'Guru berhasil dihapus dari tim fasilitator projek');
+    } catch (error) {
+      appLogger.error({ err: error }, 'P5 Fasilitator controller error');
+      return sendError(reply, 500, 'Gagal menghapus guru dari tim fasilitator', error);
+    }
+  }
 }

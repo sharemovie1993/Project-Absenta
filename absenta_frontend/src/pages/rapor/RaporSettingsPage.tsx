@@ -28,9 +28,9 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
+import { P5FacilitatorSettingsTab } from '../../components/rapor/p5/P5FacilitatorSettingsTab';
 
 // Zod Schema Validation Guard (Pilar 25)
 const raporSettingsSchema = z.object({
@@ -226,6 +226,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
 
   const tabs = useMemo(() => [
     { id: 'titimangsa', label: isMobile ? '📅 Titimangsa' : '📅 Titimangsa Ganjil & Genap' },
+    { id: 'tim_p5', label: isMobile ? '✨ Tim P5' : '✨ Tim Fasilitator P5' },
     { id: 'penandatangan', label: isMobile ? '✍️ Pejabat' : '✍️ Pejabat Penandatangan' },
     { id: 'format', label: isMobile ? '⚙️ Format Cetak' : '⚙️ Format & Output Cetak' },
   ], [isMobile]);
@@ -297,6 +298,14 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
               <div className="py-16 flex flex-col items-center justify-center space-y-3">
                 <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                 <p className="text-xs text-slate-400 font-medium">Memuat konfigurasi dokumen rapor...</p>
+              </div>
+            ) : activeTab === 'tim_p5' ? (
+              <div className="w-full min-w-0">
+                <P5FacilitatorSettingsTab
+                  tahunPelajaranId={academicCtx.selectedTahunPelajaran}
+                  semesterId={academicCtx.selectedSemester}
+                  canManage={canManage}
+                />
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">

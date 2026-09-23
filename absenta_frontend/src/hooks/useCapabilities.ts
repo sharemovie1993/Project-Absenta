@@ -174,6 +174,8 @@ export function useCapabilities() {
       isKepalaSekolah: isKepsek,  // canonical alias
       isBillingAdmin,
       activeGuruId: (user as any)?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null,
+      isFasilitatorP5: Boolean((user as any)?.guru_profile?.is_fasilitator_p5 || (user as any)?.is_fasilitator_p5),
+      fasilitatorP5Count: Number((user as any)?.guru_profile?.active_p5_count || 0),
     };
   }, [user, can]);
 
