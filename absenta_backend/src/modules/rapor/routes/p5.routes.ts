@@ -19,5 +19,6 @@ export default async function p5Routes(fastify: any) {
   // Nilai Projek (Guru / Wali Kelas / Kurikulum level)
   fastify.post('/nilai', { preHandler: [requireCapability(['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()]}, P5Controller.upsertNilai);
   fastify.post('/nilai/bulk', { preHandler: [requireCapability(['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()]}, P5Controller.upsertBulkNilai);
+  fastify.post('/nilai/matrix', { preHandler: [requireCapability(['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()]}, P5Controller.upsertMatrixNilai);
   fastify.get('/nilai', { preHandler: [requireCapability(['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()]}, P5Controller.getNilai);
 }

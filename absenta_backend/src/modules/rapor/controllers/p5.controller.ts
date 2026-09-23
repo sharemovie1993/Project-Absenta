@@ -6,6 +6,7 @@ import {
   p5ProjekUpdateSchema,
   p5NilaiSiswaUpsertSchema,
   bulkP5NilaiSiswaSchema,
+  matrixP5NilaiSiswaSchema,
 } from '../services/p5.schema';
 import { z } from 'zod';
 
@@ -127,6 +128,26 @@ export class P5Controller {
         });
       }
       return sendError(reply, 500, 'Gagal menyimpan nilai projek P5 massal', error);
+    }
+  }
+
+  static async upsertMatrixNilai(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const parsed = matrixP5NilaiSiswaSchema.parse(req.body);
+
+      const result = await P5Service.upsertMatrixNilai(tenant_id, parsed);
+      return sendResponse(reply, 200, true, `Berhasil menyimpan ${result.length} nilai matriks projek P5 siswa`, result);
+    } catch (error) {
+      appLogger.error({ err: error }, 'Rapor controller error');
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map((e) => e.message).join(', '),
+          errors: error.errors,
+        });
+      }
+      return sendError(reply, 500, 'Gagal menyimpan nilai matriks projek P5', error);
     }
   }
 

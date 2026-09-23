@@ -228,3 +228,14 @@ export function parseProjekMetadata(deskripsi?: string | null): {
     cleanDesc: cleanDesc.trim(),
   };
 }
+
+/**
+ * Mengambil sub-elemen default untuk dimensi tertentu
+ */
+export function getDefaultSubElemen(dimensi: string): string {
+  const list = P5_SUB_ELEMEN_MAP[dimensi];
+  if (list && list.length > 1) {
+    return list[1].value;
+  }
+  return dimensi;
+}

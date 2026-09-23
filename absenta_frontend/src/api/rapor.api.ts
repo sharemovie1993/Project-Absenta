@@ -193,6 +193,19 @@ export const raporApi = {
     const response = await api.post('/rapor/p5/nilai/bulk', data);
     return response.data;
   },
+  upsertMatrixP5Nilai: async (data: {
+    projek_id: string;
+    grades: Array<{
+      siswa_id: string;
+      dimensi: string;
+      sub_elemen: string;
+      kualifikasi: string;
+      catatan_proses?: string | null;
+    }>;
+  }) => {
+    const response = await api.post('/rapor/p5/nilai/matrix', data);
+    return response.data;
+  },
 
   // === P5 FASILITATOR TIM ===
   getMyP5Projects: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {

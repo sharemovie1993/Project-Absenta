@@ -284,6 +284,48 @@ export class P5Service {
     return prisma.$transaction(operations);
   }
 
+  static async upsertMatrixNilai(
+    tenantId: string,
+    data: {
+      projek_id: string;
+      grades: Array<{
+        siswa_id: string;
+        dimensi: string;
+        sub_elemen: string;
+        kualifikasi: string;
+        catatan_proses?: string | null;
+      }>;
+    }
+  ) {
+    const operations = data.grades.map((g) => {
+      return prisma.p5NilaiSiswa.upsert({
+        where: {
+          siswa_id_projek_id_dimensi_sub_elemen: {
+            siswa_id: g.siswa_id,
+            projek_id: data.projek_id,
+            dimensi: g.dimensi,
+            sub_elemen: g.sub_elemen,
+          },
+        },
+        update: {
+          kualifikasi: g.kualifikasi,
+          catatan_proses: g.catatan_proses || null,
+        },
+        create: {
+          tenant_id: tenantId,
+          projek_id: data.projek_id,
+          siswa_id: g.siswa_id,
+          dimensi: g.dimensi,
+          sub_elemen: g.sub_elemen,
+          kualifikasi: g.kualifikasi,
+          catatan_proses: g.catatan_proses || null,
+        },
+      });
+    });
+
+    return prisma.$transaction(operations);
+  }
+
   static async getNilai(
     tenantId: string,
     filter: {

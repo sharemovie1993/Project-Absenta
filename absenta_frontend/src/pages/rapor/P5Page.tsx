@@ -10,16 +10,17 @@ import {
   Sparkles,
   BookOpen,
   GraduationCap,
-  ShieldCheck,
   Lock,
   Copy,
   CheckCircle2,
   AlertCircle,
-  Settings2
+  Settings2,
+  Target,
+  Bookmark
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
-import { Card, SectionCard, Button, Badge, SearchableSelect, Input } from '../../components/ui';
+import { Card, SectionCard, Button, Badge, SearchableSelect } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useAcademicContext } from '@/hooks/useAcademicContext';
@@ -32,25 +33,33 @@ import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import {
-  P5_DIMENSI_OPTIONS,
-  P5_SUB_ELEMEN_MAP,
   P5_KUALIFIKASI_OPTIONS,
-  P5_DEFAULT_CATATAN
+  P5_DEFAULT_CATATAN,
+  parseProjekMetadata,
+  getDefaultSubElemen
 } from './components/p5/p5Constants';
 
 // Zod Schema Validation Guard (Pilar 25)
-const bulkScoresSchema = z.object({
+const matrixScoreSchema = z.object({
   projek_id: z.string().min(1, 'Projek wajib dipilih'),
-  dimensi: z.string().min(1, 'Dimensi wajib dipilih'),
-  sub_elemen: z.string().min(1, 'Sub-elemen wajib dipilih'),
+  grades: z.array(
+    z.object({
+      siswa_id: z.string().min(1),
+      dimensi: z.string().min(1),
+      sub_elemen: z.string().min(1),
+      kualifikasi: z.string().min(1),
+      catatan_proses: z.string().optional().nullable(),
+    })
+  ).min(1, 'Minimal 1 data penilaian siswa'),
 });
 
-interface ScoreItem {
+interface MatrixScoreItem {
   id: string;
   siswa_id: string;
   nama_siswa: string;
   nis: string;
-  kualifikasi: string;
+  ratings: Record<string, string>; // dimensi -> 'BB' | 'MB' | 'BSH' | 'SB'
+  sub_elemen_map?: Record<string, string>;
   catatan_proses: string;
 }
 
@@ -68,7 +77,6 @@ export const P5Page: React.FC = React.memo(() => {
     isWaliKelas, 
     walikelasKelas, 
     walikelasKelasIds,
-    activeGuruId,
     user 
   } = useCapabilities();
 
@@ -148,11 +156,9 @@ export const P5Page: React.FC = React.memo(() => {
     return opts;
   }, [isAssignedFacilitator, canSupervise, isWaliKelas, waliKelasNama, isMobile]);
 
-  // Filters State
+  // Filters State: HANYA PROJEK & KELAS (Dimensi kini langsung kolom otomatis)
   const [selectedProjek, setSelectedProjek] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('');
-  const [selectedDimensi, setSelectedDimensi] = useState('');
-  const [selectedSubElemen, setSelectedSubElemen] = useState('');
 
   // 2. Fetch All P5 Projek (for supervisi, master, and wali_kelas)
   const { data: allProjekList, isLoading: isLoadingAllProjek } = useQuery({
@@ -238,11 +244,24 @@ export const P5Page: React.FC = React.memo(() => {
     }
   }, [activeRoleTab, selectedProjek, myP5Assignments, selectedKelas]);
 
-  // Sub-Elemen cascade options
-  const subElemenOptions = useMemo(() => {
-    if (!selectedDimensi) return [{ value: '', label: '-- Pilih Dimensi Terlebih Dahulu --' }];
-    return P5_SUB_ELEMEN_MAP[selectedDimensi] || [{ value: '', label: '-- Pilih Sub-Elemen --' }];
-  }, [selectedDimensi]);
+  // Objek & Metadata Projek Aktif (Target Dimensi)
+  const selectedProjekObj = useMemo(() => {
+    if (activeRoleTab === 'my_tasks') {
+      return myP5Assignments.find((a) => a.projek.id === selectedProjek)?.projek;
+    }
+    return allProjects.find((p) => p.id === selectedProjek);
+  }, [activeRoleTab, myP5Assignments, allProjects, selectedProjek]);
+
+  const currentProjekMeta = useMemo(() => {
+    return parseProjekMetadata(selectedProjekObj?.deskripsi);
+  }, [selectedProjekObj]);
+
+  const targetDimensions = useMemo(() => {
+    if (currentProjekMeta.dimensiList.length > 0) {
+      return currentProjekMeta.dimensiList;
+    }
+    return ['Mandiri', 'Gotong Royong', 'Kreatif'];
+  }, [currentProjekMeta]);
 
   // Determine Read-Only Mode
   const isReadOnly = useMemo(() => {
@@ -265,7 +284,7 @@ export const P5Page: React.FC = React.memo(() => {
       return 'Mode Supervisi Sekolah (Hanya Baca): Pemantauan progres pengisian nilai projek P5 seluruh kelas oleh Kurikulum & Kepala Sekolah.';
     }
     if (activeRoleTab === 'wali_kelas') {
-      return `Mode Pemantauan Wali Kelas (Hanya Baca): Nilai kualitatif projek P5 diisi secara langsung oleh Tim Guru Fasilitator Projek.`;
+      return 'Mode Pemantauan Wali Kelas (Hanya Baca): Nilai kualitatif projek P5 diisi secara langsung oleh Tim Guru Fasilitator Projek.';
     }
     return 'Mode Hanya Baca: Anda tidak terdaftar sebagai guru fasilitator untuk rombel/projek terpilih.';
   }, [isReadOnly, activeRoleTab]);
@@ -277,36 +296,49 @@ export const P5Page: React.FC = React.memo(() => {
     enabled: Boolean(selectedKelas),
   });
 
-  // 4. Fetch Existing Grades
+  // 4. Fetch All Existing Grades for Selected Project
   const { data: existingP5Nilai, isLoading: isLoadingGrades } = useQuery({
-    queryKey: ['p5-nilai', selectedProjek, selectedDimensi, selectedSubElemen],
+    queryKey: ['p5-nilai', selectedProjek],
     queryFn: () => raporApi.getP5Nilai({
       projek_id: selectedProjek,
-      dimensi: selectedDimensi,
     }),
-    enabled: Boolean(selectedProjek && selectedDimensi && selectedSubElemen),
+    enabled: Boolean(selectedProjek),
   });
 
-  // 5. Scores State (FULL LIST WITHOUT PAGINATION)
-  const [scores, setScores] = useState<ScoreItem[]>([]);
+  // 5. Scores State (FULL MATRIX GRID WITHOUT PAGINATION)
+  const [scores, setScores] = useState<MatrixScoreItem[]>([]);
 
   useEffect(() => {
     if (students?.data && Array.isArray(students.data)) {
       const existingList = existingP5Nilai?.data || [];
-      const grid: ScoreItem[] = students.data.map((stud: any) => {
-        const found = existingList.find((n: any) =>
-          n.siswa_id === stud.id && n.sub_elemen === selectedSubElemen
-        );
-        const kualifikasi = found?.kualifikasi || 'BSH';
-        const defaultCatatan = P5_DEFAULT_CATATAN[kualifikasi] || '';
+      const grid: MatrixScoreItem[] = students.data.map((stud: any) => {
+        const studentGrades = existingList.filter((n: any) => n.siswa_id === stud.id);
+        const ratings: Record<string, string> = {};
+        const subElemenMap: Record<string, string> = {};
+        let catatanProses = '';
+
+        targetDimensions.forEach((dim) => {
+          const found = studentGrades.find((n: any) => n.dimensi === dim);
+          if (found) {
+            ratings[dim] = found.kualifikasi;
+            subElemenMap[dim] = found.sub_elemen;
+            if (found.catatan_proses && !catatanProses) {
+              catatanProses = found.catatan_proses;
+            }
+          } else {
+            ratings[dim] = 'BSH';
+            subElemenMap[dim] = getDefaultSubElemen(dim);
+          }
+        });
 
         return {
           id: stud.id,
           siswa_id: stud.id,
           nama_siswa: stud.nama_siswa || stud.nama || '—',
           nis: stud.nis || stud.nisn || '—',
-          kualifikasi,
-          catatan_proses: found?.catatan_proses || defaultCatatan,
+          ratings,
+          sub_elemen_map: subElemenMap,
+          catatan_proses: catatanProses || P5_DEFAULT_CATATAN['BSH'] || '',
         };
       });
 
@@ -314,10 +346,10 @@ export const P5Page: React.FC = React.memo(() => {
     } else {
       setScores([]);
     }
-  }, [students, existingP5Nilai, selectedSubElemen]);
+  }, [students, existingP5Nilai, targetDimensions]);
 
-  // Change single score field
-  const handleScoreChange = useCallback((siswaId: string, field: 'kualifikasi' | 'catatan_proses', val: string) => {
+  // Handler: Update Dimensi Rating untuk 1 Siswa
+  const handleScoreChange = useCallback((siswaId: string, dimensi: string, kualifikasi: string) => {
     if (isReadOnly) {
       toast.error('Tidak dapat mengubah nilai: Anda berada dalam Mode Hanya Baca.');
       return;
@@ -325,27 +357,58 @@ export const P5Page: React.FC = React.memo(() => {
     setScores((prev) =>
       prev.map((s) => {
         if (s.siswa_id !== siswaId) return s;
-        const updated = { ...s, [field]: val };
-        if (field === 'kualifikasi' && (!s.catatan_proses || Object.values(P5_DEFAULT_CATATAN).includes(s.catatan_proses))) {
-          updated.catatan_proses = P5_DEFAULT_CATATAN[val] || '';
-        }
-        return updated;
+        return {
+          ...s,
+          ratings: {
+            ...s.ratings,
+            [dimensi]: kualifikasi,
+          },
+        };
       })
     );
   }, [isReadOnly]);
 
-  // Quick Action: Set Cepat Sekelas
-  const handleBulkSetKualifikasi = useCallback((kualifikasi: string) => {
+  // Handler: Update Catatan Proses untuk 1 Siswa
+  const handleCatatanChange = useCallback((siswaId: string, text: string) => {
+    if (isReadOnly) return;
+    setScores((prev) =>
+      prev.map((s) => (s.siswa_id === siswaId ? { ...s, catatan_proses: text } : s))
+    );
+  }, [isReadOnly]);
+
+  // Quick Action: Set BSH untuk SATU KOLOM DIMENSI Sekelas
+  const handleSetAllForDimension = useCallback((dimensi: string, kualifikasi: string = 'BSH') => {
     if (isReadOnly) return;
     setScores((prev) =>
       prev.map((s) => ({
         ...s,
-        kualifikasi,
-        catatan_proses: P5_DEFAULT_CATATAN[kualifikasi] || s.catatan_proses,
+        ratings: {
+          ...s.ratings,
+          [dimensi]: kualifikasi,
+        },
       }))
     );
-    toast.success(`Berhasil menerapkan ${kualifikasi} untuk seluruh siswa di kelas!`);
+    toast.success(`Berhasil menerapkan ${kualifikasi} untuk dimensi ${dimensi} sekelas!`);
   }, [isReadOnly]);
+
+  // Quick Action: Set SEMUA DIMENSI Sekelas
+  const handleBulkSetAllDimensions = useCallback((kualifikasi: string) => {
+    if (isReadOnly) return;
+    setScores((prev) =>
+      prev.map((s) => {
+        const nextRatings: Record<string, string> = {};
+        targetDimensions.forEach((dim) => {
+          nextRatings[dim] = kualifikasi;
+        });
+        return {
+          ...s,
+          ratings: nextRatings,
+          catatan_proses: P5_DEFAULT_CATATAN[kualifikasi] || s.catatan_proses,
+        };
+      })
+    );
+    toast.success(`Berhasil menerapkan ${kualifikasi} untuk seluruh dimensi di kelas!`);
+  }, [isReadOnly, targetDimensions]);
 
   // Quick Action: Salin Catatan Baris 1 ke Semua
   const handleCopyFirstCatatanToAll = useCallback(() => {
@@ -361,24 +424,15 @@ export const P5Page: React.FC = React.memo(() => {
     toast.success('Berhasil menyalin catatan capaian baris pertama ke seluruh siswa!');
   }, [isReadOnly, scores]);
 
-  // Quick Action: Kosongkan Catatan
-  const handleClearAllCatatan = useCallback(() => {
-    if (isReadOnly) return;
-    setScores((prev) =>
-      prev.map((s) => ({ ...s, catatan_proses: '' }))
-    );
-    toast.info('Seluruh catatan capaian telah dikosongkan');
-  }, [isReadOnly]);
-
-  // Save Mutation
-  const saveP5BulkMutation = useMutation({
-    mutationFn: raporApi.upsertBulkP5Nilai,
+  // Save Mutation (Matrix Atomic Transaction)
+  const saveMatrixMutation = useMutation({
+    mutationFn: raporApi.upsertMatrixP5Nilai,
     onSuccess: () => {
-      toast.success('Nilai kualitatif projek P5 berhasil disimpan!');
-      queryClient.invalidateQueries({ queryKey: ['p5-nilai', selectedProjek, selectedDimensi, selectedSubElemen] });
+      toast.success('Seluruh nilai matriks dimensi P5 berhasil disimpan!');
+      queryClient.invalidateQueries({ queryKey: ['p5-nilai', selectedProjek] });
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Gagal menyimpan nilai P5');
+      toast.error(err?.response?.data?.message || 'Gagal menyimpan nilai matriks P5');
     },
   });
 
@@ -387,8 +441,8 @@ export const P5Page: React.FC = React.memo(() => {
       toast.error('Anda berada dalam Mode Hanya Baca.');
       return;
     }
-    if (!selectedProjek || !selectedDimensi || !selectedSubElemen) {
-      toast.error('Pastikan Projek, Dimensi, dan Sub-Elemen telah dipilih lengkap');
+    if (!selectedProjek || !selectedKelas) {
+      toast.error('Pastikan Projek dan Kelas telah dipilih');
       return;
     }
     if (scores.length === 0) {
@@ -396,18 +450,30 @@ export const P5Page: React.FC = React.memo(() => {
       return;
     }
 
-    const payload = {
-      projek_id: selectedProjek,
-      dimensi: selectedDimensi,
-      sub_elemen: selectedSubElemen,
-      scores: scores.map((s) => ({
-        siswa_id: s.siswa_id,
-        kualifikasi: s.kualifikasi,
-        catatan_proses: s.catatan_proses,
-      })),
-    };
+    const grades: Array<{
+      siswa_id: string;
+      dimensi: string;
+      sub_elemen: string;
+      kualifikasi: string;
+      catatan_proses?: string | null;
+    }> = [];
 
-    saveP5BulkMutation.mutate(payload);
+    for (const s of scores) {
+      targetDimensions.forEach((dim) => {
+        grades.push({
+          siswa_id: s.siswa_id,
+          dimensi: dim,
+          sub_elemen: s.sub_elemen_map?.[dim] || getDefaultSubElemen(dim),
+          kualifikasi: s.ratings[dim] || 'BSH',
+          catatan_proses: s.catatan_proses || null,
+        });
+      });
+    }
+
+    saveMatrixMutation.mutate({
+      projek_id: selectedProjek,
+      grades,
+    });
   };
 
   // Cetak PDF Rapor P5
@@ -446,14 +512,14 @@ export const P5Page: React.FC = React.memo(() => {
           />
         }
         instruction={{
-          title: 'Panduan Asesmen Projek P5',
-          description: 'Pengisian nilai kualitatif karakter siswa per dimensi dan sub-elemen Projek Penguatan Profil Pelajar Pancasila.',
+          title: 'Panduan Asesmen Projek P5 Matriks Kolom',
+          description: 'Penilaian kualitatif karakter siswa tersaji secara simultan dalam kolom-kolom dimensi target projek.',
           items: [
-            { text: 'Pilih projek P5 dan rombel kelas yang ditugaskan kepada Anda sebagai guru fasilitator.' },
-            { text: 'Pilih Dimensi Profil Pelajar Pancasila dan Sub-Elemen yang dinilai.' },
-            { text: 'Gunakan tombol Set Cepat (Semua BSH) untuk efisiensi penilaian awal satu kelas.' },
-            { text: 'Sesuaikan kualifikasi per siswa (BB / MB / BSH / SB) dan lengkapi catatan proses perkembangan.' },
-            { text: 'Klik tombol Simpan Nilai P5, dan gunakan tombol Cetak untuk melihat pratinjau PDF Rapor P5.' }
+            { text: 'Pilih Projek P5 dan Rombongan Belajar (Kelas) yang ditugaskan kepada Anda.' },
+            { text: 'Dimensi-dimensi sasaran projek otomatis tampil sebagai kolom tabel berdasarkan konfigurasi tema projek.' },
+            { text: 'Gunakan tombol Set BSH di header kolom untuk mengatur cepat capaian satu dimensi sekelas.' },
+            { text: 'Sesuaikan kualifikasi per siswa (BB / MB / BSH / SB) dan lengkapi deskripsi catatan proses capaian.' },
+            { text: 'Klik Simpan Semua Nilai Matriks P5 untuk menyimpan seluruh dimensi secara atomik dalam satu klik.' }
           ]
         }}
       >
@@ -490,10 +556,12 @@ export const P5Page: React.FC = React.memo(() => {
 
             {/* ── 3. Main Grading Interface (Projek Saya / Supervisi / Wali Kelas) ── */}
             <div className="space-y-6">
-              {/* Filter Card */}
-                <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-900 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full min-w-0">
+              {/* Filter Card: Hanya Projek & Kelas */}
+              <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-900 space-y-4 w-full min-w-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label htmlFor="p5-filter-projek" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="p5-filter-projek" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                      <Target size={12} className="text-indigo-500" />
                       1. Projek P5 {activeRoleTab === 'my_tasks' && '(Binaan)'}
                     </label>
                     <SearchableSelect
@@ -507,7 +575,8 @@ export const P5Page: React.FC = React.memo(() => {
                   </div>
 
                   <div className="space-y-1">
-                    <label htmlFor="p5-filter-kelas" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="p5-filter-kelas" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                      <Bookmark size={12} className="text-indigo-500" />
                       2. Rombongan Belajar (Kelas)
                     </label>
                     <SearchableSelect
@@ -519,308 +588,343 @@ export const P5Page: React.FC = React.memo(() => {
                       disabled={activeRoleTab === 'wali_kelas'}
                     />
                   </div>
+                </div>
 
-                  <div className="space-y-1">
-                    <label htmlFor="p5-filter-dimensi" className="text-[10px] font-bold text-slate-500 uppercase">
-                      3. Dimensi Karakter Pancasila
-                    </label>
-                    <SearchableSelect
-                      id="p5-filter-dimensi"
-                      value={selectedDimensi}
-                      onValueChange={(val) => {
-                        setSelectedDimensi(val);
-                        setSelectedSubElemen('');
-                      }}
-                      options={P5_DIMENSI_OPTIONS}
-                      placeholder="Pilih Dimensi"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="p5-filter-subelemen" className="text-[10px] font-bold text-slate-500 uppercase">
-                      4. Sub-Elemen Penilaian
-                    </label>
-                    <SearchableSelect
-                      id="p5-filter-subelemen"
-                      value={selectedSubElemen}
-                      onValueChange={setSelectedSubElemen}
-                      options={subElemenOptions}
-                      placeholder="Pilih Sub-Elemen"
-                    />
-                  </div>
-                </Card>
-
-                {/* ── Scoring Area (FULL VIEW, UNPAGINATED LIKE INPUT NILAI RAPOR) ── */}
-                {!selectedProjek || !selectedKelas || !selectedDimensi || !selectedSubElemen ? (
-                  <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent rounded-2xl space-y-2">
-                    <Sparkles className="w-12 h-12 text-indigo-300 dark:text-indigo-800 mx-auto" />
-                    <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
-                      Lengkapi Filter Penilaian P5 di Atas
-                    </h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Pilih Projek, Kelas, Dimensi, dan Sub-Elemen karakter untuk membuka lembar penilaian siswa secara penuh.
-                    </p>
-                  </Card>
-                ) : (
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm space-y-0">
-                    {/* Top Action & Bulk Tools Bar */}
-                    <div className="p-4 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/70 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                {/* Banner Ringkasan Metadata Projek Terpilih */}
+                {selectedProjek && selectedProjekObj && (
+                  <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
-                          <Sparkles size={13} className="text-amber-500" />
-                          Set Cepat Sekelas:
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {selectedProjekObj.judul}
                         </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isReadOnly}
-                          onClick={() => handleBulkSetKualifikasi('BSH')}
-                          className="text-[11px] font-bold h-7 rounded-lg border-indigo-200 dark:border-indigo-900 text-indigo-600 hover:bg-indigo-50"
-                        >
-                          Semua BSH
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isReadOnly}
-                          onClick={() => handleBulkSetKualifikasi('SB')}
-                          className="text-[11px] font-bold h-7 rounded-lg border-emerald-200 dark:border-emerald-900 text-emerald-600 hover:bg-emerald-50"
-                        >
-                          Semua SB
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={isReadOnly}
-                          onClick={() => handleBulkSetKualifikasi('MB')}
-                          className="text-[11px] font-bold h-7 rounded-lg border-amber-200 dark:border-amber-900 text-amber-600 hover:bg-amber-50"
-                        >
-                          Semua MB
-                        </Button>
-                        <span className="text-slate-300">|</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={isReadOnly}
-                          onClick={handleCopyFirstCatatanToAll}
-                          className="text-[11px] font-semibold h-7 text-slate-600 hover:text-indigo-600"
-                          title="Salin Catatan Baris 1 ke Semua Siswa"
-                        >
-                          <Copy size={11} className="mr-1" /> Salin Catatan #1
-                        </Button>
+                        <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50">
+                          {currentProjekMeta.tema}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] font-semibold border-slate-200 text-slate-600 dark:text-slate-400">
+                          {currentProjekMeta.fase}
+                        </Badge>
                       </div>
-
-                      <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">
-                          {scores.length} Siswa Terdaftar
-                        </span>
-                        <Button
-                          type="button"
-                          variant="toolbarPrimary"
-                          size="toolbar"
-                          disabled={isReadOnly || saveP5BulkMutation.isPending}
-                          onClick={handleSaveScores}
-                          className="font-bold rounded-xl shadow-md w-full sm:w-auto"
-                        >
-                          {saveP5BulkMutation.isPending ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                          ) : (
-                            <Save className="w-3.5 h-3.5 mr-1.5" />
-                          )}
-                          Simpan Nilai P5
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Desktop Full Table (Without Pagination) */}
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                            <th className="py-3 px-4 w-12 text-center">No</th>
-                            <th className="py-3 px-4 w-64">Nama Peserta Didik</th>
-                            <th className="py-3 px-4 w-72 text-center">Capaian Kualitatif</th>
-                            <th className="py-3 px-4">Deskripsi / Catatan Proses Capaian</th>
-                            <th className="py-3 px-4 w-20 text-center">Cetak</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                          {isLoadingStudents ? (
-                            <tr>
-                              <td colSpan={5} className="py-16 text-center text-xs text-slate-400 italic">
-                                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
-                                Memuat daftar siswa kelas...
-                              </td>
-                            </tr>
-                          ) : scores.length === 0 ? (
-                            <tr>
-                              <td colSpan={5} className="py-16 text-center text-xs text-slate-400 italic">
-                                Kelas kosong atau tidak ditemukan data siswa aktif.
-                              </td>
-                            </tr>
-                          ) : (
-                            scores.map((row, idx) => {
-                              return (
-                                <tr
-                                  key={row.siswa_id}
-                                  className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
-                                >
-                                  <td className="py-3 px-4 text-center text-slate-400 font-mono text-xs">
-                                    {idx + 1}
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <div className="font-bold text-slate-800 dark:text-white text-xs">
-                                      {row.nama_siswa}
-                                    </div>
-                                    <span className="text-[10px] font-mono text-slate-400">
-                                      NIS: {row.nis || '-'}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    {/* 4-Pill Interactive Option */}
-                                    <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 gap-1">
-                                      {[
-                                        { val: 'BB', label: 'BB', desc: 'Belum Berkembang', activeClass: 'bg-rose-500 text-white' },
-                                        { val: 'MB', label: 'MB', desc: 'Mulai Berkembang', activeClass: 'bg-amber-500 text-white' },
-                                        { val: 'BSH', label: 'BSH', desc: 'Berkembang Sesuai Harapan', activeClass: 'bg-indigo-600 text-white' },
-                                        { val: 'SB', label: 'SB', desc: 'Sangat Berkembang', activeClass: 'bg-emerald-600 text-white' },
-                                      ].map((pill) => {
-                                        const isSelected = row.kualifikasi === pill.val;
-                                        return (
-                                          <button
-                                            key={pill.val}
-                                            type="button"
-                                            disabled={isReadOnly}
-                                            onClick={() => handleScoreChange(row.siswa_id, 'kualifikasi', pill.val)}
-                                            title={pill.desc}
-                                            className={cn(
-                                              "px-2.5 py-1 rounded-lg font-extrabold text-[10px] tracking-wide transition-all cursor-pointer select-none",
-                                              isSelected
-                                                ? pill.activeClass + " shadow-xs font-black scale-105"
-                                                : "text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-white/40"
-                                            )}
-                                          >
-                                            {pill.label}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <input
-                                      type="text"
-                                      disabled={isReadOnly}
-                                      value={row.catatan_proses}
-                                      onChange={(e) => handleScoreChange(row.siswa_id, 'catatan_proses', e.target.value)}
-                                      placeholder="Tulis deskripsi capaian..."
-                                      className="w-full text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-slate-800 dark:text-slate-200"
-                                    />
-                                  </td>
-                                  <td className="py-3 px-4 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handlePrintStudentP5(row.siswa_id)}
-                                      className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
-                                      title="Cetak Rapor P5 Siswa"
-                                    >
-                                      <Printer size={15} />
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile Continuous Card List (No Pagination) */}
-                    <div className="md:hidden p-4 space-y-3">
-                      {isLoadingStudents ? (
-                        <div className="py-12 text-center text-xs text-slate-400 italic">
-                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
-                          Memuat daftar siswa kelas...
-                        </div>
-                      ) : scores.length === 0 ? (
-                        <div className="py-12 text-center text-xs text-slate-400 italic">
-                          Kelas kosong atau tidak ditemukan data siswa.
-                        </div>
-                      ) : (
-                        scores.map((row, idx) => (
-                          <div
-                            key={row.siswa_id}
-                            className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <span className="text-[10px] font-mono text-slate-400">#{idx + 1}</span>
-                                <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase">
-                                  {row.nama_siswa}
-                                </h4>
-                                <span className="text-[10px] font-mono text-slate-400">NIS: {row.nis || '-'}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handlePrintStudentP5(row.siswa_id)}
-                                className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50"
-                                title="Cetak Rapor P5"
-                              >
-                                <Printer size={15} />
-                              </button>
-                            </div>
-
-                            {/* Mobile Pills */}
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase block">Capaian:</label>
-                              <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80">
-                                {[
-                                  { val: 'BB', label: 'BB', activeClass: 'bg-rose-500 text-white' },
-                                  { val: 'MB', label: 'MB', activeClass: 'bg-amber-500 text-white' },
-                                  { val: 'BSH', label: 'BSH', activeClass: 'bg-indigo-600 text-white' },
-                                  { val: 'SB', label: 'SB', activeClass: 'bg-emerald-600 text-white' },
-                                ].map((pill) => {
-                                  const isSelected = row.kualifikasi === pill.val;
-                                  return (
-                                    <button
-                                      key={pill.val}
-                                      type="button"
-                                      disabled={isReadOnly}
-                                      onClick={() => handleScoreChange(row.siswa_id, 'kualifikasi', pill.val)}
-                                      className={cn(
-                                        "py-1.5 rounded-lg font-bold text-xs text-center select-none",
-                                        isSelected ? pill.activeClass : "text-slate-500"
-                                      )}
-                                    >
-                                      {pill.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            {/* Mobile Catatan Input */}
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase block">Catatan:</label>
-                              <input
-                                type="text"
-                                disabled={isReadOnly}
-                                value={row.catatan_proses}
-                                onChange={(e) => handleScoreChange(row.siswa_id, 'catatan_proses', e.target.value)}
-                                placeholder="Tulis deskripsi..."
-                                className="w-full text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50"
-                              />
-                            </div>
-                          </div>
-                        ))
+                      {currentProjekMeta.cleanDesc && (
+                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                          {currentProjekMeta.cleanDesc}
+                        </p>
                       )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 mr-1">
+                        Dimensi Kolom ({targetDimensions.length}):
+                      </span>
+                      {targetDimensions.map((dim) => (
+                        <span
+                          key={dim}
+                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs"
+                        >
+                          {dim}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 )}
-              </div>
+              </Card>
+
+              {/* ── Scoring Area (MATRIKS KOLOM TERBUKA PENUH TANPA PAGINASI) ── */}
+              {!selectedProjek || !selectedKelas ? (
+                <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent rounded-2xl space-y-2">
+                  <Sparkles className="w-12 h-12 text-indigo-300 dark:text-indigo-800 mx-auto" />
+                  <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">
+                    Pilih Projek & Kelas untuk Membuka Matriks Nilai
+                  </h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Dimensi-dimensi sasaran projek akan langsung otomatis terbuka sebagai kolom tabel penilaian tanpa perlu memilih per dimensi lagi.
+                  </p>
+                </Card>
+              ) : (
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm space-y-0">
+                  {/* Top Action & Bulk Tools Bar */}
+                  <div className="p-4 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-200/70 dark:border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                        <Sparkles size={13} className="text-amber-500" />
+                        Aksi Cepat Sekelas:
+                      </span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isReadOnly}
+                        onClick={() => handleBulkSetAllDimensions('BSH')}
+                        className="text-[11px] font-bold h-7 rounded-lg border-indigo-200 dark:border-indigo-900 text-indigo-600 hover:bg-indigo-50"
+                      >
+                        Semua Dimensi BSH
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={isReadOnly}
+                        onClick={() => handleBulkSetAllDimensions('SB')}
+                        className="text-[11px] font-bold h-7 rounded-lg border-emerald-200 dark:border-emerald-900 text-emerald-600 hover:bg-emerald-50"
+                      >
+                        Semua Dimensi SB
+                      </Button>
+                      <span className="text-slate-300">|</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={isReadOnly}
+                        onClick={handleCopyFirstCatatanToAll}
+                        className="text-[11px] font-semibold h-7 text-slate-600 hover:text-indigo-600"
+                        title="Salin Catatan Baris 1 ke Semua Siswa"
+                      >
+                        <Copy size={11} className="mr-1" /> Salin Catatan #1
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                      <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-2">
+                        {scores.length} Siswa Terdaftar
+                      </span>
+                      <Button
+                        type="button"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        disabled={isReadOnly || saveMatrixMutation.isPending}
+                        onClick={handleSaveScores}
+                        className="font-bold rounded-xl shadow-md w-full sm:w-auto"
+                      >
+                        {saveMatrixMutation.isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                        ) : (
+                          <Save className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Simpan Matriks Nilai P5
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Desktop Full Matriks Table (Without Pagination) */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                          <th className="py-3 px-3 w-10 text-center">No</th>
+                          <th className="py-3 px-3 w-52 min-w-[200px]">Nama Peserta Didik</th>
+                          {/* Kolom Dimensi Dinamis Sesuai Target Projek */}
+                          {targetDimensions.map((dim) => (
+                            <th key={dim} className="py-3 px-2 text-center min-w-[170px] bg-indigo-50/20 dark:bg-indigo-950/10 border-x border-slate-100 dark:border-slate-800/80">
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="font-extrabold text-[11px] text-indigo-700 dark:text-indigo-300">
+                                  {dim}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={isReadOnly}
+                                  onClick={() => handleSetAllForDimension(dim, 'BSH')}
+                                  className="text-[9px] font-bold px-2 py-0.5 rounded bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-300 transition-colors"
+                                  title={`Set semua siswa ${dim} ke BSH`}
+                                >
+                                  Set BSH
+                                </button>
+                              </div>
+                            </th>
+                          ))}
+                          <th className="py-3 px-3 min-w-[240px]">Catatan Proses Capaian</th>
+                          <th className="py-3 px-2 w-16 text-center">Cetak</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+                        {isLoadingStudents || isLoadingGrades ? (
+                          <tr>
+                            <td colSpan={targetDimensions.length + 4} className="py-16 text-center text-xs text-slate-400 italic">
+                              <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
+                              Memuat data nilai dan siswa kelas...
+                            </td>
+                          </tr>
+                        ) : scores.length === 0 ? (
+                          <tr>
+                            <td colSpan={targetDimensions.length + 4} className="py-16 text-center text-xs text-slate-400 italic">
+                              Kelas kosong atau tidak ditemukan data siswa aktif.
+                            </td>
+                          </tr>
+                        ) : (
+                          scores.map((row, idx) => {
+                            return (
+                              <tr
+                                key={row.siswa_id}
+                                className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                              >
+                                <td className="py-3 px-3 text-center text-slate-400 font-mono text-xs">
+                                  {idx + 1}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="font-bold text-slate-800 dark:text-white text-xs">
+                                    {row.nama_siswa}
+                                  </div>
+                                  <span className="text-[10px] font-mono text-slate-400">
+                                    NIS: {row.nis || '-'}
+                                  </span>
+                                </td>
+
+                                {/* Kolom Pills untuk Setiap Dimensi */}
+                                {targetDimensions.map((dim) => {
+                                  const currentRating = row.ratings[dim] || 'BSH';
+                                  return (
+                                    <td key={dim} className="py-2.5 px-2 text-center border-x border-slate-100 dark:border-slate-800/50 bg-slate-50/10">
+                                      <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 gap-0.5">
+                                        {[
+                                          { val: 'BB', desc: 'Belum Berkembang', activeClass: 'bg-rose-500 text-white' },
+                                          { val: 'MB', desc: 'Mulai Berkembang', activeClass: 'bg-amber-500 text-white' },
+                                          { val: 'BSH', desc: 'Berkembang Sesuai Harapan', activeClass: 'bg-indigo-600 text-white' },
+                                          { val: 'SB', desc: 'Sangat Berkembang', activeClass: 'bg-emerald-600 text-white' },
+                                        ].map((pill) => {
+                                          const isSelected = currentRating === pill.val;
+                                          return (
+                                            <button
+                                              key={pill.val}
+                                              type="button"
+                                              disabled={isReadOnly}
+                                              onClick={() => handleScoreChange(row.siswa_id, dim, pill.val)}
+                                              title={`${dim}: ${pill.desc}`}
+                                              className={cn(
+                                                "px-2 py-0.5 rounded font-extrabold text-[10px] tracking-wide transition-all cursor-pointer select-none",
+                                                isSelected
+                                                  ? pill.activeClass + " shadow-2xs font-black scale-105"
+                                                  : "text-slate-500 hover:text-slate-800 dark:hover:text-white hover:bg-white/40"
+                                              )}
+                                            >
+                                              {pill.val}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </td>
+                                  );
+                                })}
+
+                                <td className="py-3 px-3">
+                                  <input
+                                    type="text"
+                                    disabled={isReadOnly}
+                                    value={row.catatan_proses}
+                                    onChange={(e) => handleCatatanChange(row.siswa_id, e.target.value)}
+                                    placeholder="Tulis deskripsi capaian..."
+                                    className="w-full text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium text-slate-800 dark:text-slate-200"
+                                  />
+                                </td>
+                                <td className="py-3 px-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handlePrintStudentP5(row.siswa_id)}
+                                    className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition-colors"
+                                    title="Cetak Rapor P5 Siswa"
+                                  >
+                                    <Printer size={15} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card List (No Pagination) */}
+                  <div className="md:hidden p-4 space-y-4">
+                    {isLoadingStudents || isLoadingGrades ? (
+                      <div className="py-12 text-center text-xs text-slate-400 italic">
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-indigo-500" />
+                        Memuat daftar siswa kelas...
+                      </div>
+                    ) : scores.length === 0 ? (
+                      <div className="py-12 text-center text-xs text-slate-400 italic">
+                        Kelas kosong atau tidak ditemukan data siswa.
+                      </div>
+                    ) : (
+                      scores.map((row, idx) => (
+                        <div
+                          key={row.siswa_id}
+                          className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="text-[10px] font-mono text-slate-400">#{idx + 1}</span>
+                              <h4 className="font-extrabold text-xs text-slate-900 dark:text-white uppercase">
+                                {row.nama_siswa}
+                              </h4>
+                              <span className="text-[10px] font-mono text-slate-400">NIS: {row.nis || '-'}</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handlePrintStudentP5(row.siswa_id)}
+                              className="p-1.5 rounded-lg text-indigo-600 hover:bg-indigo-50"
+                              title="Cetak Rapor P5"
+                            >
+                              <Printer size={15} />
+                            </button>
+                          </div>
+
+                          {/* Mobile Dynamic Dimensions */}
+                          <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                            {targetDimensions.map((dim) => {
+                              const currentRating = row.ratings[dim] || 'BSH';
+                              return (
+                                <div key={dim} className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center justify-between">
+                                    <span>{dim}</span>
+                                    <span className="font-extrabold text-indigo-600 dark:text-indigo-400">{currentRating}</span>
+                                  </label>
+                                  <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80">
+                                    {[
+                                      { val: 'BB', activeClass: 'bg-rose-500 text-white' },
+                                      { val: 'MB', activeClass: 'bg-amber-500 text-white' },
+                                      { val: 'BSH', activeClass: 'bg-indigo-600 text-white' },
+                                      { val: 'SB', activeClass: 'bg-emerald-600 text-white' },
+                                    ].map((pill) => {
+                                      const isSelected = currentRating === pill.val;
+                                      return (
+                                        <button
+                                          key={pill.val}
+                                          type="button"
+                                          disabled={isReadOnly}
+                                          onClick={() => handleScoreChange(row.siswa_id, dim, pill.val)}
+                                          className={cn(
+                                            "py-1.5 rounded-lg font-bold text-xs text-center select-none",
+                                            isSelected ? pill.activeClass : "text-slate-500"
+                                          )}
+                                        >
+                                          {pill.val}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Mobile Catatan Input */}
+                          <div className="space-y-1 pt-1">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase block">Catatan Proses:</label>
+                            <input
+                              type="text"
+                              disabled={isReadOnly}
+                              value={row.catatan_proses}
+                              onChange={(e) => handleCatatanChange(row.siswa_id, e.target.value)}
+                              placeholder="Tulis deskripsi..."
+                              className="w-full text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50"
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </SectionCard>
       </AcademicPageLayout>
