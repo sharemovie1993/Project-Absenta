@@ -962,12 +962,12 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/cetak" element={
-                      <ProtectedRoute requiredCapability={['academic.view.wali.kelas', 'academic.homeroom.manage', 'academic.teaching.view']}>
+                      <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
                         <CetakRaporPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/p5" element={
-                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                      <ProtectedRoute requiredCapability={['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic', 'dashboard.view.kepsek']}>
                         <P5Page />
                       </ProtectedRoute>
                     } />
