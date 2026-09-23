@@ -36,14 +36,23 @@ import { format, parseISO, isValid } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { renderDailyTimeline } from '../../utils/hubinUtils';
 import { HubinGoogleDriveUploader } from './HubinGoogleDriveUploader';
-import { PklStatusBadge } from './PklStatusBadge';
-import type { AbsensiPkl } from '../../api/hubin.api';
+import type { AbsensiPkl, SiswaPkl } from '../../api/hubin.api';
+
+export interface SiswaPklWithAbsensi extends SiswaPkl {
+  AbsensiPkl?: AbsensiPkl[];
+  created_at?: string;
+  status?: string;
+  tanggal_selesai?: string | null;
+  tanggal_mulai?: string | null;
+  mitra_id?: string;
+  pembimbing_id?: string;
+}
 
 import { HubinAbsensiStatus } from '../../constants/HubinConstants';
 import { SiswaIdentityCell } from '../common/SiswaIdentityCell';
 
 interface HubinManagementViewProps {
-  rawPenempatan: any[];
+  rawPenempatan: SiswaPklWithAbsensi[];
   isLoading: boolean;
   onVerify: (id: string) => void;
   onQuickAddForId: (absensi: AbsensiPkl, text: string) => void;
@@ -241,23 +250,23 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
   }, [filteredPenempatan, currentPage, itemsPerPage]);
 
   const needsVerificationCount = useMemo(() => {
-    return filteredPenempatan.reduce((acc: number, curr: any) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
+    return filteredPenempatan.reduce((acc: number, curr: SiswaPklWithAbsensi) => acc + (curr.AbsensiPkl?.[0]?.is_verified === false ? 1 : 0), 0);
   }, [filteredPenempatan]);
 
   const attendedTodayCount = useMemo(() => {
-    return filteredPenempatan.filter((p: any) => {
+    return filteredPenempatan.filter((p: SiswaPklWithAbsensi) => {
       const lastAbs = p.AbsensiPkl?.[0];
       if (!lastAbs) return false;
       const today = new Date().toISOString().split('T')[0];
-      return lastAbs.tanggal.startsWith(today);
+      return lastAbs.tanggal?.startsWith(today);
     }).length;
   }, [filteredPenempatan]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0">
       {/* Banner Khusus Kaprog: Unit Terkunci */}
       {isKaprog && (
-        <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+        <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200 w-full max-w-full min-w-0">
           <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
           <div>
             <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
@@ -272,7 +281,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
       {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
       {isWaliKelas && !isKaprog && !isGlobalHubin && (
-        <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
+        <div className="flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200 w-full max-w-full min-w-0">
           <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
           <div>
             <span className="font-bold">Mode Wali Kelas (Monitoring Kelas Binaan):</span>{' '}
@@ -285,13 +294,14 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
       )}
 
       {/* Analytics Cards - Compact Premium Mobile & Desktop Grid */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6 w-full max-w-full min-w-0">
         <AnalyticsCard 
           title={<><span className="hidden sm:inline">Total </span>Siswa</>}
           value={filteredPenempatan.length}
           icon={<Users size={16} />}
           gradient="from-indigo-600 to-violet-700"
           variant="compact-premium"
+          mobileCompact
           compact
           onClick={() => setStatusFilter('ALL')}
           className={cn(
@@ -308,6 +318,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
           icon={<AlertTriangle size={16} />}
           gradient="from-amber-500 to-amber-600"
           variant="compact-premium"
+          mobileCompact
           compact
           onClick={() => setStatusFilter(statusFilter === 'NEEDS_VERIFICATION' ? 'ALL' : 'NEEDS_VERIFICATION')}
           className={cn(
@@ -324,6 +335,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
           icon={<ShieldCheck size={16} />}
           gradient="from-emerald-500 to-teal-600"
           variant="compact-premium"
+          mobileCompact
           compact
           onClick={() => setStatusFilter(statusFilter === 'ATTENDED_TODAY' ? 'ALL' : 'ATTENDED_TODAY')}
           className={cn(
@@ -386,14 +398,14 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
         {/* Toolbar Baris Pertama - Filter & Search */}
         <div className="flex flex-col lg:flex-row gap-3 p-4 border-b border-gray-100 dark:border-gray-800 bg-slate-50/20 dark:bg-slate-900/10 items-center">
           {/* 1. Input Pencarian di Sisi Kiri */}
-          <div className="flex-1 relative w-full">
+          <div className="flex-1 relative w-full max-w-full min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
             <Input
               placeholder="Cari siswa (NIP/NIS, Nama, Mitra, Pembimbing)..."
               aria-label="Cari Siswa PKL"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
+              className="w-full max-w-full min-w-0 h-10 text-[13px] rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm pl-9"
             />
             {searchTerm && (
               <button
@@ -409,7 +421,7 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
           {/* 2. Filter Tahun Pelajaran (SearchableSelect) */}
           {tpOptions && tpOptions.length > 0 && (
-            <div className="w-full lg:w-56 shrink-0">
+            <div className="w-full lg:w-56 shrink-0 max-w-full min-w-0">
               <SearchableSelect
                 value={selectedTp || ''}
                 onValueChange={(val) => onTpChange && onTpChange(val)}
@@ -421,10 +433,10 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
           )}
 
           {/* 3. Filter Status Presensi */}
-          <div className="w-full lg:w-44 shrink-0">
+          <div className="w-full lg:w-44 shrink-0 max-w-full min-w-0">
             <SearchableSelect
               value={statusFilter}
-              onValueChange={(val) => setStatusFilter(val as any)}
+              onValueChange={(val) => setStatusFilter(val as 'ALL' | 'NEEDS_VERIFICATION' | 'ATTENDED_TODAY' | 'NOT_ATTENDED_TODAY')}
               options={[
                 { label: 'Semua Status', value: 'ALL' },
                 { label: '⚠️ Perlu Verifikasi', value: 'NEEDS_VERIFICATION' },
@@ -438,13 +450,13 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
           {/* 4. Filter Mitra DUDI */}
           {availableMitra.length > 0 && (
-            <div className="w-full lg:w-48 shrink-0">
+            <div className="w-full lg:w-48 shrink-0 max-w-full min-w-0">
               <SearchableSelect
                 value={mitraFilter}
                 onValueChange={setMitraFilter}
                 options={[
                   { label: 'Semua Mitra DUDI', value: 'ALL' },
-                  ...availableMitra.map(m => ({ label: m.name, value: m.id }))
+                  ...(availableMitra?.map(m => ({ label: m.name, value: m.id })) || [])
                 ]}
                 placeholder="Semua Mitra DUDI"
                 triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -454,13 +466,13 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
           {/* 5. Filter Guru Pembimbing (Khusus Global Hubin) */}
           {isGlobalHubin && availablePembimbing.length > 0 && (
-            <div className="w-full lg:w-48 shrink-0">
+            <div className="w-full lg:w-48 shrink-0 max-w-full min-w-0">
               <SearchableSelect
                 value={pembimbingFilter}
                 onValueChange={setPembimbingFilter}
                 options={[
                   { label: 'Semua Pembimbing', value: 'ALL' },
-                  ...availablePembimbing.map(p => ({ label: p.name, value: p.id }))
+                  ...(availablePembimbing?.map(p => ({ label: p.name, value: p.id })) || [])
                 ]}
                 placeholder="Semua Pembimbing"
                 triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
@@ -470,13 +482,13 @@ export const HubinManagementView: React.FC<HubinManagementViewProps> = React.mem
 
           {/* 6. Filter Kelas */}
           {availableKelas.length > 0 && (
-            <div className="w-full lg:w-40 shrink-0">
+            <div className="w-full lg:w-40 shrink-0 max-w-full min-w-0">
               <SearchableSelect
                 value={kelasFilter}
                 onValueChange={setKelasFilter}
                 options={[
                   { label: 'Semua Kelas', value: 'ALL' },
-                  ...availableKelas.map(k => ({ label: k.name, value: k.id }))
+                  ...(availableKelas?.map(k => ({ label: k.name, value: k.id })) || [])
                 ]}
                 placeholder="Semua Kelas"
                 triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"

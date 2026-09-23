@@ -53,17 +53,28 @@ import {
   type CheckInPayload
 } from '../../utils/hubinUtils';
 
+interface HubinUserAuth extends UserAuthStore {
+  guru_profile?: { id?: string };
+  guru_id?: string;
+  Guru?: { id?: string };
+}
+
 interface SiswaPklWithAbsensi extends SiswaPkl {
   AbsensiPkl?: AbsensiPkl[];
+  created_at?: string;
+  status?: string;
+  tanggal_selesai?: string | null;
+  tanggal_mulai?: string | null;
 }
 
 
 export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(({ hideLayout = false }) => {
   const { user, subscription } = useAuthStore();
+  const authUser = user as HubinUserAuth | null;
   const queryClient = useQueryClient();
   const { isHubin, isAdmin, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, can, isStudent: isCapStudent, activeGuruId: capGuruId } = useCapabilities();
   const isStudent = isCapStudent || !!user?.isStudent;
-  const activeGuruId = capGuruId || user?.guru_profile?.id || (user as any)?.guru_id || (user as any)?.Guru?.id || null;
+  const activeGuruId = capGuruId || authUser?.guru_profile?.id || authUser?.guru_id || authUser?.Guru?.id || null;
   
   // Konteks Tahun Pelajaran
   const { options: tpOptions, activeTahunPelajaran } = useTahunPelajaranOptions();
@@ -162,8 +173,8 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
         } else if (existing.status === 'AKTIF' && p.status !== 'AKTIF') {
           // Pertahankan penempatan aktif
         } else {
-          const pTime = p.tanggal_mulai ? new Date(p.tanggal_mulai).getTime() : new Date((p as any).created_at || 0).getTime();
-          const existingTime = existing.tanggal_mulai ? new Date(existing.tanggal_mulai).getTime() : new Date((existing as any).created_at || 0).getTime();
+          const pTime = p.tanggal_mulai ? new Date(p.tanggal_mulai).getTime() : new Date(p.created_at || 0).getTime();
+          const existingTime = existing.tanggal_mulai ? new Date(existing.tanggal_mulai).getTime() : new Date(existing.created_at || 0).getTime();
           if (pTime > existingTime) {
             studentMap.set(p.siswa_id, p);
           }
@@ -175,11 +186,13 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   // Empty state guard: deteksi kondisi data PKL kosong untuk Pilar 8
   const isEmpty = !isLoading && rawPenempatan.length === 0 && !isStudent;
 
-  const studentPkl = useMemo(() => {
-    if (isStudent) return (myPenempatan as { data?: SiswaPklWithAbsensi })?.data || myPenempatan;
-    const authUser = user as UserAuthStore;
+  const studentPkl = useMemo((): SiswaPklWithAbsensi | undefined => {
+    if (isStudent) {
+      const res = myPenempatan as { data?: SiswaPklWithAbsensi } | undefined;
+      return (res?.data || myPenempatan) as SiswaPklWithAbsensi | undefined;
+    }
     return rawPenempatan.find((p: SiswaPklWithAbsensi) => p.siswa_id === authUser?.siswa_id || p.siswa_id === authUser?.id);
-  }, [isStudent, myPenempatan, rawPenempatan, user]);
+  }, [isStudent, myPenempatan, rawPenempatan, authUser]);
 
   const { data: absensiData } = useQuery({
     queryKey: ['absensi-pkl-history', studentPkl?.id],
@@ -194,10 +207,10 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   // Cek apakah PKL siswa masih aktif (status AKTIF + tanggal masih berlaku)
   const isPklAktif = useMemo(() => {
     if (!studentPkl) return false;
-    if ((studentPkl as any).status !== 'AKTIF') return false;
+    if (studentPkl.status !== 'AKTIF') return false;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const selesai = (studentPkl as any).tanggal_selesai ? new Date((studentPkl as any).tanggal_selesai) : null;
+    const selesai = studentPkl.tanggal_selesai ? new Date(studentPkl.tanggal_selesai) : null;
     if (selesai) selesai.setHours(0, 0, 0, 0);
     return !selesai || selesai >= today;
   }, [studentPkl]);
@@ -448,29 +461,50 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
   const stats = useMemo(() => {
     if (isStudent) {
       return [
-        { title: 'Mitra PKL', value: studentPkl?.Mitra?.nama || 'Belum Ditempatkan', icon: <ClipIcon size={24} />, gradient: 'from-blue-500 to-indigo-600' },
-        { title: 'Total Kehadiran', value: rawAbsensiHistory.filter((a: AbsensiPkl) => a.status === 'HADIR').length, icon: <Calendar size={24} />, gradient: 'from-emerald-400 to-teal-600' },
+        { 
+          title: 'Mitra PKL', 
+          value: studentPkl?.Mitra?.nama || 'Belum Ditempatkan', 
+          icon: <ClipIcon size={24} />, 
+          gradient: 'from-blue-500 to-indigo-600',
+          variant: 'compact-premium' as const
+        },
+        { 
+          title: 'Total Kehadiran', 
+          value: rawAbsensiHistory.filter((a: AbsensiPkl) => a.status === 'HADIR').length, 
+          icon: <Calendar size={24} />, 
+          gradient: 'from-emerald-400 to-teal-600',
+          variant: 'compact-premium' as const
+        },
         { 
           title: 'Sisa Hari Estimasi', 
           value: studentPkl?.tanggal_selesai ? Math.max(0, Math.ceil((new Date(studentPkl.tanggal_selesai).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : '-', 
           icon: <Clock size={24} />, 
-          gradient: 'from-amber-400 to-orange-600' 
+          gradient: 'from-amber-400 to-orange-600',
+          variant: 'compact-premium' as const
         }
       ];
     }
     return [
-      { title: 'Siswa PKL', value: rawPenempatan.length, icon: <ClipIcon size={24} />, gradient: 'from-blue-500 to-indigo-600' },
+      { 
+        title: 'Siswa PKL', 
+        value: rawPenempatan.length, 
+        icon: <ClipIcon size={24} />, 
+        gradient: 'from-blue-500 to-indigo-600',
+        variant: 'compact-premium' as const
+      },
       { 
         title: 'Hadir Hari Ini', 
         value: rawPenempatan.filter((p: SiswaPklWithAbsensi) => p.AbsensiPkl?.some((a: AbsensiPkl) => format(new Date(a.tanggal), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') && a.status === 'HADIR')).length, 
         icon: <CheckSquare size={24} />, 
-        gradient: 'from-emerald-400 to-teal-600' 
+        gradient: 'from-emerald-400 to-teal-600',
+        variant: 'compact-premium' as const
       },
       { 
         title: 'Perlu Verifikasi', 
         value: rawPenempatan.reduce((sum: number, p: SiswaPklWithAbsensi) => sum + (p.AbsensiPkl?.filter((a: AbsensiPkl) => !a.is_verified).length || 0), 0), 
         icon: <ShieldCheck size={24} />, 
-        gradient: 'from-rose-500 to-red-600' 
+        gradient: 'from-rose-500 to-red-600',
+        variant: 'compact-premium' as const
       }
     ];
   }, [isStudent, studentPkl, rawAbsensiHistory, rawPenempatan]);
@@ -479,15 +513,15 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
     <>
       {/* If embedded in tab and is student, show placement info at top */}
       {hideLayout && isStudent && studentPkl && (
-        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-xs mb-4">
-          <div className="flex-1 min-w-[140px]">
+        <div className="flex flex-wrap items-center gap-3 bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 shadow-xs mb-4 w-full max-w-full min-w-0">
+          <div className="flex-1 min-w-[140px] max-w-full">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Mitra PKL Anda</span>
             <div className="flex items-center gap-1.5">
               <Building2 size={14} className="text-indigo-600" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-300">{studentPkl.Mitra?.nama}</span>
             </div>
           </div>
-          <div className="flex-1 min-w-[140px]">
+          <div className="flex-1 min-w-[140px] max-w-full">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">Guru Pembimbing</span>
             <div className="flex items-center gap-1.5">
               <UserCheck size={14} className="text-emerald-600" />
@@ -497,25 +531,25 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
         </div>
       )}
 
-      <div className="w-full print:hidden">
+      <div className="w-full max-w-full min-w-0 print:hidden">
         {isStudent ? (
-          <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding>
-            <div className="p-3 sm:p-5">
+          <SectionCard title="Presensi & Jurnal Kegiatan" icon={ClipIcon} fullWidth noPadding className="w-full max-w-full min-w-0">
+            <div className="p-3 sm:p-5 w-full max-w-full min-w-0">
               <Tabs defaultValue="record">
                 {visibleTabsCount > 1 && (
-                  <div className="mb-4">
-                    <MenuTabs className="w-full sm:w-auto grid grid-cols-3 sm:flex h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm">
-                      <TabsTrigger value="record" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
-                        <Clock size={12} className="mr-1 sm:mr-1.5 shrink-0" />
-                        <span className="truncate">Presensi</span>
+                  <div className="mb-4 overflow-x-auto no-scrollbar flex-nowrap w-full max-w-full min-w-0">
+                    <MenuTabs className="w-full sm:w-auto flex h-10 bg-slate-100/80 dark:bg-slate-950/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-800/50 backdrop-blur-sm overflow-x-auto no-scrollbar flex-nowrap">
+                      <TabsTrigger value="record" className="px-3 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center whitespace-nowrap shrink-0">
+                        <Clock size={12} className="mr-1.5 shrink-0" />
+                        <span>Presensi</span>
                       </TabsTrigger>
-                      <TabsTrigger value="jurnal" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
-                        <History size={12} className="mr-1 sm:mr-1.5 shrink-0" />
-                        <span className="truncate">Riwayat</span>
+                      <TabsTrigger value="jurnal" className="px-3 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center whitespace-nowrap shrink-0">
+                        <History size={12} className="mr-1.5 shrink-0" />
+                        <span>Riwayat</span>
                       </TabsTrigger>
-                      <TabsTrigger value="portofolio" className="px-1.5 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center">
-                        <ClipIcon size={12} className="mr-1 sm:mr-1.5 shrink-0" />
-                        <span className="truncate">Portofolio</span>
+                      <TabsTrigger value="portofolio" className="px-3 sm:px-4 rounded-lg font-black text-[9px] sm:text-[10px] uppercase tracking-wider transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:shadow-xs data-[state=active]:text-indigo-600 flex items-center justify-center whitespace-nowrap shrink-0">
+                        <ClipIcon size={12} className="mr-1.5 shrink-0" />
+                        <span>Portofolio</span>
                       </TabsTrigger>
                     </MenuTabs>
                   </div>
@@ -664,7 +698,7 @@ export const AbsensiPklSection: React.FC<{ hideLayout?: boolean }> = React.memo(
           ]
         }}
         toolbar={isStudent ? (
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-0 w-full md:w-auto md:max-w-full">
+          <div className="hidden sm:flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-0 w-full md:w-auto md:max-w-full">
             {/* Divider Vertikal - Adaptive spacing */}
             <div className="hidden md:block h-12 w-px bg-slate-200 dark:bg-slate-800 mx-2 lg:mx-10 shrink-0" />
             
