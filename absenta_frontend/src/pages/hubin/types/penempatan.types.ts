@@ -5,6 +5,7 @@ export interface SiswaData {
   id: string;
   nama_siswa: string;
   nis: string;
+  kelas_id?: string;
   no_hp?: string;
   foto?: string | null;
   foto_url?: string | null;
@@ -44,6 +45,7 @@ export interface SiswaPkl {
   Siswa?: SiswaData;
   SiswaAkademik?: {
     id: string;
+    kelas_id?: string;
     tahun_pelajaran_id: string;
     semester_id: string;
     tahunPelajaran?: { id: string; tahun: string };
@@ -83,6 +85,17 @@ export interface CreatePenempatanPayload {
   tahun_pelajaran_id?: string | null;
   semester_id?: string | null;
   kelas_id?: string | null;
+  is_flexible_location?: boolean;
+  lat_override?: number | null;
+  lon_override?: number | null;
+  radius_override?: number | null;
+}
+
+export interface MutasiPenempatanPayload {
+  mitra_id: string;
+  pembimbing_id?: string | null;
+  alasan?: string;
+  tanggal_mutasi?: string;
 }
 
 export interface PenilaianPayload {
