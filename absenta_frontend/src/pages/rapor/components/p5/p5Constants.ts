@@ -147,6 +147,20 @@ export const P5_AVAILABLE_DIMENSI = [
 ];
 
 /**
+ * Pemetaan pasangan dimensi sasaran resmi Kemendikbudristek berdasarkan tema P5
+ */
+export const P5_THEME_RECOMMENDED_DIMENSI: Record<string, string[]> = {
+  'Kewirausahaan': ['Mandiri', 'Gotong Royong', 'Kreatif'],
+  'Kebekerjaan': ['Mandiri', 'Gotong Royong', 'Bernalar Kritis'],
+  'Gaya Hidup Berkelanjutan': ['Beriman & Bertakwa', 'Bernalar Kritis', 'Gotong Royong'],
+  'Kearifan Lokal': ['Berkebinekaan Global', 'Kreatif', 'Gotong Royong'],
+  'Bhinneka Tunggal Ika': ['Berkebinekaan Global', 'Beriman & Bertakwa', 'Gotong Royong'],
+  'Bangunlah Jiwa dan Raganya': ['Beriman & Bertakwa', 'Mandiri', 'Gotong Royong'],
+  'Suara Demokrasi': ['Bernalar Kritis', 'Berkebinekaan Global', 'Gotong Royong'],
+  'Rekayasa dan Teknologi': ['Bernalar Kritis', 'Kreatif', 'Mandiri'],
+};
+
+/**
  * Format deskripsi projek dengan tag metadata tema, fase, dan dimensi
  */
 export function formatProjekDeskripsi(

@@ -32,6 +32,7 @@ import {
   P5_TEMA_OPTIONS,
   P5_FASE_OPTIONS,
   P5_AVAILABLE_DIMENSI,
+  P5_THEME_RECOMMENDED_DIMENSI,
   formatProjekDeskripsi,
   parseProjekMetadata,
 } from '../../../pages/rapor/components/p5/p5Constants';
@@ -670,7 +671,14 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
               <SearchableSelect
                 id="p5-proj-theme"
                 value={projectForm.tema}
-                onValueChange={(val) => setProjectForm((prev) => ({ ...prev, tema: val }))}
+                onValueChange={(val) => {
+                  const recommended = P5_THEME_RECOMMENDED_DIMENSI[val] || ['Mandiri', 'Gotong Royong', 'Kreatif'];
+                  setProjectForm((prev) => ({
+                    ...prev,
+                    tema: val,
+                    dimensiList: recommended,
+                  }));
+                }}
                 options={P5_TEMA_OPTIONS}
                 placeholder="Pilih Tema"
               />
@@ -706,13 +714,26 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
 
           {/* ── Target Dimensi Profil Pelajar Pancasila Checklist ── */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
-                Target Dimensi Profil Pancasila * ({projectForm.dimensiList.length} Dipilih)
-              </label>
-              <span className="text-[10px] text-slate-400">
-                Pilih 2 - 4 dimensi fokus asesmen
-              </span>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <label className="font-bold text-slate-700 dark:text-slate-300 text-xs block">
+                  Target Dimensi Profil Pancasila * ({projectForm.dimensiList.length} Dipilih)
+                </label>
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                  <Sparkles size={11} /> Otomatis rekomendasi Kemendikbudristek untuk "{projectForm.tema}"
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const rec = P5_THEME_RECOMMENDED_DIMENSI[projectForm.tema] || ['Mandiri', 'Gotong Royong', 'Kreatif'];
+                  setProjectForm((prev) => ({ ...prev, dimensiList: rec }));
+                  toast.success(`Rekomendasi dimensi tema "${projectForm.tema}" telah diterapkan`);
+                }}
+                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 hover:underline flex items-center gap-1"
+              >
+                Reset Rekomendasi Tema
+              </button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {P5_AVAILABLE_DIMENSI.map((dim) => {
