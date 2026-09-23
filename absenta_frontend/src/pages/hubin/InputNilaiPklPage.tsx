@@ -245,10 +245,10 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     staleTime: 30000,
   });
 
-  // Fetch Hubin Settings (Assessment Mode & Weights)
+  // Fetch Hubin Settings (Assessment Mode & Weights) scoped to selected academic year
   const { data: hubinSettings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['hubin-settings'],
-    queryFn: () => hubinApi.getSettings(),
+    queryKey: ['hubin-settings', selectedTp],
+    queryFn: () => hubinApi.getSettings({ tahun_pelajaran_id: selectedTp || undefined }),
   });
 
   const effectiveSettings = useMemo(() => {
@@ -2160,7 +2160,8 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
                             assessmentMode: formMode,
                             weightDudi: formWeightDudi,
                             weightLaporan: formWeightLaporan,
-                            weightSidang: formWeightSidang
+                            weightSidang: formWeightSidang,
+                            tahun_pelajaran_id: selectedTp || undefined,
                           });
                         }}
                         className="rounded-xl text-xs font-bold px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
