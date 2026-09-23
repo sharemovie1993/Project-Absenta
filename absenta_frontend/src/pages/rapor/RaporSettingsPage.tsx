@@ -28,6 +28,7 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Badge } from '../../components/ui/Badge';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { P5FacilitatorSettingsTab } from '../../components/rapor/p5/P5FacilitatorSettingsTab';
