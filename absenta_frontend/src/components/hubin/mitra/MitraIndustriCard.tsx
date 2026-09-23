@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
-import { JurusanItem, getWhatsAppUrl, renderJurusanBadges } from './types';
+import type { JurusanItem } from './types';
+import { getWhatsAppUrl, renderJurusanBadges } from './mitraUtils';
 
 export interface MitraIndustriCardProps {
   row: MitraIndustri;
