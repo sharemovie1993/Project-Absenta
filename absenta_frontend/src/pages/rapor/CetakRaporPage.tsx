@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { BookOpen, UserCheck, Sparkles } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { SearchableSelectOption } from '../../components/ui/SearchableSelect';
@@ -59,6 +60,7 @@ interface ExtendedUserContext {
 
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, walikelasKelas, walikelasKelasIds } = useCapabilities();
 
   // ── URL Search Params ──
@@ -520,6 +522,42 @@ export default React.memo(function CetakRaporPage() {
         ],
       }}
       hardeningModuleKey="cetakraporpage"
+      topSlot={
+        <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
+          {/* Kiri: Navigasi Cepat Antarmuka e-Rapor */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/rapor/input-nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+                )
+              }
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+              title="Buka Lembar Input Nilai e-Rapor"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Lembar Input Nilai</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate('/kurikulum/wali-kelas')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+              title="Buka Hub Manajemen Wali Kelas"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+              <span className="hidden sm:inline">Hub Wali Kelas</span>
+            </button>
+          </div>
+
+          {/* Kanan: Badge Kurikulum */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Kurikulum Merdeka</span>
+          </div>
+        </div>
+      }
     >
       <SectionCard fullWidth className="border-none shadow-none bg-transparent p-0">
         <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
@@ -538,6 +576,8 @@ export default React.memo(function CetakRaporPage() {
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             hasLegerData={Boolean(leger?.data)}
+            isLoadingLeger={isLoadingLeger}
+            totalStudents={filteredStudents.length}
             isBatchPrinting={isBatchPrinting}
             onBatchPrintRapor={handleBatchPrintRapor}
             onPrintLeger={() => printLeger(selectedKelas)}
@@ -549,6 +589,11 @@ export default React.memo(function CetakRaporPage() {
             currentKelasNama={currentKelasObj?.nama_kelas}
             kurikulumStrukturListLength={kurikulumStrukturList?.length}
             kurikulumTotalJp={kurikulumTotalJp}
+            onNavigateInputNilai={() =>
+              navigate(
+                `/rapor/input-nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+              )
+            }
           />
 
           {/* Monitoring Kelengkapan Nilai Mata Pelajaran Kelas Binaan */}
