@@ -36,6 +36,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { id as localeID } from 'date-fns/locale';
 import { renderDailyTimeline } from '../../utils/hubinUtils';
 import { HubinGoogleDriveUploader } from './HubinGoogleDriveUploader';
+import { PklStatusBadge } from './PklStatusBadge';
 import type { AbsensiPkl, SiswaPkl } from '../../api/hubin.api';
 
 export interface SiswaPklWithAbsensi extends SiswaPkl {
