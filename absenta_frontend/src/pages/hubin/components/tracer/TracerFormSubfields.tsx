@@ -25,6 +25,12 @@ interface TracerFormSubfieldsProps {
   setUsahaNama: (v: string) => void;
   usahaBidang: string;
   setUsahaBidang: (v: string) => void;
+  keselarasan?: string;
+  setKeselarasan?: (v: string) => void;
+  masaTunggu?: string;
+  setMasaTunggu?: (v: string) => void;
+  noWa?: string;
+  setNoWa?: (v: string) => void;
 }
 
 export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = React.memo(({
@@ -44,6 +50,12 @@ export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = React.mem
   setUsahaNama,
   usahaBidang,
   setUsahaBidang,
+  keselarasan = '',
+  setKeselarasan,
+  masaTunggu = '',
+  setMasaTunggu,
+  noWa = '',
+  setNoWa,
 }) => {
   // useCallback & useMemo dummy definitions to pass scanner checks (Pillar 3 & 20)
   const noopCallback = useCallback(() => {}, []);
@@ -159,6 +171,72 @@ export const TracerFormSubfields: React.FC<TracerFormSubfieldsProps> = React.mem
           </div>
         </div>
       )}
+
+      {/* Indikator Link & Match & Waktu Tunggu (Untuk yang Bekerja, Kuliah, atau Wirausaha) */}
+      {(statusAlumni === 'BEKERJA' || statusAlumni === 'KULIAH' || statusAlumni === 'WIRAUSAHA') && (
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4">
+          <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest border-b pb-1">
+            Indikator Mutu Vokasi (Link & Match)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label htmlFor="keselarasan" className="font-bold text-slate-600 dark:text-slate-400">
+                Keselarasan dengan Jurusan SMK
+              </label>
+              <SearchableSelect
+                id="keselarasan"
+                value={keselarasan}
+                onValueChange={(val) => setKeselarasan && setKeselarasan(val)}
+                options={[
+                  { value: 'SANGAT_SESUAI', label: '🎯 Sangat Sesuai (Sesuai Kompetensi SMK)' },
+                  { value: 'SESUAI', label: '✅ Cukup Sesuai (Masih Berkaitan)' },
+                  { value: 'TIDAK_SESUAI', label: '❌ Tidak Sesuai (Lintas Bidang)' }
+                ]}
+                placeholder="Pilih Tingkat Keselarasan"
+                clearable
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="masaTunggu" className="font-bold text-slate-600 dark:text-slate-400">
+                Masa Tunggu Mendapatkan Pekerjaan/Aktivitas
+              </label>
+              <SearchableSelect
+                id="masaTunggu"
+                value={masaTunggu}
+                onValueChange={(val) => setMasaTunggu && setMasaTunggu(val)}
+                options={[
+                  { value: 'SEBELUM_LULUS', label: '⚡ Sebelum Lulus (Langsung Direkrut)' },
+                  { value: 'KURANG_3_BULAN', label: '⏱️ Kurang dari 3 Bulan' },
+                  { value: '3_SAMPAI_6_BULAN', label: '⌛ 3 - 6 Bulan' },
+                  { value: 'LEBIH_6_BULAN', label: '📅 Lebih dari 6 Bulan' }
+                ]}
+                placeholder="Pilih Waktu Tunggu"
+                clearable
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kontak WhatsApp Terkini (Untuk Semua Status Alumni) */}
+      <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+        <p className="font-black text-[10px] text-slate-400 uppercase tracking-widest border-b pb-1">
+          Kontak Alumni (Bursa Kerja Khusus)
+        </p>
+        <div className="space-y-1">
+          <label htmlFor="noWa" className="font-bold text-slate-600 dark:text-slate-400">
+            Nomor WhatsApp Aktif (Untuk Info Lowongan & Relasi BKK)
+          </label>
+          <Input
+            id="noWa"
+            type="tel"
+            value={noWa}
+            onChange={(e) => setNoWa && setNoWa(e.target.value)}
+            placeholder="e.g. 081234567890"
+          />
+        </div>
+      </div>
     </>
   );
 });

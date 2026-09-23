@@ -108,10 +108,29 @@ export interface HubinTracerStudy {
   program_studi?: string;
   usaha_nama?: string;
   usaha_bidang?: string;
+  keselarasan?: 'SANGAT_SESUAI' | 'SESUAI' | 'TIDAK_SESUAI' | string;
+  masa_tunggu?: string;
+  no_wa?: string;
   created_at?: string;
   Siswa?: {
     nama_siswa: string;
     nis: string;
+    jurusan_id?: string;
+    Kelas?: {
+      nama_kelas?: string;
+      Jurusan?: {
+        id?: string;
+        nama?: string;
+        nama_jurusan?: string;
+        singkatan?: string;
+      };
+    };
+    Jurusan?: {
+      id?: string;
+      nama?: string;
+      nama_jurusan?: string;
+      singkatan?: string;
+    };
   };
 }
 

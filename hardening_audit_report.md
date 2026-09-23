@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **202 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **156 Halaman** | 77% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **43 Halaman** | 21% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **155 Halaman** | 77% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **44 Halaman** | 22% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
@@ -300,6 +300,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 565 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [TefaSection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TefaSection.tsx) (565 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `TracerStudySection.tsx`
+* **Lokasi File:** [TracerStudySection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TracerStudySection.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 690 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [TracerStudySection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TracerStudySection.tsx) (690 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
@@ -985,13 +993,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TracerFormSubfields.tsx`
 * **Lokasi File:** [TracerFormSubfields.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/tracer/TracerFormSubfields.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `TracerStudySection.tsx`
-* **Lokasi File:** [TracerStudySection.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/components/TracerStudySection.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

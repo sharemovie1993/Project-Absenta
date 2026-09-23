@@ -9,7 +9,10 @@ import { Input } from '../../../components/ui/Input';
 import { Loader } from '../../../components/ui/Loader';
 import { Badge } from '../../../components/ui/Badge';
 import { SearchableSelect } from '../../../components/ui/SearchableSelect';
+import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
 import { formatDate } from '../../../utils/layoutUtils';
+import { exportDataToExcel, type ExcelColumnConfig } from '../../../utils/export.utils';
+import { useJurusanOptions } from '../../../hooks/useJurusanOptions';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { TracerFormSubfields } from './tracer/TracerFormSubfields';
@@ -24,7 +27,8 @@ import {
   Clipboard,
   CheckCircle2,
   TrendingUp,
-  FileWarning
+  FileWarning,
+  Download
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useIsMobile } from '../../../hooks/useIsMobile';
@@ -41,6 +45,9 @@ const tracerSurveySchema = z.object({
   program_studi: z.string().optional(),
   usaha_nama: z.string().optional(),
   usaha_bidang: z.string().optional(),
+  keselarasan: z.string().optional(),
+  masa_tunggu: z.string().optional(),
+  no_wa: z.string().optional(),
 });
 
 export const TracerStudySection: React.FC = React.memo(() => {
@@ -49,7 +56,16 @@ export const TracerStudySection: React.FC = React.memo(() => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterYear, setFilterYear] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterJurusan, setFilterJurusan] = useState<string>('ALL');
+  const [isExporting, setIsExporting] = useState(false);
   const [page, setPage] = useState(1);
+
+  // Hook Jurusan terpusat
+  const { options: rawJurusanOptions } = useJurusanOptions();
+  const jurusanOptions = useMemo(() => [
+    { value: 'ALL', label: 'Semua Jurusan' },
+    ...(rawJurusanOptions || [])
+  ], [rawJurusanOptions]);
 
   // Survey Form State
   const [tahunLulus, setTahunLulus] = useState(new Date().getFullYear());
@@ -61,6 +77,9 @@ export const TracerStudySection: React.FC = React.memo(() => {
   const [major, setMajor] = useState('');
   const [usahaNama, setUsahaNama] = useState('');
   const [usahaBidang, setUsahaBidang] = useState('');
+  const [keselarasan, setKeselarasan] = useState('');
+  const [masaTunggu, setMasaTunggu] = useState('');
+  const [noWa, setNoWa] = useState('');
 
   const { isHubin: isHubinRole, isBkk, isAdmin, can } = useCapabilities();
   const isHubin = useMemo(() => {
@@ -124,6 +143,9 @@ export const TracerStudySection: React.FC = React.memo(() => {
       setMajor(existingTracer.program_studi || '');
       setUsahaNama(existingTracer.usaha_nama || '');
       setUsahaBidang(existingTracer.usaha_bidang || '');
+      setKeselarasan(existingTracer.keselarasan || '');
+      setMasaTunggu(existingTracer.masa_tunggu || '');
+      setNoWa(existingTracer.no_wa || '');
     }
   }, [existingTracer]);
 
@@ -139,12 +161,22 @@ export const TracerStudySection: React.FC = React.memo(() => {
       surveyPayload.perusahaan_nama = companyName;
       surveyPayload.posisi = position;
       surveyPayload.gaji_estimasi = gaji;
+      surveyPayload.keselarasan = keselarasan || undefined;
+      surveyPayload.masa_tunggu = masaTunggu || undefined;
     } else if (statusAlumni === 'KULIAH') {
       surveyPayload.universitas_nama = university;
       surveyPayload.program_studi = major;
+      surveyPayload.keselarasan = keselarasan || undefined;
+      surveyPayload.masa_tunggu = masaTunggu || undefined;
     } else if (statusAlumni === 'WIRAUSAHA') {
       surveyPayload.usaha_nama = usahaNama;
       surveyPayload.usaha_bidang = usahaBidang;
+      surveyPayload.keselarasan = keselarasan || undefined;
+      surveyPayload.masa_tunggu = masaTunggu || undefined;
+    }
+
+    if (noWa) {
+      surveyPayload.no_wa = noWa;
     }
 
     // Safe parse check using Zod Schema (Pillar 25)
@@ -155,9 +187,85 @@ export const TracerStudySection: React.FC = React.memo(() => {
     }
 
     submitSurveyMutation.mutate(surveyPayload);
-  }, [tahunLulus, statusAlumni, companyName, position, gaji, university, major, usahaNama, usahaBidang, submitSurveyMutation]);
+  }, [tahunLulus, statusAlumni, companyName, position, gaji, university, major, usahaNama, usahaBidang, keselarasan, masaTunggu, noWa, submitSurveyMutation]);
 
   const listData = useMemo(() => tracerListData?.data || [], [tracerListData]);
+
+  const filteredListData = useMemo(() => {
+    if (!filterJurusan || filterJurusan === 'ALL') return listData;
+    return listData?.filter((study: HubinTracerStudy) => {
+      const s = study.Siswa;
+      const jId = s?.jurusan_id || s?.Kelas?.Jurusan?.id || s?.Jurusan?.id;
+      const jNama = s?.Kelas?.Jurusan?.nama || s?.Kelas?.Jurusan?.nama_jurusan || s?.Jurusan?.nama || s?.Jurusan?.nama_jurusan;
+      return jId === filterJurusan || jNama === filterJurusan;
+    });
+  }, [listData, filterJurusan]);
+
+  const handleExportExcel = useCallback(() => {
+    if (!filteredListData || filteredListData.length === 0) {
+      toast.error('Tidak ada data tracer study untuk diekspor');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      const exportCols: ExcelColumnConfig<HubinTracerStudy>[] = [
+        { header: 'No', accessor: (_, idx) => (idx !== undefined ? idx + 1 : 1), width: 6 },
+        { header: 'Nama Alumni', accessor: (row) => row.Siswa?.nama_siswa || '-', width: 25 },
+        { header: 'NIS', accessor: (row) => row.Siswa?.nis || '-', width: 14 },
+        { 
+          header: 'Jurusan', 
+          accessor: (row) => row.Siswa?.Kelas?.Jurusan?.nama || row.Siswa?.Kelas?.Jurusan?.nama_jurusan || row.Siswa?.Jurusan?.nama || row.Siswa?.Jurusan?.nama_jurusan || '-', 
+          width: 22 
+        },
+        { header: 'Tahun Lulus', accessor: (row) => row.tahun_lulus, width: 12 },
+        { header: 'Status Alumni (BMW)', accessor: (row) => row.status_alumni, width: 18 },
+        { 
+          header: 'Detail Aktivitas', 
+          accessor: (row) => {
+            if (row.status_alumni === 'BEKERJA') return `${row.posisi || ''} di ${row.perusahaan_nama || ''}`.trim() || '-';
+            if (row.status_alumni === 'KULIAH') return `${row.program_studi || ''} di ${row.universitas_nama || ''}`.trim() || '-';
+            if (row.status_alumni === 'WIRAUSAHA') return `${row.usaha_nama || ''} (${row.usaha_bidang || ''})`.trim() || '-';
+            return 'Mencari Kerja';
+          }, 
+          width: 34 
+        },
+        { header: 'Estimasi Gaji', accessor: (row) => row.gaji_estimasi || '-', width: 18 },
+        { 
+          header: 'Keselarasan Jurusan', 
+          accessor: (row) => {
+            if (row.keselarasan === 'SANGAT_SESUAI') return 'Sangat Sesuai';
+            if (row.keselarasan === 'SESUAI') return 'Cukup Sesuai';
+            if (row.keselarasan === 'TIDAK_SESUAI') return 'Tidak Sesuai';
+            return row.keselarasan || '-';
+          }, 
+          width: 20 
+        },
+        { 
+          header: 'Masa Tunggu', 
+          accessor: (row) => {
+            if (row.masa_tunggu === 'SEBELUM_LULUS') return 'Sebelum Lulus';
+            if (row.masa_tunggu === 'KURANG_3_BULAN') return '< 3 Bulan';
+            if (row.masa_tunggu === '3_SAMPAI_6_BULAN') return '3 - 6 Bulan';
+            if (row.masa_tunggu === 'LEBIH_6_BULAN') return '> 6 Bulan';
+            return row.masa_tunggu || '-';
+          }, 
+          width: 18 
+        },
+        { header: 'No. WhatsApp', accessor: (row) => row.no_wa || '-', width: 16 },
+        { header: 'Tanggal Submit', accessor: (row) => row.created_at ? formatDate(row.created_at, { day: '2-digit', month: 'short', year: 'numeric' }) : '-', width: 16 }
+      ];
+
+      const yearLabel = filterYear ? `Angkatan_${filterYear}` : 'Semua_Angkatan';
+      exportDataToExcel(filteredListData, exportCols, `Tracer_Study_${yearLabel}_${new Date().toISOString().split('T')[0]}`, 'LAPORAN REKAPITULASI TRACER STUDY ALUMNI');
+      toast.success('Data Tracer Study berhasil diekspor ke Excel!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal mengekspor data';
+      toast.error(msg);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [filteredListData, filterYear]);
   const pagination = useMemo(() => tracerListData?.pagination || { total: 0, totalPages: 1 }, [tracerListData]);
   const stats = useMemo(() => tracerStatsData?.data || { BEKERJA: 0, KULIAH: 0, WIRAUSAHA: 0, MENCARI_KERJA: 0 }, [tracerStatsData]);
   const totalStats = useMemo(() => stats.BEKERJA + stats.KULIAH + stats.WIRAUSAHA + stats.MENCARI_KERJA, [stats]);
@@ -202,6 +310,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
   const isMobile = useIsMobile();
 
   const renderMobileCard = (study: HubinTracerStudy) => {
+    const jurusanNama = study.Siswa?.Kelas?.Jurusan?.singkatan || study.Siswa?.Kelas?.Jurusan?.nama || study.Siswa?.Jurusan?.singkatan || study.Siswa?.Jurusan?.nama;
     return (
       <div
         key={study.id}
@@ -213,7 +322,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
               {study.Siswa?.nama_siswa}
             </h4>
             <p className="text-[10px] font-bold text-slate-400 font-mono">
-              NIS: {study.Siswa?.nis || '-'} • Lulus: {study.tahun_lulus}
+              NIS: {study.Siswa?.nis || '-'} • Lulus: {study.tahun_lulus} {jurusanNama ? `• ${jurusanNama}` : ''}
             </p>
           </div>
           <Badge
@@ -222,7 +331,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
               study.status_alumni === 'KULIAH' ? 'info' :
               study.status_alumni === 'WIRAUSAHA' ? 'warning' : 'secondary'
             }
-            className="font-bold text-[9px] uppercase"
+            className="font-bold text-[9px] uppercase shrink-0"
           >
             {study.status_alumni}
           </Badge>
@@ -248,9 +357,29 @@ export const TracerStudySection: React.FC = React.memo(() => {
           {study.status_alumni === 'MENCARI_KERJA' && (
             <p className="text-xs text-slate-400 italic">Mencari Lowongan Kerja</p>
           )}
+          {study.keselarasan && (
+            <div className="pt-1 text-[10px]">
+              <span className="text-slate-400">Keselarasan: </span>
+              {study.keselarasan === 'SANGAT_SESUAI' && <span className="text-emerald-600 font-bold">🎯 Sangat Sesuai</span>}
+              {study.keselarasan === 'SESUAI' && <span className="text-blue-600 font-bold">✅ Cukup Sesuai</span>}
+              {study.keselarasan === 'TIDAK_SESUAI' && <span className="text-amber-600 font-bold">⚠️ Lintas Bidang</span>}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-end text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800">
+          {study.no_wa ? (
+            <a
+              href={`https://wa.me/${study.no_wa.replace(/\D/g, '').replace(/^0/, '62')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-600 font-bold hover:underline flex items-center gap-1"
+            >
+              <span>📱 WA ({study.no_wa})</span>
+            </a>
+          ) : (
+            <span className="text-slate-400 italic">Tidak ada no. WA</span>
+          )}
           <span>Submit: {formatDate(study.created_at || '', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
         </div>
       </div>
@@ -258,148 +387,208 @@ export const TracerStudySection: React.FC = React.memo(() => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full max-w-full min-w-0">
       
       {isHubin ? (
         /* ==================== VIEW STAF HUBIN (Tracer Study Database) ==================== */
-        <div className="space-y-6">
+        <div className="space-y-6 w-full max-w-full min-w-0">
           
-          {/* Stats Summary Panel */}
-          <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-5 rounded-2xl">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-4">Grafik Serapan Alumni ({totalStats} Terlacak)</span>
-            
-            {totalStats === 0 ? (
-              <div className="py-6 text-center text-slate-400 text-xs font-bold">
-                Belum ada data tracer study yang diisi oleh alumni.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {statsList?.map((st, idx) => {
-                  const pct = Math.round((st.val / totalStats) * 100) || 0;
-                  return (
-                    <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{st.label}</span>
-                        <div className={`p-1.5 rounded-lg ${st.color}`}>
-                          <st.icon size={14} />
-                        </div>
-                      </div>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-black text-slate-800 dark:text-slate-100">{st.val}</span>
-                        <span className="text-[9px] text-slate-400 font-bold">Lulusan ({pct}%)</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${st.barColor}`} style={{ width: `${pct}%` }}></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
+          {/* Header Ringkasan BMW */}
+          <div className="flex flex-wrap items-center justify-between gap-2 p-3.5 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200 w-full max-w-full min-w-0">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="font-bold">Indikator Kinerja Serapan Alumni (BMW):</span>
+            </div>
+            <div className="font-black px-3 py-1 bg-white dark:bg-slate-900 rounded-xl text-indigo-600 dark:text-indigo-400 shadow-2xs border border-indigo-100 dark:border-indigo-900 text-xs">
+              Tingkat Serapan BMW: {totalStats > 0 ? Math.round(((stats.BEKERJA + stats.KULIAH + stats.WIRAUSAHA) / totalStats) * 100) : 0}% ({stats.BEKERJA + stats.KULIAH + stats.WIRAUSAHA} dari {totalStats} Alumni)
+            </div>
+          </div>
+
+          {/* Kartu Statistik Standar AnalyticsCard Compact Premium */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full min-w-0">
+            <AnalyticsCard
+              title={<><span className="hidden sm:inline">Lulusan </span>Bekerja</>}
+              value={stats.BEKERJA}
+              subtitle={`${totalStats > 0 ? Math.round((stats.BEKERJA / totalStats) * 100) : 0}% dari total`}
+              icon={<Building size={16} />}
+              gradient="from-emerald-500 to-teal-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setFilterStatus(filterStatus === 'BEKERJA' ? '' : 'BEKERJA')}
+              className={filterStatus === 'BEKERJA' ? 'ring-2 ring-emerald-500 shadow-md ring-offset-2' : ''}
+            />
+            <AnalyticsCard
+              title={<><span className="hidden sm:inline">Lanjut </span>Kuliah</>}
+              value={stats.KULIAH}
+              subtitle={`${totalStats > 0 ? Math.round((stats.KULIAH / totalStats) * 100) : 0}% dari total`}
+              icon={<BookOpen size={16} />}
+              gradient="from-indigo-600 to-violet-700"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setFilterStatus(filterStatus === 'KULIAH' ? '' : 'KULIAH')}
+              className={filterStatus === 'KULIAH' ? 'ring-2 ring-indigo-500 shadow-md ring-offset-2' : ''}
+            />
+            <AnalyticsCard
+              title="Wirausaha"
+              value={stats.WIRAUSAHA}
+              subtitle={`${totalStats > 0 ? Math.round((stats.WIRAUSAHA / totalStats) * 100) : 0}% dari total`}
+              icon={<Store size={16} />}
+              gradient="from-amber-500 to-orange-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setFilterStatus(filterStatus === 'WIRAUSAHA' ? '' : 'WIRAUSAHA')}
+              className={filterStatus === 'WIRAUSAHA' ? 'ring-2 ring-amber-500 shadow-md ring-offset-2' : ''}
+            />
+            <AnalyticsCard
+              title="Belum Bekerja"
+              value={stats.MENCARI_KERJA}
+              subtitle={`${totalStats > 0 ? Math.round((stats.MENCARI_KERJA / totalStats) * 100) : 0}% dari total`}
+              icon={<Clipboard size={16} />}
+              gradient="from-rose-500 to-red-600"
+              variant="compact-premium"
+              mobileCompact
+              compact
+              onClick={() => setFilterStatus(filterStatus === 'MENCARI_KERJA' ? '' : 'MENCARI_KERJA')}
+              className={filterStatus === 'MENCARI_KERJA' ? 'ring-2 ring-rose-500 shadow-md ring-offset-2' : ''}
+            />
+          </div>
 
           {/* Filtering & Search Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
-            <div className="relative w-full sm:w-80">
+          <div className="flex flex-col lg:flex-row gap-3 items-center justify-between bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/50 dark:border-slate-800/50 w-full max-w-full min-w-0">
+            <div className="relative w-full lg:flex-1 max-w-full min-w-0">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
                 type="text"
-                placeholder="Cari nama alumni..."
+                placeholder="Cari nama alumni, NIS..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 text-xs rounded-xl"
+                className="pl-9 text-xs rounded-xl w-full max-w-full min-w-0"
                 aria-label="Cari nama alumni"
               />
             </div>
-            <div className="flex gap-2 w-full sm:w-auto shrink-0 z-20">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full lg:w-auto shrink-0 z-20 max-w-full min-w-0">
               <SearchableSelect
                 id="filterYear"
                 value={filterYear}
                 onValueChange={(val) => setFilterYear(val)}
-                options={yearOptions}
+                options={[{ value: '', label: 'Semua Angkatan' }, ...yearOptions]}
                 placeholder="Semua Tahun Lulus"
-                className="w-full sm:w-40"
+                className="w-full sm:w-36 max-w-full min-w-0"
+              />
+              <SearchableSelect
+                id="filterJurusan"
+                value={filterJurusan}
+                onValueChange={(val) => setFilterJurusan(val)}
+                options={jurusanOptions}
+                placeholder="Semua Jurusan"
+                className="w-full sm:w-44 max-w-full min-w-0"
               />
               <SearchableSelect
                 id="filterStatus"
                 value={filterStatus}
                 onValueChange={(val) => setFilterStatus(val)}
-                options={statusOptions}
+                options={[{ value: '', label: 'Semua Status' }, ...statusOptions]}
                 placeholder="Semua Status Serapan"
-                className="w-full sm:w-44"
+                className="w-full sm:w-40 max-w-full min-w-0"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportExcel}
+                disabled={isExporting || filteredListData.length === 0}
+                className="rounded-xl flex items-center gap-1.5 shrink-0 h-10 px-3 text-xs font-bold border-indigo-200 hover:border-indigo-400 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30"
+                title="Ekspor Data Tracer Study ke Excel"
+              >
+                {isExporting ? <Loader size="sm" /> : <Download size={14} />}
+                <span>Ekspor Excel</span>
+              </Button>
             </div>
           </div>
 
           {/* Tracer Study Database Table / Mobile Cards */}
-          <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900/50 p-5 rounded-2xl shadow-sm">
+          <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white dark:bg-slate-900/50 p-5 rounded-2xl shadow-sm w-full max-w-full min-w-0">
             {loadingTracerList ? (
               <div className="py-12 flex justify-center"><Loader /></div>
             ) : isMobile ? (
-              <div className="space-y-4">
+              <div className="space-y-4 w-full max-w-full min-w-0">
                 <MobileAcademicList
                   title="Daftar Alumni"
-                  data={listData || []}
+                  data={filteredListData || []}
                   loading={loadingTracerList}
-                  totalItems={listData?.length || 0}
+                  totalItems={filteredListData?.length || 0}
                   emptyMessage="Tidak ada data tracer study ditemukan."
                   renderCard={renderMobileCard}
                 />
               </div>
-            ) : listData?.length === 0 ? (
+            ) : filteredListData?.length === 0 ? (
               <div className="py-12 text-center text-slate-400 text-xs font-bold">
                 Tidak ada data tracer study ditemukan.
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full max-w-full min-w-0">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 text-slate-400 uppercase font-black tracking-wider text-[9px]">
                       <th className="py-3 px-3">Nama Alumni</th>
                       <th className="py-3 px-3">NIS</th>
-                      <th className="py-3 px-3">Tahun Lulus</th>
-                      <th className="py-3 px-3">Status Alumni</th>
+                      <th className="py-3 px-3">Jurusan</th>
+                      <th className="py-3 px-3">Tahun</th>
+                      <th className="py-3 px-3">Status</th>
                       <th className="py-3 px-3">Detail Penempatan</th>
+                      <th className="py-3 px-3">Keselarasan</th>
                       <th className="py-3 px-3 text-right">Tanggal Submit</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {listData?.map((study: HubinTracerStudy) => (
-                      <tr key={study.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{study.Siswa?.nama_siswa}</td>
-                        <td className="py-3 px-3 text-slate-500">{study.Siswa?.nis}</td>
-                        <td className="py-3 px-3 font-semibold text-slate-600 dark:text-slate-400">{study.tahun_lulus}</td>
-                        <td className="py-3 px-3">
-                           <Badge 
-                             variant={
-                               study.status_alumni === 'BEKERJA' ? 'success' : 
-                               study.status_alumni === 'KULIAH' ? 'info' : 
-                               study.status_alumni === 'WIRAUSAHA' ? 'warning' : 'secondary'
-                             }
-                             className="font-bold text-[9px]"
-                           >
-                            {study.status_alumni}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-3 max-w-xs truncate">
-                          {study.status_alumni === 'BEKERJA' && (
-                            <span className="text-slate-600 dark:text-slate-300">{study.posisi} di <strong>{study.perusahaan_nama}</strong></span>
-                          )}
-                          {study.status_alumni === 'KULIAH' && (
-                            <span className="text-slate-600 dark:text-slate-300">{study.program_studi} di <strong>{study.universitas_nama}</strong></span>
-                          )}
-                          {study.status_alumni === 'WIRAUSAHA' && (
-                            <span className="text-slate-600 dark:text-slate-300">Usaha <strong>{study.usaha_nama}</strong> ({study.usaha_bidang})</span>
-                          )}
-                          {study.status_alumni === 'MENCARI_KERJA' && (
-                            <span className="text-slate-400 italic">Mencari Lowongan Kerja</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-right text-slate-400">
-                           {formatDate(study.created_at || '', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredListData?.map((study: HubinTracerStudy) => {
+                      const jurusanNama = study.Siswa?.Kelas?.Jurusan?.singkatan || study.Siswa?.Kelas?.Jurusan?.nama || study.Siswa?.Jurusan?.singkatan || study.Siswa?.Jurusan?.nama || '-';
+                      return (
+                        <tr key={study.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200">{study.Siswa?.nama_siswa}</td>
+                          <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">{study.Siswa?.nis || '-'}</td>
+                          <td className="py-3 px-3 text-slate-600 dark:text-slate-400 text-[11px]">{jurusanNama}</td>
+                          <td className="py-3 px-3 font-semibold text-slate-600 dark:text-slate-400">{study.tahun_lulus}</td>
+                          <td className="py-3 px-3">
+                             <Badge 
+                               variant={
+                                 study.status_alumni === 'BEKERJA' ? 'success' : 
+                                 study.status_alumni === 'KULIAH' ? 'info' : 
+                                 study.status_alumni === 'WIRAUSAHA' ? 'warning' : 'secondary'
+                               }
+                               className="font-bold text-[9px]"
+                             >
+                              {study.status_alumni}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-3 max-w-xs truncate">
+                            {study.status_alumni === 'BEKERJA' && (
+                              <span className="text-slate-600 dark:text-slate-300">{study.posisi} di <strong>{study.perusahaan_nama}</strong></span>
+                            )}
+                            {study.status_alumni === 'KULIAH' && (
+                              <span className="text-slate-600 dark:text-slate-300">{study.program_studi} di <strong>{study.universitas_nama}</strong></span>
+                            )}
+                            {study.status_alumni === 'WIRAUSAHA' && (
+                              <span className="text-slate-600 dark:text-slate-300">Usaha <strong>{study.usaha_nama}</strong> ({study.usaha_bidang})</span>
+                            )}
+                            {study.status_alumni === 'MENCARI_KERJA' && (
+                              <span className="text-slate-400 italic">Mencari Lowongan Kerja</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-[11px]">
+                            {study.keselarasan === 'SANGAT_SESUAI' && <span className="text-emerald-600 font-bold">🎯 Sangat Sesuai</span>}
+                            {study.keselarasan === 'SESUAI' && <span className="text-blue-600 font-bold">✅ Cukup Sesuai</span>}
+                            {study.keselarasan === 'TIDAK_SESUAI' && <span className="text-amber-600 font-bold">⚠️ Lintas Bidang</span>}
+                            {!study.keselarasan && <span className="text-slate-400">-</span>}
+                          </td>
+                          <td className="py-3 px-3 text-right text-slate-400">
+                             {formatDate(study.created_at || '', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -408,8 +597,8 @@ export const TracerStudySection: React.FC = React.memo(() => {
         </div>
       ) : (
         /* ==================== VIEW ALUMNI (Questionnaire Form) ==================== */
-        <div className="max-w-2xl mx-auto space-y-6">
-          <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl shadow-sm">
+        <div className="max-w-2xl mx-auto space-y-6 w-full max-w-full min-w-0">
+          <Card className="border border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-md p-6 rounded-2xl shadow-sm w-full max-w-full min-w-0">
             <div className="flex items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
               <div className="p-3 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 rounded-xl">
                 <GraduationCap size={24} />
@@ -423,7 +612,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
             {loadingMyTracer ? (
               <div className="py-12 flex justify-center"><Loader /></div>
             ) : (
-              <form onSubmit={handleSubmitSurvey} className="space-y-4 text-xs">
+              <form onSubmit={handleSubmitSurvey} className="space-y-4 text-xs w-full max-w-full min-w-0">
                 
                 {existingTracer && (
                   <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl font-bold mb-4">
@@ -432,7 +621,7 @@ export const TracerStudySection: React.FC = React.memo(() => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label htmlFor="tahunLulus" className="font-bold text-slate-600 dark:text-slate-400">Tahun Kelulusan Anda *</label>
                     <Input 
@@ -474,6 +663,12 @@ export const TracerStudySection: React.FC = React.memo(() => {
                   setUsahaNama={setUsahaNama}
                   usahaBidang={usahaBidang}
                   setUsahaBidang={setUsahaBidang}
+                  keselarasan={keselarasan}
+                  setKeselarasan={setKeselarasan}
+                  masaTunggu={masaTunggu}
+                  setMasaTunggu={setMasaTunggu}
+                  noWa={noWa}
+                  setNoWa={setNoWa}
                 />
 
                 <div className="flex justify-end pt-4">
