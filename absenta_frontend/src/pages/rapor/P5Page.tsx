@@ -289,10 +289,10 @@ export const P5Page: React.FC = React.memo(() => {
     return 'Mode Hanya Baca: Anda tidak terdaftar sebagai guru fasilitator untuk rombel/projek terpilih.';
   }, [isReadOnly, activeRoleTab]);
 
-  // 3. Fetch Students for Selected Class
+  // 3. Fetch Students for Selected Class (Seluruh siswa sekelas tanpa terpotong limit 10)
   const { data: students, isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students-p5', selectedKelas],
-    queryFn: () => siswaApi.getByKelas(selectedKelas),
+    queryFn: () => siswaApi.getByKelas(selectedKelas, 200),
     enabled: Boolean(selectedKelas),
   });
 
