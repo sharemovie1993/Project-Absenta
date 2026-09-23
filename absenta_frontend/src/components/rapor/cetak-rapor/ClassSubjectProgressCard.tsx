@@ -61,7 +61,7 @@ export const ClassSubjectProgressCard: React.FC<ClassSubjectProgressCardProps> =
 }) => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<'all' | 'completed' | 'partial' | 'empty'>('all');
-  const [isExpanded, setIsExpanded] = useState<boolean>(true);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const buildNilaiUrl = (kelasId: string, mapelId: string) => {
     const params = new URLSearchParams({
@@ -82,13 +82,10 @@ export const ClassSubjectProgressCard: React.FC<ClassSubjectProgressCardProps> =
 
   if (isLoading) {
     return (
-      <Card className="p-4 bg-white dark:bg-slate-900 border-none shadow-xs animate-pulse">
-        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4 mb-2" />
-        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded w-full mb-3" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-14 bg-slate-100 dark:bg-slate-800 rounded-xl" />
-          ))}
+      <Card className="p-3 bg-white dark:bg-slate-900 border-none shadow-xs animate-pulse">
+        <div className="flex items-center justify-between">
+          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-24" />
         </div>
       </Card>
     );
@@ -99,45 +96,62 @@ export const ClassSubjectProgressCard: React.FC<ClassSubjectProgressCardProps> =
   }
 
   return (
-    <Card className="p-4 sm:p-5 bg-white dark:bg-slate-900 border-none shadow-xs space-y-3">
-      {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs">
+    <Card className="p-3 sm:px-4 sm:py-3 bg-white dark:bg-slate-900 border-none shadow-xs space-y-2.5 transition-all">
+      {/* Compact Header / Status Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs shrink-0">
             {data.percentage}%
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Kelengkapan Nilai Mata Pelajaran Rombel
-              </h3>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                Progres Nilai Mapel:
+              </span>
               <Badge variant="outline" className="text-[10px] font-mono border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400">
-                {data.mapel_completed} / {data.total_mapel} Mapel Tuntas
+                {data.mapel_completed} / {data.total_mapel} Mapel Selesai
               </Badge>
+              {data.mapel_empty > 0 && (
+                <Badge variant="outline" className="text-[10px] font-mono border-rose-200 text-rose-600 dark:border-rose-900/40 dark:text-rose-400">
+                  {data.mapel_empty} Kosong
+                </Badge>
+              )}
             </div>
-            <p className="text-[10px] text-slate-400">
-              Monitoring pengisian nilai rapor dari guru pengampu untuk kelas binaan ini
-            </p>
+            {isExpanded && (
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Monitoring pengisian nilai rapor dari guru pengampu untuk kelas binaan ini
+              </p>
+            )}
+          </div>
+
+          {/* Mini progress bar on collapsed view (tablet & desktop) */}
+          <div className="hidden md:block w-32 lg:w-44 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden ml-2 shrink-0">
+            <div
+              className="bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${Math.min(100, Math.max(0, data.percentage))}%` }}
+            />
           </div>
         </div>
 
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/40 flex items-center gap-1.5 transition-all self-start sm:self-auto cursor-pointer"
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-900/40 flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer self-start sm:self-auto"
         >
-          <span>{isExpanded ? 'Sembunyikan Rincian' : 'Lihat Status Mapel'}</span>
-          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <span>{isExpanded ? 'Tutup Rincian' : `Lihat Rincian Mapel (${data.total_mapel})`}</span>
+          {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
         </button>
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-        <div
-          className="bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
-          style={{ width: `${Math.min(100, Math.max(0, data.percentage))}%` }}
-        />
-      </div>
+      {/* Full Progress Bar when expanded */}
+      {isExpanded && (
+        <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden animate-in fade-in duration-200">
+          <div
+            className="bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 h-full rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${Math.min(100, Math.max(0, data.percentage))}%` }}
+          />
+        </div>
+      )}
 
       {/* Expanded Subject Breakdown */}
       {isExpanded && (
