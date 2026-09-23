@@ -3,11 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  Plus, 
-  Trash2, 
   Save, 
   Layers, 
-  FileText, 
   Loader2,
   Printer,
   Sparkles,
@@ -18,8 +15,7 @@ import {
   Copy,
   CheckCircle2,
   AlertCircle,
-  Settings2,
-  ExternalLink
+  Settings2
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -36,14 +32,10 @@ import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import {
-  P5_TEMA_OPTIONS,
-  P5_FASE_OPTIONS,
   P5_DIMENSI_OPTIONS,
   P5_SUB_ELEMEN_MAP,
   P5_KUALIFIKASI_OPTIONS,
-  P5_DEFAULT_CATATAN,
-  formatProjekDeskripsi,
-  parseProjekMetadata
+  P5_DEFAULT_CATATAN
 } from './components/p5/p5Constants';
 
 // Zod Schema Validation Guard (Pilar 25)
@@ -111,7 +103,7 @@ export const P5Page: React.FC = React.memo(() => {
   const isAssignedFacilitator = myP5Assignments.length > 0;
 
   // Tab State
-  const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi' | 'wali_kelas' | 'master'>('my_tasks');
+  const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi' | 'wali_kelas'>('my_tasks');
   const [tabInitialized, setTabInitialized] = useState(false);
 
   useEffect(() => {
@@ -151,13 +143,6 @@ export const P5Page: React.FC = React.memo(() => {
         id: 'wali_kelas',
         label: isMobile ? `Kelas Walas` : `Kelas Binaan (${waliKelasNama})`,
         icon: GraduationCap,
-      });
-    }
-    if (canSupervise) {
-      opts.push({
-        id: 'master',
-        label: isMobile ? 'Master Tema' : 'Master Tema Projek',
-        icon: FileText,
       });
     }
     return opts;
@@ -289,7 +274,7 @@ export const P5Page: React.FC = React.memo(() => {
   const { data: students, isLoading: isLoadingStudents } = useQuery({
     queryKey: ['students-p5', selectedKelas],
     queryFn: () => siswaApi.getByKelas(selectedKelas),
-    enabled: Boolean(selectedKelas && activeRoleTab !== 'master'),
+    enabled: Boolean(selectedKelas),
   });
 
   // 4. Fetch Existing Grades
@@ -299,7 +284,7 @@ export const P5Page: React.FC = React.memo(() => {
       projek_id: selectedProjek,
       dimensi: selectedDimensi,
     }),
-    enabled: Boolean(selectedProjek && selectedDimensi && selectedSubElemen && activeRoleTab !== 'master'),
+    enabled: Boolean(selectedProjek && selectedDimensi && selectedSubElemen),
   });
 
   // 5. Scores State (FULL LIST WITHOUT PAGINATION)
@@ -496,119 +481,16 @@ export const P5Page: React.FC = React.memo(() => {
             </div>
 
             {/* ── 2. Read-Only Notice Banner ── */}
-            {isReadOnly && activeRoleTab !== 'master' && (
+            {isReadOnly && (
               <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
                 <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>{readOnlyReason}</span>
               </div>
             )}
 
-            {/* ── 3. Tab Master Projek (Kurikulum / Admin Only) ── */}
-            {activeRoleTab === 'master' && (
-              <div className="space-y-6">
-                <div className="p-5 bg-linear-to-r from-indigo-50/80 to-purple-50/80 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-                  <div className="flex items-start gap-3.5">
-                    <div className="p-2.5 bg-indigo-600 text-white rounded-2xl shadow-sm shrink-0 mt-0.5">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-100">
-                        Pusat Manajemen Tema Projek & Penugasan Fasilitator
-                      </h4>
-                      <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 max-w-2xl leading-relaxed">
-                        Pengelolaan master tema projek P5, target fase, dan pembagian guru fasilitator per rombongan belajar kini disatukan satu pintu di Pengaturan Rapor agar tersinkronisasi sempurna dengan konteks tahun pelajaran aktif.
-                      </p>
-                    </div>
-                  </div>
-                  {canSupervise && (
-                    <Button
-                      type="button"
-                      variant="toolbarPrimary"
-                      size="toolbar"
-                      onClick={() => navigate('/rapor/settings?tab=tim_p5')}
-                      className="shrink-0 font-bold rounded-xl shadow-sm flex items-center gap-1.5"
-                    >
-                      Buka Pengaturan Tema & Tim P5
-                      <ExternalLink size={14} />
-                    </Button>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                      Daftar Tema Projek P5 Terdaftar ({allProjects.length})
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      Tema projek aktif pada tahun ajaran dan semester yang sedang dipilih.
-                    </p>
-                  </div>
-                </div>
-
-                {isLoadingAllProjek ? (
-                  <div className="py-20 text-center text-xs text-slate-400 italic">Memuat tema projek...</div>
-                ) : allProjects.length === 0 ? (
-                  <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent rounded-2xl space-y-3">
-                    <FileText className="w-12 h-12 text-slate-300 mx-auto" />
-                    <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">Belum Ada Tema Projek</h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                      Belum ada projek P5 yang didaftarkan untuk semester ini. Buat tema baru di Pengaturan Rapor.
-                    </p>
-                    {canSupervise && (
-                      <Button
-                        type="button"
-                        variant="toolbarPrimary"
-                        size="toolbar"
-                        onClick={() => navigate('/rapor/settings?tab=tim_p5')}
-                        className="font-bold rounded-xl mx-auto"
-                      >
-                        Buat Tema Projek di Pengaturan ➔
-                      </Button>
-                    )}
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {allProjects.map((item) => {
-                      const meta = parseProjekMetadata(item.deskripsi);
-                      return (
-                        <Card key={item.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <Badge className="bg-indigo-50 text-indigo-600 border-none font-bold text-[10px]">
-                                {meta.tema}
-                              </Badge>
-                              <Badge variant="outline" className="text-[10px] font-bold">
-                                {meta.fase}
-                              </Badge>
-                            </div>
-                            {canSupervise && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => navigate('/rapor/settings?tab=tim_p5')}
-                                className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-bold px-2 py-1 h-auto rounded-lg"
-                              >
-                                Kelola Fasilitator ➔
-                              </Button>
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-800 dark:text-white text-sm">{item.judul}</h4>
-                            <p className="text-xs text-slate-400 mt-1 line-clamp-3">{meta.cleanDesc || 'Tidak ada deskripsi.'}</p>
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── 4. Main Grading Interface (Projek Saya / Supervisi / Wali Kelas) ── */}
-            {activeRoleTab !== 'master' && (
-              <div className="space-y-6">
-                {/* Filter Card */}
+            {/* ── 3. Main Grading Interface (Projek Saya / Supervisi / Wali Kelas) ── */}
+            <div className="space-y-6">
+              {/* Filter Card */}
                 <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-900 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full min-w-0">
                   <div className="space-y-1">
                     <label htmlFor="p5-filter-projek" className="text-[10px] font-bold text-slate-500 uppercase">
@@ -939,7 +821,6 @@ export const P5Page: React.FC = React.memo(() => {
                   </div>
                 )}
               </div>
-            )}
           </div>
         </SectionCard>
       </AcademicPageLayout>
