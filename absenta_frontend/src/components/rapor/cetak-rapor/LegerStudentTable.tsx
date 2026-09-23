@@ -12,26 +12,31 @@ import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { LegerStudent } from '../../../types/cetakRapor.types';
+import { RaporPrintMenu } from '../../rapor/RaporPrintMenu';
 
 interface LegerStudentTableProps {
   students: LegerStudent[];
   isLoading: boolean;
   isJenjangSmk: boolean;
-  pdfLoading: Record<string, boolean>;
+  pdfLoading?: Record<string, boolean>;
+  tahunPelajaranId?: string;
+  semesterId?: string;
   onOpenSummaryModal: (student: LegerStudent) => void;
-  onPrintRapor: (student: LegerStudent) => void;
-  onPrintP5: (student: LegerStudent) => void;
+  onPrintRapor?: (student: LegerStudent) => void;
+  onPrintP5?: (student: LegerStudent) => void;
   onPrintRaporPkl?: (student: LegerStudent) => void;
   onOpenTranskripModal: (student: LegerStudent) => void;
-  getPdfSklUrl: (siswaId: string) => string;
-  getPdfUkkUrl: (siswaId: string) => string;
+  getPdfSklUrl?: (siswaId: string) => string;
+  getPdfUkkUrl?: (siswaId: string) => string;
 }
 
 export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   students,
   isLoading,
   isJenjangSmk,
-  pdfLoading,
+  pdfLoading = {},
+  tahunPelajaranId,
+  semesterId,
   onOpenSummaryModal,
   onPrintRapor,
   onPrintP5,
@@ -125,103 +130,45 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                     )}
                   </td>
 
-                  {/* Action Group */}
+                  {/* Action Group (Opsi A: Clean Ergonomic Dropdown UI) */}
                   <td className="p-3.5 text-right pr-4">
-                    <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                      {/* Absensi & Catatan */}
+                    <div className="flex items-center justify-end gap-2 flex-nowrap">
+                      {/* Absensi & Catatan Wali Kelas */}
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onOpenSummaryModal(student)}
-                        className="text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 whitespace-nowrap flex-shrink-0"
+                        className="text-xs font-semibold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 whitespace-nowrap flex-shrink-0"
                       >
-                        <Edit3 size={13} className="mr-1 flex-shrink-0" />
-                        <span className="hidden sm:inline">ABSENSI & CATATAN</span>
-                        <span className="sm:hidden">CATATAN</span>
+                        <Edit3 size={13} className="mr-1 flex-shrink-0 text-slate-500" />
+                        <span>Catatan</span>
                       </Button>
 
-                      {/* RAPOR (PDF) */}
-                      <Button
-                        size="sm"
-                        onClick={() => onPrintRapor(student)}
-                        disabled={isRaporLoading}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-60 whitespace-nowrap flex-shrink-0"
-                      >
-                        {isRaporLoading ? (
-                          <Loader2 size={13} className="animate-spin mr-1" />
-                        ) : (
-                          <Printer size={13} className="mr-1" />
-                        )}
-                        RAPOR (PDF)
-                      </Button>
+                      {/* Dropdown Cetak Dokumen Rapor Lengkap */}
+                      <RaporPrintMenu
+                        studentId={student.id}
+                        studentName={student.nama_siswa}
+                        tahunPelajaranId={tahunPelajaranId}
+                        semesterId={semesterId}
+                        hasPkl={isJenjangSmk !== false && Boolean(onPrintRaporPkl)}
+                        hasUkk={isJenjangSmk !== false}
+                        hasSkl={true}
+                      />
 
-                      {/* P5 (PDF) */}
-                      <Button
-                        size="sm"
-                        onClick={() => onPrintP5(student)}
-                        disabled={isP5Loading}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-60 whitespace-nowrap flex-shrink-0"
-                      >
-                        {isP5Loading ? (
-                          <Loader2 size={13} className="animate-spin mr-1" />
-                        ) : (
-                          <FileText size={13} className="mr-1" />
-                        )}
-                        P5 (PDF)
-                      </Button>
-
-                      {/* RAPOR PKL (PDF) — Khusus SMK */}
-                      {isJenjangSmk !== false && onPrintRaporPkl && (
-                        <Button
-                          size="sm"
-                          onClick={() => onPrintRaporPkl(student)}
-                          disabled={isPklLoading}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-60 whitespace-nowrap flex-shrink-0"
-                          title="Cetak Rapor Praktik Kerja Lapangan 2 Halaman"
-                        >
-                          {isPklLoading ? (
-                            <Loader2 size={13} className="animate-spin mr-1" />
-                          ) : (
-                            <Building2 size={13} className="mr-1" />
-                          )}
-                          PKL (PDF)
-                        </Button>
-                      )}
-
-                      {/* SKL */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => window.open(getPdfSklUrl(student.id), '_blank')}
-                        className="text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 whitespace-nowrap flex-shrink-0"
-                      >
-                        SKL
-                      </Button>
-
-                      {/* UKK — Khusus SMK */}
-                      {isJenjangSmk !== false && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(getPdfUkkUrl(student.id), '_blank')}
-                          className="text-xs font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 whitespace-nowrap flex-shrink-0"
-                        >
-                          UKK
-                        </Button>
-                      )}
-
-                      {/* TRANSKRIP */}
+                      {/* Transkrip Modal */}
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => onOpenTranskripModal(student)}
-                        className="text-xs font-bold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 whitespace-nowrap flex-shrink-0"
+                        className="text-xs font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 whitespace-nowrap flex-shrink-0"
+                        title="Rekapitulasi Nilai & Transkrip Kumulatif"
                       >
                         <Award size={13} className="mr-1 flex-shrink-0" />
-                        TRANSKRIP
+                        <span>Transkrip</span>
                       </Button>
                     </div>
                   </td>
+
                 </tr>
               );
             })}

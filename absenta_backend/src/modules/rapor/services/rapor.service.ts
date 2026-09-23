@@ -654,6 +654,8 @@ export class RaporService {
       kertasCfg,
       kopCfg,
       qrCfg,
+      kokurikulerCfg,
+      sumatifArchiveCfg,
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
@@ -678,6 +680,8 @@ export class RaporService {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_ENABLE_SUMATIF_ARCHIVE' } }),
     ]);
 
     return {
@@ -707,6 +711,8 @@ export class RaporService {
       ukuran_kertas: (kertasCfg?.value || 'A4') as 'A4' | 'F4',
       tampilkan_kop: kopCfg ? kopCfg.value === 'true' : true,
       tampilkan_qr: qrCfg ? qrCfg.value === 'true' : true,
+      tampilkan_kokurikuler: kokurikulerCfg ? kokurikulerCfg.value === 'true' : true,
+      aktifkan_sumatif_arsip: sumatifArchiveCfg ? sumatifArchiveCfg.value === 'true' : true,
     };
   }
 
@@ -738,6 +744,8 @@ export class RaporService {
       ukuran_kertas?: 'A4' | 'F4';
       tampilkan_kop?: boolean;
       tampilkan_qr?: boolean;
+      tampilkan_kokurikuler?: boolean;
+      aktifkan_sumatif_arsip?: boolean;
     }
   ) {
     const tpId = payload.tahun_pelajaran_id;
@@ -838,6 +846,12 @@ export class RaporService {
     }
     if (payload.tampilkan_qr !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_TAMPILKAN_QR', String(payload.tampilkan_qr));
+    }
+    if (payload.tampilkan_kokurikuler !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_SHOW_KOKURIKULER', String(payload.tampilkan_kokurikuler));
+    }
+    if (payload.aktifkan_sumatif_arsip !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_ENABLE_SUMATIF_ARCHIVE', String(payload.aktifkan_sumatif_arsip));
     }
 
     void cacheInvalidationService.invalidateRaporCache(tenantId);

@@ -231,6 +231,26 @@ export const raporApi = {
     const base = getPdfBaseUrl();
     return `${base}/reporting/pdf/rapor/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
   },
+  getPdfCoverUrl: (siswaId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/cover/${siswaId}?token=${encodeURIComponent(token)}`;
+  },
+  getPdfBiodataUrl: (siswaId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/biodata/${siswaId}?token=${encodeURIComponent(token)}`;
+  },
+  getPdfRaporSumatifUrl: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/rapor-sumatif/${siswaId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
+  },
+  getPdfLegerUrl: (kelasId: string, tahunPelajaranId: string, semesterId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/leger/${kelasId}?tahun_pelajaran_id=${tahunPelajaranId}&semester_id=${semesterId}&token=${encodeURIComponent(token)}`;
+  },
   getPdfP5Url: (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
     const token = getAuthToken();
     const base = getPdfBaseUrl();
@@ -240,6 +260,16 @@ export const raporApi = {
     const token = getAuthToken();
     const base = getPdfBaseUrl();
     return `${base}/reporting/pdf/skl/${siswaId}?token=${encodeURIComponent(token)}`;
+  },
+  getPdfUkkUrl: (siswaId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/ukk/${siswaId}?token=${encodeURIComponent(token)}`;
+  },
+  getPdfPklUrl: (siswaPklId: string) => {
+    const token = getAuthToken();
+    const base = getPdfBaseUrl();
+    return `${base}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
   },
   // === RAPOR SETTINGS & REFERENSI PERSURATAN ===
   getRaporSettings: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
@@ -280,6 +310,8 @@ export interface RaporSettings {
   ukuran_kertas: 'A4' | 'F4';
   tampilkan_kop: boolean;
   tampilkan_qr: boolean;
+  tampilkan_kokurikuler?: boolean;
+  aktifkan_sumatif_arsip?: boolean;
 }
 
 export interface P5FasilitatorItem {

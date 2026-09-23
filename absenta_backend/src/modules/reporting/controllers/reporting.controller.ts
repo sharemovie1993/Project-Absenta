@@ -517,4 +517,83 @@ export class ReportingController {
       return reply.status(500).send({ success: false, message: error.message });
     }
   }
+
+  async printCover(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+
+      const pdfBuffer = await PdfRaporService.generateCoverRaporPdf(tenantId, siswaId);
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="cover_rapor_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printBiodata(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+
+      const pdfBuffer = await PdfRaporService.generateBiodataPdf(tenantId, siswaId);
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="biodata_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printRaporSumatif(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { siswaId } = request.params;
+      const { tahun_pelajaran_id, semester_id } = request.query;
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({ success: false, message: 'tahun_pelajaran_id dan semester_id wajib diisi' });
+      }
+
+      const pdfBuffer = await PdfRaporService.generateRaporSumatifPdf(tenantId, {
+        siswa_id: siswaId,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="rapor_sumatif_siswa.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async printLeger(request: any, reply: any) {
+    try {
+      const tenantId = (request as any).tenantId;
+      const { kelasId } = request.params;
+      const { tahun_pelajaran_id, semester_id } = request.query;
+
+      if (!tahun_pelajaran_id || !semester_id) {
+        return reply.status(400).send({ success: false, message: 'tahun_pelajaran_id dan semester_id wajib diisi' });
+      }
+
+      const pdfBuffer = await PdfRaporService.generateLegerPdf(tenantId, {
+        kelas_id: kelasId,
+        tahun_pelajaran_id,
+        semester_id,
+      });
+
+      reply.header('Content-Type', 'application/pdf');
+      reply.header('Content-Disposition', 'inline; filename="leger_kelas.pdf"');
+      return reply.send(pdfBuffer);
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
 }
+

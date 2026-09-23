@@ -207,6 +207,30 @@ export async function reportingRoutes(fastify: any) {
     handler: reportingController.printRapor.bind(reportingController),
   });
 
+  fastify.get('/pdf/cover/:siswaId', {
+    config: { capability: ModuleCapability.CORE },
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
+    handler: reportingController.printCover.bind(reportingController),
+  });
+
+  fastify.get('/pdf/biodata/:siswaId', {
+    config: { capability: ModuleCapability.CORE },
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
+    handler: reportingController.printBiodata.bind(reportingController),
+  });
+
+  fastify.get('/pdf/rapor-sumatif/:siswaId', {
+    config: { capability: ModuleCapability.CORE },
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
+    handler: reportingController.printRaporSumatif.bind(reportingController),
+  });
+
+  fastify.get('/pdf/leger/:kelasId', {
+    config: { capability: ModuleCapability.CORE },
+    preHandler: [requireCapability(['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic'], { exemptRoles: [RoleName.GURU] }), determineDataScope()],
+    handler: reportingController.printLeger.bind(reportingController),
+  });
+
   fastify.get('/pdf/skl/:siswaId', {
     config: { capability: ModuleCapability.CORE },
     preHandler: [requireCapability('academic.students.view.list'), determineDataScope()],
@@ -231,3 +255,4 @@ export async function reportingRoutes(fastify: any) {
     handler: reportingController.printP5Rapor.bind(reportingController),
   });
 }
+

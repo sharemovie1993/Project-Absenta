@@ -107,6 +107,8 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   const [ukuranKertas, setUkuranKertas] = useState<'A4' | 'F4'>('A4');
   const [tampilkanKop, setTampilkanKop] = useState(true);
   const [tampilkanQr, setTampilkanQr] = useState(true);
+  const [tampilkanKokurikuler, setTampilkanKokurikuler] = useState(true);
+  const [aktifkanSumatifArsip, setAktifkanSumatifArsip] = useState(true);
 
   // Detect whether active semester in toolbar is Ganjil or Genap
   const isGanjilActive = useMemo(() => {
@@ -156,6 +158,8 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       setUkuranKertas(s.ukuran_kertas || 'A4');
       setTampilkanKop(s.tampilkan_kop !== undefined ? s.tampilkan_kop : true);
       setTampilkanQr(s.tampilkan_qr !== undefined ? s.tampilkan_qr : true);
+      setTampilkanKokurikuler(s.tampilkan_kokurikuler !== undefined ? s.tampilkan_kokurikuler : true);
+      setAktifkanSumatifArsip(s.aktifkan_sumatif_arsip !== undefined ? s.aktifkan_sumatif_arsip : true);
     }
   }, [settingsData, isGanjilActive]);
 
@@ -223,6 +227,8 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       ukuran_kertas: ukuranKertas,
       tampilkan_kop: tampilkanKop,
       tampilkan_qr: tampilkanQr,
+      tampilkan_kokurikuler: tampilkanKokurikuler,
+      aktifkan_sumatif_arsip: aktifkanSumatifArsip,
     });
   }, [
     academicCtx.selectedTahunPelajaran,
@@ -243,6 +249,8 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     ukuranKertas,
     tampilkanKop,
     tampilkanQr,
+    tampilkanKokurikuler,
+    aktifkanSumatifArsip,
     saveSettingsMutation,
     canManage,
   ]);
@@ -675,6 +683,32 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                             <div>
                               <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Barcode / QR Validasi Otentikasi</span>
                               <span className="text-[10px] text-slate-400">Menyertakan QR code untuk pemindaian keaslian dokumen oleh orang tua atau pihak dinas.</span>
+                            </div>
+                          </label>
+
+                          <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={tampilkanKokurikuler}
+                              onChange={(e) => setTampilkanKokurikuler(e.target.checked)}
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Sertakan Bagian Kokurikuler pada Rapor Semester (CK Page 2)</span>
+                              <span className="text-[10px] text-slate-400">Menampilkan evaluasi pembiasaan pagi & kokurikuler (Wajib mulai TP 2025/2026, dinonaktifkan otomatis untuk arsip 2024/2025).</span>
+                            </div>
+                          </label>
+
+                          <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={aktifkanSumatifArsip}
+                              onChange={(e) => setAktifkanSumatifArsip(e.target.checked)}
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Aktifkan Opsi Cetak Rapor Penilaian Sumatif (Arsip Terdahulu)</span>
+                              <span className="text-[10px] text-slate-400">Menyediakan pilihan cetak format blangko hijau rincian nilai sumatif untuk kebutuhan cetak ulang arsip lampau.</span>
                             </div>
                           </label>
                         </div>

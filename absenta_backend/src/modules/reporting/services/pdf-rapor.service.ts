@@ -1,6 +1,13 @@
 import puppeteer from 'puppeteer';
 import { prisma } from '../../../utils/prisma';
 import { RaporService } from '../../rapor/services/rapor.service';
+import {
+  JABAR_LOGO_SVG,
+  wrapWithPdfLayout,
+  renderStudentReportHeader,
+  renderSignaturesBlock,
+  numberToWordsIndonesian,
+} from './helpers/pdf-template.helpers';
 
 export class PdfRaporService {
   // Helper render HTML to PDF Buffer
@@ -27,7 +34,357 @@ export class PdfRaporService {
     }
   }
 
-  // 1. GENERATE RAPOR SEMESTER PDF
+  // Shared Helper for Signatories and School Meta
+  private static async getSchoolAndSignatories(
+    tenantId: string,
+    kelasId?: string | null,
+    params?: { tahun_pelajaran_id?: string; semester_id?: string }
+  ) {
+    const [sekolah, tenant, raporSettings] = await Promise.all([
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+      prisma.tenant.findUnique({ where: { id: tenantId } }),
+      RaporService.getSettings(tenantId, params),
+    ]);
+
+    let walasNama = '...................................................';
+    let walasNip = 'NIP. ...................................................';
+
+    if (kelasId) {
+      const waliAssignment = await prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: kelasId,
+          is_active: true,
+          Position: { code: 'WALIKELAS' },
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true,
+            },
+          },
+        },
+      });
+
+      if (waliAssignment?.User?.Guru) {
+        walasNama = waliAssignment.User.Guru.nama_guru;
+        walasNip = waliAssignment.User.Guru.nip ? `NIP. ${waliAssignment.User.Guru.nip}` : 'NIP. -';
+      } else if (waliAssignment?.User?.full_name) {
+        walasNama = waliAssignment.User.full_name;
+        walasNip = 'NIP. -';
+      }
+    }
+
+    const kepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || '...................................................';
+    const kepsekNip = raporSettings?.kepsek_nip || sekolah?.nip_kepala || 'NIP. -';
+    const kepsekStatus = raporSettings?.kepsek_status || 'DEFINITIF';
+    const kota = raporSettings?.tempat_terbit || sekolah?.kota || 'Purwakarta';
+
+    const effectiveDate = raporSettings?.tanggal_rapor || (params?.semester_id ? raporSettings?.tanggal_rapor_ganjil : '') || '';
+    const dateStr = effectiveDate
+      ? new Date(effectiveDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    return {
+      schoolName: sekolah?.nama || tenant?.name || 'SMK NEGERI 1 PLERED',
+      schoolAddress: sekolah?.alamat || 'Jl. Rawasari, Plered',
+      npsn: sekolah?.npsn || '-',
+      logoUrl: tenant?.logo_url || null,
+      walas: { nama: walasNama, nip: walasNip },
+      kepsek: { nama: kepsekNama, nip: kepsekNip, status: kepsekStatus, kota },
+      dateStr,
+      raporSettings,
+    };
+  }
+
+  // 1. GENERATE COVER / SAMPUL LUAR RAPOR PDF (A4 PORTRAIT)
+  static async generateCoverRaporPdf(tenantId: string, siswaId: string) {
+    const student = await prisma.siswa.findFirst({
+      where: { id: siswaId, tenant_id: tenantId },
+      include: {
+        Kelas: { include: { Jurusan: true } },
+      },
+    });
+
+    if (!student) {
+      throw new Error('Siswa tidak ditemukan');
+    }
+
+    const schoolMeta = await this.getSchoolAndSignatories(tenantId, student.kelas_id);
+    const tingkat = student.Kelas?.tingkat || 10;
+    const isSmk = tingkat >= 10 && Boolean(student.Kelas?.jurusan_id || (student as any).jurusan);
+    const jenjangTitle = isSmk ? 'SEKOLAH MENENGAH KEJURUAN<br>(SMK)' : 'SEKOLAH MENENGAH ATAS<br>(SMA)';
+
+    const schoolLogoHtml = schoolMeta.logoUrl
+      ? `<img src="${schoolMeta.logoUrl}" style="max-height: 110px; max-width: 150px; object-fit: contain;" />`
+      : `
+        <div style="display: inline-block; padding: 16px; border: 2px solid #0284c7; border-radius: 50%; width: 100px; height: 100px; line-height: 20px; font-weight: bold; font-size: 11px; color: #0369a1; text-align: center;">
+          <div style="margin-top: 15px;">LOGO</div>
+          <div>SEKOLAH</div>
+        </div>
+      `;
+
+    const html = `
+      <div style="min-height: 94vh; display: flex; flex-direction: column; justify-content: space-between; text-align: center; padding: 25mm 15mm 15mm 15mm;">
+        <!-- Top Emblem: Jabar Prov -->
+        <div>
+          <div style="margin-bottom: 25px;">
+            ${JABAR_LOGO_SVG}
+          </div>
+          <div style="font-size: 16px; font-weight: bold; letter-spacing: 1px; line-height: 1.5; color: #111; text-transform: uppercase;">
+            ${jenjangTitle}
+          </div>
+        </div>
+
+        <!-- School Logo -->
+        <div style="margin: 30px 0;">
+          ${schoolLogoHtml}
+          <div style="font-size: 13px; font-weight: bold; margin-top: 12px; color: #1e293b; text-transform: uppercase;">
+            ${schoolMeta.schoolName}
+          </div>
+        </div>
+
+        <!-- Student Box -->
+        <div style="margin: 20px auto; width: 85%;">
+          <div style="font-size: 12px; margin-bottom: 8px; font-weight: 500;">Nama Peserta Didik :</div>
+          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; background: #fafafa;">
+            ${student.nama_siswa}
+          </div>
+
+          <div style="font-size: 12px; margin-top: 25px; margin-bottom: 8px; font-weight: 500;">NIS / NISN :</div>
+          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; letter-spacing: 1px; background: #fafafa;">
+            ${student.nis} / ${student.nisn || '-'}
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div style="margin-top: 40px; font-size: 11px; font-weight: bold; line-height: 1.6; text-transform: uppercase; letter-spacing: 0.5px; color: #111;">
+          KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI<br>
+          REPUBLIK INDONESIA
+        </div>
+      </div>
+    `;
+
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Cover Rapor - ${student.nama_siswa}`, margin: '0' }), 'portrait');
+  }
+
+  // 2. GENERATE KETERANGAN TENTANG DIRI PESERTA DIDIK / BIODATA 17 BUTIR PDF (A4 PORTRAIT)
+  static async generateBiodataPdf(tenantId: string, siswaId: string) {
+    const student = await prisma.siswa.findFirst({
+      where: { id: siswaId, tenant_id: tenantId },
+      include: {
+        Kelas: { include: { Jurusan: true } },
+      },
+    });
+
+    if (!student) {
+      throw new Error('Siswa tidak ditemukan');
+    }
+
+    const schoolMeta = await this.getSchoolAndSignatories(tenantId, student.kelas_id);
+
+    const birthDateStr = student.tanggal_lahir
+      ? new Date(student.tanggal_lahir).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '-';
+
+    const masukDateStr = student.tanggal_masuk
+      ? new Date(student.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '14 Juli 2025';
+
+    const fullAlamat = [
+      student.alamat,
+      student.dusun ? `Dusun ${student.dusun}` : '',
+      student.rt || student.rw ? `RT ${student.rt || '01'} RW ${student.rw || '01'}` : '',
+      student.kelurahan ? `Desa ${student.kelurahan}` : '',
+      student.kecamatan ? `Kecamatan ${student.kecamatan}` : '',
+      student.kabupaten ? `Kabupaten ${student.kabupaten}` : '',
+    ].filter(Boolean).join(' ');
+
+    const fullAlamatOrtu = [
+      student.alamat,
+      student.kelurahan ? `Desa ${student.kelurahan}` : '',
+      student.kecamatan ? `Kecamatan ${student.kecamatan}` : '',
+      student.kabupaten ? `Kabupaten ${student.kabupaten}` : '',
+    ].filter(Boolean).join(' ');
+
+    const jkText = (student.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';
+
+    const html = `
+      <div style="padding: 10px 5px; font-size: 11px; line-height: 1.5;">
+        <div style="text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 22px; text-transform: uppercase; letter-spacing: 0.5px;">
+          KETERANGAN TENTANG DIRI PESERTA DIDIK
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11px;">
+          <tr>
+            <td style="width: 4%; vertical-align: top; padding: 2px 0;">1.</td>
+            <td style="width: 32%; vertical-align: top; padding: 2px 0;">Nama Peserta Didik Lengkap</td>
+            <td style="width: 3%; vertical-align: top; padding: 2px 0;">:</td>
+            <td style="width: 61%; vertical-align: top; padding: 2px 0; font-weight: bold; text-transform: uppercase;">${student.nama_siswa}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">2.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Nomor Induk Siswa / NISN</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.nis} / ${student.nisn || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">3.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Tempat Tanggal Lahir</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.tempat_lahir || 'Purwakarta'} , ${birthDateStr}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">4.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Jenis Kelamin</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${jkText}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">5.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Agama / Kepercayaan</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.agama || 'Islam'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">6.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Status dalam Keluarga</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">Anak Kandung</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">7.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Anak ke</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${numberToWordsIndonesian(student.anak_ke || 1)}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">8.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Alamat Peserta Didik</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0; text-align: justify;">${fullAlamat || 'Jl. Rawasari, Plered, Purwakarta'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">9.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Nomor Telepon Rumah</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.no_hp || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">10.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Sekolah Asal</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.sekolah_asal || 'SMPN 1 Plered'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">11.</td>
+            <td style="vertical-align: top; padding: 2px 0;" colspan="3">Diterima di sekolah ini</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">Di kelas</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0; font-weight: bold;">${student.Kelas?.nama_kelas || 'X TE 3'}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">Pada tanggal</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${masukDateStr}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">12.</td>
+            <td style="vertical-align: top; padding: 2px 0;" colspan="3">Nama Orang Tua</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">a. Ayah</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.nama_ayah || '-'}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">b. Ibu</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.nama_ibu || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">13.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Alamat Orang Tua</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0; text-align: justify;">${fullAlamatOrtu || fullAlamat || '-'}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">Nomor Telepon Rumah</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.no_hp_ortu || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">14.</td>
+            <td style="vertical-align: top; padding: 2px 0;" colspan="3">Pekerjaan Orang Tua</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">a. Ayah</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.pekerjaan_ayah || '-'}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">b. Ibu</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.pekerjaan_ibu || 'Rumah Tangga'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">15.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Nama Wali Peserta Didik</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.nama_wali || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">16.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Alamat Wali Peserta Didik</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${fullAlamat || '-'}</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td style="padding: 1.5px 0 1.5px 15px;">Nomor Telepon Rumah</td>
+            <td style="padding: 1.5px 0;">:</td>
+            <td style="padding: 1.5px 0;">${student.no_hp_wali || '-'}</td>
+          </tr>
+          <tr>
+            <td style="vertical-align: top; padding: 2px 0;">17.</td>
+            <td style="vertical-align: top; padding: 2px 0;">Pekerjaan Wali Peserta Didik</td>
+            <td style="vertical-align: top; padding: 2px 0;">:</td>
+            <td style="vertical-align: top; padding: 2px 0;">${student.pekerjaan_wali || '-'}</td>
+          </tr>
+        </table>
+
+        <!-- Bottom Pas Foto & Signatures -->
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <tr>
+            <td style="width: 40%; vertical-align: middle; text-align: center;">
+              <div style="display: inline-block; width: 30mm; height: 40mm; border: 1.5px solid #111; line-height: 18px; padding-top: 15mm; box-sizing: border-box; font-size: 11px; color: #444; font-weight: bold; background: #fdfdfd;">
+                Pas Foto<br>3x4
+              </div>
+            </td>
+            <td style="width: 60%; vertical-align: top; text-align: center;">
+              <div style="font-size: 11px;">${schoolMeta.kepsek.kota}, ${schoolMeta.dateStr}</div>
+              <div style="margin-top: 3px; font-size: 11px; margin-bottom: 60px;">Kepala Sekolah</div>
+              <div style="font-size: 11px; font-weight: bold; text-decoration: underline;">${schoolMeta.kepsek.nama}</div>
+              <div style="font-size: 10.5px; color: #222;">${schoolMeta.kepsek.nip ? `NIP. ${schoolMeta.kepsek.nip.replace('NIP.', '').trim()}` : 'NIP. -'}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Biodata Siswa - ${student.nama_siswa}` }), 'portrait');
+  }
+
+  // 3. GENERATE LAPORAN HASIL BELAJAR (CK PAGE 1 & CK PAGE 2) PDF (A4 PORTRAIT)
   static async generateRaporPdf(
     tenantId: string,
     params: {
@@ -36,185 +393,587 @@ export class PdfRaporService {
       semester_id: string;
     }
   ) {
-    const data = await RaporService.getRaporDetail(tenantId, params);
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    const schoolName = tenant?.name || 'Sekolah Mitra Absenta';
+    const [data, student, semester, tp] = await Promise.all([
+      RaporService.getRaporDetail(tenantId, params),
+      prisma.siswa.findFirst({
+        where: { id: params.siswa_id, tenant_id: tenantId },
+        include: { Kelas: { include: { Jurusan: true } } },
+      }),
+      prisma.semester.findFirst({ where: { id: params.semester_id } }),
+      prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id } }),
+    ]);
 
-    const dateStr = new Date().toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
+    if (!student) {
+      throw new Error('Siswa tidak ditemukan');
+    }
+
+    const schoolMeta = await this.getSchoolAndSignatories(tenantId, student.kelas_id, params);
+    const semesterName = semester?.nama_semester || 'Ganjil';
+    const isGenap = Boolean(semesterName.toLowerCase().includes('genap') || semesterName.includes('2'));
+
+    // Check Kokurikuler Smart Condition:
+    // If config RAPOR_SHOW_KOKURIKULER is set, respect it.
+    // Otherwise, <= 2024/2025 is false (omitted), >= 2025/2026 is true.
+    const tpYearStr = tp?.tahun || '2025/2026';
+    const matchYear = tpYearStr.match(/^(\d{4})/);
+    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+    const kokurikulerCfg = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' },
+    });
+    const showKokurikuler = kokurikulerCfg ? kokurikulerCfg.value === 'true' : startYear >= 2025;
+
+    const studentCtx = {
+      nama_siswa: student.nama_siswa,
+      nis: student.nis,
+      nisn: student.nisn,
+      kelas: student.Kelas?.nama_kelas || data.siswa.kelas,
+      tingkat: student.Kelas?.tingkat || data.siswa.tingkat,
+      fase: student.Kelas?.tingkat === 10 ? 'E' : 'F',
+      jurusan: student.Kelas?.Jurusan?.nama || 'Teknik Audio Video',
+      program_keahlian: student.Kelas?.Jurusan?.nama || 'Teknik Elektronika',
+      bidang_keahlian: 'Teknologi Manufaktur dan Rekayasa',
+    };
+
+    const academicCtx = {
+      schoolName: schoolMeta.schoolName,
+      schoolAddress: schoolMeta.schoolAddress,
+      semesterName,
+      tahunPelajaran: tpYearStr,
+    };
+
+    // Grouping 4 Kategori Kurikulum Merdeka SMK:
+    // 1. Umum, 2. Kejuruan, 3. Pilihan, 4. Muatan Lokal
+    const listMapel = data.nilai_akademik || [];
+    const mapelUmum: any[] = [];
+    const mapelKejuruan: any[] = [];
+    const mapelPilihan: any[] = [];
+    const mapelMulok: any[] = [];
+
+    listMapel.forEach((m: any) => {
+      const g = (m.kelompok_mapel || '').toUpperCase();
+      const n = (m.mapel_name || '').toUpperCase();
+
+      if (g.includes('PILIHAN') || n.includes('KODING') || n.includes('KECERDASAN') || n.includes('ROBOTIKA')) {
+        mapelPilihan.push(m);
+      } else if (g.includes('LOKAL') || g.includes('MULOK') || n.includes('SUNDA') || n.includes('JAWA') || n.includes('DAERAH')) {
+        mapelMulok.push(m);
+      } else if (
+        g.includes('KEJURUAN') ||
+        n.includes('MATEMATIKA') ||
+        n.includes('INGGRIS') ||
+        n.includes('INFORMATIKA') ||
+        n.includes('IPAS') ||
+        n.includes('DASAR') ||
+        n.includes('KONSENTRASI')
+      ) {
+        mapelKejuruan.push(m);
+      } else {
+        mapelUmum.push(m);
+      }
     });
 
-    // Detect Jenjang (SD, SMP, SMA, SMK)
-    const tingkat = data.siswa.tingkat || 10;
-    const isSd = tingkat <= 6;
-    const isSmp = tingkat >= 7 && tingkat <= 9;
-    const isSmk = tingkat >= 10 && Boolean((data.siswa as any).jurusan || (data.siswa as any).jurusan_id);
-
-    const jenjangTitle = isSd ? 'SEKOLAH DASAR (SD)' : isSmp ? 'SEKOLAH MENENGAH PERTAMA (SMP)' : isSmk ? 'SEKOLAH MENENGAH KEJURUAN (SMK)' : 'SEKOLAH MENENGAH ATAS (SMA)';
-
-    // Grouping Mata Pelajaran (Umum vs Kejuruan/Pilihan)
-    const mapelUmum = data.nilai_akademik.filter((n: any) => (n.kelompok_mapel || 'UMUM').toUpperCase() === 'UMUM');
-    const mapelKhusus = data.nilai_akademik.filter((n: any) => (n.kelompok_mapel || 'UMUM').toUpperCase() !== 'UMUM');
-
-    const renderRows = (list: any[], startNo: number = 1) => {
-      let htmlRows = '';
-      list.forEach((n: any, idx: number) => {
-        const cpNarasi = n.capaian_kompetensi || n.catatan_deskripsi || (n.nilai_akhir >= (n.kkm || 75) ? 'Menunjukkan penguasaan kompetensi yang baik.' : 'Memerlukan bimbingan lebih lanjut.');
-        htmlRows += `
+    const renderTableGroup = (groupTitle: string, items: any[]) => {
+      if (items.length === 0) return '';
+      let rows = `
+        <tr style="background-color: #f3f4f6; font-weight: bold;">
+          <td colspan="4" style="padding: 4px 8px; font-size: 11px;">${groupTitle}</td>
+        </tr>
+      `;
+      items.forEach((item, idx) => {
+        const cp = item.catatan_kompetensi ||
+          (item.nilai_akhir >= (item.kkm || 75)
+            ? 'Siswa menunjukkan pemahaman yang memadai terhadap materi dan kompetensi pembelajaran.'
+            : 'Siswa memerlukan bimbingan lebih lanjut dalam penguasaan kompetensi dasar.');
+        rows += `
           <tr>
-            <td style="text-align: center;">${startNo + idx}</td>
-            <td style="font-weight: bold;">${n.mapel_name}</td>
-            <td style="text-align: center;">${n.kkm || 75}</td>
-            <td style="text-align: center; font-weight: bold; font-size: 14px;">${n.nilai_akhir}</td>
-            <td style="text-align: center; font-weight: bold;">${n.predikat || '-'}</td>
-            <td style="font-size: 11px; text-align: justify; padding: 6px;">${cpNarasi}</td>
+            <td style="text-align: center; vertical-align: middle; width: 6%;">${idx + 1}</td>
+            <td style="vertical-align: middle; width: 32%; font-weight: 500;">${item.mapel_name}</td>
+            <td style="text-align: center; vertical-align: middle; width: 10%; font-weight: bold; font-size: 12px;">${item.nilai_akhir || '-'}</td>
+            <td style="vertical-align: top; width: 52%; font-size: 10px; text-align: justify; line-height: 1.35; padding: 5px 7px;">${cp}</td>
           </tr>
         `;
       });
-      return htmlRows;
+      return rows;
     };
 
-    let rowsHtml = '';
-    if (mapelKhusus.length > 0) {
-      rowsHtml += `
-        <tr style="background-color: #e2e8f0; font-weight: bold;">
-          <td colspan="6" style="padding: 6px 8px;">A. KELOMPOK MATA PELAJARAN UMUM</td>
-        </tr>
-        ${renderRows(mapelUmum, 1)}
-        <tr style="background-color: #e2e8f0; font-weight: bold;">
-          <td colspan="6" style="padding: 6px 8px;">B. KELOMPOK MATA PELAJARAN ${isSmk ? 'KEJURUAN' : 'PILIKAN / KONSENTRASI'}</td>
-        </tr>
-        ${renderRows(mapelKhusus, mapelUmum.length + 1)}
-      `;
-    } else {
-      rowsHtml = renderRows(data.nilai_akademik, 1);
+    let tableBody = '';
+    tableBody += renderTableGroup('Mata Pelajaran Umum', mapelUmum);
+    tableBody += renderTableGroup('Mata Pelajaran Kejuruan', mapelKejuruan);
+    tableBody += renderTableGroup('Mata Pelajaran Pilihan', mapelPilihan);
+    tableBody += renderTableGroup('Muatan Lokal', mapelMulok);
+
+    if (listMapel.length === 0) {
+      tableBody = `<tr><td colspan="4" style="text-align: center; font-style: italic; padding: 20px;">Belum ada data nilai semester ini</td></tr>`;
     }
 
-    if (data.nilai_akademik.length === 0) {
-      rowsHtml = `<tr><td colspan="6" style="text-align: center; font-style: italic; padding: 12px;">Belum ada nilai terinput semester ini</td></tr>`;
-    }
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          @page { size: A4 portrait; margin: 15mm 20mm; }
-          body { font-family: 'Arial', sans-serif; font-size: 13px; line-height: 1.5; color: #333; margin: 0; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 20px; }
-          .school-info { text-align: right; }
-          .school-name { font-size: 16px; font-weight: bold; }
-          .title { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 25px; text-transform: uppercase; }
-          .student-meta { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-          .student-meta td { padding: 4px 8px; vertical-align: top; }
-          .grade-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
-          .grade-table th { background-color: #f2f2f2; border: 1px solid #000; padding: 8px; font-weight: bold; text-align: center; }
-          .grade-table td { border: 1px solid #000; padding: 8px; }
-          .summary-container { display: flex; justify-content: space-between; margin-bottom: 30px; }
-          .attendance-box { width: 45%; border: 1px solid #000; padding: 10px; box-sizing: border-box; }
-          .attendance-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 8px; }
-          .catatan-box { width: 50%; border: 1px solid #000; padding: 10px; box-sizing: border-box; }
-          .catatan-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 8px; }
-          .decision-box { border: 1px solid #000; padding: 10px; margin-bottom: 30px; font-weight: bold; text-align: center; }
-          .signature-section { display: flex; justify-content: space-between; margin-top: 50px; }
-          .sig-box { text-align: center; width: 60mm; }
-          .sig-space { height: 20mm; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div>
-            <div class="school-name">RAPOR SISWA</div>
-            <div style="font-size: 11px; font-weight: bold; color: #444;">${jenjangTitle} - KURIKULUM MERDEKA</div>
-          </div>
-          <div class="school-info">
-            <div style="font-weight: bold;">${schoolName}</div>
-            <div style="font-size: 11px; color: #555;">Sistem Informasi Akademik Absenta</div>
-          </div>
+    // --- HALAMAN 1 (INTRAKURIKULER) ---
+    const page1Html = `
+      <div>
+        <div style="text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 12px; text-transform: uppercase;">
+          LAPORAN HASIL BELAJAR<br>(RAPOR)
         </div>
 
-        <div class="title">Laporan Hasil Belajar (Rapor)</div>
+        ${renderStudentReportHeader(studentCtx, academicCtx)}
 
-        <table class="student-meta">
-          <tr>
-            <td style="width: 15%;">Nama Siswa</td>
-            <td style="width: 2%;">:</td>
-            <td style="width: 33%; font-weight: bold;">${data.siswa.nama_siswa}</td>
-            <td style="width: 15%;">Kelas</td>
-            <td style="width: 2%;">:</td>
-            <td style="width: 33%;">${data.siswa.kelas}</td>
-          </tr>
-          <tr>
-            <td>NIS / NISN</td>
-            <td>:</td>
-            <td>${data.siswa.nis} / ${data.siswa.nisn || '-'}</td>
-            <td>Tingkat</td>
-            <td>:</td>
-            <td>${data.siswa.tingkat}</td>
-          </tr>
-        </table>
+        <div style="font-weight: bold; font-size: 11.5px; margin-bottom: 6px;">I. INTRA KURIKULER</div>
 
-        <table class="grade-table">
+        <table class="data-table">
           <thead>
             <tr>
-              <th style="width: 5%;">No</th>
-              <th style="width: 45%;">Mata Pelajaran</th>
-              <th style="width: 10%;">KKM</th>
+              <th style="width: 6%;">No</th>
+              <th style="width: 32%;">Mata Pelajaran</th>
               <th style="width: 10%;">Nilai</th>
-              <th style="width: 10%;">Predikat</th>
-              <th style="width: 20%;">Keterangan</th>
+              <th style="width: 52%;">Capaian Kompetensi</th>
             </tr>
           </thead>
           <tbody>
-            ${rowsHtml}
+            ${tableBody}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // --- HALAMAN 2 (PELENGKAP, KOKURIKULER, KENAIKAN KELAS, TTD) ---
+    let sectionIdx = 2;
+    const kokurikulerSectionHtml = showKokurikuler
+      ? `
+        <div style="margin-bottom: 12px;">
+          <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">II. KOKURIKULER</div>
+          <div style="border: 1px solid #111; padding: 8px 10px; font-size: 10.5px; text-align: justify; line-height: 1.45;">
+            Peserta didik secara konsisten mengikuti Pembiasaan Pagi dengan disiplin (Mandiri), aktif menjaga ketertiban dan bekerja sama dengan teman (Gotong Royong), serta menunjukkan sikap hormat, sopan, dan peduli terhadap lingkungan sekolah (Beriman dan Bertakwa serta Berakhlak Mulia, Berkebinekaan Global).
+          </div>
+        </div>
+      `
+      : '';
+
+    if (showKokurikuler) sectionIdx++;
+
+    const ekskul1 = student.ekskul_1 || '-';
+    const ekskul2 = student.ekskul_2 || '-';
+    const ekskulTitle = `${showKokurikuler ? 'III' : 'II'}. EKSTRA KURIKULER`;
+    const ekskulRowsHtml = `
+      <tr>
+        <td style="text-align: center; width: 6%;">1.</td>
+        <td style="width: 34%; font-weight: 500;">${ekskul1 !== '-' ? ekskul1 : 'Sepak bola'}</td>
+        <td style="width: 60%; font-size: 10.5px;">Melaksanakan kegiatan ekstrakurikuler dengan baik dan disiplin.</td>
+      </tr>
+      <tr>
+        <td style="text-align: center;">2.</td>
+        <td style="font-weight: 500;">${ekskul2 !== '-' ? ekskul2 : '-'}</td>
+        <td style="font-size: 10.5px;">${ekskul2 !== '-' ? 'Melaksanakan kegiatan ekstrakurikuler dengan baik.' : '-'}</td>
+      </tr>
+    `;
+
+    const presensiTitle = `${showKokurikuler ? 'IV' : 'III'}. KETIDAKHADIRAN`;
+    const presensiTableHtml = `
+      <div style="margin-bottom: 14px;">
+        <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">${presensiTitle}</div>
+        <table class="data-table" style="margin-bottom: 0;">
+          <thead>
+            <tr>
+              <th colspan="2" style="width: 36%;">Ketidakhadiran</th>
+              <th style="width: 64%;">Catatan Wali Kelas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="width: 24%; padding: 4px 8px;">Sakit</td>
+              <td style="width: 12%; text-align: center; font-weight: bold;">${data.absensi.sakit || '-'} Hari</td>
+              <td rowspan="3" style="vertical-align: top; padding: 8px 10px; font-size: 10.5px; text-align: justify; line-height: 1.45;">
+                ${data.catatan_wali || 'Harus tetap rajin belajar dan tingkatkan prestasimu agar lebih baik dari sebelumnya.'}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 8px;">Izin</td>
+              <td style="text-align: center; font-weight: bold;">${data.absensi.izin || '-'} Hari</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 8px;">Tanpa Keterangan</td>
+              <td style="text-align: center; font-weight: bold;">${data.absensi.alpa || 2} Hari</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    // Kenaikan Kelas (Khusus Semester Genap)
+    let kenaikanKelasHtml = '';
+    if (isGenap) {
+      const kenaikanTitle = `${showKokurikuler ? 'V' : 'IV'}. KENAIKAN KELAS`;
+      const tingkat = student.Kelas?.tingkat || 10;
+      const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
+      const keputusanDesc = data.keputusan_transisi
+        ? data.keputusan_transisi.replace(/_/g, ' ')
+        : `Naik ke kelas ${targetNext}`;
+
+      kenaikanKelasHtml = `
+        <div style="margin-bottom: 14px; page-break-inside: avoid;">
+          <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">${kenaikanTitle}</div>
+          <div style="border: 1px solid #111; padding: 8px 12px; font-size: 10.5px; line-height: 1.5;">
+            <div>Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan:</div>
+            <div style="font-weight: bold; margin-top: 3px;">
+              ${keputusanDesc}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const signaturesHtml = renderSignaturesBlock({
+      includeOrtu: true,
+      walas: schoolMeta.walas,
+      kepsek: schoolMeta.kepsek,
+      titimangsaDate: schoolMeta.dateStr,
+      isGenap,
+      orientation: 'portrait',
+    });
+
+    const page2Html = `
+      <div class="page-break">
+        ${renderStudentReportHeader(studentCtx, academicCtx, { compact: true })}
+
+        ${kokurikulerSectionHtml}
+
+        <div style="margin-bottom: 12px;">
+          <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">${ekskulTitle}</div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 6%;">No</th>
+                <th style="width: 34%;">Ekstrakurikuler</th>
+                <th style="width: 60%;">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ekskulRowsHtml}
+            </tbody>
+          </table>
+        </div>
+
+        ${presensiTableHtml}
+
+        ${kenaikanKelasHtml}
+
+        ${signaturesHtml}
+      </div>
+    `;
+
+    const fullHtml = wrapWithPdfLayout(`${page1Html}\n${page2Html}`, {
+      title: `Rapor Semester - ${student.nama_siswa}`,
+      margin: '10mm 14mm',
+    });
+
+    return this.renderHtmlToPdf(fullHtml, 'portrait');
+  }
+
+  // 4. GENERATE LAPORAN PENILAIAN SUMATIF SISWA (ARSIP TERDAHULU) PDF (A4 PORTRAIT)
+  static async generateRaporSumatifPdf(
+    tenantId: string,
+    params: {
+      siswa_id: string;
+      tahun_pelajaran_id: string;
+      semester_id: string;
+    }
+  ) {
+    const [data, student, semester, tp] = await Promise.all([
+      RaporService.getRaporDetail(tenantId, params),
+      prisma.siswa.findFirst({
+        where: { id: params.siswa_id, tenant_id: tenantId },
+        include: { Kelas: { include: { Jurusan: true } } },
+      }),
+      prisma.semester.findFirst({ where: { id: params.semester_id } }),
+      prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id } }),
+    ]);
+
+    if (!student) {
+      throw new Error('Siswa tidak ditemukan');
+    }
+
+    const schoolMeta = await this.getSchoolAndSignatories(tenantId, student.kelas_id, params);
+    const semesterName = semester?.nama_semester || 'Ganjil';
+    const tpYearStr = tp?.tahun || '2024 / 2025';
+
+    // Grouping A. Kelompok Umum vs B. Kelompok Kejuruan
+    const listMapel = data.nilai_akademik || [];
+    const mapelUmum: any[] = [];
+    const mapelKejuruan: any[] = [];
+
+    listMapel.forEach((m: any) => {
+      const g = (m.kelompok_mapel || '').toUpperCase();
+      const n = (m.mapel_name || '').toUpperCase();
+
+      if (
+        g.includes('KEJURUAN') ||
+        n.includes('MATEMATIKA') ||
+        n.includes('INGGRIS') ||
+        n.includes('INFORMATIKA') ||
+        n.includes('IPAS') ||
+        n.includes('DASAR') ||
+        n.includes('KODING')
+      ) {
+        mapelKejuruan.push(m);
+      } else {
+        mapelUmum.push(m);
+      }
+    });
+
+    const renderSumatifRows = (items: any[]) => {
+      let rows = '';
+      items.forEach((item, idx) => {
+        // Build sumatif details string: "Nilai : 78 , Nilai : 81 , Nilai : 82"
+        let rincianText = '';
+        if (item.nilai_components && item.nilai_components.length > 0) {
+          rincianText = item.nilai_components
+            .map((c: any) => `Nilai &nbsp;:&nbsp; ${c.nilai}`)
+            .join(' &nbsp; , &nbsp; ');
+        } else {
+          rincianText = `Nilai &nbsp;:&nbsp; ${item.nilai_akhir || 80}`;
+        }
+
+        rows += `
+          <tr>
+            <td style="text-align: center; vertical-align: middle; width: 6%;">${idx + 1}</td>
+            <td style="vertical-align: middle; width: 34%; font-weight: 500;">${item.mapel_name}</td>
+            <td style="text-align: center; vertical-align: middle; width: 12%; font-weight: bold; font-size: 12px;">${item.nilai_akhir || '-'}</td>
+            <td style="vertical-align: middle; width: 48%; font-size: 10.5px; padding-left: 10px;">${rincianText}</td>
+          </tr>
+        `;
+      });
+      return rows;
+    };
+
+    const tableContent = `
+      <tr style="background-color: #f3f4f6; font-weight: bold;">
+        <td colspan="4" style="padding: 4px 8px;">A. Kelompok Umum</td>
+      </tr>
+      ${renderSumatifRows(mapelUmum)}
+      <tr style="background-color: #f3f4f6; font-weight: bold;">
+        <td colspan="4" style="padding: 4px 8px;">B. Kelompok Kejuruan</td>
+      </tr>
+      ${renderSumatifRows(mapelKejuruan)}
+    `;
+
+    const html = `
+      <div>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
+          <tr>
+            <td style="width: 15%; padding: 1.5px 0;">Nama</td>
+            <td style="width: 2%;">:</td>
+            <td style="width: 43%; font-weight: bold; text-transform: uppercase;">${student.nama_siswa}</td>
+            <td style="width: 15%; padding: 1.5px 0;">Kelas</td>
+            <td style="width: 2%;">:</td>
+            <td style="width: 23%; font-weight: bold;">${student.Kelas?.nama_kelas || '-'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 1.5px 0;">NIS/NISN</td>
+            <td>:</td>
+            <td>${student.nis} / ${student.nisn || '-'}</td>
+            <td style="padding: 1.5px 0;">Fase</td>
+            <td>:</td>
+            <td>${student.Kelas?.tingkat === 10 ? 'E' : 'F'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 1.5px 0;">Nama Sekolah</td>
+            <td>:</td>
+            <td style="font-weight: bold; text-transform: uppercase;">${schoolMeta.schoolName}</td>
+            <td style="padding: 1.5px 0;">Semester</td>
+            <td>:</td>
+            <td>${semesterName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 1.5px 0;">Alamat</td>
+            <td>:</td>
+            <td>${schoolMeta.schoolAddress}</td>
+            <td style="padding: 1.5px 0;">Tahun Pelajaran</td>
+            <td>:</td>
+            <td>${tpYearStr}</td>
+          </tr>
+        </table>
+
+        <div style="text-align: center; font-size: 12.5px; font-weight: bold; margin: 15px 0 10px 0; text-transform: uppercase; border-top: 1px solid #111; padding-top: 10px;">
+          LAPORAN HASIL PENILAIAN SUMATIF SISWA
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr style="background-color: #86efac;">
+              <th style="width: 6%; background-color: #86efac; border: 1px solid #111;">No</th>
+              <th style="width: 34%; background-color: #86efac; border: 1px solid #111;">Mata Pelajaran</th>
+              <th style="width: 12%; background-color: #86efac; border: 1px solid #111;">Rerata Nilai</th>
+              <th style="width: 48%; background-color: #86efac; border: 1px solid #111;">Rincian Nilai Sumatif</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableContent}
           </tbody>
         </table>
 
-        <div class="summary-container">
-          <div class="attendance-box">
-            <div class="attendance-title">Ketidakhadiran</div>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr><td style="padding: 3px 0;">Sakit</td><td>:</td><td style="text-align: right; font-weight: bold;">${data.absensi.sakit} Hari</td></tr>
-              <tr><td style="padding: 3px 0;">Izin</td><td>:</td><td style="text-align: right; font-weight: bold;">${data.absensi.izin} Hari</td></tr>
-              <tr><td style="padding: 3px 0;">Tanpa Keterangan (Alpa)</td><td>:</td><td style="text-align: right; font-weight: bold;">${data.absensi.alpa} Hari</td></tr>
-            </table>
-          </div>
+        <!-- Presensi Box -->
+        <table style="width: 45%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px;">
+          <tr>
+            <td style="border: 1px solid #111; padding: 3px 6px; width: 45%;">Sakit</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; width: 10%; text-align: center;">:</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; text-align: center;">${data.absensi.sakit || '-'} hari</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #111; padding: 3px 6px;">Izin</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; text-align: center;">:</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; text-align: center;">${data.absensi.izin || '-'} hari</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #111; padding: 3px 6px;">Tanpa Keterangan</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; text-align: center;">:</td>
+            <td style="border: 1px solid #111; padding: 3px 6px; text-align: center;">${data.absensi.alpa || '-'} hari</td>
+          </tr>
+        </table>
 
-          <div class="catatan-box">
-            <div class="catatan-title">Catatan Wali Kelas</div>
-            <div style="font-style: italic;">"${data.catatan_wali || 'Pertahankan prestasi belajarmu, teruslah belajar dengan tekun.'}"</div>
+        <!-- Catatan Walas Box -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">Catatan Wali kelas</div>
+          <div style="border: 1px solid #111; padding: 12px 14px; font-size: 11px; min-height: 40px;">
+            ${data.catatan_wali || 'Pertahankan semangat belajarnya'}
           </div>
         </div>
 
-        ${
-          data.keputusan_transisi
-            ? `<div class="decision-box">KEPUTUSAN: ${data.keputusan_transisi.replace('_', ' ')}</div>`
-            : ''
-        }
-
-        <div class="signature-section">
-          <div class="sig-box">
-            <div>Orang Tua / Wali</div>
-            <div class="sig-space"></div>
-            <div>________________________</div>
-          </div>
-          <div class="sig-box">
-            <div>Ditetapkan di: Purwakarta</div>
-            <div>Tanggal: ${dateStr}</div>
-            <div style="margin-top: 5px;">Wali Kelas</div>
-            <div class="sig-space"></div>
-            <div>________________________</div>
-          </div>
-        </div>
-      </body>
-      </html>
+        ${renderSignaturesBlock({
+          includeOrtu: true,
+          walas: schoolMeta.walas,
+          kepsek: schoolMeta.kepsek,
+          titimangsaDate: schoolMeta.dateStr,
+          orientation: 'portrait',
+        })}
+      </div>
     `;
 
-    return this.renderHtmlToPdf(html, 'portrait');
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Rapor Sumatif - ${student.nama_siswa}`, margin: '10mm 15mm' }), 'portrait');
   }
+
+  // 5. GENERATE BUKU LEGER KELAS (LANDSCAPE A4)
+  static async generateLegerPdf(
+    tenantId: string,
+    params: {
+      kelas_id: string;
+      tahun_pelajaran_id: string;
+      semester_id: string;
+    }
+  ) {
+    const [legerData, kelas, semester, tp] = await Promise.all([
+      RaporService.getLegerData(tenantId, params),
+      prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } }),
+      prisma.semester.findFirst({ where: { id: params.semester_id } }),
+      prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id } }),
+    ]);
+
+    const schoolMeta = await this.getSchoolAndSignatories(tenantId, params.kelas_id, params);
+    const kelasNama = kelas?.nama_kelas || 'X TE 3';
+    const semesterNama = (semester?.nama_semester || 'GANJIL').toUpperCase();
+    const tpNama = tp?.tahun || '2025 / 2026';
+
+    const mapelColumns = legerData.mapel_list || [];
+    const siswaRows = legerData.students || [];
+
+    // Header cells for mapel
+    let mapelHeaderTh = '';
+    mapelColumns.forEach((m: any) => {
+      const shortCode = m.kode_mapel || m.nama_mapel.substring(0, 5).toUpperCase();
+      mapelHeaderTh += `
+        <th style="border: 1px solid #111; padding: 4px 2px; font-size: 8px; writing-mode: vertical-lr; transform: rotate(180deg); min-width: 22px; max-width: 26px; height: 75px; text-align: left; background-color: #f1f5f9;">
+          ${shortCode}
+        </th>
+      `;
+    });
+
+    let dataRowsHtml = '';
+    siswaRows.forEach((s: any, idx: number) => {
+      let mapelTd = '';
+      mapelColumns.forEach((m: any) => {
+        const val = s.grades?.[m.id];
+        mapelTd += `
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; padding: 2px 1px;">
+            ${val !== undefined && val !== null ? val : '-'}
+          </td>
+        `;
+      });
+
+      const sakit = s.sakit || '-';
+      const izin = s.izin || '-';
+      const alpa = s.alpa || '-';
+
+      dataRowsHtml += `
+        <tr style="height: 18px;">
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${idx + 1}</td>
+          <td style="border: 1px solid #111; font-size: 8.5px; padding: 2px 4px; white-space: nowrap; overflow: hidden; max-width: 140px; font-weight: 500;">${s.nama_siswa}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${kelasNama}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${semester?.nama_semester || 'Ganjil'}</td>
+          ${mapelTd}
+          <td style="border: 1px solid #111; font-size: 8px; text-align: center; padding: 1px 3px;">-</td>
+          <td style="border: 1px solid #111; font-size: 8px; text-align: center; padding: 1px 3px;">-</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${sakit}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${izin}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${alpa}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #fef08a;">${s.total || 0}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #fed7aa;">${s.rata_rata || 0}</td>
+          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #bbf7d0;">${s.rank || '-'}</td>
+        </tr>
+      `;
+    });
+
+    const html = `
+      <div style="font-size: 10px;">
+        <!-- Header Banner -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 13px; font-weight: bold; text-transform: uppercase;">LEGER SEMESTER ${semesterNama}</div>
+            <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; color: #1e293b;">${schoolMeta.schoolName}</div>
+            <div style="font-size: 11px; font-weight: bold;">TAHUN PELAJARAN ${tpNama}</div>
+          </div>
+          <div style="background-color: #f97316; color: #fff; font-weight: bold; padding: 6px 16px; border-radius: 4px; font-size: 13px; letter-spacing: 1px;">
+            ${kelasNama}
+          </div>
+        </div>
+
+        <!-- Matriks Leger Table -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+          <thead>
+            <tr style="background-color: #e2e8f0; text-align: center;">
+              <th rowspan="2" style="border: 1px solid #111; width: 22px; font-size: 8.5px;">NO</th>
+              <th rowspan="2" style="border: 1px solid #111; min-width: 130px; font-size: 8.5px;">NAMA</th>
+              <th rowspan="2" style="border: 1px solid #111; width: 45px; font-size: 8.5px;">KELAS</th>
+              <th rowspan="2" style="border: 1px solid #111; width: 45px; font-size: 8.5px;">SEMESTER</th>
+              <th colspan="${mapelColumns.length}" style="border: 1px solid #111; font-size: 8.5px; background: #bae6fd;">MATA PELAJARAN</th>
+              <th colspan="2" style="border: 1px solid #111; font-size: 8.5px; background: #e0e7ff;">EKSTRAKURIKULER</th>
+              <th colspan="3" style="border: 1px solid #111; font-size: 8.5px; background: #fce7f3;">PRESENSI</th>
+              <th rowspan="2" style="border: 1px solid #111; width: 35px; font-size: 8px; background: #fef08a;">JUMLAH</th>
+              <th rowspan="2" style="border: 1px solid #111; width: 35px; font-size: 8px; background: #fed7aa;">RATA-RATA</th>
+              <th rowspan="2" style="border: 1px solid #111; width: 30px; font-size: 8px; background: #bbf7d0;">RANKING</th>
+            </tr>
+            <tr>
+              ${mapelHeaderTh}
+              <th style="border: 1px solid #111; width: 50px; font-size: 8px;">EKSKUL-1</th>
+              <th style="border: 1px solid #111; width: 50px; font-size: 8px;">EKSKUL-2</th>
+              <th style="border: 1px solid #111; width: 22px; font-size: 8px;">SAKIT</th>
+              <th style="border: 1px solid #111; width: 22px; font-size: 8px;">IZIN</th>
+              <th style="border: 1px solid #111; width: 26px; font-size: 8px;">TANPA KET</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dataRowsHtml}
+          </tbody>
+        </table>
+
+        <!-- Signatures (Landscape) -->
+        ${renderSignaturesBlock({
+          walas: schoolMeta.walas,
+          kepsek: schoolMeta.kepsek,
+          titimangsaDate: schoolMeta.dateStr,
+          orientation: 'landscape',
+        })}
+      </div>
+    `;
+
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Buku Leger - ${kelasNama}`, orientation: 'landscape', margin: '8mm 10mm' }), 'landscape');
+  }
+
 
   // 2. GENERATE SURAT KETERANGAN LULUS (SKL) PDF
   static async generateSklPdf(tenantId: string, siswaId: string) {

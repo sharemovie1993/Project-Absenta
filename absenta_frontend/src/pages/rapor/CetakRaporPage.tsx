@@ -35,6 +35,7 @@ import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendan
 import { toast } from 'sonner';
 import { generateRaporPdf, generateP5RaporPdf, generateRaporKelasBatchPdf } from '../../utils/print/modules/pdfRapor';
 import { generateRaporPklSinglePdf, generateRaporPklBatchPdf, RaporPklItemData } from '../../utils/print/modules/pdfRaporPkl';
+import { useRaporPdf } from '../../hooks/useRaporPdf';
 
 // Import Hardened Types, Subcomponents & Schemas
 import {
@@ -178,6 +179,12 @@ export default React.memo(function CetakRaporPage() {
     if (!academicActiveSemester) return null;
     return { id: academicActiveSemester.id, nama: academicActiveSemester.nama_semester, is_active: true };
   }, [academicActiveSemester]);
+
+  // Hook cetak PDF terpadu
+  const { printLeger } = useRaporPdf({
+    tahunPelajaranId: activeYear?.id,
+    semesterId: activeSemester?.id,
+  });
 
   // ── Hook Struktur Kurikulum Rombel ──
   const currentKelasObj = useMemo<KelasOptionItem | undefined>(() => {
@@ -777,6 +784,23 @@ export default React.memo(function CetakRaporPage() {
                   </Button>
                 )}
 
+                {/* CETAK BUKU LEGER KELAS (LANDSCAPE) */}
+                <Button
+                  onClick={() => {
+                    if (!selectedKelas) {
+                      toast.warning('Pilih rombel / kelas terlebih dahulu');
+                      return;
+                    }
+                    printLeger(selectedKelas);
+                  }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shadow-md shadow-amber-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
+                  title="Cetak Buku Leger Nilai & Peringkat Kelas format Landscape Resmi"
+                >
+                  <BookOpen className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="hidden sm:inline">CETAK BUKU LEGER (LANDSCAPE)</span>
+                  <span className="sm:hidden">LEGER PDF</span>
+                </Button>
+
                 <Button
                   onClick={handleExportLeger}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md shadow-emerald-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
@@ -832,11 +856,12 @@ export default React.memo(function CetakRaporPage() {
 
         {/* Student List & Leger Table */}
         <LegerStudentTable
-
           students={filteredStudents}
           isLoading={isLoadingLeger}
           isJenjangSmk={isJenjangSmk}
           pdfLoading={pdfLoading}
+          tahunPelajaranId={activeYear?.id}
+          semesterId={activeSemester?.id}
           onOpenSummaryModal={handleOpenSummaryModal}
           onPrintRapor={handlePrintRapor}
           onPrintP5={handlePrintP5}
@@ -845,6 +870,7 @@ export default React.memo(function CetakRaporPage() {
           getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
           getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
         />
+
       </div>
 
       {/* Summary Modal */}
