@@ -65,10 +65,15 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
     }>;
   }, [projekListRes]);
 
-  // Auto-select first project if none selected
+  // Auto-sync project selection when academic period or project list changes
   React.useEffect(() => {
-    if (!selectedProjekId && projekList.length > 0) {
-      setSelectedProjekId(projekList[0].id);
+    if (projekList.length > 0) {
+      const exists = projekList.some((p) => p.id === selectedProjekId);
+      if (!exists) {
+        setSelectedProjekId(projekList[0].id);
+      }
+    } else {
+      setSelectedProjekId('');
     }
   }, [projekList, selectedProjekId]);
 

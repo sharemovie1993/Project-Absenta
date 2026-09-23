@@ -228,8 +228,13 @@ export const P5Page: React.FC = React.memo(() => {
   // Auto-Select Project and Class in "my_tasks"
   useEffect(() => {
     if (activeRoleTab === 'my_tasks') {
-      if (myP5Assignments.length > 0 && !selectedProjek) {
-        setSelectedProjek(myP5Assignments[0].projek.id);
+      if (myP5Assignments.length > 0) {
+        const exists = myP5Assignments.some((a) => a.projek.id === selectedProjek);
+        if (!exists) {
+          setSelectedProjek(myP5Assignments[0].projek.id);
+        }
+      } else {
+        setSelectedProjek('');
       }
     } else if (activeRoleTab === 'wali_kelas') {
       if (waliKelasId && selectedKelas !== waliKelasId) {
