@@ -1,5 +1,5 @@
-import React, { memo } from 'react';
-import { Search } from 'lucide-react';
+import React, { memo, useState, useMemo } from 'react';
+import { Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { TeacherProgressInfo, TeacherTaskItem } from '../../../types/inputNilai.types';
 import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 
@@ -28,14 +28,76 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
 }) => {
   if (!progressInfo?.tasks || progressInfo.tasks.length === 0) return null;
 
+  const activeTask = useMemo(() => {
+    return progressInfo?.tasks?.find(
+      (t) => t.kelas_id === selectedKelas && t.mapel_id === selectedMapel
+    );
+  }, [progressInfo?.tasks, selectedKelas, selectedMapel]);
+
+  // Collapsed by default jika sudah ada rombel aktif yang terpilih
+  const [isExpanded, setIsExpanded] = useState<boolean>(() => !selectedKelas || !selectedMapel);
+
+  // Jika sedang collapsed dan ada activeTask, render bilah ramping 1-baris (~40px)
+  if (!isExpanded && activeTask) {
+    return (
+      <div className="bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all">
+        <div className="flex items-center gap-2.5 flex-wrap min-w-0">
+          <span className="px-2 py-1 rounded-lg bg-indigo-600 text-white font-black text-xs shrink-0 shadow-xs">
+            {activeTask.nama_kelas}
+          </span>
+          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+            {activeTask.nama_mapel}
+          </span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            • {activeTask.total_siswa} Siswa
+          </span>
+          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+            activeTask.status === 'completed'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+              : activeTask.status === 'partial'
+              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+              : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400'
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              activeTask.status === 'completed' ? 'bg-emerald-500' :
+              activeTask.status === 'partial' ? 'bg-amber-500' : 'bg-rose-500'
+            }`} />
+            {activeTask.status === 'completed' ? 'Nilai Tuntas' : activeTask.status === 'partial' ? 'Sebagian Terisi' : 'Belum Diisi'}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/40 flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer self-start sm:self-auto"
+        >
+          <span>Ganti Rombel ({progressInfo.tasks.length})</span>
+          <ChevronDown size={13} />
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-      {/* Header: judul + search */}
+    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-all">
+      {/* Header: judul + search + tombol tutup */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-          Pilih Rombel Mengajar
-          <span className="ml-1.5 text-slate-400 font-normal">({filteredTasks.length} dari {progressInfo.tasks.length})</span>
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            Pilih Rombel Mengajar
+            <span className="ml-1.5 text-slate-400 font-normal">({filteredTasks.length} dari {progressInfo.tasks.length})</span>
+          </p>
+          {activeTask && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1 cursor-pointer ml-1"
+            >
+              <span>(Tutup)</span>
+              <ChevronUp size={12} />
+            </button>
+          )}
+        </div>
 
         {/* Search */}
         <div className="relative w-full sm:w-64">
@@ -76,7 +138,10 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => onSelectTask(t.kelas_id, t.mapel_id, t.nama_kelas, t.nama_mapel)}
+                  onClick={() => {
+                    onSelectTask(t.kelas_id, t.mapel_id, t.nama_kelas, t.nama_mapel);
+                    setIsExpanded(false);
+                  }}
                   title={`${t.nama_kelas} — ${t.nama_mapel}`}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                     isCurrent
