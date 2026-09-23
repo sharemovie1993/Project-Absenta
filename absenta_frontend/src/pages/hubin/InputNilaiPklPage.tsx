@@ -268,6 +268,13 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     }
   }, [effectiveSettings]);
 
+  // Fallback ke tab 'dudi' jika tab sidang aktif saat skema bukan gabungan
+  useEffect(() => {
+    if (!isCompositeMode && activeTab === 'sidang') {
+      setActiveTab('dudi');
+    }
+  }, [isCompositeMode, activeTab]);
+
   const updateSettingsMutation = useMutation({
     mutationFn: (data: any) => hubinApi.updateSettings(data),
     onSuccess: () => {
@@ -701,9 +708,9 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
 
   const tabs = useMemo(() => [
     { id: 'dudi', label: `🏢 Nilai Industri (${displayedScores.length})` },
-    { id: 'sidang', label: `🎓 Nilai Sidang & Laporan (${displayedScores.length})` },
+    ...(isCompositeMode ? [{ id: 'sidang', label: `🎓 Nilai Sidang & Laporan (${displayedScores.length})` }] : []),
     { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
-  ], [displayedScores.length]);
+  ], [displayedScores.length, isCompositeMode]);
 
   return (
     <PremiumFeatureGate
