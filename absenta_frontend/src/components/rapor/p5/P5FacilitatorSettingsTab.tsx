@@ -31,6 +31,7 @@ import { cn } from '../../../lib/utils';
 import {
   P5_TEMA_OPTIONS,
   P5_FASE_OPTIONS,
+  P5_AVAILABLE_DIMENSI,
   formatProjekDeskripsi,
   parseProjekMetadata,
 } from '../../../pages/rapor/components/p5/p5Constants';
@@ -52,11 +53,18 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
   // ── Project Modal State (Create / Edit Tema Projek) ──
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-  const [projectForm, setProjectForm] = useState({
+  const [projectForm, setProjectForm] = useState<{
+    judul: string;
+    tema: string;
+    fase: string;
+    deskripsi: string;
+    dimensiList: string[];
+  }>({
     judul: '',
     tema: 'Kewirausahaan',
     fase: 'Fase F',
     deskripsi: '',
+    dimensiList: ['Mandiri', 'Gotong Royong', 'Kreatif'],
   });
 
   // ── Facilitator Modal State ──
@@ -223,6 +231,7 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
       tema: 'Kewirausahaan',
       fase: 'Fase F',
       deskripsi: '',
+      dimensiList: ['Mandiri', 'Gotong Royong', 'Kreatif'],
     });
   };
 
@@ -239,6 +248,7 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
       tema: meta.tema || 'Kewirausahaan',
       fase: meta.fase || 'Fase F',
       deskripsi: meta.cleanDesc || '',
+      dimensiList: meta.dimensiList && meta.dimensiList.length > 0 ? meta.dimensiList : ['Mandiri', 'Gotong Royong', 'Kreatif'],
     });
     setIsProjectModalOpen(true);
   };
@@ -249,7 +259,16 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
       toast.error('Judul projek wajib diisi');
       return;
     }
-    const fullDesc = formatProjekDeskripsi(projectForm.tema, projectForm.fase, projectForm.deskripsi);
+    if (projectForm.dimensiList.length === 0) {
+      toast.error('Pilih minimal satu dimensi sasaran projek P5');
+      return;
+    }
+    const fullDesc = formatProjekDeskripsi(
+      projectForm.tema,
+      projectForm.fase,
+      projectForm.deskripsi,
+      projectForm.dimensiList
+    );
     const payload = {
       judul: projectForm.judul.trim(),
       deskripsi: fullDesc,
@@ -459,6 +478,22 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                     {activeProjekMeta.cleanDesc || 'Tidak ada catatan deskripsi projek.'}
                   </p>
+
+                  {activeProjekMeta.dimensiList && activeProjekMeta.dimensiList.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-2 mt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+                        Dimensi Fokus:
+                      </span>
+                      {activeProjekMeta.dimensiList.map((d) => (
+                        <span
+                          key={d}
+                          className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800"
+                        >
+                          🎯 {d}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -661,12 +696,61 @@ export const P5FacilitatorSettingsTab: React.FC<P5FacilitatorSettingsTabProps> =
             </label>
             <textarea
               id="p5-proj-desc"
-              rows={3}
+              rows={2}
               value={projectForm.deskripsi}
               onChange={(e) => setProjectForm((prev) => ({ ...prev, deskripsi: e.target.value }))}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-medium p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs"
               placeholder="Tuliskan tujuan umum dan keluaran hasil projek..."
             />
+          </div>
+
+          {/* ── Target Dimensi Profil Pelajar Pancasila Checklist ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="font-bold text-slate-700 dark:text-slate-300 text-xs">
+                Target Dimensi Profil Pancasila * ({projectForm.dimensiList.length} Dipilih)
+              </label>
+              <span className="text-[10px] text-slate-400">
+                Pilih 2 - 4 dimensi fokus asesmen
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {P5_AVAILABLE_DIMENSI.map((dim) => {
+                const isSelected = projectForm.dimensiList.includes(dim.id);
+                return (
+                  <button
+                    key={dim.id}
+                    type="button"
+                    onClick={() => {
+                      setProjectForm((prev) => {
+                        const exists = prev.dimensiList.includes(dim.id);
+                        const next = exists
+                          ? prev.dimensiList.filter((d) => d !== dim.id)
+                          : [...prev.dimensiList, dim.id];
+                        return { ...prev, dimensiList: next };
+                      });
+                    }}
+                    className={`p-2.5 rounded-xl border text-left flex items-start gap-2.5 transition-all ${
+                      isSelected
+                        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-700 text-indigo-950 dark:text-indigo-200 shadow-xs'
+                        : 'bg-slate-50/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                      isSelected
+                        ? 'bg-indigo-600 border-indigo-600 text-white'
+                        : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800'
+                    }`}>
+                      {isSelected && <Check size={11} strokeWidth={3} />}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs block">{dim.label}</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-1">{dim.desc}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex gap-2 justify-end pt-3 border-t border-slate-100 dark:border-slate-800">

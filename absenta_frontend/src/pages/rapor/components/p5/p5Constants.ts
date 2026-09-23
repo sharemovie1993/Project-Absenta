@@ -137,24 +137,50 @@ export const P5_DEFAULT_CATATAN: Record<string, string> = {
   'BB': 'Siswa masih membutuhkan bimbingan dalam mengembangkan kemampuannya',
 };
 
+export const P5_AVAILABLE_DIMENSI = [
+  { id: 'Mandiri', label: 'Mandiri', desc: 'Regulasi diri, inisiatif, dan percaya diri' },
+  { id: 'Gotong Royong', label: 'Gotong Royong', desc: 'Kolaborasi, kepedulian sosial, dan berbagi' },
+  { id: 'Kreatif', label: 'Kreatif', desc: 'Gagasan orisinal, karya nyata, dan keluwesan berpikir' },
+  { id: 'Bernalar Kritis', label: 'Bernalar Kritis', desc: 'Memperoleh info, analisis penalaran, dan refleksi' },
+  { id: 'Berkebinekaan Global', label: 'Berkebinekaan Global', desc: 'Mengenal budaya, komunikasi interkultural, refleksi' },
+  { id: 'Beriman & Bertakwa', label: 'Beriman & Bertakwa', desc: 'Akhlak beragama, pribadi, sesama, dan alam' },
+];
+
 /**
- * Format deskripsi projek dengan tag metadata tema & fase
+ * Format deskripsi projek dengan tag metadata tema, fase, dan dimensi
  */
-export function formatProjekDeskripsi(tema: string, fase: string, rawDesc: string): string {
+export function formatProjekDeskripsi(
+  tema: string,
+  fase: string,
+  rawDesc: string,
+  dimensiList: string[] = []
+): string {
   const cleanDesc = (rawDesc || '').trim();
-  return `[Tema: ${tema}] [Fase: ${fase}]\n${cleanDesc}`;
+  const dimensiTag = dimensiList.length > 0 ? ` [Dimensi: ${dimensiList.join('|')}]` : '';
+  return `[Tema: ${tema}] [Fase: ${fase}]${dimensiTag}\n${cleanDesc}`;
 }
 
 /**
- * Ekstraksi metadata tema, fase, dan deskripsi murni dari teks deskripsi tersimpan
+ * Ekstraksi metadata tema, fase, dimensi, dan deskripsi murni dari teks deskripsi tersimpan
  */
-export function parseProjekMetadata(deskripsi?: string | null): { tema: string; fase: string; cleanDesc: string } {
+export function parseProjekMetadata(deskripsi?: string | null): {
+  tema: string;
+  fase: string;
+  dimensiList: string[];
+  cleanDesc: string;
+} {
   if (!deskripsi) {
-    return { tema: 'Kewirausahaan', fase: 'Fase F', cleanDesc: '' };
+    return {
+      tema: 'Kewirausahaan',
+      fase: 'Fase F',
+      dimensiList: ['Mandiri', 'Gotong Royong', 'Kreatif'],
+      cleanDesc: '',
+    };
   }
 
   let tema = 'Kewirausahaan';
   let fase = 'Fase F';
+  let dimensiList: string[] = [];
   let cleanDesc = deskripsi;
 
   const temaMatch = deskripsi.match(/\[Tema:\s*([^\]]+)\]/i);
@@ -169,9 +195,22 @@ export function parseProjekMetadata(deskripsi?: string | null): { tema: string; 
     cleanDesc = cleanDesc.replace(faseMatch[0], '');
   }
 
+  const dimensiMatch = deskripsi.match(/\[Dimensi:\s*([^\]]+)\]/i);
+  if (dimensiMatch && dimensiMatch[1]) {
+    dimensiList = dimensiMatch[1]
+      .split(/[|,]/)
+      .map((d) => d.trim())
+      .filter(Boolean);
+    cleanDesc = cleanDesc.replace(dimensiMatch[0], '');
+  } else {
+    // Default fallback if project was created without specific dimensions tag
+    dimensiList = ['Mandiri', 'Gotong Royong', 'Kreatif'];
+  }
+
   return {
     tema,
     fase,
-    cleanDesc: cleanDesc.trim()
+    dimensiList,
+    cleanDesc: cleanDesc.trim(),
   };
 }
