@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   SlidersHorizontal,
-  CheckCircle2
+  CheckCircle2,
+  Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/layoutUtils';
@@ -276,6 +277,11 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       return rawDate;
     }
   }, [previewSemester, tanggalRaporGanjil, tanggalRaporGenap]);
+
+  const selectedTpLabel = useMemo(() => {
+    const found = academicCtx.tpOptions?.find((o) => o.value === academicCtx.selectedTahunPelajaran);
+    return found?.label || 'Tahun Pelajaran Aktif';
+  }, [academicCtx.tpOptions, academicCtx.selectedTahunPelajaran]);
 
   return (
     <InfraErrorBoundary>
@@ -632,13 +638,25 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                   {activeTab === 'format' && (
                     <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
                       <div>
-                        <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                          <Printer size={16} className="text-indigo-600" />
-                          Format & Standar Output Cetak
-                        </h3>
+                        <div className="flex items-center justify-between">
+                          <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                            <Printer size={16} className="text-indigo-600" />
+                            Format & Standar Output Cetak
+                          </h3>
+                          <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+                            TP: {selectedTpLabel}
+                          </Badge>
+                        </div>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Pengaturan tata letak dan visualisasi lembar PDF rapor resmi.
+                          Pengaturan tata letak dan visualisasi lembar PDF rapor resmi yang melekat pada tahun pelajaran yang dipilih.
                         </p>
+                      </div>
+
+                      <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-2.5">
+                        <Info size={16} className="text-indigo-600 shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-indigo-900 dark:text-indigo-200 leading-relaxed">
+                          Pengaturan format cetak di bawah ini melekat pada <span className="font-bold underline">{selectedTpLabel}</span>. Rapor yang dicetak dalam konteks tahun ajaran ini akan otomatis menerapkan pengaturan di bawah ini.
+                        </div>
                       </div>
 
                       <div className="space-y-4 text-xs">

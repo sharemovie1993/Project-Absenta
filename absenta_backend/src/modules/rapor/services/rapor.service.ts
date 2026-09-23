@@ -605,8 +605,24 @@ export class RaporService {
     tenantId: string,
     params?: { tahun_pelajaran_id?: string; semester_id?: string }
   ) {
-    const tpId = params?.tahun_pelajaran_id;
-    const semId = params?.semester_id;
+    let tpId = params?.tahun_pelajaran_id;
+    let semId = params?.semester_id;
+
+    let tp = null;
+    if (tpId) {
+      tp = await prisma.tahunPelajaran.findFirst({
+        where: { id: tpId, tenant_id: tenantId },
+      });
+    } else {
+      tp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true },
+      });
+      tpId = tp?.id;
+    }
+
+    const tpYearStr = tp?.tahun || '2025/2026';
+    const matchYear = tpYearStr.match(/^(\d{4})/);
+    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
 
     // Detect Ganjil & Genap semesters for this TP
     let ganjilSem: any = null;
@@ -647,15 +663,22 @@ export class RaporService {
       ptsGenapCfg,
       plenoGenapCfg,
       kelulusanCfg,
-      // Pejabat & Format
+      // Pejabat
       kepsekStatusCfg,
       kepsekNamaCfg,
       kepsekNipCfg,
-      kertasCfg,
-      kopCfg,
-      qrCfg,
-      kokurikulerCfg,
-      sumatifArchiveCfg,
+      // Format (TP-scoped)
+      kertasTpCfg,
+      kopTpCfg,
+      qrTpCfg,
+      kokurikulerTpCfg,
+      sumatifArchiveTpCfg,
+      // Format (Global Fallback)
+      kertasGlobalCfg,
+      kopGlobalCfg,
+      qrGlobalCfg,
+      kokurikulerGlobalCfg,
+      sumatifArchiveGlobalCfg,
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
@@ -677,12 +700,42 @@ export class RaporService {
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_STATUS_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NAMA_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NIP_${tpId}` } }) : null,
+      // Format (TP-scoped)
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_UKURAN_KERTAS_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_KOP_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_QR_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SHOW_KOKURIKULER_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}` } }) : null,
+      // Format (Global Fallback)
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_ENABLE_SUMATIF_ARCHIVE' } }),
     ]);
+
+    const resolvedUkuranKertas = (kertasTpCfg?.value || kertasGlobalCfg?.value || 'A4') as 'A4' | 'F4';
+    const resolvedTampilkanKop = kopTpCfg ? kopTpCfg.value === 'true' : (kopGlobalCfg ? kopGlobalCfg.value === 'true' : true);
+    const resolvedTampilkanQr = qrTpCfg ? qrTpCfg.value === 'true' : (qrGlobalCfg ? qrGlobalCfg.value === 'true' : true);
+
+    let resolvedTampilkanKokurikuler: boolean;
+    if (kokurikulerTpCfg) {
+      resolvedTampilkanKokurikuler = kokurikulerTpCfg.value === 'true';
+    } else if (kokurikulerGlobalCfg) {
+      resolvedTampilkanKokurikuler = kokurikulerGlobalCfg.value === 'true';
+    } else {
+      // Smart Academic Default: <= 2024/2025 is false (tanpa kokurikuler), >= 2025/2026 is true
+      resolvedTampilkanKokurikuler = startYear >= 2025;
+    }
+
+    let resolvedAktifkanSumatifArsip: boolean;
+    if (sumatifArchiveTpCfg) {
+      resolvedAktifkanSumatifArsip = sumatifArchiveTpCfg.value === 'true';
+    } else if (sumatifArchiveGlobalCfg) {
+      resolvedAktifkanSumatifArsip = sumatifArchiveGlobalCfg.value === 'true';
+    } else {
+      resolvedAktifkanSumatifArsip = true;
+    }
 
     return {
       tahun_pelajaran_id: tpId || null,
@@ -708,11 +761,11 @@ export class RaporService {
       kepsek_status: (kepsekStatusCfg?.value || 'DEFINITIF') as 'DEFINITIF' | 'PLT',
       kepsek_nama: kepsekNamaCfg?.value || sekolah?.kepala_sekolah || '',
       kepsek_nip: kepsekNipCfg?.value || sekolah?.nip_kepala || '',
-      ukuran_kertas: (kertasCfg?.value || 'A4') as 'A4' | 'F4',
-      tampilkan_kop: kopCfg ? kopCfg.value === 'true' : true,
-      tampilkan_qr: qrCfg ? qrCfg.value === 'true' : true,
-      tampilkan_kokurikuler: kokurikulerCfg ? kokurikulerCfg.value === 'true' : true,
-      aktifkan_sumatif_arsip: sumatifArchiveCfg ? sumatifArchiveCfg.value === 'true' : true,
+      ukuran_kertas: resolvedUkuranKertas,
+      tampilkan_kop: resolvedTampilkanKop,
+      tampilkan_qr: resolvedTampilkanQr,
+      tampilkan_kokurikuler: resolvedTampilkanKokurikuler,
+      aktifkan_sumatif_arsip: resolvedAktifkanSumatifArsip,
     };
   }
 
@@ -836,8 +889,26 @@ export class RaporService {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_${semId}`, payload.tanggal_pleno);
         }
       }
+
+      // Format configs scoped to Academic Year (TP)
+      if (payload.ukuran_kertas !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_UKURAN_KERTAS_${tpId}`, payload.ukuran_kertas);
+      }
+      if (payload.tampilkan_kop !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TAMPILKAN_KOP_${tpId}`, String(payload.tampilkan_kop));
+      }
+      if (payload.tampilkan_qr !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TAMPILKAN_QR_${tpId}`, String(payload.tampilkan_qr));
+      }
+      if (payload.tampilkan_kokurikuler !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_SHOW_KOKURIKULER_${tpId}`, String(payload.tampilkan_kokurikuler));
+      }
+      if (payload.aktifkan_sumatif_arsip !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}`, String(payload.aktifkan_sumatif_arsip));
+      }
     }
 
+    // Always update global config as fallback / new default
     if (payload.ukuran_kertas !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_UKURAN_KERTAS', payload.ukuran_kertas);
     }

@@ -11,7 +11,11 @@ import {
 
 export class PdfRaporService {
   // Helper render HTML to PDF Buffer
-  private static async renderHtmlToPdf(html: string, orientation: 'portrait' | 'landscape') {
+  private static async renderHtmlToPdf(
+    html: string,
+    orientation: 'portrait' | 'landscape',
+    paperSize: 'A4' | 'F4' = 'A4'
+  ) {
     let browser: any;
     try {
       browser = await puppeteer.launch({
@@ -20,12 +24,18 @@ export class PdfRaporService {
       });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
+      const pdfOptions: any = {
         landscape: orientation === 'landscape',
         printBackground: true,
         preferCSSPageSize: true
-      });
+      };
+      if (paperSize === 'F4') {
+        pdfOptions.width = orientation === 'landscape' ? '330mm' : '215mm';
+        pdfOptions.height = orientation === 'landscape' ? '215mm' : '330mm';
+      } else {
+        pdfOptions.format = 'A4';
+      }
+      const pdfBuffer = await page.pdf(pdfOptions);
       return pdfBuffer;
     } finally {
       if (browser) {
@@ -165,7 +175,8 @@ export class PdfRaporService {
       </div>
     `;
 
-    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Cover Rapor - ${student.nama_siswa}`, margin: '0' }), 'portrait');
+    const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Cover Rapor - ${student.nama_siswa}`, margin: '0' }), 'portrait', paperSize);
   }
 
   // 2. GENERATE KETERANGAN TENTANG DIRI PESERTA DIDIK / BIODATA 17 BUTIR PDF (A4 PORTRAIT)
@@ -381,7 +392,8 @@ export class PdfRaporService {
       </div>
     `;
 
-    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Biodata Siswa - ${student.nama_siswa}` }), 'portrait');
+    const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Biodata Siswa - ${student.nama_siswa}` }), 'portrait', paperSize);
   }
 
   // 3. GENERATE LAPORAN HASIL BELAJAR (CK PAGE 1 & CK PAGE 2) PDF (A4 PORTRAIT)
@@ -411,16 +423,14 @@ export class PdfRaporService {
     const semesterName = semester?.nama_semester || 'Ganjil';
     const isGenap = Boolean(semesterName.toLowerCase().includes('genap') || semesterName.includes('2'));
 
-    // Check Kokurikuler Smart Condition:
-    // If config RAPOR_SHOW_KOKURIKULER is set, respect it.
-    // Otherwise, <= 2024/2025 is false (omitted), >= 2025/2026 is true.
+    // Resolve format and Kokurikuler settings (Scoped to TP -> Global Fallback -> Smart Year Rule)
     const tpYearStr = tp?.tahun || '2025/2026';
     const matchYear = tpYearStr.match(/^(\d{4})/);
     const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
-    const kokurikulerCfg = await prisma.config.findFirst({
-      where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' },
-    });
-    const showKokurikuler = kokurikulerCfg ? kokurikulerCfg.value === 'true' : startYear >= 2025;
+    const showKokurikuler = schoolMeta.raporSettings?.tampilkan_kokurikuler !== undefined
+      ? schoolMeta.raporSettings.tampilkan_kokurikuler
+      : startYear >= 2025;
+    const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
 
     const studentCtx = {
       nama_siswa: student.nama_siswa,
@@ -663,7 +673,7 @@ export class PdfRaporService {
       margin: '10mm 14mm',
     });
 
-    return this.renderHtmlToPdf(fullHtml, 'portrait');
+    return this.renderHtmlToPdf(fullHtml, 'portrait', paperSize);
   }
 
   // 4. GENERATE LAPORAN PENILAIAN SUMATIF SISWA (ARSIP TERDAHULU) PDF (A4 PORTRAIT)
@@ -845,7 +855,8 @@ export class PdfRaporService {
       </div>
     `;
 
-    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Rapor Sumatif - ${student.nama_siswa}`, margin: '10mm 15mm' }), 'portrait');
+    const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Rapor Sumatif - ${student.nama_siswa}`, margin: '10mm 15mm' }), 'portrait', paperSize);
   }
 
   // 5. GENERATE BUKU LEGER KELAS (LANDSCAPE A4)
@@ -971,7 +982,8 @@ export class PdfRaporService {
       </div>
     `;
 
-    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Buku Leger - ${kelasNama}`, orientation: 'landscape', margin: '8mm 10mm' }), 'landscape');
+    const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Buku Leger - ${kelasNama}`, orientation: 'landscape', margin: '8mm 10mm' }), 'landscape', paperSize);
   }
 
 
