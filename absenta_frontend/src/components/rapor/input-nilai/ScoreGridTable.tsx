@@ -488,7 +488,8 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
             </tbody>
           </table>
         </div>
-      </Card>
+      )}
+    </Card>
 
       {/* Sticky Bottom Action Bar (Zero-Scroll Save Bar) */}
       {!isReadOnly && scores.length > 0 && (
