@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -43,8 +44,29 @@ const raporSettingsSchema = z.object({
 export const RaporSettingsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
-  const [activeTab, setActiveTab] = useState<string>('titimangsa');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<string>(
+    tabFromUrl === 'tim_p5' || tabFromUrl === 'p5' ? 'tim_p5' : 'titimangsa'
+  );
   const [showAdvancedDates, setShowAdvancedDates] = useState(false);
+
+  useEffect(() => {
+    if (tabFromUrl && (tabFromUrl === 'tim_p5' || tabFromUrl === 'titimangsa' || tabFromUrl === 'penandatangan' || tabFromUrl === 'format')) {
+      setActiveTab(tabFromUrl);
+    } else if (tabFromUrl === 'p5') {
+      setActiveTab('tim_p5');
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTab(tabId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tabId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   // Academic Context
   const academicCtx = useAcademicContext();
@@ -227,7 +249,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
 
   const tabs = useMemo(() => [
     { id: 'titimangsa', label: isMobile ? '📅 Titimangsa' : '📅 Titimangsa Ganjil & Genap' },
-    { id: 'tim_p5', label: isMobile ? '✨ Tim P5' : '✨ Tim Fasilitator P5' },
+    { id: 'tim_p5', label: isMobile ? '✨ Tema & Tim P5' : '✨ Tema Projek & Fasilitator P5' },
     { id: 'penandatangan', label: isMobile ? '✍️ Pejabat' : '✍️ Pejabat Penandatangan' },
     { id: 'format', label: isMobile ? '⚙️ Format Cetak' : '⚙️ Format & Output Cetak' },
   ], [isMobile]);
@@ -284,7 +306,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
             {/* Navigation TabSwitcher */}
             <TabSwitcher
               activeTab={activeTab}
-              onChange={setActiveTab}
+              onChange={handleTabChange}
               tabs={tabs}
             />
 

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
@@ -16,7 +17,9 @@ import {
   Lock,
   Copy,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Settings2,
+  ExternalLink
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -44,13 +47,6 @@ import {
 } from './components/p5/p5Constants';
 
 // Zod Schema Validation Guard (Pilar 25)
-const createProjekSchema = z.object({
-  judul: z.string().min(3, 'Judul projek minimal 3 karakter'),
-  tema: z.string().min(1, 'Tema projek wajib dipilih'),
-  fase: z.string().min(1, 'Fase capaian wajib dipilih'),
-  deskripsi: z.string().optional(),
-});
-
 const bulkScoresSchema = z.object({
   projek_id: z.string().min(1, 'Projek wajib dipilih'),
   dimensi: z.string().min(1, 'Dimensi wajib dipilih'),
@@ -67,6 +63,7 @@ interface ScoreItem {
 }
 
 export const P5Page: React.FC = React.memo(() => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const isMobile = useIsMobile();
@@ -438,55 +435,6 @@ export const P5Page: React.FC = React.memo(() => {
     window.open(url, '_blank');
   }, [academicCtx.selectedTahunPelajaran, academicCtx.selectedSemester]);
 
-  // Master Projek Management (for tab === 'master')
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newProjek, setNewProjek] = useState({
-    judul: '',
-    tema: 'Kewirausahaan',
-    fase: 'Fase F',
-    deskripsi: ''
-  });
-
-  const createProjekMutation = useMutation({
-    mutationFn: raporApi.createP5Projek,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['p5-projek-all'] });
-      toast.success('Projek P5 berhasil dibuat');
-      setIsCreateModalOpen(false);
-      setNewProjek({ judul: '', tema: 'Kewirausahaan', fase: 'Fase F', deskripsi: '' });
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Gagal membuat projek');
-    },
-  });
-
-  const deleteProjekMutation = useMutation({
-    mutationFn: raporApi.deleteP5Projek,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['p5-projek-all'] });
-      toast.success('Projek P5 berhasil dihapus');
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Gagal menghapus projek');
-    },
-  });
-
-  const handleCreateSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = createProjekSchema.safeParse(newProjek);
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Input projek tidak valid');
-      return;
-    }
-    const fullDesc = formatProjekDeskripsi(newProjek.tema, newProjek.fase, newProjek.deskripsi);
-    createProjekMutation.mutate({
-      judul: newProjek.judul,
-      deskripsi: fullDesc,
-      tahun_pelajaran_id: academicCtx.selectedTahunPelajaran,
-      semester_id: academicCtx.selectedSemester,
-    });
-  };
-
   const breadcrumbs = useMemo(() => [
     { label: 'Rapor', path: '/rapor/input' },
     { label: 'Projek P5', path: '/rapor/p5' },
@@ -526,12 +474,26 @@ export const P5Page: React.FC = React.memo(() => {
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
           <div className="space-y-6 pb-12 w-full min-w-0 max-w-full">
-            {/* ── 1. Role Navigation Tabs ── */}
-            <TabSwitcher
-              activeTab={activeRoleTab}
-              onChange={(id) => setActiveRoleTab(id as any)}
-              tabs={roleTabs}
-            />
+            {/* ── 1. Role Navigation Tabs & Settings Shortcut ── */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <TabSwitcher
+                activeTab={activeRoleTab}
+                onChange={(id) => setActiveRoleTab(id as any)}
+                tabs={roleTabs}
+              />
+              {canSupervise && (
+                <Button
+                  type="button"
+                  variant="toolbarOutline"
+                  size="toolbar"
+                  onClick={() => navigate('/rapor/settings?tab=tim_p5')}
+                  className="font-bold rounded-xl shrink-0 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                >
+                  <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+                  Pengaturan Tema & Tim P5
+                </Button>
+              )}
+            </div>
 
             {/* ── 2. Read-Only Notice Banner ── */}
             {isReadOnly && activeRoleTab !== 'master' && (
@@ -544,38 +506,65 @@ export const P5Page: React.FC = React.memo(() => {
             {/* ── 3. Tab Master Projek (Kurikulum / Admin Only) ── */}
             {activeRoleTab === 'master' && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
-                      Daftar Tema Projek P5 Satuan Pendidikan
-                    </h3>
-                    <p className="text-[11px] text-slate-400">
-                      Daftar judul tema projek yang diselenggarakan pada semester aktif.
-                    </p>
+                <div className="p-5 bg-linear-to-r from-indigo-50/80 to-purple-50/80 dark:from-indigo-950/30 dark:to-purple-950/30 border border-indigo-200/80 dark:border-indigo-800/80 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+                  <div className="flex items-start gap-3.5">
+                    <div className="p-2.5 bg-indigo-600 text-white rounded-2xl shadow-sm shrink-0 mt-0.5">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-sm text-indigo-950 dark:text-indigo-100">
+                        Pusat Manajemen Tema Projek & Penugasan Fasilitator
+                      </h4>
+                      <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-1 max-w-2xl leading-relaxed">
+                        Pengelolaan master tema projek P5, target fase, dan pembagian guru fasilitator per rombongan belajar kini disatukan satu pintu di Pengaturan Rapor agar tersinkronisasi sempurna dengan konteks tahun pelajaran aktif.
+                      </p>
+                    </div>
                   </div>
                   {canSupervise && (
                     <Button
                       type="button"
                       variant="toolbarPrimary"
                       size="toolbar"
-                      onClick={() => setIsCreateModalOpen(true)}
-                      className="font-bold rounded-xl"
+                      onClick={() => navigate('/rapor/settings?tab=tim_p5')}
+                      className="shrink-0 font-bold rounded-xl shadow-sm flex items-center gap-1.5"
                     >
-                      <Plus className="w-4 h-4 mr-1.5" />
-                      Tambah Projek P5
+                      Buka Pengaturan Tema & Tim P5
+                      <ExternalLink size={14} />
                     </Button>
                   )}
                 </div>
 
-                {isLoadingAllProjek ? (
-                  <div className="py-20 text-center text-xs text-slate-400 italic">Memuat projek...</div>
-                ) : allProjects.length === 0 ? (
-                  <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent rounded-2xl">
-                    <FileText className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                    <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">Belum Ada Tema Projek</h4>
-                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                      Daftarkan tema projek baru menggunakan tombol Tambah Projek P5.
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                      Daftar Tema Projek P5 Terdaftar ({allProjects.length})
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Tema projek aktif pada tahun ajaran dan semester yang sedang dipilih.
                     </p>
+                  </div>
+                </div>
+
+                {isLoadingAllProjek ? (
+                  <div className="py-20 text-center text-xs text-slate-400 italic">Memuat tema projek...</div>
+                ) : allProjects.length === 0 ? (
+                  <Card className="p-12 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent rounded-2xl space-y-3">
+                    <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+                    <h4 className="font-bold text-slate-700 dark:text-slate-300 text-sm">Belum Ada Tema Projek</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      Belum ada projek P5 yang didaftarkan untuk semester ini. Buat tema baru di Pengaturan Rapor.
+                    </p>
+                    {canSupervise && (
+                      <Button
+                        type="button"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={() => navigate('/rapor/settings?tab=tim_p5')}
+                        className="font-bold rounded-xl mx-auto"
+                      >
+                        Buat Tema Projek di Pengaturan ➔
+                      </Button>
+                    )}
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -597,14 +586,10 @@ export const P5Page: React.FC = React.memo(() => {
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  if (window.confirm(`Hapus projek "${item.judul}"?`)) {
-                                    deleteProjekMutation.mutate(item.id);
-                                  }
-                                }}
-                                className="p-1.5 h-auto text-rose-500 hover:bg-rose-50 rounded-lg"
+                                onClick={() => navigate('/rapor/settings?tab=tim_p5')}
+                                className="text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-bold px-2 py-1 h-auto rounded-lg"
                               >
-                                <Trash2 size={13} />
+                                Kelola Fasilitator ➔
                               </Button>
                             )}
                           </div>
@@ -953,100 +938,6 @@ export const P5Page: React.FC = React.memo(() => {
                     </div>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* ── Modal Create Projek P5 ── */}
-            {isCreateModalOpen && (
-              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-lg p-6 bg-white dark:bg-slate-900 space-y-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl">
-                  <div>
-                    <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                      Tambah Tema Projek P5 Baru
-                    </h3>
-                    <p className="text-xs text-slate-400">
-                      Daftarkan projek pembelajaran bertema Pancasila Kurikulum Merdeka.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
-                    <div className="space-y-1">
-                      <label htmlFor="modal-projek-judul" className="font-bold text-slate-700 dark:text-slate-300">
-                        Judul Projek *
-                      </label>
-                      <Input
-                        id="modal-projek-judul"
-                        placeholder="Contoh: Kewirausahaan Dari Hasil Kebun Sekolah"
-                        value={newProjek.judul}
-                        onChange={(e) => setNewProjek((prev) => ({ ...prev, judul: e.target.value }))}
-                        className="rounded-xl"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label htmlFor="modal-projek-tema" className="font-bold text-slate-700 dark:text-slate-300">
-                          Tema Projek *
-                        </label>
-                        <SearchableSelect
-                          id="modal-projek-tema"
-                          value={newProjek.tema}
-                          onValueChange={(val) => setNewProjek((prev) => ({ ...prev, tema: val }))}
-                          options={P5_TEMA_OPTIONS}
-                          placeholder="Pilih Tema"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label htmlFor="modal-projek-fase" className="font-bold text-slate-700 dark:text-slate-300">
-                          Fase Capaian *
-                        </label>
-                        <SearchableSelect
-                          id="modal-projek-fase"
-                          value={newProjek.fase}
-                          onValueChange={(val) => setNewProjek((prev) => ({ ...prev, fase: val }))}
-                          options={P5_FASE_OPTIONS}
-                          placeholder="Pilih Fase"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label htmlFor="modal-projek-desc" className="font-bold text-slate-700 dark:text-slate-300">
-                        Deskripsi Projek
-                      </label>
-                      <textarea
-                        id="modal-projek-desc"
-                        rows={3}
-                        value={newProjek.deskripsi}
-                        onChange={(e) => setNewProjek((prev) => ({ ...prev, deskripsi: e.target.value }))}
-                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-medium p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none text-xs"
-                        placeholder="Tulis deskripsi tujuan dan output projek..."
-                      />
-                    </div>
-
-                    <div className="flex gap-2 justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
-                      <Button
-                        type="button"
-                        variant="toolbarOutline"
-                        size="toolbar"
-                        onClick={() => setIsCreateModalOpen(false)}
-                      >
-                        Batal
-                      </Button>
-                      <Button
-                        type="submit"
-                        variant="toolbarPrimary"
-                        size="toolbar"
-                        disabled={createProjekMutation.isPending}
-                      >
-                        {createProjekMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : null}
-                        Simpan Projek
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
               </div>
             )}
           </div>
