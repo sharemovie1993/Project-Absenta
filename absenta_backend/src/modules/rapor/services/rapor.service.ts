@@ -608,6 +608,28 @@ export class RaporService {
     const tpId = params?.tahun_pelajaran_id;
     const semId = params?.semester_id;
 
+    // Detect Ganjil & Genap semesters for this TP
+    let ganjilSem: any = null;
+    let genapSem: any = null;
+    if (tpId) {
+      const semesters = await prisma.semester.findMany({
+        where: { tenant_id: tenantId, tahun_pelajaran_id: tpId },
+        orderBy: { created_at: 'asc' },
+      });
+      ganjilSem = semesters.find(s => 
+        (s.nama_semester || '').toLowerCase().includes('ganjil') || 
+        (s.nama_semester || '').includes('1')
+      ) || semesters[0] || null;
+
+      genapSem = semesters.find(s => 
+        (s.nama_semester || '').toLowerCase().includes('genap') || 
+        (s.nama_semester || '').includes('2')
+      ) || (semesters.length > 1 ? semesters[1] : null);
+    }
+
+    const ganjilId = ganjilSem?.id;
+    const genapId = genapSem?.id;
+
     const [
       sekolah,
       tempatTerbitCfg,
@@ -615,6 +637,17 @@ export class RaporService {
       tanggalP5Cfg,
       tanggalPtsCfg,
       tanggalPlenoCfg,
+      // Ganjil
+      raporGanjilCfg,
+      p5GanjilCfg,
+      ptsGanjilCfg,
+      // Genap
+      raporGenapCfg,
+      p5GenapCfg,
+      ptsGenapCfg,
+      plenoGenapCfg,
+      kelulusanCfg,
+      // Pejabat & Format
       kepsekStatusCfg,
       kepsekNamaCfg,
       kepsekNipCfg,
@@ -628,6 +661,17 @@ export class RaporService {
       (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${semId}` } }) : null,
       (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${semId}` } }) : null,
       (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PLENO_${tpId}_${semId}` } }) : null,
+      // Ganjil
+      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}` } }) : null,
+      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${ganjilId}` } }) : null,
+      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}` } }) : null,
+      // Genap
+      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}` } }) : null,
+      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${genapId}` } }) : null,
+      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${genapId}` } }) : null,
+      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PLENO_${tpId}_${genapId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_KELULUSAN_${tpId}` } }) : null,
+      // Pejabat
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_STATUS_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NAMA_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NIP_${tpId}` } }) : null,
@@ -644,6 +688,19 @@ export class RaporService {
       tanggal_rapor_p5: tanggalP5Cfg?.value || '',
       tanggal_rapor_pts: tanggalPtsCfg?.value || '',
       tanggal_pleno: tanggalPlenoCfg?.value || '',
+
+      // Explicit Ganjil & Genap
+      ganjil_semester_id: ganjilId || null,
+      genap_semester_id: genapId || null,
+      tanggal_rapor_ganjil: raporGanjilCfg?.value || '',
+      tanggal_p5_ganjil: p5GanjilCfg?.value || '',
+      tanggal_pts_ganjil: ptsGanjilCfg?.value || '',
+      tanggal_rapor_genap: raporGenapCfg?.value || '',
+      tanggal_p5_genap: p5GenapCfg?.value || '',
+      tanggal_pts_genap: ptsGenapCfg?.value || '',
+      tanggal_pleno_genap: plenoGenapCfg?.value || '',
+      tanggal_kelulusan: kelulusanCfg?.value || '',
+
       kepsek_status: (kepsekStatusCfg?.value || 'DEFINITIF') as 'DEFINITIF' | 'PLT',
       kepsek_nama: kepsekNamaCfg?.value || sekolah?.kepala_sekolah || '',
       kepsek_nip: kepsekNipCfg?.value || sekolah?.nip_kepala || '',
@@ -663,6 +720,18 @@ export class RaporService {
       tanggal_rapor_p5?: string;
       tanggal_rapor_pts?: string;
       tanggal_pleno?: string;
+      // Ganjil & Genap explicit
+      ganjil_semester_id?: string;
+      genap_semester_id?: string;
+      tanggal_rapor_ganjil?: string;
+      tanggal_p5_ganjil?: string;
+      tanggal_pts_ganjil?: string;
+      tanggal_rapor_genap?: string;
+      tanggal_p5_genap?: string;
+      tanggal_pts_genap?: string;
+      tanggal_pleno_genap?: string;
+      tanggal_kelulusan?: string;
+
       kepsek_status?: 'DEFINITIF' | 'PLT';
       kepsek_nama?: string;
       kepsek_nip?: string;
@@ -687,7 +756,64 @@ export class RaporService {
       if (payload.kepsek_nip !== undefined) {
         await this.updateConfig(tenantId, `RAPOR_KEPSEK_NIP_${tpId}`, payload.kepsek_nip);
       }
+      if (payload.tanggal_kelulusan !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TANGGAL_KELULUSAN_${tpId}`, payload.tanggal_kelulusan);
+      }
 
+      // 1. Resolve Ganjil & Genap semester IDs if not provided
+      let ganjilId = payload.ganjil_semester_id;
+      let genapId = payload.genap_semester_id;
+      if (!ganjilId || !genapId) {
+        const semesters = await prisma.semester.findMany({
+          where: { tenant_id: tenantId, tahun_pelajaran_id: tpId },
+          orderBy: { created_at: 'asc' },
+        });
+        if (!ganjilId) {
+          const ganjil = semesters.find(s => 
+            (s.nama_semester || '').toLowerCase().includes('ganjil') || 
+            (s.nama_semester || '').includes('1')
+          ) || semesters[0];
+          ganjilId = ganjil?.id;
+        }
+        if (!genapId) {
+          const genap = semesters.find(s => 
+            (s.nama_semester || '').toLowerCase().includes('genap') || 
+            (s.nama_semester || '').includes('2')
+          ) || (semesters.length > 1 ? semesters[1] : undefined);
+          genapId = genap?.id;
+        }
+      }
+
+      // Save Ganjil Specifics
+      if (ganjilId) {
+        if (payload.tanggal_rapor_ganjil !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`, payload.tanggal_rapor_ganjil);
+        }
+        if (payload.tanggal_p5_ganjil !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`, payload.tanggal_p5_ganjil);
+        }
+        if (payload.tanggal_pts_ganjil !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`, payload.tanggal_pts_ganjil);
+        }
+      }
+
+      // Save Genap Specifics
+      if (genapId) {
+        if (payload.tanggal_rapor_genap !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`, payload.tanggal_rapor_genap);
+        }
+        if (payload.tanggal_p5_genap !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${genapId}`, payload.tanggal_p5_genap);
+        }
+        if (payload.tanggal_pts_genap !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_${genapId}`, payload.tanggal_pts_genap);
+        }
+        if (payload.tanggal_pleno_genap !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`, payload.tanggal_pleno_genap);
+        }
+      }
+
+      // Legacy fallback per semester_id
       if (semId) {
         if (payload.tanggal_rapor !== undefined) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`, payload.tanggal_rapor);

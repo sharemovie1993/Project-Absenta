@@ -225,10 +225,24 @@ export interface RaporSettings {
   tahun_pelajaran_id?: string | null;
   semester_id?: string | null;
   tempat_terbit: string;
+  // Specific to current selected semester:
   tanggal_rapor?: string;
   tanggal_rapor_p5?: string;
   tanggal_rapor_pts?: string;
   tanggal_pleno?: string;
+
+  // Explicit Ganjil & Genap:
+  ganjil_semester_id?: string | null;
+  genap_semester_id?: string | null;
+  tanggal_rapor_ganjil?: string;
+  tanggal_p5_ganjil?: string;
+  tanggal_pts_ganjil?: string;
+  tanggal_rapor_genap?: string;
+  tanggal_p5_genap?: string;
+  tanggal_pts_genap?: string;
+  tanggal_pleno_genap?: string;
+  tanggal_kelulusan?: string;
+
   kepsek_status: 'DEFINITIF' | 'PLT';
   kepsek_nama: string;
   kepsek_nip: string;
