@@ -734,6 +734,11 @@ export class PdfRaporService {
         cleanDesc = cleanDesc.replace(faseMatch[0], '');
       }
 
+      const dimensiMatch = cleanDesc.match(/\[Dimensi:\s*([^\]]+)\]/i);
+      if (dimensiMatch) {
+        cleanDesc = cleanDesc.replace(dimensiMatch[0], '');
+      }
+
       // Group scores by dimension
       const dimMap = new Map<string, Array<{ sub_elemen: string; kualifikasi: string; catatan: string | null }>>();
       p.scores.forEach((s) => {
