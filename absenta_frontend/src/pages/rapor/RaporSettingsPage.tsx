@@ -11,12 +11,14 @@ import {
   Sparkles,
   CheckCircle2,
   Building,
-  Eye
+  Eye,
+  ShieldAlert
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/layoutUtils';
 import { raporApi, type RaporSettings } from '../../api/rapor.api';
 import { useAcademicContext } from '../../hooks/useAcademicContext';
+import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -42,6 +44,18 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
 
   // Academic Context
   const academicCtx = useAcademicContext();
+
+  // Capabilities & Authorization Guard (PoLP)
+  const { isAdmin, isKurikulum, isKepsek, isTuHead, can } = useCapabilities();
+  const canManage = Boolean(
+    isAdmin || 
+    isKurikulum || 
+    isKepsek || 
+    isTuHead || 
+    can('academic.manage.academic') || 
+    can('dashboard.view.kepsek') || 
+    can('core.sekolah.update.profile')
+  );
 
   // Form State: Titimangsa & Tanggal Dokumen
   const [tempatTerbit, setTempatTerbit] = useState('Purwakarta');
@@ -101,6 +115,11 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   });
 
   const handleSave = useCallback(() => {
+    if (!canManage) {
+      toast.error('Anda tidak memiliki wewenang untuk mengubah pengaturan dokumen rapor.');
+      return;
+    }
+
     const parseResult = raporSettingsSchema.safeParse({
       tempat_terbit: tempatTerbit.trim(),
       kepsek_nama: kepsekNama.trim(),
@@ -147,6 +166,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     tampilkanKop,
     tampilkanQr,
     saveSettingsMutation,
+    canManage,
   ]);
 
   const tabs = useMemo(() => [
@@ -209,6 +229,13 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
               onChange={setActiveTab}
               tabs={tabs}
             />
+
+            {!canManage && (
+              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>Mode Pratinjau (Read-Only). Anda dapat meninjau titimangsa dan pejabat penandatangan, namun hanya Waka Kurikulum, Kepala Sekolah, atau Kepala TU yang berwenang mengubah konfigurasi dokumen rapor.</span>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
               {/* Main Settings Form (2 Cols) */}
@@ -305,7 +332,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                         variant="toolbarPrimary"
                         size="toolbar"
                         onClick={handleSave}
-                        disabled={saveSettingsMutation.isPending}
+                        disabled={!canManage || saveSettingsMutation.isPending}
                         className="font-bold rounded-xl shadow-md"
                       >
                         <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -383,7 +410,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                         variant="toolbarPrimary"
                         size="toolbar"
                         onClick={handleSave}
-                        disabled={saveSettingsMutation.isPending}
+                        disabled={!canManage || saveSettingsMutation.isPending}
                         className="font-bold rounded-xl shadow-md"
                       >
                         <Save className="w-3.5 h-3.5 mr-1.5" />
@@ -459,7 +486,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                         variant="toolbarPrimary"
                         size="toolbar"
                         onClick={handleSave}
-                        disabled={saveSettingsMutation.isPending}
+                        disabled={!canManage || saveSettingsMutation.isPending}
                         className="font-bold rounded-xl shadow-md"
                       >
                         <Save className="w-3.5 h-3.5 mr-1.5" />

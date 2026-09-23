@@ -972,7 +972,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/settings" element={
-                      <ProtectedRoute requiredCapability={['academic.view.wali.kelas', 'academic.manage.academic']}>
+                      <ProtectedRoute requiredCapability={['academic.manage.academic', 'dashboard.view.kepsek', 'core.sekolah.update.profile']}>
                         <RaporSettingsPage />
                       </ProtectedRoute>
                     } />
