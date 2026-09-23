@@ -676,6 +676,44 @@ export class PdfRaporService {
       'BB': 'Siswa masih membutuhkan bimbingan dalam mengembangkan kemampuannya'
     };
 
+    const P5_STANDARD_SUB_ELEMEN: Record<string, string[]> = {
+      'Mandiri': [
+        'Mengenali kualitas dan minat diri serta tantangan yang dihadapi & Mengembangkan refleksi diri',
+        'Regulasi emosi, penetapan tujuan dan rencana strategis pengembangan diri dan prestasi serta memiliki inisiatif dan bekerja secara mandiri, mengembangkan kendali dan disiplin diri, percaya diri, resilien dan adaptif'
+      ],
+      'Kreatif': [
+        'Menghasilkan gagasan yang beragam dan tepat sesuai dengan kebutuhan masyarakat terhadap sebuah permasalahan yang ada.',
+        'Mengeksplorasi dan mengekspresikan pikiran dan perasaannya kedalam sebuah karya.',
+        'Mampu mengevaluasi tindakan dan gagasan yang sudah dimiliki serta mengetahui kesesuaian dengan kebutuhan masyarakat umum'
+      ],
+      'Gotong Royong': [
+        'Kerjasama, komunikasi untuk mencapai tujuan bersama, saling ketergantungan positif dan koordinasi sosial',
+        'Tanggap terhadap lingkungan, persepsi sosial',
+        'Membagi peran dan menyelaraskan tindakan dalam kelompok supaya tercipta keselarasan dan keterbukaan dalam berbagi dengan kelompok.'
+      ],
+      'Bergotong Royong': [
+        'Kerjasama, komunikasi untuk mencapai tujuan bersama, saling ketergantungan positif dan koordinasi sosial',
+        'Tanggap terhadap lingkungan, persepsi sosial',
+        'Membagi peran dan menyelaraskan tindakan dalam kelompok supaya tercipta keselarasan dan keterbukaan dalam berbagi dengan kelompok.'
+      ],
+      'Bernalar Kritis': [
+        'Mengajukan pertanyaan, mengidentifikasi, mengklarifikasi, dan mengolah informasi dan gagasan',
+        'Menganalisis dan mengevaluasi penalaran serta prosedur yang digunakan dalam penyelesaian masalah',
+        'Merefleksi dan mengevaluasi pemikirannya sendiri serta mempertimbangkan berbagai perspektif'
+      ],
+      'Berkebinekaan Global': [
+        'Mendalami budaya dan identitas budaya serta mengeksplorasi dinamika budaya yang majemuk',
+        'Berkomunikasi dan berinteraksi secara efektif dan santun dengan orang dari latar budaya yang berbeda',
+        'Menghilangkan stereotip, prasangka, dan menyelaraskan perbedaan dalam pergaulan sosial'
+      ],
+      'Beriman & Bertakwa': [
+        'Memahami nilai-nilai agama dan mempraktikkannya dalam kehidupan sehari-hari dengan akhlak mulia',
+        'Integritas dan merawat diri secara fisik, mental, dan spiritual dengan penuh rasa syukur',
+        'Mengutamakan persamaan dengan orang lain dan menghargai perbedaan demi persatuan bangsa',
+        'Menjaga kelestarian lingkungan hidup dan alam sekitar sebagai amanah Tuhan'
+      ]
+    };
+
     let projekHtml = '';
 
     projekList.forEach((p) => {
@@ -720,13 +758,18 @@ export class PdfRaporService {
           </tr>
         `;
 
+        const standardSubs = P5_STANDARD_SUB_ELEMEN[dimName] || P5_STANDARD_SUB_ELEMEN[dimName.replace(/^Ber/i, '')];
+        const subElementsToRender: string[] = (subItems.length > 1 || !standardSubs)
+          ? subItems.map(item => item.sub_elemen)
+          : standardSubs;
+
         // Sub elements list with letters a., b., c.
-        const subListHtml = subItems.map((item, idx) => {
+        const subListHtml = subElementsToRender.map((subText, idx) => {
           const letter = String.fromCharCode(97 + idx);
           return `
             <div style="display: flex; gap: 6px; margin-bottom: 6px; font-size: 10px; line-height: 1.4;">
               <span style="font-weight: bold; min-width: 14px;">${letter}.</span>
-              <span style="text-align: justify;">${item.sub_elemen}</span>
+              <span style="text-align: justify;">${subText}</span>
             </div>
           `;
         }).join('');
