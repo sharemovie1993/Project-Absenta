@@ -9,7 +9,11 @@ import {
   Sparkles,
   Building,
   Eye,
-  ShieldAlert
+  ShieldAlert,
+  ChevronDown,
+  ChevronUp,
+  SlidersHorizontal,
+  CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/layoutUtils';
@@ -39,6 +43,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<string>('titimangsa');
+  const [showAdvancedDates, setShowAdvancedDates] = useState(false);
 
   // Academic Context
   const academicCtx = useAcademicContext();
@@ -58,13 +63,13 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   // Form State: Tempat Terbit
   const [tempatTerbit, setTempatTerbit] = useState('Purwakarta');
 
-  // Form State: Semester Ganjil
+  // Form State: 2 Titimangsa Pokok (Utama)
   const [tanggalRaporGanjil, setTanggalRaporGanjil] = useState('');
+  const [tanggalRaporGenap, setTanggalRaporGenap] = useState('');
+
+  // Form State: Opsi Tambahan / Lanjutan (Khusus)
   const [tanggalP5Ganjil, setTanggalP5Ganjil] = useState('');
   const [tanggalPtsGanjil, setTanggalPtsGanjil] = useState('');
-
-  // Form State: Semester Genap
-  const [tanggalRaporGenap, setTanggalRaporGenap] = useState('');
   const [tanggalP5Genap, setTanggalP5Genap] = useState('');
   const [tanggalPtsGenap, setTanggalPtsGenap] = useState('');
   const [tanggalPlenoGenap, setTanggalPlenoGenap] = useState('');
@@ -109,16 +114,16 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       const s = settingsData.data as RaporSettings;
       setTempatTerbit(s.tempat_terbit || 'Purwakarta');
 
-      // Ganjil
+      // Titimangsa Pokok Ganjil & Genap
       setTanggalRaporGanjil(s.tanggal_rapor_ganjil || (isGanjilActive ? s.tanggal_rapor : '') || '');
-      setTanggalP5Ganjil(s.tanggal_p5_ganjil || (isGanjilActive ? s.tanggal_rapor_p5 : '') || '');
-      setTanggalPtsGanjil(s.tanggal_pts_ganjil || (isGanjilActive ? s.tanggal_rapor_pts : '') || '');
-
-      // Genap
       setTanggalRaporGenap(s.tanggal_rapor_genap || (!isGanjilActive ? s.tanggal_rapor : '') || '');
-      setTanggalP5Genap(s.tanggal_p5_genap || (!isGanjilActive ? s.tanggal_rapor_p5 : '') || '');
-      setTanggalPtsGenap(s.tanggal_pts_genap || (!isGanjilActive ? s.tanggal_rapor_pts : '') || '');
-      setTanggalPlenoGenap(s.tanggal_pleno_genap || (!isGanjilActive ? s.tanggal_pleno : '') || '');
+
+      // Opsi Tambahan / Khusus
+      setTanggalP5Ganjil(s.tanggal_p5_ganjil || '');
+      setTanggalPtsGanjil(s.tanggal_pts_ganjil || '');
+      setTanggalP5Genap(s.tanggal_p5_genap || '');
+      setTanggalPtsGenap(s.tanggal_pts_genap || '');
+      setTanggalPlenoGenap(s.tanggal_pleno_genap || '');
       setTanggalKelulusan(s.tanggal_kelulusan || '');
 
       // Pejabat & format
@@ -136,7 +141,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     mutationFn: (payload: Partial<RaporSettings>) => raporApi.updateRaporSettings(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rapor-settings'] });
-      toast.success('Pengaturan dokumen rapor berhasil disimpan!');
+      toast.success('Pengaturan titimangsa rapor berhasil disimpan!');
     },
     onError: (err: { message?: string }) => {
       toast.error(err?.message || 'Gagal menyimpan pengaturan rapor');
@@ -165,22 +170,26 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       return;
     }
 
+    // Auto-fallback: jika tanggal P5 tidak diisi khusus, otomatis gunakan tanggal rapor semester
+    const effectiveP5Ganjil = tanggalP5Ganjil || tanggalRaporGanjil;
+    const effectiveP5Genap = tanggalP5Genap || tanggalRaporGenap;
+
     saveSettingsMutation.mutate({
       tahun_pelajaran_id: academicCtx.selectedTahunPelajaran,
       semester_id: academicCtx.selectedSemester || undefined,
       tempat_terbit: tempatTerbit.trim(),
-      // Contextual fallback for legacy endpoints
+      // Contextual active semester fallback
       tanggal_rapor: isGanjilActive ? tanggalRaporGanjil : tanggalRaporGenap,
-      tanggal_rapor_p5: isGanjilActive ? tanggalP5Ganjil : tanggalP5Genap,
+      tanggal_rapor_p5: isGanjilActive ? effectiveP5Ganjil : effectiveP5Genap,
       tanggal_rapor_pts: isGanjilActive ? tanggalPtsGanjil : tanggalPtsGenap,
       tanggal_pleno: !isGanjilActive ? tanggalPlenoGenap : undefined,
 
       // Explicit Ganjil & Genap
       tanggal_rapor_ganjil: tanggalRaporGanjil,
-      tanggal_p5_ganjil: tanggalP5Ganjil,
+      tanggal_p5_ganjil: effectiveP5Ganjil,
       tanggal_pts_ganjil: tanggalPtsGanjil,
       tanggal_rapor_genap: tanggalRaporGenap,
-      tanggal_p5_genap: tanggalP5Genap,
+      tanggal_p5_genap: effectiveP5Genap,
       tanggal_pts_genap: tanggalPtsGenap,
       tanggal_pleno_genap: tanggalPlenoGenap,
       tanggal_kelulusan: tanggalKelulusan,
@@ -198,9 +207,9 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     isGanjilActive,
     tempatTerbit,
     tanggalRaporGanjil,
+    tanggalRaporGenap,
     tanggalP5Ganjil,
     tanggalPtsGanjil,
-    tanggalRaporGenap,
     tanggalP5Genap,
     tanggalPtsGenap,
     tanggalPlenoGenap,
@@ -227,17 +236,14 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   ], []);
 
   const formattedPreviewDate = useMemo(() => {
-    const rawDate = previewSemester === 'ganjil' 
-      ? (tanggalRaporGanjil || tanggalP5Ganjil)
-      : (tanggalRaporGenap || tanggalP5Genap);
-
+    const rawDate = previewSemester === 'ganjil' ? tanggalRaporGanjil : tanggalRaporGenap;
     if (!rawDate) return previewSemester === 'ganjil' ? '19 Des 2025' : '26 Jun 2026';
     try {
       return formatDate(rawDate, { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
       return rawDate;
     }
-  }, [previewSemester, tanggalRaporGanjil, tanggalP5Ganjil, tanggalRaporGenap, tanggalP5Genap]);
+  }, [previewSemester, tanggalRaporGanjil, tanggalRaporGenap]);
 
   return (
     <InfraErrorBoundary>
@@ -260,14 +266,14 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
           />
         }
         instruction={{
-          title: 'Panduan Pengaturan Titimangsa Rapor',
-          description: 'Kelola data titimangsa resmi Semester Ganjil dan Semester Genap dalam satu tahun ajaran penuh.',
+          title: 'Panduan Titimangsa Rapor Sekolah',
+          description: 'Rapor resmi intrakurikuler dan projek P5 dibagikan 2 kali dalam setahun (akhir Semester Ganjil dan akhir Semester Genap).',
           items: [
             { text: 'Tentukan Tempat/Kota penerbitan rapor resmi satuan pendidikan.' },
-            { text: 'Isi tanggal titimangsa Semester Ganjil (PAS/SAS Desember dan P5 Ganjil).' },
-            { text: 'Isi tanggal titimangsa Semester Genap (PAT/SAT Juni, Kenaikan Kelas, dan Kelulusan).' },
-            { text: 'Pastikan nama dan NIP Kepala Sekolah terverifikasi dengan benar sebagai penandatangan resmi.' },
-            { text: 'Gunakan simulasi pratinjau tanda tangan di sebelah kanan untuk melihat hasil footer dokumen.' }
+            { text: 'Isi Tanggal Titimangsa Rapor Semester Ganjil (biasanya pertengahan/akhir Desember).' },
+            { text: 'Isi Tanggal Titimangsa Rapor Semester Genap & Kenaikan Kelas (biasanya pertengahan/akhir Juni).' },
+            { text: 'Buka "Opsi Tanggal Khusus" jika sekolah ingin menentukan tanggal rapat pleno, tanggal kelulusan, atau tanggal P5 terpisah.' },
+            { text: 'Pastikan nama dan NIP Kepala Sekolah terverifikasi dengan benar sebagai penandatangan resmi.' }
           ]
         }}
       >
@@ -294,452 +300,458 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
-              {/* Main Settings Form (2 Cols) */}
-              <div className="lg:col-span-2 space-y-6">
-                
-                {/* TAB 1: TITIMANGSA GANJIL & GENAP */}
-                {activeTab === 'titimangsa' && (
-                  <div className="space-y-6">
-                    {/* 1. KOTA PENERBITAN */}
-                    <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
-                      <div>
-                        <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                          <Building size={16} className="text-indigo-600" />
-                          Tempat / Kota Penerbitan Dokumen
-                        </h3>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          Nama kota atau kabupaten sekolah yang dicetak pada titimangsa rapor (contoh: Purwakarta, Bandung, Jakarta).
-                        </p>
-                      </div>
-                      <div className="max-w-md">
-                        <Input
-                          id="tempat-terbit-input"
-                          aria-label="Tempat penerbitan rapor"
-                          value={tempatTerbit}
-                          onChange={(e) => setTempatTerbit(e.target.value)}
-                          placeholder="Contoh: Purwakarta"
-                          className="rounded-xl font-semibold"
-                        />
-                      </div>
-                    </Card>
-
-                    {/* 2. TITIMANGSA SEMESTER GANJIL */}
-                    <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5 relative overflow-hidden">
-                      {isGanjilActive && (
-                        <div className="absolute top-0 right-0 bg-indigo-600 text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider shadow-sm flex items-center gap-1">
-                          ⭐ SEMESTER AKTIF
-                        </div>
-                      )}
-                      <div>
+                {/* Main Settings Form (2 Cols) */}
+                <div className="lg:col-span-2 space-y-6">
+                  
+                  {/* TAB 1: TITIMANGSA DUA SEMESTER POKOK */}
+                  {activeTab === 'titimangsa' && (
+                    <div className="space-y-6">
+                      
+                      {/* 1. KOTA PENERBITAN */}
+                      <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
                         <div className="flex items-center gap-2">
+                          <Building size={16} className="text-indigo-600 shrink-0" />
+                          <div>
+                            <h3 className="font-bold text-xs text-slate-800 dark:text-white uppercase tracking-tight">
+                              Tempat / Kota Penerbitan Rapor *
+                            </h3>
+                            <p className="text-[11px] text-slate-400">
+                              Nama kota/kabupaten yang dicetak sebelum tanggal pada footer rapor (contoh: Purwakarta).
+                            </p>
+                          </div>
+                        </div>
+                        <div className="max-w-xs">
+                          <Input
+                            id="tempat-terbit-input"
+                            aria-label="Tempat penerbitan rapor"
+                            value={tempatTerbit}
+                            onChange={(e) => setTempatTerbit(e.target.value)}
+                            placeholder="Contoh: Purwakarta"
+                            className="rounded-xl font-semibold"
+                          />
+                        </div>
+                      </Card>
+
+                      {/* 2. DUA TITIMANGSA POKOK: GANJIL & GENAP */}
+                      <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-6">
+                        <div>
                           <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
                             <Calendar size={16} className="text-indigo-600" />
-                            Titimangsa Rapor Semester Ganjil (Semester 1)
+                            Tanggal Titimangsa Pembagian Rapor Resmi
                           </h3>
-                          <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 bg-indigo-50/50">
-                            Ganjil
-                          </Badge>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Dua tanggal pokok pembagian rapor resmi dalam satu tahun ajaran. Otomatis berlaku untuk rapor intrakurikuler dan rapor projek P5.
+                          </p>
                         </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                          {/* SEMESTER GANJIL */}
+                          <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                            isGanjilActive 
+                              ? 'bg-indigo-50/40 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/60 shadow-xs' 
+                              : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                                📅 Semester Ganjil (Smt 1)
+                              </span>
+                              {isGanjilActive && (
+                                <Badge className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5">
+                                  AKTIF
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-1.5">
+                              <label htmlFor="tgl-rapor-ganjil" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Tanggal Rapor Ganjil (Desember) *
+                              </label>
+                              <Input
+                                id="tgl-rapor-ganjil"
+                                type="date"
+                                value={tanggalRaporGanjil}
+                                onChange={(e) => setTanggalRaporGanjil(e.target.value)}
+                                className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                              />
+                              <p className="text-[10px] text-slate-500 leading-tight">
+                                Dicetak pada lembar Rapor Semester 1 & Projek P5 Ganjil.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* SEMESTER GENAP */}
+                          <div className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                            !isGanjilActive 
+                              ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60 shadow-xs' 
+                              : 'bg-slate-50/60 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-xs text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                                📅 Semester Genap (Smt 2)
+                              </span>
+                              {!isGanjilActive && (
+                                <Badge className="text-[9px] font-black bg-emerald-600 text-white px-2 py-0.5">
+                                  AKTIF
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-1.5">
+                              <label htmlFor="tgl-rapor-genap" className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                Tanggal Rapor Genap (Juni) *
+                              </label>
+                              <Input
+                                id="tgl-rapor-genap"
+                                type="date"
+                                value={tanggalRaporGenap}
+                                onChange={(e) => setTanggalRaporGenap(e.target.value)}
+                                className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                              />
+                              <p className="text-[10px] text-slate-500 leading-tight">
+                                Dicetak pada lembar Rapor Kenaikan Kelas & Projek P5 Genap.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ACCORDION: OPSI TANGGAL KHUSUS / LANJUTAN */}
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setShowAdvancedDates(!showAdvancedDates)}
+                            className="flex items-center justify-between w-full py-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                          >
+                            <span className="flex items-center gap-2">
+                              <SlidersHorizontal size={14} />
+                              Opsi Tambahan: Tanggal Rapat Pleno, Kelulusan & PTS (Opsional)
+                            </span>
+                            {showAdvancedDates ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+
+                          {showAdvancedDates && (
+                            <div className="mt-4 p-4 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
+                              <p className="text-[11px] text-slate-500 leading-relaxed">
+                                Kolom di bawah ini bersifat opsional. Jika dikosongkan, dokumen terkait akan otomatis mengikuti tanggal rapor semester di atas.
+                              </p>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                <div className="space-y-1">
+                                  <label htmlFor="tgl-pleno-input" className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Tanggal Rapat Pleno Dewan Guru (Kenaikan Kelas/Kelulusan)
+                                  </label>
+                                  <Input
+                                    id="tgl-pleno-input"
+                                    type="date"
+                                    value={tanggalPlenoGenap}
+                                    onChange={(e) => setTanggalPlenoGenap(e.target.value)}
+                                    className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label htmlFor="tgl-kelulusan-input" className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Tanggal Kelulusan Resmi Kelas XII (Tingkat Akhir)
+                                  </label>
+                                  <Input
+                                    id="tgl-kelulusan-input"
+                                    type="date"
+                                    value={tanggalKelulusan}
+                                    onChange={(e) => setTanggalKelulusan(e.target.value)}
+                                    className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label htmlFor="tgl-pts-ganjil-input" className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Tanggal PTS/STS Semester Ganjil
+                                  </label>
+                                  <Input
+                                    id="tgl-pts-ganjil-input"
+                                    type="date"
+                                    value={tanggalPtsGanjil}
+                                    onChange={(e) => setTanggalPtsGanjil(e.target.value)}
+                                    className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label htmlFor="tgl-pts-genap-input" className="font-semibold text-slate-700 dark:text-slate-300">
+                                    Tanggal PTS/STS Semester Genap
+                                  </label>
+                                  <Input
+                                    id="tgl-pts-genap-input"
+                                    type="date"
+                                    value={tanggalPtsGenap}
+                                    onChange={(e) => setTanggalPtsGenap(e.target.value)}
+                                    className="rounded-xl font-semibold bg-white dark:bg-slate-900"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* TOMBOL SIMPAN UTAMA */}
+                        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                          <Button
+                            type="button"
+                            variant="toolbarPrimary"
+                            size="toolbar"
+                            onClick={handleSave}
+                            disabled={!canManage || saveSettingsMutation.isPending}
+                            className="font-bold rounded-xl shadow-md"
+                          >
+                            <Save className="w-3.5 h-3.5 mr-1.5" />
+                            Simpan Titimangsa
+                          </Button>
+                        </div>
+                      </Card>
+
+                    </div>
+                  )}
+
+                  {/* TAB 2: PEJABAT PENANDATANGAN */}
+                  {activeTab === 'penandatangan' && (
+                    <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
+                      <div>
+                        <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                          <UserCheck size={16} className="text-indigo-600" />
+                          Pejabat Kepala Sekolah Penandatangan
+                        </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Jadwal tanggal penerbitan resmi rapor akhir semester ganjil (PAS/SAS), rapor projek P5, dan tengah semester.
+                          Konfigurasi nama, status, dan NIP kepala sekolah yang dicetak pada seluruh dokumen rapor periode ini.
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="space-y-4 text-xs">
                         <div className="space-y-1">
-                          <label htmlFor="tgl-rapor-ganjil" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Titimangsa Rapor Ganjil (PAS/SAS) *
+                          <label htmlFor="kepsek-status-select" className="font-bold text-slate-700 dark:text-slate-300">
+                            Status Pejabat Kepala Sekolah
                           </label>
-                          <Input
-                            id="tgl-rapor-ganjil"
-                            type="date"
-                            value={tanggalRaporGanjil}
-                            onChange={(e) => setTanggalRaporGanjil(e.target.value)}
-                            className="rounded-xl font-semibold"
+                          <SearchableSelect
+                            id="kepsek-status-select"
+                            aria-label="Status pejabat kepala sekolah"
+                            value={kepsekStatus}
+                            onValueChange={(val) => setKepsekStatus(val as 'DEFINITIF' | 'PLT')}
+                            options={[
+                              { value: 'DEFINITIF', label: 'Kepala Sekolah Definitif' },
+                              { value: 'PLT', label: 'Pelaksana Tugas (Plt. Kepala Sekolah)' },
+                            ]}
+                            placeholder="Pilih Status"
                           />
-                          <span className="text-[10px] text-slate-400">Dicetak di lembar rapor intrakurikuler ganjil (Desember).</span>
                         </div>
 
-                        <div className="space-y-1">
-                          <label htmlFor="tgl-p5-ganjil" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Terbit Rapor Projek P5 (Ganjil)
-                          </label>
-                          <Input
-                            id="tgl-p5-ganjil"
-                            type="date"
-                            value={tanggalP5Ganjil}
-                            onChange={(e) => setTanggalP5Ganjil(e.target.value)}
-                            className="rounded-xl font-semibold"
-                          />
-                          <span className="text-[10px] text-slate-400">Dicetak di lembar capaian P5 semester ganjil.</span>
-                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label htmlFor="kepsek-nama-input" className="font-bold text-slate-700 dark:text-slate-300">
+                              Nama Lengkap & Gelar Kepala Sekolah *
+                            </label>
+                            <Input
+                              id="kepsek-nama-input"
+                              aria-label="Nama lengkap kepala sekolah"
+                              value={kepsekNama}
+                              onChange={(e) => setKepsekNama(e.target.value)}
+                              placeholder="Contoh: Wahyu Tamimbarkah, S.Pd."
+                              className="rounded-xl font-semibold"
+                            />
+                          </div>
 
-                        <div className="space-y-1 sm:col-span-2">
-                          <label htmlFor="tgl-pts-ganjil" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Rapor Tengah Semester (PTS/STS Ganjil) <span className="text-slate-400 font-normal">(Opsional)</span>
-                          </label>
-                          <Input
-                            id="tgl-pts-ganjil"
-                            type="date"
-                            value={tanggalPtsGanjil}
-                            onChange={(e) => setTanggalPtsGanjil(e.target.value)}
-                            className="rounded-xl font-semibold max-w-sm"
-                          />
+                          <div className="space-y-1">
+                            <label htmlFor="kepsek-nip-input" className="font-bold text-slate-700 dark:text-slate-300">
+                              Nomor Induk Pegawai (NIP) *
+                            </label>
+                            <Input
+                              id="kepsek-nip-input"
+                              aria-label="NIP kepala sekolah"
+                              value={kepsekNip}
+                              onChange={(e) => setKepsekNip(e.target.value)}
+                              placeholder="Contoh: 197111022008011001"
+                              className="rounded-xl font-semibold"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </Card>
 
-                    {/* 3. TITIMANGSA SEMESTER GENAP */}
-                    <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5 relative overflow-hidden">
-                      {!isGanjilActive && (
-                        <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[9px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider shadow-sm flex items-center gap-1">
-                          ⭐ SEMESTER AKTIF
-                        </div>
-                      )}
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="toolbarPrimary"
+                          size="toolbar"
+                          onClick={handleSave}
+                          disabled={!canManage || saveSettingsMutation.isPending}
+                          className="font-bold rounded-xl shadow-md"
+                        >
+                          <Save className="w-3.5 h-3.5 mr-1.5" />
+                          Simpan Pejabat
+                        </Button>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* TAB 3: FORMAT & CETAK */}
+                  {activeTab === 'format' && (
+                    <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                            <Calendar size={16} className="text-emerald-600" />
-                            Titimangsa Rapor Semester Genap & Kenaikan Kelas (Semester 2)
-                          </h3>
-                          <Badge variant="outline" className="text-[10px] font-bold border-emerald-200 text-emerald-700 bg-emerald-50/50">
-                            Genap
-                          </Badge>
-                        </div>
+                        <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                          <Printer size={16} className="text-indigo-600" />
+                          Format & Standar Output Cetak
+                        </h3>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          Jadwal tanggal pembagian rapor kenaikan kelas akhir tahun, rapor projek P5 genap, dan rapat pleno kelulusan.
+                          Pengaturan tata letak dan visualisasi lembar PDF rapor resmi.
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="space-y-4 text-xs">
                         <div className="space-y-1">
-                          <label htmlFor="tgl-rapor-genap" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Titimangsa Rapor Genap & Kenaikan Kelas (PAT/SAT) *
+                          <label htmlFor="kertas-select" className="font-bold text-slate-700 dark:text-slate-300">
+                            Ukuran Kertas Default
                           </label>
-                          <Input
-                            id="tgl-rapor-genap"
-                            type="date"
-                            value={tanggalRaporGenap}
-                            onChange={(e) => setTanggalRaporGenap(e.target.value)}
-                            className="rounded-xl font-semibold"
-                          />
-                          <span className="text-[10px] text-slate-400">Dicetak di lembar rapor akhir tahun & kenaikan kelas (Juni).</span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label htmlFor="tgl-p5-genap" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Terbit Rapor Projek P5 (Genap)
-                          </label>
-                          <Input
-                            id="tgl-p5-genap"
-                            type="date"
-                            value={tanggalP5Genap}
-                            onChange={(e) => setTanggalP5Genap(e.target.value)}
-                            className="rounded-xl font-semibold"
-                          />
-                          <span className="text-[10px] text-slate-400">Dicetak di lembar capaian P5 semester genap.</span>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label htmlFor="tgl-pts-genap" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Rapor Tengah Semester (PTS/STS Genap) <span className="text-slate-400 font-normal">(Opsional)</span>
-                          </label>
-                          <Input
-                            id="tgl-pts-genap"
-                            type="date"
-                            value={tanggalPtsGenap}
-                            onChange={(e) => setTanggalPtsGenap(e.target.value)}
-                            className="rounded-xl font-semibold"
+                          <SearchableSelect
+                            id="kertas-select"
+                            aria-label="Ukuran kertas default"
+                            value={ukuranKertas}
+                            onValueChange={(val) => setUkuranKertas(val as 'A4' | 'F4')}
+                            options={[
+                              { value: 'A4', label: 'A4 (210 x 297 mm) - Standar Kemendikbud' },
+                              { value: 'F4', label: 'F4 / Folio (215 x 330 mm)' },
+                            ]}
+                            placeholder="Pilih Ukuran Kertas"
                           />
                         </div>
 
-                        <div className="space-y-1">
-                          <label htmlFor="tgl-pleno-genap" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Rapat Pleno Dewan Guru (Kenaikan Kelas & Kelulusan)
+                        <div className="pt-2 space-y-3">
+                          <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={tampilkanKop}
+                              onChange={(e) => setTampilkanKop(e.target.checked)}
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Sertakan Kop Surat Resmi Sekolah</span>
+                              <span className="text-[10px] text-slate-400">Mencetak kop surat instansi lengkap dengan logo resmi di bagian atas rapor.</span>
+                            </div>
                           </label>
-                          <Input
-                            id="tgl-pleno-genap"
-                            type="date"
-                            value={tanggalPlenoGenap}
-                            onChange={(e) => setTanggalPlenoGenap(e.target.value)}
-                            className="rounded-xl font-semibold"
-                          />
-                          <span className="text-[10px] text-slate-400">Tanggal penetapan resmi kelulusan / kenaikan.</span>
-                        </div>
 
-                        <div className="space-y-1 sm:col-span-2">
-                          <label htmlFor="tgl-kelulusan" className="font-bold text-slate-700 dark:text-slate-300">
-                            Tanggal Kelulusan Resmi Tingkat Akhir (Kelas XII / Kelas 3) <span className="text-slate-400 font-normal">(Sesuai Juknis Dinas)</span>
+                          <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={tampilkanQr}
+                              onChange={(e) => setTampilkanQr(e.target.checked)}
+                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
+                            />
+                            <div>
+                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Barcode / QR Validasi Otentikasi</span>
+                              <span className="text-[10px] text-slate-400">Menyertakan QR code untuk pemindaian keaslian dokumen oleh orang tua atau pihak dinas.</span>
+                            </div>
                           </label>
-                          <Input
-                            id="tgl-kelulusan"
-                            type="date"
-                            value={tanggalKelulusan}
-                            onChange={(e) => setTanggalKelulusan(e.target.value)}
-                            className="rounded-xl font-semibold max-w-sm"
-                          />
                         </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="toolbarPrimary"
+                          size="toolbar"
+                          onClick={handleSave}
+                          disabled={!canManage || saveSettingsMutation.isPending}
+                          className="font-bold rounded-xl shadow-md"
+                        >
+                          <Save className="w-3.5 h-3.5 mr-1.5" />
+                          Simpan Format Cetak
+                        </Button>
                       </div>
                     </Card>
+                  )}
 
-                    <div className="pt-2 flex justify-end">
-                      <Button
+                </div>
+
+                {/* Sidebar Preview: Titimangsa & Tanda Tangan Cetak (1 Col) */}
+                <div className="space-y-4">
+                  <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
+                        <Eye size={14} className="text-indigo-600" />
+                        Pratinjau Footer Resmi
+                      </span>
+                      <Badge variant="outline" className="text-[9px] font-bold border-indigo-200 dark:border-indigo-900 text-indigo-600">
+                        LIVE PREVIEW
+                      </Badge>
+                    </div>
+
+                    {/* Toggle Preview Semester */}
+                    <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+                      <button
                         type="button"
-                        variant="toolbarPrimary"
-                        size="toolbar"
-                        onClick={handleSave}
-                        disabled={!canManage || saveSettingsMutation.isPending}
-                        className="font-bold rounded-xl shadow-md"
+                        onClick={() => setPreviewSemester('ganjil')}
+                        className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                          previewSemester === 'ganjil'
+                            ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-xs font-black'
+                            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                        }`}
                       >
-                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                        Simpan Seluruh Titimangsa
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* TAB 2: PEJABAT PENANDATANGAN */}
-                {activeTab === 'penandatangan' && (
-                  <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
-                    <div>
-                      <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                        <UserCheck size={16} className="text-indigo-600" />
-                        Pejabat Kepala Sekolah Penandatangan
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Konfigurasi nama, status, dan NIP kepala sekolah yang dicetak pada seluruh dokumen rapor periode ini.
-                      </p>
+                        Semester Ganjil
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPreviewSemester('genap')}
+                        className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
+                          previewSemester === 'genap'
+                            ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-xs font-black'
+                            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        Semester Genap
+                      </button>
                     </div>
 
-                    <div className="space-y-4 text-xs">
-                      <div className="space-y-1">
-                        <label htmlFor="kepsek-status-select" className="font-bold text-slate-700 dark:text-slate-300">
-                          Status Pejabat Kepala Sekolah
-                        </label>
-                        <SearchableSelect
-                          id="kepsek-status-select"
-                          aria-label="Status pejabat kepala sekolah"
-                          value={kepsekStatus}
-                          onValueChange={(val) => setKepsekStatus(val as 'DEFINITIF' | 'PLT')}
-                          options={[
-                            { value: 'DEFINITIF', label: 'Kepala Sekolah Definitif' },
-                            { value: 'PLT', label: 'Pelaksana Tugas (Plt. Kepala Sekolah)' },
-                          ]}
-                          placeholder="Pilih Status"
-                        />
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Format visual titimangsa dan tanda tangan resmi yang akan dicetak di bagian bawah lembar dokumen {previewSemester === 'ganjil' ? 'Semester Ganjil' : 'Semester Genap'}.
+                    </p>
+
+                    {/* Rendered Signature Box Simulator */}
+                    <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 font-sans text-xs space-y-5">
+                      {/* Place and Date */}
+                      <div className="text-right font-medium text-[11px] text-slate-600 dark:text-slate-400">
+                        {tempatTerbit || 'Purwakarta'}, {formattedPreviewDate}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label htmlFor="kepsek-nama-input" className="font-bold text-slate-700 dark:text-slate-300">
-                            Nama Lengkap & Gelar Kepala Sekolah *
-                          </label>
-                          <Input
-                            id="kepsek-nama-input"
-                            aria-label="Nama lengkap kepala sekolah"
-                            value={kepsekNama}
-                            onChange={(e) => setKepsekNama(e.target.value)}
-                            placeholder="Contoh: Wahyu Tamimbarkah, S.Pd."
-                            className="rounded-xl font-semibold"
-                          />
+                      {/* Parents & Homeroom Teacher */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center text-[10px]">
+                        <div>
+                          <span className="text-slate-500 font-bold block mb-10">Orang Tua/Wali Siswa,</span>
+                          <span className="text-slate-400 font-mono">...................................</span>
                         </div>
-
-                        <div className="space-y-1">
-                          <label htmlFor="kepsek-nip-input" className="font-bold text-slate-700 dark:text-slate-300">
-                            Nomor Induk Pegawai (NIP) *
-                          </label>
-                          <Input
-                            id="kepsek-nip-input"
-                            aria-label="NIP kepala sekolah"
-                            value={kepsekNip}
-                            onChange={(e) => setKepsekNip(e.target.value)}
-                            placeholder="Contoh: 197111022008011001"
-                            className="rounded-xl font-semibold"
-                          />
+                        <div>
+                          <span className="text-slate-500 font-bold block mb-10">Wali Kelas,</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200 underline block">Guru Wali Kelas, S.Pd.</span>
+                          <span className="text-slate-400 font-mono text-[9px]">NIP. 199110292022212020</span>
                         </div>
                       </div>
+
+                      {/* Principal Signature */}
+                      <div className="text-center pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px] space-y-1">
+                        <span className="text-slate-400 block text-[9px]">Mengetahui;</span>
+                        <span className="text-slate-600 dark:text-slate-300 font-bold block mb-10">
+                          {kepsekStatus === 'PLT' ? 'Plt. Kepala Sekolah,' : 'Kepala Sekolah,'}
+                        </span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200 underline block">
+                          {kepsekNama || 'Wahyu Tamimbarkah, S.Pd.'}
+                        </span>
+                        <span className="text-slate-400 font-mono text-[9px]">
+                          NIP. {kepsekNip || '197111022008011001'}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="toolbarPrimary"
-                        size="toolbar"
-                        onClick={handleSave}
-                        disabled={!canManage || saveSettingsMutation.isPending}
-                        className="font-bold rounded-xl shadow-md"
-                      >
-                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                        Simpan Pejabat
-                      </Button>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 bg-indigo-50/50 dark:bg-indigo-950/20 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
+                      <Sparkles size={14} className="text-indigo-600 shrink-0" />
+                      <span>Perubahan disimpan per Tahun Pelajaran dan otomatis diterapkan ke seluruh siswa.</span>
                     </div>
                   </Card>
-                )}
-
-                {/* TAB 3: FORMAT & CETAK */}
-                {activeTab === 'format' && (
-                  <Card className="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-5">
-                    <div>
-                      <h3 className="font-black text-sm text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                        <Printer size={16} className="text-indigo-600" />
-                        Format & Standar Output Cetak
-                      </h3>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Pengaturan tata letak dan visualisasi lembar PDF rapor resmi.
-                      </p>
-                    </div>
-
-                    <div className="space-y-4 text-xs">
-                      <div className="space-y-1">
-                        <label htmlFor="kertas-select" className="font-bold text-slate-700 dark:text-slate-300">
-                          Ukuran Kertas Default
-                        </label>
-                        <SearchableSelect
-                          id="kertas-select"
-                          aria-label="Ukuran kertas default"
-                          value={ukuranKertas}
-                          onValueChange={(val) => setUkuranKertas(val as 'A4' | 'F4')}
-                          options={[
-                            { value: 'A4', label: 'A4 (210 x 297 mm) - Standar Kemendikbud' },
-                            { value: 'F4', label: 'F4 / Folio (215 x 330 mm)' },
-                          ]}
-                          placeholder="Pilih Ukuran Kertas"
-                        />
-                      </div>
-
-                      <div className="pt-2 space-y-3">
-                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <input
-                            type="checkbox"
-                            checked={tampilkanKop}
-                            onChange={(e) => setTampilkanKop(e.target.checked)}
-                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                          />
-                          <div>
-                            <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Sertakan Kop Surat Resmi Sekolah</span>
-                            <span className="text-[10px] text-slate-400">Mencetak kop surat instansi lengkap dengan logo resmi di bagian atas rapor.</span>
-                          </div>
-                        </label>
-
-                        <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                          <input
-                            type="checkbox"
-                            checked={tampilkanQr}
-                            onChange={(e) => setTampilkanQr(e.target.checked)}
-                            className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                          />
-                          <div>
-                            <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Barcode / QR Validasi Otentikasi</span>
-                            <span className="text-[10px] text-slate-400">Menyertakan QR code untuk pemindaian keaslian dokumen oleh orang tua atau pihak dinas.</span>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="toolbarPrimary"
-                        size="toolbar"
-                        onClick={handleSave}
-                        disabled={!canManage || saveSettingsMutation.isPending}
-                        className="font-bold rounded-xl shadow-md"
-                      >
-                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                        Simpan Format Cetak
-                      </Button>
-                    </div>
-                  </Card>
-                )}
+                </div>
 
               </div>
-
-              {/* Sidebar Preview: Titimangsa & Tanda Tangan Cetak (1 Col) */}
-              <div className="space-y-4">
-                <Card className="p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
-                      <Eye size={14} className="text-indigo-600" />
-                      Pratinjau Footer Resmi
-                    </span>
-                    <Badge variant="outline" className="text-[9px] font-bold border-indigo-200 dark:border-indigo-900 text-indigo-600">
-                      LIVE PREVIEW
-                    </Badge>
-                  </div>
-
-                  {/* Toggle Preview Semester */}
-                  <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewSemester('ganjil')}
-                      className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
-                        previewSemester === 'ganjil'
-                          ? 'bg-white dark:bg-slate-900 text-indigo-600 shadow-xs font-black'
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Semester Ganjil
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewSemester('genap')}
-                      className={`flex-1 py-1.5 rounded-lg text-center transition-all ${
-                        previewSemester === 'genap'
-                          ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-xs font-black'
-                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Semester Genap
-                    </button>
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Format visual titimangsa dan tanda tangan resmi rapor yang akan dicetak di bagian bawah lembar dokumen {previewSemester === 'ganjil' ? 'Semester Ganjil' : 'Semester Genap'}.
-                  </p>
-
-                  {/* Rendered Signature Box Simulator */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 font-sans text-xs space-y-5">
-                    {/* Place and Date */}
-                    <div className="text-right font-medium text-[11px] text-slate-600 dark:text-slate-400">
-                      {tempatTerbit || 'Purwakarta'}, {formattedPreviewDate}
-                    </div>
-
-                    {/* Parents & Homeroom Teacher */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center text-[10px]">
-                      <div>
-                        <span className="text-slate-500 font-bold block mb-10">Orang Tua/Wali Siswa,</span>
-                        <span className="text-slate-400 font-mono">...................................</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 font-bold block mb-10">Wali Kelas,</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 underline block">Guru Wali Kelas, S.Pd.</span>
-                        <span className="text-slate-400 font-mono text-[9px]">NIP. 199110292022212020</span>
-                      </div>
-                    </div>
-
-                    {/* Principal Signature */}
-                    <div className="text-center pt-2 border-t border-slate-200/60 dark:border-slate-800 text-[10px] space-y-1">
-                      <span className="text-slate-400 block text-[9px]">Mengetahui;</span>
-                      <span className="text-slate-600 dark:text-slate-300 font-bold block mb-10">
-                        {kepsekStatus === 'PLT' ? 'Plt. Kepala Sekolah,' : 'Kepala Sekolah,'}
-                      </span>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 underline block">
-                        {kepsekNama || 'Wahyu Tamimbarkah, S.Pd.'}
-                      </span>
-                      <span className="text-slate-400 font-mono text-[9px]">
-                        NIP. {kepsekNip || '197111022008011001'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400 bg-indigo-50/50 dark:bg-indigo-950/20 p-2.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40">
-                    <Sparkles size={14} className="text-indigo-600 shrink-0" />
-                    <span>Perubahan disimpan per Tahun Pelajaran dan otomatis diterapkan ke seluruh siswa.</span>
-                  </div>
-                </Card>
-              </div>
-
-            </div>
             )}
 
           </div>
