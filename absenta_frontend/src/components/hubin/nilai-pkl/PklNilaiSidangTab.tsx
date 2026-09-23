@@ -1,8 +1,6 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { SearchableSelect } from '@/components/ui/searchable-select';
-import { AcademicContextBar } from '@/components/akademik/AcademicContextBar';
+import { Card, Button, SearchableSelect } from '@/components/ui';
+import { AcademicContextBar } from '@/components/common';
 import SiswaIdentityCell from '@/components/common/SiswaIdentityCell';
 import { Info, Lock, Save, FileText, Check } from 'lucide-react';
 import { ScoreRow } from './types';

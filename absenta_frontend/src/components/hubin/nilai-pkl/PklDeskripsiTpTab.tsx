@@ -1,8 +1,6 @@
 import React from 'react';
 import { Building2, Save } from 'lucide-react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { SearchableSelect } from '@/components/ui/searchable-select';
+import { Card, Button, SearchableSelect } from '@/components/ui';
 import { DeskripsiTpItem, deskripsiTpSchema } from './types';
 import toast from 'react-hot-toast';
 

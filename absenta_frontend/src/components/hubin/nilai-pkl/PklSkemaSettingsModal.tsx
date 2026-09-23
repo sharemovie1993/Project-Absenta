@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sliders, Info, Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui';
 
 export interface PklSkemaSettingsModalProps {
   isOpen: boolean;

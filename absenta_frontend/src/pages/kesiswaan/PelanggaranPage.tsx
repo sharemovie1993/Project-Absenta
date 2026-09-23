@@ -367,6 +367,7 @@ export default React.memo(function PelanggaranPage() {
               nameClassName="font-extrabold text-xs uppercase tracking-tight"
               showMeta={true}
             />
+          </div>
           <Badge variant={statusInfo.variant} className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg flex items-center gap-1">
             {statusInfo.icon}
             <span>{statusInfo.label}</span>

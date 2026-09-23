@@ -181,6 +181,7 @@ export const SiswaKasusSection: React.FC<SiswaKasusSectionProps> = React.memo(({
               size="sm"
               nameClassName="font-extrabold text-xs uppercase tracking-tight"
             />
+          </div>
           <Badge variant={net > 75 ? "error" : net > 30 ? "warning" : "success"} className="text-[10px] font-black uppercase shrink-0">
             {net} Poin
           </Badge>
