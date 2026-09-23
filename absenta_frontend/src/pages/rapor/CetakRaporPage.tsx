@@ -454,15 +454,58 @@ export default React.memo(function CetakRaporPage() {
     [activeYear, activeSemester]
   );
 
-  const handleExportLeger = useCallback(() => {
+  const handleExportLeger = useCallback(async () => {
     if (!selectedKelas || !activeYear?.id || !activeSemester?.id) {
-      toast.error('Pilih kelas terlebih dahulu');
+      toast.error('Pilih kelas, tahun pelajaran, dan semester terlebih dahulu');
       return;
     }
-    const url = `/api/rapor/leger/export?kelas_id=${selectedKelas}&tahun_pelajaran_id=${activeYear.id}&semester_id=${activeSemester.id}`;
-    window.open(url, '_blank');
-    toast.success('Mengekspor file Excel Leger Kelas...');
-  }, [selectedKelas, activeYear, activeSemester]);
+    toast.info('Menyiapkan ekspor file Excel Leger Kelas...');
+    try {
+      const response = await raporApi.exportLegerBlob({
+        kelas_id: selectedKelas,
+        tahun_pelajaran_id: activeYear.id,
+        semester_id: activeSemester.id,
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const kelasName = currentKelasObj?.nama_kelas || currentKelasObj?.nama || 'Kelas';
+      const cleanTpName = activeYear.nama?.replace(/[/\\?%*:|"<>]/g, '-') || 'TP';
+      const cleanSemName = activeSemester.nama || 'Sem';
+      link.download = `Leger_${kelasName}_TP_${cleanTpName}_Sem_${cleanSemName}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success('File Excel Leger Kelas berhasil diunduh');
+    } catch (err: unknown) {
+      let msg = 'Gagal mengekspor file Excel Leger Kelas.';
+      const typedErr = err as {
+        response?: { data?: Blob | { message?: string } };
+        message?: string;
+      };
+      if (typedErr?.response?.data instanceof Blob) {
+        try {
+          const rawText = await typedErr.response.data.text();
+          const parsed = JSON.parse(rawText);
+          if (parsed?.message) {
+            msg = parsed.message;
+          }
+        } catch {
+          // Fallback to default
+        }
+      } else if (typeof typedErr?.response?.data === 'object' && typedErr?.response?.data !== null && 'message' in typedErr.response.data) {
+        msg = typedErr.response.data.message || msg;
+      } else if (typedErr?.message) {
+        msg = typedErr.message;
+      }
+      toast.error(msg);
+    }
+  }, [selectedKelas, activeYear, activeSemester, currentKelasObj]);
 
   const handleBatchPrintRapor = useCallback(async () => {
     if (!selectedKelas || !activeYear?.id || !activeSemester?.id) {

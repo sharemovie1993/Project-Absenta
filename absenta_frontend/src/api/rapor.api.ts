@@ -3,7 +3,16 @@ import { useAuthStore } from '../store/authStore';
 
 const getAuthToken = () => {
   try {
-    return useAuthStore.getState().token || localStorage.getItem('access_token') || '';
+    const fromStore = useAuthStore.getState().token;
+    if (fromStore) return fromStore;
+    const directToken = localStorage.getItem('access_token');
+    if (directToken) return directToken;
+    const rawStorage = localStorage.getItem('auth-storage');
+    if (rawStorage) {
+      const parsed = JSON.parse(rawStorage);
+      if (parsed?.state?.token) return parsed.state.token;
+    }
+    return '';
   } catch {
     return localStorage.getItem('access_token') || '';
   }
@@ -144,6 +153,13 @@ export const raporApi = {
     const query = new URLSearchParams(params).toString();
     return `${api.defaults.baseURL}/rapor/leger/export?${query}`;
   },
+  exportLegerBlob: async (params: { kelas_id: string; tahun_pelajaran_id: string; semester_id: string }) => {
+    const response = await api.get('/rapor/leger/export', {
+      params,
+      responseType: 'blob',
+    });
+    return response;
+  },
   getTranskripNilai: async (siswa_id: string) => {
     const response = await api.get('/rapor/transkrip', { params: { siswa_id } });
     return response.data;
@@ -281,6 +297,57 @@ export const raporApi = {
     const token = getAuthToken();
     const base = getPdfBaseUrl();
     return `${base}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
+  },
+
+  // === AUTHENTICATED PDF BLOB DOWNLOADERS (ANTI-UNAUTHORIZED) ===
+  getPdfRaporBlob: async (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
+    return api.get(`/reporting/pdf/rapor/${siswaId}`, {
+      params: { tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId },
+      responseType: 'blob',
+    });
+  },
+  getPdfCoverBlob: async (siswaId: string) => {
+    return api.get(`/reporting/pdf/cover/${siswaId}`, {
+      responseType: 'blob',
+    });
+  },
+  getPdfBiodataBlob: async (siswaId: string) => {
+    return api.get(`/reporting/pdf/biodata/${siswaId}`, {
+      responseType: 'blob',
+    });
+  },
+  getPdfRaporSumatifBlob: async (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
+    return api.get(`/reporting/pdf/rapor-sumatif/${siswaId}`, {
+      params: { tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId },
+      responseType: 'blob',
+    });
+  },
+  getPdfLegerBlob: async (kelasId: string, tahunPelajaranId: string, semesterId: string) => {
+    return api.get(`/reporting/pdf/leger/${kelasId}`, {
+      params: { tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId },
+      responseType: 'blob',
+    });
+  },
+  getPdfP5Blob: async (siswaId: string, tahunPelajaranId: string, semesterId: string) => {
+    return api.get(`/reporting/pdf/p5/${siswaId}`, {
+      params: { tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId },
+      responseType: 'blob',
+    });
+  },
+  getPdfSklBlob: async (siswaId: string) => {
+    return api.get(`/reporting/pdf/skl/${siswaId}`, {
+      responseType: 'blob',
+    });
+  },
+  getPdfUkkBlob: async (siswaId: string) => {
+    return api.get(`/reporting/pdf/ukk/${siswaId}`, {
+      responseType: 'blob',
+    });
+  },
+  getPdfPklBlob: async (siswaPklId: string) => {
+    return api.get(`/reporting/pdf/pkl/${siswaPklId}`, {
+      responseType: 'blob',
+    });
   },
   // === RAPOR SETTINGS & REFERENSI PERSURATAN ===
   getRaporSettings: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {

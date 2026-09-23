@@ -71,10 +71,13 @@ export async function authMiddleware(
   }
 
   // Extract token from Authorization header or Query Parameter (for direct asset rendering in iframes)
-  const tokenQuery = (request.query as any)?.token || (request.query as any)?.access_token;
+  const rawTokenQuery = (request.query as any)?.token || (request.query as any)?.access_token;
+  const tokenQuery = typeof rawTokenQuery === 'string' && rawTokenQuery.trim().length > 0
+    ? rawTokenQuery.replace(/^Bearer\s+/i, '').trim()
+    : undefined;
+
   if (!request.headers.authorization && tokenQuery) {
-    const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
-    request.headers.authorization = `Bearer ${cleanToken}`;
+    request.headers.authorization = `Bearer ${tokenQuery}`;
   }
 
   const authHeader = request.headers.authorization;
@@ -82,8 +85,7 @@ export async function authMiddleware(
     try {
       let payload: UserPayload;
       if (tokenQuery) {
-        const cleanToken = String(tokenQuery).replace(/^Bearer\s+/i, '').trim();
-        payload = await (request as any).server.jwt.verify(cleanToken) as UserPayload;
+        payload = await (request as any).server.jwt.verify(tokenQuery) as UserPayload;
       } else {
         payload = await request.jwtVerify() as UserPayload;
       }

@@ -74,10 +74,13 @@ export const resolvePublicApiBaseUrl = (): string => {
   const winPort = typeof window !== 'undefined' ? window.location.port : '';
 
   if (winPort === '5173' || (!hasExplicitPort && BASE_URL.includes('5173'))) {
-    // Keep same protocol as window to avoid SSL mismatch or Mixed Content block
+    // When running under Vite dev server, /api is cleanly proxied to backend target (e.g. port 3004)
+    // Using current origin preserves Vite proxy and avoids wrong hardcoded port (3001)
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return `${window.location.origin}/api`;
+    }
     const finalProto = winProto || 'http:';
-    const targetPort = u.port || '3001';
-    return `${finalProto}//${winHost}:${targetPort}/api`;
+    return `${finalProto}//${winHost}:5173/api`;
   }
 
   // Default: use same origin as protected API (keep /api suffix)

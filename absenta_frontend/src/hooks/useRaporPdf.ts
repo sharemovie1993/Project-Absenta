@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { raporApi } from '../api/rapor.api';
 import { useToast } from './useToast';
 
@@ -9,92 +9,160 @@ export interface UseRaporPdfOptions {
 
 export function useRaporPdf(options: UseRaporPdfOptions = {}) {
   const { showToast } = useToast();
+  const [activePrintingDoc, setActivePrintingDoc] = useState<string | null>(null);
 
-  const openPdf = useCallback((url: string) => {
-    if (!url) {
-      showToast('Gagal membentuk tautan dokumen cetak', 'error');
-      return;
-    }
-    window.open(url, '_blank', 'noopener,noreferrer');
-  }, [showToast]);
+  /**
+   * Helper membuka dokumen PDF via Authenticated Axios Blob
+   * Kebal terhadap masalah 'Missing or invalid authorization header' karena
+   * token Authorization: Bearer selalu disematkan oleh axios interceptor.
+   */
+  const openPdfBlob = useCallback(
+    async (fetcher: () => Promise<{ data: BlobPart }>, docTitle: string) => {
+      setActivePrintingDoc(docTitle);
+      showToast(`Menyiapkan ${docTitle}...`, 'info');
+      try {
+        const response = await fetcher();
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const blobUrl = window.URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        showToast(`${docTitle} berhasil dibuka`, 'success');
+      } catch (err: unknown) {
+        let errorMsg = `Gagal membuka ${docTitle}.`;
+        const typedErr = err as {
+          response?: { data?: Blob | { message?: string } };
+          message?: string;
+        };
 
-  const printCover = useCallback((siswaId: string) => {
-    if (!siswaId) return;
-    const url = raporApi.getPdfCoverUrl(siswaId);
-    openPdf(url);
-  }, [openPdf]);
+        if (typedErr?.response?.data instanceof Blob) {
+          try {
+            const rawText = await typedErr.response.data.text();
+            const parsed = JSON.parse(rawText);
+            if (parsed?.message) {
+              errorMsg = parsed.message;
+            }
+          } catch {
+            // Keep default fallback
+          }
+        } else if (typeof typedErr?.response?.data === 'object' && typedErr?.response?.data !== null && 'message' in typedErr.response.data) {
+          errorMsg = typedErr.response.data.message || errorMsg;
+        } else if (typedErr?.message) {
+          errorMsg = typedErr.message;
+        }
+        showToast(errorMsg, 'error');
+      } finally {
+        setActivePrintingDoc(null);
+      }
+    },
+    [showToast]
+  );
 
-  const printBiodata = useCallback((siswaId: string) => {
-    if (!siswaId) return;
-    const url = raporApi.getPdfBiodataUrl(siswaId);
-    openPdf(url);
-  }, [openPdf]);
+  const printCover = useCallback(
+    (siswaId: string) => {
+      if (!siswaId) return;
+      void openPdfBlob(() => raporApi.getPdfCoverBlob(siswaId), 'Cover Rapor');
+    },
+    [openPdfBlob]
+  );
 
-  const printRaporSemester = useCallback((siswaId: string, customTpId?: string, customSemId?: string) => {
-    const tpId = customTpId || options.tahunPelajaranId;
-    const semId = customSemId || options.semesterId;
-    if (!tpId || !semId) {
-      showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
-      return;
-    }
-    const url = raporApi.getPdfRaporUrl(siswaId, tpId, semId);
-    openPdf(url);
-  }, [openPdf, options.tahunPelajaranId, options.semesterId, showToast]);
+  const printBiodata = useCallback(
+    (siswaId: string) => {
+      if (!siswaId) return;
+      void openPdfBlob(() => raporApi.getPdfBiodataBlob(siswaId), 'Biodata Siswa');
+    },
+    [openPdfBlob]
+  );
 
-  const printRaporSumatif = useCallback((siswaId: string, customTpId?: string, customSemId?: string) => {
-    const tpId = customTpId || options.tahunPelajaranId;
-    const semId = customSemId || options.semesterId;
-    if (!tpId || !semId) {
-      showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
-      return;
-    }
-    const url = raporApi.getPdfRaporSumatifUrl(siswaId, tpId, semId);
-    openPdf(url);
-  }, [openPdf, options.tahunPelajaranId, options.semesterId, showToast]);
+  const printRaporSemester = useCallback(
+    (siswaId: string, customTpId?: string, customSemId?: string) => {
+      const tpId = customTpId || options.tahunPelajaranId;
+      const semId = customSemId || options.semesterId;
+      if (!tpId || !semId) {
+        showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
+        return;
+      }
+      void openPdfBlob(
+        () => raporApi.getPdfRaporBlob(siswaId, tpId, semId),
+        'Rapor Semester (CK1 & CK2)'
+      );
+    },
+    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+  );
 
-  const printLeger = useCallback((kelasId: string, customTpId?: string, customSemId?: string) => {
-    const tpId = customTpId || options.tahunPelajaranId;
-    const semId = customSemId || options.semesterId;
-    if (!kelasId) {
-      showToast('Pilih Rombel / Kelas terlebih dahulu', 'warning');
-      return;
-    }
-    if (!tpId || !semId) {
-      showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
-      return;
-    }
-    const url = raporApi.getPdfLegerUrl(kelasId, tpId, semId);
-    openPdf(url);
-  }, [openPdf, options.tahunPelajaranId, options.semesterId, showToast]);
+  const printRaporSumatif = useCallback(
+    (siswaId: string, customTpId?: string, customSemId?: string) => {
+      const tpId = customTpId || options.tahunPelajaranId;
+      const semId = customSemId || options.semesterId;
+      if (!tpId || !semId) {
+        showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
+        return;
+      }
+      void openPdfBlob(
+        () => raporApi.getPdfRaporSumatifBlob(siswaId, tpId, semId),
+        'Rapor Penilaian Sumatif'
+      );
+    },
+    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+  );
 
-  const printP5 = useCallback((siswaId: string, customTpId?: string, customSemId?: string) => {
-    const tpId = customTpId || options.tahunPelajaranId;
-    const semId = customSemId || options.semesterId;
-    if (!tpId || !semId) {
-      showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
-      return;
-    }
-    const url = raporApi.getPdfP5Url(siswaId, tpId, semId);
-    openPdf(url);
-  }, [openPdf, options.tahunPelajaranId, options.semesterId, showToast]);
+  const printLeger = useCallback(
+    (kelasId: string, customTpId?: string, customSemId?: string) => {
+      const tpId = customTpId || options.tahunPelajaranId;
+      const semId = customSemId || options.semesterId;
+      if (!kelasId) {
+        showToast('Pilih Rombel / Kelas terlebih dahulu', 'warning');
+        return;
+      }
+      if (!tpId || !semId) {
+        showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
+        return;
+      }
+      void openPdfBlob(
+        () => raporApi.getPdfLegerBlob(kelasId, tpId, semId),
+        'Buku Leger (Landscape)'
+      );
+    },
+    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+  );
 
-  const printSkl = useCallback((siswaId: string) => {
-    if (!siswaId) return;
-    const url = raporApi.getPdfSklUrl(siswaId);
-    openPdf(url);
-  }, [openPdf]);
+  const printP5 = useCallback(
+    (siswaId: string, customTpId?: string, customSemId?: string) => {
+      const tpId = customTpId || options.tahunPelajaranId;
+      const semId = customSemId || options.semesterId;
+      if (!tpId || !semId) {
+        showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
+        return;
+      }
+      void openPdfBlob(
+        () => raporApi.getPdfP5Blob(siswaId, tpId, semId),
+        'Rapor Projek P5'
+      );
+    },
+    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+  );
 
-  const printUkk = useCallback((siswaId: string) => {
-    if (!siswaId) return;
-    const url = raporApi.getPdfUkkUrl(siswaId);
-    openPdf(url);
-  }, [openPdf]);
+  const printSkl = useCallback(
+    (siswaId: string) => {
+      if (!siswaId) return;
+      void openPdfBlob(() => raporApi.getPdfSklBlob(siswaId), 'Surat Keterangan Lulus (SKL)');
+    },
+    [openPdfBlob]
+  );
 
-  const printPkl = useCallback((siswaPklId: string) => {
-    if (!siswaPklId) return;
-    const url = raporApi.getPdfPklUrl(siswaPklId);
-    openPdf(url);
-  }, [openPdf]);
+  const printUkk = useCallback(
+    (siswaId: string) => {
+      if (!siswaId) return;
+      void openPdfBlob(() => raporApi.getPdfUkkBlob(siswaId), 'Sertifikat Uji Kompetensi Keahlian (UKK)');
+    },
+    [openPdfBlob]
+  );
+
+  const printPkl = useCallback(
+    (siswaPklId: string) => {
+      if (!siswaPklId) return;
+      void openPdfBlob(() => raporApi.getPdfPklBlob(siswaPklId), 'Rapor Praktik Kerja Lapangan (PKL)');
+    },
+    [openPdfBlob]
+  );
 
   return {
     printCover,
@@ -106,5 +174,6 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
     printSkl,
     printUkk,
     printPkl,
+    activePrintingDoc,
   };
 }
