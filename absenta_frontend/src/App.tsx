@@ -165,6 +165,7 @@ const AtpTemplatePage = lazy(() => import('./pages/kurikulum/AtpTemplatePage').t
 const InputNilaiPage = lazy(() => import('./pages/rapor/InputNilaiPage'));
 const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
 const P5Page = lazy(() => import('./pages/rapor/P5Page'));
+const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
 const JadwalKegiatanPage = lazy(() => import('./pages/attendance/JadwalKegiatanPage'));
@@ -968,6 +969,11 @@ function App() {
                     <Route path="/rapor/p5" element={
                       <ProtectedRoute requiredCapability="academic.teaching.view">
                         <P5Page />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/settings" element={
+                      <ProtectedRoute requiredCapability={['academic.view.wali.kelas', 'academic.manage.academic']}>
+                        <RaporSettingsPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/cbt/dashboard" element={

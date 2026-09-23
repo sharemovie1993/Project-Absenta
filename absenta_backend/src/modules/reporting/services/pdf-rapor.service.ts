@@ -593,21 +593,38 @@ export class PdfRaporService {
       semester_id: string;
     }
   ) {
-    const student = await prisma.siswa.findFirst({
-      where: { id: params.siswa_id, tenant_id: tenantId },
-      include: { Kelas: true, Tenant: true }
-    });
+    const [student, semester, sekolah, raporSettings] = await Promise.all([
+      prisma.siswa.findFirst({
+        where: { id: params.siswa_id, tenant_id: tenantId },
+        include: { 
+          Kelas: {
+            include: {
+              Jurusan: true,
+            }
+          }
+        }
+      }),
+      prisma.semester.findFirst({
+        where: { id: params.semester_id }
+      }),
+      prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId }
+      }),
+      RaporService.getSettings(tenantId, {
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        semester_id: params.semester_id,
+      })
+    ]);
 
     if (!student) {
       throw new Error('Siswa tidak ditemukan');
     }
 
-    const schoolName = student.Tenant?.name || 'Sekolah Mitra Absenta';
-    const dateStr = new Date().toLocaleDateString('id-ID', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
+    const schoolName = sekolah?.nama || 'SMK';
+    const effectiveDate = raporSettings?.tanggal_rapor_p5 || raporSettings?.tanggal_rapor;
+    const dateStr = effectiveDate
+      ? new Date(effectiveDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const listNilai = await prisma.p5NilaiSiswa.findMany({
       where: {
@@ -645,44 +662,161 @@ export class PdfRaporService {
 
     const projekList = Array.from(projekMap.values());
 
+    const kualifikasiFullText: Record<string, string> = {
+      'SB': 'Sangat Berkembang',
+      'BSH': 'Berkembang Sesuai Harapan',
+      'MB': 'Mulai Berkembang',
+      'BB': 'Belum Berkembang'
+    };
+
+    const defaultNotes: Record<string, string> = {
+      'SB': 'Siswa mengembangkan kemampuannya melampaui harapan',
+      'BSH': 'Siswa telah mengembangkan kemampuan hingga berada dalam tahap ajek',
+      'MB': 'Siswa mulai menunjukkan peningkatan kemampuan pada aspek ini',
+      'BB': 'Siswa masih membutuhkan bimbingan dalam mengembangkan kemampuannya'
+    };
+
     let projekHtml = '';
 
-    projekList.forEach((p, pIdx) => {
-      let scoresHtml = '';
+    projekList.forEach((p) => {
+      // Parse metadata from deskripsi
+      let tema = 'Kewirausahaan';
+      let fase = student.Kelas?.tingkat === 10 ? 'E' : 'F';
+      let cleanDesc = p.deskripsi || '';
+
+      const temaMatch = cleanDesc.match(/\[Tema:\s*([^\]]+)\]/i);
+      if (temaMatch && temaMatch[1]) {
+        tema = temaMatch[1].trim();
+        cleanDesc = cleanDesc.replace(temaMatch[0], '');
+      }
+
+      const faseMatch = cleanDesc.match(/\[Fase:\s*([^\]]+)\]/i);
+      if (faseMatch && faseMatch[1]) {
+        fase = faseMatch[1].replace(/Fase\s*/i, '').trim();
+        cleanDesc = cleanDesc.replace(faseMatch[0], '');
+      }
+
+      // Group scores by dimension
+      const dimMap = new Map<string, Array<{ sub_elemen: string; kualifikasi: string; catatan: string | null }>>();
       p.scores.forEach((s) => {
-        scoresHtml += `
-          <tr>
-            <td>
-              <div style="font-weight: bold;">${s.dimensi}</div>
-              <div style="font-size: 11px; color: #555;">${s.sub_elemen}</div>
+        if (!dimMap.has(s.dimensi)) {
+          dimMap.set(s.dimensi, []);
+        }
+        dimMap.get(s.dimensi)!.push({
+          sub_elemen: s.sub_elemen,
+          kualifikasi: s.kualifikasi,
+          catatan: s.catatan
+        });
+      });
+
+      let rowsHtml = '';
+      dimMap.forEach((subItems, dimName) => {
+        // Dimension Header Row
+        rowsHtml += `
+          <tr style="background-color: #f3f4f6;">
+            <td colspan="4" style="font-weight: bold; font-size: 11px; padding: 6px 10px; border: 1px solid #1f2937; text-transform: uppercase;">
+              ${dimName}
             </td>
-            <td style="text-align: center; font-weight: bold; background-color: ${s.kualifikasi === 'BB' ? '#fff3cd' : '#fff'};">${s.kualifikasi === 'BB' ? '✓' : ''}</td>
-            <td style="text-align: center; font-weight: bold; background-color: ${s.kualifikasi === 'MB' ? '#d1ecf1' : '#fff'};">${s.kualifikasi === 'MB' ? '✓' : ''}</td>
-            <td style="text-align: center; font-weight: bold; background-color: ${s.kualifikasi === 'BSH' ? '#d4edda' : '#fff'};">${s.kualifikasi === 'BSH' ? '✓' : ''}</td>
-            <td style="text-align: center; font-weight: bold; background-color: ${s.kualifikasi === 'SB' ? '#cce5ff' : '#fff'};">${s.kualifikasi === 'SB' ? '✓' : ''}</td>
-            <td style="font-style: italic; font-size: 11px;">${s.catatan || '-'}</td>
+          </tr>
+        `;
+
+        // Sub elements list with letters a., b., c.
+        const subListHtml = subItems.map((item, idx) => {
+          const letter = String.fromCharCode(97 + idx);
+          return `
+            <div style="display: flex; gap: 6px; margin-bottom: 6px; font-size: 10px; line-height: 1.4;">
+              <span style="font-weight: bold; min-width: 14px;">${letter}.</span>
+              <span style="text-align: justify;">${item.sub_elemen}</span>
+            </div>
+          `;
+        }).join('');
+
+        // Pick representative kualifikasi & note for this dimension
+        const primaryScore = subItems[0];
+        const kode = primaryScore?.kualifikasi || 'BSH';
+        const fullDesc = primaryScore?.catatan || defaultNotes[kode] || '-';
+
+        rowsHtml += `
+          <tr>
+            <td style="width: 40%; vertical-align: top; padding: 8px 10px; border: 1px solid #1f2937;">
+              ${subListHtml}
+            </td>
+            <td style="width: 8%; text-align: center; font-weight: bold; font-size: 12px; vertical-align: middle; border: 1px solid #1f2937;">
+              ${kode}
+            </td>
+            <td style="width: 22%; text-align: center; font-size: 11px; vertical-align: middle; border: 1px solid #1f2937; padding: 6px;">
+              ${kualifikasiFullText[kode] || kode}
+            </td>
+            <td style="width: 30%; font-size: 10.5px; line-height: 1.4; vertical-align: middle; border: 1px solid #1f2937; padding: 8px 10px; text-align: justify;">
+              ${fullDesc}
+            </td>
           </tr>
         `;
       });
 
       projekHtml += `
-        <div style="margin-bottom: 30px; page-break-inside: avoid;">
-          <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px; color: #1c2d42;">Projek ${pIdx + 1}: ${p.judul}</div>
-          <div style="font-size: 12px; color: #666; margin-bottom: 10px; text-align: justify;">Deskripsi: ${p.deskripsi || '-'}</div>
+        <div style="margin-bottom: 25px; page-break-inside: avoid;">
+          <!-- Top Information Box -->
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 11px;">
+            <tr>
+              <td style="width: 18%; padding: 2px 0;">Nama Peserta Didik</td>
+              <td style="width: 2%;">:</td>
+              <td style="width: 38%; font-weight: bold; text-transform: uppercase;">${student.nama_siswa}</td>
+              <td style="width: 18%; padding: 2px 0;">Fase</td>
+              <td style="width: 2%;">:</td>
+              <td style="width: 22%; font-weight: bold;">${fase}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0;">NIS/NISN</td>
+              <td>:</td>
+              <td>${student.nis} / ${student.nisn || '-'}</td>
+              <td style="padding: 2px 0;">Satuan Pendidikan</td>
+              <td>:</td>
+              <td>${schoolName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0;">Kelas</td>
+              <td>:</td>
+              <td>${student.Kelas?.nama_kelas || '-'}</td>
+              <td style="padding: 2px 0;">Program Keahlian</td>
+              <td>:</td>
+              <td>${student.Kelas?.Jurusan?.nama || '-'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0;">Semester</td>
+              <td>:</td>
+              <td>${semester?.nama_semester || 'Ganjil'}</td>
+              <td style="padding: 2px 0;">Konsentrasi Keahlian</td>
+              <td>:</td>
+              <td>${student.Kelas?.Jurusan?.nama || '-'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0 2px 0; font-weight: bold;">Tema Projek</td>
+              <td style="padding-top: 6px;">:</td>
+              <td style="padding-top: 6px; font-weight: bold;">${tema}</td>
+              <td colspan="3"></td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0; font-weight: bold;">Judul Projek</td>
+              <td>:</td>
+              <td colspan="4" style="font-weight: bold;">${p.judul}</td>
+            </tr>
+          </table>
 
-          <table class="p5-table">
+          <!-- Matrix Table -->
+          <table style="width: 100%; border-collapse: collapse; border: 1px solid #1f2937; margin-bottom: 15px;">
             <thead>
-              <tr>
-                <th style="width: 35%;">Dimensi & Sub-Elemen Karakter P5</th>
-                <th style="width: 8%; font-size: 10px;">BB<br>(Mulai)</th>
-                <th style="width: 8%; font-size: 10px;">MB<br>(Sedang)</th>
-                <th style="width: 8%; font-size: 10px;">BSH<br>(Sesuai)</th>
-                <th style="width: 8%; font-size: 10px;">SB<br>(Sangat)</th>
-                <th style="width: 33%;">Catatan Proses / Deskripsi Capaian</th>
+              <tr style="background-color: #d1d5db; font-size: 11px; font-weight: bold;">
+                <th style="width: 40%; text-align: left; padding: 8px 10px; border: 1px solid #1f2937;">
+                  ${cleanDesc.trim() || p.judul}
+                </th>
+                <th colspan="3" style="width: 60%; text-align: center; padding: 8px 10px; border: 1px solid #1f2937;">
+                  Keterangan
+                </th>
               </tr>
             </thead>
             <tbody>
-              ${scoresHtml}
+              ${rowsHtml}
             </tbody>
           </table>
         </div>
@@ -690,8 +824,40 @@ export class PdfRaporService {
     });
 
     if (projekList.length === 0) {
-      projekHtml = `<div style="text-align: center; font-style: italic; padding: 30px; border: 1px dashed #777;">Siswa belum memiliki penilaian Projek P5 di semester ini</div>`;
+      projekHtml = `<div style="text-align: center; font-style: italic; padding: 40px; border: 1px dashed #777; border-radius: 8px; margin: 30px 0;">Siswa belum memiliki penilaian Projek P5 pada semester ini</div>`;
     }
+
+    let waliKelasNama = '...................................................';
+    let waliKelasNip = 'NIP. ...................................................';
+    if (student.kelas_id) {
+      const waliAssignment = await prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: student.kelas_id,
+          is_active: true,
+          Position: { code: 'WALIKELAS' }
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true
+            }
+          }
+        }
+      });
+      if (waliAssignment?.User?.Guru) {
+        waliKelasNama = waliAssignment.User.Guru.nama_guru;
+        waliKelasNip = waliAssignment.User.Guru.nip ? `NIP. ${waliAssignment.User.Guru.nip}` : 'NIP. -';
+      } else if (waliAssignment?.User?.full_name) {
+        waliKelasNama = waliAssignment.User.full_name;
+        waliKelasNip = 'NIP. -';
+      }
+    }
+
+    const kepsekNama = raporSettings?.kepsek_nama || sekolah?.kepala_sekolah || '...................................................';
+    const kepsekNip = raporSettings?.kepsek_nip ? `NIP. ${raporSettings.kepsek_nip}` : (sekolah?.nip_kepala ? `NIP. ${sekolah.nip_kepala}` : 'NIP. ...................................................');
+    const kepsekJabatan = raporSettings?.kepsek_status === 'PLT' ? 'Plt. Kepala Sekolah,' : 'Kepala Sekolah,';
+    const tempatTanggal = `${raporSettings?.tempat_terbit || sekolah?.kota || 'Purwakarta'}, ${dateStr}`;
 
     const html = `
       <!DOCTYPE html>
@@ -699,66 +865,42 @@ export class PdfRaporService {
       <head>
         <meta charset="utf-8">
         <style>
-          @page { size: A4 portrait; margin: 15mm 20mm; }
-          body { font-family: 'Arial', sans-serif; font-size: 12px; line-height: 1.5; color: #333; margin: 0; }
-          .header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
-          .school-name { font-size: 15px; font-weight: bold; }
-          .title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-          .meta-table { width: 100%; margin-bottom: 20px; border-collapse: collapse; }
-          .meta-table td { padding: 3px 8px; vertical-align: top; }
-          .p5-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-          .p5-table th, .p5-table td { border: 1px solid #000; padding: 6px; }
-          .p5-table th { background-color: #f2f2f2; font-weight: bold; text-align: center; }
-          .legend { border: 1px solid #000; padding: 8px; margin-bottom: 20px; font-size: 11px; }
-          .footer { display: flex; justify-content: space-between; margin-top: 40px; page-break-inside: avoid; }
-          .sig-box { text-align: center; width: 65mm; }
-          .sig-space { height: 18mm; }
+          @page { size: A4 portrait; margin: 12mm 15mm; }
+          body { font-family: 'Arial', sans-serif; font-size: 11px; line-height: 1.4; color: #111; margin: 0; }
+          .main-title { text-align: center; font-size: 13px; font-weight: bold; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+          .footer-container { margin-top: 30px; page-break-inside: avoid; }
         </style>
       </head>
       <body>
-        <div class="header">
-          <div>
-            <div class="school-name">RAPOR PROJEK P5</div>
-            <div>Kurikulum Merdeka</div>
-          </div>
-          <div style="text-align: right; font-weight: bold;">
-            ${schoolName}
-          </div>
-        </div>
-
-        <div class="title">Laporan Pencapaian Projek Profil Pelajar Pancasila</div>
-
-        <table class="meta-table">
-          <tr>
-            <td style="width: 15%;">Nama Siswa</td><td style="width: 2%;">:</td><td style="width: 33%; font-weight: bold;">${student.nama_siswa}</td>
-            <td style="width: 15%;">Kelas</td><td style="width: 2%;">:</td><td style="width: 33%;">${student.Kelas?.nama_kelas || '-'}</td>
-          </tr>
-          <tr>
-            <td>NIS / NISN</td><td>:</td><td>${student.nis} / ${student.nisn || '-'}</td>
-            <td>Tingkat</td><td>:</td><td>${student.Kelas?.tingkat || '-'}</td>
-          </tr>
-        </table>
-
-        <div class="legend">
-          <strong>Keterangan Kualifikasi Pencapaian:</strong>
-          <br>
-          • <strong>BB</strong>: Belum Berkembang | • <strong>MB</strong>: Mulai Berkembang | • <strong>BSH</strong>: Berkembang Sesuai Harapan | • <strong>SB</strong>: Sangat Berkembang
-        </div>
+        <div class="main-title">PROJEK PENGUATAN PROFIL PELAJAR PANCASILA (P5)</div>
 
         ${projekHtml}
 
-        <div class="footer">
-          <div class="sig-box">
-            <div>Orang Tua / Wali,</div>
-            <div class="sig-space"></div>
-            <div>________________________</div>
+        <div class="footer-container">
+          <div style="text-align: right; margin-bottom: 10px; font-size: 11px; padding-right: 20px;">
+            ${tempatTanggal}
           </div>
-          <div class="sig-box">
-            <div>Ditetapkan di: Purwakarta</div>
-            <div>Tanggal: ${dateStr}</div>
-            <div style="margin-top: 5px;">Wali Kelas,</div>
-            <div class="sig-space"></div>
-            <div>________________________</div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: center;">
+            <tr>
+              <td style="width: 50%; padding-bottom: 60px;">Orang Tua/Wali Siswa,</td>
+              <td style="width: 50%; padding-bottom: 60px;">Wali Kelas,</td>
+            </tr>
+            <tr>
+              <td>...................................................</td>
+              <td style="font-weight: bold; text-decoration: underline;">${waliKelasNama}</td>
+            </tr>
+            <tr>
+              <td></td>
+              <td style="font-size: 10px; color: #444;">${waliKelasNip}</td>
+            </tr>
+          </table>
+
+          <div style="margin-top: 25px; text-align: center; font-size: 11px;">
+            <div>Mengetahui;</div>
+            <div style="margin-bottom: 60px;">${kepsekJabatan}</div>
+            <div style="font-weight: bold; text-decoration: underline;">${kepsekNama}</div>
+            <div style="font-size: 10px; color: #444;">${kepsekNip}</div>
           </div>
         </div>
       </body>

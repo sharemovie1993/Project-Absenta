@@ -2,16 +2,14 @@ import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
-  Award, 
   Plus, 
   Trash2, 
   Save, 
   Layers, 
-  Bookmark, 
-  Info,
-  CheckCircle,
-  FileText,
-  Loader2
+  FileText, 
+  Loader2,
+  Printer,
+  Sparkles
 } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -20,15 +18,29 @@ import { Table, type Column } from '../../components/ui/Table';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
-import { cn } from '@/lib/utils';
+import { useAcademicContext } from '@/hooks/useAcademicContext';
+import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { raporApi } from '../../api/rapor.api';
-import { kelasApi, tahunPelajaranApi, siswaApi } from '../../api/academic.api';
+import { siswaApi } from '../../api/academic.api';
 import useConfirm from '@/hooks/useConfirm';
 import { toast } from 'react-hot-toast';
+import {
+  P5_TEMA_OPTIONS,
+  P5_FASE_OPTIONS,
+  P5_DIMENSI_OPTIONS,
+  P5_SUB_ELEMEN_MAP,
+  P5_KUALIFIKASI_OPTIONS,
+  P5_DEFAULT_CATATAN,
+  formatProjekDeskripsi,
+  parseProjekMetadata
+} from './components/p5/p5Constants';
 
 // Zod Schema Validation Guard (Pilar 25)
 const createProjekSchema = z.object({
   judul: z.string().min(3, 'Judul projek minimal 3 karakter'),
+  tema: z.string().min(1, 'Tema projek wajib dipilih'),
+  fase: z.string().min(1, 'Fase capaian wajib dipilih'),
   deskripsi: z.string().optional(),
 });
 
@@ -53,9 +65,15 @@ export const P5Page: React.FC = React.memo(() => {
   const [activeTab, setActiveTab] = useState<string>('projek');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  // Reusable Centralized Academic Context
+  const academicCtx = useAcademicContext();
+  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions();
+
   // Form Create Projek State
   const [newProjek, setNewProjek] = useState({
     judul: '',
+    tema: 'Kewirausahaan',
+    fase: 'Fase F',
     deskripsi: ''
   });
 
@@ -72,27 +90,14 @@ export const P5Page: React.FC = React.memo(() => {
   const [sortBy, setSortBy] = useState<string>('nama_siswa');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  // Fetch Metadata
-  const { data: years } = useQuery({
-    queryKey: ['academic-years'],
-    queryFn: () => tahunPelajaranApi.getAll()
-  });
-  const activeYear = useMemo(() => (years?.data ?? []).find(y => y.is_active), [years]);
-  const activeSemester = useMemo(() => activeYear?.Semester?.find((s: { is_active?: boolean }) => s.is_active), [activeYear]);
-
-  const { data: classes } = useQuery({
-    queryKey: ['classes'],
-    queryFn: () => kelasApi.getAll()
-  });
-
-  // Fetch P5 Projek Master List
+  // Fetch P5 Projek Master List (Scoped to Academic Context)
   const { data: projekList, isLoading: isLoadingProjek } = useQuery({
-    queryKey: ['p5-projek', activeYear?.id, activeSemester?.id],
+    queryKey: ['p5-projek', academicCtx.selectedTahunPelajaran, academicCtx.selectedSemester],
     queryFn: () => raporApi.getP5Projek({
-      tahun_pelajaran_id: activeYear!.id,
-      semester_id: activeSemester!.id
+      tahun_pelajaran_id: academicCtx.selectedTahunPelajaran,
+      semester_id: academicCtx.selectedSemester
     }),
-    enabled: Boolean(activeYear && activeSemester)
+    enabled: Boolean(academicCtx.selectedTahunPelajaran && academicCtx.selectedSemester)
   });
 
   // Fetch Students by Class
@@ -120,13 +125,15 @@ export const P5Page: React.FC = React.memo(() => {
           n.siswa_id === stud.id && 
           n.sub_elemen === selectedSubElemen
         );
+        const kualifikasi = exist?.kualifikasi || 'BSH';
+        const defaultCatatan = P5_DEFAULT_CATATAN[kualifikasi] || '';
         return {
           id: stud.id,
           siswa_id: stud.id,
           nama_siswa: stud.nama_siswa,
           nis: stud.nis || '',
-          kualifikasi: exist?.kualifikasi || 'BSH',
-          catatan_proses: exist?.catatan_proses || ''
+          kualifikasi,
+          catatan_proses: exist?.catatan_proses || defaultCatatan
         };
       });
       setScores(grid);
@@ -140,7 +147,7 @@ export const P5Page: React.FC = React.memo(() => {
       queryClient.invalidateQueries({ queryKey: ['p5-projek'] });
       toast.success('Projek P5 berhasil dibuat');
       setIsCreateModalOpen(false);
-      setNewProjek({ judul: '', deskripsi: '' });
+      setNewProjek({ judul: '', tema: 'Kewirausahaan', fase: 'Fase F', deskripsi: '' });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Gagal membuat projek';
@@ -176,19 +183,23 @@ export const P5Page: React.FC = React.memo(() => {
     e.preventDefault();
     const parsed = createProjekSchema.safeParse(newProjek);
     if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Judul Projek wajib diisi');
+      toast.error(parsed.error.errors[0]?.message || 'Harap lengkapi form projek');
       return;
     }
-    if (!activeYear || !activeSemester) {
-      toast.error('Tahun pelajaran & semester aktif belum dikonfigurasi');
+    if (!academicCtx.selectedTahunPelajaran || !academicCtx.selectedSemester) {
+      toast.error('Tahun pelajaran & semester belum dipilih pada konteks akademik');
       return;
     }
+
+    const formattedDesc = formatProjekDeskripsi(newProjek.tema, newProjek.fase, newProjek.deskripsi);
+
     createProjekMutation.mutate({
-      ...newProjek,
-      tahun_pelajaran_id: activeYear.id,
-      semester_id: activeSemester.id
+      judul: newProjek.judul,
+      deskripsi: formattedDesc,
+      tahun_pelajaran_id: academicCtx.selectedTahunPelajaran,
+      semester_id: academicCtx.selectedSemester
     });
-  }, [newProjek, activeYear, activeSemester, createProjekMutation]);
+  }, [newProjek, academicCtx.selectedTahunPelajaran, academicCtx.selectedSemester, createProjekMutation]);
 
   const handleDeleteProjek = useCallback(async (id: string) => {
     const ok = await confirm({
@@ -204,7 +215,33 @@ export const P5Page: React.FC = React.memo(() => {
   }, [confirm, deleteProjekMutation]);
 
   const handleScoreChange = useCallback((id: string, field: 'kualifikasi' | 'catatan_proses', val: string) => {
-    setScores(prev => (prev ?? [])?.map(s => s.siswa_id === id ? { ...s, [field]: val } : s));
+    setScores(prev => (prev ?? [])?.map(s => {
+      if (s.siswa_id !== id) return s;
+      if (field === 'kualifikasi') {
+        const defaultNote = P5_DEFAULT_CATATAN[val] || '';
+        const isCurrentDefault = Object.values(P5_DEFAULT_CATATAN).includes(s.catatan_proses);
+        const shouldUpdateNote = !s.catatan_proses || isCurrentDefault;
+        return {
+          ...s,
+          kualifikasi: val,
+          catatan_proses: shouldUpdateNote ? defaultNote : s.catatan_proses
+        };
+      }
+      return { ...s, [field]: val };
+    }));
+  }, []);
+
+  const handleBulkSetKualifikasi = useCallback((targetKualifikasi: 'BB' | 'MB' | 'BSH' | 'SB') => {
+    setScores(prev => (prev ?? [])?.map(s => {
+      const isCurrentDefault = Object.values(P5_DEFAULT_CATATAN).includes(s.catatan_proses);
+      const shouldUpdateNote = !s.catatan_proses || isCurrentDefault;
+      return {
+        ...s,
+        kualifikasi: targetKualifikasi,
+        catatan_proses: shouldUpdateNote ? (P5_DEFAULT_CATATAN[targetKualifikasi] || s.catatan_proses) : s.catatan_proses
+      };
+    }));
+    toast.success(`Seluruh siswa disetel ke kualifikasi ${targetKualifikasi}`);
   }, []);
 
   const handleSaveScores = useCallback(() => {
@@ -228,6 +265,15 @@ export const P5Page: React.FC = React.memo(() => {
       }))
     });
   }, [selectedProjek, selectedDimensi, selectedSubElemen, scores, saveP5BulkMutation]);
+
+  const handlePrintStudentP5 = useCallback((siswaId: string) => {
+    if (!academicCtx.selectedTahunPelajaran || !academicCtx.selectedSemester) {
+      toast.error('Konteks tahun pelajaran dan semester belum dipilih');
+      return;
+    }
+    const printUrl = raporApi.getPdfP5Url(siswaId, academicCtx.selectedTahunPelajaran, academicCtx.selectedSemester);
+    window.open(printUrl, '_blank');
+  }, [academicCtx.selectedTahunPelajaran, academicCtx.selectedSemester]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Rapor' },
@@ -256,18 +302,13 @@ export const P5Page: React.FC = React.memo(() => {
       label: 'Kualifikasi Capaian',
       sortable: true,
       render: (_: unknown, row: ScoreItem) => (
-        <div className="w-48">
+        <div className="w-52">
           <SearchableSelect
             id={`kualifikasi-select-${row.siswa_id}`}
             aria-label={`Kualifikasi capaian ${row.nama_siswa}`}
             value={row.kualifikasi}
             onValueChange={(val) => handleScoreChange(row.siswa_id, 'kualifikasi', val)}
-            options={[
-              { value: 'BB', label: 'BB (Belum Berkembang)' },
-              { value: 'MB', label: 'MB (Mulai Berkembang)' },
-              { value: 'BSH', label: 'BSH (Berkembang Sesuai Harapan)' },
-              { value: 'SB', label: 'SB (Sangat Berkembang)' },
-            ]}
+            options={P5_KUALIFIKASI_OPTIONS}
             placeholder="Pilih Capaian"
           />
         </div>
@@ -275,19 +316,37 @@ export const P5Page: React.FC = React.memo(() => {
     },
     {
       key: 'catatan_proses',
-      label: 'Catatan Proses Karakter P5',
+      label: 'Deskripsi Capaian / Catatan Karakter',
       render: (_: unknown, row: ScoreItem) => (
         <Input
           id={`catatan-proses-input-${row.siswa_id}`}
           aria-label={`Catatan proses ${row.nama_siswa}`}
-          placeholder="Tulis catatan perkembangan spesifik siswa..."
+          placeholder="Tulis deskripsi capaian..."
           value={row.catatan_proses}
           onChange={(e) => handleScoreChange(row.siswa_id, 'catatan_proses', e.target.value)}
           className="rounded-xl text-xs w-full"
         />
       )
+    },
+    {
+      key: 'aksi',
+      label: 'Cetak',
+      align: 'center',
+      render: (_: unknown, row: ScoreItem) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => handlePrintStudentP5(row.siswa_id)}
+          className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-xl px-2.5 py-1 text-xs font-bold flex items-center gap-1.5"
+          title="Pratinjau & Cetak Buku Rapor P5 Siswa"
+        >
+          <Printer size={13} />
+          <span>Cetak</span>
+        </Button>
+      )
     }
-  ], [handleScoreChange]);
+  ], [handleScoreChange, handlePrintStudentP5]);
 
   const isMobile = useIsMobile();
 
@@ -305,11 +364,23 @@ export const P5Page: React.FC = React.memo(() => {
             NIS: {row.nis || '-'}
           </p>
         </div>
-        {row.kualifikasi && (
-          <Badge variant="outline" className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
-            {row.kualifikasi}
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {row.kualifikasi && (
+            <Badge variant="outline" className="text-[9px] font-black uppercase px-2 py-0.5 rounded-lg border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+              {row.kualifikasi}
+            </Badge>
+          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => handlePrintStudentP5(row.siswa_id)}
+            className="p-1.5 h-auto text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg"
+            title="Cetak Rapor P5"
+          >
+            <Printer size={13} />
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
@@ -322,12 +393,7 @@ export const P5Page: React.FC = React.memo(() => {
             aria-label={`Kualifikasi capaian ${row.nama_siswa}`}
             value={row.kualifikasi}
             onValueChange={(val) => handleScoreChange(row.siswa_id, 'kualifikasi', val)}
-            options={[
-              { value: 'BB', label: 'BB (Belum Berkembang)' },
-              { value: 'MB', label: 'MB (Mulai Berkembang)' },
-              { value: 'BSH', label: 'BSH (Berkembang Sesuai Harapan)' },
-              { value: 'SB', label: 'SB (Sangat Berkembang)' },
-            ]}
+            options={P5_KUALIFIKASI_OPTIONS}
             placeholder="Pilih Capaian"
             triggerClassName="h-9 text-xs rounded-xl"
           />
@@ -335,12 +401,12 @@ export const P5Page: React.FC = React.memo(() => {
 
         <div className="space-y-1">
           <label htmlFor={`mobile-catatan-${row.siswa_id}`} className="text-[10px] font-bold text-slate-400 uppercase">
-            Catatan Karakter
+            Deskripsi Capaian
           </label>
           <Input
             id={`mobile-catatan-${row.siswa_id}`}
             aria-label={`Catatan proses ${row.nama_siswa}`}
-            placeholder="Tulis catatan perkembangan spesifik..."
+            placeholder="Tulis deskripsi capaian..."
             value={row.catatan_proses}
             onChange={(e) => handleScoreChange(row.siswa_id, 'catatan_proses', e.target.value)}
             className="rounded-xl text-xs w-full h-9"
@@ -348,7 +414,7 @@ export const P5Page: React.FC = React.memo(() => {
         </div>
       </div>
     </div>
-  ), [handleScoreChange]);
+  ), [handleScoreChange, handlePrintStudentP5]);
 
   const paginatedScores = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -360,58 +426,40 @@ export const P5Page: React.FC = React.memo(() => {
     ...((projekList?.data ?? [])?.map((p: { id: string; judul: string }) => ({ value: p.id, label: p.judul })) || [])
   ], [projekList]);
 
-  const kelasOptions = useMemo(() => [
-    { value: '', label: '-- Pilih Kelas --' },
-    ...((classes?.data ?? [])?.map((k: { id: string; nama_kelas: string }) => ({ value: k.id, label: k.nama_kelas })) || [])
-  ], [classes]);
-
-  const dimensiOptions = useMemo(() => [
-    { value: '', label: '-- Pilih Dimensi --' },
-    { value: 'Beriman & Bertakwa', label: 'Beriman, Bertakwa kepada Tuhan YME, & Berakhlak Mulia' },
-    { value: 'Berkebinekaan Global', label: 'Berkebinekaan Global' },
-    { value: 'Gotong Royong', label: 'Gotong Royong' },
-    { value: 'Mandiri', label: 'Mandiri' },
-    { value: 'Bernalar Kritis', label: 'Bernalar Kritis' },
-    { value: 'Kreatif', label: 'Kreatif' },
-  ], []);
-
   const subElemenOptions = useMemo(() => {
     if (!selectedDimensi) return [{ value: '', label: '-- Pilih Dimensi Terlebih Dahulu --' }];
-    if (selectedDimensi === 'Gotong Royong') {
-      return [
-        { value: '', label: '-- Pilih Sub-Elemen --' },
-        { value: 'Kolaborasi: Kerjasama', label: 'Kolaborasi: Kerjasama kelompok' },
-        { value: 'Kepedulian: Tanggap sosial', label: 'Kepedulian: Tanggap terhadap lingkungan sosial' },
-      ];
-    }
-    if (selectedDimensi === 'Berkebinekaan Global') {
-      return [
-        { value: '', label: '-- Pilih Sub-Elemen --' },
-        { value: 'Mendalami budaya', label: 'Mendalami budaya dan identitas budaya' },
-        { value: 'Komunikasi interkultural', label: 'Komunikasi & interaksi interkultural' },
-      ];
-    }
-    return [
-      { value: '', label: '-- Pilih Sub-Elemen --' },
-      { value: 'Pemahaman Diri & Situasi', label: 'Mengenali kualitas diri & situasi dihadapi' },
-      { value: 'Refleksi Pemikiran', label: 'Melakukan refleksi pemikiran & proses berpikir' },
-    ];
+    return P5_SUB_ELEMEN_MAP[selectedDimensi] || [{ value: '', label: '-- Pilih Sub-Elemen --' }];
   }, [selectedDimensi]);
 
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
         title="Projek Penguatan Profil Pelajar Pancasila (P5)"
-        description="Manajemen tema projek dan penilaian kualitatif karakter siswa Kurikulum Merdeka."
+        description="Manajemen tema projek dan penilaian kualitatif karakter peserta didik Kurikulum Merdeka."
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="p5_rapor_page"
+        topSlot={
+          <AcademicContextBar
+            tahunPelajaranId={academicCtx.selectedTahunPelajaran}
+            semesterId={academicCtx.selectedSemester}
+            onTahunPelajaranChange={academicCtx.handleTpChange}
+            onSemesterChange={academicCtx.handleSemesterChange}
+            tpOptions={academicCtx.tpOptions}
+            semesterOptions={academicCtx.semesterOptions}
+            isLoadingTp={academicCtx.isLoadingTp}
+            isLoadingSem={academicCtx.isLoadingSem}
+            variant="toolbar"
+          />
+        }
         instruction={{
-          title: 'Panduan Pengelolaan Projek P5',
+          title: 'Panduan Rapor Projek P5 (Kurikulum Merdeka)',
           description: 'Kelola tema projek dan berikan penilaian kualitatif dimensi Profil Pelajar Pancasila pada setiap peserta didik.',
           items: [
-            { text: 'Buat tema projek P5 pada tab Master Projek P5 sesuai panduan kurikulum.' },
+            { text: 'Pilih Tahun Pelajaran dan Semester aktif pada toolbar konteks akademik di bagian atas.' },
+            { text: 'Daftarkan tema projek P5 (tersedia 8 tema resmi Kemendikbud, termasuk tema wajib SMK: Kebekerjaan).' },
             { text: 'Pilih projek, kelas, dimensi, dan sub-elemen pada tab Penilaian Projek Siswa.' },
-            { text: 'Isi kualifikasi capaian (BB, MB, BSH, SB) dan catatan perkembangan karakter.' }
+            { text: 'Gunakan tombol Set Semua BSH untuk mempercepat pengisian awal, lalu sesuaikan capaian MB atau SB.' },
+            { text: 'Klik tombol Cetak untuk pratinjau Buku Rapor P5 resmi dalam format PDF.' }
           ]
         }}
       >
@@ -429,8 +477,8 @@ export const P5Page: React.FC = React.memo(() => {
               <div className="space-y-6 w-full min-w-0 max-w-full">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Daftar Projek Sekolah</h3>
-                    <p className="text-[11px] text-slate-400">Tema dan judul projek P5 yang sedang berjalan.</p>
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Daftar Projek P5 Sekolah</h3>
+                    <p className="text-[11px] text-slate-400">Tema dan judul projek P5 pada semester yang sedang dipilih.</p>
                   </div>
                   <Button
                     type="button"
@@ -450,38 +498,46 @@ export const P5Page: React.FC = React.memo(() => {
                   <Card className="p-10 text-center border-dashed border-2 border-slate-200 dark:border-slate-800 bg-transparent flex flex-col items-center justify-center space-y-3 rounded-2xl w-full min-w-0 max-w-full">
                     <FileText size={48} className="text-slate-300" />
                     <h4 className="font-bold text-slate-700 dark:text-slate-300">Belum Ada Projek P5</h4>
-                    <p className="text-xs text-slate-400 max-w-sm">Wakasek belum mendaftarkan tema projek P5 semester aktif.</p>
+                    <p className="text-xs text-slate-400 max-w-sm">Belum ada tema projek P5 yang didaftarkan pada periode akademik ini.</p>
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full min-w-0 max-w-full">
-                    {(projekList.data ?? [])?.map((item: { id: string; judul: string; deskripsi?: string }) => (
-                      <Card key={item.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow group bg-white dark:bg-slate-900 w-full min-w-0 max-w-full">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 border-none font-bold text-[10px]">
-                              P5 PROJEK
-                            </Badge>
-                            <Button
-                              type="button"
-                              onClick={() => handleDeleteProjek(item.id)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-xs text-rose-500 hover:bg-rose-50 rounded-xl"
-                            >
-                              <Trash2 size={14} />
-                            </Button>
+                    {(projekList.data ?? [])?.map((item: { id: string; judul: string; deskripsi?: string }) => {
+                      const meta = parseProjekMetadata(item.deskripsi);
+                      return (
+                        <Card key={item.id} className="p-5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm relative overflow-hidden flex flex-col justify-between hover:shadow-md transition-shadow group bg-white dark:bg-slate-900 w-full min-w-0 max-w-full">
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <Badge className="bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 border-none font-bold text-[10px]">
+                                  {meta.tema}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px] font-bold border-slate-200 dark:border-slate-800 text-slate-500">
+                                  {meta.fase}
+                                </Badge>
+                              </div>
+                              <Button
+                                type="button"
+                                onClick={() => handleDeleteProjek(item.id)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs text-rose-500 hover:bg-rose-50 rounded-xl"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1">
+                                {item.judul}
+                              </h4>
+                              <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-3">
+                                {meta.cleanDesc || 'Tidak ada deskripsi.'}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm group-hover:text-indigo-600 transition-colors line-clamp-1">
-                              {item.judul}
-                            </h4>
-                            <p className="text-xs text-slate-400 mt-1 leading-relaxed line-clamp-3">
-                              {item.deskripsi || 'Tidak ada deskripsi.'}
-                            </p>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -512,6 +568,7 @@ export const P5Page: React.FC = React.memo(() => {
                       value={selectedKelas}
                       onValueChange={setSelectedKelas}
                       options={kelasOptions}
+                      isLoading={isLoadingKelas}
                       placeholder="Pilih Kelas"
                     />
                   </div>
@@ -526,7 +583,7 @@ export const P5Page: React.FC = React.memo(() => {
                         setSelectedDimensi(val);
                         setSelectedSubElemen('');
                       }}
-                      options={dimensiOptions}
+                      options={P5_DIMENSI_OPTIONS}
                       placeholder="Pilih Dimensi"
                     />
                   </div>
@@ -547,30 +604,57 @@ export const P5Page: React.FC = React.memo(() => {
                 {/* Scores Table / Mobile Cards */}
                 {selectedProjek && selectedKelas && selectedDimensi && selectedSubElemen && (
                   <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-sm w-full min-w-0 max-w-full">
+                    {/* Bulk Actions Bar */}
+                    <div className="p-4 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                          <Sparkles size={13} className="text-amber-500" />
+                          Set Cepat Sekelas:
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleBulkSetKualifikasi('BSH')}
+                          className="text-[11px] font-bold h-7 rounded-lg border-indigo-200 dark:border-indigo-900 text-indigo-600 hover:bg-indigo-50"
+                        >
+                          Semua BSH
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleBulkSetKualifikasi('SB')}
+                          className="text-[11px] font-bold h-7 rounded-lg border-emerald-200 dark:border-emerald-900 text-emerald-600 hover:bg-emerald-50"
+                        >
+                          Semua SB
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleBulkSetKualifikasi('MB')}
+                          className="text-[11px] font-bold h-7 rounded-lg border-amber-200 dark:border-amber-900 text-amber-600 hover:bg-amber-50"
+                        >
+                          Semua MB
+                        </Button>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="toolbarPrimary"
+                        size="toolbar"
+                        onClick={handleSaveScores}
+                        disabled={saveP5BulkMutation.isPending}
+                        className="font-bold rounded-xl shadow-md w-full sm:w-auto"
+                      >
+                        {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+                        Simpan Nilai P5
+                      </Button>
+                    </div>
+
                     {isMobile ? (
                       <div className="p-4 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-                          <div>
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
-                              Penilaian Karakter P5 ({scores.length} Siswa)
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              Dimensi: {selectedDimensi} • Sub: {selectedSubElemen}
-                            </span>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="toolbarPrimary"
-                            size="toolbar"
-                            onClick={handleSaveScores}
-                            disabled={saveP5BulkMutation.isPending}
-                            className="font-bold rounded-xl shadow-md w-full sm:w-auto"
-                          >
-                            {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
-                            Simpan Nilai P5
-                          </Button>
-                        </div>
-
                         <MobileAcademicList
                           title="Daftar Siswa & Penilaian P5"
                           data={paginatedScores}
@@ -606,19 +690,6 @@ export const P5Page: React.FC = React.memo(() => {
                             </span>
                           </div>
                         }
-                        toolbarRight={
-                          <Button
-                            type="button"
-                            variant="toolbarPrimary"
-                            size="toolbar"
-                            onClick={handleSaveScores}
-                            disabled={saveP5BulkMutation.isPending}
-                            className="font-bold rounded-xl shadow-md"
-                          >
-                            {saveP5BulkMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Save className="w-3.5 h-3.5 mr-1" />}
-                            Simpan Nilai P5
-                          </Button>
-                        }
                         pagination={{
                           currentPage,
                           totalPages: Math.max(1, Math.ceil(scores.length / itemsPerPage)),
@@ -637,39 +708,66 @@ export const P5Page: React.FC = React.memo(() => {
             {/* Modal Create Projek P5 */}
             {isCreateModalOpen && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-md p-6 bg-white dark:bg-slate-900 space-y-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl">
+                <Card className="w-full max-w-lg p-6 bg-white dark:bg-slate-900 space-y-5 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-2xl">
                   <div>
                     <h3 className="text-base font-black text-slate-800 dark:text-white uppercase tracking-tight">Tambah Projek P5 Baru</h3>
-                    <p className="text-xs text-slate-400">Daftarkan projek pembelajaran bertema Pancasila semester aktif ini.</p>
+                    <p className="text-xs text-slate-400">Daftarkan projek pembelajaran bertema Pancasila Kurikulum Merdeka.</p>
                   </div>
 
                   <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs">
                     <div className="space-y-1">
-                      <label htmlFor="modal-projek-judul" className="font-bold text-slate-700 dark:text-slate-300">Judul Projek</label>
+                      <label htmlFor="modal-projek-judul" className="font-bold text-slate-700 dark:text-slate-300">Judul Projek *</label>
                       <Input
                         id="modal-projek-judul"
                         aria-label="Judul projek baru"
-                        placeholder="Contoh: Kewirausahaan: Membuat Kuliner Khas Daerah"
+                        placeholder="Contoh: Berwirausaha Dari Hasil Kebun Ibu"
                         value={newProjek.judul}
                         onChange={(e) => setNewProjek(prev => ({ ...prev, judul: e.target.value }))}
                         className="rounded-xl"
+                        required
                       />
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label htmlFor="modal-projek-tema" className="font-bold text-slate-700 dark:text-slate-300">Tema Projek *</label>
+                        <SearchableSelect
+                          id="modal-projek-tema"
+                          aria-label="Pilih Tema Projek"
+                          value={newProjek.tema}
+                          onValueChange={(val) => setNewProjek(prev => ({ ...prev, tema: val }))}
+                          options={P5_TEMA_OPTIONS}
+                          placeholder="Pilih Tema"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label htmlFor="modal-projek-fase" className="font-bold text-slate-700 dark:text-slate-300">Fase Capaian *</label>
+                        <SearchableSelect
+                          id="modal-projek-fase"
+                          aria-label="Pilih Fase Capaian"
+                          value={newProjek.fase}
+                          onValueChange={(val) => setNewProjek(prev => ({ ...prev, fase: val }))}
+                          options={P5_FASE_OPTIONS}
+                          placeholder="Pilih Fase"
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
-                      <label htmlFor="modal-projek-desc" className="font-bold text-slate-700 dark:text-slate-300">Deskripsi Projek</label>
+                      <label htmlFor="modal-projek-desc" className="font-bold text-slate-700 dark:text-slate-300">Deskripsi / Capaian Impian Projek</label>
                       <textarea
                         id="modal-projek-desc"
                         aria-label="Deskripsi projek baru"
-                        placeholder="Tulis ringkasan aktivitas, tujuan projek, dan hasil akhir yang diharapkan dari siswa..."
-                        rows={4}
+                        placeholder="Contoh: Mengembangkan Impian Peserta Didik SMK melalui wirausaha..."
+                        rows={3}
                         value={newProjek.deskripsi}
                         onChange={(e) => setNewProjek(prev => ({ ...prev, deskripsi: e.target.value }))}
                         className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold p-3 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none"
                       />
                     </div>
 
-                    <div className="flex gap-3 justify-end pt-4">
+                    <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
                       <Button type="button" variant="toolbarOutline" size="toolbar" onClick={() => setIsCreateModalOpen(false)}>
                         Batal
                       </Button>

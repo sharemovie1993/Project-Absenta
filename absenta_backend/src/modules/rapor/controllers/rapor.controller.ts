@@ -121,4 +121,30 @@ export class RaporController {
       return sendError(reply, 500, error.message || 'Gagal memuat transkrip nilai siswa', error);
     }
   }
+
+  static async getSettings(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { tahun_pelajaran_id, semester_id } = req.query;
+      const result = await RaporService.getSettings(tenant_id, {
+        tahun_pelajaran_id,
+        semester_id
+      });
+      return sendResponse(reply, 200, true, 'Pengaturan rapor berhasil dimuat', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor getSettings error');
+      return sendError(reply, 500, error.message || 'Gagal memuat pengaturan rapor', error);
+    }
+  }
+
+  static async updateSettings(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const result = await RaporService.updateSettings(tenant_id, req.body);
+      return sendResponse(reply, 200, true, 'Pengaturan rapor berhasil disimpan', result);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Rapor updateSettings error');
+      return sendError(reply, 500, error.message || 'Gagal menyimpan pengaturan rapor', error);
+    }
+  }
 }

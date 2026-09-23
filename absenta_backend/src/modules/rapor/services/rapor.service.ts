@@ -599,4 +599,142 @@ export class RaporService {
       CACHE_TTL.DASHBOARD
     );
   }
+
+  // === RAPOR SETTINGS & REFERENSI PERSURATAN (SCOPED TO ACADEMIC CONTEXT) ===
+  static async getSettings(
+    tenantId: string,
+    params?: { tahun_pelajaran_id?: string; semester_id?: string }
+  ) {
+    const tpId = params?.tahun_pelajaran_id;
+    const semId = params?.semester_id;
+
+    const [
+      sekolah,
+      tempatTerbitCfg,
+      tanggalRaporCfg,
+      tanggalP5Cfg,
+      tanggalPtsCfg,
+      tanggalPlenoCfg,
+      kepsekStatusCfg,
+      kepsekNamaCfg,
+      kepsekNipCfg,
+      kertasCfg,
+      kopCfg,
+      qrCfg,
+    ] = await Promise.all([
+      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
+      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${semId}` } }) : null,
+      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${semId}` } }) : null,
+      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${semId}` } }) : null,
+      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PLENO_${tpId}_${semId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_STATUS_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NAMA_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NIP_${tpId}` } }) : null,
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
+    ]);
+
+    return {
+      tahun_pelajaran_id: tpId || null,
+      semester_id: semId || null,
+      tempat_terbit: tempatTerbitCfg?.value || sekolah?.kota || 'Purwakarta',
+      tanggal_rapor: tanggalRaporCfg?.value || '',
+      tanggal_rapor_p5: tanggalP5Cfg?.value || '',
+      tanggal_rapor_pts: tanggalPtsCfg?.value || '',
+      tanggal_pleno: tanggalPlenoCfg?.value || '',
+      kepsek_status: (kepsekStatusCfg?.value || 'DEFINITIF') as 'DEFINITIF' | 'PLT',
+      kepsek_nama: kepsekNamaCfg?.value || sekolah?.kepala_sekolah || '',
+      kepsek_nip: kepsekNipCfg?.value || sekolah?.nip_kepala || '',
+      ukuran_kertas: (kertasCfg?.value || 'A4') as 'A4' | 'F4',
+      tampilkan_kop: kopCfg ? kopCfg.value === 'true' : true,
+      tampilkan_qr: qrCfg ? qrCfg.value === 'true' : true,
+    };
+  }
+
+  static async updateSettings(
+    tenantId: string,
+    payload: {
+      tahun_pelajaran_id?: string;
+      semester_id?: string;
+      tempat_terbit?: string;
+      tanggal_rapor?: string;
+      tanggal_rapor_p5?: string;
+      tanggal_rapor_pts?: string;
+      tanggal_pleno?: string;
+      kepsek_status?: 'DEFINITIF' | 'PLT';
+      kepsek_nama?: string;
+      kepsek_nip?: string;
+      ukuran_kertas?: 'A4' | 'F4';
+      tampilkan_kop?: boolean;
+      tampilkan_qr?: boolean;
+    }
+  ) {
+    const tpId = payload.tahun_pelajaran_id;
+    const semId = payload.semester_id;
+
+    if (tpId) {
+      if (payload.tempat_terbit !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_TEMPAT_TERBIT_${tpId}`, payload.tempat_terbit);
+      }
+      if (payload.kepsek_status !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_KEPSEK_STATUS_${tpId}`, payload.kepsek_status);
+      }
+      if (payload.kepsek_nama !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_KEPSEK_NAMA_${tpId}`, payload.kepsek_nama);
+      }
+      if (payload.kepsek_nip !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_KEPSEK_NIP_${tpId}`, payload.kepsek_nip);
+      }
+
+      if (semId) {
+        if (payload.tanggal_rapor !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`, payload.tanggal_rapor);
+        }
+        if (payload.tanggal_rapor_p5 !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${semId}`, payload.tanggal_rapor_p5);
+        }
+        if (payload.tanggal_rapor_pts !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_PTS_${tpId}_${semId}`, payload.tanggal_rapor_pts);
+        }
+        if (payload.tanggal_pleno !== undefined) {
+          await this.updateConfig(tenantId, `RAPOR_TANGGAL_PLENO_${tpId}_${semId}`, payload.tanggal_pleno);
+        }
+      }
+    }
+
+    if (payload.ukuran_kertas !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_UKURAN_KERTAS', payload.ukuran_kertas);
+    }
+    if (payload.tampilkan_kop !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_TAMPILKAN_KOP', String(payload.tampilkan_kop));
+    }
+    if (payload.tampilkan_qr !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_TAMPILKAN_QR', String(payload.tampilkan_qr));
+    }
+
+    void cacheInvalidationService.invalidateRaporCache(tenantId);
+    return { success: true };
+  }
+
+  private static async updateConfig(tenantId: string, key: string, value: string) {
+    const existing = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      await prisma.config.update({
+        where: { id: existing.id },
+        data: { value },
+      });
+    } else {
+      await prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key,
+          value,
+        },
+      });
+    }
+  }
 }

@@ -210,14 +210,29 @@ export const raporApi = {
     const base = getPdfBaseUrl();
     return `${base}/reporting/pdf/skl/${siswaId}?token=${encodeURIComponent(token)}`;
   },
-  getPdfUkkUrl: (siswaId: string) => {
-    const token = getAuthToken();
-    const base = getPdfBaseUrl();
-    return `${base}/reporting/pdf/ukk/${siswaId}?token=${encodeURIComponent(token)}`;
+  // === RAPOR SETTINGS & REFERENSI PERSURATAN ===
+  getRaporSettings: async (params?: { tahun_pelajaran_id?: string; semester_id?: string }) => {
+    const response = await api.get('/rapor/settings', { params });
+    return response.data;
   },
-  getPdfPklUrl: (siswaPklId: string) => {
-    const token = getAuthToken();
-    const base = getPdfBaseUrl();
-    return `${base}/reporting/pdf/pkl/${siswaPklId}?token=${encodeURIComponent(token)}`;
+  updateRaporSettings: async (data: Partial<RaporSettings>) => {
+    const response = await api.put('/rapor/settings', data);
+    return response.data;
   },
 };
+
+export interface RaporSettings {
+  tahun_pelajaran_id?: string | null;
+  semester_id?: string | null;
+  tempat_terbit: string;
+  tanggal_rapor?: string;
+  tanggal_rapor_p5?: string;
+  tanggal_rapor_pts?: string;
+  tanggal_pleno?: string;
+  kepsek_status: 'DEFINITIF' | 'PLT';
+  kepsek_nama: string;
+  kepsek_nip: string;
+  ukuran_kertas: 'A4' | 'F4';
+  tampilkan_kop: boolean;
+  tampilkan_qr: boolean;
+}

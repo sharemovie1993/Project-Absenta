@@ -8,4 +8,6 @@ export default async function raporRoutes(fastify: any) {
   fastify.get('/leger', { preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()]}, RaporController.getLeger);
   fastify.get('/leger/export', { preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()]}, RaporController.exportLeger);
   fastify.get('/transkrip', { preHandler: [requireCapability('academic.view.wali.kelas'), determineDataScope()]}, RaporController.getTranskrip);
+  fastify.get('/settings', { preHandler: [requireCapability(['academic.view.wali.kelas', 'academic.manage.academic']), determineDataScope()] }, RaporController.getSettings);
+  fastify.put('/settings', { preHandler: [requireCapability('academic.manage.academic'), determineDataScope()] }, RaporController.updateSettings);
 }
