@@ -214,7 +214,7 @@ export const ClassSubjectProgressCard: React.FC<ClassSubjectProgressCardProps> =
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-              {filteredSubjects.map((s) => {
+              {(filteredSubjects ?? []).map((s) => {
                 const isComplete = s.status === 'completed';
                 const isPartial = s.status === 'partial';
 

@@ -1,29 +1,10 @@
-import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  FileSpreadsheet,
-  Search,
-  BookOpen,
-  Users,
-  Calculator,
-  Award,
-  CheckCircle,
-  Printer,
-  Loader2,
-  Building2,
-  ChevronDown,
-} from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Badge } from '../../components/ui/Badge';
-import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
+import { SectionCard } from '../../components/ui/SectionCard';
+import { SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { raporApi } from '../../api/rapor.api';
-import { hubinApi } from '../../api/hubin.api';
-import { sekolahApi } from '../../api/academic/sekolah.api';
-import { getMyTenant } from '../../api/tenants.api';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
@@ -32,10 +13,9 @@ import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useStrukturKurikulumOptions } from '../../hooks/useStrukturKurikulumOptions';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useGuruMe } from '../../hooks/useGuruMe';
-import { useRekapBulananKelas, useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
+import { useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
 import { generateRaporPdf, generateP5RaporPdf, generateRaporKelasBatchPdf } from '../../utils/print/modules/pdfRapor';
-import { generateRaporPklSinglePdf, generateRaporPklBatchPdf, RaporPklItemData } from '../../utils/print/modules/pdfRaporPkl';
 import { useRaporPdf } from '../../hooks/useRaporPdf';
 
 // Import Hardened Types, Subcomponents & Schemas
@@ -47,33 +27,39 @@ import {
   SummaryFormSchema,
   AcademicYear,
   Semester,
+  TranskripNilaiData,
 } from '../../types/cetakRapor.types';
-import { RaporSummaryModal } from '../../components/rapor/cetak-rapor/RaporSummaryModal';
-import { TranskripModal } from '../../components/rapor/cetak-rapor/TranskripModal';
 import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStudentTable';
 import { ClassSubjectProgressCard } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
+import { CetakRaporHeaderCard } from '../../components/rapor/cetak-rapor/CetakRaporHeaderCard';
+import { useRaporPklPrint, KelasOptionItem } from '../../components/rapor/cetak-rapor/useRaporPklPrint';
 
+// Lazy-loaded modals for architectural compliance & performance
+const RaporSummaryModal = lazy(() =>
+  import('../../components/rapor/cetak-rapor/RaporSummaryModal').then((m) => ({ default: m.RaporSummaryModal }))
+);
+const TranskripModal = lazy(() =>
+  import('../../components/rapor/cetak-rapor/TranskripModal').then((m) => ({ default: m.TranskripModal }))
+);
 
-const PAGE_INSTRUCTION =
-  'Pilih Rombel / Kelas untuk merekap ranking leger, mengisi absensi & catatan wali kelas, serta mencetak lembar e-Rapor resmi Kemendikbud.';
-
-interface KelasOptionItem {
-  id: string;
-  nama_kelas?: string;
+interface ExtendedUserContext {
   nama?: string;
-  nama_lengkap?: string;
-  tingkat?: number | string;
-  jurusan_id?: string;
-  kode_jurusan?: string;
-  jurusan?: {
-    id?: string;
-    kode_jurusan?: string;
+  name?: string;
+  full_name?: string;
+  nip?: string;
+  wali_kelas_kelas_id?: string;
+  kelas_id?: string;
+  assigned_kelas_id?: string;
+  guru_profile?: {
+    wali_kelas_di?: {
+      id?: string;
+    };
   };
 }
 
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
-  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, can, walikelasKelas, walikelasKelasIds } = useCapabilities();
+  const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, walikelasKelas, walikelasKelasIds } = useCapabilities();
 
   // ── URL Search Params ──
   const [searchParams] = useSearchParams();
@@ -97,6 +83,7 @@ export default React.memo(function CetakRaporPage() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof SummaryFormData, string>>>({});
   const [pdfLoading, setPdfLoading] = useState<Record<string, boolean>>({});
   const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
+  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
 
   // ── User Auth & Wali Kelas Operational Context ──
   const { user } = useAuthStore();
@@ -105,13 +92,13 @@ export default React.memo(function CetakRaporPage() {
   const userKelasId = useMemo(() => {
     if (walikelasKelas?.id) return walikelasKelas.id;
     if (walikelasKelasIds && walikelasKelasIds.length > 0) return walikelasKelasIds[0];
-    const direct = guruProfile?.wali_kelas_di?.id || (user as any)?.guru_profile?.wali_kelas_di?.id;
+    const extUser = user as unknown as ExtendedUserContext | null;
+    const direct = guruProfile?.wali_kelas_di?.id || extUser?.guru_profile?.wali_kelas_di?.id;
     if (direct) return direct;
-    const u = user as any;
     return (
-      u?.wali_kelas_kelas_id ||
-      u?.kelas_id ||
-      u?.assigned_kelas_id ||
+      extUser?.wali_kelas_kelas_id ||
+      extUser?.kelas_id ||
+      extUser?.assigned_kelas_id ||
       null
     );
   }, [walikelasKelas, walikelasKelasIds, guruProfile, user]);
@@ -121,26 +108,6 @@ export default React.memo(function CetakRaporPage() {
     if (isAdmin || isKurikulum || isKepalaSekolah) return false;
     return isHomeroomTeacher || Boolean(userKelasId);
   }, [isAdmin, isKurikulum, isKepalaSekolah, isHomeroomTeacher, userKelasId]);
-
-  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
-  const [isBatchPklPrinting, setIsBatchPklPrinting] = useState(false);
-  const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
-  const batchMenuRef = useRef<HTMLDivElement>(null);
-
-  // Close batch menu on outside click
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (batchMenuRef.current && !batchMenuRef.current.contains(event.target as Node)) {
-        setIsBatchMenuOpen(false);
-      }
-    };
-    if (isBatchMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isBatchMenuOpen]);
 
   // ── Centralized System Hooks ──
   const { isJenjangSmk: hookIsSmk } = useJenjang();
@@ -154,13 +121,17 @@ export default React.memo(function CetakRaporPage() {
     onlyActive: false,
   });
 
+  const typedClassList = useMemo<KelasOptionItem[]>(() => {
+    return (classList as unknown as KelasOptionItem[]) || [];
+  }, [classList]);
+
   // Auto-select class: prioritize URL param, then Wali Kelas assigned class, fallback to first class
   React.useEffect(() => {
-    if (kelasParam && (classList as KelasOptionItem[])?.some((k) => k.id === kelasParam)) {
+    if (kelasParam && (typedClassList ?? []).some((k) => k.id === kelasParam)) {
       setSelectedKelas(kelasParam);
       return;
     }
-    if (userKelasId && (classList as KelasOptionItem[])?.some((k) => k.id === userKelasId)) {
+    if (userKelasId && (typedClassList ?? []).some((k) => k.id === userKelasId)) {
       if (isPureWaliKelas) {
         setSelectedKelas(userKelasId);
         return;
@@ -168,10 +139,10 @@ export default React.memo(function CetakRaporPage() {
       if (!selectedKelas) {
         setSelectedKelas(userKelasId);
       }
-    } else if (!selectedKelas && classList && classList.length > 0) {
-      setSelectedKelas(classList[0].id);
+    } else if (!selectedKelas && (typedClassList ?? []).length > 0) {
+      setSelectedKelas(typedClassList[0].id);
     }
-  }, [classList, selectedKelas, userKelasId, isPureWaliKelas, kelasParam]);
+  }, [typedClassList, selectedKelas, userKelasId, isPureWaliKelas, kelasParam]);
 
   // ── Konteks Akademik (TP + Semester) — via hook reusable ──
   const {
@@ -188,7 +159,6 @@ export default React.memo(function CetakRaporPage() {
     initialSemId: semParam,
   });
 
-  // Petakan ke type AcademicYear / Semester yang dipakai di halaman ini
   const activeYear = useMemo<AcademicYear | null>(() => {
     if (!academicActiveYear) return null;
     return { id: academicActiveYear.id, nama: academicActiveYear.tahun, is_active: true };
@@ -228,8 +198,8 @@ export default React.memo(function CetakRaporPage() {
 
   // ── Hook Struktur Kurikulum Rombel ──
   const currentKelasObj = useMemo<KelasOptionItem | undefined>(() => {
-    return (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
-  }, [classList, selectedKelas]);
+    return (typedClassList ?? []).find((k) => k.id === selectedKelas);
+  }, [typedClassList, selectedKelas]);
 
   const { totalJp: kurikulumTotalJp, rawList: kurikulumStrukturList } = useStrukturKurikulumOptions({
     tahunPelajaranId: activeYear?.id,
@@ -237,8 +207,7 @@ export default React.memo(function CetakRaporPage() {
     jurusanId: currentKelasObj?.jurusan_id || currentKelasObj?.jurusan?.id,
   });
 
-  // ── Rekap Absensi custom hooks ──
-  const { data: rekapKelasData } = useRekapBulananKelas(selectedKelas, undefined, activeYear?.id);
+  // ── Rekap Absensi custom hook ──
   const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id, undefined, activeYear?.id);
 
   // ── Leger query ──
@@ -272,16 +241,14 @@ export default React.memo(function CetakRaporPage() {
   });
   const classProgressData = classProgressRes?.data || null;
 
-
   // ── Enhanced Kelas Options with Wali Kelas Label & Highlighting ──
   const kelasOptions = useMemo<SearchableSelectOption[]>(() => {
-    const all = (classList as KelasOptionItem[] ?? []);
-    // Role-based filtering: jika login sebagai Wali Kelas murni dan memiliki kelas binaan, filter hanya kelasnya
+    const all = typedClassList ?? [];
     const targetList = isPureWaliKelas && userKelasId && all.some((k) => k.id === userKelasId)
       ? all.filter((k) => k.id === userKelasId)
       : all;
 
-    return targetList.map((k) => {
+    return (targetList ?? [])?.map((k) => {
       const isWali = Boolean(userKelasId && k.id === userKelasId);
       const namePart = k.nama_kelas || k.nama || k.nama_lengkap || 'Rombel';
       const tingkatPart = k.tingkat ? `Kelas ${k.tingkat} - ` : '';
@@ -293,7 +260,7 @@ export default React.memo(function CetakRaporPage() {
         raw: k,
       };
     });
-  }, [classList, userKelasId, isPureWaliKelas]);
+  }, [typedClassList, userKelasId, isPureWaliKelas]);
 
   // ── Filtered students ──
   const filteredStudents = useMemo<LegerStudent[]>(() => {
@@ -346,9 +313,7 @@ export default React.memo(function CetakRaporPage() {
           s.nama_siswa.toLowerCase().includes(q) || s.nis.toLowerCase().includes(q)
         );
       });
-  }, [studentList, leger, searchQuery]);
-
-
+  }, [selectedKelas, studentList, leger, searchQuery]);
 
   // ── Summary mutation ──
   const summaryMutation = useMutation({
@@ -506,7 +471,6 @@ export default React.memo(function CetakRaporPage() {
     setIsBatchPrinting(true);
     toast.info(`Memproses cetak massal ${filteredStudents.length} Rapor Siswa...`);
     try {
-      const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
       const { blobUrl } = await generateRaporKelasBatchPdf({
         students: filteredStudents,
         tahunPelajaranId: activeYear.id,
@@ -523,197 +487,17 @@ export default React.memo(function CetakRaporPage() {
     } finally {
       setIsBatchPrinting(false);
     }
-  }, [selectedKelas, activeYear, activeSemester, filteredStudents, classList]);
+  }, [selectedKelas, activeYear, activeSemester, filteredStudents, currentKelasObj]);
 
-  const handlePrintRaporPkl = useCallback(
-    async (student: LegerStudent) => {
-      const key = `pkl_${student.id}`;
-      setPdfLoading((prev) => ({ ...prev, [key]: true }));
-      try {
-        const res = await hubinApi.getPenempatan({
-          search: student.nis || student.nama_siswa,
-          kelas_id: selectedKelas,
-          limit: 20,
-        });
-
-        const placementList = (res?.data as { list?: any[] })?.list || (res?.data as any[]) || [];
-        const placement = placementList.find(
-          (p: any) =>
-            p.siswa_id === student.id ||
-            p.Siswa?.id === student.id ||
-            p.Siswa?.nis === student.nis
-        );
-
-        if (!placement) {
-          toast.warning(`Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`);
-          return;
-        }
-
-        const [sekolahRes, tenantRes] = await Promise.allSettled([
-          sekolahApi.getProfile(),
-          getMyTenant().catch(() => null),
-        ]);
-        const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-        const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
-        const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
-
-        const raporItem: RaporPklItemData = {
-          siswa: {
-            id: student.id,
-            nama_siswa: student.nama_siswa,
-            nis: student.nis || placement.Siswa?.nis || '-',
-            nisn: placement.Siswa?.nisn || '-',
-            nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || placement.Siswa?.Kelas?.nama_kelas || '',
-            program_keahlian: placement.Siswa?.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-            konsentrasi_keahlian: placement.Siswa?.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
-          },
-          pkl: {
-            mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
-            mitra_alamat: placement.alamat_dudi || placement.Mitra?.alamat || '',
-            tanggal_mulai: placement.tanggal_mulai,
-            tanggal_selesai: placement.tanggal_selesai,
-            instruktur_nama: placement.instruktur_nama || placement.Mitra?.pic_nama || placement.penanggung_jawab_nama || '',
-            pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
-            pembimbing_nip: placement.Pembimbing?.nip || '',
-            catatan_pkl: placement.catatan_pkl || '',
-            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
-            sakit_pkl: placement.sakit_pkl ?? (placement.auto_sakit ?? (student.sakit ?? 0)),
-            izin_pkl: placement.izin_pkl ?? (placement.auto_izin ?? (student.izin ?? 0)),
-            alpa_pkl: placement.alpa_pkl ?? (placement.auto_alpa ?? (student.alpa ?? 0)),
-          },
-          penilaian: {
-            hard_kompetensi_teknis: placement.hard_kompetensi_teknis ?? null,
-            hard_sop_k3lh: placement.hard_sop_k3lh ?? null,
-            hard_alur_bisnis: placement.hard_alur_bisnis ?? null,
-            soft_kedisiplinan: placement.soft_kedisiplinan ?? null,
-            soft_kerajinan_inisiatif: placement.soft_kerajinan_inisiatif ?? null,
-            soft_kerjasama: placement.soft_kerjasama ?? null,
-            soft_kejujuran: placement.soft_kejujuran ?? null,
-            soft_tanggung_jawab: placement.soft_tanggung_jawab ?? null,
-            nilai_akhir_pkl: placement.nilai_akhir_pkl ?? null,
-            predikat_pkl: placement.predikat_pkl || null,
-          },
-          sekolah: {
-            nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
-            kota: sekolah?.kota || 'Purwakarta',
-            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
-          },
-          wali_kelas: {
-            nama: (user as any)?.nama || (user as any)?.name || 'Wali Kelas',
-            nip: (user as any)?.nip || '',
-          },
-          tahun_pelajaran: activeYear?.nama || '',
-          semester: activeSemester?.nama || '',
-        };
-
-        const { blobUrl } = await generateRaporPklSinglePdf(raporItem);
-        window.open(blobUrl, '_blank');
-        toast.success(`Pratinjau Rapor PKL ${student.nama_siswa} (2 Halaman) dibuka di tab baru`);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        toast.error(`Gagal membuat PDF Rapor PKL: ${msg}`);
-      } finally {
-        setPdfLoading((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-      }
-    },
-    [selectedKelas, classList, activeYear, activeSemester, user]
-  );
-
-  const handleBatchPrintRaporPkl = useCallback(async () => {
-    if (!selectedKelas) {
-      toast.error('Pilih rombel / kelas terlebih dahulu');
-      return;
-    }
-    setIsBatchPklPrinting(true);
-    toast.info('Menyiapkan kompilasi Rapor PKL Sekelas...');
-    try {
-      const res = await hubinApi.getPenempatan({
-        kelas_id: selectedKelas,
-        limit: 200,
-      });
-      const placementList = (res?.data as { list?: any[] })?.list || (res?.data as any[]) || [];
-
-      if (!placementList || placementList.length === 0) {
-        toast.warning('Tidak ada siswa di kelas ini yang memiliki data penempatan PKL.');
-        return;
-      }
-
-      const [sekolahRes, tenantRes] = await Promise.allSettled([
-        sekolahApi.getProfile(),
-        getMyTenant().catch(() => null),
-      ]);
-      const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-      const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
-      const currentKelasObj = (classList as KelasOptionItem[] ?? [])?.find((k) => k.id === selectedKelas);
-
-      const raporItems: RaporPklItemData[] = placementList.map((placement: any) => {
-        const s = placement.Siswa || {};
-        return {
-          siswa: {
-            id: s.id || placement.siswa_id,
-            nama_siswa: s.nama_siswa || 'Siswa',
-            nis: s.nis || '-',
-            nisn: s.nisn || '-',
-            nama_kelas: currentKelasObj?.nama_kelas || currentKelasObj?.nama || s.Kelas?.nama_kelas || '',
-            program_keahlian: s.Jurusan?.ProgramKeahlian?.nama || 'Teknik Kejuruan',
-            konsentrasi_keahlian: s.Jurusan?.nama || currentKelasObj?.nama_kelas || '',
-          },
-          pkl: {
-            mitra_nama: placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
-            mitra_alamat: placement.alamat_dudi || placement.Mitra?.alamat || '',
-            tanggal_mulai: placement.tanggal_mulai,
-            tanggal_selesai: placement.tanggal_selesai,
-            instruktur_nama: placement.instruktur_nama || placement.Mitra?.pic_nama || placement.penanggung_jawab_nama || '',
-            pembimbing_nama: placement.Pembimbing?.nama_guru || placement.Pembimbing?.nama || '',
-            pembimbing_nip: placement.Pembimbing?.nip || '',
-            catatan_pkl: placement.catatan_pkl || '',
-            deskripsi_tp: placement.deskripsi_tp || placement.Mitra?.SettingDeskripsiPkl?.[0]?.deskripsi_tp || placement.Mitra?.deskripsi_tp || '',
-            sakit_pkl: placement.sakit_pkl ?? 0,
-            izin_pkl: placement.izin_pkl ?? 0,
-            alpa_pkl: placement.alpa_pkl ?? 0,
-          },
-          penilaian: {
-            hard_kompetensi_teknis: placement.hard_kompetensi_teknis ?? null,
-            hard_sop_k3lh: placement.hard_sop_k3lh ?? null,
-            hard_alur_bisnis: placement.hard_alur_bisnis ?? null,
-            soft_kedisiplinan: placement.soft_kedisiplinan ?? null,
-            soft_kerajinan_inisiatif: placement.soft_kerajinan_inisiatif ?? null,
-            soft_kerjasama: placement.soft_kerjasama ?? null,
-            soft_kejujuran: placement.soft_kejujuran ?? null,
-            soft_tanggung_jawab: placement.soft_tanggung_jawab ?? null,
-            nilai_akhir_pkl: placement.nilai_akhir_pkl ?? null,
-            predikat_pkl: placement.predikat_pkl || null,
-          },
-          sekolah: {
-            nama: sekolah?.nama || tenantInfo?.name || 'SMK NEGERI 1 PLERED',
-            kota: sekolah?.kota || 'Purwakarta',
-            kepala_sekolah: sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.',
-            nip_kepala: sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001',
-          },
-          wali_kelas: {
-            nama: (user as any)?.nama || (user as any)?.name || 'Wali Kelas',
-            nip: (user as any)?.nip || '',
-          },
-          tahun_pelajaran: activeYear?.nama || '',
-          semester: activeSemester?.nama || '',
-        };
-      });
-
-      const { blobUrl } = await generateRaporPklBatchPdf(raporItems, currentKelasObj?.nama_kelas || 'Kelas');
-      window.open(blobUrl, '_blank');
-      toast.success(`Pratinjau Rapor PKL Sekelas (${raporItems.length} Siswa, 2 Halaman per Siswa) dibuka di tab baru`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error(`Gagal membuat PDF Batch Rapor PKL: ${msg}`);
-    } finally {
-      setIsBatchPklPrinting(false);
-    }
-  }, [selectedKelas, classList, activeYear, activeSemester, user]);
+  // ── Hook Cetak Rapor PKL Terisolasi ──
+  const { handlePrintRaporPkl, handleBatchPrintRaporPkl, isBatchPklPrinting } = useRaporPklPrint({
+    selectedKelas,
+    classList: typedClassList,
+    activeYear,
+    activeSemester,
+    user,
+    setPdfLoading,
+  });
 
   const breadcrumbs = useMemo(
     () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
@@ -732,249 +516,96 @@ export default React.memo(function CetakRaporPage() {
           { text: 'Pilih Rombel / Kelas untuk merekap ranking leger dan absensi.' },
           { text: 'Klik Ringkasan untuk mengisi catatan wali kelas dan status transisi.' },
           { text: 'Gunakan Cetak Sekaligus untuk mengunduh seluruh rapor dalam 1 file PDF.' },
-          { text: 'Ekspor Leger ke spreadsheet Excel untuk kebutuhan arsip dan administrasi.' }
-        ]
+          { text: 'Ekspor Leger ke spreadsheet Excel untuk kebutuhan arsip dan administrasi.' },
+        ],
       }}
       hardeningModuleKey="cetakraporpage"
     >
-      <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
-        {/* Selector Header */}
-        <Card className="p-4 sm:p-5 border-none shadow-xs dark:bg-slate-900/40 w-full max-w-full min-w-0">
-          <div className="flex flex-wrap gap-3 sm:gap-4 items-end justify-between w-full max-w-full min-w-0">
-            <div className="flex flex-wrap gap-3 items-end w-full max-w-full min-w-0 sm:w-auto">
-              {/* Kelas */}
-              <div className="space-y-1 w-full max-w-full min-w-0 sm:w-auto">
-                <label htmlFor="select-kelas" className="text-[10px] font-bold text-slate-500 uppercase block">
-                  Pilih Kelas
-                </label>
-                <SearchableSelect
-                  id="select-kelas"
-                  value={selectedKelas}
-                  onValueChange={setSelectedKelas}
-                  options={kelasOptions}
-                  placeholder={isLoadingClasses ? 'Memuat kelas...' : 'Pilih Kelas'}
-                  searchPlaceholder="Cari kelas..."
-                  isLoading={isLoadingClasses}
-                  className="w-full max-w-full min-w-0 sm:min-w-[200px]"
-                />
-              </div>
+      <SectionCard fullWidth className="border-none shadow-none bg-transparent p-0">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
+          {/* Selector Header Subcomponent */}
+          <CetakRaporHeaderCard
+            selectedKelas={selectedKelas}
+            onSelectKelas={setSelectedKelas}
+            kelasOptions={kelasOptions}
+            isLoadingClasses={isLoadingClasses}
+            selectedTahunPelajaran={selectedTahunPelajaran}
+            selectedSemester={selectedSemester}
+            onTahunPelajaranChange={handleAcademicTpChange}
+            onSemesterChange={handleSemesterChange}
+            tpOptions={tpOptions}
+            semesterOptions={semesterOptions}
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            hasLegerData={Boolean(leger?.data)}
+            isBatchPrinting={isBatchPrinting}
+            onBatchPrintRapor={handleBatchPrintRapor}
+            onPrintLeger={() => printLeger(selectedKelas)}
+            onExportLeger={handleExportLeger}
+            isJenjangSmk={isJenjangSmk}
+            onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
+            isBatchPklPrinting={isBatchPklPrinting}
+            isPureWaliKelas={isPureWaliKelas}
+            currentKelasNama={currentKelasObj?.nama_kelas}
+            kurikulumStrukturListLength={kurikulumStrukturList?.length}
+            kurikulumTotalJp={kurikulumTotalJp}
+          />
 
-              {/* Tahun Pelajaran + Semester Selector */}
-              <AcademicContextBar
-                id="cetak-rapor"
-                tahunPelajaranId={selectedTahunPelajaran}
-                semesterId={selectedSemester}
-                onTahunPelajaranChange={handleAcademicTpChange}
-                onSemesterChange={handleSemesterChange}
-                tpOptions={tpOptions}
-                semesterOptions={semesterOptions}
-                variant="filter"
-              />
+          {/* Monitoring Kelengkapan Nilai Mata Pelajaran Kelas Binaan */}
+          {selectedKelas && (
+            <ClassSubjectProgressCard
+              data={classProgressData}
+              isLoading={isLoadingClassProgress}
+              tahunPelajaranId={activeYear?.id}
+              semesterId={activeSemester?.id}
+            />
+          )}
 
-              {/* Search siswa */}
-              {selectedKelas && (
-                <div className="space-y-1 w-full max-w-full min-w-0 sm:w-auto">
-                  <label htmlFor="search-siswa" className="text-[10px] font-bold text-slate-500 uppercase block">
-                    Cari Siswa
-                  </label>
-                  <div className="relative w-full max-w-full min-w-0">
-                    <input
-                      id="search-siswa"
-                      type="text"
-                      placeholder="Nama / NIS..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full max-w-full min-w-0 bg-slate-50 dark:bg-slate-800 border-none rounded-xl text-xs font-semibold pl-8 pr-4 py-2.5 text-slate-800 dark:text-white focus:ring-1 focus:ring-indigo-500"
-                    />
-                    <Search size={14} className="absolute left-2.5 top-3 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Action Group: Cetak Massal & Ekspor Leger */}
-            {selectedKelas && leger?.data && (
-              <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
-                {/* Tombol Utama: Cetak Sekaligus 1 File PDF */}
-                <Button
-                  onClick={handleBatchPrintRapor}
-                  disabled={isBatchPrinting}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none whitespace-nowrap flex-shrink-0"
-                  title="Cetak seluruh rapor siswa sekelas dalam 1 file PDF gabungan"
-                >
-                  {isBatchPrinting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin flex-shrink-0" />
-                  ) : (
-                    <Printer className="w-4 h-4 mr-2 flex-shrink-0" />
-                  )}
-                  <span className="hidden sm:inline">CETAK SEKALIGUS (1 FILE PDF)</span>
-                  <span className="sm:hidden">CETAK 1 FILE</span>
-                </Button>
-
-                {/* Dropdown Aksi Sekunder: Leger & Dokumen Lainnya */}
-                <div className="relative inline-block text-left" ref={batchMenuRef}>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsBatchMenuOpen((prev) => !prev)}
-                    className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold whitespace-nowrap flex-shrink-0 flex items-center gap-1.5"
-                    title="Opsi cetak buku leger, rapor PKL, dan ekspor excel"
-                  >
-                    <BookOpen className="w-4 h-4 text-slate-500" />
-                    <span>Dokumen &amp; Ekspor</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isBatchMenuOpen ? 'rotate-180' : ''}`} />
-                  </Button>
-
-                  {isBatchMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 origin-top-right rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1 divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-100">
-                      <div className="p-1 space-y-0.5">
-                        {/* CETAK BUKU LEGER KELAS (LANDSCAPE) */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsBatchMenuOpen(false);
-                            printLeger(selectedKelas);
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <BookOpen size={14} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300">
-                              Buku Leger (Landscape)
-                            </div>
-                            <div className="text-[10px] text-slate-400 truncate">
-                              Matriks nilai &amp; peringkat resmi (PDF)
-                            </div>
-                          </div>
-                        </button>
-
-                        {/* EKSPOR LEGER EXCEL */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsBatchMenuOpen(false);
-                            handleExportLeger();
-                          }}
-                          className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
-                        >
-                          <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                            <FileSpreadsheet size={14} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
-                              Ekspor Leger ke Excel
-                            </div>
-                            <div className="text-[10px] text-slate-400 truncate">
-                              Download spreadsheet .xlsx nilai sekelas
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-
-                      {isJenjangSmk && (
-                        <div className="p-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsBatchMenuOpen(false);
-                              handleBatchPrintRaporPkl();
-                            }}
-                            disabled={isBatchPklPrinting}
-                            className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group disabled:opacity-50"
-                          >
-                            <div className="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                              {isBatchPklPrinting ? <Loader2 size={14} className="animate-spin" /> : <Building2 size={14} />}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">
-                                Rapor PKL Sekelas
-                              </div>
-                              <div className="text-[10px] text-slate-400 truncate">
-                                Kompilasi 2 halaman PKL per siswa (PDF)
-                              </div>
-                            </div>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Contextual Badges: Mode & Kurikulum (Bersih tanpa duplikasi TP/Semester) */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {isPureWaliKelas ? (
-              <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 bg-indigo-50/50 dark:bg-indigo-950/30">
-                Mode Wali Kelas • {currentKelasObj?.nama_kelas || 'Kelas Binaan'}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-[10px] font-bold border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/40">
-                Mode Supervisi Kurikulum &amp; Manajemen
-              </Badge>
-            )}
-
-            {kurikulumStrukturList && kurikulumStrukturList.length > 0 && (
-              <Badge variant="outline" className="text-[10px] font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 whitespace-nowrap bg-emerald-50/40 dark:bg-emerald-950/20">
-                Kurikulum: {kurikulumStrukturList.length} Mapel ({kurikulumTotalJp} JP)
-              </Badge>
-            )}
-          </div>
-        </Card>
-
-        {/* Monitoring Kelengkapan Nilai Mata Pelajaran Kelas Binaan */}
-        {selectedKelas && (
-          <ClassSubjectProgressCard
-            data={classProgressData}
-            isLoading={isLoadingClassProgress}
+          {/* Student List & Leger Table */}
+          <LegerStudentTable
+            students={filteredStudents}
+            isLoading={isLoadingLeger}
+            isJenjangSmk={isJenjangSmk}
+            pdfLoading={pdfLoading}
             tahunPelajaranId={activeYear?.id}
             semesterId={activeSemester?.id}
+            onOpenSummaryModal={handleOpenSummaryModal}
+            onPrintRapor={handlePrintRapor}
+            onPrintP5={handlePrintP5}
+            onPrintRaporPkl={handlePrintRaporPkl}
+            onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
+            getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
+            getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
           />
-        )}
+        </div>
 
-        {/* Student List & Leger Table */}
-        <LegerStudentTable
-          students={filteredStudents}
-          isLoading={isLoadingLeger}
-          isJenjangSmk={isJenjangSmk}
-          pdfLoading={pdfLoading}
-          tahunPelajaranId={activeYear?.id}
-          semesterId={activeSemester?.id}
-          onOpenSummaryModal={handleOpenSummaryModal}
-          onPrintRapor={handlePrintRapor}
-          onPrintP5={handlePrintP5}
-          onPrintRaporPkl={handlePrintRaporPkl}
-          onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
-          getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
-          getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
-        />
+        {/* Summary Modal (Lazy-Loaded) */}
+        <Suspense fallback={null}>
+          <RaporSummaryModal
+            isOpen={isSummaryModalOpen}
+            onClose={() => setIsSummaryModalOpen(false)}
+            selectedStudent={selectedStudent}
+            rekapSiswaData={rekapSiswaData}
+            summaryForm={summaryForm}
+            formErrors={formErrors}
+            onFormChange={handleSummaryFormChange}
+            onSubmit={handleSummarySubmit}
+            isSaving={summaryMutation.isPending}
+            tampilkanKokurikuler={tampilkanKokurikuler}
+          />
+        </Suspense>
 
-      </div>
-
-      {/* Summary Modal */}
-      <RaporSummaryModal
-        isOpen={isSummaryModalOpen}
-        onClose={() => setIsSummaryModalOpen(false)}
-        selectedStudent={selectedStudent}
-        rekapSiswaData={rekapSiswaData}
-        summaryForm={summaryForm}
-        formErrors={formErrors}
-        onFormChange={handleSummaryFormChange}
-        onSubmit={handleSummarySubmit}
-        isSaving={summaryMutation.isPending}
-        tampilkanKokurikuler={tampilkanKokurikuler}
-      />
-
-      {/* Transkrip Modal */}
-      <TranskripModal
-        isOpen={!!selectedTranskripStudent}
-        onClose={() => setSelectedTranskripStudent(null)}
-        selectedStudent={selectedTranskripStudent}
-        transkripData={(transkripData?.data || transkripData || null) as unknown as TranskripNilaiData}
-        isLoading={isLoadingTranskrip}
-      />
+        {/* Transkrip Modal (Lazy-Loaded) */}
+        <Suspense fallback={null}>
+          <TranskripModal
+            isOpen={!!selectedTranskripStudent}
+            onClose={() => setSelectedTranskripStudent(null)}
+            selectedStudent={selectedTranskripStudent}
+            transkripData={(transkripData?.data || transkripData || null) as unknown as TranskripNilaiData}
+            isLoading={isLoadingTranskrip}
+          />
+        </Suspense>
+      </SectionCard>
     </AcademicPageLayout>
   );
 });
