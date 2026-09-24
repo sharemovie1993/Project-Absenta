@@ -231,30 +231,67 @@ export class RaporService {
       urutan?: number;
     }> = {};
 
+    // Deduplikasi Cerdas: Memetakan nama mapel ternormalisasi -> primary mapel_id
+    // Mencegah duplikasi jika master mapel memiliki nama yang sama dengan ID berbeda
+    const normNameToPrimaryId = new Map<string, string>();
+    const altIdToPrimaryId = new Map<string, string>();
+
+    const registerOrGetMapel = (mId: string, mName: string, mCode: string, grp: string, kkm: number, urutan = 999): string => {
+      const normKey = (mName || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      if (!normKey) return mId;
+
+      if (normNameToPrimaryId.has(normKey)) {
+        const primaryId = normNameToPrimaryId.get(normKey)!;
+        altIdToPrimaryId.set(mId, primaryId);
+        // Perbarui kelompok mapel jika yang baru lebih spesifik
+        if (mapelGrades[primaryId]) {
+          if (grp && grp.toLowerCase() !== 'mata pelajaran umum' && grp.toLowerCase() !== 'umum' && mapelGrades[primaryId].kelompok_mapel.toLowerCase().includes('umum')) {
+            mapelGrades[primaryId].kelompok_mapel = grp;
+          }
+          if (urutan < (mapelGrades[primaryId].urutan ?? 999)) {
+            mapelGrades[primaryId].urutan = urutan;
+          }
+        }
+        return primaryId;
+      }
+
+      normNameToPrimaryId.set(normKey, mId);
+      altIdToPrimaryId.set(mId, mId);
+      mapelGrades[mId] = {
+        mapel_id: mId,
+        mapel_name: mName,
+        mapel_code: mCode,
+        kelompok_mapel: grp,
+        kkm: kkm || 75,
+        nilai_components: [],
+        nilai_akhir: 0,
+        predikat: '-',
+        catatan_kompetensi: '',
+        urutan,
+      };
+      return mId;
+    };
+
     // 6a. Muat seluruh mapel dari Struktur Kurikulum kelas siswa
     if (strukturList.length > 0) {
       strukturList.forEach((sk) => {
         if (sk.Mapel) {
           const grp = sk.kelompok || sk.Mapel.kelompok_mapel || 'Mata Pelajaran Umum';
-          mapelGrades[sk.mapel_id] = {
-            mapel_id: sk.mapel_id,
-            mapel_name: sk.Mapel.nama_mapel,
-            mapel_code: sk.Mapel.kode_mapel || 'N/A',
-            kelompok_mapel: grp,
-            kkm: kkmMap.get(sk.mapel_id) || 75,
-            nilai_components: [],
-            nilai_akhir: 0,
-            predikat: '-',
-            catatan_kompetensi: '',
-            urutan: (sk as any).urutan ?? (sk.Mapel as any)?.urutan ?? 999,
-          };
+          registerOrGetMapel(
+            sk.mapel_id,
+            sk.Mapel.nama_mapel,
+            sk.Mapel.kode_mapel || 'N/A',
+            grp,
+            kkmMap.get(sk.mapel_id) || 75,
+            (sk as any).urutan ?? (sk.Mapel as any)?.urutan ?? 999
+          );
         }
       });
     }
 
     // 6b. Muat juga seluruh mapel yang aktif terhubung ke rombel ini (Jadwal KBM, Guru Mapel, Nilai Kelas)
     if (rombelMapelIds.size > 0) {
-      const missingIds = Array.from(rombelMapelIds).filter((id) => !mapelGrades[id]);
+      const missingIds = Array.from(rombelMapelIds).filter((id) => !altIdToPrimaryId.has(id));
       if (missingIds.length > 0) {
         const rombelMapels = await prisma.mapel.findMany({
           where: {
@@ -263,49 +300,40 @@ export class RaporService {
           },
         });
         rombelMapels.forEach((m) => {
-          mapelGrades[m.id] = {
-            mapel_id: m.id,
-            mapel_name: m.nama_mapel,
-            mapel_code: m.kode_mapel || 'N/A',
-            kelompok_mapel: m.kelompok_mapel || 'Mata Pelajaran Umum',
-            kkm: kkmMap.get(m.id) || 75,
-            nilai_components: [],
-            nilai_akhir: 0,
-            predikat: '-',
-            catatan_kompetensi: '',
-            urutan: (m as any)?.urutan ?? 999,
-          };
+          registerOrGetMapel(
+            m.id,
+            m.nama_mapel,
+            m.kode_mapel || 'N/A',
+            m.kelompok_mapel || 'Mata Pelajaran Umum',
+            kkmMap.get(m.id) || 75,
+            (m as any)?.urutan ?? 999
+          );
         });
       }
     }
 
-    // 6c. Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat
+    // 6c. Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat dan dialihkan ke primaryId
     listNilai.forEach((n) => {
-      if (n.Mapel && !mapelGrades[n.mapel_id]) {
-        mapelGrades[n.mapel_id] = {
-          mapel_id: n.mapel_id,
-          mapel_name: n.Mapel.nama_mapel,
-          mapel_code: n.Mapel.kode_mapel || 'N/A',
-          kelompok_mapel: n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
-          kkm: kkmMap.get(n.mapel_id) || 75,
-          nilai_components: [],
-          nilai_akhir: 0,
-          predikat: '-',
-          catatan_kompetensi: '',
-        };
+      const primaryId = altIdToPrimaryId.get(n.mapel_id) || n.mapel_id;
+      if (!mapelGrades[primaryId] && n.Mapel) {
+        registerOrGetMapel(
+          n.mapel_id,
+          n.Mapel.nama_mapel,
+          n.Mapel.kode_mapel || 'N/A',
+          n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
+          kkmMap.get(n.mapel_id) || 75
+        );
       }
-    });
-
-    listNilai.forEach((n) => {
-      if (mapelGrades[n.mapel_id]) {
-        mapelGrades[n.mapel_id].nilai_components.push({
+      const targetId = altIdToPrimaryId.get(n.mapel_id) || primaryId;
+      if (mapelGrades[targetId]) {
+        mapelGrades[targetId].nilai_components.push({
           jenis: n.JenisNilai?.nama || 'Sumatif',
           nilai: n.nilai_rapor_final ?? n.nilai,
           bobot: n.JenisNilai?.bobot || 1,
         });
         const note = n.capaian_kompetensi || n.catatan_deskripsi;
         if (note) {
-          mapelGrades[n.mapel_id].catatan_kompetensi = note;
+          mapelGrades[targetId].catatan_kompetensi = note;
         }
       }
     });

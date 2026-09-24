@@ -20,6 +20,98 @@ export interface PrintRaporOptions {
  * Fetches all data via authenticated axios, no backend Puppeteer needed.
  */
 /**
+ * Standar Urutan Mata Pelajaran e-Rapor Kemendikbudristek (Multi-Jenjang: SD, SMP, SMA, SMK)
+ */
+export const getMapelCanonicalPriority = (
+  mapelName: string,
+  kelompok: string,
+  jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK',
+  urutanDb?: number
+): number => {
+  if (typeof urutanDb === 'number' && urutanDb > 0 && urutanDb < 900) {
+    return urutanDb;
+  }
+
+  const name = (mapelName || '').toLowerCase().trim();
+  const grp = (kelompok || '').toLowerCase().trim();
+
+  // 1. KELOMPOK MATA PELAJARAN UMUM
+  if (grp.includes('umum')) {
+    if (name.includes('agama') || name.includes('budi pekerti') || name.includes('pai') || name.includes('pak')) return 10;
+    if (name.includes('pancasila') || name.includes('ppkn') || name.includes('kewarganegaraan')) return 20;
+    if (name.includes('bahasa indonesia') || name === 'indonesia') return 30;
+
+    if (jenjang === 'SMK') {
+      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok') || name.includes('penjas')) return 40;
+      if (name.includes('sejarah')) return 50;
+      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 60;
+      if (name.includes('matematika')) return 70;
+      if (name.includes('inggris')) return 80;
+    } else if (jenjang === 'SD') {
+      if (name.includes('matematika')) return 40;
+      if (name.includes('ipas') || (name.includes('alam') && name.includes('sosial'))) return 50;
+      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 60;
+      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 70;
+      if (name.includes('inggris')) return 80;
+    } else if (jenjang === 'SMP') {
+      if (name.includes('matematika')) return 40;
+      if (name.includes('ipa') || (name.includes('alam') && !name.includes('sosial'))) return 50;
+      if (name.includes('ips') || (name.includes('sosial') && !name.includes('alam'))) return 60;
+      if (name.includes('inggris')) return 70;
+      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 80;
+      if (name.includes('informatika') || name.includes('tik')) return 90;
+      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 100;
+    } else {
+      if (name.includes('matematika')) return 40;
+      if (name.includes('inggris')) return 50;
+      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 60;
+      if (name.includes('sejarah')) return 70;
+      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 80;
+    }
+    return 150;
+  }
+
+  // 2. KELOMPOK MATA PELAJARAN KEJURUAN (SMK)
+  if (grp.includes('kejuruan')) {
+    if (name.includes('matematika')) return 10;
+    if (name.includes('inggris')) return 20;
+    if (name.includes('informatika') || name.includes('komputer') || name.includes('tik')) return 30;
+    if (name.includes('ipas') || (name.includes('alam') && name.includes('sosial')) || name.includes('projek ipas')) return 40;
+    if (name.includes('dasar') || name.includes('program keahlian')) return 50;
+    if (name.includes('gtm') || name.includes('gambar teknik')) return 52;
+    if (name.includes('pdtm') || name.includes('pekerjaan dasar')) return 54;
+    if (name.includes('dptm') || name.includes('dasar perancangan')) return 56;
+    if (name.includes('konsentrasi') || name.includes('kejuruan')) return 60;
+    if (name.includes('kreatif') || name.includes('kewirausahaan') || name.includes('pkk')) return 70;
+    if (name.includes('pkl') || name.includes('praktik kerja')) return 80;
+    return 150;
+  }
+
+  // 3. KELOMPOK MATA PELAJARAN PILIHAN / PEMINATAN
+  if (grp.includes('pilihan') || grp.includes('peminatan')) {
+    if (name.includes('koding') || name.includes('kecerdasan') || name.includes('ai') || name.includes('artificial')) return 10;
+    if (name.includes('biologi')) return 20;
+    if (name.includes('fisika')) return 30;
+    if (name.includes('kimia')) return 40;
+    if (name.includes('ekonomi')) return 50;
+    if (name.includes('sosiologi')) return 60;
+    if (name.includes('geografi')) return 70;
+    return 100;
+  }
+
+  // 4. MUATAN LOKAL
+  if (grp.includes('muatan') || grp.includes('lokal') || grp.includes('mulok')) {
+    if (name.includes('sunda')) return 10;
+    if (name.includes('jawa')) return 20;
+    if (name.includes('daerah')) return 30;
+    if (name.includes('lingkungan') || name.includes('plh')) return 40;
+    return 100;
+  }
+
+  return 999;
+};
+
+/**
  * Helper untuk merender 2 halaman Rapor Semester Siswa ke dalam instance jsPDF.
  * Mendukung pencetakan individu maupun batch (halaman digabung berurutan).
  */
@@ -153,106 +245,69 @@ export const renderStudentRaporPages = (
     doc.text('Belum ada data mata pelajaran terdaftar pada semester ini.', pageWidth / 2, y + 4, { align: 'center' });
     y += 12;
   } else {
-    const groupedMapel = new Map<string, any[]>();
+    // 1. Deduplicate by normalized mapel name (merging score if present in duplicate record)
+    const dedupedMapelMap = new Map<string, any>();
     (nilaiAkademik ?? []).forEach((n: any) => {
+      const normName = (n.mapel_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (!normName) return;
+
+      const hasScore = (n.nilai_akhir && n.nilai_akhir > 0) || (n.nilai_components && n.nilai_components.length > 0);
+      
+      if (!dedupedMapelMap.has(normName)) {
+        dedupedMapelMap.set(normName, { ...n });
+      } else {
+        const existing = dedupedMapelMap.get(normName)!;
+        const existingHasScore = (existing.nilai_akhir && existing.nilai_akhir > 0) || (existing.nilai_components && existing.nilai_components.length > 0);
+        if (!existingHasScore && hasScore) {
+          dedupedMapelMap.set(normName, { ...existing, ...n });
+        }
+      }
+    });
+
+    const dedupedList = Array.from(dedupedMapelMap.values());
+
+    // 2. Group into standard e-Rapor categories with intelligent SMK vocational classifier
+    const groupedMapel = new Map<string, any[]>();
+    dedupedList.forEach((n: any) => {
       let group = n.kelompok_mapel || 'Mata Pelajaran Umum';
+      const mapelNameLower = (n.mapel_name || '').toLowerCase();
+
+      // Intelligent vocational classification for SMK
+      if (jenjang === 'SMK') {
+        const isVocationalKeyword = 
+          mapelNameLower.includes('gtm') ||
+          mapelNameLower.includes('pdtm') ||
+          mapelNameLower.includes('dptm') ||
+          mapelNameLower.includes('gambar teknik') ||
+          mapelNameLower.includes('pekerjaan dasar') ||
+          mapelNameLower.includes('dasar perancangan') ||
+          mapelNameLower.includes('dasar-dasar') ||
+          mapelNameLower.includes('dasar program keahlian') ||
+          mapelNameLower.includes('kejuruan') ||
+          mapelNameLower.includes('konsentrasi keahlian') ||
+          mapelNameLower.includes('teknik pemesinan') ||
+          mapelNameLower.includes('teknik mesin') ||
+          mapelNameLower.includes('teknik otomotif') ||
+          mapelNameLower.includes('teknik pengelasan') ||
+          mapelNameLower.includes('pkk') ||
+          mapelNameLower.includes('kreatif dan kewirausahaan') ||
+          mapelNameLower.includes('praktik kerja') ||
+          mapelNameLower.includes('pkl');
+
+        if (isVocationalKeyword) {
+          group = 'Mata Pelajaran Kejuruan';
+        }
+      }
+
       if (!group.toLowerCase().includes('umum') && !group.toLowerCase().includes('kejuruan') && !group.toLowerCase().includes('pilihan') && !group.toLowerCase().includes('muatan')) {
         group = 'Mata Pelajaran Umum';
       }
+
       if (!groupedMapel.has(group)) {
         groupedMapel.set(group, []);
       }
       groupedMapel.get(group)!.push(n);
     });
-
-/**
- * Standar Urutan Mata Pelajaran e-Rapor Kemendikbudristek (Multi-Jenjang: SD, SMP, SMA, SMK)
- */
-export const getMapelCanonicalPriority = (
-  mapelName: string,
-  kelompok: string,
-  jenjang: 'SD' | 'SMP' | 'SMA' | 'SMK',
-  urutanDb?: number
-): number => {
-  if (typeof urutanDb === 'number' && urutanDb > 0 && urutanDb < 900) {
-    return urutanDb;
-  }
-
-  const name = (mapelName || '').toLowerCase().trim();
-  const grp = (kelompok || '').toLowerCase().trim();
-
-  // 1. KELOMPOK MATA PELAJARAN UMUM
-  if (grp.includes('umum')) {
-    if (name.includes('agama') || name.includes('budi pekerti') || name.includes('pai') || name.includes('pak')) return 10;
-    if (name.includes('pancasila') || name.includes('ppkn') || name.includes('kewarganegaraan')) return 20;
-    if (name.includes('bahasa indonesia') || name === 'indonesia') return 30;
-
-    if (jenjang === 'SMK') {
-      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok') || name.includes('penjas')) return 40;
-      if (name.includes('sejarah')) return 50;
-      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 60;
-      if (name.includes('matematika')) return 70;
-      if (name.includes('inggris')) return 80;
-    } else if (jenjang === 'SD') {
-      if (name.includes('matematika')) return 40;
-      if (name.includes('ipas') || (name.includes('alam') && name.includes('sosial'))) return 50;
-      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 60;
-      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 70;
-      if (name.includes('inggris')) return 80;
-    } else if (jenjang === 'SMP') {
-      if (name.includes('matematika')) return 40;
-      if (name.includes('ipa') || (name.includes('alam') && !name.includes('sosial'))) return 50;
-      if (name.includes('ips') || (name.includes('sosial') && !name.includes('alam'))) return 60;
-      if (name.includes('inggris')) return 70;
-      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 80;
-      if (name.includes('informatika') || name.includes('tik')) return 90;
-      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 100;
-    } else {
-      if (name.includes('matematika')) return 40;
-      if (name.includes('inggris')) return 50;
-      if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok')) return 60;
-      if (name.includes('sejarah')) return 70;
-      if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 80;
-    }
-    return 150;
-  }
-
-  // 2. KELOMPOK MATA PELAJARAN KEJURUAN (SMK)
-  if (grp.includes('kejuruan')) {
-    if (name.includes('matematika')) return 10;
-    if (name.includes('inggris')) return 20;
-    if (name.includes('informatika') || name.includes('komputer') || name.includes('tik')) return 30;
-    if (name.includes('ipas') || (name.includes('alam') && name.includes('sosial')) || name.includes('projek ipas')) return 40;
-    if (name.includes('dasar') || name.includes('program keahlian')) return 50;
-    if (name.includes('konsentrasi') || name.includes('kejuruan')) return 60;
-    if (name.includes('kreatif') || name.includes('kewirausahaan') || name.includes('pkk')) return 70;
-    if (name.includes('pkl') || name.includes('praktik kerja')) return 80;
-    return 150;
-  }
-
-  // 3. KELOMPOK MATA PELAJARAN PILIHAN / PEMINATAN
-  if (grp.includes('pilihan') || grp.includes('peminatan')) {
-    if (name.includes('koding') || name.includes('kecerdasan') || name.includes('ai') || name.includes('artificial')) return 10;
-    if (name.includes('biologi')) return 20;
-    if (name.includes('fisika')) return 30;
-    if (name.includes('kimia')) return 40;
-    if (name.includes('ekonomi')) return 50;
-    if (name.includes('sosiologi')) return 60;
-    if (name.includes('geografi')) return 70;
-    return 100;
-  }
-
-  // 4. MUATAN LOKAL
-  if (grp.includes('muatan') || grp.includes('lokal') || grp.includes('mulok')) {
-    if (name.includes('sunda')) return 10;
-    if (name.includes('jawa')) return 20;
-    if (name.includes('daerah')) return 30;
-    if (name.includes('lingkungan') || name.includes('plh')) return 40;
-    return 100;
-  }
-
-  return 999;
-};
 
     const tableRows: any[] = [];
     const groupOrder = ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
