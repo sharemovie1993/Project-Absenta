@@ -35,6 +35,7 @@ import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStude
 import { ClassSubjectProgressCard } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
 import { CetakRaporHeaderCard } from '../../components/rapor/cetak-rapor/CetakRaporHeaderCard';
 import { useRaporPklPrint, KelasOptionItem } from '../../components/rapor/cetak-rapor/useRaporPklPrint';
+import { useRaporRenderStore } from '../../store/raporRenderStore';
 
 // Lazy-loaded modals for architectural compliance & performance
 const RaporSummaryModal = lazy(() =>
@@ -46,21 +47,9 @@ const TranskripModal = lazy(() =>
 const SertifikatPklModal = lazy(() =>
   import('../../components/hubin/SertifikatPklModal').then((m) => ({ default: m.SertifikatPklModal }))
 );
-
-interface ExtendedUserContext {
-  nama?: string;
-  name?: string;
-  full_name?: string;
-  nip?: string;
-  wali_kelas_kelas_id?: string;
-  kelas_id?: string;
-  assigned_kelas_id?: string;
-  guru_profile?: {
-    wali_kelas_di?: {
-      id?: string;
-    };
-  };
-}
+const RaporRenderProgressModal = lazy(() =>
+  import('../../components/rapor/cetak-rapor/RaporRenderProgressModal').then((m) => ({ default: m.RaporRenderProgressModal }))
+);
 
 export default React.memo(function CetakRaporPage() {
   const queryClient = useQueryClient();
@@ -400,19 +389,25 @@ export default React.memo(function CetakRaporPage() {
         return;
       }
       const key = `rapor_${student.id}`;
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
       setPdfLoading((prev) => ({ ...prev, [key]: true }));
+      startRender(`Rapor Semester - ${student.nama_siswa}`, 1, `Mengambil data capaian ${student.nama_siswa}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 25 });
       try {
-        const { blobUrl } = await generateRaporPdf({
+        updateProgress({ stage: 'processing', stageText: 'Menyusun narasi Capaian Pembelajaran & nilai...', progressPercent: 60 });
+        const { blobUrl, filename } = await generateRaporPdf({
           siswaId: student.id,
           tahunPelajaranId: activeYear.id,
           semesterId: activeSemester.id,
           tahunPelajaranNama: activeYear.nama ?? '',
           semesterNama: activeSemester.nama ?? '',
         });
-        window.open(blobUrl, '_blank');
+        updateProgress({ stage: 'rendering', stageText: 'Merender tata letak 2 halaman PDF...', progressPercent: 90 });
+        finishRender(blobUrl, filename, `Rapor Semester ${student.nama_siswa} siap!`);
         toast.success(`Pratinjau Rapor ${student.nama_siswa} dibuka di tab baru`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        failRender(msg);
         toast.error(`Gagal membuat PDF Rapor: ${msg}`);
       } finally {
         setPdfLoading((prev) => {
@@ -432,19 +427,25 @@ export default React.memo(function CetakRaporPage() {
         return;
       }
       const key = `p5_${student.id}`;
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
       setPdfLoading((prev) => ({ ...prev, [key]: true }));
+      startRender(`Rapor P5 - ${student.nama_siswa}`, 1, 'Mengambil dimensi & instrumen projek P5...');
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
       try {
-        const { blobUrl } = await generateP5RaporPdf({
+        updateProgress({ stage: 'processing', stageText: 'Menghitung capaian elemen profil kelulusan...', progressPercent: 65 });
+        const { blobUrl, filename } = await generateP5RaporPdf({
           siswaId: student.id,
           tahunPelajaranId: activeYear.id,
           semesterId: activeSemester.id,
           tahunPelajaranNama: activeYear.nama ?? '',
           semesterNama: activeSemester.nama ?? '',
         });
-        window.open(blobUrl, '_blank');
+        updateProgress({ stage: 'rendering', stageText: 'Merender tata letak matriks P5...', progressPercent: 90 });
+        finishRender(blobUrl, filename, `Rapor P5 ${student.nama_siswa} siap!`);
         toast.success(`Pratinjau Rapor P5 ${student.nama_siswa} dibuka di tab baru`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        failRender(msg);
         toast.error(`Gagal membuat PDF P5: ${msg}`);
       } finally {
         setPdfLoading((prev) => {
@@ -519,21 +520,36 @@ export default React.memo(function CetakRaporPage() {
       toast.error('Tidak ada siswa di kelas ini untuk dicetak.');
       return;
     }
+    const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
     setIsBatchPrinting(true);
+    startRender('Kompilasi Rapor Sekelas', filteredStudents.length, `Menyiapkan kompilasi cetak massal ${filteredStudents.length} siswa...`);
+    updateProgress({ stage: 'fetching', progressPercent: 10 });
     toast.info(`Memproses cetak massal ${filteredStudents.length} Rapor Siswa...`);
     try {
-      const { blobUrl } = await generateRaporKelasBatchPdf({
+      const { blobUrl, filename } = await generateRaporKelasBatchPdf({
         students: filteredStudents,
         tahunPelajaranId: activeYear.id,
         semesterId: activeSemester.id,
         tahunPelajaranNama: activeYear.nama,
         semesterNama: activeSemester.nama,
         kelasNama: currentKelasObj?.nama_kelas || 'Sekelas',
+        onProgress: (current, total, studentName) => {
+          const percent = Math.min(99, 10 + Math.round((current / total) * 88));
+          updateProgress({
+            stage: 'rendering',
+            stageText: `Merender Rapor Siswa (${current}/${total})...`,
+            progressPercent: percent,
+            current,
+            total,
+            detail: `Siswa: ${studentName}`,
+          });
+        },
       });
-      window.open(blobUrl, '_blank');
+      finishRender(blobUrl, filename, `Kompilasi Rapor Sekelas (${filteredStudents.length} Siswa) berhasil dibuat!`);
       toast.success(`Pratinjau Rapor Sekelas (${filteredStudents.length} Siswa) dibuka di tab baru`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      failRender(msg);
       toast.error(`Gagal membuat PDF Batch Rapor: ${msg}`);
     } finally {
       setIsBatchPrinting(false);
@@ -737,6 +753,11 @@ export default React.memo(function CetakRaporPage() {
               siswaPklId={selectedSertifikatPklId}
             />
           )}
+        </Suspense>
+
+        {/* Rapor Render Progress Modal (Interactive Non-Silent Feedback) */}
+        <Suspense fallback={null}>
+          <RaporRenderProgressModal />
         </Suspense>
       </SectionCard>
     </AcademicPageLayout>

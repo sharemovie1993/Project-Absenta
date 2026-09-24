@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { raporApi } from '../api/rapor.api';
 import { useToast } from './useToast';
+import { useRaporRenderStore } from '../store/raporRenderStore';
 
 export interface UseRaporPdfOptions {
   tahunPelajaranId?: string;
@@ -17,14 +18,28 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
    * token Authorization: Bearer selalu disematkan oleh axios interceptor.
    */
   const openPdfBlob = useCallback(
-    async (fetcher: () => Promise<{ data: BlobPart }>, docTitle: string) => {
+    async (fetcher: () => Promise<{ data: BlobPart }>, docTitle: string, filename?: string) => {
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
       setActivePrintingDoc(docTitle);
+      startRender(docTitle, 1, `Mengambil berkas ${docTitle} dari server...`);
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
       showToast(`Menyiapkan ${docTitle}...`, 'info');
       try {
+        updateProgress({
+          stage: 'processing',
+          stageText: `Mengolah data dan stempel ${docTitle}...`,
+          progressPercent: 65,
+        });
         const response = await fetcher();
+        updateProgress({
+          stage: 'rendering',
+          stageText: `Merender dokumen PDF resmi...`,
+          progressPercent: 90,
+        });
         const blob = new Blob([response.data], { type: 'application/pdf' });
         const blobUrl = window.URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        const cleanFilename = filename || `${docTitle.replace(/\s+/g, '_')}.pdf`;
+        finishRender(blobUrl, cleanFilename, `${docTitle} berhasil dikompilasi!`);
         showToast(`${docTitle} berhasil dibuka`, 'success');
       } catch (err: unknown) {
         let errorMsg = `Gagal membuka ${docTitle}.`;
@@ -48,6 +63,7 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
         } else if (typedErr?.message) {
           errorMsg = typedErr.message;
         }
+        failRender(errorMsg);
         showToast(errorMsg, 'error');
       } finally {
         setActivePrintingDoc(null);

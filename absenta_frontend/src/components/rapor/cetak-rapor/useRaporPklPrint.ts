@@ -6,6 +6,7 @@ import { getMyTenant } from '../../../api/tenants.api';
 import { generateRaporPklSinglePdf, generateRaporPklBatchPdf, RaporPklItemData } from '../../../utils/print/modules/pdfRaporPkl';
 import { LegerStudent, AcademicYear, Semester } from '../../../types/cetakRapor.types';
 import { User } from '../../../store/authStore';
+import { useRaporRenderStore } from '../../../store/raporRenderStore';
 
 export interface KelasOptionItem {
   id: string;
@@ -117,7 +118,10 @@ export function useRaporPklPrint({
   const handlePrintRaporPkl = useCallback(
     async (student: LegerStudent) => {
       const key = `pkl_${student.id}`;
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
       setPdfLoading((prev) => ({ ...prev, [key]: true }));
+      startRender(`Rapor PKL - ${student.nama_siswa}`, 1, `Mengambil data penempatan PKL ${student.nama_siswa}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 25 });
       try {
         const res = (await hubinApi.getPenempatan({
           search: student.nis || student.nama_siswa,
@@ -136,9 +140,17 @@ export function useRaporPklPrint({
         );
 
         if (!placement) {
-          toast.warning(`Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`);
+          const warningMsg = `Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`;
+          failRender(warningMsg);
+          toast.warning(warningMsg);
           return;
         }
+
+        updateProgress({
+          stage: 'processing',
+          stageText: 'Menyusun nilai pembimbing, instruktur DUDI & kompetensi...',
+          progressPercent: 60,
+        });
 
         const [sekolahRes, tenantRes] = await Promise.allSettled([
           sekolahApi.getProfile(),
@@ -199,11 +211,18 @@ export function useRaporPklPrint({
           semester: activeSemester?.nama || '',
         };
 
-        const { blobUrl } = await generateRaporPklSinglePdf(raporItem);
-        window.open(blobUrl, '_blank');
+        updateProgress({
+          stage: 'rendering',
+          stageText: 'Merender tata letak 2 halaman Rapor PKL & tanda tangan...',
+          progressPercent: 90,
+        });
+
+        const { blobUrl, filename } = await generateRaporPklSinglePdf(raporItem);
+        finishRender(blobUrl, filename, `Rapor PKL ${student.nama_siswa} berhasil dibuat!`);
         toast.success(`Pratinjau Rapor PKL ${student.nama_siswa} (2 Halaman) dibuka di tab baru`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        failRender(msg);
         toast.error(`Gagal membuat PDF Rapor PKL: ${msg}`);
       } finally {
         setPdfLoading((prev) => {
@@ -221,7 +240,10 @@ export function useRaporPklPrint({
       toast.error('Pilih rombel / kelas terlebih dahulu');
       return;
     }
+    const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
     setIsBatchPklPrinting(true);
+    startRender('Kompilasi Rapor PKL Sekelas', 1, 'Menghubungkan ke pangkalan data Hubin...');
+    updateProgress({ stage: 'fetching', progressPercent: 15 });
     toast.info('Menyiapkan kompilasi Rapor PKL Sekelas...');
     try {
       const res = (await hubinApi.getPenempatan({
@@ -233,9 +255,18 @@ export function useRaporPklPrint({
       const placementList: PlacementRecord[] = Array.isArray(rawList) ? rawList : [];
 
       if (!placementList || placementList.length === 0) {
-        toast.warning('Tidak ada siswa di kelas ini yang memiliki data penempatan PKL.');
+        const warningMsg = 'Tidak ada siswa di kelas ini yang memiliki data penempatan PKL.';
+        failRender(warningMsg);
+        toast.warning(warningMsg);
         return;
       }
+
+      updateProgress({
+        stage: 'processing',
+        stageText: `Mengumpulkan profil mitra & penempatan ${placementList.length} siswa...`,
+        progressPercent: 35,
+        total: placementList.length,
+      });
 
       const [sekolahRes, tenantRes] = await Promise.allSettled([
         sekolahApi.getProfile(),
@@ -299,11 +330,34 @@ export function useRaporPklPrint({
         };
       });
 
-      const { blobUrl } = await generateRaporPklBatchPdf(raporItems, currentKelasObj?.nama_kelas || 'Kelas');
-      window.open(blobUrl, '_blank');
+      updateProgress({
+        stage: 'rendering',
+        stageText: `Merender dokumen Rapor PKL Sekelas (${raporItems.length} siswa)...`,
+        progressPercent: 40,
+        total: raporItems.length,
+      });
+
+      const { blobUrl, filename } = await generateRaporPklBatchPdf(
+        raporItems,
+        currentKelasObj?.nama_kelas || 'Kelas',
+        (current, total, studentName) => {
+          const percent = Math.min(99, 40 + Math.round((current / total) * 58));
+          updateProgress({
+            stage: 'rendering',
+            stageText: `Merender Rapor PKL Siswa (${current}/${total})...`,
+            progressPercent: percent,
+            current,
+            total,
+            detail: `Siswa: ${studentName}`,
+          });
+        }
+      );
+
+      finishRender(blobUrl, filename, `Kompilasi Rapor PKL Sekelas (${raporItems.length} Siswa) berhasil dibuat!`);
       toast.success(`Pratinjau Rapor PKL Sekelas (${raporItems.length} Siswa, 2 Halaman per Siswa) dibuka di tab baru`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      failRender(msg);
       toast.error(`Gagal membuat PDF Batch Rapor PKL: ${msg}`);
     } finally {
       setIsBatchPklPrinting(false);

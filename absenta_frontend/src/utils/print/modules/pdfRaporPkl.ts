@@ -388,11 +388,13 @@ export const generateRaporPklSinglePdf = async (data: RaporPklItemData): Promise
  */
 export const generateRaporPklBatchPdf = async (
   list: RaporPklItemData[],
-  namaKelas = 'Kelas'
+  namaKelas = 'Kelas',
+  onProgress?: (current: number, total: number, studentName: string) => void
 ): Promise<{ blobUrl: string; filename: string }> => {
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
 
-  list.forEach((item, index) => {
+  (list ?? []).forEach((item, index) => {
+    onProgress?.(index + 1, list.length, item.siswa?.nama_siswa || 'Siswa');
     // Page 1
     renderRaporPklPage1(doc, item, index > 0);
     // Page 2

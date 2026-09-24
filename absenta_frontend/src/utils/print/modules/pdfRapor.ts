@@ -19,21 +19,19 @@ export interface PrintRaporOptions {
  * Generate Rapor Semester PDF (client-side via jsPDF).
  * Fetches all data via authenticated axios, no backend Puppeteer needed.
  */
-export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
-  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
-
-  // 1. Fetch data rapor detail via authenticated API
-  const raporRes = await raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId });
-  const data = raporRes?.data || raporRes;
-
-  // 2. Fetch school & tenant info for Multi-Tenant customization
-  const [sekolahRes, tenantRes] = await Promise.allSettled([
-    sekolahApi.getProfile(),
-    getMyTenant().catch(() => null)
-  ]);
-  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
-
+/**
+ * Helper untuk merender 2 halaman Rapor Semester Siswa ke dalam instance jsPDF.
+ * Mendukung pencetakan individu maupun batch (halaman digabung berurutan).
+ */
+export const renderStudentRaporPages = (
+  doc: jsPDF,
+  data: any,
+  sekolah: any,
+  tenantInfo: any,
+  tahunPelajaranNama: string,
+  semesterNama: string,
+  isFirstStudent = true
+): void => {
   const siswa = data?.siswa || {};
   const tingkatNum = Number(siswa.tingkat || 10);
   const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
@@ -60,7 +58,7 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
   else fase = 'F';
 
   // Helper: Draw 2-column Student Info Grid at top of page (Multi-Jenjang Adaptive)
-  const drawStudentMetadataGrid = (doc: jsPDF, startY: number): number => {
+  const drawStudentMetadataGrid = (startDoc: jsPDF, startY: number): number => {
     const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
     const alamatSekolah = sekolah?.alamat || tenantInfo?.address || '-';
 
@@ -69,7 +67,7 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
     const colValOffset = 45;
     const rightValOffset = 35;
 
-    doc.setFontSize(8.5);
+    startDoc.setFontSize(8.5);
 
     // Left column metadata (Adaptive by Jenjang)
     const leftInfo: Array<[string, string]> = [
@@ -91,11 +89,11 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
 
     let leftY = startY;
     leftInfo.forEach(([label, value]) => {
-      doc.setFont('Helvetica', 'normal');
-      doc.text(label, leftColX, leftY);
-      doc.text(':', leftColX + colValOffset - 2, leftY);
-      doc.setFont('Helvetica', label === 'Nama Peserta Didik' ? 'bold' : 'normal');
-      doc.text(String(value), leftColX + colValOffset, leftY);
+      startDoc.setFont('Helvetica', 'normal');
+      startDoc.text(label, leftColX, leftY);
+      startDoc.text(':', leftColX + colValOffset - 2, leftY);
+      startDoc.setFont('Helvetica', label === 'Nama Peserta Didik' ? 'bold' : 'normal');
+      startDoc.text(String(value), leftColX + colValOffset, leftY);
       leftY += 4.2;
     });
 
@@ -109,19 +107,21 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
 
     let rightY = startY;
     rightInfo.forEach(([label, value]) => {
-      doc.setFont('Helvetica', 'normal');
-      doc.text(label, rightColX, rightY);
-      doc.text(':', rightColX + rightValOffset - 2, rightY);
-      doc.setFont('Helvetica', label === 'Kelas' ? 'bold' : 'normal');
-      doc.text(String(value), rightColX + rightValOffset, rightY);
+      startDoc.setFont('Helvetica', 'normal');
+      startDoc.text(label, rightColX, rightY);
+      startDoc.text(':', rightColX + rightValOffset - 2, rightY);
+      startDoc.setFont('Helvetica', label === 'Kelas' ? 'bold' : 'normal');
+      startDoc.text(String(value), rightColX + rightValOffset, rightY);
       rightY += 4.2;
     });
 
     return Math.max(leftY, rightY) + 5;
   };
 
-  // 3. Create PDF document (No Kop Surat)
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  if (!isFirstStudent) {
+    doc.addPage();
+  }
+
   const pageWidth = 210;
   let y = 14;
 
@@ -360,8 +360,32 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
   doc.text(kepalaSekolahNama, pageWidth / 2, y, { align: 'center' });
   doc.setFont('Helvetica', 'normal');
   doc.text(`NIP. ${kepalaSekolahNip}`, pageWidth / 2, y + 4.5, { align: 'center' });
+};
 
-  // Return Blob URL for preview in new tab
+/**
+ * Generate Rapor Semester PDF (client-side via jsPDF).
+ * Fetches all data via authenticated axios, no backend Puppeteer needed.
+ */
+export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
+
+  // 1. Fetch data rapor detail via authenticated API
+  const raporRes = await raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId });
+  const data = raporRes?.data || raporRes;
+
+  // 2. Fetch school & tenant info for Multi-Tenant customization
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null)
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  // 3. Create PDF document & render 2 pages
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true);
+
+  const siswa = data?.siswa || {};
   const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
@@ -502,36 +526,53 @@ export interface PrintRaporBatchOptions {
   tahunPelajaranNama?: string;
   semesterNama?: string;
   kelasNama?: string;
+  onProgress?: (current: number, total: number, studentName: string) => void;
 }
 
 /**
  * 🖨️ Cetak Massal Rapor Sekelas dalam 1 Berkas PDF Gabungan
  */
 export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
-  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas' } = options;
+  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas', onProgress } = options;
   if (!students || students.length === 0) {
     throw new Error('Tidak ada data siswa untuk dicetak.');
   }
 
-  // Loop & generate batch PDF document
-  const pdfResults = await Promise.all(
-    students.map((student) =>
-      generateRaporPdf({
-        siswaId: student.id,
-        tahunPelajaranId,
-        semesterId,
-        tahunPelajaranNama,
-        semesterNama,
-      }).catch(() => null)
-    )
-  );
+  // 1. Fetch school & tenant info once for whole batch compilation
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null)
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
 
-  const validResults = pdfResults.filter(Boolean);
-  if (validResults.length === 0) {
-    throw new Error('Gagal memproses pembuatan PDF batch.');
+  // 2. Initialize single jsPDF document for entire class
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  let renderedCount = 0;
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    onProgress?.(i + 1, students.length, student.nama_siswa || 'Siswa');
+
+    try {
+      const raporRes = await raporApi.getRaporDetail({
+        siswa_id: student.id,
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+      const data = raporRes?.data || raporRes;
+      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0);
+      renderedCount++;
+    } catch (err) {
+      console.warn(`Gagal memuat rapor untuk ${student.nama_siswa}:`, err);
+    }
   }
 
-  // Combine or return first valid blob URL for preview
+  if (renderedCount === 0) {
+    throw new Error('Gagal memproses pembuatan PDF batch sekelas.');
+  }
+
   const filename = `Rapor_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
-  return { blobUrl: validResults[0]!.blobUrl, filename };
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
 };
