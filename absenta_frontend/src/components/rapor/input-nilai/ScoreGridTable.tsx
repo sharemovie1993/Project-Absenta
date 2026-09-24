@@ -72,8 +72,7 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
   }, [isExcelMenuOpen]);
 
   return (
-    <>
-      <Card className="w-full p-4 sm:p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-3">
+    <Card className="w-full p-4 sm:p-5 border-none shadow-sm dark:bg-slate-900/40 space-y-3">
       {/* Sleek, De-noised Header Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-3">
         <div>
@@ -490,52 +489,6 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
         </div>
       )}
     </Card>
-
-      {/* Sticky Bottom Action Bar (Zero-Scroll Save Bar) */}
-      {!isReadOnly && scores.length > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[94%] max-w-2xl bg-slate-900/90 dark:bg-slate-800/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700/60 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-3 duration-300">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
-            <div className="min-w-0 truncate">
-              <span className="font-bold text-xs text-white truncate block">
-                {subjectName || 'Lembar Nilai'} {rombelName ? `• ${rombelName}` : ''}
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">
-                {scores.length} Siswa • KKM: {kkmThreshold}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {entryMode === 'sumatif' && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={onShowPasteModal}
-                variant="outline"
-                className="border-emerald-500/50 text-emerald-300 hover:bg-emerald-950/50 rounded-xl font-bold text-xs h-9 cursor-pointer"
-                title="Paste nilai dari spreadsheet Excel"
-              >
-                <ClipboardPaste className="w-3.5 h-3.5 mr-1" />
-                <span className="hidden sm:inline">Paste Excel</span>
-              </Button>
-            )}
-
-            <Button
-              type="button"
-              size="sm"
-              onClick={onSaveSubmit}
-              disabled={isSaving}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/30 text-xs h-9 px-4 cursor-pointer"
-              title="Simpan seluruh nilai ke database"
-            >
-              <Save className="w-3.5 h-3.5 mr-1.5" />
-              <span>{isSaving ? 'MENYIMPAN...' : 'SIMPAN'}</span>
-            </Button>
-          </div>
-        </div>
-      )}
-    </>
   );
 });
 
