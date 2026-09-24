@@ -465,24 +465,151 @@ export class RaporService {
       });
     }
 
+    // Ambil Struktur Kurikulum resmi untuk tingkat & jurusan kelas ini sebagai Single Source of Truth
+    let strukturList = await prisma.strukturKurikulum.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        tingkat: kelas.tingkat,
+        ...(kelas.jurusan_id
+          ? {
+              OR: [
+                { jurusan_id: null },
+                { jurusan_id: kelas.jurusan_id },
+              ],
+            }
+          : {
+              jurusan_id: null,
+            }),
+      },
+      include: {
+        Mapel: true,
+      },
+    });
+
+    if (strukturList.length === 0 && kelas.tingkat) {
+      strukturList = await prisma.strukturKurikulum.findMany({
+        where: {
+          tenant_id: tenantId,
+          tingkat: kelas.tingkat,
+          ...(kelas.jurusan_id
+            ? {
+                OR: [
+                  { jurusan_id: null },
+                  { jurusan_id: kelas.jurusan_id },
+                ],
+              }
+            : {
+                jurusan_id: null,
+              }),
+        },
+        include: {
+          Mapel: true,
+        },
+        distinct: ['mapel_id'],
+      });
+    }
+
     const listKkm = await prisma.kkmp.findMany({
       where: { tenant_id: tenantId, tingkat: kelas.tingkat },
     });
     const kkmMap = new Map<string, number>();
     listKkm.forEach((k) => kkmMap.set(k.mapel_id, k.kkm_nilai));
 
-    const mapelMap = new Map<string, { id: string; nama_mapel: string; kode_mapel: string; kkm: number }>();
-    listNilai.forEach((n) => {
-      if (!mapelMap.has(n.mapel_id)) {
-        mapelMap.set(n.mapel_id, {
-          id: n.mapel_id,
-          nama_mapel: n.Mapel.nama_mapel,
-          kode_mapel: n.Mapel.kode_mapel || 'N/A',
-          kkm: kkmMap.get(n.mapel_id) || 75,
-        });
+    // Register mapel dari StrukturKurikulum (Deduplikasi cerdas by normalized name)
+    const mapelMap = new Map<string, { id: string; nama_mapel: string; kode_mapel: string; kelompok_mapel: string; kkm: number; urutan?: number }>();
+    const normNameToPrimaryId = new Map<string, string>();
+    const altIdToPrimaryId = new Map<string, string>();
+
+    const registerMapel = (mId: string, mName: string, mCode: string, grp: string, kkm: number, urutan = 999): string => {
+      const normKey = (mName || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      if (!normKey) return mId;
+
+      if (normNameToPrimaryId.has(normKey)) {
+        const primaryId = normNameToPrimaryId.get(normKey)!;
+        altIdToPrimaryId.set(mId, primaryId);
+        return primaryId;
       }
+
+      normNameToPrimaryId.set(normKey, mId);
+      altIdToPrimaryId.set(mId, mId);
+      mapelMap.set(mId, {
+        id: mId,
+        nama_mapel: mName,
+        kode_mapel: mCode,
+        kelompok_mapel: grp,
+        kkm: kkm || 75,
+        urutan,
+      });
+      return mId;
+    };
+
+    if (strukturList.length > 0) {
+      strukturList.forEach((sk) => {
+        if (sk.Mapel) {
+          const grp = sk.kelompok || sk.Mapel.kelompok_mapel || 'Mata Pelajaran Umum';
+          registerMapel(
+            sk.mapel_id,
+            sk.Mapel.nama_mapel,
+            sk.Mapel.kode_mapel || 'N/A',
+            grp,
+            kkmMap.get(sk.mapel_id) || 75,
+            (sk as any).urutan ?? (sk.Mapel as any)?.urutan ?? 999
+          );
+        }
+      });
+    } else {
+      // Fallback darurat jika sekolah belum mengonfigurasi Struktur Kurikulum
+      listNilai.forEach((n) => {
+        if (n.Mapel) {
+          registerMapel(
+            n.mapel_id,
+            n.Mapel.nama_mapel,
+            n.Mapel.kode_mapel || 'N/A',
+            n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
+            kkmMap.get(n.mapel_id) || 75
+          );
+        }
+      });
+    }
+
+    // Urutan baku e-Rapor Kemendikbud multi-jenjang
+    const getMapelPriority = (name: string, grp: string): number => {
+      const n = (name || '').toLowerCase();
+      const g = (grp || '').toLowerCase();
+      if (g.includes('umum')) {
+        if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai')) return 10;
+        if (n.includes('pancasila') || n.includes('ppkn')) return 20;
+        if (n.includes('bahasa indonesia') || n === 'indonesia') return 30;
+        if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok')) return 40;
+        if (n.includes('sejarah')) return 50;
+        if (n.includes('seni') || n.includes('budaya')) return 60;
+        if (n.includes('matematika')) return 70;
+        if (n.includes('inggris')) return 80;
+        return 90;
+      }
+      if (g.includes('kejuruan')) {
+        if (n.includes('matematika')) return 110;
+        if (n.includes('inggris')) return 120;
+        if (n.includes('informatika')) return 130;
+        if (n.includes('ipas')) return 140;
+        if (n.includes('dasar') || n.includes('ddpk')) return 150;
+        if (n.includes('konsentrasi') || n.includes('kk')) return 160;
+        if (n.includes('kreatif') || n.includes('pkk')) return 170;
+        if (n.includes('pkl')) return 180;
+        return 190;
+      }
+      if (g.includes('pilihan')) return 200;
+      if (g.includes('muatan') || g.includes('lokal')) return 300;
+      return 400;
+    };
+
+    const mapelList = Array.from(mapelMap.values()).sort((a, b) => {
+      const pA = getMapelPriority(a.nama_mapel, a.kelompok_mapel);
+      const pB = getMapelPriority(b.nama_mapel, b.kelompok_mapel);
+      if (pA !== pB) return pA - pB;
+      return a.nama_mapel.localeCompare(b.nama_mapel);
     });
-    const mapelList = Array.from(mapelMap.values()).sort((a, b) => a.nama_mapel.localeCompare(b.nama_mapel));
 
     const studentGradesRaw: Record<
       string,
@@ -497,9 +624,12 @@ export class RaporService {
     });
 
     listNilai.forEach((n) => {
-      if (studentGradesRaw[n.siswa_id] && studentGradesRaw[n.siswa_id][n.mapel_id]) {
+      const normKey = (n.Mapel?.nama_mapel || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const primaryId = altIdToPrimaryId.get(n.mapel_id) || normNameToPrimaryId.get(normKey);
+
+      if (primaryId && studentGradesRaw[n.siswa_id] && studentGradesRaw[n.siswa_id][primaryId]) {
         const finalVal = n.nilai_rapor_final ?? n.nilai ?? 0;
-        studentGradesRaw[n.siswa_id][n.mapel_id] = {
+        studentGradesRaw[n.siswa_id][primaryId] = {
           finalScore: finalVal,
           sumatif1: n.sumatif_1 ?? undefined,
           sumatif2: n.sumatif_2 ?? undefined,
