@@ -2,7 +2,14 @@ import { useCallback, useState } from 'react';
 import { raporApi } from '../api/rapor.api';
 import { useToast } from './useToast';
 import { useRaporRenderStore } from '../store/raporRenderStore';
-import { generateRaporPdf, generateP5RaporPdf } from '../utils/print/modules/pdfRapor';
+import {
+  generateRaporPdf,
+  generateP5RaporPdf,
+  generateCoverRaporPdf,
+  generateBiodataSiswaPdf,
+  generateLegerPdf,
+  generateRaporSumatifPdf,
+} from '../utils/print/modules/pdfRapor';
 
 export interface UseRaporPdfOptions {
   tahunPelajaranId?: string;
@@ -74,19 +81,61 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
   );
 
   const printCover = useCallback(
-    (siswaId: string) => {
+    async (siswaId: string, customTpId?: string, customSemId?: string) => {
       if (!siswaId) return;
-      void openPdfBlob(() => raporApi.getPdfCoverBlob(siswaId), 'Cover Rapor');
+      const tpId = customTpId || options.tahunPelajaranId;
+      const semId = customSemId || options.semesterId;
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
+      const docTitle = 'Cover Rapor';
+      setActivePrintingDoc(docTitle);
+      startRender(docTitle, 1, `Menyiapkan ${docTitle}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
+      showToast(`Menyiapkan ${docTitle}...`, 'info');
+      try {
+        updateProgress({ stage: 'processing', stageText: 'Memuat format sampul resmi...', progressPercent: 65 });
+        const { blobUrl, filename } = await generateCoverRaporPdf({
+          siswaId,
+          tahunPelajaranId: tpId,
+          semesterId: semId,
+        });
+        updateProgress({ stage: 'rendering', stageText: 'Merender sampul dokumen...', progressPercent: 95 });
+        finishRender(blobUrl, filename, `${docTitle} berhasil dikompilasi!`);
+        showToast(`${docTitle} berhasil dibuka`, 'success');
+      } catch (err: unknown) {
+        const errorMsg = (err as Error)?.message || `Gagal membuka ${docTitle}.`;
+        failRender(errorMsg);
+        showToast(errorMsg, 'error');
+      } finally {
+        setActivePrintingDoc(null);
+      }
     },
-    [openPdfBlob]
+    [options.tahunPelajaranId, options.semesterId, showToast]
   );
 
   const printBiodata = useCallback(
-    (siswaId: string) => {
+    async (siswaId: string) => {
       if (!siswaId) return;
-      void openPdfBlob(() => raporApi.getPdfBiodataBlob(siswaId), 'Biodata Siswa');
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
+      const docTitle = 'Biodata Siswa (Buku Induk)';
+      setActivePrintingDoc(docTitle);
+      startRender(docTitle, 1, `Menyiapkan ${docTitle}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
+      showToast(`Menyiapkan ${docTitle}...`, 'info');
+      try {
+        updateProgress({ stage: 'processing', stageText: 'Memuat data diri dan orang tua...', progressPercent: 65 });
+        const { blobUrl, filename } = await generateBiodataSiswaPdf({ siswaId });
+        updateProgress({ stage: 'rendering', stageText: 'Merender lembar biodata...', progressPercent: 95 });
+        finishRender(blobUrl, filename, `${docTitle} berhasil dikompilasi!`);
+        showToast(`${docTitle} berhasil dibuka`, 'success');
+      } catch (err: unknown) {
+        const errorMsg = (err as Error)?.message || `Gagal membuka ${docTitle}.`;
+        failRender(errorMsg);
+        showToast(errorMsg, 'error');
+      } finally {
+        setActivePrintingDoc(null);
+      }
     },
-    [openPdfBlob]
+    [showToast]
   );
 
   const printRaporSemester = useCallback(
@@ -133,23 +182,42 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
   );
 
   const printRaporSumatif = useCallback(
-    (siswaId: string, customTpId?: string, customSemId?: string) => {
+    async (siswaId: string, customTpId?: string, customSemId?: string) => {
       const tpId = customTpId || options.tahunPelajaranId;
       const semId = customSemId || options.semesterId;
       if (!tpId || !semId) {
         showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
         return;
       }
-      void openPdfBlob(
-        () => raporApi.getPdfRaporSumatifBlob(siswaId, tpId, semId),
-        'Rapor Penilaian Sumatif'
-      );
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
+      const docTitle = 'Rapor Penilaian Sumatif';
+      setActivePrintingDoc(docTitle);
+      startRender(docTitle, 1, `Menyiapkan ${docTitle}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
+      showToast(`Menyiapkan ${docTitle}...`, 'info');
+      try {
+        updateProgress({ stage: 'processing', stageText: 'Memuat capaian kompetensi sumatif...', progressPercent: 65 });
+        const { blobUrl, filename } = await generateRaporSumatifPdf({
+          siswaId,
+          tahunPelajaranId: tpId,
+          semesterId: semId,
+        });
+        updateProgress({ stage: 'rendering', stageText: 'Merender rapor sumatif...', progressPercent: 95 });
+        finishRender(blobUrl, filename, `${docTitle} berhasil dikompilasi!`);
+        showToast(`${docTitle} berhasil dibuka`, 'success');
+      } catch (err: unknown) {
+        const errorMsg = (err as Error)?.message || `Gagal membuka ${docTitle}.`;
+        failRender(errorMsg);
+        showToast(errorMsg, 'error');
+      } finally {
+        setActivePrintingDoc(null);
+      }
     },
-    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+    [options.tahunPelajaranId, options.semesterId, showToast]
   );
 
   const printLeger = useCallback(
-    (kelasId: string, customTpId?: string, customSemId?: string) => {
+    async (kelasId: string, customTpId?: string, customSemId?: string, customKelasNama?: string) => {
       const tpId = customTpId || options.tahunPelajaranId;
       const semId = customSemId || options.semesterId;
       if (!kelasId) {
@@ -160,12 +228,32 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
         showToast('Pilih Tahun Pelajaran dan Semester terlebih dahulu', 'warning');
         return;
       }
-      void openPdfBlob(
-        () => raporApi.getPdfLegerBlob(kelasId, tpId, semId),
-        'Buku Leger (Landscape)'
-      );
+      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
+      const docTitle = 'Buku Leger (Landscape)';
+      setActivePrintingDoc(docTitle);
+      startRender(docTitle, 1, `Mengambil data ${docTitle}...`);
+      updateProgress({ stage: 'fetching', progressPercent: 30 });
+      showToast(`Menyiapkan ${docTitle}...`, 'info');
+      try {
+        updateProgress({ stage: 'processing', stageText: 'Menyusun rekapitulasi nilai...', progressPercent: 65 });
+        const { blobUrl, filename } = await generateLegerPdf({
+          kelasId,
+          tahunPelajaranId: tpId,
+          semesterId: semId,
+          kelasNama: customKelasNama,
+        });
+        updateProgress({ stage: 'rendering', stageText: 'Merender buku leger...', progressPercent: 95 });
+        finishRender(blobUrl, filename, `${docTitle} berhasil dikompilasi!`);
+        showToast(`${docTitle} berhasil dibuka`, 'success');
+      } catch (err: unknown) {
+        const errorMsg = (err as Error)?.message || `Gagal membuka ${docTitle}.`;
+        failRender(errorMsg);
+        showToast(errorMsg, 'error');
+      } finally {
+        setActivePrintingDoc(null);
+      }
     },
-    [openPdfBlob, options.tahunPelajaranId, options.semesterId, showToast]
+    [options.tahunPelajaranId, options.semesterId, showToast]
   );
 
   const printP5 = useCallback(

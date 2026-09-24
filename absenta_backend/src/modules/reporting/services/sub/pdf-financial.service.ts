@@ -2,6 +2,7 @@
 import puppeteer from 'puppeteer';
 import { prisma } from '@/utils/prisma';
 import { getInvoicesByTenantQuery } from '@/modules/billing/services/queries/subscription-overview.query';
+import { PdfAcademicService } from './pdf-academic.service';
 
 export class PdfFinancialService {
   static async generateInvoicePdf(tenantId: string, invoiceNumber: string) {
@@ -233,7 +234,7 @@ export class PdfFinancialService {
       </html>
     `;
 
-    return this.renderHtmlToPdf(html, 'portrait');
+    return PdfAcademicService.renderHtmlToPdf(html, 'portrait');
   }
 
 }

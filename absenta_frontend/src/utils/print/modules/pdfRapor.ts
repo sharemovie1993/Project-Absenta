@@ -717,6 +717,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
   // 2. Initialize single jsPDF document for entire class
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   let renderedCount = 0;
+  let lastError: any = null;
 
   for (let i = 0; i < students.length; i++) {
     const student = students[i];
@@ -728,19 +729,694 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
         tahun_pelajaran_id: tahunPelajaranId,
         semester_id: semesterId,
       });
-      const data = raporRes?.data || raporRes;
+      const data = raporRes?.data?.data || raporRes?.data || raporRes;
       renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0);
       renderedCount++;
-    } catch (err) {
+    } catch (err: any) {
       console.warn(`Gagal memuat rapor untuk ${student.nama_siswa}:`, err);
+      lastError = err;
     }
   }
 
   if (renderedCount === 0) {
-    throw new Error('Gagal memproses pembuatan PDF batch sekelas.');
+    const errorMsg =
+      lastError?.response?.data?.message ||
+      lastError?.message ||
+      'Gagal memproses pembuatan PDF batch sekelas.';
+    throw new Error(errorMsg);
   }
 
   const filename = `Rapor_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * Helper Format Tanggal Bahasa Indonesia
+ */
+const formatIndoDate = (dateVal?: string | Date | null): string => {
+  if (!dateVal) return '-';
+  try {
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+  } catch {
+    return String(dateVal);
+  }
+};
+
+/**
+ * 📕 1. Generate Cover Rapor PDF (Client-side jsPDF)
+ */
+export const generateCoverRaporPdf = async (options: {
+  siswaId: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
+}): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId = '', semesterId = '' } = options;
+
+  const [raporRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  const siswa = raporRaw?.siswa || {};
+  const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
+  const npsn = sekolah?.npsn || tenantInfo?.npsn || '-';
+  const alamatSekolah = sekolah?.alamat || tenantInfo?.address || '-';
+  const provinsi = sekolah?.provinsi || tenantInfo?.province || 'Jawa Barat';
+
+  const tingkatNum = Number(siswa.tingkat || 10);
+  const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
+  let jenjangJudul = 'SEKOLAH MENENGAH KEJURUAN (SMK)';
+  if (jenjangRaw.includes('SD') || jenjangRaw.includes('MI') || (tingkatNum >= 1 && tingkatNum <= 6)) {
+    jenjangJudul = 'SEKOLAH DASAR (SD)';
+  } else if (jenjangRaw.includes('SMP') || jenjangRaw.includes('MTS') || (tingkatNum >= 7 && tingkatNum <= 9)) {
+    jenjangJudul = 'SEKOLAH MENENGAH PERTAMA (SMP)';
+  } else if (jenjangRaw.includes('SMA') || jenjangRaw.includes('MA')) {
+    jenjangJudul = 'SEKOLAH MENENGAH ATAS (SMA)';
+  }
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pageWidth = 210;
+
+  // Double Decorative Border Frame
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(1.2);
+  doc.rect(10, 10, 190, 277);
+  doc.setLineWidth(0.4);
+  doc.rect(12.5, 12.5, 185, 272);
+
+  // Header Dinas / Pemerintah Daerah
+  let currentY = 28;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`PEMERINTAH DAERAH PROVINSI ${(provinsi || 'JAWA BARAT').toUpperCase()}`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+  doc.text('DINAS PENDIDIKAN', pageWidth / 2, currentY, { align: 'center' });
+
+  // Judul Rapor
+  currentY += 18;
+  doc.setFontSize(18);
+  doc.text('RAPOR PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 7;
+  doc.setFontSize(13);
+  doc.text(jenjangJudul, pageWidth / 2, currentY, { align: 'center' });
+
+  // Logo Sekolah
+  currentY += 15;
+  const logoUrl = sekolah?.logo_url || tenantInfo?.logo_url;
+  let logoLoaded = false;
+  if (logoUrl) {
+    try {
+      const logoBase64 = await getBase64ImageFromUrl(logoUrl);
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', (pageWidth - 36) / 2, currentY, 36, 36);
+        logoLoaded = true;
+      }
+    } catch {
+      logoLoaded = false;
+    }
+  }
+  if (!logoLoaded) {
+    doc.setDrawColor(71, 85, 105);
+    doc.setLineWidth(0.8);
+    doc.circle(pageWidth / 2, currentY + 18, 18);
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('LOGO', pageWidth / 2, currentY + 17, { align: 'center' });
+    doc.text('SEKOLAH', pageWidth / 2, currentY + 22, { align: 'center' });
+  }
+
+  currentY += 45;
+
+  // Nama Sekolah & Identitas Lembaga
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text(namaSekolah.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`NPSN: ${npsn}`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 4.5;
+  doc.setFontSize(8.5);
+  doc.text(alamatSekolah, pageWidth / 2, currentY, { align: 'center', maxWidth: 140 });
+
+  // Kotak Identitas Siswa
+  currentY += 28;
+  const boxWidth = 145;
+  const boxX = (pageWidth - boxWidth) / 2;
+
+  // Label Nama
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Nama Peserta Didik :', boxX, currentY);
+  currentY += 3;
+  // Box Nama
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.8);
+  doc.rect(boxX, currentY, boxWidth, 12, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text((siswa.nama_siswa || '-').toUpperCase(), pageWidth / 2, currentY + 7.8, { align: 'center', maxWidth: boxWidth - 8 });
+
+  currentY += 19;
+  // Label NIS / NISN
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('NIS / NISN :', boxX, currentY);
+  currentY += 3;
+  // Box NIS / NISN
+  doc.setFillColor(248, 250, 252);
+  doc.rect(boxX, currentY, boxWidth, 12, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text(`${siswa.nis || '-'} / ${siswa.nisn || '-'}`, pageWidth / 2, currentY + 7.8, { align: 'center' });
+
+  // Footer Kementerian
+  currentY = 265;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+  doc.text('REPUBLIK INDONESIA', pageWidth / 2, currentY, { align: 'center' });
+
+  const filename = `Cover_Rapor_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📋 2. Generate Biodata Siswa 17 Butir PDF (Client-side jsPDF)
+ */
+export const generateBiodataSiswaPdf = async (options: {
+  siswaId: string;
+}): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId } = options;
+
+  const [raporRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: '', semester_id: '' }),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  const siswa = raporRaw?.siswa || {};
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pageWidth = 210;
+
+  // Header Title
+  let currentY = 16;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
+
+  const fullAlamatSiswa = [
+    siswa.alamat,
+    siswa.dusun ? `Dusun ${siswa.dusun}` : '',
+    siswa.rt || siswa.rw ? `RT ${siswa.rt || '01'} RW ${siswa.rw || '01'}` : '',
+    siswa.kelurahan ? `Desa/Kel. ${siswa.kelurahan}` : '',
+    siswa.kecamatan ? `Kec. ${siswa.kecamatan}` : '',
+    siswa.kabupaten ? `Kab. ${siswa.kabupaten}` : '',
+  ].filter(Boolean).join(' ') || siswa.alamat || '-';
+
+  const jk = (siswa.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';
+  const ttl = `${siswa.tempat_lahir || '-'}, ${formatIndoDate(siswa.tanggal_lahir)}`;
+  const tglMasuk = formatIndoDate(siswa.tanggal_masuk);
+
+  const tableBody = [
+    ['1.', 'Nama Peserta Didik (Lengkap)', ':', (siswa.nama_siswa || '-').toUpperCase()],
+    ['2.', 'Nomor Induk Siswa / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
+    ['3.', 'Tempat, Tanggal Lahir', ':', ttl],
+    ['4.', 'Jenis Kelamin', ':', jk],
+    ['5.', 'Agama', ':', siswa.agama || '-'],
+    ['6.', 'Status dalam Keluarga', ':', siswa.status_dalam_keluarga || 'Anak Kandung'],
+    ['7.', 'Anak ke', ':', siswa.anak_ke ? String(siswa.anak_ke) : '-'],
+    ['8.', 'Alamat Peserta Didik', ':', fullAlamatSiswa],
+    ['9.', 'Nomor Telepon Rumah / HP', ':', siswa.no_telepon || '-'],
+    ['10.', 'Sekolah Asal (SMP / MTs)', ':', siswa.sekolah_asal || '-'],
+    ['11.', 'Diterima di Sekolah ini', ':', `a. Di Kelas      : ${siswa.kelas || '-'}\nb. Pada Tanggal: ${tglMasuk}`],
+    ['12.', 'Nama Orang Tua', ':', `a. Ayah : ${siswa.nama_ayah || '-'}\nb. Ibu   : ${siswa.nama_ibu || '-'}`],
+    ['13.', 'Alamat Orang Tua', ':', siswa.alamat_ortu || fullAlamatSiswa],
+    ['14.', 'Pekerjaan Orang Tua', ':', `a. Ayah : ${siswa.pekerjaan_ayah || '-'}\nb. Ibu   : ${siswa.pekerjaan_ibu || '-'}`],
+    ['15.', 'Nama Wali Peserta Didik', ':', siswa.nama_wali || '-'],
+    ['16.', 'Alamat Wali Peserta Didik', ':', siswa.alamat_wali || '-'],
+    ['17.', 'Pekerjaan Wali Peserta Didik', ':', siswa.pekerjaan_wali || '-'],
+  ];
+
+  autoTable(doc, {
+    startY: currentY + 5,
+    margin: { left: 16, right: 16 },
+    body: tableBody,
+    theme: 'plain',
+    styles: {
+      font: 'Helvetica',
+      fontSize: 8.5,
+      cellPadding: 1.4,
+      textColor: [17, 24, 39],
+      overflow: 'linebreak',
+    },
+    columnStyles: {
+      0: { cellWidth: 8 },
+      1: { cellWidth: 54 },
+      2: { cellWidth: 4 },
+      3: { cellWidth: 112 },
+    },
+  });
+
+  const finalY = (doc as any).lastAutoTable?.finalY || 215;
+  const photoY = Math.min(finalY + 6, 235);
+
+  // Kotak Pas Foto 3x4 (Left)
+  doc.setDrawColor(71, 85, 105);
+  doc.setLineWidth(0.6);
+  doc.rect(25, photoY, 30, 40);
+  doc.setFontSize(8);
+  doc.setFont('Helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text('Pas Foto', 40, photoY + 18, { align: 'center' });
+  doc.text('3 x 4 cm', 40, photoY + 23, { align: 'center' });
+
+  // Tanda Tangan Kepala Sekolah (Right)
+  const rightX = 135;
+  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Drs. H. Mulyadi, M.Pd.';
+  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
+  const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(17, 24, 39);
+  doc.text(titimangsa, rightX, photoY + 4);
+  doc.text('Kepala Sekolah,', rightX, photoY + 9);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepalaSekolahNama, rightX, photoY + 34);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 38.5);
+
+  const filename = `Biodata_Siswa_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📊 3. Generate Buku Leger Nilai PDF (Landscape A4 - Client-side jsPDF)
+ */
+export const generateLegerPdf = async (options: {
+  kelasId: string;
+  tahunPelajaranId: string;
+  semesterId: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
+  kelasNama?: string;
+}): Promise<{ blobUrl: string; filename: string }> => {
+  const { kelasId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Kelas' } = options;
+
+  const [legerRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getLeger({ kelas_id: kelasId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const legerData = legerRes.status === 'fulfilled' ? (legerRes.value?.data || legerRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  if (!legerData) {
+    throw new Error('Gagal memuat data buku leger dari server.');
+  }
+
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const pageWidth = 297;
+  const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+  const tpText = tahunPelajaranNama || legerData?.tahun_pelajaran?.tahun || '2025/2026';
+  const semText = semesterNama || legerData?.semester?.nama_semester || 'Ganjil';
+  const klsText = kelasNama || legerData?.kelas?.nama_kelas || 'Kelas';
+
+  // Title & Header (Landscape)
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('BUKU LEGER NILAI HASIL BELAJAR PESERTA DIDIK', pageWidth / 2, 13, { align: 'center' });
+  doc.setFontSize(10);
+  doc.text(`${namaSekolah.toUpperCase()} - TAHUN PELAJARAN ${tpText.toUpperCase()}`, pageWidth / 2, 18, { align: 'center' });
+  doc.setFontSize(8.5);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(`Kelas: ${klsText}   |   Semester: ${semText}`, pageWidth / 2, 22.5, { align: 'center' });
+
+  const mapelList: any[] = legerData.mapel_list || [];
+  const students: any[] = legerData.students || [];
+
+  // Header Table Construction
+  const headRow1: any[] = [
+    { content: 'NO', rowSpan: 2, styles: { valign: 'middle', halign: 'center' } },
+    { content: 'NIS', rowSpan: 2, styles: { valign: 'middle', halign: 'center' } },
+    { content: 'NAMA PESERTA DIDIK', rowSpan: 2, styles: { valign: 'middle' } },
+  ];
+
+  if (mapelList.length > 0) {
+    headRow1.push({
+      content: 'MATA PELAJARAN',
+      colSpan: mapelList.length,
+      styles: { halign: 'center', fillColor: [224, 242, 254] },
+    });
+  }
+
+  headRow1.push(
+    { content: 'PRESENSI', colSpan: 3, styles: { halign: 'center', fillColor: [254, 226, 226] } },
+    { content: 'TOTAL', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [254, 240, 138] } },
+    { content: 'RATA', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [254, 215, 170] } },
+    { content: 'RANK', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: [187, 247, 208] } }
+  );
+
+  const headRow2: any[] = [];
+  mapelList.forEach((m) => {
+    const shortName = m.kode_mapel || m.nama_mapel.substring(0, 6).toUpperCase();
+    headRow2.push({ content: shortName, styles: { halign: 'center', fontSize: 6.5 } });
+  });
+  headRow2.push(
+    { content: 'S', styles: { halign: 'center', fontSize: 6.5 } },
+    { content: 'I', styles: { halign: 'center', fontSize: 6.5 } },
+    { content: 'A', styles: { halign: 'center', fontSize: 6.5 } }
+  );
+
+  // Table Body Construction
+  const bodyRows = students.map((s, idx) => {
+    const mapelScores = mapelList.map((m) => {
+      const score = s.grades?.[m.id];
+      return typeof score === 'number' && score > 0 ? score : '-';
+    });
+    return [
+      idx + 1,
+      s.nis || '-',
+      s.nama_siswa || '-',
+      ...mapelScores,
+      s.sakit ?? 0,
+      s.izin ?? 0,
+      s.alpa ?? 0,
+      s.total ?? 0,
+      s.rata_rata ?? 0,
+      s.rank || '-',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: 26,
+    margin: { left: 10, right: 10 },
+    head: [headRow1, headRow2],
+    body: bodyRows,
+    theme: 'grid',
+    styles: {
+      font: 'Helvetica',
+      fontSize: 7,
+      cellPadding: 1,
+      textColor: [17, 24, 39],
+      lineColor: [100, 116, 139],
+      lineWidth: 0.2,
+    },
+    headStyles: {
+      fillColor: [241, 245, 249],
+      textColor: [15, 23, 42],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 18, halign: 'center' },
+      2: { cellWidth: 42, halign: 'left' },
+    },
+  });
+
+  // Bottom Signatures (Landscape)
+  const finalY = (doc as any).lastAutoTable?.finalY || 155;
+  const signY = finalY > 165 ? 165 : finalY + 8;
+
+  if (signY > 175) {
+    doc.addPage('a4', 'l');
+  }
+
+  const targetSignY = signY > 175 ? 20 : signY;
+  const leftSignX = 35;
+  const rightSignX = 220;
+  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Drs. H. Mulyadi, M.Pd.';
+  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
+  const walasNama = legerData?.walas?.nama || 'Wali Kelas';
+  const walasNip = legerData?.walas?.nip || '-';
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`Mengetahui,`, leftSignX, targetSignY);
+  doc.text('Kepala Sekolah,', leftSignX, targetSignY + 4.5);
+
+  doc.text(`${kota}, ${formatIndoDate(new Date())}`, rightSignX, targetSignY);
+  doc.text('Wali Kelas,', rightSignX, targetSignY + 4.5);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepalaSekolahNama, leftSignX, targetSignY + 24);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${kepalaSekolahNip}`, leftSignX, targetSignY + 28);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(walasNama, rightSignX, targetSignY + 24);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${walasNip}`, rightSignX, targetSignY + 28);
+
+  const filename = `Buku_Leger_${klsText.replace(/\s+/g, '_')}_${semText}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📑 4. Generate Rapor Penilaian Sumatif PDF (Client-side jsPDF)
+ */
+export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
+
+  const [raporRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const raporData = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  if (!raporData) throw new Error('Data rapor sumatif tidak ditemukan.');
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pageWidth = 210;
+  const siswa = raporData.siswa || {};
+  const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  let currentY = 16;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('LAPORAN HASIL PENILAIAN SUMATIF', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+  doc.setFontSize(10);
+  doc.text(`${namaSekolah.toUpperCase()}`, pageWidth / 2, currentY, { align: 'center' });
+  currentY += 7;
+
+  // Metadata Table
+  const metaRows = [
+    ['Nama Peserta Didik', ':', (siswa.nama_siswa || '-').toUpperCase(), 'Kelas', ':', siswa.kelas || '-'],
+    ['NIS / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`, 'Fase', ':', siswa.tingkat <= 10 ? 'E' : 'F'],
+    ['Tahun Pelajaran', ':', tahunPelajaranNama || '2025/2026', 'Semester', ':', semesterNama || 'Ganjil'],
+  ];
+
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: 14, right: 14 },
+    body: metaRows,
+    theme: 'plain',
+    styles: { font: 'Helvetica', fontSize: 8.5, cellPadding: 1 },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 4 },
+      2: { cellWidth: 65, fontStyle: 'bold' },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 4 },
+      5: { cellWidth: 45 },
+    },
+  });
+
+  const metaEnd = (doc as any).lastAutoTable?.finalY || 45;
+
+  // Nilai Akademik Sumatif Table
+  const nilaiList: any[] = raporData.nilai_akademik || [];
+  const tableRows = nilaiList.map((m, idx) => {
+    return [
+      idx + 1,
+      m.mapel_name,
+      m.kkm || 75,
+      m.nilai_akhir > 0 ? m.nilai_akhir : '-',
+      m.catatan_kompetensi || 'Telah mencapai kompetensi dengan optimal.',
+    ];
+  });
+
+  autoTable(doc, {
+    startY: metaEnd + 4,
+    margin: { left: 14, right: 14 },
+    head: [['NO', 'MATA PELAJARAN', 'KKM', 'NILAI AKHIR', 'CAPAIAN KOMPETENSI / DESKRIPSI']],
+    body: tableRows,
+    theme: 'grid',
+    styles: { font: 'Helvetica', fontSize: 8, cellPadding: 2, textColor: [17, 24, 39] },
+    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 14, halign: 'center' },
+      3: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },
+      4: { cellWidth: 88 },
+    },
+  });
+
+  const sumatifEnd = (doc as any).lastAutoTable?.finalY || 180;
+  const signY = sumatifEnd > 240 ? 240 : sumatifEnd + 10;
+  if (signY > 245) {
+    doc.addPage();
+  }
+  const targetSignY = signY > 245 ? 25 : signY;
+  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Drs. H. Mulyadi, M.Pd.';
+  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`${kota}, ${formatIndoDate(new Date())}`, 140, targetSignY);
+  doc.text('Kepala Sekolah,', 140, targetSignY + 4.5);
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepalaSekolahNama, 140, targetSignY + 24);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${kepalaSekolahNip}`, 140, targetSignY + 28);
+
+  const filename = `Rapor_Sumatif_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 🎓 5. Generate Transkrip Nilai Kumulatif PDF (Client-side jsPDF)
+ */
+export const generateTranskripPdf = async (options: {
+  siswaId: string;
+}): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId } = options;
+
+  const [transkripRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getTranskripNilai(siswaId),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const transkripData = transkripRes.status === 'fulfilled' ? (transkripRes.value?.data || transkripRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pageWidth = 210;
+  const siswa = transkripData?.siswa || {};
+  const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  let currentY = 16;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('TRANSKRIP NILAI PRESTASI BELAJAR', pageWidth / 2, currentY, { align: 'center' });
+  currentY += 5;
+  doc.setFontSize(10);
+  doc.text(namaSekolah.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
+  currentY += 7;
+
+  // Metadata Table
+  const metaRows = [
+    ['Nama Peserta Didik', ':', (siswa.nama_siswa || '-').toUpperCase(), 'NIS / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
+    ['Kelas / Tingkat', ':', `${siswa.kelas || '-'} (${siswa.tingkat || 12})`, 'Konsentrasi Keahlian', ':', siswa.konsentrasi_keahlian || siswa.jurusan || '-'],
+  ];
+
+  autoTable(doc, {
+    startY: currentY,
+    margin: { left: 14, right: 14 },
+    body: metaRows,
+    theme: 'plain',
+    styles: { font: 'Helvetica', fontSize: 8.5, cellPadding: 1 },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 4 },
+      2: { cellWidth: 65, fontStyle: 'bold' },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 4 },
+      5: { cellWidth: 44 },
+    },
+  });
+
+  const metaEnd = (doc as any).lastAutoTable?.finalY || 45;
+  const mapelList: any[] = transkripData?.nilai_kumulatif || [];
+
+  const tableRows = mapelList.map((m, idx) => [
+    idx + 1,
+    m.nama_mapel,
+    m.kelompok_mapel || 'Umum',
+    m.rata_rata || m.nilai_akhir || '-',
+    m.predikat || 'B',
+  ]);
+
+  autoTable(doc, {
+    startY: metaEnd + 4,
+    margin: { left: 14, right: 14 },
+    head: [['NO', 'MATA PELAJARAN', 'KELOMPOK', 'NILAI AKHIR', 'PREDIKAT']],
+    body: tableRows.length > 0 ? tableRows : [['-', 'Belum ada data nilai transkrip', '-', '-', '-']],
+    theme: 'grid',
+    styles: { font: 'Helvetica', fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },
+      1: { cellWidth: 80 },
+      2: { cellWidth: 50 },
+      3: { cellWidth: 22, halign: 'center', fontStyle: 'bold' },
+      4: { cellWidth: 20, halign: 'center' },
+    },
+  });
+
+  const tableEnd = (doc as any).lastAutoTable?.finalY || 180;
+  const signY = tableEnd > 240 ? 240 : tableEnd + 10;
+  if (signY > 245) doc.addPage();
+  const targetSignY = signY > 245 ? 25 : signY;
+  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Drs. H. Mulyadi, M.Pd.';
+  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
+
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(`${kota}, ${formatIndoDate(new Date())}`, 140, targetSignY);
+  doc.text('Kepala Sekolah,', 140, targetSignY + 4.5);
+  doc.setFont('Helvetica', 'bold');
+  doc.text(kepalaSekolahNama, 140, targetSignY + 24);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${kepalaSekolahNip}`, 140, targetSignY + 28);
+
+  const filename = `Transkrip_Nilai_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };
