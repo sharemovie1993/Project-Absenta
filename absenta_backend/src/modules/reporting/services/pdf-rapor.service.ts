@@ -490,15 +490,18 @@ export class PdfRaporService {
         </tr>
       `;
       items.forEach((item, idx) => {
+        const hasScore = (item.nilai_akhir && item.nilai_akhir > 0) || (item.nilai_components && item.nilai_components.length > 0);
         const cp = item.catatan_kompetensi ||
-          (item.nilai_akhir >= (item.kkm || 75)
-            ? 'Siswa menunjukkan pemahaman yang memadai terhadap materi dan kompetensi pembelajaran.'
-            : 'Siswa memerlukan bimbingan lebih lanjut dalam penguasaan kompetensi dasar.');
+          (hasScore
+            ? (item.nilai_akhir >= (item.kkm || 75)
+              ? 'Siswa menunjukkan pemahaman yang memadai terhadap materi dan kompetensi pembelajaran.'
+              : 'Siswa memerlukan bimbingan lebih lanjut dalam penguasaan kompetensi dasar.')
+            : '-');
         rows += `
           <tr>
             <td style="text-align: center; vertical-align: middle; width: 6%;">${idx + 1}</td>
             <td style="vertical-align: middle; width: 32%; font-weight: 500;">${item.mapel_name}</td>
-            <td style="text-align: center; vertical-align: middle; width: 10%; font-weight: bold; font-size: 12px;">${item.nilai_akhir || '-'}</td>
+            <td style="text-align: center; vertical-align: middle; width: 10%; font-weight: bold; font-size: 12px;">${hasScore ? item.nilai_akhir : '-'}</td>
             <td style="vertical-align: top; width: 52%; font-size: 10px; text-align: justify; line-height: 1.35; padding: 5px 7px;">${cp}</td>
           </tr>
         `;
@@ -740,15 +743,17 @@ export class PdfRaporService {
           rincianText = item.nilai_components
             .map((c: any) => `Nilai &nbsp;:&nbsp; ${c.nilai}`)
             .join(' &nbsp; , &nbsp; ');
+        } else if (item.nilai_akhir && item.nilai_akhir > 0) {
+          rincianText = `Nilai &nbsp;:&nbsp; ${item.nilai_akhir}`;
         } else {
-          rincianText = `Nilai &nbsp;:&nbsp; ${item.nilai_akhir || 80}`;
+          rincianText = `<span style="color: #9ca3af; font-style: italic;">-</span>`;
         }
 
         rows += `
           <tr>
             <td style="text-align: center; vertical-align: middle; width: 6%;">${idx + 1}</td>
             <td style="vertical-align: middle; width: 34%; font-weight: 500;">${item.mapel_name}</td>
-            <td style="text-align: center; vertical-align: middle; width: 12%; font-weight: bold; font-size: 12px;">${item.nilai_akhir || '-'}</td>
+            <td style="text-align: center; vertical-align: middle; width: 12%; font-weight: bold; font-size: 12px;">${item.nilai_akhir && item.nilai_akhir > 0 ? item.nilai_akhir : '-'}</td>
             <td style="vertical-align: middle; width: 48%; font-size: 10.5px; padding-left: 10px;">${rincianText}</td>
           </tr>
         `;

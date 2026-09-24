@@ -103,20 +103,54 @@ export class RaporService {
     ]);
 
     // 3. Ambil Struktur Kurikulum untuk tingkat & jurusan siswa
-    const strukturList = await prisma.strukturKurikulum.findMany({
+    const kelasJurusanId = siswa.Kelas.jurusan_id;
+    const kelasTingkat = siswa.Kelas.tingkat;
+    const kelasId = siswa.Kelas.id;
+
+    let strukturList = await prisma.strukturKurikulum.findMany({
       where: {
         tenant_id: tenantId,
         tahun_pelajaran_id: filter.tahun_pelajaran_id,
-        tingkat: siswa.Kelas.tingkat,
-        OR: [
-          { jurusan_id: null },
-          { jurusan_id: siswa.Kelas.jurusan_id || undefined },
-        ],
+        tingkat: kelasTingkat,
+        ...(kelasJurusanId
+          ? {
+              OR: [
+                { jurusan_id: null },
+                { jurusan_id: kelasJurusanId },
+              ],
+            }
+          : {
+              jurusan_id: null,
+            }),
       },
       include: {
         Mapel: true,
       },
     });
+
+    // Fallback Struktur Kurikulum: jika di TP ini belum di-generate, periksa apakah ada di TP lain untuk tingkat & jurusan ini
+    if (strukturList.length === 0 && kelasTingkat) {
+      strukturList = await prisma.strukturKurikulum.findMany({
+        where: {
+          tenant_id: tenantId,
+          tingkat: kelasTingkat,
+          ...(kelasJurusanId
+            ? {
+                OR: [
+                  { jurusan_id: null },
+                  { jurusan_id: kelasJurusanId },
+                ],
+              }
+            : {
+                jurusan_id: null,
+              }),
+        },
+        include: {
+          Mapel: true,
+        },
+        distinct: ['mapel_id'],
+      });
+    }
 
     // 4. Ambil seluruh nilai siswa semester ini
     const listNilai = await prisma.nilaiSiswa.findMany({
@@ -132,6 +166,46 @@ export class RaporService {
       },
     });
 
+    // 4b. Ambil seluruh mapel yang aktif diajarkan / dinilai pada rombel / kelas siswa ini di TP & semester ini
+    const [kelasNilaiRecords, kelasJadwalRecords, kelasGuruMapelRecords] = await Promise.all([
+      prisma.nilaiSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: filter.tahun_pelajaran_id,
+          semester_id: filter.semester_id,
+          Siswa: { kelas_id: kelasId },
+        },
+        select: { mapel_id: true },
+        distinct: ['mapel_id'],
+      }),
+      prisma.jadwalKBM.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: kelasId,
+          tahun_pelajaran_id: filter.tahun_pelajaran_id,
+          semester_id: filter.semester_id,
+          mapel_id: { not: null },
+        },
+        select: { mapel_id: true },
+        distinct: ['mapel_id'],
+      }),
+      prisma.guruMapel.findMany({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: kelasId,
+        },
+        select: { mapel_id: true },
+        distinct: ['mapel_id'],
+      }),
+    ]);
+
+    // Himpun ID mapel yang terbukti diajarkan di kelas siswa ini
+    const rombelMapelIds = new Set<string>();
+    kelasNilaiRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
+    kelasJadwalRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
+    kelasGuruMapelRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
+    listNilai.forEach((n) => n.mapel_id && rombelMapelIds.add(n.mapel_id));
+
     // 5. Ambil KKM/KKTP mapel untuk tingkat ini
     const listKkm = await prisma.kkmp.findMany({
       where: {
@@ -143,7 +217,7 @@ export class RaporService {
     const kkmMap = new Map<string, number>();
     listKkm.forEach((k) => kkmMap.set(k.mapel_id, k.kkm_nilai));
 
-    // 6. Inisialisasi daftar mapel dari StrukturKurikulum (fallback ke allMapel jika belum di-set)
+    // 6. Inisialisasi daftar mapel dari StrukturKurikulum ATAU mapel aktif rombel
     const mapelGrades: Record<string, {
       mapel_id: string;
       mapel_name: string;
@@ -173,12 +247,16 @@ export class RaporService {
           };
         }
       });
-    } else {
-      const allMapel = await prisma.mapel.findMany({
-        where: { tenant_id: tenantId },
-        orderBy: [{ kelompok_mapel: 'asc' }, { nama_mapel: 'asc' }],
+    } else if (rombelMapelIds.size > 0) {
+      // Fallback Rombel: HANYA ambil mapel yang aktif diajarkan / dinilai di rombel ini
+      // Mencegah semua mapel sekolah masuk ke rapor
+      const rombelMapels = await prisma.mapel.findMany({
+        where: {
+          tenant_id: tenantId,
+          id: { in: Array.from(rombelMapelIds) },
+        },
       });
-      allMapel.forEach((m) => {
+      rombelMapels.forEach((m) => {
         mapelGrades[m.id] = {
           mapel_id: m.id,
           mapel_name: m.nama_mapel,
@@ -192,6 +270,23 @@ export class RaporService {
         };
       });
     }
+
+    // Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat
+    listNilai.forEach((n) => {
+      if (n.Mapel && !mapelGrades[n.mapel_id]) {
+        mapelGrades[n.mapel_id] = {
+          mapel_id: n.mapel_id,
+          mapel_name: n.Mapel.nama_mapel,
+          mapel_code: n.Mapel.kode_mapel || 'N/A',
+          kelompok_mapel: n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
+          kkm: kkmMap.get(n.mapel_id) || 75,
+          nilai_components: [],
+          nilai_akhir: 0,
+          predikat: '-',
+          catatan_kompetensi: '',
+        };
+      }
+    });
 
     listNilai.forEach((n) => {
       if (mapelGrades[n.mapel_id]) {
@@ -261,6 +356,20 @@ export class RaporService {
       else if (st === 'ALPA' || st === 'A') referensiAbsensiHarian.alpa += count;
     });
 
+    // 7. Filterisasi Presisi Mapel Rapor Siswa (Anti-Semua Mapel Terbawa)
+    const finalAkademikList = Object.values(mapelGrades).filter((g) => {
+      const hasStudentScore = g.nilai_components.length > 0 || Boolean(g.catatan_kompetensi && g.catatan_kompetensi.trim().length > 0);
+      if (hasStudentScore) return true;
+
+      // Jika ada data rombel aktif (jadwal/guruMapel/nilai kelas), pastikan mapel ini terdaftar di rombel
+      if (rombelMapelIds.size > 0) {
+        return rombelMapelIds.has(g.mapel_id);
+      }
+
+      // Jika rombel belum punya riwayat KBM/nilai sama sekali, pertahankan hanya jika ada di strukturList untuk jurusan siswa
+      return true;
+    });
+
     return {
       siswa: {
         id: siswa.id,
@@ -279,7 +388,7 @@ export class RaporService {
       catatan_wali: raporSummary?.catatan_wali || '',
       keputusan_transisi: raporSummary?.keputusan_transisi || '',
       catatan_kokurikuler: kokurikulerCfg?.value || '',
-      nilai_akademik: Object.values(mapelGrades),
+      nilai_akademik: finalAkademikList,
     };
   }
 
