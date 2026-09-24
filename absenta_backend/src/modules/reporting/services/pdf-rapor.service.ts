@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
 import { prisma } from '../../../utils/prisma';
 import { RaporService } from '../../rapor/services/rapor.service';
 import {
@@ -18,9 +19,19 @@ export class PdfRaporService {
   ) {
     let browser: any;
     try {
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+        (process.platform === 'linux' ? [
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          '/snap/bin/chromium',
+        ].find((p) => fs.existsSync(p)) : undefined);
+
       browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        ...(executablePath ? { executablePath } : {}),
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
       });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'load' });

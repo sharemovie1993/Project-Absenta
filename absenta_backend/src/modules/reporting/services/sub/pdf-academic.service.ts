@@ -1,5 +1,6 @@
 // @ts-nocheck
 import puppeteer from 'puppeteer';
+import fs from 'fs';
 import { prisma } from '@/utils/prisma';
 import { getInvoicesByTenantQuery } from '@/modules/billing/services/queries/subscription-overview.query';
 
@@ -436,12 +437,23 @@ export class PdfAcademicService {
   static async renderHtmlToPdf(html: string, orientation: 'portrait' | 'landscape') {
     let browser: any;
     try {
+      const executablePath = process.env.PUPPETEER_EXECUTABLE_PATH ||
+        (process.platform === 'linux' ? [
+          '/usr/bin/google-chrome-stable',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          '/snap/bin/chromium',
+        ].find((p) => fs.existsSync(p)) : undefined);
+
       browser = await puppeteer.launch({
         headless: true,
+        ...(executablePath ? { executablePath } : {}),
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--disable-gpu',
           '--font-render-hinting=none'
         ]
       });
