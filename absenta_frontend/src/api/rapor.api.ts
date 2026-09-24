@@ -54,7 +54,7 @@ export const raporApi = {
       params,
       responseType: 'blob'
     });
-    return response;
+    return response.data;
   },
   saveSumatifMassal: async (data: any) => {
     const response = await api.post('/rapor/nilai/sumatif-batch', data);

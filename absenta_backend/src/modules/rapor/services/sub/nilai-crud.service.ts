@@ -48,6 +48,12 @@ export class NilaiCrudService {
         { Mapel: { nama_mapel: 'asc' } },
       ],
     });
+
+    return (records || []).map((item) => ({
+      ...item,
+      sumatif_akhir: item.nilai_akhir_sumatif ?? null,
+      deskripsi_cp: item.capaian_kompetensi || item.catatan_deskripsi || '',
+    }));
   }
 
   static async upsertNilai(

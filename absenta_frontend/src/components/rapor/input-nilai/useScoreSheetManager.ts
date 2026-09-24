@@ -18,14 +18,18 @@ export interface ApiSiswaRecord {
 
 export interface ApiGradeRecord {
   siswa_id: string;
-  sumatif_1?: number;
-  sumatif_2?: number;
-  sumatif_3?: number;
-  sumatif_akhir?: number;
+  sumatif_1?: number | null;
+  sumatif_2?: number | null;
+  sumatif_3?: number | null;
+  sumatif_akhir?: number | null;
+  nilai_akhir_sumatif?: number | null;
+  rata_rata_sumatif?: number | null;
+  nilai_rapor_final?: number | null;
   deskripsi_cp?: string;
   capaian_kompetensi?: string;
+  catatan_deskripsi?: string;
   deskripsi?: string;
-  nilai?: number;
+  nilai?: number | null;
 }
 
 export interface UseScoreSheetManagerProps {
@@ -105,10 +109,10 @@ export function useScoreSheetManager({
             sumatif_1: found.sumatif_1 ?? null,
             sumatif_2: found.sumatif_2 ?? null,
             sumatif_3: found.sumatif_3 ?? null,
-            sumatif_akhir: found.sumatif_akhir ?? null,
-            deskripsi_cp: found.deskripsi_cp ?? found.capaian_kompetensi ?? found.deskripsi ?? '',
-            nilai: found.nilai ?? null,
-            deskripsi: found.deskripsi ?? found.deskripsi_cp ?? '',
+            sumatif_akhir: found.sumatif_akhir ?? found.nilai_akhir_sumatif ?? null,
+            deskripsi_cp: found.deskripsi_cp ?? found.capaian_kompetensi ?? found.catatan_deskripsi ?? found.deskripsi ?? '',
+            nilai: found.nilai ?? found.nilai_rapor_final ?? null,
+            deskripsi: found.deskripsi ?? found.deskripsi_cp ?? found.catatan_deskripsi ?? '',
           };
         }
         return {
@@ -242,6 +246,8 @@ export function useScoreSheetManager({
       queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
       queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress'] });
       setSaveSuccessMsg('Seluruh nilai Sumatif & Capaian Kompetensi berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Berhasil!');
     },
@@ -259,6 +265,8 @@ export function useScoreSheetManager({
       queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
       queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'] });
       queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress'] });
       setSaveSuccessMsg('Nilai Kategori berhasil disimpan ke database!');
       toast.success('Penyimpanan Nilai Bulk Berhasil!');
     },
@@ -294,6 +302,7 @@ export function useScoreSheetManager({
           nilai_akhir_sumatif: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
           deskripsi_cp: s.deskripsi_cp || '',
           capaian_kompetensi: s.deskripsi_cp || '',
+          catatan_deskripsi: s.deskripsi_cp || '',
         })),
       };
       sumatifSaveMutation.mutate(payload);
@@ -401,6 +410,11 @@ export function useScoreSheetManager({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['grades'] });
       queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress'] });
       toast.success('Impor Excel Massal Berhasil!');
       setExcelFile(null);
     },
@@ -440,26 +454,47 @@ export function useScoreSheetManager({
     const currentMapelObj = subjects.find((m) => m.id === selectedMapel);
 
     try {
-      const blob = await generateStyledExcelTemplate({
-        nama_kelas: currentKelasObj?.nama_kelas || 'Rombel',
-        nama_mapel: currentMapelObj?.nama_mapel || 'Mata Pelajaran',
-        tahun_pelajaran: activeYear?.nama || '2025/2026',
-        semester: activeSemester?.nama || 'Ganjil',
-        students: (scores ?? []).map((s) => ({ nis: s.nis, nama: s.nama })),
+      // Prioritaskan format Kemendikbud multi-sheet dari server
+      const blobRes = await raporApi.exportEraporKemendikbudBlob({
+        kelas_id: selectedKelas,
+        mapel_id: selectedMapel,
+        tahun_pelajaran_id: activeYear?.id || '',
+        semester_id: activeSemester?.id || '',
       });
 
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blobRes);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `eRapor_Kemendikbud_${currentKelasObj?.nama_kelas}_${currentMapelObj?.nama_mapel}.xlsx`;
+      a.download = `eRapor_Kemendikbud_${currentKelasObj?.nama_kelas || 'Rombel'}_${currentMapelObj?.nama_mapel || 'Mapel'}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       a.remove();
       toast.success('Berkas Siap Impor e-Rapor Kemendikbud berhasil diunduh!');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      toast.error('Gagal mengunduh e-Rapor: ' + msg);
+    } catch {
+      // Fallback ke generator lokal terformat jika koneksi offline/endpoint terkendala
+      try {
+        const blob = await generateStyledExcelTemplate({
+          nama_kelas: currentKelasObj?.nama_kelas || 'Rombel',
+          nama_mapel: currentMapelObj?.nama_mapel || 'Mata Pelajaran',
+          tahun_pelajaran: activeYear?.nama || '2025/2026',
+          semester: activeSemester?.nama || 'Ganjil',
+          students: (scores ?? []).map((s) => ({ nis: s.nis, nama: s.nama })),
+        });
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `eRapor_Kemendikbud_${currentKelasObj?.nama_kelas}_${currentMapelObj?.nama_mapel}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+        toast.success('Berkas Siap Impor e-Rapor Kemendikbud berhasil diunduh!');
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error('Gagal mengunduh e-Rapor: ' + msg);
+      }
     }
   }, [selectedKelas, selectedMapel, classes, subjects, activeYear, activeSemester, scores]);
 

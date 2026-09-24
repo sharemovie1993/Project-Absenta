@@ -274,7 +274,16 @@ export class NilaiExcelService {
       }
 
       const notes = String(
-        row['capaian_kompetensi'] || row['Capaian Kompetensi'] || row['catatan_deskripsi'] || row['catatan'] || ''
+        row['capaian_kompetensi'] ||
+        row['Capaian Kompetensi'] ||
+        row['CAPAIAN KOMPETENSI (CP)'] ||
+        row['Capaian Kompetensi (CP)'] ||
+        row['deskripsi_cp'] ||
+        row['Deskripsi CP'] ||
+        row['CP'] ||
+        row['catatan_deskripsi'] ||
+        row['catatan'] ||
+        ''
       ).trim();
 
       if (isSumatifMode) {
@@ -284,10 +293,19 @@ export class NilaiExcelService {
           return isNaN(num) ? null : Math.min(100, Math.max(0, num));
         };
 
-        const s1 = parseNum(row['sumatif_1'] || row['Sumatif 1']);
-        const s2 = parseNum(row['sumatif_2'] || row['Sumatif 2']);
-        const s3 = parseNum(row['sumatif_3'] || row['Sumatif 3']);
-        const nAkhir = parseNum(row['nilai_akhir_sumatif'] || row['Nilai Akhir Sumatif'] || row['Nilai Akhir']);
+        const s1 = parseNum(row['sumatif_1'] || row['Sumatif 1'] || row['SUMATIF 1'] || row['Sum 1'] || row['SUM 1']);
+        const s2 = parseNum(row['sumatif_2'] || row['Sumatif 2'] || row['SUMATIF 2'] || row['Sum 2'] || row['SUM 2']);
+        const s3 = parseNum(row['sumatif_3'] || row['Sumatif 3'] || row['SUMATIF 3'] || row['Sum 3'] || row['SUM 3']);
+        const nAkhir = parseNum(
+          row['nilai_akhir_sumatif'] ||
+          row['Nilai Akhir Sumatif'] ||
+          row['Nilai Akhir'] ||
+          row['sumatif_akhir'] ||
+          row['Sumatif Akhir'] ||
+          row['SUMATIF AKHIR'] ||
+          row['Sum Akhir'] ||
+          row['SUM AKHIR']
+        );
 
         const sList = [s1, s2, s3].filter((v): v is number => v !== null);
         let rata: number | null = null;
@@ -322,6 +340,7 @@ export class NilaiExcelService {
               rata_rata_sumatif: rata,
               nilai_rapor_final: finalScore,
               nilai: finalScore,
+              capaian_kompetensi: notes || null,
               catatan_deskripsi: notes || null,
               sesi_absensi_id: metadata.sesi_absensi_id || null,
             },
@@ -339,6 +358,7 @@ export class NilaiExcelService {
               rata_rata_sumatif: rata,
               nilai_rapor_final: finalScore,
               nilai: finalScore,
+              capaian_kompetensi: notes || null,
               catatan_deskripsi: notes || null,
               sesi_absensi_id: metadata.sesi_absensi_id || null,
             },
