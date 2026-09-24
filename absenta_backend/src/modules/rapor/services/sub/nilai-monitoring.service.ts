@@ -364,7 +364,19 @@ export class NilaiMonitoringService {
       });
     }
 
-    // Petakan mapel unik
+    // 3. Ambil daftar mapel resmi dari Struktur Kurikulum sebagai Single Source of Truth
+    const kurikulumList = await prisma.strukturKurikulum.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: tp.id,
+        tingkat: kelas.tingkat,
+        OR: [{ jurusan_id: null }, { jurusan_id: kelas.jurusan_id || undefined }],
+      },
+      include: {
+        Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
+      },
+    });
+
     const mapelTaskMap = new Map<
       string,
       {
@@ -378,47 +390,58 @@ export class NilaiMonitoringService {
       }
     >();
 
-    schedules.forEach((s) => {
-      if (s.mapel_id && s.Mapel) {
-        if (!mapelTaskMap.has(s.mapel_id)) {
-          mapelTaskMap.set(s.mapel_id, {
-            mapel_id: s.mapel_id,
-            nama_mapel: s.Mapel.nama_mapel,
-            kode_mapel: s.Mapel.kode_mapel,
-            guru_id: s.Guru?.id || null,
-            nama_guru: s.Guru?.nama_guru || null,
-            nip_guru: s.Guru?.nip || null,
-            no_telepon_guru: s.Guru?.no_hp || null,
-          });
-        }
-      }
-    });
+    const normNameToMapelId = new Map<string, string>();
 
-    // 3. Fallback: jika JadwalKBM belum di-plot, periksa StrukturKurikulum khusus TP yang sama
-    if (mapelTaskMap.size === 0 && kelas.tingkat) {
-      const kurikulumList = await prisma.strukturKurikulum.findMany({
-        where: {
-          tenant_id: tenantId,
-          tahun_pelajaran_id: tp.id,
-          tingkat: kelas.tingkat,
-          OR: [{ jurusan_id: null }, { jurusan_id: kelas.jurusan_id || undefined }],
-        },
-        include: {
-          Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-        },
+    if (kurikulumList.length > 0) {
+      kurikulumList.forEach((k) => {
+        if (k.mapel_id && k.Mapel) {
+          const normKey = (k.Mapel.nama_mapel || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+          if (!normNameToMapelId.has(normKey)) {
+            normNameToMapelId.set(normKey, k.mapel_id);
+            mapelTaskMap.set(k.mapel_id, {
+              mapel_id: k.mapel_id,
+              nama_mapel: k.Mapel.nama_mapel,
+              kode_mapel: k.Mapel.kode_mapel,
+              guru_id: null,
+              nama_guru: null,
+              nip_guru: null,
+              no_telepon_guru: null,
+            });
+          }
+        }
       });
 
-      kurikulumList.forEach((k) => {
-        if (k.mapel_id && k.Mapel && !mapelTaskMap.has(k.mapel_id)) {
-          mapelTaskMap.set(k.mapel_id, {
-            mapel_id: k.mapel_id,
-            nama_mapel: k.Mapel.nama_mapel,
-            kode_mapel: k.Mapel.kode_mapel,
-            guru_id: null,
-            nama_guru: null,
-            nip_guru: null,
-            no_telepon_guru: null,
-          });
+      // Tautkan guru pengampu dari JadwalKBM ke mapel resmi StrukturKurikulum
+      schedules.forEach((s) => {
+        if (s.mapel_id && s.Mapel && s.Guru) {
+          const normKey = (s.Mapel.nama_mapel || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+          const targetId = normNameToMapelId.get(normKey) || (mapelTaskMap.has(s.mapel_id) ? s.mapel_id : null);
+          if (targetId && mapelTaskMap.has(targetId)) {
+            const task = mapelTaskMap.get(targetId)!;
+            if (!task.guru_id) {
+              task.guru_id = s.Guru.id;
+              task.nama_guru = s.Guru.nama_guru;
+              task.nip_guru = s.Guru.nip;
+              task.no_telepon_guru = s.Guru.no_hp;
+            }
+          }
+        }
+      });
+    } else {
+      // Fallback darurat jika sekolah belum mengisi Struktur Kurikulum sama sekali
+      schedules.forEach((s) => {
+        if (s.mapel_id && s.Mapel) {
+          if (!mapelTaskMap.has(s.mapel_id)) {
+            mapelTaskMap.set(s.mapel_id, {
+              mapel_id: s.mapel_id,
+              nama_mapel: s.Mapel.nama_mapel,
+              kode_mapel: s.Mapel.kode_mapel,
+              guru_id: s.Guru?.id || null,
+              nama_guru: s.Guru?.nama_guru || null,
+              nip_guru: s.Guru?.nip || null,
+              no_telepon_guru: s.Guru?.no_hp || null,
+            });
+          }
         }
       });
     }

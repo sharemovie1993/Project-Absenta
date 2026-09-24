@@ -105,7 +105,6 @@ export class RaporService {
     // 3. Ambil Struktur Kurikulum untuk tingkat & jurusan siswa
     const kelasJurusanId = siswa.Kelas.jurusan_id;
     const kelasTingkat = siswa.Kelas.tingkat;
-    const kelasId = siswa.Kelas.id;
 
     let strukturList = await prisma.strukturKurikulum.findMany({
       where: {
@@ -166,46 +165,6 @@ export class RaporService {
       },
     });
 
-    // 4b. Ambil seluruh mapel yang aktif diajarkan / dinilai pada rombel / kelas siswa ini di TP & semester ini
-    const [kelasNilaiRecords, kelasJadwalRecords, kelasGuruMapelRecords] = await Promise.all([
-      prisma.nilaiSiswa.findMany({
-        where: {
-          tenant_id: tenantId,
-          tahun_pelajaran_id: filter.tahun_pelajaran_id,
-          semester_id: filter.semester_id,
-          Siswa: { kelas_id: kelasId },
-        },
-        select: { mapel_id: true },
-        distinct: ['mapel_id'],
-      }),
-      prisma.jadwalKBM.findMany({
-        where: {
-          tenant_id: tenantId,
-          kelas_id: kelasId,
-          tahun_pelajaran_id: filter.tahun_pelajaran_id,
-          semester_id: filter.semester_id,
-          mapel_id: { not: null },
-        },
-        select: { mapel_id: true },
-        distinct: ['mapel_id'],
-      }),
-      prisma.guruMapel.findMany({
-        where: {
-          tenant_id: tenantId,
-          kelas_id: kelasId,
-        },
-        select: { mapel_id: true },
-        distinct: ['mapel_id'],
-      }),
-    ]);
-
-    // Himpun ID mapel yang terbukti diajarkan di kelas siswa ini
-    const rombelMapelIds = new Set<string>();
-    kelasNilaiRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
-    kelasJadwalRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
-    kelasGuruMapelRecords.forEach((r) => r.mapel_id && rombelMapelIds.add(r.mapel_id));
-    listNilai.forEach((n) => n.mapel_id && rombelMapelIds.add(n.mapel_id));
-
     // 5. Ambil KKM/KKTP mapel untuk tingkat ini
     const listKkm = await prisma.kkmp.findMany({
       where: {
@@ -217,7 +176,7 @@ export class RaporService {
     const kkmMap = new Map<string, number>();
     listKkm.forEach((k) => kkmMap.set(k.mapel_id, k.kkm_nilai));
 
-    // 6. Inisialisasi daftar mapel dari StrukturKurikulum DAN seluruh mapel aktif terhubung ke rombel
+    // 6. Inisialisasi daftar mapel: STRUKTUR KURIKULUM SEBAGAI SINGLE SOURCE OF TRUTH
     const mapelGrades: Record<string, {
       mapel_id: string;
       mapel_name: string;
@@ -231,8 +190,7 @@ export class RaporService {
       urutan?: number;
     }> = {};
 
-    // Deduplikasi Cerdas: Memetakan nama mapel ternormalisasi -> primary mapel_id
-    // Mencegah duplikasi jika master mapel memiliki nama yang sama dengan ID berbeda
+    // Map nama mapel ternormalisasi -> primary mapel_id untuk mencegah duplikasi jika ada duplikat di DB
     const normNameToPrimaryId = new Map<string, string>();
     const altIdToPrimaryId = new Map<string, string>();
 
@@ -243,7 +201,6 @@ export class RaporService {
       if (normNameToPrimaryId.has(normKey)) {
         const primaryId = normNameToPrimaryId.get(normKey)!;
         altIdToPrimaryId.set(mId, primaryId);
-        // Perbarui kelompok mapel jika yang baru lebih spesifik
         if (mapelGrades[primaryId]) {
           if (grp && grp.toLowerCase() !== 'mata pelajaran umum' && grp.toLowerCase() !== 'umum' && mapelGrades[primaryId].kelompok_mapel.toLowerCase().includes('umum')) {
             mapelGrades[primaryId].kelompok_mapel = grp;
@@ -272,7 +229,7 @@ export class RaporService {
       return mId;
     };
 
-    // 6a. Muat seluruh mapel dari Struktur Kurikulum kelas siswa
+    // 6a. Muat SELURUH mapel MURNI dari Struktur Kurikulum resmi rombel ini
     if (strukturList.length > 0) {
       strukturList.forEach((sk) => {
         if (sk.Mapel) {
@@ -289,51 +246,43 @@ export class RaporService {
       });
     }
 
-    // 6b. Muat juga seluruh mapel yang aktif terhubung ke rombel ini (Jadwal KBM, Guru Mapel, Nilai Kelas)
-    if (rombelMapelIds.size > 0) {
-      const missingIds = Array.from(rombelMapelIds).filter((id) => !altIdToPrimaryId.has(id));
-      if (missingIds.length > 0) {
-        const rombelMapels = await prisma.mapel.findMany({
-          where: {
-            tenant_id: tenantId,
-            id: { in: missingIds },
-          },
-        });
-        rombelMapels.forEach((m) => {
-          registerOrGetMapel(
-            m.id,
-            m.nama_mapel,
-            m.kode_mapel || 'N/A',
-            m.kelompok_mapel || 'Mata Pelajaran Umum',
-            kkmMap.get(m.id) || 75,
-            (m as any)?.urutan ?? 999
-          );
-        });
-      }
-    }
-
-    // 6c. Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat dan dialihkan ke primaryId
+    // 6b. Tautkan nilai siswa (listNilai) ke mapel resmi di Struktur Kurikulum
     listNilai.forEach((n) => {
-      const primaryId = altIdToPrimaryId.get(n.mapel_id) || n.mapel_id;
-      if (!mapelGrades[primaryId] && n.Mapel) {
-        registerOrGetMapel(
-          n.mapel_id,
-          n.Mapel.nama_mapel,
-          n.Mapel.kode_mapel || 'N/A',
-          n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
-          kkmMap.get(n.mapel_id) || 75
-        );
-      }
-      const targetId = altIdToPrimaryId.get(n.mapel_id) || primaryId;
-      if (mapelGrades[targetId]) {
-        mapelGrades[targetId].nilai_components.push({
+      const normKey = (n.Mapel?.nama_mapel || '').toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+      const primaryId = altIdToPrimaryId.get(n.mapel_id) || normNameToPrimaryId.get(normKey);
+
+      if (primaryId && mapelGrades[primaryId]) {
+        mapelGrades[primaryId].nilai_components.push({
           jenis: n.JenisNilai?.nama || 'Sumatif',
           nilai: n.nilai_rapor_final ?? n.nilai,
           bobot: n.JenisNilai?.bobot || 1,
         });
         const note = n.capaian_kompetensi || n.catatan_deskripsi;
         if (note) {
-          mapelGrades[targetId].catatan_kompetensi = note;
+          mapelGrades[primaryId].catatan_kompetensi = note;
+        }
+      } else if (strukturList.length === 0) {
+        // Fallback darurat HANYA jika sekolah sama sekali belum mengonfigurasi StrukturKurikulum
+        if (!mapelGrades[n.mapel_id] && n.Mapel) {
+          registerOrGetMapel(
+            n.mapel_id,
+            n.Mapel.nama_mapel,
+            n.Mapel.kode_mapel || 'N/A',
+            n.Mapel.kelompok_mapel || 'Mata Pelajaran Umum',
+            kkmMap.get(n.mapel_id) || 75
+          );
+        }
+        const targetId = altIdToPrimaryId.get(n.mapel_id) || n.mapel_id;
+        if (mapelGrades[targetId]) {
+          mapelGrades[targetId].nilai_components.push({
+            jenis: n.JenisNilai?.nama || 'Sumatif',
+            nilai: n.nilai_rapor_final ?? n.nilai,
+            bobot: n.JenisNilai?.bobot || 1,
+          });
+          const note = n.capaian_kompetensi || n.catatan_deskripsi;
+          if (note) {
+            mapelGrades[targetId].catatan_kompetensi = note;
+          }
         }
       }
     });
