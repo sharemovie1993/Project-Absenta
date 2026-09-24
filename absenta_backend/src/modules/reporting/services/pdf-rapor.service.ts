@@ -496,13 +496,13 @@ export class PdfRaporService {
             ? (item.nilai_akhir >= (item.kkm || 75)
               ? 'Siswa menunjukkan pemahaman yang memadai terhadap materi dan kompetensi pembelajaran.'
               : 'Siswa memerlukan bimbingan lebih lanjut dalam penguasaan kompetensi dasar.')
-            : '-');
+            : 'Belum ada penilaian terinput');
         rows += `
           <tr>
             <td style="text-align: center; vertical-align: middle; width: 6%;">${idx + 1}</td>
             <td style="vertical-align: middle; width: 32%; font-weight: 500;">${item.mapel_name}</td>
-            <td style="text-align: center; vertical-align: middle; width: 10%; font-weight: bold; font-size: 12px;">${hasScore ? item.nilai_akhir : '-'}</td>
-            <td style="vertical-align: top; width: 52%; font-size: 10px; text-align: justify; line-height: 1.35; padding: 5px 7px;">${cp}</td>
+            <td style="text-align: center; vertical-align: middle; width: 10%; font-weight: bold; font-size: 12px; ${!hasScore ? 'color: #dc2626;' : ''}">${hasScore ? item.nilai_akhir : '-'}</td>
+            <td style="vertical-align: top; width: 52%; font-size: 10px; text-align: justify; line-height: 1.35; padding: 5px 7px; ${!hasScore ? 'color: #dc2626; font-style: italic;' : ''}">${cp}</td>
           </tr>
         `;
       });

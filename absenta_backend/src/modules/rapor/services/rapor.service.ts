@@ -217,7 +217,7 @@ export class RaporService {
     const kkmMap = new Map<string, number>();
     listKkm.forEach((k) => kkmMap.set(k.mapel_id, k.kkm_nilai));
 
-    // 6. Inisialisasi daftar mapel dari StrukturKurikulum ATAU mapel aktif rombel
+    // 6. Inisialisasi daftar mapel dari StrukturKurikulum DAN seluruh mapel aktif terhubung ke rombel
     const mapelGrades: Record<string, {
       mapel_id: string;
       mapel_name: string;
@@ -228,8 +228,10 @@ export class RaporService {
       nilai_akhir: number;
       predikat: string;
       catatan_kompetensi?: string;
+      urutan?: number;
     }> = {};
 
+    // 6a. Muat seluruh mapel dari Struktur Kurikulum kelas siswa
     if (strukturList.length > 0) {
       strukturList.forEach((sk) => {
         if (sk.Mapel) {
@@ -244,34 +246,40 @@ export class RaporService {
             nilai_akhir: 0,
             predikat: '-',
             catatan_kompetensi: '',
+            urutan: (sk as any).urutan ?? (sk.Mapel as any)?.urutan ?? 999,
           };
         }
       });
-    } else if (rombelMapelIds.size > 0) {
-      // Fallback Rombel: HANYA ambil mapel yang aktif diajarkan / dinilai di rombel ini
-      // Mencegah semua mapel sekolah masuk ke rapor
-      const rombelMapels = await prisma.mapel.findMany({
-        where: {
-          tenant_id: tenantId,
-          id: { in: Array.from(rombelMapelIds) },
-        },
-      });
-      rombelMapels.forEach((m) => {
-        mapelGrades[m.id] = {
-          mapel_id: m.id,
-          mapel_name: m.nama_mapel,
-          mapel_code: m.kode_mapel || 'N/A',
-          kelompok_mapel: m.kelompok_mapel || 'Mata Pelajaran Umum',
-          kkm: kkmMap.get(m.id) || 75,
-          nilai_components: [],
-          nilai_akhir: 0,
-          predikat: '-',
-          catatan_kompetensi: '',
-        };
-      });
     }
 
-    // Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat
+    // 6b. Muat juga seluruh mapel yang aktif terhubung ke rombel ini (Jadwal KBM, Guru Mapel, Nilai Kelas)
+    if (rombelMapelIds.size > 0) {
+      const missingIds = Array.from(rombelMapelIds).filter((id) => !mapelGrades[id]);
+      if (missingIds.length > 0) {
+        const rombelMapels = await prisma.mapel.findMany({
+          where: {
+            tenant_id: tenantId,
+            id: { in: missingIds },
+          },
+        });
+        rombelMapels.forEach((m) => {
+          mapelGrades[m.id] = {
+            mapel_id: m.id,
+            mapel_name: m.nama_mapel,
+            mapel_code: m.kode_mapel || 'N/A',
+            kelompok_mapel: m.kelompok_mapel || 'Mata Pelajaran Umum',
+            kkm: kkmMap.get(m.id) || 75,
+            nilai_components: [],
+            nilai_akhir: 0,
+            predikat: '-',
+            catatan_kompetensi: '',
+            urutan: (m as any)?.urutan ?? 999,
+          };
+        });
+      }
+    }
+
+    // 6c. Pastikan setiap mapel yang sudah dinilai pada siswa ini tercatat
     listNilai.forEach((n) => {
       if (n.Mapel && !mapelGrades[n.mapel_id]) {
         mapelGrades[n.mapel_id] = {
@@ -356,19 +364,8 @@ export class RaporService {
       else if (st === 'ALPA' || st === 'A') referensiAbsensiHarian.alpa += count;
     });
 
-    // 7. Filterisasi Presisi Mapel Rapor Siswa (Anti-Semua Mapel Terbawa)
-    const finalAkademikList = Object.values(mapelGrades).filter((g) => {
-      const hasStudentScore = g.nilai_components.length > 0 || Boolean(g.catatan_kompetensi && g.catatan_kompetensi.trim().length > 0);
-      if (hasStudentScore) return true;
-
-      // Jika ada data rombel aktif (jadwal/guruMapel/nilai kelas), pastikan mapel ini terdaftar di rombel
-      if (rombelMapelIds.size > 0) {
-        return rombelMapelIds.has(g.mapel_id);
-      }
-
-      // Jika rombel belum punya riwayat KBM/nilai sama sekali, pertahankan hanya jika ada di strukturList untuk jurusan siswa
-      return true;
-    });
+    // 7. Seluruh mapel yang terhubung ke rombel disajikan lengkap terlepas sudah dinilai atau belum
+    const finalAkademikList = Object.values(mapelGrades);
 
     return {
       siswa: {
