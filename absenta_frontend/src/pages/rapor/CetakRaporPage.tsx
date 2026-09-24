@@ -43,6 +43,9 @@ const RaporSummaryModal = lazy(() =>
 const TranskripModal = lazy(() =>
   import('../../components/rapor/cetak-rapor/TranskripModal').then((m) => ({ default: m.TranskripModal }))
 );
+const SertifikatPklModal = lazy(() =>
+  import('../../components/hubin/SertifikatPklModal').then((m) => ({ default: m.SertifikatPklModal }))
+);
 
 interface ExtendedUserContext {
   nama?: string;
@@ -538,7 +541,7 @@ export default React.memo(function CetakRaporPage() {
   }, [selectedKelas, activeYear, activeSemester, filteredStudents, currentKelasObj]);
 
   // ── Hook Cetak Rapor PKL Terisolasi ──
-  const { handlePrintRaporPkl, handleBatchPrintRaporPkl, isBatchPklPrinting } = useRaporPklPrint({
+  const { handlePrintRaporPkl, handleBatchPrintRaporPkl, handleOpenSertifikatPkl, isBatchPklPrinting } = useRaporPklPrint({
     selectedKelas,
     classList: typedClassList,
     activeYear,
@@ -546,6 +549,18 @@ export default React.memo(function CetakRaporPage() {
     user,
     setPdfLoading,
   });
+
+  const [selectedSertifikatPklId, setSelectedSertifikatPklId] = useState<string | null>(null);
+
+  const handleOpenSertifikat = useCallback(
+    async (student: LegerStudent) => {
+      const pklId = await handleOpenSertifikatPkl(student);
+      if (pklId) {
+        setSelectedSertifikatPklId(pklId);
+      }
+    },
+    [handleOpenSertifikatPkl]
+  );
 
   const breadcrumbs = useMemo(
     () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
@@ -634,7 +649,7 @@ export default React.memo(function CetakRaporPage() {
             semesterOptions={semesterOptions}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
-            hasLegerData={Boolean(leger?.data)}
+            hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
             isLoadingLeger={isLoadingLeger}
             totalStudents={filteredStudents.length}
             isBatchPrinting={isBatchPrinting}
@@ -677,6 +692,9 @@ export default React.memo(function CetakRaporPage() {
             onPrintRapor={handlePrintRapor}
             onPrintP5={handlePrintP5}
             onPrintRaporPkl={handlePrintRaporPkl}
+            onPrintSertifikatPkl={handleOpenSertifikat}
+            onPrintLeger={() => printLeger(selectedKelas)}
+            onExportLeger={handleExportLeger}
             onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
             getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
             getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
@@ -708,6 +726,17 @@ export default React.memo(function CetakRaporPage() {
             transkripData={(transkripData?.data || transkripData || null) as unknown as TranskripNilaiData}
             isLoading={isLoadingTranskrip}
           />
+        </Suspense>
+
+        {/* Sertifikat PKL Modal (Lazy-Loaded) */}
+        <Suspense fallback={null}>
+          {selectedSertifikatPklId && (
+            <SertifikatPklModal
+              isOpen={Boolean(selectedSertifikatPklId)}
+              onClose={() => setSelectedSertifikatPklId(null)}
+              siswaPklId={selectedSertifikatPklId}
+            />
+          )}
         </Suspense>
       </SectionCard>
     </AcademicPageLayout>

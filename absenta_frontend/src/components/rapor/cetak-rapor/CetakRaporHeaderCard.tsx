@@ -180,12 +180,12 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
               variant="outline"
               onClick={() => setIsBatchMenuOpen((prev) => !prev)}
               disabled={!hasLegerData || isLoadingLeger}
-              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-[38px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
-              title="Opsi cetak buku leger, rapor PKL, dan ekspor excel"
+              className="border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl font-bold text-xs h-[38px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              title="Opsi cetak buku leger nilai, rapor PKL, dan ekspor excel sekelas"
             >
-              <BookOpen className="w-4 h-4 text-slate-500" />
-              <span>Dokumen &amp; Ekspor</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isBatchMenuOpen ? 'rotate-180' : ''}`} />
+              <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Buku Leger &amp; Ekspor</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-amber-600 dark:text-amber-400 transition-transform ${isBatchMenuOpen ? 'rotate-180' : ''}`} />
             </Button>
 
             {isBatchMenuOpen && (

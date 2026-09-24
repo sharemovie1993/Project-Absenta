@@ -310,9 +310,44 @@ export function useRaporPklPrint({
     }
   }, [selectedKelas, classList, activeYear, activeSemester, user]);
 
+  const handleOpenSertifikatPkl = useCallback(
+    async (student: LegerStudent): Promise<string | null> => {
+      try {
+        const res = (await hubinApi.getPenempatan({
+          search: student.nis || student.nama_siswa,
+          kelas_id: selectedKelas,
+          limit: 20,
+        })) as unknown as HubinPlacementResponse;
+
+        const rawList = res?.list || (Array.isArray(res?.data) ? res.data : (res?.data as { list?: PlacementRecord[] })?.list) || [];
+        const placementList: PlacementRecord[] = Array.isArray(rawList) ? rawList : [];
+
+        const placement = placementList.find(
+          (p: PlacementRecord) =>
+            p.siswa_id === student.id ||
+            p.Siswa?.id === student.id ||
+            p.Siswa?.nis === student.nis
+        );
+
+        if (!placement?.id) {
+          toast.warning(`Siswa ${student.nama_siswa} belum memiliki data penempatan PKL di modul Hubin.`);
+          return null;
+        }
+
+        return placement.id;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error(`Gagal memeriksa data penempatan PKL: ${msg}`);
+        return null;
+      }
+    },
+    [selectedKelas]
+  );
+
   return {
     handlePrintRaporPkl,
     handleBatchPrintRaporPkl,
+    handleOpenSertifikatPkl,
     isBatchPklPrinting,
   };
 }

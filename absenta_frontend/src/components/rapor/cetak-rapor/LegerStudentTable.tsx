@@ -7,6 +7,7 @@ import {
   Award,
   BookOpen,
   Building2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -25,6 +26,9 @@ interface LegerStudentTableProps {
   onPrintRapor?: (student: LegerStudent) => void;
   onPrintP5?: (student: LegerStudent) => void;
   onPrintRaporPkl?: (student: LegerStudent) => void;
+  onPrintSertifikatPkl?: (student: LegerStudent) => void;
+  onPrintLeger?: () => void;
+  onExportLeger?: () => void;
   onOpenTranskripModal: (student: LegerStudent) => void;
   getPdfSklUrl?: (siswaId: string) => string;
   getPdfUkkUrl?: (siswaId: string) => string;
@@ -41,6 +45,9 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   onPrintRapor,
   onPrintP5,
   onPrintRaporPkl,
+  onPrintSertifikatPkl,
+  onPrintLeger,
+  onExportLeger,
   onOpenTranskripModal,
   getPdfSklUrl,
   getPdfUkkUrl,
@@ -64,7 +71,59 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   }
 
   return (
-    <Card className="p-0 border-none shadow-xs overflow-hidden dark:bg-slate-900/40 w-full max-w-full min-w-0">
+    <Card className="p-0 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden dark:bg-slate-900/40 w-full max-w-full min-w-0">
+      {/* Table Toolbar Header with Clear Leger Print & Export Buttons */}
+      <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <BookOpen size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100">
+                Buku Leger Nilai &amp; Peringkat Kelas
+              </span>
+              <Badge variant="outline" className="bg-white dark:bg-slate-800 text-[10px] font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                {students.length} Siswa
+              </Badge>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Rekapitulasi nilai rapor intrakurikuler seluruh mata pelajaran dan urutan ranking rombel.
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons for Leger */}
+        <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
+          {onPrintLeger && (
+            <Button
+              type="button"
+              size="sm"
+              onClick={onPrintLeger}
+              className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs h-8 px-3 flex items-center gap-1.5 shadow-xs cursor-pointer"
+              title="Cetak Buku Leger Nilai Kelas format Landscape (PDF)"
+            >
+              <Printer size={13} />
+              <span>Cetak Buku Leger (PDF)</span>
+            </Button>
+          )}
+
+          {onExportLeger && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onExportLeger}
+              className="border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl font-bold text-xs h-8 px-3 flex items-center gap-1.5 cursor-pointer"
+              title="Unduh Leger Nilai Kelas format Spreadsheet (.xlsx)"
+            >
+              <FileSpreadsheet size={13} />
+              <span>Ekspor Excel</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="overflow-x-auto w-full max-w-full min-w-0">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
@@ -150,9 +209,11 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         studentName={student.nama_siswa}
                         tahunPelajaranId={tahunPelajaranId}
                         semesterId={semesterId}
-                        hasPkl={isJenjangSmk !== false && Boolean(onPrintRaporPkl)}
+                        hasPkl={isJenjangSmk !== false}
                         hasUkk={isJenjangSmk !== false}
                         hasSkl={true}
+                        onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
+                        onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
                       />
 
                       {/* Transkrip Modal */}

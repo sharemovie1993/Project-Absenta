@@ -24,6 +24,8 @@ export interface RaporPrintMenuProps {
   siswaPklId?: string;
   className?: string;
   btnSize?: 'sm' | 'md';
+  onPrintRaporPkl?: () => void;
+  onPrintSertifikatPkl?: () => void;
 }
 
 export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
@@ -38,6 +40,8 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   siswaPklId,
   className = '',
   btnSize = 'sm',
+  onPrintRaporPkl,
+  onPrintSertifikatPkl,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -174,10 +178,11 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
             <button
               type="button"
               onClick={() => handleAction(() => {
-                if (siswaPklId) printPkl(siswaPklId);
+                if (onPrintRaporPkl) onPrintRaporPkl();
+                else if (siswaPklId) printPkl(siswaPklId);
                 else printRaporSemester(studentId);
               })}
-              className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+              className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-purple-50 dark:hover:bg-purple-900/30 hover:text-purple-700 dark:hover:text-purple-300 transition-colors cursor-pointer"
             >
               <Briefcase className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
               <span>Rapor PKL (Praktik Kerja)</span>
@@ -185,8 +190,21 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
 
             <button
               type="button"
+              onClick={() => handleAction(() => {
+                if (onPrintSertifikatPkl) onPrintSertifikatPkl();
+                else if (siswaPklId) printPkl(siswaPklId);
+                else printRaporSemester(studentId);
+              })}
+              className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-amber-50 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 transition-colors cursor-pointer"
+            >
+              <Award className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" />
+              <span>Sertifikat PKL (Piagam &amp; Transkrip)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleAction(() => printUkk(studentId))}
-              className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-700 dark:hover:text-orange-300 transition-colors"
+              className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 hover:bg-orange-50 dark:hover:bg-orange-900/30 hover:text-orange-700 dark:hover:text-orange-300 transition-colors cursor-pointer"
             >
               <Award className="w-4 h-4 text-orange-600 dark:text-orange-400 shrink-0" />
               <span>Sertifikat UKK Kejuruan</span>
