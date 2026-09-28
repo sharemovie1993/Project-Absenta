@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import axios from 'axios';
 import * as os from 'os';
+import * as fs from 'fs';
 import * as cron from 'node-cron';
 import { acquireLock, releaseLock } from '@/infra/locks/distributedLock';
 import { execSync } from 'child_process';
@@ -26,9 +27,27 @@ function getRamSpecGB(): string {
 }
 
 function getStorageSpecGB(): string {
+  // 1. Prioritaskan API standar native bawaan Node.js (cross-platform, zero child process)
+  try {
+    if (typeof (fs as any).statfsSync === 'function') {
+      const targetDrive = process.platform === 'win32' ? (process.cwd().substring(0, 3) || 'C:\\') : '/';
+      const stats = (fs as any).statfsSync(targetDrive);
+      if (stats && stats.bsize && stats.blocks) {
+        const totalBytes = Number(stats.bsize) * Number(stats.blocks);
+        const sizeGB = Math.round(totalBytes / (1024 * 1024 * 1024));
+        return `${sizeGB} GB`;
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fallback aman tanpa mencetak error ke stderr jika command tidak ada
   try {
     if (process.platform === 'win32') {
-      const out = execSync('wmic logicaldisk where "DeviceID=\'C:\'" get size', { windowsHide: true }).toString();
+      const out = execSync('powershell -NoProfile -Command "(Get-CimInstance Win32_LogicalDisk -Filter \\"DeviceID=\'C:\'\\").Size"', {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 3000,
+      }).toString();
       const match = out.match(/\d+/);
       if (match) {
         const sizeBytes = parseInt(match[0], 10);
@@ -36,7 +55,11 @@ function getStorageSpecGB(): string {
         return `${sizeGB} GB`;
       }
     } else {
-      const out = execSync("df -B1 / | tail -1 | awk '{print $2}'", { windowsHide: true }).toString();
+      const out = execSync("df -B1 / | tail -1 | awk '{print $2}'", {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'ignore'],
+        timeout: 3000,
+      }).toString();
       const match = out.match(/\d+/);
       if (match) {
         const sizeBytes = parseInt(match[0], 10);
@@ -45,6 +68,7 @@ function getStorageSpecGB(): string {
       }
     }
   } catch (e) {}
+
   return 'Unknown Storage';
 }
 
@@ -68,15 +92,16 @@ export const heartbeatService = {
       return;
     }
 
+    const licenseKey = process.env.LICENSE_KEY;
+    const licenseServerUrl = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+
+    if (!licenseKey) {
+      console.warn('[Heartbeat] LICENSE_KEY is not configured. Skipping heartbeat sync.');
+      await releaseLock(lock);
+      return;
+    }
+
     try {
-      const licenseKey = process.env.LICENSE_KEY;
-      const licenseServerUrl = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
-
-      if (!licenseKey) {
-        console.warn('[Heartbeat] LICENSE_KEY is not configured. Skipping heartbeat sync.');
-        return;
-      }
-
       console.log(`[Heartbeat] Leader instance (pid ${process.pid}) collecting metrics...`);
 
       // 1. Get active user count
@@ -276,7 +301,13 @@ export const heartbeatService = {
         console.warn(`[Heartbeat] Central license server returned unexpected status: ${response.status}`);
       }
     } catch (error: any) {
-      console.error('[Heartbeat] Sync failed:', error.message);
+      if (error?.response?.status === 401) {
+        console.warn(`[Heartbeat] Sync failed: LICENSE_KEY tidak valid atau belum terdaftar di ${licenseServerUrl} (HTTP 401 Unauthorized).`);
+      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ENOTFOUND') {
+        console.warn(`[Heartbeat] Server lisensi pusat (${licenseServerUrl}) tidak dapat dijangkau (${error.code}).`);
+      } else {
+        console.error('[Heartbeat] Sync failed:', error.message);
+      }
     } finally {
       // Selalu lepas lock agar instance lain bisa mengambil alih di siklus berikutnya
       await releaseLock(lock);
