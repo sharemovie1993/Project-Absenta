@@ -120,71 +120,53 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cooperative_name">
-            Nama Koperasi <span className="text-red-500">*</span>
-          </Label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
-              <Building size={16} />
-            </span>
-            <Input
-              type="text"
-              id="cooperative_name"
-              name="cooperative_name"
-              value={formData.cooperative_name || ''}
-              onChange={onInputChange}
-              required
-              disabled={!canEditProfile}
-              placeholder="Contoh: KOPERASI KARYAWAN SEJAHTERA SMKN 1"
-              className="pl-10"
-            />
+        {/* Baris 1: Nama Koperasi + Nomor Badan Hukum */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_name">
+              Nama Koperasi <span className="text-red-500">*</span>
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
+                <Building size={16} />
+              </span>
+              <Input
+                type="text"
+                id="cooperative_name"
+                name="cooperative_name"
+                value={formData.cooperative_name || ''}
+                onChange={onInputChange}
+                required
+                disabled={!canEditProfile}
+                placeholder="Contoh: KOPERASI KARYAWAN SEJAHTERA"
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_legal_no">
+              Nomor Badan Hukum
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
+                <FileText size={16} />
+              </span>
+              <Input
+                type="text"
+                id="cooperative_legal_no"
+                name="cooperative_legal_no"
+                value={formData.cooperative_legal_no || ''}
+                onChange={onInputChange}
+                disabled={!canEditProfile}
+                placeholder="Contoh: 123/BH/PAD/XX/2026"
+                className="pl-10"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cooperative_legal_no">
-            Nomor Badan Hukum
-          </Label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
-              <FileText size={16} />
-            </span>
-            <Input
-              type="text"
-              id="cooperative_legal_no"
-              name="cooperative_legal_no"
-              value={formData.cooperative_legal_no || ''}
-              onChange={onInputChange}
-              disabled={!canEditProfile}
-              placeholder="Contoh: Nomor 123/BH/PAD/XX/2026"
-              className="pl-10"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="cooperative_default_interest_rate">
-            Suku Bunga Pinjaman Default (% / Bulan)
-          </Label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
-              <Percent size={16} />
-            </span>
-            <Input
-              type="number"
-              step="0.1"
-              id="cooperative_default_interest_rate"
-              name="cooperative_default_interest_rate"
-              value={formData.cooperative_default_interest_rate || ''}
-              onChange={onInputChange}
-              disabled={!canEditProfile}
-              placeholder="Contoh: 1.5"
-              className="pl-10"
-            />
-          </div>
-        </div>
-
+        {/* Baris 2: Telepon + Email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label htmlFor="cooperative_phone">
@@ -229,27 +211,53 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="cooperative_website">
-            Website Resmi
-          </Label>
-          <div className="relative">
-            <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
-              <Globe size={16} />
-            </span>
-            <Input
-              type="text"
-              id="cooperative_website"
-              name="cooperative_website"
-              value={formData.cooperative_website || ''}
-              onChange={onInputChange}
-              disabled={!canEditProfile}
-              placeholder="Contoh: www.cooperative.school.sch.id"
-              className="pl-10"
-            />
+        {/* Baris 3: Website + Suku Bunga */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_website">
+              Website Resmi
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
+                <Globe size={16} />
+              </span>
+              <Input
+                type="text"
+                id="cooperative_website"
+                name="cooperative_website"
+                value={formData.cooperative_website || ''}
+                onChange={onInputChange}
+                disabled={!canEditProfile}
+                placeholder="Contoh: www.cooperative.school.sch.id"
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="cooperative_default_interest_rate">
+              Suku Bunga Default (% / Bulan)
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none z-10">
+                <Percent size={16} />
+              </span>
+              <Input
+                type="number"
+                step="0.1"
+                id="cooperative_default_interest_rate"
+                name="cooperative_default_interest_rate"
+                value={formData.cooperative_default_interest_rate || ''}
+                onChange={onInputChange}
+                disabled={!canEditProfile}
+                placeholder="Contoh: 1.5"
+                className="pl-10"
+              />
+            </div>
           </div>
         </div>
 
+        {/* Baris 4: Alamat — full width */}
         <div className="space-y-1.5">
           <Label htmlFor="cooperative_address">
             Alamat Lengkap Koperasi

@@ -317,6 +317,10 @@ const Settings: React.FC = React.memo(() => {
     logo_url?: string;
   })?.logo_url || '/logo.png';
   const effectiveLogoUrl = formData.cooperative_logo_url || schoolLogoUrl;
+  const breadcrumbs = useMemo(() => [
+    { label: 'Koperasi', path: '/cooperative/dashboard' },
+    { label: 'Pengaturan Koperasi' }
+  ], []);
   const instruction = useMemo(() => ({
     title: "Panduan Pengaturan",
     description: "Gunakan menu tab untuk menavigasi konfigurasi koperasi.",
@@ -358,11 +362,11 @@ const Settings: React.FC = React.memo(() => {
           <Suspense fallback={<div className="flex items-center justify-center min-h-[200px]">
               <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
             </div>}>
-            {activeTab === 'profile' ? <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-7">
+            {activeTab === 'profile' ? <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="lg:col-span-8">
                   <CooperativeProfileForm formData={formData} saving={saving} onInputChange={handleInputChange} onSubmit={handleSubmit} effectiveLogoUrl={effectiveLogoUrl} canEditProfile={canEditProfile} />
                 </div>
-                <div className="lg:col-span-5">
+                <div className="lg:col-span-4 lg:sticky lg:top-4">
                   <KopSuratPreview cooperativeName={formData.cooperative_name} cooperativeLegalNo={formData.cooperative_legal_no} effectiveLogoUrl={effectiveLogoUrl} />
                 </div>
               </div> : <CategoriesTable categories={categories} loadingCategories={loadingCategories} onToggleActive={handleToggleCatActive} onEdit={handleOpenEditModal} onDelete={handleDeleteCategory} onOpenCreate={handleOpenCreateModal} canEditCategories={canEditCategories} />}
