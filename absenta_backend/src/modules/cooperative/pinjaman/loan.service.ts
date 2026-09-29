@@ -14,6 +14,19 @@ const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
     BAD_DEBT: [],
 };
 
+// In-Memory Idempotency Cache (5 menit TTL) untuk mencegah double-spend / duplicate loan submission
+const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of idempotencyCache.entries()) {
+        if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+
 export class LoanService {
 
     // Get loans by user_id
@@ -53,7 +66,16 @@ export class LoanService {
     }
 
     // Create a new loan application
-    static async createLoan(memberId: string, amount: number, interestRate: number, duration: number) {
+    static async createLoan(memberId: string, amount: number, interestRate: number, duration: number, idempotencyKey?: string) {
+        // [GUARD 0: Idempotency Key Guard]
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            const cached = idempotencyCache.get(idempotencyKey);
+            if (Date.now() - cached!.timestamp < IDEMPOTENCY_TTL_MS) {
+                appLogger.info({ idempotencyKey }, '[LoanService.createLoan] Returning cached idempotent loan submission');
+                return cached!.data;
+            }
+        }
+
         // [GUARD: Validasi input dasar]
         if (!memberId)        throw new Error('memberId wajib diisi.');
         if (amount <= 0)      throw new Error('Jumlah pinjaman harus lebih dari 0.');
@@ -91,7 +113,7 @@ export class LoanService {
 
         const today = new Date();
 
-        return prisma.$transaction(async (tx: any) => {
+        const createdLoan = await prisma.$transaction(async (tx: any) => {
             const loan = await tx.loan.create({
                 data: { memberId, amount, interestRate, duration, status: 'PENDING' }
             });
@@ -115,6 +137,12 @@ export class LoanService {
                 include: { installments: true },
             });
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { data: createdLoan, timestamp: Date.now() });
+        }
+
+        return createdLoan;
     }
 
     // Get loan details
@@ -215,9 +243,18 @@ export class LoanService {
         });
     }
 
-    // Pay installment (dengan anti-race condition)
-    static async payInstallment(installmentId: string) {
+    // Pay installment (dengan anti-race condition & idempotency)
+    static async payInstallment(installmentId: string, idempotencyKey?: string) {
         if (!installmentId) throw new Error('installmentId wajib diisi.');
+
+        // [GUARD 0: Idempotency Key Guard]
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            const cached = idempotencyCache.get(idempotencyKey);
+            if (Date.now() - cached!.timestamp < IDEMPOTENCY_TTL_MS) {
+                appLogger.info({ idempotencyKey }, '[LoanService.payInstallment] Returning cached idempotent payment result');
+                return cached!.data;
+            }
+        }
 
         // Baca data awal untuk mendapatkan tenantId (di luar tx)
         const installmentData = await prisma.installment.findUnique({
@@ -225,7 +262,13 @@ export class LoanService {
             include: { loan: { include: { member: true } } },
         });
         if (!installmentData) throw new Error('Installment not found');
-        if (installmentData.status === 'PAID') throw new Error('Installment already paid');
+        if (installmentData.status === 'PAID') {
+            if (idempotencyKey) {
+                // If retried with idempotency key, return existing paid installment without error
+                return installmentData;
+            }
+            throw new Error('Installment already paid');
+        }
 
         const tenantId = installmentData.loan.member.tenantId;
 
@@ -243,7 +286,7 @@ export class LoanService {
         const interestPerInstallment  = Math.round(totalInterest / duration);
         const principalPerInstallment = totalInstallment - interestPerInstallment;
 
-        return prisma.$transaction(async (tx: any) => {
+        const paidResult = await prisma.$transaction(async (tx: any) => {
             // [ANTI-RACE CONDITION: Update dengan filter status=UNPAID]
             // Jika ada request concurent, hanya satu yang bisa update (yang lain akan dapat 0 rows)
             const updated = await tx.installment.updateMany({
@@ -289,6 +332,12 @@ export class LoanService {
 
             return paidInstallment;
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { data: paidResult, timestamp: Date.now() });
+        }
+
+        return paidResult;
     }
 
     // Get student metrics

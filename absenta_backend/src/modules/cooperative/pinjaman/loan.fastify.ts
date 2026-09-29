@@ -59,6 +59,7 @@ export default async function loanRoutes(fastify: any) {
     fastify.post('/', { preHandler: [requireCapability('cooperative.loans.apply')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = createLoanSchema.parse(req.body);
             const { memberId, amount, interestRate, duration } = parsed;
             
@@ -76,7 +77,21 @@ export default async function loanRoutes(fastify: any) {
                 }
             }
 
-            const loan = await LoanService.createLoan(memberId, amount, interestRate, duration);
+            const loan = await LoanService.createLoan(memberId, amount, interestRate, duration, idempotencyKey);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'LOAN_CREATED',
+                    loanId: loan?.id,
+                    memberId,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_loan_update', broadcastPayload);
+                io.emit('coop_loan_update', broadcastPayload);
+            }
+
             reply.code(201).send(loan);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -170,8 +185,24 @@ export default async function loanRoutes(fastify: any) {
     // POST /loans/pay-installment
     fastify.post('/pay-installment', { preHandler: [requireCapability('cooperative.loans.repay')] }, async (req: any, reply: any) => {
         try {
+            const tenantId = getTenantId(req);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = payInstallmentSchema.parse(req.body);
-            const updatedInstallment = await LoanService.payInstallment(parsed.installmentId);
+            const updatedInstallment = await LoanService.payInstallment(parsed.installmentId, idempotencyKey);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'INSTALLMENT_PAID',
+                    installmentId: parsed.installmentId,
+                    loanId: updatedInstallment?.loanId,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_loan_update', broadcastPayload);
+                io.emit('coop_loan_update', broadcastPayload);
+            }
+
             return updatedInstallment;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -191,12 +222,26 @@ export default async function loanRoutes(fastify: any) {
         }
     });
 
-    // PUT /loans/:id/status
-    fastify.put('/:id/status', { preHandler: [requireCapability(['cooperative.loans.approve', 'cooperative.loans.reject'])] }, async (req: any, reply: any) => {
+    // Handler pembaruan status pinjaman (bisa dipanggil via PUT maupun PATCH)
+    const handleUpdateLoanStatus = async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const parsed = updateLoanStatusSchema.parse(req.body);
             const loan = await LoanService.updateLoanStatus(req.params.id, parsed.status, tenantId, req.user?.id);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'LOAN_STATUS_UPDATED',
+                    loanId: req.params.id,
+                    status: parsed.status,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_loan_update', broadcastPayload);
+                io.emit('coop_loan_update', broadcastPayload);
+            }
+
             return loan;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -212,7 +257,13 @@ export default async function loanRoutes(fastify: any) {
                 reply.status(500).send({ success: false, message: 'Failed to update loan status'  });
             }
         }
-    });
+    };
+
+    // PUT /loans/:id/status
+    fastify.put('/:id/status', { preHandler: [requireCapability(['cooperative.loans.approve', 'cooperative.loans.reject'])] }, handleUpdateLoanStatus);
+    
+    // PATCH /loans/:id/status (Dukungan alias untuk kompatibilitas REST client)
+    fastify.patch('/:id/status', { preHandler: [requireCapability(['cooperative.loans.approve', 'cooperative.loans.reject'])] }, handleUpdateLoanStatus);
 }
 
 

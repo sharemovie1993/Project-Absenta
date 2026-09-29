@@ -22,6 +22,7 @@ import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { useSocket } from '../../hooks/useSocket';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -155,6 +156,24 @@ const Loans: React.FC = React.memo(() => {
     return () => { cancelled = true; };
   }, []);
 
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Dengarkan event transaksi/status pinjaman via WebSocket (Pilar 4 Hardening)
+  useEffect(() => {
+    const handleLoanUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-student-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+    };
+
+    subscribe('coop_loan_update', handleLoanUpdate);
+    return () => {
+      unsubscribe('coop_loan_update', handleLoanUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
+
   // Reset pagination when search query or filter changes
   useEffect(() => {
     setPage(1);
@@ -181,7 +200,9 @@ const Loans: React.FC = React.memo(() => {
   });
 
   const loans: Loan[] = useMemo(() => {
-    const raw = loansQuery.data?.data?.loans || loansQuery.data?.data;
+    const raw = Array.isArray(loansQuery.data)
+      ? loansQuery.data
+      : (loansQuery.data?.data?.loans || loansQuery.data?.data || []);
     return Array.isArray(raw) ? raw : [];
   }, [loansQuery.data]);
 
@@ -223,10 +244,14 @@ const Loans: React.FC = React.memo(() => {
   });
   const members = membersQuery.data || [];
 
-  // Mutation: Create Loan
+  // Mutation: Create Loan (dengan Idempotency Key Guard)
   const createLoanMutation = useMutation({
     mutationFn: async (payload: typeof formData) => {
-      const res = await api.post('/cooperative/loans', payload);
+      const res = await api.post('/cooperative/loans', payload, {
+        headers: {
+          'Idempotency-Key': crypto.randomUUID()
+        }
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -252,7 +277,7 @@ const Loans: React.FC = React.memo(() => {
   // Mutation: Change Loan Status
   const changeLoanStatusMutation = useMutation({
     mutationFn: async ({ loanId, status }: { loanId: string; status: 'APPROVED' | 'REJECTED' }) => {
-      const res = await api.patch(`/cooperative/loans/${loanId}/status`, { status });
+      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status });
       return res.data;
     },
     onSuccess: (_, variables) => {

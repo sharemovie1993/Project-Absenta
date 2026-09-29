@@ -22,6 +22,7 @@ import type { Installment, LoanDetailData, CooperativeSettings } from '../../com
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { useSocket } from '../../hooks/useSocket';
 
 const LoanDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -69,6 +70,23 @@ const LoanDetail: React.FC = React.memo(() => {
     await loanDetailQuery.refetch();
   }, [loanDetailQuery]);
 
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Dengarkan event transaksi/status pinjaman via WebSocket (Pilar 4 Hardening)
+  useEffect(() => {
+    const handleLoanUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+    };
+
+    subscribe('coop_loan_update', handleLoanUpdate);
+    return () => {
+      unsubscribe('coop_loan_update', handleLoanUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient, id]);
+
   const changeStatusMutation = useMutation({
     mutationFn: async (status: 'APPROVED' | 'REJECTED') => {
       const res = await api.put(`/cooperative/loans/${id}/status`, { status });
@@ -78,6 +96,7 @@ const LoanDetail: React.FC = React.memo(() => {
       toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
       queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
     },
     onError: (error) => {
       const err = error as { response?: { data?: { message?: string } } };
@@ -101,13 +120,18 @@ const LoanDetail: React.FC = React.memo(() => {
 
   const payInstallmentMutation = useMutation({
     mutationFn: async ({ installmentId, installmentNo }: { installmentId: string; installmentNo: number }) => {
-      const res = await api.post('/cooperative/loans/pay-installment', { installmentId });
+      const res = await api.post('/cooperative/loans/pay-installment', { installmentId }, {
+        headers: {
+          'Idempotency-Key': crypto.randomUUID()
+        }
+      });
       return { data: res.data, installmentNo };
     },
     onSuccess: ({ installmentNo }) => {
       toast.success(`Pembayaran angsuran ke-${installmentNo} berhasil diproses!`);
       queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
     },
     onError: (error) => {
