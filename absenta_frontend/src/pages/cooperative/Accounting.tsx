@@ -434,6 +434,8 @@ const Accounting: React.FC = React.memo(() => {
     const [balanceSortOrder, setBalanceSortOrder] = useState<'asc' | 'desc'>('asc');
     const [balancePage, setBalancePage] = useState<number>(1);
     const [balanceLimit, setBalanceLimit] = useState<number>(10);
+    const [payrollPage, setPayrollPage] = useState<number>(1);
+    const [payrollLimit, setPayrollLimit] = useState<number>(10);
 
     const handleBalanceSort = useCallback((key: string, order: 'asc' | 'desc') => {
         setBalanceSortBy(key);
