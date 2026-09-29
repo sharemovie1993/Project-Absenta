@@ -6,6 +6,19 @@ import { applyDataScope } from '../../../utils/applyDataScope';
 import { MemberType, MemberStatus } from '@prisma/client';
 import { SavingCategoryService } from '../simpanan/saving-category.service';
 
+// In-Memory Idempotency Cache (5 menit TTL) untuk mencegah duplicate member creation & bulk-add
+const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of idempotencyCache.entries()) {
+        if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+
 export class MemberService {
     
     // Get all members with Core Data
@@ -97,27 +110,34 @@ export class MemberService {
         };
     }
 
-    // Get next auto-increment member number
+    // Get next auto-increment member number (Optimized dengan DB index ordering & fallback)
     static async getNextMemberNo(tenantId: string) {
-        const members = await prisma.member.findMany({
+        const latestMember = await prisma.member.findFirst({
             where: { tenantId },
+            orderBy: { memberNo: 'desc' },
             select: { memberNo: true }
         });
 
-        if (members.length === 0) {
+        if (!latestMember || !latestMember.memberNo) {
             return '001';
         }
 
-        let maxNum = 0;
-        for (const m of members) {
-            const num = parseInt(m.memberNo, 10);
-            if (!isNaN(num) && num > maxNum) {
-                maxNum = num;
+        const num = parseInt(latestMember.memberNo, 10);
+        if (isNaN(num)) {
+            // Fallback scan jika format memberNo tidak berurutan numerik
+            const members = await prisma.member.findMany({
+                where: { tenantId },
+                select: { memberNo: true }
+            });
+            let maxNum = 0;
+            for (const m of members) {
+                const n = parseInt(m.memberNo, 10);
+                if (!isNaN(n) && n > maxNum) maxNum = n;
             }
+            return String(maxNum + 1).padStart(3, '0');
         }
 
-        const nextNum = maxNum + 1;
-        return String(nextNum).padStart(3, '0');
+        return String(num + 1).padStart(3, '0');
     }
 
     // Cek status keanggotaan koperasi berdasarkan userId
@@ -138,8 +158,17 @@ export class MemberService {
         return member ?? null;
     }
 
-    // Create new member (Supports external members with auto user creation)
-    static async createMember(tenantId: string, data: any) {
+    // Create new member (Supports external members with auto user creation & Idempotency Key Guard)
+    static async createMember(tenantId: string, data: any, idempotencyKey?: string) {
+        // [GUARD 0: Idempotency Key Guard]
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            const cached = idempotencyCache.get(idempotencyKey);
+            if (Date.now() - cached!.timestamp < IDEMPOTENCY_TTL_MS) {
+                appLogger.info({ idempotencyKey }, '[MemberService.createMember] Returning cached idempotent member creation');
+                return cached!.data;
+            }
+        }
+
         const isExternal = data.isExternal === true || data.type === 'GENERAL';
 
         // Validate: Must have either siswaId, guruId, or be marked as external
@@ -232,7 +261,7 @@ export class MemberService {
             }
         }
 
-        return await prisma.$transaction(async (tx: any) => {
+        const createdMemberResult = await prisma.$transaction(async (tx: any) => {
             let finalUserId = data.userId;
 
             // Handle external member User & Role creation within transaction
@@ -351,6 +380,12 @@ export class MemberService {
 
             return member;
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { data: createdMemberResult, timestamp: Date.now() });
+        }
+
+        return createdMemberResult;
     }
 
     // Update member (Status, Type, & PIN)
@@ -633,16 +668,25 @@ export class MemberService {
         }
     }
 
-    // Create cooperative members in bulk with Rp 0 active saving accounts
-    static async createBulkMembers(tenantId: string, type: 'STUDENT' | 'TEACHER', ids: string[]) {
+    // Create cooperative members in bulk with Rp 0 active saving accounts & Idempotency Key Guard
+    static async createBulkMembers(tenantId: string, type: 'STUDENT' | 'TEACHER', ids: string[], idempotencyKey?: string) {
         if (!Array.isArray(ids) || ids.length === 0) {
             throw new Error('List of IDs cannot be empty');
+        }
+
+        // [GUARD 0: Idempotency Key Guard]
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            const cached = idempotencyCache.get(idempotencyKey);
+            if (Date.now() - cached!.timestamp < IDEMPOTENCY_TTL_MS) {
+                appLogger.info({ idempotencyKey }, '[MemberService.createBulkMembers] Returning cached idempotent bulk members result');
+                return cached!.data;
+            }
         }
 
         const bcrypt = require('bcrypt');
         const defaultHashedPin = await bcrypt.hash('123456', 10);
 
-        return await prisma.$transaction(async (tx) => {
+        const bulkResult = await prisma.$transaction(async (tx) => {
             // Ensure default categories exist
             await SavingCategoryService.ensureDefaultCategories(tenantId, tx);
 
@@ -731,5 +775,11 @@ export class MemberService {
 
             return { success: true, count: createdCount };
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { data: bulkResult, timestamp: Date.now() });
+        }
+
+        return bulkResult;
     }
 }

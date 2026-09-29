@@ -243,7 +243,7 @@ const Members: React.FC = React.memo(() => {
           </span>
         </div>
 
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div>
             <span className="text-[10px] text-slate-400 block font-medium">Email</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">{record.email || '-'}</span>
@@ -252,7 +252,7 @@ const Members: React.FC = React.memo(() => {
             <span className="text-[10px] text-slate-400 block font-medium">Telepon</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200">{record.phone || '-'}</span>
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1 sm:col-span-2">
             <span className="text-[10px] text-slate-400 block font-medium">Bergabung</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200">{formatIndonesianDate(record.createdAt)}</span>
           </div>
@@ -260,18 +260,18 @@ const Members: React.FC = React.memo(() => {
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <Button
-            variant="outline"
-            size="sm"
+            variant="toolbarOutline"
+            size="toolbar"
             onClick={() => handleOpenDetail(record)}
-            className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-bold text-[11px]"
+            className="h-8 px-3 rounded-lg border-slate-200 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-bold text-[11px]"
           >
             <Eye size={12} className="mr-1.5" />
             Detail
           </Button>
           {canUpdate && (
             <Button
-              variant={record.status === 'ACTIVE' ? 'outline' : 'primary'}
-              size="sm"
+              variant={record.status === 'ACTIVE' ? 'toolbarOutline' : 'toolbarPrimary'}
+              size="toolbar"
               disabled={statusLoadingId === record.id}
               onClick={() => handleToggleStatus(record)}
               className={`h-8 px-3 rounded-lg font-bold text-[11px] uppercase transition-all duration-300 ${

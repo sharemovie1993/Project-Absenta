@@ -102,30 +102,33 @@ export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = R
   const canCreate = can('cooperative.members.create');
 
   return (
-    <div className="flex gap-2.5 w-full md:w-auto justify-end">
+    <div className="flex flex-wrap gap-2 w-full md:w-auto justify-end">
       {canCreate && (
         <Button
-          variant="outline"
+          variant="toolbarOutline"
+          size="toolbar"
           onClick={() => setIsImportModalOpen(true)}
-          className="h-9 text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-350 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
+          className="text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-400 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
         >
           <Upload size={13} className="mr-2 text-indigo-500" />
           Impor Excel
         </Button>
       )}
       <Button
-        variant="outline"
+        variant="toolbarOutline"
+        size="toolbar"
         onClick={handleExportPdf}
-        className="h-9 text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-350 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
+        className="text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-400 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
       >
         <FileText size={13} className="mr-2 text-rose-500" />
         Ekspor PDF
       </Button>
       <Button
-        variant="outline"
+        variant="toolbarOutline"
+        size="toolbar"
         onClick={handleDownloadBulkCardsPdf}
         disabled={isBulkPrinting}
-        className="h-9 text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-350 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
+        className="text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-400 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
       >
         {isBulkPrinting ? (
           <span className="w-3.5 h-3.5 mr-2 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -135,9 +138,10 @@ export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = R
         Cetak Kartu Massal
       </Button>
       <Button
-        variant="outline"
+        variant="toolbarOutline"
+        size="toolbar"
         onClick={handleExportExcel}
-        className="h-9 text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-350 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
+        className="text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-400 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
       >
         <Download size={13} className="mr-2 text-emerald-500" />
         Ekspor Excel
@@ -145,16 +149,19 @@ export const MemberTableToolbarRight: React.FC<MemberTableToolbarRightProps> = R
       {canCreate && (
         <>
           <Button
-            variant="outline"
+            variant="toolbarOutline"
+            size="toolbar"
             onClick={() => setIsBulkAddOpen(true)}
-            className="h-9 text-xs font-bold tracking-tight rounded-xl border-indigo-200 text-indigo-600 dark:text-indigo-400 dark:border-indigo-900 hover:bg-indigo-50/50 transition-all duration-200 shadow-sm"
+            className="text-xs font-bold tracking-tight rounded-xl border-indigo-200 text-indigo-600 dark:text-indigo-400 dark:border-indigo-900 hover:bg-indigo-50/50 transition-all duration-200 shadow-sm"
           >
             <Plus className="w-3.5 h-3.5 mr-2" />
             Tambah Massal
           </Button>
           <Button
+            variant="toolbarPrimary"
+            size="toolbar"
             onClick={() => setIsModalOpen(true)}
-            className="h-9 text-xs font-bold tracking-tight rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/15 transition-all duration-300 transform hover:-translate-y-0.5"
+            className="text-xs font-bold tracking-tight rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/15 transition-all duration-300 transform hover:-translate-y-0.5"
           >
             <Plus className="w-3.5 h-3.5 mr-2" />
             Tambah Anggota

@@ -103,7 +103,11 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
 
   const bulkCreateMutation = useMutation({
     mutationFn: async (payload: { type: string; ids: string[] }) => {
-      const response = await api.post('/cooperative/members/bulk-create', payload);
+      const response = await api.post('/cooperative/members/bulk-create', payload, {
+        headers: {
+          'Idempotency-Key': crypto.randomUUID()
+        }
+      });
       return response.data;
     },
     onSuccess: (data) => {

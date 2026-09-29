@@ -9,6 +9,7 @@ import { fetchCoopSettings } from '../../../utils/cooperative/coopDocUtils';
 import { parseImportExcel } from '../../../utils/cooperative/memberDocUtils';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
 import { useKelasOptions } from '../../../hooks/useKelasOptions';
+import { useSocket } from '../../../hooks/useSocket';
 
 interface AxiosErrorLike {
   response?: {
@@ -159,6 +160,24 @@ export const useMembersState = (subscription: any) => {
 
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
   const { isLocked } = useModuleAccess('KOPERASI');
+
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Dengarkan event penambahan/pembaruan anggota koperasi via WebSocket (Pilar 4 Hardening)
+  useEffect(() => {
+    const handleMemberUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-members'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-member-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-non-members'] });
+    };
+
+    subscribe('coop_member_update', handleMemberUpdate);
+    return () => {
+      unsubscribe('coop_member_update', handleMemberUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
 
   // React Query setup for members and kelas
   const membersQuery = useQuery({
@@ -312,7 +331,11 @@ export const useMembersState = (subscription: any) => {
 
   const createMemberMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await api.post('/cooperative/members', payload);
+      const res = await api.post('/cooperative/members', payload, {
+        headers: {
+          'Idempotency-Key': crypto.randomUUID()
+        }
+      });
       return res.data;
     },
     onSuccess: (_, variables) => {

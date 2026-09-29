@@ -79,11 +79,26 @@ export default async function memberRoutes(fastify: any) {
         }
     });
 
-    // POST /members
+    // POST /members (dengan Idempotency Key Guard & Realtime Broadcast)
     fastify.post('/', { preHandler: [requireCapability('cooperative.members.create')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const member = await MemberService.createMember(tenantId, req.body);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
+            const member = await MemberService.createMember(tenantId, req.body, idempotencyKey);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'MEMBER_CREATED',
+                    memberId: member?.id,
+                    memberNo: member?.memberNo,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
+                io.emit('coop_member_update', broadcastPayload);
+            }
+
             reply.code(201).send(member);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -135,10 +150,11 @@ export default async function memberRoutes(fastify: any) {
         }
     });
 
-    // POST /members/bulk-create
+    // POST /members/bulk-create (dengan Idempotency Key Guard & Realtime Broadcast)
     fastify.post('/bulk-create', { preHandler: [requireCapability('cooperative.members.create')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const { type, ids } = req.body as { type: 'STUDENT' | 'TEACHER'; ids: string[] };
             
             if (type !== 'STUDENT' && type !== 'TEACHER') {
@@ -149,7 +165,21 @@ export default async function memberRoutes(fastify: any) {
                 return reply.code(400).send({ message: 'Payload ids harus berupa array yang tidak kosong' });
             }
 
-            const results = await MemberService.createBulkMembers(tenantId, type, ids);
+            const results = await MemberService.createBulkMembers(tenantId, type, ids, idempotencyKey);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'MEMBERS_BULK_CREATED',
+                    count: ids.length,
+                    memberType: type,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
+                io.emit('coop_member_update', broadcastPayload);
+            }
+
             return results;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -162,6 +192,19 @@ export default async function memberRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const member = await MemberService.updateMember(req.params.id, tenantId, req.body);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'MEMBER_UPDATED',
+                    memberId: req.params.id,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
+                io.emit('coop_member_update', broadcastPayload);
+            }
+
             return member;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -186,6 +229,19 @@ export default async function memberRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const payout = await MemberService.terminateMember(req.params.id, tenantId, req.user?.id);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'MEMBER_TERMINATED',
+                    memberId: req.params.id,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
+                io.emit('coop_member_update', broadcastPayload);
+            }
+
             return payout;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -204,6 +260,19 @@ export default async function memberRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             await MemberService.deleteMember(req.params.id, tenantId);
+
+            // Broadcast event realtime ke WebSocket klien
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const broadcastPayload = {
+                    type: 'MEMBER_DELETED',
+                    memberId: req.params.id,
+                    timestamp: new Date().toISOString()
+                };
+                io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
+                io.emit('coop_member_update', broadcastPayload);
+            }
+
             reply.code(204).send();
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
