@@ -22,6 +22,23 @@ export interface CreateShuPeriodDto {
     notes?: string;
 }
 
+// In-Memory Idempotency Cache (5 menit TTL) untuk mencegah duplicate calculation / duplicate distribution
+const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of idempotencyCache.entries()) {
+        if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+
+// In-Flight Mutex Locks per periodId
+const distributionLocks = new Set<string>();
+const calculationLocks = new Set<string>();
+
 export class ShuService {
 
     // ─── KONFIGURASI ─────────────────────────────────────────────────────────
@@ -177,14 +194,25 @@ export class ShuService {
      *     - jasaTransaksi  = (volumeGabungan_X / totalVolumeGabungan_semua) × (totalSHU × porsiJasaTransaksi%)
      *  6. Simpan ShuAllocation per anggota
      */
-    static async calculateShu(periodId: string, tenantId: string) {
-        const period = await prisma.shuPeriod.findFirst({
-            where: { id: periodId, tenantId },
-        });
-        if (!period) throw new Error('Periode SHU tidak ditemukan.');
-        if (period.status === 'APPROVED' || period.status === 'DISTRIBUTED') {
-            throw new Error('Periode SHU sudah disetujui/didistribusikan. Tidak bisa dikalkulasi ulang.');
+    static async calculateShu(periodId: string, tenantId: string, idempotencyKey?: string) {
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            appLogger.info({ idempotencyKey, periodId }, '[SHU] Returning cached calculation result');
+            return idempotencyCache.get(idempotencyKey)!.data;
         }
+
+        if (calculationLocks.has(periodId)) {
+            throw new Error('Kalkulasi SHU untuk periode ini sedang berjalan dalam proses lain. Mohon tunggu sejenak.');
+        }
+
+        calculationLocks.add(periodId);
+        try {
+            const period = await prisma.shuPeriod.findFirst({
+                where: { id: periodId, tenantId },
+            });
+            if (!period) throw new Error('Periode SHU tidak ditemukan.');
+            if (period.status === 'APPROVED' || period.status === 'DISTRIBUTED') {
+                throw new Error('Periode SHU sudah disetujui/didistribusikan. Tidak bisa dikalkulasi ulang.');
+            }
 
         // 1. Ambil data Laba-Rugi terkini untuk sinkronisasi otomatis sebelum kalkulasi
         const { ReportService } = require('../laporan/report.service');
@@ -366,22 +394,31 @@ export class ShuService {
         const uniqueBorrowerIds = Array.from(new Set(loansInPeriod.map(l => l.memberId)));
         const anggotaMeminjam = uniqueBorrowerIds.length;
 
-        return {
-            calculated: validAllocations.length,
-            skipped: allocations.length - validAllocations.length, // anggota dengan SHU = 0
-            totalShuDistributed,
-            summary: {
-                poolJasaModal: Math.round(poolJasaModal),
-                poolJasaTransaksi: Math.round(poolJasaTransaksi),
-                totalVolumeDeposit: Math.round(Array.from(depositPerMember.values()).reduce((a, b) => a + b, 0)),
-                totalVolumePinjaman: Math.round(Array.from(pinjamanPerMember.values()).reduce((a, b) => a + b, 0)),
-                totalVolumeBelanja: Math.round(Array.from(belanjaPerMember.values()).reduce((a, b) => a + b, 0)),
-                totalVolumeGabungan: Math.round(totalTransaksiGabungan),
-                anggotaMemilikiSimpananModal: members.filter(m => m.savings.length > 0).length,
-                anggotaBerpartisipasiTransaksi: allMemberIds.length,
-                anggotaMeminjam,
+            const result = {
+                calculated: validAllocations.length,
+                skipped: allocations.length - validAllocations.length, // anggota dengan SHU = 0
+                totalShuDistributed,
+                summary: {
+                    poolJasaModal: Math.round(poolJasaModal),
+                    poolJasaTransaksi: Math.round(poolJasaTransaksi),
+                    totalVolumeDeposit: Math.round(Array.from(depositPerMember.values()).reduce((a, b) => a + b, 0)),
+                    totalVolumePinjaman: Math.round(Array.from(pinjamanPerMember.values()).reduce((a, b) => a + b, 0)),
+                    totalVolumeBelanja: Math.round(Array.from(belanjaPerMember.values()).reduce((a, b) => a + b, 0)),
+                    totalVolumeGabungan: Math.round(totalTransaksiGabungan),
+                    anggotaMemilikiSimpananModal: members.filter(m => m.savings.length > 0).length,
+                    anggotaBerpartisipasiTransaksi: allMemberIds.length,
+                    anggotaMeminjam,
+                }
+            };
+
+            if (idempotencyKey) {
+                idempotencyCache.set(idempotencyKey, { data: result, timestamp: Date.now() });
             }
-        };
+
+            return result;
+        } finally {
+            calculationLocks.delete(periodId);
+        }
     }
 
     /** Sinkronisasi ulang data Laba-Rugi terbaru ke periode SHU */
@@ -426,49 +463,73 @@ export class ShuService {
     }
 
     /** Bendahara mendistribusikan SHU ke rekening Sukarela masing-masing anggota */
-    static async distributeShu(periodId: string, tenantId: string) {
-        const period = await prisma.shuPeriod.findFirst({ where: { id: periodId, tenantId } });
-        if (!period) throw new Error('Periode SHU tidak ditemukan.');
-        if (period.status !== 'APPROVED') {
-            throw new Error('SHU harus disetujui Ketua sebelum dapat didistribusikan.');
+    static async distributeShu(periodId: string, tenantId: string, idempotencyKey?: string) {
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            appLogger.info({ idempotencyKey, periodId }, '[SHU] Returning cached distribution result');
+            return idempotencyCache.get(idempotencyKey)!.data;
         }
 
-        const allocations = await prisma.shuAllocation.findMany({
-            where: { periodId, status: 'PENDING' },
-            include: {
-                Member: {
-                    include: {
-                        savings: {
-                            include: { category: { select: { code: true } } },
+        if (distributionLocks.has(periodId)) {
+            throw new Error('Distribusi SHU untuk periode ini sedang diproses. Mohon jangan mengirim permintaan ganda.');
+        }
+
+        distributionLocks.add(periodId);
+        try {
+            const period = await prisma.shuPeriod.findFirst({ where: { id: periodId, tenantId } });
+            if (!period) throw new Error('Periode SHU tidak ditemukan.');
+            if (period.status === 'DISTRIBUTED') {
+                return { distributed: 0, totalMembers: 0, message: 'SHU periode ini sudah selesai didistribusikan sebelumnya.' };
+            }
+            if (period.status !== 'APPROVED') {
+                throw new Error('SHU harus disetujui Ketua sebelum dapat didistribusikan.');
+            }
+
+            const allocations = await prisma.shuAllocation.findMany({
+                where: { periodId, status: 'PENDING' },
+                include: {
+                    Member: {
+                        include: {
+                            savings: {
+                                include: { category: { select: { code: true } } },
+                            },
                         },
                     },
                 },
-            },
-        });
+            });
 
-        // Dapatkan kategori SUKARELA untuk tenant
-        const sukarela = await prisma.savingCategory.findFirst({
-            where: { tenantId, code: 'SUKARELA', isActive: true },
-        });
+            // Dapatkan kategori SUKARELA untuk tenant
+            const sukarela = await prisma.savingCategory.findFirst({
+                where: { tenantId, code: 'SUKARELA', isActive: true },
+            });
 
-        let distributed = 0;
-        for (const alloc of allocations) {
-            if (Number(alloc.totalShu) <= 0) continue;
+            let distributed = 0;
+            for (const alloc of allocations) {
+                if (Number(alloc.totalShu) <= 0) continue;
 
-            // Cari rekening sukarela anggota, buat jika belum ada
-            let savingAkun = alloc.Member.savings.find(s => s.category.code === 'SUKARELA');
-            if (!savingAkun && sukarela) {
-                savingAkun = await prisma.saving.create({
-                    data: { memberId: alloc.memberId, categoryId: sukarela.id, amount: 0 },
-                    include: { category: { select: { code: true } } },
-                }) as any;
-            }
+                // Cari rekening sukarela anggota, buat jika belum ada
+                let savingAkun = alloc.Member.savings.find(s => s.category.code === 'SUKARELA');
+                if (!savingAkun && sukarela) {
+                    savingAkun = await prisma.saving.create({
+                        data: { memberId: alloc.memberId, categoryId: sukarela.id, amount: 0 },
+                        include: { category: { select: { code: true } } },
+                    }) as any;
+                }
 
-            if (savingAkun) {
-                    // Hitung total SHU dalam batch ini untuk journal entry
+                if (savingAkun) {
                     const shuAmount = Number(alloc.totalShu);
+                    let updateSuccess = false;
 
                     await prisma.$transaction(async (tx) => {
+                        // Atomic Multi-Layer Financial Defense:
+                        // Hanya update alokasi jika status masih murni PENDING di basis data
+                        const updated = await tx.shuAllocation.updateMany({
+                            where: { id: alloc.id, status: 'PENDING' },
+                            data: { status: 'DISTRIBUTED', distributedAt: new Date(), distributedTo: 'SAVINGS' },
+                        });
+
+                        // Jika alokasi sudah diproses oleh thread/request paralel, lewati agar tidak terjadi saldo ganda
+                        if (updated.count === 0) return;
+
                         // Tambah saldo sukarela
                         await tx.saving.update({
                             where: { id: savingAkun!.id },
@@ -481,16 +542,14 @@ export class ShuService {
                                 savingId: savingAkun!.id,
                                 amount: shuAmount,
                                 type: 'INTEREST',
-                                description: `SHU Tahun ${period.year}`,
+                                description: `SHU Tahun ${period.year} [IDEM:${alloc.id}]`,
                             },
                         });
 
-                        // Update alokasi status
-                        await tx.shuAllocation.update({
-                            where: { id: alloc.id },
-                            data: { status: 'DISTRIBUTED', distributedAt: new Date(), distributedTo: 'SAVINGS' },
-                        });
+                        updateSuccess = true;
                     });
+
+                    if (!updateSuccess) continue;
 
                     // Catat Jurnal Akuntansi Distribusi SHU (Double-Entry):
                     // Debit  3010 (Ekuitas Koperasi) — SHU keluar dari ekuitas koperasi
@@ -513,50 +572,58 @@ export class ShuService {
 
                     distributed++;
                 }
-        }
-
-        // ─── [Jurnal Alokasi SHU Non-Anggota] ───────────────────────────────
-        try {
-            const config = await this.getConfig(tenantId);
-            const totalShu = Number(period.totalShu);
-            
-            const porsiCadangan = Number(config.porsiCadangan);
-            const porsiPengurus = Number(config.porsiPengurus);
-            const porsiSosial = Number(config.porsiSosial);
-            const porsiPembangunan = Number(config.porsiPembangunan);
-
-            const cadanganAmount = Math.round(totalShu * (porsiCadangan / 100));
-            const pengurusAmount = Math.round(totalShu * (porsiPengurus / 100));
-            const sosialAmount = Math.round(totalShu * (porsiSosial / 100));
-            const pembangunanAmount = Math.round(totalShu * (porsiPembangunan / 100));
-            
-            const totalNonMemberAlloc = cadanganAmount + pengurusAmount + sosialAmount + pembangunanAmount;
-
-            if (totalNonMemberAlloc > 0) {
-                const { AccountingService } = require('../laporan/accounting.service');
-                await AccountingService.createJournalEntry(
-                    tenantId,
-                    `Alokasi SHU Non-Anggota Tahun ${period.year} (Cadangan, Pengurus, Sosial, Pembangunan)`,
-                    `SHU-NONMEM-${period.year}-${period.id.slice(-8).toUpperCase()}`,
-                    [
-                        { accountCode: '3010', type: 'DEBIT',  amount: totalNonMemberAlloc },
-                        { accountCode: '3020', type: 'CREDIT', amount: cadanganAmount },
-                        { accountCode: '2030', type: 'CREDIT', amount: pengurusAmount },
-                        { accountCode: '2040', type: 'CREDIT', amount: sosialAmount },
-                        { accountCode: '2050', type: 'CREDIT', amount: pembangunanAmount },
-                    ]
-                );
             }
-        } catch (acctErr) {
-            console.warn('[SHU] Gagal mencatat jurnal alokasi non-anggota:', acctErr);
+
+            // ─── [Jurnal Alokasi SHU Non-Anggota] ───────────────────────────────
+            try {
+                const config = await this.getConfig(tenantId);
+                const totalShu = Number(period.totalShu);
+                
+                const porsiCadangan = Number(config.porsiCadangan);
+                const porsiPengurus = Number(config.porsiPengurus);
+                const porsiSosial = Number(config.porsiSosial);
+                const porsiPembangunan = Number(config.porsiPembangunan);
+
+                const cadanganAmount = Math.round(totalShu * (porsiCadangan / 100));
+                const pengurusAmount = Math.round(totalShu * (porsiPengurus / 100));
+                const sosialAmount = Math.round(totalShu * (porsiSosial / 100));
+                const pembangunanAmount = Math.round(totalShu * (porsiPembangunan / 100));
+                
+                const totalNonMemberAlloc = cadanganAmount + pengurusAmount + sosialAmount + pembangunanAmount;
+
+                if (totalNonMemberAlloc > 0) {
+                    const { AccountingService } = require('../laporan/accounting.service');
+                    await AccountingService.createJournalEntry(
+                        tenantId,
+                        `Alokasi SHU Non-Anggota Tahun ${period.year} (Cadangan, Pengurus, Sosial, Pembangunan)`,
+                        `SHU-NONMEM-${period.year}-${period.id.slice(-8).toUpperCase()}`,
+                        [
+                            { accountCode: '3010', type: 'DEBIT',  amount: totalNonMemberAlloc },
+                            { accountCode: '3020', type: 'CREDIT', amount: cadanganAmount },
+                            { accountCode: '2030', type: 'CREDIT', amount: pengurusAmount },
+                            { accountCode: '2040', type: 'CREDIT', amount: sosialAmount },
+                            { accountCode: '2050', type: 'CREDIT', amount: pembangunanAmount },
+                        ]
+                    );
+                }
+            } catch (acctErr) {
+                console.warn('[SHU] Gagal mencatat jurnal alokasi non-anggota:', acctErr);
+            }
+
+            await prisma.shuPeriod.update({
+                where: { id: periodId },
+                data: { status: 'DISTRIBUTED' },
+            });
+
+            const result = { distributed, totalMembers: allocations.length };
+            if (idempotencyKey) {
+                idempotencyCache.set(idempotencyKey, { data: result, timestamp: Date.now() });
+            }
+
+            return result;
+        } finally {
+            distributionLocks.delete(periodId);
         }
-
-        await prisma.shuPeriod.update({
-            where: { id: periodId },
-            data: { status: 'DISTRIBUTED' },
-        });
-
-        return { distributed, totalMembers: allocations.length };
     }
 
     /** Riwayat SHU untuk anggota (self view) */

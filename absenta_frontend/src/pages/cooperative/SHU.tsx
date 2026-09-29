@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useSocket } from '../../hooks/useSocket';
 
 const hardeningModuleKey = 'coop_shu';
 
@@ -249,6 +250,28 @@ const SHUPage: React.FC = React.memo(() => {
     }
   }, [selectedPeriodId, fetchPeriodDetail]);
 
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Sinkronisasi pembaruan kalkulasi/distribusi SHU & saldo simpanan secara realtime
+  useEffect(() => {
+    const handleShuUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
+      if (selectedPeriodId) {
+        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', selectedPeriodId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['koperasi-shu-my-history'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+    };
+
+    subscribe('coop_shu_update', handleShuUpdate);
+    subscribe('coop_saving_update', handleShuUpdate);
+    return () => {
+      unsubscribe('coop_shu_update', handleShuUpdate);
+      unsubscribe('coop_saving_update', handleShuUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient, selectedPeriodId]);
+
   // Config Form Submit
   const handleConfigSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,7 +315,10 @@ const SHUPage: React.FC = React.memo(() => {
     if (!selectedPeriodId) return;
     try {
       toast.loading('Mengkalkulasi alokasi SHU anggota...', { id: 'calc-shu' });
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/calculate`);
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/calculate`, {}, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
       if (res.data?.success) {
         toast.success('Kalkulasi SHU selesai!', { id: 'calc-shu' });
         fetchPeriodDetail(selectedPeriodId);
@@ -348,7 +374,10 @@ const SHUPage: React.FC = React.memo(() => {
     if (!selectedPeriodId) return;
     try {
       toast.loading('Mendistribusikan SHU ke simpanan sukarela...', { id: 'dist-shu' });
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/distribute`);
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/distribute`, {}, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
       if (res.data?.success) {
         toast.success('SHU sukses didistribusikan ke tabungan anggota!', { id: 'dist-shu' });
         fetchPeriodDetail(selectedPeriodId);

@@ -5,6 +5,21 @@ import { ShuService } from './shu.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 
 export async function shuRoutes(fastify: any) {
+    const broadcastCoopShu = (req: any, type: string, payload: any = {}) => {
+        const io = req.server?.io || fastify.io;
+        if (io) {
+            const broadcastPayload = {
+                type,
+                ...payload,
+                timestamp: new Date().toISOString()
+            };
+            if (req.tenantId) {
+                io.to(`tenant:${req.tenantId}`).emit('coop_shu_update', broadcastPayload);
+            }
+            io.emit('coop_shu_update', broadcastPayload);
+        }
+    };
+
     // ── Konfigurasi SHU ────────────────────────────────────────────────────
 
     // GET /cooperative/shu/config
@@ -20,6 +35,7 @@ export async function shuRoutes(fastify: any) {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
         const data = await ShuService.updateConfig(req.tenantId, req.body);
+        broadcastCoopShu(req, 'CONFIG_UPDATED');
         return reply.send({ success: true, data });
     });
 
@@ -38,6 +54,7 @@ export async function shuRoutes(fastify: any) {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
         const data = await ShuService.createPeriod(req.tenantId, req.body);
+        broadcastCoopShu(req, 'PERIOD_CREATED', { periodId: data.id, year: data.year });
         return reply.code(201).send({ success: true, data });
     });
 
@@ -55,9 +72,10 @@ export async function shuRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             await ShuService.deletePeriod(req.params.id, req.tenantId);
+            broadcastCoopShu(req, 'PERIOD_DELETED', { periodId: req.params.id });
             return reply.send({ success: true, message: 'Periode SHU berhasil dihapus' });
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             return reply.code(400).send({ success: false, message: error.message });
         }
     });
@@ -68,9 +86,10 @@ export async function shuRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const data = await ShuService.syncPeriodFinancials(req.params.id, req.tenantId);
+            broadcastCoopShu(req, 'PERIOD_SYNCED', { periodId: req.params.id });
             return reply.send({ success: true, data });
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             return reply.code(400).send({ success: false, message: error.message });
         }
     });
@@ -80,10 +99,12 @@ export async function shuRoutes(fastify: any) {
         preHandler: requireCapability('cooperative.shu.calculate'),
     }, async (req: any, reply: any) => {
         try {
-            const data = await ShuService.calculateShu(req.params.id, req.tenantId);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
+            const data = await ShuService.calculateShu(req.params.id, req.tenantId, idempotencyKey);
+            broadcastCoopShu(req, 'PERIOD_CALCULATED', { periodId: req.params.id });
             return reply.send({ success: true, data });
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             if (error.message?.startsWith('SHU_RESTRICTION:')) {
                 // Ambil pesan bersih dari error bisnis
                 const cleanMessage = error.message.replace(/^SHU_RESTRICTION:NEGATIVE:\s*/, '');
@@ -99,6 +120,7 @@ export async function shuRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         const userId = String(req.user?.id ?? '');
         const data = await ShuService.approvePeriod(req.params.id, req.tenantId, userId);
+        broadcastCoopShu(req, 'PERIOD_APPROVED', { periodId: req.params.id });
         return reply.send({ success: true, data });
     });
 
@@ -106,8 +128,31 @@ export async function shuRoutes(fastify: any) {
     fastify.post('/shu/periods/:id/distribute', {
         preHandler: requireCapability('cooperative.savings.deposit'),
     }, async (req: any, reply: any) => {
-        const data = await ShuService.distributeShu(req.params.id, req.tenantId);
-        return reply.send({ success: true, data });
+        try {
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
+            const data = await ShuService.distributeShu(req.params.id, req.tenantId, idempotencyKey);
+            
+            // Broadcast event SHU dan perubahan saldo Simpanan ke seluruh klien WebSocket
+            broadcastCoopShu(req, 'SHU_DISTRIBUTED', { periodId: req.params.id, distributed: data.distributed });
+            
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const savingBroadcast = {
+                    type: 'SHU_DIVIDEND_DISTRIBUTED',
+                    periodId: req.params.id,
+                    timestamp: new Date().toISOString()
+                };
+                if (req.tenantId) {
+                    io.to(`tenant:${req.tenantId}`).emit('coop_saving_update', savingBroadcast);
+                }
+                io.emit('coop_saving_update', savingBroadcast);
+            }
+
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative route error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
     });
 
     // ── Riwayat SHU Anggota ───────────────────────────────────────────────
