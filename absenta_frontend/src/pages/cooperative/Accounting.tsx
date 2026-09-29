@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { TabSwitcher } from '../../components/ui/TabSwitcher';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { useSearchParams } from 'react-router-dom';
 import { generateImportTemplate } from '@/utils/export.utils';
 import { formatDate } from '@/utils/date.utils';
 import { SectionCard } from '../../components/ui/SectionCard';
@@ -59,8 +60,28 @@ const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
     const { subscription } = useAuthStore();
     const { isKoperasiFinance, isKoperasiHead, isAdmin, isSuperAdmin, can } = useCapabilities();
-    const isMobile = useIsMobile();
-    const [activeTab, setActiveTab] = useState<'journal' | 'balance' | 'payroll'>('journal');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const tabParam = searchParams.get('tab');
+    
+    const activeTab: 'journal' | 'balance' | 'payroll' = useMemo(() => {
+        if (tabParam === 'balance') return 'balance';
+        if (tabParam === 'payroll') return 'payroll';
+        return 'journal';
+    }, [tabParam]);
+
+    const handleTabChange = useCallback((tabId: string) => {
+        setSearchParams(prev => {
+            const next = new URLSearchParams(prev);
+            next.set('tab', tabId);
+            return next;
+        });
+    }, [setSearchParams]);
+
+    const tabOptions: TabOption[] = useMemo(() => [
+        { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
+        { id: 'balance', label: 'Neraca Saldo', icon: FileText },
+        { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
+    ], []);
     
     // Payroll recap states
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -508,7 +529,7 @@ const Accounting: React.FC = React.memo(() => {
                     </span>
                 </div>
 
-                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-3 gap-2 text-xs">
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                     <div>
                         <span className="text-[9px] text-slate-400 block font-medium">Debit</span>
                         <span className="font-semibold text-slate-700 dark:text-slate-200 text-[11px]">
@@ -559,13 +580,9 @@ const Accounting: React.FC = React.memo(() => {
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">
                 <TabSwitcher
-                    tabs={[
-                        { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
-                        { id: 'balance', label: 'Neraca Saldo', icon: FileText },
-                        { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
-                    ]}
+                    tabs={tabOptions}
                     activeTab={activeTab}
-                    onChange={(id) => setActiveTab(id as 'journal' | 'balance' | 'payroll')}
+                    onChange={handleTabChange}
                 />
 
                 {loading ? (
