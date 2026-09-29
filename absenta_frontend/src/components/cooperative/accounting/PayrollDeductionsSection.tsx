@@ -122,7 +122,7 @@ export const PayrollDeductionsSection: React.FC<PayrollDeductionsSectionProps> =
                 type="button"
                 aria-label="Posting Potongan Gaji"
                 onClick={() => setShowPostConfirm(true)}
-                disabled={payrollData.length === 0}
+                disabled={(payrollData?.length || 0) === 0}
                 className="h-9 px-4 text-xs font-black bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white transition-all rounded-xl shadow-md flex items-center gap-2 cursor-pointer"
               >
                 <CheckCircle2 size={13} /> Posting Potongan Gaji
@@ -173,8 +173,8 @@ export const PayrollDeductionsSection: React.FC<PayrollDeductionsSectionProps> =
         loading={loading}
         pagination={{
           currentPage: payrollPage,
-          totalPages: Math.ceil(payrollData.length / payrollLimit) || 1,
-          totalItems: payrollData.length,
+          totalPages: Math.ceil((payrollData?.length || 0) / payrollLimit) || 1,
+          totalItems: payrollData?.length || 0,
           itemsPerPage: payrollLimit,
           onPageChange: setPayrollPage,
           onLimitChange: setPayrollLimit
