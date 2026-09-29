@@ -29,6 +29,7 @@ const PayrollDeductionsSection = lazy(() => import('../../components/cooperative
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { useSocket } from '../../hooks/useSocket';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 
 // Lazy loaded component for performance optimization
@@ -163,15 +164,48 @@ const Accounting: React.FC = React.memo(() => {
         await payrollQuery.refetch();
     }, [payrollQuery]);
 
+    const { subscribe, unsubscribe, isConnected } = useSocket();
+
+    // Realtime synchronization across all cooperative financial operations
+    useEffect(() => {
+        if (!isConnected) return;
+
+        const handleRealtimeUpdate = () => {
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+        };
+
+        subscribe('coop_accounting_update', handleRealtimeUpdate);
+        subscribe('coop_pos_update', handleRealtimeUpdate);
+        subscribe('coop_saving_update', handleRealtimeUpdate);
+        subscribe('coop_loan_update', handleRealtimeUpdate);
+        subscribe('coop_shu_update', handleRealtimeUpdate);
+
+        return () => {
+            unsubscribe('coop_accounting_update', handleRealtimeUpdate);
+            unsubscribe('coop_pos_update', handleRealtimeUpdate);
+            unsubscribe('coop_saving_update', handleRealtimeUpdate);
+            unsubscribe('coop_loan_update', handleRealtimeUpdate);
+            unsubscribe('coop_shu_update', handleRealtimeUpdate);
+        };
+    }, [isConnected, queryClient, subscribe, unsubscribe]);
+
     const postPayrollMutation = useMutation({
         mutationFn: async (payload: { month: number; year: number }) => {
-            const res = await api.post('/cooperative/reports/payroll-deductions/post', payload);
+            const res = await api.post('/cooperative/reports/payroll-deductions/post', payload, {
+                headers: {
+                    'Idempotency-Key': crypto.randomUUID()
+                }
+            });
             return res.data;
         },
         onSuccess: () => {
             toast.success('Potongan gaji massal berhasil diposting!');
             setShowPostConfirm(false);
             queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
         },
         onError: (e: unknown) => {
             console.error(e);
@@ -187,13 +221,19 @@ const Accounting: React.FC = React.memo(() => {
 
     const cancelPayrollMutation = useMutation({
         mutationFn: async (payload: { month: number; year: number }) => {
-            const res = await api.post('/cooperative/reports/payroll-deductions/cancel', payload);
+            const res = await api.post('/cooperative/reports/payroll-deductions/cancel', payload, {
+                headers: {
+                    'Idempotency-Key': crypto.randomUUID()
+                }
+            });
             return res.data;
         },
         onSuccess: () => {
             toast.success('Posting potongan gaji massal berhasil dibatalkan!');
             setShowCancelConfirm(false);
             queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
         },
         onError: (e: unknown) => {
             console.error(e);

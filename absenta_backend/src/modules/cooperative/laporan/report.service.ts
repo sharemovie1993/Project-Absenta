@@ -5,6 +5,22 @@ import { prisma } from '../../../utils/prisma';
 import { AccountType, JournalType } from '@prisma/client';
 import { AccountingService } from './accounting.service';
 
+// In-Memory Idempotency Cache (5 menit TTL) untuk bulk payroll posting & cancellation
+const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of idempotencyCache.entries()) {
+        if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+
+// In-Flight Payroll Mutex Lock per tenant & period
+const payrollLocks = new Set<string>();
+
 export class ReportService {
     
     // Get Balance Sheet (Neraca)
@@ -365,14 +381,27 @@ export class ReportService {
     }
 
     /** Memproses posting potongan gaji bulanan secara massal */
-    static async postPayrollDeductions(tenantId: string, month: number, year: number, operatorUserId?: string) {
-        const reference = `PAYROLL-${tenantId}-${year}-${String(month).padStart(2, '0')}`;
-        
-        // 1. Cek apakah sudah pernah diposting
-        const alreadyPosted = await prisma.journal.findFirst({ where: { reference, tenantId } });
-        if (alreadyPosted) {
-            throw new Error('Potongan gaji untuk periode ini sudah pernah diposting.');
+    static async postPayrollDeductions(tenantId: string, month: number, year: number, operatorUserId?: string, idempotencyKey?: string) {
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            appLogger.info({ idempotencyKey, tenantId, month, year }, '[PAYROLL] Returning cached post result');
+            return idempotencyCache.get(idempotencyKey)!.data;
         }
+
+        const lockKey = `${tenantId}:${year}:${month}`;
+        if (payrollLocks.has(lockKey)) {
+            throw new Error(`Posting potongan gaji periode ${month}/${year} sedang berjalan dalam proses lain. Mohon tunggu.`);
+        }
+
+        payrollLocks.add(lockKey);
+
+        try {
+            const reference = `PAYROLL-${tenantId}-${year}-${String(month).padStart(2, '0')}`;
+            
+            // 1. Cek apakah sudah pernah diposting
+            const alreadyPosted = await prisma.journal.findFirst({ where: { reference, tenantId } });
+            if (alreadyPosted) {
+                throw new Error('Potongan gaji untuk periode ini sudah pernah diposting.');
+            }
 
         // 2. Ambil data potongan menggunakan logic yang sama
         const report = await this.getPayrollDeductionsReport(tenantId, month, year);
@@ -393,7 +422,7 @@ export class ReportService {
         }
 
         // 4. Jalankan posting dalam single database transaction
-        return prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
             let totalLoanPrincipal = 0;
             let totalLoanInterest = 0;
             const savingTotals: Record<string, number> = {};
@@ -443,7 +472,7 @@ export class ReportService {
                             savingId: saving.id,
                             amount,
                             type: 'DEPOSIT',
-                            description: `Setoran Potongan Gaji ${month}/${year}`
+                            description: `Setoran Potongan Gaji ${month}/${year} [${reference}]`
                         }
                     });
 
@@ -536,105 +565,138 @@ export class ReportService {
 
             return { success: true, grandTotal: grandTotalDeductions };
         });
+
+            if (idempotencyKey) {
+                idempotencyCache.set(idempotencyKey, { data: result, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+            }
+
+            return result;
+        } finally {
+            payrollLocks.delete(lockKey);
+        }
     }
 
     /** Membatalkan posting potongan gaji bulanan (Rollback) */
-    static async cancelPayrollDeductions(tenantId: string, month: number, year: number) {
-        const reference = `PAYROLL-${tenantId}-${year}-${String(month).padStart(2, '0')}`;
-        
-        // 1. Cek apakah postingan ada
-        const journal = await prisma.journal.findFirst({
-            where: { reference, tenantId },
-            include: { items: true }
-        });
-        if (!journal) {
-            throw new Error('Data posting potongan gaji untuk periode ini tidak ditemukan.');
+    static async cancelPayrollDeductions(tenantId: string, month: number, year: number, operatorUserId?: string, idempotencyKey?: string) {
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            appLogger.info({ idempotencyKey, tenantId, month, year }, '[PAYROLL] Returning cached cancel result');
+            return idempotencyCache.get(idempotencyKey)!.data;
         }
 
-        // 2. Ambil data potongan untuk mengetahui siapa saja yang perlu di-revert
-        const report = await this.getPayrollDeductionsReport(tenantId, month, year);
+        const lockKey = `${tenantId}:${year}:${month}`;
+        if (payrollLocks.has(lockKey)) {
+            throw new Error(`Operasi potongan gaji periode ${month}/${year} sedang berjalan dalam proses lain. Mohon tunggu.`);
+        }
 
-        return prisma.$transaction(async (tx) => {
-            // A. Revert Simpanan & Hapus Transaksi Simpanan
-            for (const item of report.data) {
-                const member = await tx.member.findFirst({
-                    where: { memberNo: item.memberNo, tenantId }
-                });
-                if (!member) continue;
+        payrollLocks.add(lockKey);
 
-                for (const [catCode, amount] of Object.entries(item.savings)) {
-                    if (amount <= 0) continue;
-
-                    // Cari rekening simpanan
-                    const saving = await tx.saving.findFirst({
-                        where: { memberId: member.id, category: { code: catCode } }
-                    });
-                    if (saving) {
-                        // Cari transaksi setoran potongan gaji untuk periode ini
-                        const savingTx = await tx.savingTransaction.findFirst({
-                            where: {
-                                savingId: saving.id,
-                                amount,
-                                type: 'DEPOSIT',
-                                description: `Setoran Potongan Gaji ${month}/${year}`
-                            }
-                        });
-
-                        if (savingTx) {
-                            // Kurangi saldo
-                            await tx.saving.update({
-                                where: { id: saving.id },
-                                data: { amount: { decrement: amount } }
-                            });
-                            // Hapus transaksi simpanan
-                            await tx.savingTransaction.delete({
-                                where: { id: savingTx.id }
-                            });
-                        }
-                    }
-                }
-
-                // B. Revert Pinjaman (Ubah status angsuran kembali ke UNPAID)
-                if (item.loan.installmentNo && (item.loan.pokok > 0 || item.loan.jasa > 0)) {
-                    const installments = await tx.installment.findMany({
-                        where: {
-                            loan: { memberId: member.id, status: { in: ['APPROVED', 'PAID'] } },
-                            status: 'PAID'
-                        },
-                        include: { loan: true }
-                    });
-
-                    const targetInstallment = installments.find(inst => {
-                        if (!inst.dueDate) return false;
-                        const d = new Date(inst.dueDate);
-                        return (d.getMonth() + 1) === month && d.getFullYear() === year;
-                    });
-
-                    if (targetInstallment) {
-                        // Set status kembali ke UNPAID
-                        await tx.installment.update({
-                            where: { id: targetInstallment.id },
-                            data: { status: 'UNPAID', paidDate: null }
-                        });
-
-                        // Kembalikan status loan ke APPROVED jika sebelumnya lunas
-                        if (targetInstallment.loan.status === 'PAID') {
-                            await tx.loan.update({
-                                where: { id: targetInstallment.loanId },
-                                data: { status: 'APPROVED' }
-                            });
-                        }
-                    }
-                }
+        try {
+            const reference = `PAYROLL-${tenantId}-${year}-${String(month).padStart(2, '0')}`;
+            
+            // 1. Cek apakah postingan ada
+            const journal = await prisma.journal.findFirst({
+                where: { reference, tenantId },
+                include: { items: true }
+            });
+            if (!journal) {
+                throw new Error('Data posting potongan gaji untuk periode ini tidak ditemukan.');
             }
 
-            // C. Hapus Jurnal & Jurnal Items (akan di-cascade delete)
-            await tx.journal.delete({
-                where: { id: journal.id }
+            // 2. Ambil data potongan untuk mengetahui siapa saja yang perlu di-revert
+            const report = await this.getPayrollDeductionsReport(tenantId, month, year);
+
+            const result = await prisma.$transaction(async (tx) => {
+                // A. Revert Simpanan & Hapus Transaksi Simpanan
+                for (const item of report.data) {
+                    const member = await tx.member.findFirst({
+                        where: { memberNo: item.memberNo, tenantId }
+                    });
+                    if (!member) continue;
+
+                    for (const [catCode, amount] of Object.entries(item.savings)) {
+                        if (amount <= 0) continue;
+
+                        // Cari rekening simpanan
+                        const saving = await tx.saving.findFirst({
+                            where: { memberId: member.id, category: { code: catCode } }
+                        });
+                        if (saving) {
+                            // Cari transaksi setoran potongan gaji untuk periode ini
+                            const savingTx = await tx.savingTransaction.findFirst({
+                                where: {
+                                    savingId: saving.id,
+                                    amount,
+                                    type: 'DEPOSIT',
+                                    description: {
+                                        startsWith: `Setoran Potongan Gaji ${month}/${year}`
+                                    }
+                                }
+                            });
+
+                            if (savingTx) {
+                                // Kurangi saldo
+                                await tx.saving.update({
+                                    where: { id: saving.id },
+                                    data: { amount: { decrement: amount } }
+                                });
+                                // Hapus transaksi simpanan
+                                await tx.savingTransaction.delete({
+                                    where: { id: savingTx.id }
+                                });
+                            }
+                        }
+                    }
+
+                    // B. Revert Pinjaman (Ubah status angsuran kembali ke UNPAID)
+                    if (item.loan.installmentNo && (item.loan.pokok > 0 || item.loan.jasa > 0)) {
+                        const installments = await tx.installment.findMany({
+                            where: {
+                                loan: { memberId: member.id, status: { in: ['APPROVED', 'PAID'] } },
+                                status: 'PAID'
+                            },
+                            include: { loan: true }
+                        });
+
+                        const targetInstallment = installments.find(inst => {
+                            if (!inst.dueDate) return false;
+                            const d = new Date(inst.dueDate);
+                            return (d.getMonth() + 1) === month && d.getFullYear() === year;
+                        });
+
+                        if (targetInstallment) {
+                            // Set status kembali ke UNPAID
+                            await tx.installment.update({
+                                where: { id: targetInstallment.id },
+                                data: { status: 'UNPAID', paidDate: null }
+                            });
+
+                            // Kembalikan status loan ke APPROVED jika sebelumnya lunas
+                            if (targetInstallment.loan.status === 'PAID') {
+                                await tx.loan.update({
+                                    where: { id: targetInstallment.loanId },
+                                    data: { status: 'APPROVED' }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // C. Hapus Jurnal & Jurnal Items (akan di-cascade delete)
+                await tx.journal.delete({
+                    where: { id: journal.id }
+                });
+
+                return { success: true };
             });
 
-            return { success: true };
-        });
+            if (idempotencyKey) {
+                idempotencyCache.set(idempotencyKey, { data: result, expiresAt: Date.now() + IDEMPOTENCY_TTL });
+            }
+
+            return result;
+        } finally {
+            payrollLocks.delete(lockKey);
+        }
     }
 
     // =========================================================================

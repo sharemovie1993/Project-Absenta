@@ -61,6 +61,26 @@ export default async function reportRoutes(fastify: any) {
         return reply.send(report);
     });
 
+    const broadcastCoopAccounting = (req: any, type: string, payload: any = {}) => {
+        const io = req.server?.io || fastify.io;
+        if (io) {
+            const broadcastPayload = {
+                type,
+                ...payload,
+                timestamp: new Date().toISOString()
+            };
+            const tenantId = getTenantId(req);
+            if (tenantId) {
+                io.to(`tenant:${tenantId}`).emit('coop_accounting_update', broadcastPayload);
+                io.to(`tenant:${tenantId}`).emit('coop_saving_update', broadcastPayload);
+                io.to(`tenant:${tenantId}`).emit('coop_loan_update', broadcastPayload);
+            }
+            io.emit('coop_accounting_update', broadcastPayload);
+            io.emit('coop_saving_update', broadcastPayload);
+            io.emit('coop_loan_update', broadcastPayload);
+        }
+    };
+
     // POST /payroll-deductions/post
     fastify.post('/payroll-deductions/post', { preHandler: [requireCapability('cooperative.savings.deposit')] }, async (req: any, reply: any) => {
         try {
@@ -69,7 +89,9 @@ export default async function reportRoutes(fastify: any) {
             if (!month || !year) {
                 return reply.code(400).send({ message: 'Bulan dan tahun wajib diisi.' });
             }
-            const result = await ReportService.postPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
+            const result = await ReportService.postPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id, idempotencyKey);
+            broadcastCoopAccounting(req, 'PAYROLL_POSTED', { month: parseInt(month), year: parseInt(year), grandTotal: (result as any)?.grandTotal });
             return reply.send(result);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -86,7 +108,9 @@ export default async function reportRoutes(fastify: any) {
             if (!month || !year) {
                 return reply.code(400).send({ message: 'Bulan dan tahun wajib diisi.' });
             }
-            const result = await ReportService.cancelPayrollDeductions(tenantId, parseInt(month), parseInt(year));
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
+            const result = await ReportService.cancelPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id, idempotencyKey);
+            broadcastCoopAccounting(req, 'PAYROLL_CANCELLED', { month: parseInt(month), year: parseInt(year) });
             return reply.send(result);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
