@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
-import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight } from 'lucide-react';
+import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight, Calendar, Sliders, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -108,14 +109,40 @@ const SHUPage: React.FC = React.memo(() => {
     ]
   };
   
-  // Tentukan mode berdasarkan pathname URL (apakah di rute manajemen /manage)
-  const isManageMode = window.location.pathname.endsWith('/manage');
-  
   // Hak akses staff/pengurus koperasi untuk mengakses panel manajemen
-  const isCoopStaff = can('cooperative.shu.view.report');
-                      
-  const isOperator = isManageMode && isCoopStaff;
-  const isStudent = !isOperator;
+  const isCoopStaff = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.shu.view.report') || can('cooperative.shu.manage');
+  const isManageRoute = window.location.pathname.endsWith('/manage');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  // Tabs: 'periods' | 'config' | 'personal'
+  const activeTab: 'periods' | 'config' | 'personal' = useMemo(() => {
+    if (!isCoopStaff) return 'personal';
+    if (tabParam === 'personal') return 'personal';
+    if (tabParam === 'config') return 'config';
+    if (tabParam === 'periods') return 'periods';
+    if (isManageRoute) return 'periods';
+    return 'periods';
+  }, [isCoopStaff, tabParam, isManageRoute]);
+
+  const handleTabChange = useCallback((id: string) => {
+    setSelectedPeriodId(null);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (id === 'periods') {
+        next.delete('tab');
+      } else {
+        next.set('tab', id);
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const tabOptions: TabOption[] = useMemo(() => [
+    { id: 'periods', label: 'Periode SHU', icon: Calendar },
+    { id: 'config', label: 'Aturan Distribusi SHU', icon: Sliders },
+    { id: 'personal', label: 'SHU Saya', icon: Award },
+  ], []);
 
   // Pemisahan peran berdasarkan capabilities
   const canCalculate = can('cooperative.shu.calculate');
@@ -123,9 +150,6 @@ const SHUPage: React.FC = React.memo(() => {
   const canDistribute = can('cooperative.savings.deposit');
   const canManageShu = can('cooperative.shu.manage');
 
-  // Tabs for Admin
-  const [activeTab, setActiveTab] = useState<'periods' | 'config'>('periods');
-  
   // Selected Period Detail View
   const [selectedPeriodId, setSelectedPeriodId] = useState<string | null>(null);
   const [searchMember, setSearchMember] = useState('');
@@ -150,10 +174,10 @@ const SHUPage: React.FC = React.memo(() => {
         return 'non-member' as const;
       }
     },
-    enabled: !isOperator,
+    enabled: activeTab === 'personal',
     staleTime: 5 * 60 * 1000,
   });
-  const memberStatus = isOperator ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
+  const memberStatus = memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member');
 
   // Fetch all periods
   const periodsQuery = useQuery({
@@ -162,7 +186,7 @@ const SHUPage: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/shu/periods');
       return (res.data?.success ? res.data.data : []) as ShuPeriod[];
     },
-    enabled: isOperator,
+    enabled: isCoopStaff && activeTab === 'periods',
     staleTime: 5 * 60 * 1000,
   });
   const periods = periodsQuery.data || [];
@@ -188,7 +212,7 @@ const SHUPage: React.FC = React.memo(() => {
       }
       return null;
     },
-    enabled: isOperator,
+    enabled: isCoopStaff && (activeTab === 'config' || activeTab === 'periods'),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -215,7 +239,7 @@ const SHUPage: React.FC = React.memo(() => {
       const res = await api.get('/cooperative/shu/my-history');
       return (res.data?.success ? res.data.data : []) as MyShuHistory[];
     },
-    enabled: isStudent && memberStatus === 'member',
+    enabled: activeTab === 'personal' && memberStatus === 'member',
     staleTime: 5 * 60 * 1000,
   });
   const myHistory = myHistoryQuery.data || [];
@@ -424,27 +448,50 @@ const SHUPage: React.FC = React.memo(() => {
     );
   }, [config]);
 
-  // Render Member Area
-  if (isStudent) {
-    return (
-      <Suspense fallback={
-        <div className="flex justify-center items-center h-64">
-          <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
-        </div>
-      }>
-        <ShuMemberView
-          memberStatus={memberStatus}
-          myHistory={myHistory}
-          loadingHistory={loadingHistory}
-          hardeningModuleKey={hardeningModuleKey}
-          memberInstruction={memberInstruction}
-        />
-      </Suspense>
-    );
-  }
+  const layoutInfo = useMemo(() => {
+    if (activeTab === 'config') {
+      return {
+        title: "Aturan Distribusi SHU",
+        description: "Kelola konfigurasi persentase pembagian SHU sesuai AD/ART koperasi",
+        instruction: {
+          title: "Panduan Aturan Distribusi",
+          description: "Tentukan bobot persentase untuk masing-masing pos alokasi SHU.",
+          items: [
+            { text: "Total seluruh persentase (Jasa Modal, Jasa Transaksi, Cadangan, Pengurus, Sosial, Pembangunan) harus pas 100%." },
+            { text: "Aturan ini menjadi acuan rumus matematis saat bendahara menekan tombol 'Hitung Alokasi SHU'." }
+          ]
+        },
+        breadcrumbs: [
+          { label: 'Koperasi', path: '/cooperative' },
+          { label: 'SHU', path: '/cooperative/shu' },
+          { label: 'Aturan Distribusi', path: '/cooperative/shu?tab=config' }
+        ]
+      };
+    }
+    if (activeTab === 'personal' || !isCoopStaff) {
+      return {
+        title: "SHU Saya",
+        description: "Riwayat penerimaan pembagian Sisa Hasil Usaha (SHU) Koperasi",
+        instruction: memberInstruction,
+        breadcrumbs: [
+          { label: 'Koperasi', path: '/cooperative' },
+          { label: 'SHU Saya', path: '/cooperative/shu?tab=personal' }
+        ]
+      };
+    }
+    return {
+      title: "Manajemen SHU Koperasi",
+      description: "Kelola konfigurasi alokasi persentase dan rekapitulasi pembagian SHU tahunan",
+      instruction: adminInstruction,
+      breadcrumbs: [
+        { label: 'Koperasi', path: '/cooperative' },
+        { label: 'Manajemen SHU', path: '/cooperative/shu' }
+      ]
+    };
+  }, [activeTab, isCoopStaff, memberInstruction, adminInstruction]);
 
   // Render Period Detail View for Admin
-  if (selectedPeriodId && periodDetail) {
+  if (selectedPeriodId && periodDetail && isCoopStaff && activeTab === 'periods') {
     return (
       <Suspense fallback={
         <div className="flex justify-center items-center h-64">
@@ -470,7 +517,7 @@ const SHUPage: React.FC = React.memo(() => {
           handleApproveShu={handleApproveShu}
           handleDistributeShu={handleDistributeShu}
           setSelectedPeriodId={setSelectedPeriodId}
-          isOperator={isOperator}
+          isOperator={isCoopStaff}
           hardeningModuleKey={hardeningModuleKey}
           adminInstruction={adminInstruction}
         />
@@ -478,29 +525,59 @@ const SHUPage: React.FC = React.memo(() => {
     );
   }
 
-  
-
-  // Render Admin Layout (Period Lists & Configurations)
+  // Render Unified Layout
   return (
     <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen SHU">
       <AcademicPageLayout
-        title="Manajemen SHU Koperasi"
-        description="Kelola konfigurasi alokasi persentase dan rekapitulasi pembagian SHU tahunan"
+        title={layoutInfo.title}
+        description={layoutInfo.description}
         hardeningModuleKey={hardeningModuleKey}
-        breadcrumbs={breadcrumbs}
-        instruction={adminInstruction}
+        breadcrumbs={layoutInfo.breadcrumbs}
+        instruction={layoutInfo.instruction}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0">
-          {/* Tab Switcher */}
-          <div className="mb-6">
-            <TabSwitcher
-              options={tabOptions}
-              activeTab={activeTab}
-              onChange={(id) => setActiveTab(id as 'periods' | 'config')}
-            />
-          </div>
+          {/* Tab Switcher for Pengurus */}
+          {isCoopStaff && (
+            <div className="mb-6">
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeTab}
+                onChange={handleTabChange}
+              />
+            </div>
+          )}
 
-          {activeTab === 'periods' ? (
+          {activeTab === 'personal' ? (
+            <Suspense fallback={
+              <div className="flex justify-center items-center h-64">
+                <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+              </div>
+            }>
+              <ShuMemberView
+                memberStatus={memberStatus}
+                myHistory={myHistory}
+                loadingHistory={loadingHistory}
+                hardeningModuleKey={hardeningModuleKey}
+                memberInstruction={memberInstruction}
+                embedded={true}
+              />
+            </Suspense>
+          ) : activeTab === 'config' ? (
+            <Suspense fallback={
+              <div className="flex justify-center items-center h-64">
+                <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+              </div>
+            }>
+              <ShuRulesForm
+                config={config}
+                setConfig={setConfig}
+                handleConfigSubmit={handleConfigSubmit}
+                savingConfig={savingConfig}
+                sumConfig={sumConfig}
+                canManageShu={canManageShu}
+              />
+            </Suspense>
+          ) : (
         <div className="space-y-6 animate-in fade-in duration-300">
           {/* Card Panduan Alur Kerja SHU */}
           <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-900/50 dark:to-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl p-5 shadow-sm">
@@ -648,21 +725,6 @@ const SHUPage: React.FC = React.memo(() => {
             </SectionCard>
           )}
         </div>
-      ) : (
-        <Suspense fallback={
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
-          </div>
-        }>
-          <ShuRulesForm
-            config={config}
-            setConfig={setConfig}
-            handleConfigSubmit={handleConfigSubmit}
-            savingConfig={savingConfig}
-            sumConfig={sumConfig}
-            canManageShu={canManageShu}
-          />
-        </Suspense>
       )}
 
       <Suspense fallback={null}>
