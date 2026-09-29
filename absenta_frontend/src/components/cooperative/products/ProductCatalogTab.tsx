@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import api from '../../../lib/axiosInstance';
 import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../ui/Button';
@@ -7,7 +8,7 @@ import { Table, MobileDataList } from '../../ui';
 import type { Column } from '../../ui/Table';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import ConfirmDialog from '../../ui/ConfirmDialog';
-import { Plus, Edit, Trash, Search, Package, Upload, Filter, SlidersHorizontal } from 'lucide-react';
+import { Plus, Edit, Trash, Search, Package, Upload, Filter, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
 import { importDataFromExcel } from '../../../utils/import.utils';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
 import toast from 'react-hot-toast';
@@ -71,6 +72,22 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   const canCreate = user?.capabilities?.includes('cooperative.store.products.create') || false;
   const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
   const canDelete = user?.capabilities?.includes('cooperative.store.products.delete') || false;
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const viewParam = searchParams.get('view');
+  const viewMode: 'table' | 'grid' = viewParam === 'grid' ? 'grid' : 'table';
+
+  const setViewMode = useCallback((mode: 'table' | 'grid') => {
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      if (mode === 'grid') {
+        next.set('view', 'grid');
+      } else {
+        next.delete('view');
+      }
+      return next;
+    });
+  }, [setSearchParams]);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
@@ -521,8 +538,8 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
       ) : (
         <>
           {/* Desktop Search & Action Bar */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3 w-full sm:w-auto flex-1 max-w-xl">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3 w-full lg:w-auto flex-1 max-w-2xl">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input
@@ -543,10 +560,42 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
                   clearable
                 />
               </div>
+
+              {/* View Mode Switcher Toggle */}
+              <div className="flex items-center rounded-xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700/60 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('table')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    viewMode === 'table'
+                      ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                  title="Tampilan Tabel Inventori"
+                >
+                  <List size={14} />
+                  <span>Tabel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                    viewMode === 'grid'
+                      ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                  title="Tampilan Etalase Visual"
+                >
+                  <LayoutGrid size={14} />
+                  <span>Etalase</span>
+                </button>
+              </div>
             </div>
 
             {canCreate && (
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
                 <Button variant="outline" onClick={() => setImportOpen(true)} icon={<Upload size={15} />}>
                   Import Excel
                 </Button>
@@ -557,30 +606,181 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
             )}
           </div>
 
-          <Table 
-            columns={catalogColumns}
-            data={paginatedProducts} 
-            loading={loading}
-            emptyMessage={emptyStateContent}
-            sortBy={sortKey}
-            sortDirection={sortDirection}
-            onSort={(key) => {
-              if (sortKey === key) {
-                setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-              } else {
-                setSortKey(key);
-                setSortDirection('asc');
-              }
-            }}
-            pagination={{
-              currentPage,
-              totalPages,
-              onPageChange: setCurrentPage,
-              totalItems: filteredProducts.length,
-              itemsPerPage: limit,
-              onItemsPerPageChange: setLimit
-            }}
-          />
+          {viewMode === 'table' ? (
+            <Table 
+              columns={catalogColumns}
+              data={paginatedProducts} 
+              loading={loading}
+              emptyMessage={emptyStateContent}
+              sortBy={sortKey}
+              sortDirection={sortDirection}
+              onSort={(key) => {
+                if (sortKey === key) {
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortKey(key);
+                  setSortDirection('asc');
+                }
+              }}
+              pagination={{
+                currentPage,
+                totalPages,
+                onPageChange: setCurrentPage,
+                totalItems: filteredProducts.length,
+                itemsPerPage: limit,
+                onItemsPerPageChange: setLimit
+              }}
+            />
+          ) : (
+            <div>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 text-xs text-slate-400">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent mb-2" />
+                  Memuat etalase produk...
+                </div>
+              ) : filteredProducts.length === 0 ? (
+                emptyStateContent
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                    {paginatedProducts.map(product => {
+                      const isLowStock = product.stock <= 5 && product.stock > 0;
+                      const isOutOfStock = product.stock <= 0;
+                      const costNum = Number(product.costPrice || 0);
+                      const priceNum = Number(product.price || 0);
+                      const marginPct = costNum > 0 ? ((priceNum - costNum) / costNum) * 100 : 0;
+
+                      return (
+                        <div
+                          key={product.id}
+                          onClick={() => canUpdate && handleOpenProductModal(product)}
+                          className="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xs hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all cursor-pointer flex flex-col justify-between"
+                        >
+                          {/* Image Container */}
+                          <div className="relative w-full h-40 bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                            {product.imageUrl ? (
+                              <img
+                                src={product.imageUrl}
+                                alt={product.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xl border border-emerald-100 dark:border-emerald-900">
+                                {getInitials(product.name)}
+                              </div>
+                            )}
+
+                            {/* Category Badge */}
+                            {product.category && (
+                              <span className="absolute top-2.5 left-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/70 text-white backdrop-blur-xs">
+                                {product.category}
+                              </span>
+                            )}
+
+                            {/* Stock Badge */}
+                            <span className={cn(
+                              "absolute top-2.5 right-2.5 text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs",
+                              isOutOfStock
+                                ? "bg-rose-500/90 text-white"
+                                : isLowStock
+                                  ? "bg-amber-500/90 text-white"
+                                  : "bg-emerald-500/90 text-white"
+                            )}>
+                              {isOutOfStock ? 'Habis' : `${product.stock} ${product.unit || 'pcs'}`}
+                            </span>
+                          </div>
+
+                          {/* Body */}
+                          <div className="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+                            <div>
+                              <span className="text-[10px] font-mono text-slate-400 block truncate">
+                                {product.code || 'NO-CODE'}
+                              </span>
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 line-clamp-2 leading-snug group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                {product.name}
+                              </h4>
+                            </div>
+
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <span className="text-[10px] text-slate-400 block font-medium">Harga Jual</span>
+                              <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                                Rp {priceNum.toLocaleString('id-ID')}
+                              </p>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                                <span>Modal: Rp {costNum.toLocaleString('id-ID')}</span>
+                                <span className={marginPct >= 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
+                                  {marginPct > 0 ? `+${marginPct.toFixed(0)}%` : `${marginPct.toFixed(0)}%`}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Quick Action Footer */}
+                            {canUpdate && (
+                              <div className="flex items-center gap-1.5 pt-1">
+                                <Button
+                                  size="xs"
+                                  variant="outline"
+                                  className="w-full text-[11px] font-bold py-1 h-7"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenProductModal(product);
+                                  }}
+                                >
+                                  <Edit size={12} className="mr-1" />
+                                  Ubah
+                                </Button>
+                                {canDelete && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleProductDeleteClick(product.id);
+                                    }}
+                                    className="w-7 h-7 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800 flex items-center justify-center transition-colors"
+                                    title="Hapus Produk"
+                                  >
+                                    <Trash size={12} />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Grid Pagination Footer */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+                    <div>
+                      Menampilkan <span className="font-bold text-slate-800 dark:text-slate-200">{paginatedProducts.length}</span> dari <span className="font-bold text-slate-800 dark:text-slate-200">{filteredProducts.length}</span> produk
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage <= 1}
+                      >
+                        Sebelumnya
+                      </Button>
+                      <span className="font-bold px-2">
+                        Halaman {currentPage} dari {totalPages}
+                      </span>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage >= totalPages}
+                      >
+                        Selanjutnya
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
