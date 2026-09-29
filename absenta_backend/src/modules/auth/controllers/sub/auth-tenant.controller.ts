@@ -4,6 +4,7 @@ import { getDomainBases, getSmartFrontendBaseUrl } from '@/utils/url-helper';
 import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseClient';
 import { WireguardManager } from '@/services/wireguardManager';
 import { getJwtSecret } from '../../utils/auth-security.util';
+import { isOnPremiseScenario } from '@/utils/deployScenario';
 export { getJwtSecret };
 
 export const authTenantController = {
@@ -88,7 +89,7 @@ export const authTenantController = {
     }
   },
 async resolveTenantByHost(headers: any): Promise<any | null> {
-    const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+    const isSingleTenant = isOnPremiseScenario();
     if (isSingleTenant) {
       const singleTenant = await prisma.tenant.findFirst({
         where: { subdomain: { not: 'app' } }
@@ -296,7 +297,7 @@ async checkDomain(request: any, reply: any) {
       }
 
       // 2b. Bypass check if it matches local server's licensed subdomain in single-tenant mode
-      const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+      const isSingleTenant = isOnPremiseScenario();
       const licenseKey = process.env.LICENSE_KEY;
       if (isSingleTenant && licenseKey) {
         try {
@@ -365,7 +366,7 @@ async checkDomain(request: any, reply: any) {
   },
 async registrationPreset(_request: any, reply: any) {
     try {
-      const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+      const isSingleTenant = isOnPremiseScenario();
       const licenseKey = process.env.LICENSE_KEY;
 
       const tenantCount = await prisma.tenant.count({

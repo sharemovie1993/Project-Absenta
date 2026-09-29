@@ -363,7 +363,17 @@ async function start() {
 
     // ─── Sync License: hanya Master Instance 0 yang hit API, instance lain baca cache DB ───
     const { LicenseService } = await import('./infra/license/license.service');
+    const { getDeployScenario } = await import('./utils/deployScenario');
+    const currentScenario = getDeployScenario();
+
     if (isMasterInstance()) {
+      const scenarioLabel = currentScenario === 'saas-public'
+        ? 'SAAS-PUBLIC (Cloud VPS Multi-Tenant Platform)'
+        : (currentScenario === 'saas-local'
+          ? 'SAAS-LOCAL (Home/Office Multi-Tenant via EasyTunnel)'
+          : 'ONPREMISE (Dedicated School Appliance - Hybrid LAN & Online)');
+      console.log(`[Bootstrap] 🚀 Deployment Scenario: ${scenarioLabel}`);
+
       LicenseService.syncLicense().catch((err: any) => {
         console.warn('[License Startup Warning] Failed to sync license on startup:', err.message);
       });

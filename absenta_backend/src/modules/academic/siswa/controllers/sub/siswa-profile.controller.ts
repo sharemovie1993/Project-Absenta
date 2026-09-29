@@ -55,25 +55,51 @@ export const siswaProfileController = {
       }
 
       // Bidirectional Hydration: Ensure ekskul memberships are hydrated from AnggotaKegiatanEskul
-      if (!siswa.ekskul_1 && !siswa.ekskul_2) {
-        try {
-          const memberships = await prisma.anggotaKegiatanEskul.findMany({
-            where: {
-              tenant_id: tenantId,
-              SiswaAkademik: { siswa_id: siswa.id }
-            },
-            include: { JenisKegiatanMaster: true },
-            orderBy: { created_at: 'asc' }
-          });
-          if (memberships.length > 0) {
-            (siswa as any).ekskul_1 = memberships[0]?.JenisKegiatanMaster?.nama || null;
-            if (memberships.length > 1) {
-              (siswa as any).ekskul_2 = memberships[1]?.JenisKegiatanMaster?.nama || null;
-            }
-          }
-        } catch {
-          // Ignore
+      try {
+        const memberships = await prisma.anggotaKegiatanEskul.findMany({
+          where: {
+            tenant_id: tenantId,
+            SiswaAkademik: { siswa_id: siswa.id }
+          },
+          include: { JenisKegiatanMaster: true },
+          orderBy: { created_at: 'asc' }
+        });
+        const membershipEskuls = memberships
+          .map(m => m.JenisKegiatanMaster?.nama)
+          .filter((name): name is string => Boolean(name && name.trim().length > 0));
+
+        const combinedEskuls = Array.from(new Set([
+          siswa.ekskul_1,
+          siswa.ekskul_2,
+          ...membershipEskuls
+        ])).filter((name): name is string => Boolean(name && name.trim().length > 0));
+
+        (siswa as any).ekskuls = combinedEskuls;
+        if (!siswa.ekskul_1 && combinedEskuls[0]) {
+          (siswa as any).ekskul_1 = combinedEskuls[0];
         }
+        if (!siswa.ekskul_2 && combinedEskuls[1]) {
+          (siswa as any).ekskul_2 = combinedEskuls[1];
+        }
+      } catch {
+        // Ignore
+      }
+
+      // Hydrate Koperasi Member Status
+      try {
+        const coopMember = await prisma.member.findFirst({
+          where: {
+            tenantId,
+            OR: [
+              { siswaId: siswa.id },
+              { userId: userId }
+            ],
+            status: 'ACTIVE'
+          }
+        });
+        (siswa as any).is_anggota_koperasi = Boolean(coopMember);
+      } catch {
+        // Ignore
       }
 
       return reply.status(200).send({

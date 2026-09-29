@@ -100,6 +100,10 @@ export function useCapabilities() {
     const isKabeng =
       userPositions.includes('KABENG');
 
+    const isPembimbingPkl =
+      userPositions.includes('PEMBIMBING_PKL') ||
+      Boolean((user as any)?.guru_profile?.is_pembimbing_pkl || (user as any)?.is_pembimbing_pkl || (user as any)?.guru_profile?.active_pkl_count > 0);
+
     // ═══════════════════════════════════════════════════════════════════
     // LEVEL 4 & 5: MANAJEMEN MANAJERIAL & PIMPINAN EKSEKUTIF
     // ═══════════════════════════════════════════════════════════════════
@@ -142,11 +146,11 @@ export function useCapabilities() {
       isTUKeuangan,
       isTUKepegawaian,
       isTUSarpras,
-      isKoperasiStore: isKoperasi,
-      isKoperasiFinance: isKoperasi,
-      isKoperasiHead: isKoperasi,
-      isKoperasiSecretary: isKoperasi,
-      isKoperasiAuditor: isKoperasi,
+      isKoperasiStore,
+      isKoperasiFinance,
+      isKoperasiHead,
+      isKoperasiSecretary,
+      isKoperasiAuditor,
       isTU,
       isTUKepala,
       isTuHead: isTUKepala,      // canonical alias
@@ -157,6 +161,7 @@ export function useCapabilities() {
       isHomeroomTeacher: isWaliKelas, // canonical alias
       walikelasKelas: (user as any)?.walikelas_kelas || (user as any)?.guru_profile?.wali_kelas_di || null,
       walikelasKelasIds: (user as any)?.kelas_ids || ((user as any)?.guru_profile?.wali_kelas_di?.id ? [(user as any).guru_profile.wali_kelas_di.id] : []),
+      isPembimbingPkl,
       isBpbk,
       isPembinaEskul,
       isKaprog,

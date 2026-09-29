@@ -20,6 +20,19 @@ const MEMBER_NAME_INCLUDE = {
     User:  { select: { full_name: true } },
 };
 
+// In-memory idempotency cache (TTL: 5 menit)
+const idempotencyCache = new Map<string, { result: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+const cleanExpiredIdempotency = () => {
+    const now = Date.now();
+    for (const [key, val] of idempotencyCache.entries()) {
+        if (now - val.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+};
+
 export class SavingService {
 
     /** Ambil semua rekening simpanan dalam satu tenant */
@@ -113,7 +126,31 @@ export class SavingService {
         type: TransactionType,
         description?: string,
         operatorUserId?: string,
+        idempotencyKey?: string,
     ) {
+        // [GUARD 0: Idempotency Guard (Anti-Double-Submit)]
+        if (idempotencyKey) {
+            cleanExpiredIdempotency();
+            const cached = idempotencyCache.get(idempotencyKey);
+            if (cached) {
+                appLogger.info({ savingId, idempotencyKey }, 'coop.saving.idempotent_replay_cache');
+                return cached.result;
+            }
+
+            // Database fallback check jika server pernah restart
+            const existingTx = await prisma.savingTransaction.findFirst({
+                where: {
+                    savingId,
+                    description: { contains: `[IDEM:${idempotencyKey}]` }
+                }
+            });
+            if (existingTx) {
+                appLogger.info({ savingId, idempotencyKey }, 'coop.saving.idempotent_replay_db');
+                idempotencyCache.set(idempotencyKey, { result: existingTx, timestamp: Date.now() });
+                return existingTx;
+            }
+        }
+
         // [GUARD 1: Validasi amount]
         if (!amount || isNaN(amount) || amount <= 0) {
             throw new Error('Nominal transaksi harus lebih dari 0.');
@@ -170,9 +207,13 @@ export class SavingService {
                 );
             }
 
+            const txDescription = idempotencyKey 
+                ? (description ? `${description} [IDEM:${idempotencyKey}]` : `[IDEM:${idempotencyKey}]`)
+                : description;
+
             // 1. Catat SavingTransaction
             const transaction = await tx.savingTransaction.create({
-                data: { savingId, amount, type, description },
+                data: { savingId, amount, type, description: txDescription },
             });
 
             // 2. Update saldo (atomic increment/decrement)
@@ -240,6 +281,12 @@ export class SavingService {
 
             return transaction;
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { result: transactionResult, timestamp: Date.now() });
+        }
+
+        return transactionResult;
     }
 
     /** Detail satu rekening simpanan */

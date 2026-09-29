@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UserCheck, BookOpen, Users, ShieldCheck, Building, Briefcase, ShoppingCart, ClipboardList, User, Calendar, Clock, Home, MailCheck, HeartPulse, Scale, ScrollText, HeartHandshake, FileText, Trophy } from 'lucide-react';
+import { UserCheck, BookOpen, Users, ShieldCheck, Building, Briefcase, ShoppingCart, ClipboardList, User, Calendar, Clock, Home, MailCheck, HeartPulse, Scale, ScrollText, HeartHandshake, FileText, Trophy, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { useCapabilities } from '@/hooks/useCapabilities';
@@ -269,6 +269,17 @@ export const BottomNavigation: React.FC = React.memo(() => {
         isActive: (pathname, tabParam) => (pathname === '/dashboard' || pathname === '/dashboard/') && (!tabParam || tabParam === 'ringkasan')
       });
     }
+
+    // 🌐 Portal Aplikasi (Google Apps Launcher Style) - Mobile Bottom Nav
+    list.push({
+      id: 'portal',
+      label: 'Portal Aplikasi',
+      shortLabel: 'Portal',
+      icon: LayoutGrid,
+      badge: 'APPS',
+      targetPath: '/dashboard?tab=portal',
+      isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'portal'
+    });
 
     // 2. KBM & Absen (Guru Mapel Pendidik Aktif)
     if (!isKepsek && !isTuStaff && (!isAdminRole || isPendidik)) {

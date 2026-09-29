@@ -21,13 +21,36 @@ export default async function loanRoutes(fastify: any) {
     };
 
     // GET /loans
-    fastify.get('/', { preHandler: [requireCapability('cooperative.loans.view.list')] }, async (req: any, reply: any) => {
+    fastify.get('/', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.apply'])] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const user = req.user;
+
+            const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.view.list'], { user });
+            const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
+
+            const isPersonal = req.query?.personal === 'true' || req.query?.personal === true;
+            if (isPersonal || !isOperator) {
+                const loans = await LoanService.getLoansByUserId(tenantId, user.id);
+                return loans;
+            }
+
+            const loans = await LoanService.getLoans(tenantId);
+            return loans;
+        } catch (error) {
+            appLogger.error({ err: error }, 'Cooperative route error');
+            reply.status(500).send({ success: false, message: 'Failed to fetch loans'  });
+        }
+    });
+
+    // GET /loans/manage (Alias for operator view)
+    fastify.get('/manage', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.approve'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const loans = await LoanService.getLoans(tenantId);
             return loans;
         } catch (error) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             reply.status(500).send({ success: false, message: 'Failed to fetch loans'  });
         }
     });

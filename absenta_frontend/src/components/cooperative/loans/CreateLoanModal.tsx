@@ -177,13 +177,13 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex gap-3 justify-end">
+          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
-              className="rounded-xl text-xs font-bold text-slate-500"
+              className="w-full sm:w-auto rounded-xl text-xs font-bold text-slate-500 py-2.5 sm:py-2"
             >
               Batal
             </Button>
@@ -191,7 +191,7 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
               type="submit"
               disabled={submitLoading}
               size="sm"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md shadow-indigo-600/10"
             >
               {submitLoading ? 'Memproses...' : 'Kirim Pengajuan'}
             </Button>

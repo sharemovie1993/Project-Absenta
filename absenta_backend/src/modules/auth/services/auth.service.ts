@@ -15,6 +15,7 @@ import { organizationalContextCache } from './organizational-context-cache';
 import { checkSlugAvailability, checkLicenseStatus, updateLicenseInfo, sendRegistrationWa } from '@/services/licenseClient';
 import { ensureTenantBaseRoles } from '../../../database/seeds/seed_policies';
 import { BCRYPT_ROUNDS, MIN_PASSWORD_LENGTH, getJwtSecret, maskIdentifier } from '../utils/auth-security.util';
+import { isOnPremiseScenario } from '@/utils/deployScenario';
 
 export interface QuickLoginResult {
   success: boolean;
@@ -411,7 +412,7 @@ export class AuthService {
 
     // 2b. Check Subdomain Availability Globally on the central License Server
     let shouldCheckGlobally = true;
-    const isSingleTenant = process.env.DEPLOY_SCENARIO === 'SINGLE_TENANT' || process.env.DEPLOY_SCENARIO === 'hybrid' || process.env.DEPLOY_SCENARIO === 'on-premise';
+    const isSingleTenant = isOnPremiseScenario();
     const licenseKey = process.env.LICENSE_KEY;
     if (isSingleTenant && licenseKey) {
       try {

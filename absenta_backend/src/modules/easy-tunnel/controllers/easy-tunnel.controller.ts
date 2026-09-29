@@ -11,9 +11,8 @@ import {
   fetchLicensesBySlug
 } from '../../../services/licenseClient';
 import os from 'os';
-
-
 import dns from 'dns';
+import { getDeployScenario } from '@/utils/deployScenario';
 
 
 export const easyTunnelController = {
@@ -255,7 +254,7 @@ export const easyTunnelController = {
         wg_installed: WireguardManager.isWireGuardInstalled(),
         tunnel_base_domain: process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id',
         license_server_ip,
-        deploy_scenario: process.env.DEPLOY_SCENARIO || 'hybrid'
+        deploy_scenario: getDeployScenario()
       };
       return reply.send({ success: true, data: info });
     } catch (err: any) {

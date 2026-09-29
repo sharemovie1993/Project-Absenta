@@ -96,25 +96,51 @@ export async function getSiswaByIdQuery(
   };
 
   // Bidirectional Hydration: Ensure ekskul memberships are hydrated from AnggotaKegiatanEskul
-  if (!formattedSiswa.ekskul_1 && !formattedSiswa.ekskul_2) {
-    try {
-      const memberships = await siswaDb.anggotaKegiatanEskul.findMany({
-        where: {
-          tenant_id: tenantId,
-          SiswaAkademik: { siswa_id: siswaId }
-        },
-        include: { JenisKegiatanMaster: true },
-        orderBy: { created_at: 'asc' }
-      });
-      if (memberships.length > 0) {
-        formattedSiswa.ekskul_1 = memberships[0]?.JenisKegiatanMaster?.nama || null;
-        if (memberships.length > 1) {
-          formattedSiswa.ekskul_2 = memberships[1]?.JenisKegiatanMaster?.nama || null;
-        }
-      }
-    } catch {
-      // Ignore
+  try {
+    const memberships = await siswaDb.anggotaKegiatanEskul.findMany({
+      where: {
+        tenant_id: tenantId,
+        SiswaAkademik: { siswa_id: siswaId }
+      },
+      include: { JenisKegiatanMaster: true },
+      orderBy: { created_at: 'asc' }
+    });
+    const membershipEskuls = memberships
+      .map(m => m.JenisKegiatanMaster?.nama)
+      .filter((name): name is string => Boolean(name && name.trim().length > 0));
+
+    const combinedEskuls = Array.from(new Set([
+      (formattedSiswa as any).ekskul_1,
+      (formattedSiswa as any).ekskul_2,
+      ...membershipEskuls
+    ])).filter((name): name is string => Boolean(name && name.trim().length > 0));
+
+    (formattedSiswa as any).ekskuls = combinedEskuls;
+    if (!formattedSiswa.ekskul_1 && combinedEskuls[0]) {
+      formattedSiswa.ekskul_1 = combinedEskuls[0];
     }
+    if (!formattedSiswa.ekskul_2 && combinedEskuls[1]) {
+      formattedSiswa.ekskul_2 = combinedEskuls[1];
+    }
+  } catch {
+    // Ignore
+  }
+
+  // Hydrate Koperasi Member Status
+  try {
+    const coopMember = await siswaDb.member.findFirst({
+      where: {
+        tenantId,
+        OR: [
+          { siswaId: formattedSiswa.id },
+          { userId: formattedSiswa.user_id }
+        ],
+        status: 'ACTIVE'
+      }
+    });
+    (formattedSiswa as any).is_anggota_koperasi = Boolean(coopMember);
+  } catch {
+    // Ignore
   }
 
   return formattedSiswa as SiswaResponse;

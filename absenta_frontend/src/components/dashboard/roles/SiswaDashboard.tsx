@@ -56,7 +56,10 @@ import {
   Briefcase,
   BookOpen,
   Building2 as BuildingIcon,
+  ShoppingCart,
+  Compass,
 } from 'lucide-react';
+import api from '../../../lib/axiosInstance';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
 import { hubinApi } from '../../../api/hubin.api';
 import { cn } from '../../../lib/utils';
@@ -517,6 +520,114 @@ export const SiswaDashboard: React.FC = () => {
   const renderValueOrUnconnectedBadge = (val: any, customConnectedText?: React.ReactNode) => {
     return renderApiValue(val, customConnectedText, isApiConnected);
   };
+
+  // ── Status Anggota Koperasi Siswa ──────────────────────────────────────────
+  const { data: coopMemberRes } = useQuery({
+    queryKey: ['koperasi-member-status-me'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/members/me');
+        const data = res?.data?.data;
+        if (data && data.status === 'ACTIVE') {
+          return { status: 'member' as const, data };
+        }
+        return { status: 'non-member' as const, data: null };
+      } catch {
+        return { status: 'non-member' as const, data: null };
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!user,
+  });
+
+  const isCoopMember = coopMemberRes?.status === 'member' || Boolean((siswaProfile as any)?.is_anggota_koperasi);
+
+  // ── Multi-Badge Siswa (Single Source of Truth) ─────────────────────────────
+  const studentBadges = useMemo(() => {
+    const list: Array<{
+      key: string;
+      label: string;
+      icon?: any;
+      color: string;
+    }> = [];
+
+    // 1. Rombel / Kelas (Selalu Pertama)
+    if (currentClassName && currentClassName !== '-') {
+      list.push({
+        key: 'kelas',
+        label: `Kelas ${currentClassName}`,
+        color: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 font-extrabold',
+      });
+    }
+
+    // 2. PKL Aktif (Hubin)
+    if (isAktifPkl) {
+      list.push({
+        key: 'pkl',
+        label: 'PKL Aktif',
+        icon: Briefcase,
+        color: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-black',
+      });
+    }
+
+    // 3. Petugas Presensi Kelas
+    if (isPetugasKelas) {
+      list.push({
+        key: 'petugas_kelas',
+        label: 'Petugas Kelas',
+        icon: Sparkles,
+        color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-black',
+      });
+    }
+
+    // 4. Anggota Koperasi Sekolah
+    if (isCoopMember) {
+      list.push({
+        key: 'koperasi',
+        label: 'Anggota Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 font-black',
+      });
+    }
+
+    // 5. Kepengurusan OSIS & MPK
+    if (siswaProfile?.is_osis) {
+      list.push({
+        key: 'osis',
+        label: 'Pengurus OSIS',
+        icon: Award,
+        color: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 font-black',
+      });
+    }
+    if (siswaProfile?.is_mpk) {
+      list.push({
+        key: 'mpk',
+        label: 'Anggota MPK',
+        icon: ShieldCheck,
+        color: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30 font-black',
+      });
+    }
+
+    // 6. Ekstrakurikuler (Pramuka, PMR, Paskibra, dsb.)
+    const rawEskuls: string[] = [
+      ...(Array.isArray((siswaProfile as any)?.ekskuls) ? (siswaProfile as any).ekskuls : []),
+      siswaProfile?.ekskul_1,
+      siswaProfile?.ekskul_2,
+    ].filter((e): e is string => Boolean(e && typeof e === 'string' && e.trim().length > 0));
+
+    const uniqueEskuls = Array.from(new Set(rawEskuls));
+    uniqueEskuls.forEach((eskulName, idx) => {
+      const cleanName = eskulName.replace(/^(eskul|ekstrakurikuler)\s+/i, '').trim();
+      list.push({
+        key: `eskul-${idx}-${cleanName}`,
+        label: `Eskul ${cleanName}`,
+        icon: Compass,
+        color: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30 font-black',
+      });
+    });
+
+    return list;
+  }, [currentClassName, isAktifPkl, isPetugasKelas, isCoopMember, siswaProfile]);
 
   // Helper for universal array extraction from backend payload
   const extractListFromPayload = (payload: any): any[] => {
@@ -984,21 +1095,21 @@ export const SiswaDashboard: React.FC = () => {
                 <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
                   {studentName}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                  Kelas {currentClassName}
-                </span>
-                {isPetugasKelas && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                    <Sparkles size={11} />
-                    <span>Petugas Kelas</span>
-                  </span>
-                )}
-                {isAktifPkl && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                    <Briefcase size={11} />
-                    <span>PKL Aktif</span>
-                  </span>
-                )}
+                {studentBadges.map((b) => {
+                  const Icon = b.icon;
+                  return (
+                    <span
+                      key={b.key}
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full text-[11px] border inline-flex items-center gap-1 shadow-2xs select-none",
+                        b.color
+                      )}
+                    >
+                      {Icon && <Icon size={11} className="shrink-0" />}
+                      <span>{b.label}</span>
+                    </span>
+                  );
+                })}
               </div>
 
               <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">

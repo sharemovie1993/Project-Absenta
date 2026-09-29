@@ -2,6 +2,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { getRedisConnection } from './redis/redisClient';
 import { authMiddleware } from '../middlewares/auth';
+import { serverLicenseGuard } from '../middlewares/server-license.guard';
 import { storageService } from './storage/storage.service';
 import { getSmartApiBaseUrl, getSmartFrontendBaseUrl, getDomainBases } from '../utils/url-helper';
 
@@ -327,6 +328,7 @@ export async function registerMiddlewares(fastify: any, appendLog: (entry: any) 
 
   // 6. Register Global Middlewares
   fastify.addHook('preHandler', authMiddleware);
+  fastify.addHook('preHandler', serverLicenseGuard);
 
   fastify.setErrorHandler(function (error: any, request: any, reply: any) {
 

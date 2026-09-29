@@ -256,7 +256,8 @@ const ParentApp = lazy(() => import('./apps/parent/App'));
 
 function App() {
   const { isAuthenticated, user, hasCompletedOnboarding, loadUser, isLoading } = useAuthStore();
-  const isSaas = import.meta.env.VITE_DEPLOY_MODE !== 'ON_PREMISE';
+  const deployScenario = import.meta.env.VITE_DEPLOY_SCENARIO || 'onpremise';
+  const isSaas = deployScenario === 'saas-public' || deployScenario === 'saas-local';
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
 
@@ -1000,7 +1001,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/savings/manage" element={
-                      <ProtectedRoute requiredCapability="cooperative.savings.deposit">
+                      <ProtectedRoute requiredCapability={['cooperative.savings.deposit', 'cooperative.savings.view.list']}>
                         <CoopSavings />
                       </ProtectedRoute>
                     } />

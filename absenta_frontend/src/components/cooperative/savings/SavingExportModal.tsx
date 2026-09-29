@@ -54,7 +54,7 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
             Silakan pilih rentang tanggal transaksi simpanan yang ingin diekspor untuk laporan mutasi kas harian atau rekonsiliasi.
           </p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-1">
               <label htmlFor="modal-export-start-date" className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 Tanggal Mulai
@@ -90,11 +90,11 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/60 flex justify-end gap-2.5">
+        <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/60 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+            className="w-full sm:w-auto py-2.5 sm:py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
           >
             Batal
           </button>
@@ -104,7 +104,7 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
             isLoading={exportLoading}
             onClick={() => onExport('EXCEL')}
             variant="outline"
-            className="py-2 px-3 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 dark:border-indigo-900/50 text-xs font-bold rounded-xl flex items-center gap-1.5"
+            className="w-full sm:w-auto py-2.5 sm:py-2 px-3 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 dark:border-indigo-900/50 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5"
           >
             <FileSpreadsheet size={14} /> Ekspor Excel
           </Button>
@@ -113,7 +113,7 @@ export const SavingExportModal: React.FC<SavingExportModalProps> = React.memo(({
             type="button"
             isLoading={exportLoading}
             onClick={() => onExport('PDF')}
-            className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/10"
+            className="w-full sm:w-auto py-2.5 sm:py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/10"
           >
             <Printer size={14} /> Cetak PDF
           </Button>

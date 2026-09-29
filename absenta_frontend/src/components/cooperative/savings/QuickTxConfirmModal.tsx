@@ -74,11 +74,11 @@ export const QuickTxConfirmModal: React.FC<QuickTxConfirmModalProps> = React.mem
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/60 flex justify-end gap-2.5">
+        <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/60 flex flex-col-reverse sm:flex-row sm:justify-end gap-2 sm:gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
+            className="w-full sm:w-auto py-2.5 sm:py-2 px-4 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-650 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition-colors"
           >
             Batal
           </button>
@@ -88,7 +88,7 @@ export const QuickTxConfirmModal: React.FC<QuickTxConfirmModalProps> = React.mem
             isLoading={processingQuickTx}
             onClick={onConfirm}
             variant={confirmTxData.type === 'DEPOSIT' ? 'success' : 'danger'}
-            className="py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+            className="w-full sm:w-auto py-2.5 sm:py-2 px-4 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
           >
             Konfirmasi & Cetak Slip
           </Button>

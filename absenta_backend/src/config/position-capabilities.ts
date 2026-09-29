@@ -739,10 +739,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.approve', 'cooperative.loans.repay',
     'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
     'cooperative.loans.view.detail', 'cooperative.loans.reject',
-    'cooperative.savings.view.list', 'cooperative.savings.view.detail',
-    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
+    'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw',
+    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
     'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
-    'cooperative.shu.approve', 'cooperative.shu.view.report',
+    'cooperative.shu.manage', 'cooperative.shu.approve', 'cooperative.shu.view.report',
     'cooperative.settings.view', 'cooperative.vouchers.view.list'
   ],
 
@@ -758,7 +758,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.members.activate', 'cooperative.members.deactivate', 'cooperative.members.view.status',
     'cooperative.savings.view.list', 'cooperative.savings.view.detail',
     'cooperative.loans.view.list', 'cooperative.loans.view.detail',
-    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail'
+    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
+    'cooperative.shu.view.report', 'cooperative.settings.view'
   ],
 
   [STRUKTUR_CODES.PENGAWAS_KOPERASI]: [
@@ -772,7 +773,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.loans.view.list', 'cooperative.loans.apply',
     'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
     'cooperative.savings.view.detail', 'cooperative.loans.view.detail',
-    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
+    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
     'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
     'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list'
   ]

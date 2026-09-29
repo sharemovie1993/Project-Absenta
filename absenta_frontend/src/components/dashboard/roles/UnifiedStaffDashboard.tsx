@@ -73,6 +73,7 @@ import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
+import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Lazy Module Dashboards for In-Tab Rendering (Bebas Sidebar, 100% Full Width)
 const KurikulumDashboard = React.lazy(() => import('@/pages/kurikulum/Dashboard'));
@@ -157,6 +158,12 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isWaliKelas: isWaliKelasFromCaps,
     isKesiswaan,
     isKoperasi,
+    isKoperasiHead,
+    isKoperasiFinance,
+    isKoperasiSecretary,
+    isKoperasiStore,
+    isKoperasiAuditor,
+    isPembimbingPkl: isPembimbingPklFromCaps,
     isFasilitatorP5,
     fasilitatorP5Count,
   } = useCapabilities();
@@ -251,13 +258,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
     !!((user?.guru_profile as any)?.wali_kelas_di?.id);
 
   const isGlobalHubin = isHubin;
-  // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance,
-  // DAN secara nyata memiliki penugasan siswa bimbingan PKL aktif (active_pkl_count > 0)
-  const isPembimbingPkl = !isHubin && !isKepsek && can('hubin.guidance.manage') && Boolean(
-    guruProfile?.is_pembimbing_pkl || 
-    (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
-    ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
-    ((user?.guru_profile as any)?.active_pkl_count > 0)
+  // Pembimbing PKL: Hanya jika user adalah Guru, BUKAN Waka Hubin/Kepsek, punya kapabilitas guidance / penugasan PKL
+  const isPembimbingPkl = !isHubin && !isKepsek && (
+    Boolean(isPembimbingPklFromCaps) ||
+    (can('hubin.guidance.manage') && Boolean(
+      guruProfile?.is_pembimbing_pkl || 
+      (guruProfile?.active_pkl_count && guruProfile.active_pkl_count > 0) ||
+      ((user?.guru_profile as any)?.is_pembimbing_pkl) ||
+      ((user?.guru_profile as any)?.active_pkl_count > 0)
+    ))
   );
 
   const hasStructuralRole = isWaliKelas || isKurikulum || isKesiswaan || isKepsek
@@ -566,14 +575,23 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const isKesiswaanLoading = permitsLoading || violationsLoading;
 
   const jabatanLabel = useMemo(() => {
-    if (isKepsek) return 'Kepala Sekolah';
     const parts: string[] = [];
+    if (isKepsek) parts.push('Kepala Sekolah');
     if (isWaliKelas) parts.push(`Wali Kelas ${waliKelasNama || ''}`.trim());
     if (isKurikulum) parts.push('Tim Kurikulum');
     if (isKesiswaan) parts.push('Tim Kesiswaan');
     if (isSarpras)   parts.push('Pengelola Sarpras');
     if (isHubin)     parts.push('Hubin / PKL');
     else if (isPembimbingPkl) parts.push('Pembimbing PKL');
+
+    // Koperasi
+    if (isKoperasiHead) parts.push('Ketua Koperasi');
+    else if (isKoperasiFinance) parts.push('Bendahara Koperasi');
+    else if (isKoperasiSecretary) parts.push('Sekretaris Koperasi');
+    else if (isKoperasiAuditor) parts.push('Pengawas Koperasi');
+    else if (isKoperasiStore) parts.push('Manajer Toko Koperasi');
+    else if (isKoperasi) parts.push('Pengelola Koperasi');
+
     if (isToolman)   parts.push('Toolman Lab');
     if (isKaprog)    parts.push('Ketua Program');
     if (isKabeng)    parts.push('Kepala Bengkel');
@@ -591,26 +609,40 @@ export const UnifiedStaffDashboard: React.FC = () => {
     }
     if (jabatan) return jabatan;
     return isTuStaff ? 'Tenaga Kependidikan' : 'Guru Mata Pelajaran';
-  }, [jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras, isHubin, isPembimbingPkl, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff]);
+  }, [
+    jabatan, isKepsek, isWaliKelas, waliKelasNama, isKurikulum, isKesiswaan, isSarpras,
+    isHubin, isPembimbingPkl, isToolman, isKaprog, isKabeng, isBpbk, isBkk, isGerbang,
+    isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isKoperasiAuditor, isKoperasiStore,
+    isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU, isTuStaff
+  ]);
 
   const peranBadges = useMemo(() => {
-    if (isKepsek) {
-      return [{ label: 'Kepala Sekolah', color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' }];
-    }
     const badges: Array<{ label: string; icon?: any; color: string }> = [];
+
+    if (isKepsek) {
+      badges.push({
+        label: 'Kepala Sekolah',
+        icon: Award,
+        color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30',
+      });
+    }
 
     if (isWaliKelas) {
       badges.push({
         label: `Wali Kelas ${waliKelasNama || ''}`.trim(),
+        icon: GraduationCap,
         color: 'bg-blue-500/25 text-blue-100 border-blue-400/30',
       });
     }
+
     if (isPembimbingPkl) {
       badges.push({
         label: 'Pembimbing PKL',
+        icon: Briefcase,
         color: 'bg-cyan-500/25 text-cyan-100 border-cyan-400/30',
       });
     }
+
     if (isFasilitatorP5Actual) {
       badges.push({
         label: p5ProjectCount > 1 ? `Fasilitator P5 (${p5ProjectCount} Projek)` : 'Fasilitator P5',
@@ -618,48 +650,94 @@ export const UnifiedStaffDashboard: React.FC = () => {
         color: 'bg-amber-500/25 text-amber-100 border-amber-400/30',
       });
     }
+
+    // ── Koperasi Badges ───────────────────────────────────────────
+    if (isKoperasiHead) {
+      badges.push({
+        label: 'Ketua Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-amber-500/25 text-amber-100 border-amber-400/30',
+      });
+    }
+    if (isKoperasiFinance) {
+      badges.push({
+        label: 'Bendahara Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30',
+      });
+    }
+    if (isKoperasiSecretary) {
+      badges.push({
+        label: 'Sekretaris Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-indigo-500/25 text-indigo-100 border-indigo-400/30',
+      });
+    }
+    if (isKoperasiAuditor) {
+      badges.push({
+        label: 'Pengawas Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-teal-500/25 text-teal-100 border-teal-400/30',
+      });
+    }
+    if (isKoperasiStore) {
+      badges.push({
+        label: 'Manajer Toko Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-orange-500/25 text-orange-100 border-orange-400/30',
+      });
+    }
+    if (isKoperasi && !isKoperasiHead && !isKoperasiFinance && !isKoperasiSecretary && !isKoperasiAuditor && !isKoperasiStore) {
+      badges.push({
+        label: 'Pengelola Koperasi',
+        icon: ShoppingCart,
+        color: 'bg-amber-500/25 text-amber-100 border-amber-400/30',
+      });
+    }
+
+    // ── Structural & Unit Badges ──────────────────────────────────
     if (isKurikulum) {
-      badges.push({ label: 'Tim Kurikulum', color: 'bg-purple-500/25 text-purple-100 border-purple-400/30' });
+      badges.push({ label: 'Tim Kurikulum', icon: BookOpen, color: 'bg-purple-500/25 text-purple-100 border-purple-400/30' });
     }
     if (isKesiswaan) {
-      badges.push({ label: 'Tim Kesiswaan', color: 'bg-pink-500/25 text-pink-100 border-pink-400/30' });
+      badges.push({ label: 'Tim Kesiswaan', icon: Users, color: 'bg-pink-500/25 text-pink-100 border-pink-400/30' });
     }
     if (isSarpras) {
-      badges.push({ label: 'Pengelola Sarpras', color: 'bg-orange-500/25 text-orange-100 border-orange-400/30' });
+      badges.push({ label: 'Pengelola Sarpras', icon: Building, color: 'bg-orange-500/25 text-orange-100 border-orange-400/30' });
     }
     if (isHubin) {
-      badges.push({ label: 'Hubin / PKL', color: 'bg-teal-500/25 text-teal-100 border-teal-400/30' });
+      badges.push({ label: 'Hubin / PKL', icon: Briefcase, color: 'bg-teal-500/25 text-teal-100 border-teal-400/30' });
     }
     if (isKaprog) {
-      badges.push({ label: 'Ketua Program Keahlian', color: 'bg-indigo-500/25 text-indigo-100 border-indigo-400/30' });
+      badges.push({ label: 'Ketua Program Keahlian', icon: Award, color: 'bg-indigo-500/25 text-indigo-100 border-indigo-400/30' });
     }
     if (isKabeng) {
-      badges.push({ label: 'Kepala Bengkel', color: 'bg-rose-500/25 text-rose-100 border-rose-400/30' });
+      badges.push({ label: 'Kepala Bengkel', icon: Activity, color: 'bg-rose-500/25 text-rose-100 border-rose-400/30' });
     }
     if (isToolman) {
-      badges.push({ label: 'Toolman Lab', color: 'bg-amber-500/25 text-amber-100 border-amber-400/30' });
+      badges.push({ label: 'Toolman Lab', icon: Zap, color: 'bg-amber-500/25 text-amber-100 border-amber-400/30' });
     }
     if (isBpbk) {
-      badges.push({ label: 'Guru BK', color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' });
+      badges.push({ label: 'Guru BK', icon: UserCheck, color: 'bg-emerald-500/25 text-emerald-100 border-emerald-400/30' });
     }
     if (isBkk) {
-      badges.push({ label: 'Pengelola BKK', color: 'bg-sky-500/25 text-sky-100 border-sky-400/30' });
+      badges.push({ label: 'Pengelola BKK', icon: Briefcase, color: 'bg-sky-500/25 text-sky-100 border-sky-400/30' });
     }
     if (isGerbang) {
-      badges.push({ label: 'Petugas Gerbang', color: 'bg-red-500/25 text-red-100 border-red-400/30' });
+      badges.push({ label: 'Petugas Gerbang', icon: ShieldCheck, color: 'bg-red-500/25 text-red-100 border-red-400/30' });
     }
     if (isTUKepala) {
-      badges.push({ label: 'Kepala Tata Usaha', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'Kepala Tata Usaha', icon: FileText, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     } else if (isTUKepegawaian) {
-      badges.push({ label: 'TU Kepegawaian & Dapodik', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'TU Kepegawaian & Dapodik', icon: FileText, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     } else if (isTUPersuratan) {
-      badges.push({ label: 'TU Persuratan & Agenda', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'TU Persuratan & Agenda', icon: FileText, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     } else if (isTUKeuangan) {
-      badges.push({ label: 'TU Keuangan & SPP', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'TU Keuangan & SPP', icon: Wallet, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     } else if (isTUSarpras) {
-      badges.push({ label: 'TU Sarpras & KIB', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'TU Sarpras & KIB', icon: Building, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     } else if (isTU) {
-      badges.push({ label: 'Staf Tata Usaha', color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
+      badges.push({ label: 'Staf Tata Usaha', icon: FileText, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     }
 
     if (badges.length === 0) {
@@ -675,6 +753,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     return badges;
   }, [
     isKepsek, isWaliKelas, waliKelasNama, isPembimbingPkl, isFasilitatorP5Actual, p5ProjectCount,
+    isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiSecretary, isKoperasiAuditor, isKoperasiStore,
     isKurikulum, isKesiswaan, isSarpras, isHubin, isKaprog, isKabeng, isToolman, isBpbk, isBkk,
     isGerbang, isTUKepala, isTUKepegawaian, isTUPersuratan, isTUKeuangan, isTUSarpras, isTU,
     jabatan, isTuStaff,
@@ -725,6 +804,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
         icon: isPureGerbangStaff ? ShieldCheck : UserCheck 
       });
     }
+
+    // 🌐 Portal Aplikasi (Google Apps Launcher Style) - Pusat Modul Sekolah
+    list.push({
+      id: 'portal',
+      label: 'Portal',
+      icon: LayoutGrid,
+      badge: 'APPS'
+    });
 
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
     if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isPendidik) && !isKepsek) {
@@ -994,7 +1081,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
                       badge.color
                     )}
                   >
-                    {IconComponent && <IconComponent size={12} className="shrink-0 text-amber-300" />}
+                    {IconComponent && <IconComponent size={12} className="shrink-0 text-current opacity-90" />}
                     <span>{badge.label}</span>
                   </span>
                 );
@@ -1089,6 +1176,11 @@ export const UnifiedStaffDashboard: React.FC = () => {
               onNavigateTab={handleTabChange}
             />
           )
+        )}
+
+        {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH */}
+        {activeTab === 'portal' && (
+          <StaffPortalTab onBackToBeranda={() => handleTabChange('ringkasan')} />
         )}
 
         {/* 🗓️ TAB 2: KBM & ABSEN */}

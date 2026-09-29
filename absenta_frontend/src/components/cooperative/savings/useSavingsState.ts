@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
@@ -13,6 +14,7 @@ import {
   exportAllSavingsPdf
 } from './savingsExportUtils';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
+import { useSocket } from '../../../hooks/useSocket';
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -29,11 +31,41 @@ export const useSavingsState = () => {
   const queryClient = useQueryClient();
   const { user, subscription } = useAuthStore();
   const sub = subscription as SubscriptionWithFeatures | null | undefined;
-  const { can } = useCapabilities();
+  const { can, isKoperasiHead, isKoperasiFinance, isAdmin } = useCapabilities();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const isOperator =
+    isAdmin ||
+    isKoperasiHead ||
+    isKoperasiFinance ||
+    can('cooperative.savings.view.list') ||
+    can('cooperative.savings.deposit') ||
+    can('cooperative.savings.manage');
 
   const isManageMode = window.location.pathname.endsWith('/manage');
-  const isOperator = can('cooperative.savings.deposit');
-  const isStudent = !isManageMode || !isOperator;
+  const tabParam = searchParams.get('tab');
+
+  const activeTab: 'manage' | 'personal' = useMemo(() => {
+    if (!isOperator) return 'personal';
+    if (tabParam === 'personal') return 'personal';
+    if (tabParam === 'manage' || isManageMode) return 'manage';
+    return 'manage';
+  }, [isOperator, tabParam, isManageMode]);
+
+  const setActiveTab = useCallback((tab: 'manage' | 'personal') => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'personal') {
+        next.set('tab', 'personal');
+      } else {
+        next.delete('tab');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const isPersonalMode = activeTab === 'personal' || !isOperator;
+  const isStudent = isPersonalMode;
 
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
   const { isLocked } = useModuleAccess('KOPERASI');
@@ -96,6 +128,22 @@ export const useSavingsState = () => {
     };
   }, []);
 
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Dengarkan event transaksi simpanan via WebSocket (Pilar 4 Hardening: Observability & Resilience)
+  useEffect(() => {
+    const handleSavingsUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-saving-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+    };
+
+    subscribe('coop_saving_update', handleSavingsUpdate);
+    return () => {
+      unsubscribe('coop_saving_update', handleSavingsUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
+
   // Member Status query
   const memberStatusQuery = useQuery({
     queryKey: ['koperasi-member-status-me'],
@@ -108,21 +156,21 @@ export const useSavingsState = () => {
         return 'non-member' as const;
       }
     },
-    enabled: !isOperator,
+    enabled: isPersonalMode,
     staleTime: 5 * 60 * 1000,
   });
 
-  const memberStatus = isOperator ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
+  const memberStatus = !isPersonalMode ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
 
   // Savings query
   const savingsQuery = useQuery({
-    queryKey: ['koperasi-savings-list', isStudent],
+    queryKey: ['koperasi-savings-list', isPersonalMode],
     queryFn: async () => {
-      const url = isStudent ? '/cooperative/savings?personal=true' : '/cooperative/savings';
+      const url = isPersonalMode ? '/cooperative/savings?personal=true' : '/cooperative/savings';
       const response = await api.get(url);
       return (Array.isArray(response.data) ? response.data : []) as Saving[];
     },
-    enabled: (isOperator || memberStatus === 'member') && subscription !== undefined,
+    enabled: (!isPersonalMode || memberStatus === 'member') && subscription !== undefined,
     staleTime: 5 * 60 * 1000,
   });
   const savings = savingsQuery.data || [];
@@ -250,7 +298,13 @@ export const useSavingsState = () => {
 
   const quickTxMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const response = await api.post('/cooperative/savings/transaction', payload);
+      // Idempotency Key Guard: Hindari double-deposit akibat lag tombol/retry
+      const idempotencyKey = crypto.randomUUID();
+      const response = await api.post('/cooperative/savings/transaction', payload, {
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
+      });
       return response.data as { id: string; date: string };
     },
     onSuccess: async (txResult) => {
@@ -392,6 +446,9 @@ export const useSavingsState = () => {
   return {
     user,
     subscription,
+    activeTab,
+    setActiveTab,
+    isPersonalMode,
     isStudent,
     isOperator,
     isLocked,

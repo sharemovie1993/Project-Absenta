@@ -7,6 +7,7 @@ import { Search, ArrowRight, ArrowLeft, Check, Users, AlertCircle, Loader, UserP
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { Table } from '../../ui/Table';
+import { useKelasOptions } from '../../../hooks/useKelasOptions';
 
 interface MemberBulkAddModalProps {
   isOpen: boolean;
@@ -37,17 +38,8 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [createdCount, setCreatedCount] = useState<number>(0);
 
-  // Fetch kelas options
-  const kelasQuery = useQuery({
-    queryKey: ['academic-kelas-options'],
-    queryFn: async () => {
-      const response = await api.get('/academic/kelas');
-      return (response.data?.data || []) as { id: string; nama_kelas: string }[];
-    },
-    enabled: isOpen,
-    staleTime: 5 * 60 * 1000,
-  });
-  const kelasOptions = kelasQuery.data || [];
+  // Fetch kelas options via canonical hook
+  const { options: canonicalKelasOptions } = useKelasOptions({ onlyActive: true });
 
   // Fetch non-members
   const nonMembersQuery = useQuery({
@@ -258,7 +250,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
                   onValueChange={setKelasId}
                   options={[
                     { label: 'Semua Kelas', value: 'ALL' },
-                    ...(kelasOptions || []).map(k => ({ label: k.nama_kelas, value: k.id }))
+                    ...(canonicalKelasOptions || [])
                   ]}
                   placeholder="Pilih Kelas"
                   triggerClassName="w-full h-11 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"

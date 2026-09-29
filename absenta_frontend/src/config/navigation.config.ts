@@ -539,6 +539,13 @@ export const normalizePositionCode = (codeOrName: string): string => {
   if (s.includes('TOOLMAN')) return 'TOOLMAN';
   if (s.includes('BKK')) return 'BKK';
   if (s.includes('PEMBINA')) return 'PEMBINA_ESKUL';
+  if (s.includes('KETUA_KOPERASI') || s.includes('KETUA KOPERASI')) return 'KETUA_KOPERASI';
+  if (s.includes('BENDAHARA_KOPERASI') || s.includes('BENDAHARA KOPERASI')) return 'BENDAHARA_KOPERASI';
+  if (s.includes('SEKRETARIS_KOPERASI') || s.includes('SEKRETARIS KOPERASI')) return 'SEKRETARIS_KOPERASI';
+  if (s.includes('MANAJER_TOKO_KOPERASI') || s.includes('MANAJER KOPERASI') || s.includes('TOKO_KOPERASI') || s.includes('KASIR_KOPERASI')) return 'MANAJER_TOKO_KOPERASI';
+  if (s.includes('PENGAWAS_KOPERASI') || s.includes('PENGAWAS KOPERASI')) return 'PENGAWAS_KOPERASI';
+  if (s.includes('KOPERASI')) return 'KOPERASI';
+  if (s.includes('PEMBIMBING_PKL') || (s.includes('PEMBIMBING') && s.includes('PKL'))) return 'PEMBIMBING_PKL';
   return s;
 };
 
@@ -558,8 +565,17 @@ export const getUserPositions = (user: any): string[] => {
   if (Array.isArray(user?.guru_profile?.jabatan_list)) {
     user.guru_profile.jabatan_list.forEach((j: any) => { if (j) rawList.push(String(j)); });
   }
+  if (user?.guru_profile?.jabatan) {
+    rawList.push(String(user.guru_profile.jabatan));
+  }
+  if (user?.jabatan) {
+    rawList.push(String(user.jabatan));
+  }
   if (user?.guru_profile?.wali_kelas_di) {
     rawList.push('WALIKELAS');
+  }
+  if (user?.guru_profile?.is_pembimbing_pkl || (user as any)?.is_pembimbing_pkl) {
+    rawList.push('PEMBIMBING_PKL');
   }
 
   const normalizedSet = new Set<string>();

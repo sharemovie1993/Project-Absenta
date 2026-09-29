@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard, Table, Badge, SearchableSelect, Input } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
-import { Plus, Eye, Clock, Ban } from 'lucide-react';
+import { Plus, Eye, Clock, Ban, Users, Wallet } from 'lucide-react';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { LoanStatsBanner } from '../../components/cooperative/loans/LoanStatsBanner';
 import { LoanRestrictionsAlerts } from '../../components/cooperative/loans/LoanRestrictionsAlerts';
 import type { Loan, Member, StudentMetrics, OperatorMetrics } from '../../components/cooperative/loans/types';
@@ -41,19 +42,55 @@ const Loans: React.FC = React.memo(() => {
   const { user, subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiFinance, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
   
-  const isManageMode = window.location.pathname.endsWith('/manage');
+  const isOperator =
+    isAdmin ||
+    isKoperasiHead ||
+    isKoperasiFinance ||
+    can('cooperative.loans.approve') ||
+    can('cooperative.loans.reject') ||
+    can('cooperative.loans.view.list') ||
+    can('cooperative.loans.manage');
+
+  const isManageRoute = window.location.pathname.endsWith('/manage');
+  const tabParam = searchParams.get('tab');
+
+  const activeTab: 'manage' | 'personal' = useMemo(() => {
+    if (!isOperator) return 'personal';
+    if (tabParam === 'personal') return 'personal';
+    if (tabParam === 'manage' || isManageRoute) return 'manage';
+    return 'manage';
+  }, [isOperator, tabParam, isManageRoute]);
+
+  const setActiveTab = useCallback((tab: 'manage' | 'personal') => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (tab === 'personal') {
+        next.set('tab', 'personal');
+      } else {
+        next.delete('tab');
+      }
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  const isOperatorMode = activeTab === 'manage';
+  const isStudent = !isOperatorMode;
+
+  const tabOptions: TabOption[] = useMemo(() => [
+    { id: 'manage', label: 'Kelola Pinjaman Anggota', icon: Users },
+    { id: 'personal', label: 'Pinjaman Saya', icon: Wallet },
+  ], []);
+
+  const handleTabChange = useCallback((id: string) => {
+    setActiveTab(id as 'manage' | 'personal');
+  }, [setActiveTab]);
+
   const canApprove = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.loans.approve');
   const canReject = can('cooperative.loans.reject');
   const canApply = can('cooperative.loans.apply');
-  const canInputOnBehalf = can('cooperative.loans.approve') || 
-                           can('cooperative.loans.repay');
-  const isCoopStaff = can('cooperative.loans.approve') || 
-                      can('cooperative.loans.reject') ||
-                      can('cooperative.loans.view.list') || 
-                      can('cooperative.savings.deposit');
-  const isOperatorMode = isManageMode && isCoopStaff;
-  const isStudent = !isOperatorMode;
+  const canInputOnBehalf = isOperator;
 
   const [isPaymentInstructionsOpen, setIsPaymentInstructionsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,7 +170,8 @@ const Loans: React.FC = React.memo(() => {
           page,
           limit,
           search: searchQuery || undefined,
-          status: statusFilter === 'ALL' ? undefined : statusFilter
+          status: statusFilter === 'ALL' ? undefined : statusFilter,
+          personal: isStudent ? 'true' : undefined
         }
       });
       return res.data;
@@ -435,7 +473,7 @@ const Loans: React.FC = React.memo(() => {
           </Badge>
         </div>
 
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-2 gap-2 text-xs">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full max-w-full min-w-0">
           <div>
             <span className="text-[10px] text-slate-400 block font-medium">Total Pengembalian</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200">{formatCurrency(row.totalAmount)}</span>
@@ -444,7 +482,7 @@ const Loans: React.FC = React.memo(() => {
             <span className="text-[10px] text-slate-400 block font-medium">Tenor / Bunga</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200">{row.duration} Bln ({row.interestRate}%)</span>
           </div>
-          <div className="col-span-2">
+          <div className="col-span-1 sm:col-span-2">
             <span className="text-[10px] text-slate-400 block font-medium">Tanggal Pengajuan</span>
             <span className="font-semibold text-slate-700 dark:text-slate-200">
               {formatDate(row.createdAt, { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -504,7 +542,7 @@ const Loans: React.FC = React.memo(() => {
   const breadcrumbs = useMemo(() => {
     return [
       { label: 'Koperasi', path: '/cooperative/dashboard' },
-      { label: isStudent ? 'Pinjaman Saya' : 'Daftar Pinjaman', path: isStudent ? '/cooperative/loans' : '/cooperative/loans/manage' }
+      { label: isStudent ? 'Pinjaman Saya' : 'Kelola Pinjaman Anggota', path: isStudent ? '/cooperative/loans?tab=personal' : '/cooperative/loans' }
     ];
   }, [isStudent]);
 
@@ -515,44 +553,63 @@ const Loans: React.FC = React.memo(() => {
       description="Ajukan pinjaman koperasi sekolah dengan bunga bersaing, kalkulasi cicilan otomatis, dan pelacakan pembayaran transparan."
     >
       <AcademicPageLayout
-        title={isStudent ? 'Pinjaman Anggota Koperasi' : 'Manajemen Kredit & Pinjaman Anggota'}
+        title={isStudent ? 'Pinjaman Saya' : 'Kelola Pinjaman Anggota'}
         description={isStudent 
-          ? 'Kelola pengajuan pinjaman, pantau histori pencairan dan status pembayaran cicilan Anda.' 
-          : 'Kelola verifikasi, persetujuan pinjaman, dan pemantauan portofolio piutang koperasi sekolah.'}
+          ? 'Pantau status pengajuan pinjaman, jadwal cicilan, dan histori pembayaran angsuran pribadi Anda.' 
+          : 'Kelola verifikasi, persetujuan pengajuan pinjaman anggota, dan monitoring cicilan kredit koperasi.'}
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="coop_loans"
         topSlot={
           canApply && (
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
               <Button
                 variant="toolbarPrimary"
                 size="toolbar"
                 onClick={handleOpenModal}
-                className="flex items-center gap-1.5 font-bold rounded-xl shadow-md"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 font-bold rounded-xl shadow-md"
               >
-                <Plus className="w-3.5 h-3.5" />
-                Ajukan Pinjaman
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{isOperatorMode ? 'Input Pinjaman Anggota' : 'Ajukan Pinjaman'}</span>
               </Button>
             </div>
           )
         }
         instruction={{
-          title: "Panduan Layanan Pinjaman",
-          description: "Gunakan modul ini untuk mengajukan pembiayaan koperasi atau mengelola persetujuan berkas kredit.",
-          items: [
+          title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Pinjaman Anggota",
+          description: isStudent 
+            ? "Gunakan halaman ini untuk memantau status pinjaman, jadwal cicilan, dan mengajukan pinjaman baru."
+            : "Gunakan modul ini untuk memverifikasi, menyetujui, menolak pengajuan pinjaman anggota, atau menginput pinjaman atas nama anggota.",
+          items: isStudent ? [
             { text: "Pastikan status keanggotaan aktif sebelum membuat pengajuan pinjaman baru." },
             { text: "Jadwal cicilan dan penghitungan bunga otomatis disimulasikan sesuai tenor yang dipilih." },
-            { text: "Klik tombol Detail pada baris untuk melihat riwayat cicilan atau pelunasan." }
+            { text: "Klik tombol Detail pada kartu pinjaman untuk melihat riwayat cicilan atau tata cara pembayaran." }
+          ] : [
+            { text: "Tinjau pengajuan pinjaman berstatus PENDING, lalu klik Setuju atau Tolak." },
+            { text: "Gunakan kolom pencarian untuk menyaring pinjaman berdasarkan nama anggota atau status." },
+            { text: "Klik tombol Input Pinjaman Anggota untuk membantu membuatkan pengajuan atas nama anggota secara langsung." }
           ]
         }}
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
+        <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
           <div className="space-y-6">
+            {/* Context Switcher (Khusus Pengurus / Operator) */}
+            {isOperator && (
+              <div className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar flex-nowrap pb-1">
+                <TabSwitcher
+                  tabs={tabOptions}
+                  activeTab={activeTab}
+                  onChange={handleTabChange}
+                />
+              </div>
+            )}
+
             {/* Top Banner Stats */}
             <LoanStatsBanner
               isStudent={isStudent}
               studentMetrics={studentMetrics}
               operatorMetrics={operatorMetrics}
+              variant="compact-premium"
+              mobileCompact={true}
             />
 
             {/* Restrictions Banner */}
@@ -563,8 +620,8 @@ const Loans: React.FC = React.memo(() => {
             />
 
             {/* Filter Bar (Placed Above Table) */}
-            <div className="overflow-x-auto max-w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <div className="relative flex-1 min-w-0 sm:min-w-[200px]">
+            <div className="w-full max-w-full min-w-0 overflow-x-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
+              <div className="relative flex-1 w-full max-w-full min-w-0 sm:min-w-[200px]">
                 <Input
                   id="loans-search-input"
                   type="text"
@@ -582,7 +639,7 @@ const Loans: React.FC = React.memo(() => {
                 />
               </div>
 
-              <div className="w-full sm:w-44 min-w-0">
+              <div className="w-full sm:w-44 max-w-full min-w-0">
                 <SearchableSelect
                   id="loans-status-select"
                   aria-label="Filter status pinjaman"

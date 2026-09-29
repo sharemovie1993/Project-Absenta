@@ -2,13 +2,17 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { generateImportTemplate } from '@/utils/export.utils';
 import { formatDate } from '@/utils/date.utils';
 import React, { useMemo, useCallback, Suspense, lazy } from 'react';
-import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Button from '../../components/ui/Button';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { AnalyticsCard } from '../../components/ui/AnalyticsCard';
 import { formatTerbilangIndonesian } from '../../utils/cooperative/coopDocUtils';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import {
   SavingStatsBanner,
   SavingInsightsPanel,
@@ -28,6 +32,10 @@ const Savings: React.FC = React.memo(() => {
   const state = useSavingsState();
 
   const {
+    activeTab,
+    setActiveTab,
+    isOperator,
+    isPersonalMode,
     isStudent,
     memberStatus,
     savings,
@@ -83,12 +91,27 @@ const Savings: React.FC = React.memo(() => {
     handleSort
   } = state;
 
+  const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
+  const tabOptions: TabOption[] = useMemo(() => [
+    { id: 'manage', label: 'Kelola Simpanan Anggota', icon: Users },
+    { id: 'personal', label: 'Tabungan Saya', icon: Wallet },
+  ], []);
+
+  const handleTabChange = useCallback((id: string) => {
+    setActiveTab(id as 'manage' | 'personal');
+  }, [setActiveTab]);
+
   const breadcrumbs = useMemo(() => {
     return [
       { label: 'Koperasi', path: '/cooperative/dashboard' },
-      { label: isStudent ? 'Tabungan Saya' : 'Input Simpanan', path: isStudent ? '/cooperative/savings' : '/cooperative/savings/manage' }
+      {
+        label: isPersonalMode ? 'Tabungan Saya' : 'Kelola Simpanan',
+        path: isPersonalMode ? '/cooperative/savings?tab=personal' : '/cooperative/savings',
+      },
     ];
-  }, [isStudent]);
+  }, [isPersonalMode]);
 
   const toggleExpand = useCallback(() => {
     toggleAccountsExpand();
@@ -109,47 +132,25 @@ const Savings: React.FC = React.memo(() => {
 
   const handleSingleExport = useCallback(() => {
     if (selectedSaving) {
-      try { handleExportSingleSavingPdf(selectedSaving); toast.success("Ekspor PDF berhasil"); } catch (e) { toast.error("Gagal mengekspor PDF"); }
+      try {
+        handleExportSingleSavingPdf(selectedSaving);
+        toast.success("Ekspor PDF berhasil");
+      } catch (e) {
+        toast.error("Gagal mengekspor PDF");
+      }
     }
   }, [selectedSaving, handleExportSingleSavingPdf]);
 
   const handleAllExport = useCallback(() => {
     if (selectedSaving) {
-      try { handleExportAllSavingsPdf(selectedSaving); toast.success("Ekspor PDF berhasil"); } catch (e) { toast.error("Gagal mengekspor PDF"); }
+      try {
+        handleExportAllSavingsPdf(selectedSaving);
+        toast.success("Ekspor PDF berhasil");
+      } catch (e) {
+        toast.error("Gagal mengekspor PDF");
+      }
     }
   }, [selectedSaving, handleExportAllSavingsPdf]);
-
-  if (isStudent && memberStatus === 'loading') {
-    return (
-      <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen Simpanan">
-        <AcademicPageLayout
-          title="Tabungan Saya"
-          description="Kelola simpanan pokok, wajib, dan sukarela anggota"
-          breadcrumbs={breadcrumbs}
-        >
-          <div className="flex justify-center items-center h-64">
-            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
-          </div>
-        </AcademicPageLayout>
-      </PremiumFeatureGate>
-    );
-  }
-
-  if (isStudent && memberStatus === 'non-member') {
-    return (
-      <PremiumFeatureGate moduleName="KOPERASI" featureName="Manajemen Simpanan">
-        <AcademicPageLayout
-          title={isStudent ? 'Tabungan Saya' : 'Simpanan Anggota'}
-          description="Kelola simpanan pokok, wajib, dan sukarela anggota"
-          breadcrumbs={breadcrumbs}
-        >
-          <NonMemberBanner 
-            description="Informasi tabungan personal hanya tersedia bagi anggota aktif koperasi. Hubungi Bendahara atau Pengurus Koperasi sekolah untuk melakukan pendaftaran anggota."
-          />
-        </AcademicPageLayout>
-      </PremiumFeatureGate>
-    );
-  }
 
   return (
     <PremiumFeatureGate
@@ -157,52 +158,72 @@ const Savings: React.FC = React.memo(() => {
       featureName="Manajemen Simpanan"
     >
       <AcademicPageLayout
-        title={isStudent ? 'Tabungan Saya' : 'Simpanan Anggota'}
-        description="Kelola simpanan pokok, wajib, dan sukarela anggota"
+        title={isPersonalMode ? 'Tabungan Saya' : 'Kelola Simpanan Anggota'}
+        description={
+          isPersonalMode
+            ? 'Pantau saldo simpanan pokok, wajib, dan sukarela tabungan pribadi'
+            : 'Kelola simpanan pokok, wajib, sukarela anggota dan proses transaksi setor/tarik'
+        }
         hardeningModuleKey="coop_savings"
         breadcrumbs={breadcrumbs}
         instruction={{
-          title: 'Panduan Manajemen Simpanan',
-          description: 'Halaman ini digunakan untuk mengelola simpanan pokok, wajib, dan sukarela anggota koperasi.',
-          items: [
-            {
-              text: isStudent
-                ? 'Histori total akumulasi tabungan Anda dapat dipantau langsung pada kartu ringkasan saldo di atas.'
-                : 'Cari anggota via search bar di kiri, saring tipe simpanan di kanan, atau gunakan pencarian universal RFID/QR.'
-            },
-            {
-              text: isStudent
-                ? 'Setoran dan penarikan tabungan hanya dapat diproses oleh Bendahara/Petugas Koperasi.'
-                : 'Klik baris anggota untuk memuat detail rekening dan memproses setor/tarik tunai di panel Transaksi Cepat sebelah kanan.'
-            },
-            {
-              text: isStudent
-                ? 'Klik tombol Mutasi atau Rekap Buku pada baris tabel untuk mencetak riwayat transaksi Anda.'
-                : 'Klik tombol Mutasi atau Rekap Buku pada baris tabel untuk mencetak laporan mutasi anggota dengan cepat.'
-            }
-          ]
+          title: isPersonalMode ? 'Panduan Tabungan Saya' : 'Panduan Manajemen Simpanan',
+          description: isPersonalMode
+            ? 'Halaman ini digunakan untuk melihat saldo dan riwayat mutasi tabungan pribadi Anda.'
+            : 'Halaman ini digunakan untuk mengelola simpanan pokok, wajib, dan sukarela anggota koperasi.',
+          items: isPersonalMode
+            ? [
+                { text: 'Histori total akumulasi tabungan Anda dapat dipantau langsung pada kartu ringkasan saldo di atas.' },
+                { text: 'Setoran dan penarikan tabungan hanya dapat diproses oleh Bendahara/Petugas Koperasi.' },
+                { text: 'Klik tombol Cetak Mutasi atau Rekap Buku pada kartu rekening untuk mencetak dokumen riwayat tabungan Anda.' },
+              ]
+            : [
+                { text: 'Cari anggota via search bar di kiri, saring tipe simpanan di kanan, atau gunakan pencarian universal RFID/QR.' },
+                { text: 'Klik baris anggota untuk memuat detail rekening dan memproses setor/tarik tunai di panel Transaksi Cepat.' },
+                { text: 'Klik tombol Mutasi atau Rekap Buku pada baris tabel untuk mencetak laporan mutasi anggota dengan cepat.' },
+              ],
         }}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
-<div className="space-y-6">
-          {!loading && <SavingStatsBanner savings={savings} />}
+          <div className="space-y-6">
+            {isOperator && (
+              <div className="flex items-center justify-between pb-1 overflow-x-auto">
+                <TabSwitcher
+                  tabs={tabOptions}
+                  activeTab={activeTab}
+                  onChange={handleTabChange}
+                />
+              </div>
+            )}
 
-          {isStudent ? (
-            <div className="space-y-4">
-              {!loading && memberStatus === 'member' && <SavingInsightsPanel />}
-              {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4]?.map(i => (
-                    <div key={i} className="h-44 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />
-                  ))}
-                </div>
-              ) : savings.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-                  <Wallet size={40} className="mb-3 opacity-40" />
-                  <p className="text-sm font-semibold">Belum ada rekening simpanan.</p>
-                  <p className="text-xs mt-1">Hubungi Bendahara untuk membuka rekening.</p>
-                </div>
-              ) : (
+            {!loading && <SavingStatsBanner savings={savings} />}
+
+            {isPersonalMode ? (
+              <div className="space-y-4">
+                {memberStatus === 'loading' ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+                  </div>
+                ) : memberStatus === 'non-member' ? (
+                  <NonMemberBanner 
+                    description="Informasi tabungan personal hanya tersedia bagi anggota aktif koperasi. Hubungi Bendahara atau Pengurus Koperasi sekolah untuk melakukan pendaftaran anggota."
+                  />
+                ) : (
+                  <>
+                    {!loading && <SavingInsightsPanel />}
+                    {loading ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[1, 2, 3, 4]?.map((i) => (
+                          <div key={i} className="h-44 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />
+                        ))}
+                      </div>
+                    ) : savings.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+                        <Wallet size={40} className="mb-3 opacity-40" />
+                        <p className="text-sm font-semibold">Belum ada rekening simpanan.</p>
+                        <p className="text-xs mt-1">Hubungi Bendahara untuk membuka rekening.</p>
+                      </div>
+                    ) : (
                 <div className="space-y-3">
                   <div
                     onClick={toggleExpand}
@@ -354,8 +375,10 @@ const Savings: React.FC = React.memo(() => {
                   </div>
                 </div>
               )}
-            </div>
-          ) : (
+            </>
+          )}
+        </div>
+      ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <SavingsTable

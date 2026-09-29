@@ -4,8 +4,10 @@ import type { Column } from '../../ui/Table';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { Search, Printer, BookOpen, FileSpreadsheet } from 'lucide-react';
+import { Search, Printer, BookOpen, FileSpreadsheet, Eye, ChevronRight } from 'lucide-react';
 import type { Saving, SavingCategory } from './types';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { MobileAcademicList } from '../../academic/shared/MobileAcademicList';
 
 interface StudentData {
   id: string;
@@ -60,6 +62,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
   handleSelectStudent,
   onOpenExportModal
 }) => {
+  const isMobile = useIsMobile();
 
   const finalColumns: Column[] = useMemo(() => {
     if (isStudent) {
@@ -309,6 +312,115 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
     const start = (page - 1) * limit;
     return sortedSavings.slice(start, start + limit);
   }, [sortedSavings, page, limit]);
+
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        {/* Mobile Toolbar */}
+        <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-sm">
+          {toolbarLeftElement}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {toolbarRightElement}
+          </div>
+        </div>
+
+        <MobileAcademicList
+          title="Daftar Simpanan Anggota"
+          data={paginatedSavings}
+          loading={loading}
+          totalItems={sortedSavings.length}
+          emptyMessage="Belum ada data simpanan yang cocok."
+          pagination={{
+            currentPage: page,
+            itemsPerPage: limit,
+            totalItems: sortedSavings.length,
+            totalPages: Math.ceil(sortedSavings.length / limit) || 1,
+            onPageChange: setPage,
+            onLimitChange: setLimit,
+          }}
+          renderCard={(saving: Saving) => {
+            const catColor = saving.category?.color || '#4f46e5';
+            const catName = saving.category?.name || saving.type || 'Simpanan';
+            const balance = parseFloat(saving.amount) || 0;
+            const isStudentMember = Boolean(saving.member.siswaId);
+
+            return (
+              <div
+                key={saving.id}
+                onClick={() => {
+                  handleShowTransactions(saving);
+                  if (!isStudent) {
+                    const targetId = saving.member.siswaId || saving.member.guruId;
+                    const mockStudent: StudentData = {
+                      id: targetId || '',
+                      nama_siswa: saving.member.name,
+                      nama_guru: saving.member.name
+                    };
+                    handleSelectStudent(mockStudent, saving.member.memberNo);
+                  }
+                }}
+                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 shadow-sm active:scale-[0.99] transition-all space-y-3 cursor-pointer"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0"
+                      style={{ backgroundColor: `${catColor}15`, color: catColor }}
+                    >
+                      {isStudentMember ? 'SW' : 'GR'}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                        {saving.member.name}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        No. {saving.member.memberNo}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className="px-2 py-0.5 text-[10px] font-bold rounded-lg uppercase tracking-wider shrink-0"
+                    style={{ backgroundColor: `${catColor}15`, color: catColor }}
+                  >
+                    {catName}
+                  </span>
+                </div>
+
+                <div className="flex items-end justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Saldo</span>
+                    <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                      Rp {balance.toLocaleString('id-ID')}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => handleExportSingleSavingPdf(saving)}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1"
+                      title="Cetak Mutasi"
+                    >
+                      <Printer size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExportAllSavingsPdf(saving)}
+                      className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-355 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1"
+                      title="Rekap Buku"
+                    >
+                      <BookOpen size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <Table

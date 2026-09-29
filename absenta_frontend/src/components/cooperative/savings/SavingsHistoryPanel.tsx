@@ -24,14 +24,14 @@ export const SavingsHistoryPanel = React.memo<SavingsHistoryPanelProps>(({
   return (
     <Card title={`Riwayat: ${selectedSaving.member.name} (${selectedSaving.category?.name || selectedSaving.type || 'Simpanan'})`}>
       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
-        <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800/60 mb-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800/60 mb-2">
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Saldo Saat Ini</p>
             <p className="text-base font-extrabold text-blue-600 dark:text-blue-400">
               Rp {parseFloat(selectedSaving.amount).toLocaleString('id-ID')}
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5 justify-end">
+          <div className="flex flex-wrap gap-1.5 justify-start sm:justify-end">
             <Button
               type="button"
               size="sm"

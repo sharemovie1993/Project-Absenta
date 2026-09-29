@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as cron from 'node-cron';
 import { acquireLock, releaseLock } from '@/infra/locks/distributedLock';
 import { execSync } from 'child_process';
+import { getDeployScenario, isSaasScenario } from '@/utils/deployScenario';
 
 function getCpuSpec(): string {
   try {
@@ -273,12 +274,13 @@ export const heartbeatService = {
       // 6. Send metrics to License Server
       console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, tenants=${tenantList.length}, easyTunnels=${easyTunnelTelemetry.length}`);
 
+      const currentScenario = getDeployScenario();
       const payload: any = {
         activeUsers,
         dbSize,
         memoryUsage,
         lastTapped: lastTapped.toISOString(),
-        deployMode: process.env.DEPLOY_SCENARIO || 'local',
+        deployMode: currentScenario,
         schoolName: serverLabel,
         tenants: tenantList,
         easyTunnelTelemetry,
@@ -287,11 +289,18 @@ export const heartbeatService = {
         osType: `${os.type()} ${os.release()} (${os.arch()}) | CPU: ${getCpuSpec()} | RAM: ${getRamSpecGB()} | Storage: ${getStorageSpecGB()}`
       };
 
+      const requestHeaders: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (isSaasScenario()) {
+        requestHeaders['X-Platform-Key'] = process.env.PLATFORM_API_KEY || process.env.JWT_SECRET || 'absenta-platform-saas';
+      } else {
+        requestHeaders['X-License-Key'] = licenseKey || '';
+      }
+
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-License-Key': licenseKey
-        },
+        headers: requestHeaders,
         timeout: 10000
       });
 

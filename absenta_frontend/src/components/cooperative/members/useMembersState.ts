@@ -8,6 +8,7 @@ import type { Member, CoopProfile } from './types';
 import { fetchCoopSettings } from '../../../utils/cooperative/coopDocUtils';
 import { parseImportExcel } from '../../../utils/cooperative/memberDocUtils';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
+import { useKelasOptions } from '../../../hooks/useKelasOptions';
 
 interface AxiosErrorLike {
   response?: {
@@ -175,15 +176,13 @@ export const useMembersState = (subscription: any) => {
     await membersQuery.refetch();
   }, [membersQuery]);
 
-  const kelasQuery = useQuery({
-    queryKey: ['academic-kelas-options'],
-    queryFn: async () => {
-      const response = await api.get('/academic/kelas');
-      return (response.data && response.data.data ? response.data.data : []) as { id: string; nama_kelas: string }[];
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-  const kelasOptions = kelasQuery.data || [];
+  const { options: canonicalKelasOptions, rawList: kelasRawList } = useKelasOptions({ onlyActive: true });
+  const kelasOptions = useMemo(() => {
+    return (kelasRawList || []).map((k) => ({
+      id: k.id,
+      nama_kelas: k.nama_kelas || (k as any).nama || '',
+    }));
+  }, [kelasRawList]);
 
   // Auto-Generate Member No on Modal Open with active-flag cleanup
   useEffect(() => {
@@ -366,7 +365,11 @@ export const useMembersState = (subscription: any) => {
         status: 'ACTIVE',
         pin: formData.pin || '123456',
       };
-      await createMemberMutation.mutateAsync(payload);
+      try {
+        await createMemberMutation.mutateAsync(payload);
+      } catch {
+        // Handled by onError in createMemberMutation
+      }
     },
     [formData, memberType, isLocked, isExternal, createMemberMutation]
   );
@@ -404,7 +407,11 @@ export const useMembersState = (subscription: any) => {
         guruId: record.guruId || null,
         userId: record.userId || null,
       };
-      await toggleStatusMutation.mutateAsync({ id: record.id, payload });
+      try {
+        await toggleStatusMutation.mutateAsync({ id: record.id, payload });
+      } catch {
+        // Handled by onError in toggleStatusMutation
+      }
     },
     [isLocked, toggleStatusMutation]
   );
@@ -451,7 +458,11 @@ export const useMembersState = (subscription: any) => {
         userId: selectedMember.userId || null,
         pin: newPin,
       };
-      await updatePinMutation.mutateAsync({ id: selectedMember.id, payload });
+      try {
+        await updatePinMutation.mutateAsync({ id: selectedMember.id, payload });
+      } catch {
+        // Handled by onError in updatePinMutation
+      }
     },
     [selectedMember, isLocked, updatePinMutation]
   );
@@ -556,7 +567,11 @@ export const useMembersState = (subscription: any) => {
 
   const handleTerminateSubmit = useCallback(async () => {
     if (!terminatingMember) return;
-    await terminateMutation.mutateAsync(terminatingMember.id);
+    try {
+      await terminateMutation.mutateAsync(terminatingMember.id);
+    } catch {
+      // Handled by onError in terminateMutation
+    }
   }, [terminatingMember, terminateMutation]);
 
   const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
@@ -618,13 +633,8 @@ export const useMembersState = (subscription: any) => {
 
   const filterKelasOptions = useMemo(() => {
     const base = [{ label: 'Semua Kelas', value: 'ALL' }];
-    const ops =
-      (kelasOptions || [])?.map((k) => ({
-        label: k?.nama_kelas || '',
-        value: k?.id || '',
-      })) || [];
-    return [...base, ...ops];
-  }, [kelasOptions]);
+    return [...base, ...(canonicalKelasOptions || [])];
+  }, [canonicalKelasOptions]);
 
   const stats = useMemo(() => {
     const total = (members || [])?.length || 0;

@@ -71,8 +71,36 @@ export default async function savingRoutes(fastify: any) {
     fastify.post('/transaction', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.savings.withdraw'])] }, async (req: any, reply: any) => {
         try {
             const parsed = processSavingTransactionSchema.parse(req.body);
-            const { savingId, amount, type, description } = parsed;
-            const transaction = await SavingService.processTransaction(savingId, amount, type, description, req.user?.id);
+            const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey;
+            const transaction = await SavingService.processTransaction(
+                savingId, 
+                amount, 
+                type, 
+                description, 
+                req.user?.id,
+                typeof idempotencyKey === 'string' ? idempotencyKey.trim() : undefined
+            );
+
+            // Broadcast Realtime Update via Socket.IO (Pilar 4 Hardening: Observability & Resilience)
+            try {
+                const io = req.server?.io || fastify?.io;
+                if (io) {
+                    const tenantId = getTenantId(req);
+                    const eventData = {
+                        type: 'COOP_SAVING_UPDATE',
+                        savingId,
+                        amount,
+                        txType: type,
+                        transactionId: transaction?.id,
+                        timestamp: new Date().toISOString(),
+                    };
+                    io.to(`tenant:${tenantId}`).emit('coop_saving_update', eventData);
+                    io.emit('coop_saving_update', eventData);
+                }
+            } catch (wsErr) {
+                appLogger.warn({ err: wsErr }, 'coop.saving.ws_broadcast_failed');
+            }
+
             reply.code(201).send(transaction);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');

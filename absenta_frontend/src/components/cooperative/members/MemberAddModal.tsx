@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Input } from '../../ui';
 import { Modal } from '../ui/Modal';
 import { SmartStudentPicker } from '../../common/SmartStudentPicker';
+import { SearchableSelect } from '../../ui/SearchableSelect';
+import { useKelasOptions } from '../../../hooks/useKelasOptions';
+import { useSiswaOptions } from '../../../hooks/useSiswaOptions';
+import { useGuruOptions } from '../../../hooks/useGuruOptions';
 import { cn } from '../../../lib/utils';
 
 interface MemberAddModalProps {
@@ -45,6 +49,26 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = React.memo(({
   isExternal,
   onExternalToggle
 }) => {
+  const [selectionMethod, setSelectionMethod] = useState<'smart' | 'siswa' | 'guru'>('smart');
+  const [internalKelasId, setInternalKelasId] = useState<string>('');
+
+  // Canonical hooks for Single Source of Truth
+  const { options: kelasOptions, isLoading: isKelasLoading } = useKelasOptions({ onlyActive: true });
+  const { options: siswaOptions, isLoading: isSiswaLoading } = useSiswaOptions({
+    kelasId: internalKelasId || undefined,
+    onlyActive: true,
+  });
+  const { options: guruOptions, isLoading: isGuruLoading } = useGuruOptions({
+    jenisPtk: 'ALL',
+    onlyActive: true,
+  });
+
+  useEffect(() => {
+    if (!isOpen) {
+      setInternalKelasId('');
+    }
+  }, [isOpen]);
+
   return (
     <Modal
       isOpen={isOpen}
@@ -92,21 +116,127 @@ export const MemberAddModal: React.FC<MemberAddModalProps> = React.memo(({
         />
 
         {!isExternal ? (
-          <div className="space-y-1">
-            <label htmlFor="smart-student-picker-universal" className="block text-sm font-medium text-slate-700 dark:text-slate-355">
-              Cari Anggota (Siswa atau Guru)
-            </label>
-            <SmartStudentPicker
-              ref={undefined}
-              id="smart-student-picker-universal"
-              mode="universal"
-              scope="global"
-              placeholder="Cari nama, NIS, NIP, scan kartu/QR..."
-              onSelect={onEntitySelect}
-            />
-            <p className="text-[10px] text-slate-400">
-              Mendukung pencarian dinamis, scan QR kamera, serta pembaca barcode/RFID kartu otomatis (HID).
-            </p>
+          <div className="space-y-3 bg-slate-50 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-200/60 dark:border-slate-800">
+            {/* Sub-selector Mode */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Pencarian / Sumber Data
+              </span>
+              <div className="inline-flex rounded-lg bg-slate-200/80 dark:bg-slate-800 p-0.5 text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setSelectionMethod('smart')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md transition-all",
+                    selectionMethod === 'smart'
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  )}
+                >
+                  Scan / Cari
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionMethod('siswa')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md transition-all",
+                    selectionMethod === 'siswa'
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  )}
+                >
+                  Siswa (Kelas)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectionMethod('guru')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md transition-all",
+                    selectionMethod === 'guru'
+                      ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                  )}
+                >
+                  Guru & Staf
+                </button>
+              </div>
+            </div>
+
+            {selectionMethod === 'smart' && (
+              <div className="space-y-1">
+                <SmartStudentPicker
+                  ref={undefined}
+                  id="smart-student-picker-universal"
+                  mode="universal"
+                  scope="global"
+                  placeholder="Cari nama, NIS, NIP, scan kartu/QR..."
+                  onSelect={onEntitySelect}
+                />
+                <p className="text-[10px] text-slate-400">
+                  Mendukung pencarian dinamis, scan QR kamera, serta pembaca barcode/RFID kartu otomatis (HID).
+                </p>
+              </div>
+            )}
+
+            {selectionMethod === 'siswa' && (
+              <div className="space-y-2">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Pilih Kelas</label>
+                  <SearchableSelect
+                    value={internalKelasId}
+                    onValueChange={(val) => {
+                      setInternalKelasId(val);
+                    }}
+                    options={kelasOptions}
+                    placeholder="Pilih kelas..."
+                    searchPlaceholder="Cari kelas..."
+                    isLoading={isKelasLoading}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Pilih Siswa</label>
+                  <SearchableSelect
+                    value={selectedEntityId}
+                    onValueChange={(val) => {
+                      const selectedOpt = siswaOptions.find(o => o.value === val);
+                      if (selectedOpt && (selectedOpt as any).raw) {
+                        onEntitySelect({
+                          ...(selectedOpt as any).raw,
+                          _type: 'siswa',
+                        });
+                      }
+                    }}
+                    options={siswaOptions}
+                    placeholder={internalKelasId ? "Pilih siswa..." : "Pilih kelas terlebih dahulu..."}
+                    searchPlaceholder="Cari nama / NIS siswa..."
+                    disabled={!internalKelasId}
+                    isLoading={isSiswaLoading}
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectionMethod === 'guru' && (
+              <div className="space-y-1">
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Pilih Guru / Tenaga Kependidikan</label>
+                <SearchableSelect
+                  value={selectedEntityId}
+                  onValueChange={(val) => {
+                    const selectedOpt = guruOptions.find(o => o.value === val);
+                    if (selectedOpt && (selectedOpt as any).raw) {
+                      onEntitySelect({
+                        ...(selectedOpt as any).raw,
+                        _type: 'guru',
+                      });
+                    }
+                  }}
+                  options={guruOptions}
+                  placeholder="Pilih nama guru / staf..."
+                  searchPlaceholder="Cari nama / NIP guru..."
+                  isLoading={isGuruLoading}
+                />
+              </div>
+            )}
           </div>
         ) : (
           <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-xl text-xs text-indigo-700 dark:text-indigo-300">
