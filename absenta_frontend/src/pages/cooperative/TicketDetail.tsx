@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -8,6 +8,7 @@ import { Button, Card, SearchableSelect, Input, SectionCard } from '@/components
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
+import { useSocket } from '../../hooks/useSocket';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -95,11 +96,26 @@ export const TicketDetail: React.FC = React.memo(() => {
     }
   });
 
+  // Realtime live update on new replies or status changes
+  const { subscribe, unsubscribe } = useSocket();
+
+  useEffect(() => {
+    const handleUpdate = (data?: { ticketId?: string }) => {
+      if (!data?.ticketId || data.ticketId === id) {
+        queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
+      }
+    };
+    subscribe('coop_ticket_update', handleUpdate);
+    return () => {
+      unsubscribe('coop_ticket_update', handleUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient, id]);
+
   const handleReply = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = replySchema.safeParse({ reply });
     if (!parsed.success) {
-      const errorMsg = (parsed as any).error?.errors?.[0]?.message || (parsed as any).error?.issues?.[0]?.message || 'Pesan balasan belum valid';
+      const errorMsg = parsed.error.issues[0]?.message || 'Pesan balasan belum valid';
       toast.error(errorMsg);
       return;
     }

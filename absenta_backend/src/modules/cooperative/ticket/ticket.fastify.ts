@@ -13,19 +13,39 @@ const getTenantId = (req: any) => {
 };
 
 export default async function ticketRoutes(fastify: any) {
-    // Get all tickets
+    const broadcastCoopTicket = (req: any, type: string, payload: any = {}) => {
+        const io = req.server?.io || fastify.io;
+        if (io) {
+            const broadcastPayload = {
+                type,
+                ...payload,
+                timestamp: new Date().toISOString()
+            };
+            const tenantId = getTenantId(req);
+            if (tenantId) {
+                io.to(`tenant:${tenantId}`).emit('coop_ticket_update', broadcastPayload);
+            }
+            io.emit('coop_ticket_update', broadcastPayload);
+        }
+    };
+
+    // Get all tickets (supports ?scope=my or ?scope=all)
     fastify.get('/', { preHandler: [requireCapability(['cooperative.tickets.view.list', 'cooperative.tickets.create'])] }, async (req: any, reply: any) => {
         const tenantId = getTenantId(req);
         const userId = req.user?.id || req.user?.userId;
+        const scope = req.query?.scope;
 
         // Check if user has management capability
         const authResult = await authorizationService.isUserAuthorized(String(userId), ['cooperative.tickets.view.list'], { user: req.user });
         const hasListPermission = authResult.allowed;
 
         let memberId: string | undefined = undefined;
-        if (!hasListPermission) {
+        if (!hasListPermission || scope === 'my') {
             const member = await MemberService.getMemberByUserId(tenantId, userId);
             if (!member) {
+                if (scope === 'my' && hasListPermission) {
+                    return reply.send({ data: [] });
+                }
                 return reply.status(403).send({ message: 'User is not an active cooperative member' });
             }
             memberId = member.id;
@@ -88,6 +108,7 @@ export default async function ticketRoutes(fastify: any) {
         }
 
         const ticket = await TicketService.createTicket(tenantId, data);
+        broadcastCoopTicket(req, 'TICKET_CREATED', { id: ticket.id, subject: ticket.subject, memberId: ticket.memberId });
         return reply.send({ message: 'Ticket created', data: ticket });
     });
 
@@ -114,6 +135,7 @@ export default async function ticketRoutes(fastify: any) {
             }
 
             const message = await TicketService.replyTicket(id, content, isStaff);
+            broadcastCoopTicket(req, 'TICKET_REPLIED', { ticketId: id, messageId: message.id, isStaff });
             return reply.send({ message: 'Reply added', data: message });
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -126,6 +148,7 @@ export default async function ticketRoutes(fastify: any) {
         const { id } = req.params as any;
         const { status } = req.body as any;
         const ticket = await TicketService.updateStatus(id, status);
+        broadcastCoopTicket(req, 'TICKET_STATUS_UPDATED', { ticketId: id, status });
         return reply.send({ message: 'Status updated', data: ticket });
     });
 }
