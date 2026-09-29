@@ -60,6 +60,7 @@ const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
     const { subscription } = useAuthStore();
     const { isKoperasiFinance, isKoperasiHead, isAdmin, isSuperAdmin, can } = useCapabilities();
+    const isMobile = useIsMobile();
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
