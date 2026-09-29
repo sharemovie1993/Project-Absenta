@@ -9,6 +9,22 @@ import { activityLogService } from '../../activity/services/activity-log.service
 import bcrypt from 'bcrypt';
 import { cacheInvalidationService } from '../../../utils/cache-invalidation.service';
 
+// In-Memory Idempotency Cache (5 menit TTL) untuk mencegah duplicate checkout / double sale
+const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of idempotencyCache.entries()) {
+        if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
+            idempotencyCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+
+// In-Flight Checkout Mutex Lock untuk mencegah race condition double-spend
+const checkoutLocks = new Set<string>();
+
 export class TokoService {
 
     // Get Products (with stock check)
@@ -347,16 +363,30 @@ export class TokoService {
         tenantId: string, 
         memberId: string | null, 
         items: { productId: string; quantity: number }[],
-        paymentOptions?: { paymentMethod?: string; cashAmount?: number; changeAmount?: number; operatorId?: string | null; pin?: string; voucherCode?: string }
+        paymentOptions?: { paymentMethod?: string; cashAmount?: number; changeAmount?: number; operatorId?: string | null; pin?: string; voucherCode?: string },
+        idempotencyKey?: string
     ) {
-        // [GUARD: Validasi input]
-        if (!items || items.length === 0) throw new Error('Minimal satu produk harus dipilih.');
-        for (const item of items) {
-            if (!item.productId) throw new Error('productId tidak valid.');
-            if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-                throw new Error(`Jumlah produk harus bilangan bulat positif (productId: ${item.productId}).`);
-            }
+        if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
+            appLogger.info({ idempotencyKey, tenantId }, '[POS] Returning cached sale result');
+            return idempotencyCache.get(idempotencyKey)!.data;
         }
+
+        const lockKey = memberId ? `member:${memberId}` : (idempotencyKey ? `idem:${idempotencyKey}` : null);
+        if (lockKey && checkoutLocks.has(lockKey)) {
+            throw new Error('Transaksi checkout sedang berlangsung untuk akun/pembayaran ini. Mohon jangan mengirim permintaan ganda.');
+        }
+
+        if (lockKey) checkoutLocks.add(lockKey);
+
+        try {
+            // [GUARD: Validasi input]
+            if (!items || items.length === 0) throw new Error('Minimal satu produk harus dipilih.');
+            for (const item of items) {
+                if (!item.productId) throw new Error('productId tidak valid.');
+                if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+                    throw new Error(`Jumlah produk harus bilangan bulat positif (productId: ${item.productId}).`);
+                }
+            }
 
         const paymentMethod = paymentOptions?.paymentMethod || "CASH";
         const cashAmount = paymentOptions?.cashAmount !== undefined ? Number(paymentOptions.cashAmount) : null;
@@ -414,7 +444,7 @@ export class TokoService {
         }
 
         // Execute dalam satu $transaction untuk atomicity
-        return prisma.$transaction(async (tx: any) => {
+        const sale = await prisma.$transaction(async (tx: any) => {
             // [ANTI-RACE CONDITION: Validasi stok DI DALAM tx]
             // Re-read stok dengan fresh read, lalu validasi sebelum decrement
             let totalAmount = 0;
@@ -484,11 +514,18 @@ export class TokoService {
                     );
                 }
 
-                // Potong saldo simpanan sukarela
-                await tx.saving.update({
-                    where: { id: memberSaving.id },
+                // Potong saldo simpanan sukarela dengan Atomic Conditional Guard
+                const updateResult = await tx.saving.updateMany({
+                    where: { 
+                        id: memberSaving.id, 
+                        amount: { gte: totalAmount } 
+                    },
                     data: { amount: { decrement: totalAmount } }
                 });
+
+                if (updateResult.count === 0) {
+                    throw new Error("Saldo simpanan tidak mencukupi atau telah berkurang pada transaksi paralel lain.");
+                }
 
                 // Catat mutasi penarikan (WITHDRAWAL) untuk belanja POS
                 await tx.savingTransaction.create({
@@ -496,7 +533,7 @@ export class TokoService {
                         savingId: memberSaving.id,
                         amount: totalAmount,
                         type: 'WITHDRAWAL',
-                        description: `Pembayaran POS`
+                        description: `Pembayaran Belanja POS Minimarket`
                     }
                 });
             }
@@ -586,7 +623,16 @@ export class TokoService {
 
             return sale;
         });
+
+        if (idempotencyKey) {
+            idempotencyCache.set(idempotencyKey, { data: sale, timestamp: Date.now() });
+        }
+
+        return sale;
+    } finally {
+        if (lockKey) checkoutLocks.delete(lockKey);
     }
+}
 
     // Search active members for POS with voluntary saving balance
     static async searchMembersForPOS(tenantId: string, search?: string) {

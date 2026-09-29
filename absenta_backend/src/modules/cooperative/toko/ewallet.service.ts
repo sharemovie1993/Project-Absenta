@@ -82,7 +82,8 @@ export class EWalletService {
         tenantId: string,
         rfid: string,
         items: { productId: string; quantity: number }[],
-        options: { pin: string; operatorId?: string; voucherCode?: string }
+        options: { pin: string; operatorId?: string; voucherCode?: string },
+        idempotencyKey?: string
     ) {
         // 1. Resolve member from RFID
         const member = await this.resolveMemberByRfid(tenantId, rfid);
@@ -93,6 +94,6 @@ export class EWalletService {
             pin: options.pin,
             operatorId: options.operatorId,
             voucherCode: options.voucherCode
-        });
+        }, idempotencyKey);
     }
 }

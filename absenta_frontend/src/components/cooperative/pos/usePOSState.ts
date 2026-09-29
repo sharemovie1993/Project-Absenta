@@ -8,6 +8,7 @@ import { fetchCoopSettings, type CoopSettingsData, printCoopReceipt } from '../.
 import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
 import type { Subscription } from '../../../types/subscription';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
+import { useSocket } from '../../../hooks/useSocket';
 
 export interface CoopMember {
   id: string;
@@ -272,6 +273,30 @@ export const usePOSState = () => {
     await memberInfoQuery.refetch();
   }, [memberInfoQuery]);
 
+  const { subscribe, unsubscribe } = useSocket();
+
+  // Realtime Live Sync: Sinkronisasi katalog stok, riwayat penjualan POS, dan saldo anggota
+  useEffect(() => {
+    const handlePosUpdate = () => {
+      invalidateAllProductCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posHistory });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-products'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-me'] });
+    };
+
+    const handleSavingUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['koperasi-member-me'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+    };
+
+    subscribe('coop_pos_update', handlePosUpdate);
+    subscribe('coop_saving_update', handleSavingUpdate);
+    return () => {
+      unsubscribe('coop_pos_update', handlePosUpdate);
+      unsubscribe('coop_saving_update', handleSavingUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
+
   const addToCart = useCallback((product: Product) => {
       if (isLocked) return;
       if (product.stock <= 0) return toast.error('Stok habis');
@@ -460,7 +485,10 @@ export const usePOSState = () => {
 
   const registerMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await api.post('/cooperative/members', payload);
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post('/cooperative/members', payload, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
       return res.data;
     },
     onSuccess: async (resData, variables) => {
@@ -536,7 +564,10 @@ export const usePOSState = () => {
 
   const checkoutMutation = useMutation({
     mutationFn: async (payload: any) => {
-      const res = await api.post('/cooperative/toko/checkout', payload);
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post('/cooperative/toko/checkout', payload, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
       return res.data;
     },
     onSuccess: (resData) => {

@@ -29,6 +29,22 @@ export default async function tokoRoutes(fastify: any) {
         return (req.user?.tenant_id || req.user?.tenantId) || mockTenant.id;
     };
 
+    const broadcastCoopPos = (req: any, type: string, payload: any = {}) => {
+        const io = req.server?.io || fastify.io;
+        if (io) {
+            const broadcastPayload = {
+                type,
+                ...payload,
+                timestamp: new Date().toISOString()
+            };
+            const tenantId = getTenantId(req);
+            if (tenantId) {
+                io.to(`tenant:${tenantId}`).emit('coop_pos_update', broadcastPayload);
+            }
+            io.emit('coop_pos_update', broadcastPayload);
+        }
+    };
+
     // GET /products
     fastify.get('/', { preHandler: [requireCapability(['cooperative.store.products.view.list', 'cooperative.store.view.catalog'])] }, async (req: any, reply: any) => {
         try {
@@ -49,6 +65,7 @@ export default async function tokoRoutes(fastify: any) {
             const operatorId = req.user?.id || req.user?.userId || null;
             const parsed = createProductSchema.parse(req.body);
             const product = await TokoService.createProduct(tenantId, parsed, operatorId);
+            broadcastCoopPos(req, 'PRODUCT_CREATED', { productId: product.id });
             reply.code(201).send(product);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -68,6 +85,7 @@ export default async function tokoRoutes(fastify: any) {
             const operatorId = req.user?.id || req.user?.userId || null;
             const parsed = updateProductSchema.parse(req.body);
             const product = await TokoService.updateProduct(req.params.id, parsed, operatorId);
+            broadcastCoopPos(req, 'PRODUCT_UPDATED', { productId: product.id });
             return product;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -86,6 +104,7 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const operatorId = req.user?.id || req.user?.userId || null;
             await TokoService.deleteProduct(req.params.id, operatorId);
+            broadcastCoopPos(req, 'PRODUCT_DELETED', { productId: req.params.id });
             reply.code(204).send();
         } catch (error) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -111,9 +130,32 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = posCheckoutSchema.parse(req.body);
             const { memberId, items, paymentMethod, cashAmount, changeAmount, pin, voucherCode } = parsed;
-            const sale = await TokoService.processSale(tenantId, memberId, items, { paymentMethod, cashAmount, changeAmount, operatorId, pin, voucherCode });
+            const sale = await TokoService.processSale(tenantId, memberId, items, { paymentMethod, cashAmount, changeAmount, operatorId, pin, voucherCode }, idempotencyKey);
+
+            // Broadcast event POS
+            broadcastCoopPos(req, 'SALE_COMPLETED', { saleId: sale.id, paymentMethod, total: sale.total });
+
+            // Jika pembayaran memotong simpanan sukarela, broadcast event simpanan realtime
+            if (paymentMethod === 'SAVING') {
+                const io = req.server?.io || fastify.io;
+                if (io) {
+                    const savingBroadcast = {
+                        type: 'POS_SHOPPING_WITHDRAWAL',
+                        memberId,
+                        amount: sale.total,
+                        saleId: sale.id,
+                        timestamp: new Date().toISOString()
+                    };
+                    if (tenantId) {
+                        io.to(`tenant:${tenantId}`).emit('coop_saving_update', savingBroadcast);
+                    }
+                    io.emit('coop_saving_update', savingBroadcast);
+                }
+            }
+
             reply.code(201).send(sale);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -171,6 +213,7 @@ export default async function tokoRoutes(fastify: any) {
             const parsed = adjustStockSchema.parse(req.body);
             const { newStock, reason } = parsed;
             const product = await TokoService.adjustStock(tenantId, req.params.id, newStock, reason, operatorId);
+            broadcastCoopPos(req, 'STOCK_ADJUSTED', { productId: req.params.id, newStock });
             return product;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -206,6 +249,7 @@ export default async function tokoRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
             const stockIn = await TokoService.processStockIn(tenantId, operatorId, req.body as any);
+            broadcastCoopPos(req, 'STOCK_IN_PROCESSED', { stockInId: stockIn.id });
             reply.code(201).send(stockIn);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -380,6 +424,7 @@ export default async function tokoRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
             const session = await OpnameService.finalizeSession(tenantId, req.params.id, operatorId);
+            broadcastCoopPos(req, 'STOCK_OPNAME_FINALIZED', { sessionId: req.params.id });
             return session;
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
@@ -562,6 +607,7 @@ export default async function tokoRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const operatorId = req.user?.id || req.user?.userId || null;
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = rfidCheckoutSchema.parse(req.body);
             const { rfid, items, pin, voucherCode } = parsed;
             
@@ -569,8 +615,25 @@ export default async function tokoRoutes(fastify: any) {
                 pin,
                 operatorId,
                 voucherCode
-            });
+            }, idempotencyKey);
             
+            // Broadcast event POS & Simpanan
+            broadcastCoopPos(req, 'SALE_COMPLETED', { saleId: sale.id, paymentMethod: 'SAVING', total: sale.total });
+            const io = req.server?.io || fastify.io;
+            if (io) {
+                const savingBroadcast = {
+                    type: 'RFID_SHOPPING_WITHDRAWAL',
+                    memberId: sale.memberId,
+                    amount: sale.total,
+                    saleId: sale.id,
+                    timestamp: new Date().toISOString()
+                };
+                if (tenantId) {
+                    io.to(`tenant:${tenantId}`).emit('coop_saving_update', savingBroadcast);
+                }
+                io.emit('coop_saving_update', savingBroadcast);
+            }
+
             reply.code(201).send(sale);
         } catch (error: any) {
         appLogger.error({ err: error }, 'Cooperative route error');
