@@ -353,20 +353,20 @@ const Settings: React.FC = React.memo(() => {
   }
   return <PremiumFeatureGate moduleName="KOPERASI" featureName="Pengaturan Koperasi">
       <AcademicPageLayout title="Pengaturan Koperasi" description="Konfigurasi identitas badan hukum, alamat, serta jenis simpanan koperasi secara dinamis" hardeningModuleKey="coop_settings" breadcrumbs={breadcrumbs} instruction={instruction}>
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+        <SectionCard fullWidth noPadding className="border-0 shadow-none bg-transparent p-0 flex flex-col w-full min-w-0 space-y-6">
           {/* Dynamic Tab Switcher */}
-          <div className="mb-6">
+          <div>
             <TabSwitcher options={tabOptions} activeTab={activeTab} onChange={id => setActiveTab(id as 'profile' | 'categories')} />
           </div>
 
           <Suspense fallback={<div className="flex items-center justify-center min-h-[200px]">
               <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
             </div>}>
-            {activeTab === 'profile' ? <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-8">
+            {activeTab === 'profile' ? <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                <div className="xl:col-span-8">
                   <CooperativeProfileForm formData={formData} saving={saving} onInputChange={handleInputChange} onSubmit={handleSubmit} effectiveLogoUrl={effectiveLogoUrl} canEditProfile={canEditProfile} />
                 </div>
-                <div className="lg:col-span-4 lg:sticky lg:top-4">
+                <div className="xl:col-span-4 xl:sticky xl:top-6">
                   <KopSuratPreview cooperativeName={formData.cooperative_name} cooperativeLegalNo={formData.cooperative_legal_no} effectiveLogoUrl={effectiveLogoUrl} />
                 </div>
               </div> : <CategoriesTable categories={categories} loadingCategories={loadingCategories} onToggleActive={handleToggleCatActive} onEdit={handleOpenEditModal} onDelete={handleDeleteCategory} onOpenCreate={handleOpenCreateModal} canEditCategories={canEditCategories} />}
