@@ -228,7 +228,7 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
           </SectionCard>
 
           {/* Allocation Table */}
-          <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm">
+          <SectionCard fullWidth className="p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-sm">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">Daftar Penerimaan SHU Anggota</h3>

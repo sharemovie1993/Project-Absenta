@@ -129,7 +129,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
       </div>
 
       {/* History Table */}
-      <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md">
+      <SectionCard fullWidth className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md">
         <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">Riwayat Distribusi SHU</h3>
         {loadingHistory ? (
           <div className="flex items-center justify-center min-h-[150px]">

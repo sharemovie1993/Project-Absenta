@@ -535,10 +535,10 @@ const SHUPage: React.FC = React.memo(() => {
         breadcrumbs={layoutInfo.breadcrumbs}
         instruction={layoutInfo.instruction}
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0">
+        <SectionCard fullWidth noPadding className="border-0 shadow-none bg-transparent p-0 flex flex-col w-full min-w-0 space-y-6">
           {/* Tab Switcher for Pengurus */}
           {isCoopStaff && (
-            <div className="mb-6">
+            <div>
               <TabSwitcher
                 options={tabOptions}
                 activeTab={activeTab}
@@ -657,7 +657,7 @@ const SHUPage: React.FC = React.memo(() => {
                 : 'Belum ada periode SHU yang dikonfigurasi.'}
             </div>
           ) : (
-            <SectionCard className="p-0 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+            <SectionCard fullWidth className="p-0 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
