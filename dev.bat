@@ -1,12 +1,11 @@
 @echo off
-chcp 65001 >nul
 title Absenta Development Launcher
 cls
 echo ================================================================
-echo           🚀 ABSENTA DEVELOPMENT RUNNER (BACKEND & FRONTEND)
+echo           ABSENTA DEVELOPMENT RUNNER - BACKEND and FRONTEND
 echo ================================================================
 echo.
-echo Lokasi Proyek : %~dp0
+echo Lokasi Proyek: %~dp0
 echo.
 
 set "BACKEND_DIR=%~dp0absenta_backend"
@@ -32,9 +31,9 @@ start "Absenta Frontend" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev"
 
 echo.
 echo ================================================================
-echo  ✅ Backend dan Frontend sedang dijalankan di jendela terpisah!
+echo  Sukses: Backend dan Frontend berjalan di jendela terpisah!
 echo ================================================================
 echo.
-echo Menutup launcher ini dalam 5 detik (jendela server tetap berjalan)...
-timeout /t 5 >nul
+echo Menutup launcher dalam 3 detik...
+ping 127.0.0.1 -n 4 >nul
 exit /b 0
