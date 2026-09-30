@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
@@ -15,18 +15,32 @@ import {
   Edit2,
   Trash2,
   CheckCircle2,
-  User2,
-  CheckCircle
+  CheckCircle,
+  List,
+  LayoutGrid,
+  Filter
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
-import { Button, Input, SectionCard } from '@/components/ui';
+import { Button, Input, SectionCard, Table } from '@/components/ui';
+import type { Column } from '@/components/ui/Table';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
+
+const getInitials = (name: string): string => {
+  if (!name) return 'SP';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+};
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
+const SupplierFormModal = lazy(() => import('./components/SupplierFormModal'));
+const SupplierDetailModal = lazy(() => import('./components/SupplierDetailModal'));
 
 // Zod Schema Validation Guard (Pilar 25)
 const supplierFormSchema = z.object({
@@ -65,26 +79,23 @@ interface SupplierFormData {
   notes: string;
 }
 
-const EMPTY_FORM: SupplierFormData = {
-  name: '',
-  contact: '',
-  phone: '',
-  email: '',
-  address: '',
-  notes: ''
-};
-
 export const Suppliers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [sortBy, setSortBy] = useState<string>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<CoopSupplier | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<CoopSupplier | null>(null);
-  const [formData, setFormData] = useState<SupplierFormData>(EMPTY_FORM);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingSupplier, setDeletingSupplier] = useState<CoopSupplier | null>(null);
 
@@ -99,15 +110,64 @@ export const Suppliers: React.FC = React.memo(() => {
     staleTime: 2 * 60 * 1000,
   });
 
+  // Reset pagination on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
   const filteredSuppliers = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
-    if (!q) return suppliers;
-    return (suppliers ?? []).filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      (s.contact || '').toLowerCase().includes(q) ||
-      (s.phone || '').toLowerCase().includes(q)
-    );
-  }, [suppliers, searchQuery]);
+    return (suppliers ?? []).filter(s => {
+      const matchSearch = !q ||
+        s.name.toLowerCase().includes(q) ||
+        (s.contact || '').toLowerCase().includes(q) ||
+        (s.phone || '').toLowerCase().includes(q);
+      const matchStatus = 
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && s.isActive !== false) ||
+        (statusFilter === 'INACTIVE' && s.isActive === false);
+      return matchSearch && matchStatus;
+    });
+  }, [suppliers, searchQuery, statusFilter]);
+
+  const sortedSuppliers = useMemo(() => {
+    const list = [...filteredSuppliers];
+    list.sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+      if (sortBy === 'totalValue') {
+        aVal = a.totalValue || 0;
+        bVal = b.totalValue || 0;
+      } else if (sortBy === 'isActive') {
+        aVal = a.isActive !== false ? 1 : 0;
+        bVal = b.isActive !== false ? 1 : 0;
+      } else if (sortBy === 'contact') {
+        aVal = (a.contact || '').toLowerCase();
+        bVal = (b.contact || '').toLowerCase();
+      } else {
+        aVal = (a.name || '').toLowerCase();
+        bVal = (b.name || '').toLowerCase();
+      }
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return list;
+  }, [filteredSuppliers, sortBy, sortOrder]);
+
+  const totalPages = useMemo(() => {
+    return Math.ceil(sortedSuppliers.length / limit) || 1;
+  }, [sortedSuppliers.length, limit]);
+
+  const paginatedSuppliers = useMemo(() => {
+    const start = (currentPage - 1) * limit;
+    return sortedSuppliers.slice(start, start + limit);
+  }, [sortedSuppliers, currentPage, limit]);
+
+  const handleSort = useCallback((key: string, order: 'asc' | 'desc') => {
+    setSortBy(key);
+    setSortOrder(order);
+  }, []);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -127,7 +187,6 @@ export const Suppliers: React.FC = React.memo(() => {
       toast.success('Supplier berhasil ditambahkan');
       queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
       setIsFormOpen(false);
-      setFormData(EMPTY_FORM);
       setEditingSupplier(null);
     },
     onError: () => {
@@ -144,7 +203,6 @@ export const Suppliers: React.FC = React.memo(() => {
       toast.success('Data supplier berhasil diperbarui');
       queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
       setIsFormOpen(false);
-      setFormData(EMPTY_FORM);
       setEditingSupplier(null);
     },
     onError: () => {
@@ -167,37 +225,22 @@ export const Suppliers: React.FC = React.memo(() => {
     }
   });
 
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = supplierFormSchema.safeParse(formData);
-    if (!parsed.success) {
-      toast.error(parsed.error.errors[0]?.message || 'Data belum valid');
-      return;
-    }
+  const handleFormSubmit = useCallback((data: SupplierFormData) => {
     if (editingSupplier) {
-      updateMutation.mutate({ id: editingSupplier.id, data: formData });
+      updateMutation.mutate({ id: editingSupplier.id, data });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(data);
     }
-  }, [formData, editingSupplier, createMutation, updateMutation]);
+  }, [editingSupplier, createMutation, updateMutation]);
 
   const handleOpenCreate = useCallback(() => {
     setEditingSupplier(null);
-    setFormData(EMPTY_FORM);
     setIsFormOpen(true);
   }, []);
 
   const handleOpenEdit = useCallback((supplier: CoopSupplier, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingSupplier(supplier);
-    setFormData({
-      name: supplier.name,
-      contact: supplier.contact || '',
-      phone: supplier.phone || '',
-      email: supplier.email || '',
-      address: supplier.address || '',
-      notes: supplier.notes || ''
-    });
     setIsFormOpen(true);
   }, []);
 
@@ -206,6 +249,187 @@ export const Suppliers: React.FC = React.memo(() => {
     setDeletingSupplier(supplier);
     setIsDeleteConfirmOpen(true);
   }, []);
+
+  const columns: Column[] = useMemo(() => [
+    {
+      key: 'name',
+      label: 'Supplier / Perusahaan',
+      sortable: true,
+      render: (_val: unknown, row: CoopSupplier) => (
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 dark:border-emerald-800">
+            {getInitials(row.name)}
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">{row.name}</div>
+            <div className="text-[11px] text-slate-400 truncate">{row.contact ? `PIC: ${row.contact}` : 'Supplier Mitra'}</div>
+          </div>
+        </div>
+      )
+    },
+    {
+      key: 'contact',
+      label: 'Kontak',
+      render: (_val: unknown, row: CoopSupplier) => (
+        <div className="space-y-1 text-xs">
+          {row.phone && (
+            <div className="flex items-center gap-1.5">
+              <Phone size={11} className="text-emerald-500 shrink-0" />
+              <a href={`tel:${row.phone.replace(/[^0-9+]/g, '')}`} onClick={(e) => e.stopPropagation()} className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium text-[11px]" title="Hubungi Supplier">
+                {row.phone}
+              </a>
+            </div>
+          )}
+          {row.email && (
+            <div className="flex items-center gap-1.5">
+              <Mail size={11} className="text-blue-500 shrink-0" />
+              <a href={`mailto:${row.email}`} onClick={(e) => e.stopPropagation()} className="text-blue-600 dark:text-blue-400 hover:underline text-[11px] truncate max-w-44 inline-block" title="Kirim Email">
+                {row.email}
+              </a>
+            </div>
+          )}
+          {!row.phone && !row.email && <span className="text-slate-400 text-xs">-</span>}
+        </div>
+      )
+    },
+    {
+      key: 'address',
+      label: 'Alamat',
+      render: (_val: unknown, row: CoopSupplier) => (
+        <div className="text-xs text-slate-600 dark:text-slate-300 max-w-48 truncate" title={row.address || ''}>
+          {row.address || '-'}
+        </div>
+      )
+    },
+    {
+      key: 'totalValue',
+      label: 'Total Pengadaan',
+      sortable: true,
+      render: (_val: unknown, row: CoopSupplier) => (
+        <div className="text-xs">
+          <div className="font-bold text-blue-600 dark:text-blue-400">{formatCurrency(row.totalValue || 0)}</div>
+          <div className="text-[10px] text-slate-400">{row.totalPurchases || 0} faktur</div>
+        </div>
+      )
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      sortable: true,
+      render: (_val: unknown, row: CoopSupplier) => (
+        <span className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold",
+          row.isActive !== false
+            ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
+            : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+        )}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", row.isActive !== false ? "bg-emerald-500" : "bg-slate-400")} />
+          {row.isActive !== false ? 'Aktif' : 'Nonaktif'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      label: 'Aksi',
+      className: 'text-right',
+      render: (_val: unknown, row: CoopSupplier) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button variant="outline" size="sm" onClick={() => { setSelectedSupplier(row); setIsDetailOpen(true); }} className="h-7 px-2.5 text-xs font-semibold" title="Lihat Detail Faktur">
+            Detail
+          </Button>
+          <Button variant="ghost" size="icon" onClick={(e) => handleOpenEdit(row, e)} className="w-7 h-7 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40" title="Edit Supplier">
+            <Edit2 size={13} />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={(e) => handleConfirmDelete(row, e)} className="w-7 h-7 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40" title="Nonaktifkan Supplier">
+            <Trash2 size={13} />
+          </Button>
+        </div>
+      )
+    }
+  ], [handleOpenEdit, handleConfirmDelete]);
+
+  const renderSupplierCard = useCallback((supplier: CoopSupplier) => (
+    <div
+      key={supplier.id}
+      onClick={() => {
+        setSelectedSupplier(supplier);
+        setIsDetailOpen(true);
+      }}
+      className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 rounded-2xl shadow-xs hover:border-emerald-500/40 transition-all cursor-pointer space-y-3"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 dark:border-emerald-800">
+            {getInitials(supplier.name)}
+          </div>
+          <div className="min-w-0">
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">{supplier.name}</h4>
+            <span className="text-[11px] text-slate-400 font-medium truncate block">{supplier.contact ? `PIC: ${supplier.contact}` : 'Supplier Mitra'}</span>
+          </div>
+        </div>
+
+        <span className={cn(
+          "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0",
+          supplier.isActive !== false
+            ? "bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
+            : "bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-800 dark:border-slate-700"
+        )}>
+          <span className={cn("w-1.5 h-1.5 rounded-full", supplier.isActive !== false ? "bg-emerald-500" : "bg-slate-400")} />
+          {supplier.isActive !== false ? 'Aktif' : 'Nonaktif'}
+        </span>
+      </div>
+
+      <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/80">
+        {supplier.phone && (
+          <div className="flex items-center gap-2">
+            <Phone size={12} className="text-emerald-500 shrink-0" />
+            <a
+              href={`tel:${supplier.phone.replace(/[^0-9+]/g, '')}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
+              title="Hubungi Supplier"
+            >
+              {supplier.phone}
+            </a>
+          </div>
+        )}
+        {supplier.email && (
+          <div className="flex items-center gap-2">
+            <Mail size={12} className="text-blue-500 shrink-0" />
+            <a
+              href={`mailto:${supplier.email}`}
+              onClick={(e) => e.stopPropagation()}
+              className="text-blue-600 dark:text-blue-400 hover:underline truncate"
+              title="Kirim Email"
+            >
+              {supplier.email}
+            </a>
+          </div>
+        )}
+        {supplier.address && (
+          <div className="flex items-center gap-2">
+            <MapPin size={12} className="text-slate-400 shrink-0" />
+            <span className="truncate">{supplier.address}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div>
+          <p className="text-[10px] text-slate-400 uppercase font-medium">Total Pengadaan</p>
+          <p className="font-mono font-bold text-slate-800 dark:text-slate-200">{formatCurrency(supplier.totalValue || 0)}</p>
+        </div>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" onClick={(e) => handleOpenEdit(supplier, e)} className="w-7 h-7 text-emerald-600" title="Edit">
+            <Edit2 size={13} />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={(e) => handleConfirmDelete(supplier, e)} className="w-7 h-7 text-rose-500" title="Nonaktifkan">
+            <Trash2 size={13} />
+          </Button>
+        </div>
+      </div>
+    </div>
+  ), [handleOpenEdit, handleConfirmDelete]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative/dashboard' },
@@ -290,127 +514,179 @@ export const Suppliers: React.FC = React.memo(() => {
                 </div>
               )}
 
-              {/* Filter Bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <Input
-                  id="supplier-search-input"
-                  aria-label="Cari nama supplier atau kontak"
-                  placeholder="Cari nama supplier, kontak, atau nomor telepon..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    const parsed = searchFilterSchema.safeParse({ search: e.target.value });
-                    if (parsed.success) {
-                      setSearchQuery(e.target.value);
-                    }
-                  }}
-                  className="pl-10 text-xs w-full rounded-xl"
-                />
+              {/* Toolbar: Search, Status Filter & View Mode Switcher */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1 max-w-2xl">
+                  {/* Search Input */}
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      id="supplier-search-input"
+                      aria-label="Cari nama supplier atau kontak"
+                      placeholder="Cari nama supplier, kontak, atau nomor telepon..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        const parsed = searchFilterSchema.safeParse({ search: e.target.value });
+                        if (parsed.success) {
+                          setSearchQuery(e.target.value);
+                        }
+                      }}
+                      className="pl-10 text-xs w-full rounded-xl"
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="w-36 shrink-0">
+                    <SearchableSelect
+                      id="status-filter-select"
+                      value={statusFilter}
+                      onChange={(val) => setStatusFilter(val as 'ALL' | 'ACTIVE' | 'INACTIVE')}
+                      options={[
+                        { value: 'ALL', label: 'Semua Status' },
+                        { value: 'ACTIVE', label: 'Aktif Saja' },
+                        { value: 'INACTIVE', label: 'Nonaktif Saja' }
+                      ]}
+                      placeholder="Status"
+                    />
+                  </div>
+                </div>
+
+                {/* View Mode Switcher (Desktop only) */}
+                <div className="hidden sm:flex items-center p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('table')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                      viewMode === 'table'
+                        ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
+                    title="Tampilan Tabel Standar"
+                  >
+                    <List size={14} />
+                    <span>Tabel</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('grid')}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                      viewMode === 'grid'
+                        ? "bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
+                    title="Tampilan Kartu Grid"
+                  >
+                    <LayoutGrid size={14} />
+                    <span>Kartu</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Supplier Cards Grid */}
+              {/* Content: Mobile Deck or Desktop Table/Grid */}
               {isLoading ? (
                 <div className="text-center py-20 text-xs text-slate-400">
                   <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-500 border-t-transparent mx-auto mb-2" />
                   Memuat data supplier...
                 </div>
               ) : filteredSuppliers.length === 0 ? (
-                <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400">
-                  Tidak ada data supplier yang ditemukan.
+                <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs text-slate-400 space-y-2">
+                  <Building2 size={36} className="mx-auto opacity-30 text-slate-400" />
+                  <p>Tidak ada data supplier yang ditemukan.</p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredSuppliers?.map((supplier) => (
-                    <div
-                      key={supplier.id}
-                      onClick={() => {
-                        setSelectedSupplier(supplier);
-                        setIsDetailOpen(true);
-                      }}
-                      className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 p-5 rounded-2xl shadow-sm hover:border-emerald-500/40 transition-all cursor-pointer space-y-4"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center font-bold text-xs shrink-0">
-                            <Building2 size={18} />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-xs text-slate-900 dark:text-white">
-                              {supplier.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {supplier.contact ? `PIC: ${supplier.contact}` : 'Supplier Mitra'}
-                            </span>
-                          </div>
-                        </div>
+              ) : isMobile ? (
+                /* Mobile Card Deck View */
+                <div className="space-y-3">
+                  {(paginatedSuppliers ?? [])?.map(renderSupplierCard)}
 
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleOpenEdit(supplier, e)}
-                            className="w-7 h-7 text-emerald-600"
-                            title="Edit"
-                          >
-                            <Edit2 size={13} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleConfirmDelete(supplier, e)}
-                            className="w-7 h-7 text-rose-500"
-                            title="Nonaktifkan"
-                          >
-                            <Trash2 size={13} />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
-                        {supplier.phone && (
-                          <div className="flex items-center gap-2">
-                            <Phone size={12} className="text-emerald-500 shrink-0" />
-                            <a
-                              href={`tel:${supplier.phone.replace(/[^0-9+]/g, '')}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
-                              title="Hubungi Supplier"
-                            >
-                              {supplier.phone}
-                            </a>
-                          </div>
-                        )}
-                        {supplier.email && (
-                          <div className="flex items-center gap-2">
-                            <Mail size={12} className="text-blue-500 shrink-0" />
-                            <a
-                              href={`mailto:${supplier.email}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-blue-600 dark:text-blue-400 hover:underline truncate"
-                              title="Kirim Email"
-                            >
-                              {supplier.email}
-                            </a>
-                          </div>
-                        )}
-                        {supplier.address && (
-                          <div className="flex items-center gap-2">
-                            <MapPin size={12} className="text-rose-500 shrink-0" />
-                            <span className="truncate">{supplier.address}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                        <span className="text-[10px] text-slate-400">
-                          {supplier.totalPurchases || 0} Transaksi Faktur
-                        </span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                          {formatCurrency(supplier.totalValue || 0)}
-                        </span>
+                  {/* Mobile Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2 px-1 text-xs">
+                      <span className="text-slate-500 text-[11px]">
+                        Hal. {currentPage} / {totalPages} ({filteredSuppliers.length} supplier)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={currentPage <= 1}
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Sebelumnya
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={currentPage >= totalPages}
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className="h-7 px-2 text-xs"
+                        >
+                          Selanjutnya
+                        </Button>
                       </div>
                     </div>
-                  ))}
+                  )}
+                </div>
+              ) : viewMode === 'table' ? (
+                /* Desktop Table View (Layout Halaman Stok) */
+                <Table
+                  columns={columns}
+                  data={paginatedSuppliers}
+                  loading={isLoading}
+                  emptyMessage="Tidak ada data supplier yang ditemukan."
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  onSort={handleSort}
+                  rowKey="id"
+                  pagination={{
+                    currentPage,
+                    totalPages,
+                    totalItems: filteredSuppliers.length,
+                    itemsPerPage: limit,
+                    onPageChange: setCurrentPage,
+                    onLimitChange: setLimit
+                  }}
+                />
+              ) : (
+                /* Desktop Grid View */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(paginatedSuppliers ?? [])?.map(renderSupplierCard)}
+                  </div>
+
+                  {/* Desktop Grid Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2 px-1 text-xs">
+                      <span className="text-slate-500 text-xs">
+                        Menampilkan {paginatedSuppliers.length} dari {filteredSuppliers.length} supplier
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={currentPage <= 1}
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className="h-8 px-3 text-xs"
+                        >
+                          Sebelumnya
+                        </Button>
+                        <span className="text-xs font-semibold px-2">
+                          Halaman {currentPage} / {totalPages}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={currentPage >= totalPages}
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className="h-8 px-3 text-xs"
+                        >
+                          Selanjutnya
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -432,142 +708,21 @@ export const Suppliers: React.FC = React.memo(() => {
         {/* Lazy Loaded Modals */}
         <Suspense fallback={null}>
           {isFormOpen && (
-            <Modal
+            <SupplierFormModal
               isOpen={isFormOpen}
-              onClose={() => { setIsFormOpen(false); setEditingSupplier(null); setFormData(EMPTY_FORM); }}
-              title={editingSupplier ? 'Edit Data Supplier' : 'Tambah Supplier Baru'}
-            >
-              <form onSubmit={handleSubmit} className="space-y-4 py-2 text-xs">
-                <div>
-                  <label htmlFor="sup-name" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Nama Supplier / Badan Usaha <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    id="sup-name"
-                    aria-label="Nama supplier"
-                    placeholder="PT. Sumber Makmur / Toko Berkah"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="rounded-xl"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="sup-contact" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Kontak Person (Sales / PIC)
-                  </label>
-                  <Input
-                    id="sup-contact"
-                    aria-label="Kontak person"
-                    placeholder="Bpk. Budi Santoso"
-                    value={formData.contact}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contact: e.target.value }))}
-                    className="rounded-xl"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="sup-phone" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      No. Telepon / WhatsApp
-                    </label>
-                    <Input
-                      id="sup-phone"
-                      aria-label="Nomor telepon"
-                      placeholder="08xxxxxxxxxx"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="sup-email" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                      Email
-                    </label>
-                    <Input
-                      id="sup-email"
-                      aria-label="Email supplier"
-                      type="email"
-                      placeholder="email@supplier.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      className="rounded-xl"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="sup-address" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                    Alamat Lengkap
-                  </label>
-                  <textarea
-                    id="sup-address"
-                    aria-label="Alamat lengkap supplier"
-                    placeholder="Alamat kantor atau gudang..."
-                    value={formData.address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    rows={2}
-                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Batal</Button>
-                  <Button type="submit" variant="primary" disabled={isSubmitting}>
-                    {isSubmitting ? 'Menyimpan...' : editingSupplier ? 'Simpan Perubahan' : 'Tambahkan'}
-                  </Button>
-                </div>
-              </form>
-            </Modal>
+              onClose={() => { setIsFormOpen(false); setEditingSupplier(null); }}
+              onSubmit={handleFormSubmit}
+              editingSupplier={editingSupplier}
+              isSubmitting={isSubmitting}
+            />
           )}
 
           {isDetailOpen && selectedSupplier && (
-            <Modal
+            <SupplierDetailModal
               isOpen={isDetailOpen}
               onClose={() => { setIsDetailOpen(false); setSelectedSupplier(null); }}
-              title={selectedSupplier.name}
-            >
-              <div className="space-y-4 py-2 text-xs">
-                <div className="space-y-2">
-                  {selectedSupplier.contact && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                      <User2 size={15} className="text-slate-400 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Kontak Person</p>
-                        <p className="font-bold text-slate-800 dark:text-slate-200">{selectedSupplier.contact}</p>
-                      </div>
-                    </div>
-                  )}
-                  {selectedSupplier.phone && (
-                    <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900">
-                      <Phone size={15} className="text-emerald-500 shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">Telepon / WhatsApp</p>
-                        <p className="font-bold text-emerald-600 dark:text-emerald-400">{selectedSupplier.phone}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/20 text-center">
-                    <p className="text-[10px] text-emerald-600 font-bold uppercase">Jumlah Faktur</p>
-                    <p className="text-xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{selectedSupplier.totalPurchases || 0}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-center">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase">Total Pembelian</p>
-                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mt-1 truncate">
-                      {formatCurrency(selectedSupplier.totalValue || 0)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button type="button" variant="outline" onClick={() => setIsDetailOpen(false)}>Tutup</Button>
-                </div>
-              </div>
-            </Modal>
+              supplier={selectedSupplier}
+            />
           )}
 
           {isDeleteConfirmOpen && deletingSupplier && (
