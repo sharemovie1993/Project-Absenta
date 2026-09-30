@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
 import type { PayrollItem } from './types';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface SavingCategoryData {
     code: string;
@@ -42,6 +43,8 @@ export const PayrollDeductionsTable = React.memo<PayrollDeductionsTableProps>(({
     loading = false,
     pagination
 }) => {
+    const isMobile = useIsMobile();
+
     // Robust data fallback
     const items = useMemo(() => data || payrollData || [], [data, payrollData]);
 
@@ -83,6 +86,156 @@ export const PayrollDeductionsTable = React.memo<PayrollDeductionsTableProps>(({
     }, [items, pagination]);
 
     const startIndex = pagination ? (pagination.currentPage - 1) * pagination.itemsPerPage : 0;
+
+    if (isMobile) {
+        return (
+            <div className="space-y-4">
+                {loading ? (
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-emerald-500 border-t-transparent mx-auto mb-2" />
+                        Memuat data rekapitulasi...
+                    </div>
+                ) : displayItems.length === 0 ? (
+                    <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                        Belum ada data rekap potongan untuk periode ini.
+                    </div>
+                ) : (
+                    <>
+                        <div className="space-y-3">
+                            {displayItems.map((item, idx) => (
+                                <div
+                                    key={item.memberNo || `${item.name}-${idx}`}
+                                    className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+                                >
+                                    {/* Header: No & Nama Anggota + Total Potongan */}
+                                    <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                            <span className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                                {startIndex + idx + 1}
+                                            </span>
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100 uppercase truncate">
+                                                    {item.name}
+                                                </h4>
+                                                {item.memberNo && (
+                                                    <span className="text-[10px] text-slate-400 font-mono block">
+                                                        {item.memberNo}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <span className="text-[9px] text-slate-400 font-bold uppercase block">
+                                                Potongan
+                                            </span>
+                                            <span className="font-black text-xs text-emerald-600 dark:text-emerald-400 font-mono">
+                                                Rp {Math.round(computeItemTotal(item)).toLocaleString('id-ID')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Breakdown: Simpanan & Pinjaman */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                                        {/* Simpanan */}
+                                        {isShowingSavings && (
+                                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-1.5">
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                                                    Simpanan
+                                                </span>
+                                                {activeSavings.map(cat => {
+                                                    const val = item.savings?.[cat.code] || 0;
+                                                    return (
+                                                        <div key={cat.code} className="flex justify-between items-center text-[10px]">
+                                                            <span className="text-slate-500 truncate mr-1">
+                                                                {cat.name.replace(/simpanan/i, '').trim()}:
+                                                            </span>
+                                                            <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono shrink-0">
+                                                                {val > 0 ? `Rp ${Math.round(val).toLocaleString('id-ID')}` : '-'}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Pinjaman */}
+                                        {isShowingLoans && showLoans && (
+                                            <div className="p-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-xl space-y-1.5">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                                                        Pinjaman Koperasi
+                                                    </span>
+                                                    {item.loan?.installmentNo && (
+                                                        <span className="text-[9px] font-mono text-slate-400">
+                                                            Ke-{item.loan.installmentNo}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="text-slate-500">Pokok:</span>
+                                                    <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                                                        {item.loan?.pokok > 0 ? `Rp ${Math.round(item.loan.pokok).toLocaleString('id-ID')}` : '-'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="text-slate-500">Jasa:</span>
+                                                    <span className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                                                        {item.loan?.jasa > 0 ? `Rp ${Math.round(item.loan.jasa).toLocaleString('id-ID')}` : '-'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Cumulative totals card on mobile */}
+                        {items.length > 0 && (
+                            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-2xl flex justify-between items-center">
+                                <div>
+                                    <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider block">
+                                        Total Potongan Seluruh Anggota
+                                    </span>
+                                    <span className="text-xs text-slate-500">
+                                        {items.length} anggota
+                                    </span>
+                                </div>
+                                <span className="font-black text-sm text-emerald-700 dark:text-emerald-300 font-mono">
+                                    Rp {Math.round(items.reduce((sum, item) => sum + computeItemTotal(item), 0)).toLocaleString('id-ID')}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Pagination on Mobile */}
+                        {pagination && pagination.totalPages > 1 && (
+                            <div className="flex items-center justify-between gap-2 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-xs">
+                                <button
+                                    type="button"
+                                    disabled={pagination.currentPage <= 1}
+                                    onClick={() => pagination.onPageChange(Math.max(1, pagination.currentPage - 1))}
+                                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition-colors cursor-pointer"
+                                >
+                                    Sebelumnya
+                                </button>
+                                <span className="font-bold text-[11px] text-slate-500">
+                                    {pagination.currentPage} / {pagination.totalPages}
+                                </span>
+                                <button
+                                    type="button"
+                                    disabled={pagination.currentPage >= pagination.totalPages}
+                                    onClick={() => pagination.onPageChange(Math.min(pagination.totalPages, pagination.currentPage + 1))}
+                                    className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 dark:hover:bg-slate-800 font-bold transition-colors cursor-pointer"
+                                >
+                                    Selanjutnya
+                                </button>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 rounded-2xl overflow-hidden shadow-xs">
