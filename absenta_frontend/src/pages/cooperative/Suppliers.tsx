@@ -24,6 +24,7 @@ import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import { Button, Input, SectionCard } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -75,6 +76,7 @@ const EMPTY_FORM: SupplierFormData = {
 
 export const Suppliers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('');
@@ -250,26 +252,43 @@ export const Suppliers: React.FC = React.memo(() => {
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6">
               {/* Analytics Stats Overview */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <AnalyticsCard
-                  title="Total Supplier"
-                  value={String(stats.total)}
-                  icon={Building2}
-                  color="indigo"
-                />
-                <AnalyticsCard
-                  title="Supplier Aktif"
-                  value={String(stats.active)}
-                  icon={CheckCircle}
-                  color="emerald"
-                />
-                <AnalyticsCard
-                  title="Total Pengadaan"
-                  value={formatCurrency(stats.totalSpent)}
-                  icon={Package}
-                  color="blue"
-                />
-              </div>
+              {isMobile ? (
+                <div className="flex gap-2">
+                  <div className="flex-1 min-w-0 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-center shadow-xs">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase truncate">Total</p>
+                    <p className="text-base font-extrabold text-indigo-600 dark:text-indigo-400 mt-0.5">{stats.total}</p>
+                  </div>
+                  <div className="flex-1 min-w-0 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-center shadow-xs">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase truncate">Aktif</p>
+                    <p className="text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">{stats.active}</p>
+                  </div>
+                  <div className="flex-1 min-w-0 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-center shadow-xs">
+                    <p className="text-[10px] text-slate-400 font-bold uppercase truncate">Pengadaan</p>
+                    <p className="text-[11px] font-black text-blue-600 dark:text-blue-400 mt-1 truncate">{formatCurrency(stats.totalSpent)}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <AnalyticsCard
+                    title="Total Supplier"
+                    value={String(stats.total)}
+                    icon={Building2}
+                    color="indigo"
+                  />
+                  <AnalyticsCard
+                    title="Supplier Aktif"
+                    value={String(stats.active)}
+                    icon={CheckCircle}
+                    color="emerald"
+                  />
+                  <AnalyticsCard
+                    title="Total Pengadaan"
+                    value={formatCurrency(stats.totalSpent)}
+                    icon={Package}
+                    color="blue"
+                  />
+                </div>
+              )}
 
               {/* Filter Bar */}
               <div className="relative">
@@ -351,13 +370,27 @@ export const Suppliers: React.FC = React.memo(() => {
                         {supplier.phone && (
                           <div className="flex items-center gap-2">
                             <Phone size={12} className="text-emerald-500 shrink-0" />
-                            <span>{supplier.phone}</span>
+                            <a
+                              href={`tel:${supplier.phone.replace(/[^0-9+]/g, '')}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold"
+                              title="Hubungi Supplier"
+                            >
+                              {supplier.phone}
+                            </a>
                           </div>
                         )}
                         {supplier.email && (
                           <div className="flex items-center gap-2">
                             <Mail size={12} className="text-blue-500 shrink-0" />
-                            <span className="truncate">{supplier.email}</span>
+                            <a
+                              href={`mailto:${supplier.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-blue-600 dark:text-blue-400 hover:underline truncate"
+                              title="Kirim Email"
+                            >
+                              {supplier.email}
+                            </a>
                           </div>
                         )}
                         {supplier.address && (
@@ -383,6 +416,18 @@ export const Suppliers: React.FC = React.memo(() => {
             </div>
           </SectionCard>
         </AcademicPageLayout>
+
+        {/* Mobile Floating Action Button (FAB) */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            aria-label="Tambah Supplier Baru"
+            className="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white p-3.5 rounded-full shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-all cursor-pointer"
+          >
+            <Plus size={22} className="text-white" />
+          </button>
+        )}
 
         {/* Lazy Loaded Modals */}
         <Suspense fallback={null}>
