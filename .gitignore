@@ -29,6 +29,7 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+*.lnk
 
 # Database (Local SQLite if any)
 *.db
