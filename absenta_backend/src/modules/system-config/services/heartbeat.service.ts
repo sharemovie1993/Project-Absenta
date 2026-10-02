@@ -293,10 +293,11 @@ export const heartbeatService = {
         'Content-Type': 'application/json'
       };
 
+      if (licenseKey) {
+        requestHeaders['X-License-Key'] = licenseKey;
+      }
       if (isSaasScenario()) {
         requestHeaders['X-Platform-Key'] = process.env.PLATFORM_API_KEY || process.env.JWT_SECRET || 'absenta-platform-saas';
-      } else {
-        requestHeaders['X-License-Key'] = licenseKey || '';
       }
 
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {

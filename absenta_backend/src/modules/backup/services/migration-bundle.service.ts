@@ -451,6 +451,14 @@ export class MigrationBundleService {
       message: 'Pemulihan data berhasil diselesaikan!'
     });
 
+    // Memicu pembaruan telemetri & sinkronisasi tenant ke Server Lisensi seketika
+    try {
+      const { heartbeatService } = await import('@/modules/system-config/services/heartbeat.service');
+      heartbeatService.collectAndSendMetrics().catch(err => {
+        console.warn('[MigrationBundle] Notifikasi sinkronisasi ke Server Lisensi dilewati:', err.message);
+      });
+    } catch {}
+
     return {
       success: true,
       manifest,
