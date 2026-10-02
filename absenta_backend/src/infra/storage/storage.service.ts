@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { Readable, PassThrough } from 'stream';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand, CreateBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand, CreateBucketCommand, HeadBucketCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export type StorageDriverName = 'local' | 's3';
@@ -288,6 +288,53 @@ export class StorageService {
     } catch {
       return false;
     }
+  }
+
+  async listObjects(prefix?: string): Promise<string[]> {
+    const s3 = this.getS3();
+    if (s3) {
+      const keys: string[] = [];
+      let continuationToken: string | undefined = undefined;
+      const safePrefix = prefix ? toPosixKey(prefix) : undefined;
+      do {
+        const res: any = await s3.client.send(
+          new ListObjectsV2Command({
+            Bucket: s3.cfg.bucket,
+            Prefix: safePrefix,
+            ContinuationToken: continuationToken,
+          })
+        );
+        if (res.Contents && Array.isArray(res.Contents)) {
+          for (const item of res.Contents) {
+            if (item.Key) keys.push(item.Key);
+          }
+        }
+        continuationToken = res.NextContinuationToken;
+      } while (continuationToken);
+      return keys;
+    }
+
+    const baseDir = process.env.STORAGE_LOCAL_DIR
+      ? path.resolve(process.env.STORAGE_LOCAL_DIR)
+      : path.resolve(process.cwd());
+    const searchDir = prefix ? path.resolve(baseDir, toPosixKey(prefix)) : baseDir;
+    if (!fs.existsSync(searchDir)) return [];
+
+    const keys: string[] = [];
+    async function scan(currentDir: string) {
+      const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          await scan(fullPath);
+        } else if (entry.isFile()) {
+          const rel = path.relative(baseDir, fullPath).replace(/\\/g, '/');
+          keys.push(rel);
+        }
+      }
+    }
+    await scan(searchDir);
+    return keys;
   }
 
   getPublicUrl(key: string): string | null {
