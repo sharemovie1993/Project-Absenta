@@ -19,6 +19,11 @@ export function getDeployScenario(): DeployScenario {
     return raw;
   }
 
+  // Backward-compatibility: legacy 'saas' maps to 'saas-local'
+  if (raw === 'saas') {
+    return 'saas-local';
+  }
+
   // If completely empty in development, default to 'saas-local'
   if (!raw) {
     if (process.env.NODE_ENV !== 'production') {
