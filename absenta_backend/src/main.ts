@@ -128,7 +128,7 @@ const fastify = Fastify({
     level: 'info',
     transport: pinoTransport,
   },
-  bodyLimit: 104857600 // 100 MB limit for large tenant backup JSON imports
+  bodyLimit: 314572800 // 300 MB limit for large tenant backup JSON imports
 });
 
 // Add prisma to fastify instance
