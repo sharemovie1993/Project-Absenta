@@ -129,6 +129,35 @@ function sanitizeRowForModel(modelName: string, rawRow: Record<string, any>, ten
   return cleanData;
 }
 
+function buildModelUniqueWhere(modelName: string, cleanData: Record<string, any>): Record<string, any> | null {
+  const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
+  if (!dmmfModel) return cleanData.id ? { id: cleanData.id } : null;
+
+  // Composite primary keys, e.g. @@id([id, created_at]) for AbsenSiswa / AbsenGerbangSiswa
+  if (dmmfModel.primaryKey && Array.isArray(dmmfModel.primaryKey.fields) && dmmfModel.primaryKey.fields.length > 0) {
+    const fields = dmmfModel.primaryKey.fields;
+    const compoundKeyName = dmmfModel.primaryKey.name || fields.join('_');
+    const compoundVal: Record<string, any> = {};
+    let allPresent = true;
+    for (const f of fields) {
+      if (cleanData[f] === undefined || cleanData[f] === null) {
+        allPresent = false;
+        break;
+      }
+      compoundVal[f] = cleanData[f];
+    }
+    if (allPresent) {
+      return { [compoundKeyName]: compoundVal };
+    }
+  }
+
+  if (cleanData.id) {
+    return { id: cleanData.id };
+  }
+
+  return null;
+}
+
 function getContentTypeFromKey(key: string): string {
   const ext = path.extname(key).toLowerCase();
   switch (ext) {
@@ -635,9 +664,10 @@ export class MigrationBundleService {
                 }
               }
 
-              if (cleanData.id) {
+              const uniqueWhere = buildModelUniqueWhere(modelName, cleanData);
+              if (uniqueWhere) {
                 await pModel.upsert({
-                  where: { id: cleanData.id },
+                  where: uniqueWhere,
                   update: cleanData,
                   create: cleanData
                 });
@@ -652,9 +682,10 @@ export class MigrationBundleService {
                 if (cleanData.uploaded_by_user_id || cleanData.created_by_user_id) {
                   delete cleanData.uploaded_by_user_id;
                   delete cleanData.created_by_user_id;
-                  if (cleanData.id) {
+                  const retryWhere = buildModelUniqueWhere(modelName, cleanData);
+                  if (retryWhere) {
                     await pModel.upsert({
-                      where: { id: cleanData.id },
+                      where: retryWhere,
                       update: cleanData,
                       create: cleanData
                     });

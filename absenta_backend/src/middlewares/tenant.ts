@@ -144,7 +144,7 @@ export async function tenantMiddleware(
     return;
   }
 
-  // SUPERADMIN: optional explicit tenant selection via header, otherwise system scope
+  // SUPERADMIN: optional explicit tenant selection via header, otherwise fallback to domain/single tenant
   if (systemSuperAdmin) {
     if (tenantIdHeader) {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -155,8 +155,28 @@ export async function tenantMiddleware(
         });
       }
       request.tenantId = tenantIdHeader;
+    } else if (domainTenantId) {
+      request.tenantId = domainTenantId;
     } else {
-      request.tenantId = null;
+      const queryTenantId = request.query?.tenant_id || request.query?.tenantId;
+      if (queryTenantId) {
+        request.tenantId = queryTenantId;
+      } else {
+        try {
+          const nonSystemTenants = await prisma.tenant.findMany({
+            where: { id: { not: 'system' } },
+            take: 2,
+            select: { id: true }
+          });
+          if (nonSystemTenants.length === 1) {
+            request.tenantId = nonSystemTenants[0].id;
+          } else {
+            request.tenantId = null;
+          }
+        } catch {
+          request.tenantId = null;
+        }
+      }
     }
     return;
   }
