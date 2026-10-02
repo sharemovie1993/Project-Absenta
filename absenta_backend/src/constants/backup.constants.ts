@@ -10,7 +10,14 @@ import { Prisma } from '@prisma/client';
  */
 export function getDynamicTenantModels(): string[] {
   const dmmfModels = Prisma.dmmf.datamodel.models;
-  const ignoreModels = new Set(['Tenant', 'TenantBackup']);
+  const ignoreModels = new Set([
+    'Tenant', 'TenantBackup', 'Plan', 'PlanAddon', 'Addon', 'Permission', 
+    'Menu', 'MasterSekolah', 'RefWilayah', 'AlertLog', 'SarprasGlobalCatalog', 
+    'SupportQuickReply', 'SupportKnowledgeBase', 'EasyTunnel', 'BahanAjarPreset', 
+    'GlobalMapelPreset', 'GlobalCalendarPreset', 'GlobalKurikulumStandard', 
+    'GlobalProgramPreset', 'GlobalJurusanPreset', 'GlobalTopikPreset', 
+    'GlobalPerangkatAjarLibrary', 'AtpTemplate', 'AtpTpTemplate'
+  ]);
 
   // Find all models that have tenant_id or actor_tenant_id or restored_to_tenant_id
   const tenantModelNames = new Set<string>();
@@ -28,7 +35,7 @@ export function getDynamicTenantModels(): string[] {
   for (const m of dmmfModels) {
     if (ignoreModels.has(m.name) || tenantModelNames.has(m.name)) continue;
     const relatesToTenant = m.fields.some(
-      f => f.kind === 'object' && f.type && tenantModelNames.has(f.type)
+      f => f.kind === 'object' && f.type && tenantModelNames.has(f.type) && f.relationFromFields && f.relationFromFields.length > 0
     );
     if (relatesToTenant) {
       tenantModelNames.add(m.name);

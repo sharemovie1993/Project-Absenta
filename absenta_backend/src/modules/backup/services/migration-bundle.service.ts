@@ -69,15 +69,27 @@ export interface RestoreProgressUpdate {
   message: string;
 }
 
-function getTenantFieldName(modelName: string): string | null {
+function getTenantWhereClause(modelName: string, tenantId: string, depth = 0): Record<string, any> | null {
+  if (depth > 2) return null;
   const dmmfModel = Prisma.dmmf.datamodel.models.find(m => m.name === modelName);
   if (!dmmfModel) return null;
 
   const fieldNames = new Set(dmmfModel.fields.map(f => f.name));
-  if (fieldNames.has('tenant_id')) return 'tenant_id';
-  if (fieldNames.has('tenantId')) return 'tenantId';
-  if (fieldNames.has('actor_tenant_id')) return 'actor_tenant_id';
-  if (fieldNames.has('restored_to_tenant_id')) return 'restored_to_tenant_id';
+  if (fieldNames.has('tenant_id')) return { tenant_id: tenantId };
+  if (fieldNames.has('tenantId')) return { tenantId: tenantId };
+  if (fieldNames.has('actor_tenant_id')) return { actor_tenant_id: tenantId };
+  if (fieldNames.has('restored_to_tenant_id')) return { restored_to_tenant_id: tenantId };
+
+  // Traverse foreign relations toward a parent model with tenant field
+  for (const f of dmmfModel.fields) {
+    if (f.kind === 'object' && f.relationFromFields && f.relationFromFields.length > 0) {
+      const parentFilter = getTenantWhereClause(f.type, tenantId, depth + 1);
+      if (parentFilter) {
+        return { [f.name]: parentFilter };
+      }
+    }
+  }
+
   return null;
 }
 
@@ -272,10 +284,12 @@ export class MigrationBundleService {
       const pModel = this.prisma[modelName];
       if (!pModel || typeof pModel.findMany !== 'function') continue;
 
-      const tenantField = getTenantFieldName(modelName);
+      const tenantWhere = getTenantWhereClause(modelName, tenantId);
+      if (!tenantWhere) continue;
+
       try {
         const rows = await pModel.findMany({
-          where: tenantField ? { [tenantField]: tenantId } : {}
+          where: tenantWhere
         });
 
         if (Array.isArray(rows) && rows.length > 0) {
