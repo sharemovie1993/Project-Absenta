@@ -770,6 +770,39 @@ export class MigrationBundleService {
       message: 'Pemulihan data berhasil diselesaikan!'
     });
 
+    // Pastikan seluruh modul langganan tenant terpulihkan aktif otomatis (Anti-403)
+    try {
+      const defaultPlan = await this.prisma.plan.findFirst({});
+      if (defaultPlan) {
+        const serviceCodes = ['ABSENSI', 'CORE', 'KESISWAAN', 'ACADEMIC', 'HUBIN', 'SARPRAS', 'COOPERATIVE'];
+        const farFuture = new Date('2030-12-31T23:59:59.000Z');
+        for (const code of serviceCodes) {
+          const existing = await this.prisma.subscription.findFirst({
+            where: { tenant_id: effectiveTenantId, service_code: code }
+          });
+          if (!existing) {
+            await this.prisma.subscription.create({
+              data: {
+                tenant_id: effectiveTenantId,
+                plan_id: defaultPlan.id,
+                service_code: code,
+                status: 'ACTIVE',
+                start_date: new Date(),
+                end_date: farFuture,
+              }
+            });
+          } else if (existing.status !== 'ACTIVE' || !existing.end_date || existing.end_date < new Date()) {
+            await this.prisma.subscription.update({
+              where: { id: existing.id },
+              data: { status: 'ACTIVE', end_date: farFuture }
+            });
+          }
+        }
+      }
+    } catch (subErr: any) {
+      console.warn('[MigrationBundle] Gagal sinkronisasi otomatis subscription pasca restore:', subErr.message);
+    }
+
     // Memicu pembaruan telemetri & sinkronisasi tenant ke Server Lisensi seketika
     try {
       const { heartbeatService } = await import('@/modules/system-config/services/heartbeat.service');
