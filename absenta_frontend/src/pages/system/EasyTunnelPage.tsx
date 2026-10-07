@@ -328,10 +328,10 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
     }
   };
 
-  const handleVerifyPayment = async () => {
-    if (!invoice?.invoice_number) return;
+  const verifyInvoiceStatus = useCallback(async (silent = false) => {
+    if (!invoice?.invoice_number) return false;
     try {
-      setOrderLoading(true);
+      if (!silent) setOrderLoading(true);
       const res = await easyTunnelApi.checkInvoiceStatus(invoice.invoice_number);
       const invData = res?.data || res;
       const statusRaw = String(invData?.status || res?.status || '').toLowerCase();
@@ -347,15 +347,38 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
         queryClient.invalidateQueries({ queryKey: ['easy-tunnels'] });
         queryClient.invalidateQueries({ queryKey: ['easy-tunnel-cloud-licenses'] });
         refetch();
-      } else {
+        return true;
+      } else if (!silent) {
         toast.error('Pembayaran belum terdeteksi. Silakan selesaikan pembayaran terlebih dahulu.');
       }
     } catch (err: unknown) {
-      toast.error('Gagal mengecek status: ' + getErrorMessage(err));
+      if (!silent) {
+        toast.error('Gagal mengecek status: ' + getErrorMessage(err));
+      }
     } finally {
-      setOrderLoading(false);
+      if (!silent) setOrderLoading(false);
     }
+    return false;
+  }, [invoice?.invoice_number, renewLicenseKey, licenseKey, queryClient, refetch]);
+
+  const handleVerifyPayment = () => {
+    verifyInvoiceStatus(false);
   };
+
+  // Auto-polling status pembayaran otomatis ke server lisensi (setiap 3 detik di Step 2)
+  useEffect(() => {
+    if (!showOrderModal || orderStep !== 2 || !invoice?.invoice_number) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      verifyInvoiceStatus(true);
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [showOrderModal, orderStep, invoice?.invoice_number, verifyInvoiceStatus]);
 
   const handleAutoInstall = async () => {
     if (!licenseKey) return;

@@ -362,6 +362,13 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
             )}
 
             <div className="pt-4 border-t flex flex-col gap-2 max-w-sm mx-auto w-full">
+              <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 py-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span>Mengecek status pembayaran otomatis...</span>
+              </div>
               <Button
                 type="button"
                 variant="toolbarPrimary"
@@ -369,7 +376,7 @@ export const EasyTunnelOrderModal: React.FC<Props> = React.memo(({
                 onClick={onVerifyPayment}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
               >
-                🔄 Verifikasi Pembayaran
+                🔄 Verifikasi Pembayaran Sekarang
               </Button>
             </div>
           </div>
