@@ -5,7 +5,7 @@ import { Key, Sparkles } from 'lucide-react';
 interface Props {
   cloudLicenses: any[];
   tunnels: any[];
-  onUseLicense: (licenseKey: string) => void;
+  onUseLicense: (licenseKey: string, subdomain?: string) => void;
   onRenewLicense?: (licenseKey: string, subdomain?: string) => void;
 }
 
@@ -64,7 +64,7 @@ export const EasyTunnelCloudLicensesSection: React.FC<Props> = React.memo(({
                     type="button"
                     variant="toolbarPrimary"
                     size="toolbar"
-                    onClick={() => onUseLicense(lic.license_key)}
+                    onClick={() => onUseLicense(lic.license_key, lic.subdomain)}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                   >
                     Gunakan

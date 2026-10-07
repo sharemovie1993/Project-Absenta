@@ -16,6 +16,34 @@ import { Button, Card, SectionCard, Badge } from '../../components/ui';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { getMySubscription } from '../../api/mySubscription.api';
 import { isCompleteBundlePlan } from '@/lib/billingUtils';
+import { useAuthStore } from '@/store/authStore';
+
+const LOCAL_STORAGE_DEV_ORDERS_KEY = 'absenta_easy_tunnel_local_orders';
+interface LocalDevOrder {
+  license_key: string;
+  subdomain?: string;
+  school_name?: string;
+  package_title?: string;
+  invoice_number?: string;
+  created_at?: string;
+}
+
+function getLocalDevOrders(): LocalDevOrder[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_DEV_ORDERS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalDevOrder(order: LocalDevOrder) {
+  try {
+    const existing = getLocalDevOrders();
+    const filtered = existing.filter(o => o.license_key !== order.license_key);
+    localStorage.setItem(LOCAL_STORAGE_DEV_ORDERS_KEY, JSON.stringify([order, ...filtered]));
+  } catch {}
+}
 
 // Lazy Loaded Subcomponents (Pilar 13)
 const EasyTunnelCard = lazy(() => import('./components/EasyTunnelCard'));
@@ -81,6 +109,11 @@ interface InvoiceItem {
 export const EasyTunnelPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const { user } = useAuthStore();
+
+  const tenantSubdomain = useMemo(() => {
+    return (user?.tenant?.subdomain || (user?.tenant as any)?.domain || '').toLowerCase().trim();
+  }, [user]);
 
   // Extract error message safely from Axios structure
   const getErrorMessage = (err: unknown): string => {
@@ -178,14 +211,36 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
   });
 
   // 4. Fetch Cloud Licenses
-  const { data: cloudLicenses = [] } = useQuery<CloudLicenseItem[]>({
-    queryKey: ['easy-tunnel-cloud-licenses'],
+  const { data: cloudLicenses = [], refetch: refetchCloudLicenses } = useQuery<CloudLicenseItem[]>({
+    queryKey: ['easy-tunnel-cloud-licenses', tenantSubdomain],
     queryFn: async () => {
       try {
-        const res = await easyTunnelApi.getCloudLicenses();
-        return (res.data || []) as CloudLicenseItem[];
+        const res = await easyTunnelApi.getCloudLicenses(tenantSubdomain || undefined);
+        const serverLicenses = (res.data || []) as CloudLicenseItem[];
+        const localOrders = getLocalDevOrders();
+        const combined = [...serverLicenses];
+
+        for (const lo of localOrders) {
+          if (!combined.some(cl => cl.license_key === lo.license_key)) {
+            combined.push({
+              license_key: lo.license_key,
+              subdomain: lo.subdomain,
+              package_title: lo.package_title || lo.school_name || 'Easy Tunnel (Simulasi Dev)',
+              status: 'active',
+              is_expired: false
+            });
+          }
+        }
+        return combined;
       } catch {
-        return [];
+        const localOrders = getLocalDevOrders();
+        return localOrders.map(lo => ({
+          license_key: lo.license_key,
+          subdomain: lo.subdomain,
+          package_title: lo.package_title || lo.school_name || 'Easy Tunnel (Simulasi Dev)',
+          status: 'active',
+          is_expired: false
+        }));
       }
     }
   });
@@ -340,7 +395,16 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
       if (isPaid) {
         const key = invData?.license_key || res?.license_key || renewLicenseKey || licenseKey || '';
         toast.success(renewLicenseKey ? 'Perpanjangan Lisensi Berhasil!' : `Pembayaran Sukses! Lisensi: ${key}`);
-        if (key) setLicenseKey(key);
+        if (key) {
+          setLicenseKey(key);
+          saveLocalDevOrder({
+            license_key: key,
+            subdomain: subdomainSlug || invData?.subdomain || invData?.requested_slug,
+            school_name: schoolName,
+            invoice_number: invoice.invoice_number,
+            created_at: new Date().toISOString()
+          });
+        }
         setOrderStep(3);
 
         // Tarik data terbaru dari server lisensi secara otomatis
@@ -359,7 +423,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
       if (!silent) setOrderLoading(false);
     }
     return false;
-  }, [invoice?.invoice_number, renewLicenseKey, licenseKey, queryClient, refetch]);
+  }, [invoice?.invoice_number, renewLicenseKey, licenseKey, queryClient, refetch, subdomainSlug, schoolName]);
 
   const handleVerifyPayment = () => {
     verifyInvoiceStatus(false);
@@ -616,9 +680,15 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                   type="button"
                   variant="toolbarOutline"
                   size="toolbar"
-                  onClick={() => refetch()}
+                  onClick={() => {
+                    refetch();
+                    refetchCloudLicenses();
+                    refetchCustomDomain();
+                    toast.success('Menyinkronkan status tunnel & lisensi cloud...');
+                  }}
                   disabled={loading}
                   className="rounded-xl"
+                  title="Sinkronkan status tunnel & lisensi cloud"
                 >
                   <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
                 </Button>
@@ -702,8 +772,9 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               <EasyTunnelCloudLicensesSection
                 cloudLicenses={cloudLicenses}
                 tunnels={tunnels}
-                onUseLicense={(key) => {
+                onUseLicense={(key, subdomain) => {
                   setLicenseKey(key);
+                  if (subdomain) setSubdomainSlug(subdomain);
                   setShowSetupModal(true);
                 }}
                 onRenewLicense={handleRenewCloudLicense}

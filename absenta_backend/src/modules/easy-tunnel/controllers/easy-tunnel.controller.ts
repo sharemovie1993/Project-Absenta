@@ -13,6 +13,7 @@ import {
 import os from 'os';
 import dns from 'dns';
 import { getDeployScenario } from '@/utils/deployScenario';
+import { prisma } from '@/utils/prisma';
 
 
 export const easyTunnelController = {
@@ -195,6 +196,14 @@ export const easyTunnelController = {
 
   async newOrder(request: any, reply: any) {
     try {
+      const deployScenario = getDeployScenario();
+      if (deployScenario === 'saas-public') {
+        return reply.status(400).send({
+          success: false,
+          message: 'Server ini berjalan di lingkungan Cloud VPS Publik dengan IP Statis langsung dan tidak memerlukan terowongan Easy Tunnel.'
+        });
+      }
+
       const payload = request.body || {};
       const normalizedPayload = {
         ...payload,
@@ -202,6 +211,8 @@ export const easyTunnelController = {
         payment_method: payload.payment_method || payload.payment_channel,
         subdomain_slug: payload.subdomain_slug || payload.subdomain || payload.requested_slug,
         requested_slug: payload.requested_slug || payload.subdomain_slug || payload.subdomain,
+        core_license_key: process.env.LICENSE_KEY || undefined,
+        tenant_id: request.tenantId || undefined
       };
       const result = await requestNewLicense(normalizedPayload);
       return reply.send({ success: true, data: result?.data || result });
@@ -309,8 +320,32 @@ export const easyTunnelController = {
   
   async getMyLicenses(request: any, reply: any) {
     try {
-      const { slug } = request.params;
-      const data = await fetchLicensesBySlug(slug);
+      let { slug } = request.params;
+
+      // 1. Auto-detect subdomain tenant jika parameter slug default atau kosong
+      if (!slug || slug === 'default') {
+        if (request.tenantId && request.tenantId !== 'system') {
+          const tenant = await prisma.tenant.findUnique({
+            where: { id: request.tenantId },
+            select: { subdomain: true }
+          });
+          if (tenant?.subdomain) {
+            slug = tenant.subdomain;
+          }
+        }
+
+        if (!slug || slug === 'default') {
+          const activeTenant = await prisma.tenant.findFirst({
+            where: { subdomain: { not: null } },
+            select: { subdomain: true }
+          });
+          if (activeTenant?.subdomain) {
+            slug = activeTenant.subdomain;
+          }
+        }
+      }
+
+      const data = await fetchLicensesBySlug(slug || 'default');
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getMyLicenses error:', err);

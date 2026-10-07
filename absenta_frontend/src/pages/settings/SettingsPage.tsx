@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { getUserNotificationPreferences } from '@/api/notifications.api';
 import { fetchActiveSystemConfig, saveSystemConfig, type SystemConfigPayload } from '@/services/systemConfig';
-import { Settings } from 'lucide-react';
+import { Settings, Globe } from 'lucide-react';
 import { Button, Loader, EmptyState, SectionCard, TabSwitcher } from '../../components/ui';
 import { isSystemSuperAdmin } from '@/utils/rbac';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -234,13 +234,19 @@ const SettingsPage: React.FC = () => {
     setConfig(prev => ({ ...prev, [field]: value }));
   }, []);
 
+  const isCloudVpsPublic = useMemo(() => {
+    const fromApi = systemInfo?.deploy_scenario;
+    const fromEnv = (import.meta.env.VITE_DEPLOY_SCENARIO || '').toLowerCase().trim();
+    return fromApi === 'saas-public' || fromEnv === 'saas-public';
+  }, [systemInfo]);
+
   const tabs = useMemo(() => {
     if (isTenantUser) {
       const list = [
         { id: 'tenant_profile', label: 'Profil Sekolah' },
         // Tab "Aturan Absensi" hanya ditampilkan untuk Admin, Kepsek, TU Kepala, dan Kurikulum
         ...(canManageAttendanceSettings ? [{ id: 'attendance', label: 'Aturan Absensi' }] : []),
-        { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
+        ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
       ];
       if (can('core.sekolah.update.profile') || isAdmin) {
         list.push({ id: 'system_update', label: 'Peralatan Sistem' });
@@ -256,11 +262,11 @@ const SettingsPage: React.FC = () => {
       { id: 'security', label: 'Keamanan' },
       { id: 'notifications', label: 'Notifikasi' },
       { id: 'attendance', label: 'Absensi' },
-      { id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' },
+      ...(!isCloudVpsPublic ? [{ id: 'easy_tunnel', label: 'Akses Online (Easy Tunnel)' }] : []),
       { id: 'system_update', label: 'Peralatan Sistem' },
     ];
     return list;
-  }, [isTenantUser, can, isAdmin]);
+  }, [isTenantUser, can, isAdmin, isCloudVpsPublic, canManageAttendanceSettings]);
 
   const showSaveButton = canEdit && (
     (isSuperAdminUser && activeTab !== 'easy_tunnel' && activeTab !== 'system_update') ||
@@ -349,9 +355,23 @@ const SettingsPage: React.FC = () => {
             <TenantSettings />
           </Suspense>
         ) : activeTab === 'easy_tunnel' ? (
-          <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
-            <EasyTunnelPage />
-          </Suspense>
+          isCloudVpsPublic ? (
+            <SectionCard fullWidth>
+              <div className="flex flex-col items-center justify-center min-h-[300px] p-8 text-center space-y-3">
+                <div className="w-14 h-14 rounded-3xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <Globe className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm font-black text-slate-800 dark:text-slate-200">Server Cloud VPS Publik Terdeteksi</h3>
+                <p className="text-xs text-slate-500 max-w-md leading-relaxed">
+                  Platform Absenta ini berjalan langsung pada Cloud VPS dengan IP Publik Statis. Akses domain publik dan sertifikat SSL telah dikelola otomatis oleh Web Server Cloud, sehingga server ini <strong>tidak memerlukan terowongan Easy Tunnel</strong>.
+                </p>
+              </div>
+            </SectionCard>
+          ) : (
+            <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
+              <EasyTunnelPage />
+            </Suspense>
+          )
         ) : activeTab === 'system_update' ? (
           <Suspense fallback={<div className="p-8 text-center"><Loader /></div>}>
             <SystemUpdatePage isTab={true} />
