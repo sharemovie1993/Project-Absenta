@@ -355,27 +355,44 @@ export const easyTunnelController = {
         }
       }
 
+      const isSuper = isSystemSuperAdmin(request.user);
       const searchSlugs = new Set<string>();
-      if (slug && slug !== 'default') {
-        const cleanSlug = slug.trim().toLowerCase();
-        searchSlugs.add(cleanSlug);
-        if (cleanSlug.endsWith('t')) searchSlugs.add(`${cleanSlug}h`);
-        if (cleanSlug.endsWith('th')) searchSlugs.add(cleanSlug.slice(0, -1));
-      }
 
-      // Di saas-local atau saat slug kosong/default, tambahkan seluruh subdomain tenant lokal
-      const deployScenario = getDeployScenario();
-      if (deployScenario === 'saas-local' || !slug || slug === 'default') {
-        const localTenants = await prisma.tenant.findMany({
-          where: { subdomain: { not: null } },
+      if (!isSuper && request.tenantId && request.tenantId !== 'system') {
+        // Strict Multi-Tenant Isolation: Admin sekolah HANYA boleh melihat lisensi institusinya sendiri
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: request.tenantId },
           select: { subdomain: true }
         });
-        for (const lt of localTenants) {
-          if (lt.subdomain) {
-            const cleanSub = lt.subdomain.trim().toLowerCase();
-            searchSlugs.add(cleanSub);
-            if (cleanSub.endsWith('t')) searchSlugs.add(`${cleanSub}h`);
-            if (cleanSub.endsWith('th')) searchSlugs.add(cleanSub.slice(0, -1));
+        if (tenant?.subdomain) {
+          const cleanSub = tenant.subdomain.trim().toLowerCase();
+          searchSlugs.add(cleanSub);
+          if (cleanSub.endsWith('t')) searchSlugs.add(`${cleanSub}h`);
+          if (cleanSub.endsWith('th')) searchSlugs.add(cleanSub.slice(0, -1));
+        }
+      } else {
+        // Superadmin Scope:
+        if (slug && slug !== 'default') {
+          const cleanSlug = slug.trim().toLowerCase();
+          searchSlugs.add(cleanSlug);
+          if (cleanSlug.endsWith('t')) searchSlugs.add(`${cleanSlug}h`);
+          if (cleanSlug.endsWith('th')) searchSlugs.add(cleanSlug.slice(0, -1));
+        }
+
+        // Di saas-local, Superadmin platform boleh mengelola lisensi seluruh tenant lokal di host server
+        const deployScenario = getDeployScenario();
+        if (deployScenario === 'saas-local' || !slug || slug === 'default') {
+          const localTenants = await prisma.tenant.findMany({
+            where: { subdomain: { not: null } },
+            select: { subdomain: true }
+          });
+          for (const lt of localTenants) {
+            if (lt.subdomain) {
+              const cleanSub = lt.subdomain.trim().toLowerCase();
+              searchSlugs.add(cleanSub);
+              if (cleanSub.endsWith('t')) searchSlugs.add(`${cleanSub}h`);
+              if (cleanSub.endsWith('th')) searchSlugs.add(cleanSub.slice(0, -1));
+            }
           }
         }
       }
