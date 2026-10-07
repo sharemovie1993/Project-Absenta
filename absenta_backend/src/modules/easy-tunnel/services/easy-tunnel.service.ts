@@ -10,6 +10,7 @@ import {
 } from '../../../services/licenseClient';
 import os from 'os';
 import dns from 'dns/promises';
+import { getDeployScenario } from '@/utils/deployScenario';
 
 const PLATFORM_DOMAIN = process.env.EASY_TUNNEL_BASE_DOMAIN || 'absenta.id';
 const VALID_CNAME_TARGETS = [
@@ -110,9 +111,17 @@ export class EasyTunnelService {
       where: { id: tenantId },
       select: { subdomain: true }
     });
-    if (!tenant) throw new Error('Tenant tidak ditemukan.');
-    const tenantSubdomain = tenant.subdomain || undefined;
-    if (tunnelSlug !== tenantSubdomain) {
+    if (!tenant) return;
+    const tenantSubdomain = (tenant.subdomain || '').trim().toLowerCase();
+    const targetSlug = (tunnelSlug || '').trim().toLowerCase();
+    if (tenantSubdomain && targetSlug !== tenantSubdomain) {
+      const deployScenario = getDeployScenario();
+      if (deployScenario === 'saas-local') {
+        const matchingTenant = await prisma.tenant.findFirst({
+          where: { subdomain: { equals: targetSlug, mode: 'insensitive' } }
+        });
+        if (matchingTenant) return;
+      }
       throw new Error('Akses ditolak. Terowongan ini bukan milik institusi Anda.');
     }
   }
@@ -182,10 +191,18 @@ export class EasyTunnelService {
         where: { id: tenantId },
         select: { subdomain: true }
       });
-      if (tenant) {
-        const tenantSubdomain = tenant.subdomain || undefined;
-        if (subdomain_slug !== tenantSubdomain) {
-          throw new Error('Akses ditolak. Subdomain harus sesuai dengan subdomain institusi Anda.');
+      if (tenant && tenant.subdomain) {
+        const tenantSubdomain = tenant.subdomain.trim().toLowerCase();
+        const targetSubdomain = subdomain_slug.trim().toLowerCase();
+        if (targetSubdomain !== tenantSubdomain) {
+          const deployScenario = getDeployScenario();
+          const matchingTenant = await prisma.tenant.findFirst({
+            where: { subdomain: { equals: targetSubdomain, mode: 'insensitive' } }
+          });
+
+          if (deployScenario !== 'saas-local' && !matchingTenant) {
+            throw new Error('Akses ditolak. Subdomain harus sesuai dengan subdomain institusi Anda.');
+          }
         }
       }
     }

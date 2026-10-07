@@ -14,12 +14,22 @@ import os from 'os';
 import dns from 'dns';
 import { getDeployScenario } from '@/utils/deployScenario';
 import { prisma } from '@/utils/prisma';
+import { isSystemSuperAdmin } from '@/utils/rbac';
+
+function getEffectiveTenantId(request: any): string | undefined {
+  const role = request.user?.roleName || request.user?.role?.name;
+  const tid = request.user?.tenantId || request.user?.tenant_id;
+  if (isSystemSuperAdmin(role, tid)) {
+    return undefined;
+  }
+  return request.tenantId;
+}
 
 
 export const easyTunnelController = {
   async getTunnels(request: any, reply: any) {
     try {
-      const data = await EasyTunnelService.getTunnelsForTenant(request.tenantId);
+      const data = await EasyTunnelService.getTunnelsForTenant(getEffectiveTenantId(request));
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getTunnels error:', err);
@@ -30,7 +40,7 @@ export const easyTunnelController = {
   async getTunnelById(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const data = await EasyTunnelService.getTunnelById(id, request.tenantId);
+      const data = await EasyTunnelService.getTunnelById(id, getEffectiveTenantId(request));
       return reply.send({ success: true, data });
     } catch (err: any) {
       console.error('[EasyTunnel] getTunnelById error:', err);
@@ -58,7 +68,7 @@ export const easyTunnelController = {
         subdomain_slug,
         local_port: portNum,
         app_name
-      }, request.tenantId);
+      }, getEffectiveTenantId(request));
 
       return reply.send({
         success: true,
@@ -74,7 +84,7 @@ export const easyTunnelController = {
   async startTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.startTunnel(id, request.tenantId);
+      const result = await EasyTunnelService.startTunnel(id, getEffectiveTenantId(request));
       return reply.send({ success: true, message: result.message });
     } catch (err: any) {
       console.error('[EasyTunnel] startTunnel error:', err);
@@ -85,7 +95,7 @@ export const easyTunnelController = {
   async stopTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.stopTunnel(id, request.tenantId);
+      const result = await EasyTunnelService.stopTunnel(id, getEffectiveTenantId(request));
       return reply.send({ success: true, message: result.message });
     } catch (err: any) {
       console.error('[EasyTunnel] stopTunnel error:', err);
@@ -96,7 +106,7 @@ export const easyTunnelController = {
   async diagnoseTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const data = await EasyTunnelService.getTunnelById(id, request.tenantId);
+      const data = await EasyTunnelService.getTunnelById(id, getEffectiveTenantId(request));
       const result = await WireguardManager.diagnoseTunnel(data.slug);
       return reply.send({ success: true, data: result });
     } catch (err: any) {
@@ -119,7 +129,7 @@ export const easyTunnelController = {
   async removeTunnel(request: any, reply: any) {
     try {
       const { id } = request.params;
-      const result = await EasyTunnelService.removeTunnel(id, request.tenantId);
+      const result = await EasyTunnelService.removeTunnel(id, getEffectiveTenantId(request));
       return reply.send({ success: true, message: 'Tunnel berhasil dihapus.', data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] removeTunnel error:', err);
@@ -136,7 +146,7 @@ export const easyTunnelController = {
         return reply.status(400).send({ success: false, message: 'Port lokal tidak valid (1-65535).' });
       }
 
-      const result = await EasyTunnelService.editTunnel(id, portNum, app_name, request.tenantId);
+      const result = await EasyTunnelService.editTunnel(id, portNum, app_name, getEffectiveTenantId(request));
       return reply.send({ success: true, message: 'Konfigurasi berhasil disimpan.', data: result });
     } catch (err: any) {
       console.error('[EasyTunnel] editTunnel error:', err);

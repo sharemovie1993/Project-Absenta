@@ -143,7 +143,7 @@ export const EasyTunnelSetupModal: React.FC<Props> = React.memo(({
               />
               <div>
                 <span className="font-bold text-xs text-slate-900 dark:text-white block">Uji Coba Pengembang - Developer Mode</span>
-                <span className="text-[10px] text-slate-500 leading-normal block">Testing lokal langsung pada PC tanpa web server Caddy (Port ${devPort}).</span>
+                <span className="text-[10px] text-slate-500 leading-normal block">Testing lokal langsung pada PC tanpa web server Caddy (Port {devPort}).</span>
               </div>
             </label>
           </div>
