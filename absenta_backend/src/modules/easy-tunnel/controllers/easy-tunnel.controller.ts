@@ -355,8 +355,49 @@ export const easyTunnelController = {
         }
       }
 
-      const data = await fetchLicensesBySlug(slug || 'default');
-      return reply.send({ success: true, data });
+      const searchSlugs = new Set<string>();
+      if (slug && slug !== 'default') {
+        const cleanSlug = slug.trim().toLowerCase();
+        searchSlugs.add(cleanSlug);
+        if (cleanSlug.endsWith('t')) searchSlugs.add(`${cleanSlug}h`);
+        if (cleanSlug.endsWith('th')) searchSlugs.add(cleanSlug.slice(0, -1));
+      }
+
+      // Di saas-local atau saat slug kosong/default, tambahkan seluruh subdomain tenant lokal
+      const deployScenario = getDeployScenario();
+      if (deployScenario === 'saas-local' || !slug || slug === 'default') {
+        const localTenants = await prisma.tenant.findMany({
+          where: { subdomain: { not: null } },
+          select: { subdomain: true }
+        });
+        for (const lt of localTenants) {
+          if (lt.subdomain) {
+            const cleanSub = lt.subdomain.trim().toLowerCase();
+            searchSlugs.add(cleanSub);
+            if (cleanSub.endsWith('t')) searchSlugs.add(`${cleanSub}h`);
+            if (cleanSub.endsWith('th')) searchSlugs.add(cleanSub.slice(0, -1));
+          }
+        }
+      }
+
+      const combinedLicenses: any[] = [];
+      const seenKeys = new Set<string>();
+
+      for (const s of searchSlugs) {
+        try {
+          const list = await fetchLicensesBySlug(s);
+          if (Array.isArray(list)) {
+            for (const lic of list) {
+              if (lic.license_key && !seenKeys.has(lic.license_key)) {
+                seenKeys.add(lic.license_key);
+                combinedLicenses.push(lic);
+              }
+            }
+          }
+        } catch {}
+      }
+
+      return reply.send({ success: true, data: combinedLicenses });
     } catch (err: any) {
       console.error('[EasyTunnel] getMyLicenses error:', err);
       return reply.status(500).send({ success: false, message: err.message });
