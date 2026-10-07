@@ -5,7 +5,7 @@ import { Key, Sparkles } from 'lucide-react';
 interface Props {
   cloudLicenses: any[];
   tunnels: any[];
-  onUseLicense: (licenseKey: string, subdomain?: string) => void;
+  onUseLicense: (licenseKey: string, subdomain?: string, appName?: string) => void;
   onRenewLicense?: (licenseKey: string, subdomain?: string) => void;
 }
 
@@ -51,9 +51,9 @@ export const EasyTunnelCloudLicensesSection: React.FC<Props> = React.memo(({
                 <p className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
                   {lic.license_key}
                 </p>
-                {lic.subdomain && (
+                {(lic.subdomain || lic.requested_slug) && (
                   <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-bold">
-                    {lic.subdomain}.absenta.id
+                    {lic.subdomain || lic.requested_slug}.absenta.id
                   </p>
                 )}
               </div>
@@ -64,7 +64,7 @@ export const EasyTunnelCloudLicensesSection: React.FC<Props> = React.memo(({
                     type="button"
                     variant="toolbarPrimary"
                     size="toolbar"
-                    onClick={() => onUseLicense(lic.license_key, lic.subdomain)}
+                    onClick={() => onUseLicense(lic.license_key, lic.subdomain || lic.requested_slug, lic.school_name || lic.app_name)}
                     className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
                   >
                     Gunakan

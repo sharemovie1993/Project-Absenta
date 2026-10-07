@@ -407,7 +407,12 @@ export const easyTunnelController = {
             for (const lic of list) {
               if (lic.license_key && !seenKeys.has(lic.license_key)) {
                 seenKeys.add(lic.license_key);
-                combinedLicenses.push(lic);
+                combinedLicenses.push({
+                  ...lic,
+                  subdomain: lic.subdomain || lic.requested_slug || s,
+                  requested_slug: lic.requested_slug || lic.subdomain || s,
+                  app_name: lic.app_name || lic.school_name || ''
+                });
               }
             }
           }

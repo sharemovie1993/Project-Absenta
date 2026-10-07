@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Modal, Button, Input } from '@/components/ui';
+import { easyTunnelApi } from '../../../api/easyTunnel.api';
 
 interface Props {
   isOpen: boolean;
@@ -41,6 +42,37 @@ export const EasyTunnelSetupModal: React.FC<Props> = React.memo(({
   tunnelBaseDomain,
   onSubmit
 }) => {
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen || !licenseKey || licenseKey.trim().length < 8) return;
+    if (subdomainSlug && appName && appName !== 'Portal Absenta Lokal') return;
+
+    let isMounted = true;
+    setIsValidatingKey(true);
+    easyTunnelApi.validateKey(licenseKey.trim())
+      .then(res => {
+        if (!isMounted) return;
+        const info = res?.data;
+        if (info) {
+          if (info.requested_slug && !subdomainSlug) {
+            setSubdomainSlug(info.requested_slug);
+          }
+          if ((info.school_name || info.app_name) && (!appName || appName === 'Portal Absenta Lokal')) {
+            setAppName(info.school_name || info.app_name);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsValidatingKey(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, licenseKey, subdomainSlug, appName, setSubdomainSlug, setAppName]);
+
   return (
     <Modal
       isOpen={isOpen}

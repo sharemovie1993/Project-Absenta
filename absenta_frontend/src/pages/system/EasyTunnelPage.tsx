@@ -772,9 +772,12 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               <EasyTunnelCloudLicensesSection
                 cloudLicenses={cloudLicenses}
                 tunnels={tunnels}
-                onUseLicense={(key, subdomain) => {
+                onUseLicense={(key, subdomain, schoolName) => {
                   setLicenseKey(key);
-                  if (subdomain) setSubdomainSlug(subdomain);
+                  const effectiveSub = subdomain || tenantSubdomain || '';
+                  if (effectiveSub) setSubdomainSlug(effectiveSub);
+                  if (schoolName) setAppName(schoolName);
+                  else if (user?.tenant?.name) setAppName(user.tenant.name);
                   setShowSetupModal(true);
                 }}
                 onRenewLicense={handleRenewCloudLicense}
