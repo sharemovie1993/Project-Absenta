@@ -2,6 +2,8 @@ import { PrismaClient, Prisma } from '@prisma/client';
 import { prisma } from '@/utils/prisma';
 import { storageService } from '@/infra/storage/storage.service';
 import { getDynamicTenantModels } from '@/constants/backup.constants';
+import { getDeployScenario } from '@/utils/deployScenario';
+import { fetchTenantProducts, rebindTenantEntitlements } from '@/services/licenseClient';
 // @ts-ignore
 import AdmZip from 'adm-zip';
 import crypto from 'crypto';
@@ -12,6 +14,8 @@ export interface MigrationManifest {
   version: string;
   app_version: string;
   created_at: string;
+  source_scenario?: string;
+  entitlements_count?: number;
   source_tenant: {
     id: string;
     name: string;
@@ -401,12 +405,33 @@ export class MigrationBundleService {
     const dbJsonBuffer = Buffer.from(JSON.stringify(dataTables, null, 2), 'utf8');
     zip.addFile('database.json', dbJsonBuffer);
 
+    // 3.5. Kumpulkan lisensi produk / entitlements milik tenant dari server lisensi
+    let entitlements: any[] = [];
+    try {
+      const serverKey = process.env.LICENSE_KEY || '';
+      entitlements = await fetchTenantProducts({
+        server_license_key: serverKey,
+        tenant_slug: tenant.subdomain || undefined,
+        npsn: (tenant as any).npsn || undefined,
+        deploy_scenario: getDeployScenario()
+      });
+      if (Array.isArray(entitlements) && entitlements.length > 0) {
+        zip.addFile('entitlements.json', Buffer.from(JSON.stringify(entitlements, null, 2), 'utf8'));
+        console.log(`[MigrationBundle] Mengemas ${entitlements.length} lisensi produk ke entitlements.json.`);
+      }
+    } catch (entErr: any) {
+      console.warn('[MigrationBundle] Gagal mengambil entitlements untuk bundle:', entErr.message);
+    }
+
     // 4. Susun manifest.json
+    const currentScenario = getDeployScenario();
     const manifest: MigrationManifest = {
       format: 'absenta_migration_bundle',
       version: '1.0',
       app_version: '1.0.3',
       created_at: new Date().toISOString(),
+      source_scenario: currentScenario,
+      entitlements_count: entitlements.length,
       source_tenant: {
         id: tenant.id,
         name: tenant.name,
@@ -801,6 +826,36 @@ export class MigrationBundleService {
       }
     } catch (subErr: any) {
       console.warn('[MigrationBundle] Gagal sinkronisasi otomatis subscription pasca restore:', subErr.message);
+    }
+
+    // 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan
+    try {
+      const entEntry = zip.getEntry('entitlements.json');
+      if (entEntry) {
+        const entJsonStr = entEntry.getData().toString('utf8');
+        const entitlements = JSON.parse(entJsonStr);
+        if (Array.isArray(entitlements) && entitlements.length > 0) {
+          const targetHostKey = process.env.LICENSE_KEY || '';
+          const targetScenario = getDeployScenario();
+          const sourceScenario = manifest.source_scenario || 'unknown';
+          const tenantSlug = manifest.source_tenant.subdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+          const npsn = manifest.source_tenant.npsn || undefined;
+          const entitlementKeys = entitlements.map((e: any) => e.license_key).filter(Boolean);
+
+          console.log(`[MigrationBundle] 🔄 Memulai re-binding ${entitlementKeys.length} lisensi produk ke server tujuan (${targetScenario})...`);
+          const rebindRes = await rebindTenantEntitlements({
+            target_host_key: targetHostKey,
+            tenant_slug: tenantSlug,
+            npsn,
+            target_scenario: targetScenario as any,
+            source_scenario: sourceScenario,
+            entitlement_keys: entitlementKeys
+          });
+          console.log(`[MigrationBundle] ✅ Re-binding berhasil:`, rebindRes.message);
+        }
+      }
+    } catch (rebindErr: any) {
+      console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore dilewati:', rebindErr.message);
     }
 
     // Memicu pembaruan telemetri & sinkronisasi tenant ke Server Lisensi seketika

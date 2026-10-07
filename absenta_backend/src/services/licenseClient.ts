@@ -338,3 +338,72 @@ export async function sendRegistrationWa(params: {
   return data;
 }
 
+export interface TenantProductLicense {
+  license_key: string;
+  product_id: string;
+  product_name: string;
+  package_title: string;
+  school_name: string;
+  subdomain: string;
+  requested_slug: string;
+  status: string;
+  is_active: number | boolean;
+  entitlement_status: 'ACTIVE' | 'PARKED_CLOUD' | 'SUSPENDED' | string;
+  expires_at: string;
+  local_port: number | null;
+  app_name: string | null;
+  wireguard_ip: string | null;
+}
+
+export interface QueryTenantProductsParams {
+  server_license_key: string;
+  tenant_slug?: string;
+  npsn?: string;
+  deploy_scenario?: 'onpremise' | 'saas-local' | 'saas-public' | string;
+}
+
+export interface RebindTenantParams {
+  target_host_key: string;
+  source_host_key?: string;
+  tenant_slug: string;
+  npsn?: string;
+  target_scenario: 'onpremise' | 'saas-local' | 'saas-public' | string;
+  source_scenario?: string;
+  entitlement_keys?: string[];
+}
+
+/** Mengambil produk/lisensi yang dimiliki tenant secara terotentikasi dan terisolasi */
+export async function fetchTenantProducts(params: QueryTenantProductsParams): Promise<TenantProductLicense[]> {
+  try {
+    const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tenant/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.warn(`[licenseClient] fetchTenantProducts HTTP ${res.status}:`, errText);
+      return [];
+    }
+    const data = await res.json() as any;
+    if (!data.success) return [];
+    return data.data || [];
+  } catch (err: any) {
+    console.warn('[licenseClient] fetchTenantProducts error:', err.message);
+    return [];
+  }
+}
+
+/** Melakukan re-binding atau unpark/park lisensi saat migrasi server (onpremise <-> saas) */
+export async function rebindTenantEntitlements(params: RebindTenantParams): Promise<any> {
+  const res = await fetch(`${LICENSE_SERVER_URL}/api/license/tenant/rebind`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(15000)
+  });
+  const data = await res.json() as any;
+  if (!data.success) throw new Error(data.message || 'Gagal merekonsiliasi lisensi tenant.');
+  return data;
+}

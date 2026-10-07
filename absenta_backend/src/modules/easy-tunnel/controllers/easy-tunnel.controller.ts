@@ -8,7 +8,8 @@ import {
   checkInvoiceStatus,
   checkSlugAvailability,
   requestNewLicense,
-  fetchLicensesBySlug
+  fetchLicensesBySlug,
+  fetchTenantProducts
 } from '../../../services/licenseClient';
 import os from 'os';
 import dns from 'dns';
@@ -399,13 +400,29 @@ export const easyTunnelController = {
 
       const combinedLicenses: any[] = [];
       const seenKeys = new Set<string>();
+      const serverLicenseKey = process.env.LICENSE_KEY || '';
+      const deployScenario = getDeployScenario();
 
       for (const s of searchSlugs) {
         try {
-          const list = await fetchLicensesBySlug(s);
+          // 1. Prioritize authenticated, strictly-scoped 2-Tier Entitlements query
+          let list = await fetchTenantProducts({
+            server_license_key: serverLicenseKey,
+            tenant_slug: s,
+            deploy_scenario: deployScenario
+          });
+
+          // 2. Fallback to legacy fetchLicensesBySlug if empty (e.g. backward compatibility)
+          if (!list || list.length === 0) {
+            list = await fetchLicensesBySlug(s);
+          }
+
           if (Array.isArray(list)) {
             for (const lic of list) {
               if (lic.license_key && !seenKeys.has(lic.license_key)) {
+                // Hanya sertakan lisensi produk easy-tunnel
+                if (lic.product_id && lic.product_id !== 'easy-tunnel') continue;
+
                 seenKeys.add(lic.license_key);
                 combinedLicenses.push({
                   ...lic,
@@ -416,7 +433,9 @@ export const easyTunnelController = {
               }
             }
           }
-        } catch {}
+        } catch (slugErr: any) {
+          console.warn(`[EasyTunnel] Warning fetching licenses for slug ${s}:`, slugErr.message);
+        }
       }
 
       return reply.send({ success: true, data: combinedLicenses });
