@@ -148,12 +148,9 @@ export class WireguardManager {
       const addrMatch = hardenedConfig.match(/Address\s*=\s*([0-9.]+)/i);
       const clientIp = addrMatch ? addrMatch[1] : '';
 
-      // 2. Ekstrak Gateway IP dari AllowedIPs atau hitung berdasarkan subnet client IP (10.0.X.1)
+      // 2. Hitung Gateway IP berdasarkan subnet client IP (10.0.X.1)
       let gatewayIp = '10.0.0.1';
-      const allowedMatch = hardenedConfig.match(/AllowedIPs\s*=\s*([0-9.]+)/i);
-      if (allowedMatch) {
-        gatewayIp = allowedMatch[1];
-      } else if (clientIp) {
+      if (clientIp) {
         const parts = clientIp.split('.');
         if (parts.length === 4) {
           gatewayIp = `${parts[0]}.${parts[1]}.${parts[2]}.1`;
@@ -692,11 +689,7 @@ export class WireguardManager {
       // Ping Gateway VPN
       let gatewayIp = '10.0.0.1';
       try {
-        const confContent = fs.readFileSync(confPath, 'utf8');
-        const allowedMatch = confContent.match(/AllowedIPs\s*=\s*([0-9.]+)/i);
-        if (allowedMatch) {
-          gatewayIp = allowedMatch[1];
-        } else if (status.wg_ip) {
+        if (status.wg_ip) {
           const parts = status.wg_ip.split('.');
           if (parts.length === 4) {
             gatewayIp = `${parts[0]}.${parts[1]}.${parts[2]}.1`;
