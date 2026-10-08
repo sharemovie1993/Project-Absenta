@@ -65,6 +65,25 @@ export class EasyTunnelService {
         if (shouldReactivate) tunnel.status = 'active';
       }
 
+      // 1.5. Penanganan Status Parkir Cloud VPS (2-Tier Migration Support)
+      if (remoteInfo.entitlement_status === 'PARKED_CLOUD') {
+        if (tunnel.status !== 'parked') {
+          console.log(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" (${tunnel.slug}) dialihkan ke status PARKED_CLOUD.`);
+          try { await WireguardManager.stopTunnel(tunnel.slug); } catch {}
+          return await prisma.easyTunnel.update({
+            where: { id: tunnel.id },
+            data: { status: 'parked', last_synced_at: new Date() }
+          });
+        }
+        return tunnel;
+      } else if (remoteInfo.entitlement_status === 'ACTIVE' && tunnel.status === 'parked') {
+        console.log(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" (${tunnel.slug}) diaktifkan kembali dari status PARKED_CLOUD.`);
+        return await prisma.easyTunnel.update({
+          where: { id: tunnel.id },
+          data: { status: 'active', last_synced_at: new Date() }
+        });
+      }
+
       // 2. Deteksi status kedaluwarsa dari server lisensi
       if (remoteInfo.expired) {
         console.warn(`[EasyTunnel-Sync] Tunnel "${tunnel.app_name}" (${tunnel.slug}) terdeteksi kedaluwarsa. Otomatis mematikan interface & mematikan systemd service...`);

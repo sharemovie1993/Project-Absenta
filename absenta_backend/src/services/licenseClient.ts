@@ -36,6 +36,9 @@ export interface LicenseInfo {
   local_port: number | null;
   app_name: string | null;
   active_hostname?: string | null;
+  entitlement_status?: string | null;
+  host_license_key?: string | null;
+  tenant_identifier?: string | null;
   expired?: boolean;
 }
 
@@ -106,11 +109,18 @@ export async function requestTunnelConfig(params: {
   local_port: number;
   app_name: string;
   hostname?: string;
+  server_license_key?: string;
+  tenant_identifier?: string;
 }): Promise<TunnelConfig> {
+  const payload = {
+    ...params,
+    server_license_key: params.server_license_key || process.env.LICENSE_KEY || undefined,
+    tenant_identifier: params.tenant_identifier || params.subdomain_slug
+  };
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/easy-tunnel/request`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
+    body: JSON.stringify(payload),
     signal: AbortSignal.timeout(30000) // 30s karena ada operasi WireGuard di server
   });
   const data = await res.json() as any;
@@ -148,7 +158,9 @@ export async function requestNewLicense(params: {
     device_limit: 1,
     is_unlimited: 0,
     requested_slug: params.requested_slug || params.subdomain_slug,
-    subdomain_slug: params.subdomain_slug || params.requested_slug
+    subdomain_slug: params.subdomain_slug || params.requested_slug,
+    server_license_key: process.env.LICENSE_KEY || undefined,
+    tenant_identifier: params.requested_slug || params.subdomain_slug
   };
 
   const res = await fetch(`${LICENSE_SERVER_URL}/api/license/request`, {

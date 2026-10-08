@@ -2,6 +2,7 @@ import { execSync, exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { prisma } from '../utils/prisma';
 
 // Letakkan folder tunnels di root project absenta_backend
 const TUNNELS_DIR = path.join(__dirname, '../../../tunnels');
@@ -597,6 +598,23 @@ export class WireguardManager {
   /** Diagnosa Koneksi Tunnel Terperinci dengan Penentuan Lokasi Masalah */
   static async diagnoseTunnel(slug: string): Promise<{ success: boolean; message: string; details: string[] }> {
     const details: string[] = [];
+
+    // 0. Penanganan Khusus Status Parkir Cloud VPS (2-Tier Architecture)
+    try {
+      const dbTunnel = await prisma.easyTunnel.findFirst({ where: { slug } });
+      if (dbTunnel && (dbTunnel.status === 'parked' || (dbTunnel as any).status === 'PARKED_CLOUD')) {
+        details.push('☁️ STATUS LISENSI: PARKED_CLOUD (Server Cloud VPS Publik)');
+        details.push('   ├─ Server saat ini beroperasi di lingkungan VPS Publik dengan IP Statis langsung.');
+        details.push('   ├─ Terowongan WireGuard sengaja diparkir (zero overhead) karena trafik web sudah dialihkan langsung melalui Caddy/Reverse Proxy publik.');
+        details.push('   └─ Lisensi dan masa aktif Anda tetap tersimpan utuh dan terhubung ke Server Lisensi.');
+        return {
+          success: true,
+          message: 'Terowongan berstatus PARKED_CLOUD (Cloud VPS aktif langsung tanpa tunnel).',
+          details
+        };
+      }
+    } catch {}
+
     const status = this.getStatus(slug);
     const confPath = this.confPath(slug);
     

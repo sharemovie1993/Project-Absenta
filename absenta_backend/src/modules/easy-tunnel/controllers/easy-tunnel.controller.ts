@@ -199,6 +199,36 @@ export const easyTunnelController = {
     try {
       const { key } = request.params;
       const data = await validateLicenseKey(key);
+
+      // Strict Multi-Tenant Isolation:
+      // Cegah operator tenant memvalidasi/mengambil metadata lisensi milik sekolah lain
+      const role = request.user?.roleName || request.user?.role?.name;
+      const tid = request.user?.tenantId || request.user?.tenant_id || request.tenantId;
+      const isSuper = isSystemSuperAdmin(role, tid);
+
+      if (!isSuper && tid && tid !== 'system') {
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: tid },
+          select: { subdomain: true, name: true }
+        });
+        if (tenant) {
+          const tenantSub = (tenant.subdomain || '').toLowerCase().trim();
+          const licSlug = (data.requested_slug || '').toLowerCase().trim();
+
+          const slugMatches = licSlug && (
+            licSlug === tenantSub ||
+            licSlug.replace(/h$/, '') === tenantSub.replace(/h$/, '')
+          );
+
+          if (!slugMatches) {
+            return reply.status(403).send({
+              success: false,
+              message: `Akses ditolak: Lisensi ini terdaftar untuk '${data.school_name || licSlug}' dan bukan milik institusi Anda.`
+            });
+          }
+        }
+      }
+
       return reply.send({ success: true, data });
     } catch (err: any) {
       return reply.status(500).send({ success: false, message: err.message });
