@@ -2023,7 +2023,7 @@
     "breadcrumbNavigation": true,
     "premiumFeatureGate": null,
     "godFileGuard": true,
-    "hardcodedConfig": false,
+    "hardcodedConfig": true,
     "analyticsCardGuard": true,
     "importExportGuard": true,
     "standardPdfPrint": true,

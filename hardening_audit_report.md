@@ -10,23 +10,14 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 |---|---|---|---|
 | **Total Halaman Utama** | **205 Halaman** | 100% | - |
 | **✅ Lolos Sempurna (Hardened)** | **162 Halaman** | 79% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **40 Halaman** | 20% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
+| **⚠️ Sebagian Terstandar (Partial)** | **41 Halaman** | 20% | **Butuh Sentuhan Ringan** |
+| **❌ Belum Terstandar (Non-Compliant)** | **2 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
 
 ## 🛠️ DAFTAR RINCIAN REFAKTOR PER-HALAMAN
 
 Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halaman utama:
-
-### 📄 Halaman: `CheckoutPage.tsx`
-* **Lokasi File:** [CheckoutPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/CheckoutPage.tsx)
-* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
-* **Rincian Temuan Masalah & Rekomendasi:**
-  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ❌ Terdeteksi data tiruan lokal (mock/dummy/sample/temp/test) atau base URL API / IP lokal ter-hardcode. Pindahkan data tiruan ke file terpisah di luar halaman, dan gunakan base URL dari Axios instance.
-
----
 
 ### 📄 Halaman: `BukuAgendaTemplatePage.tsx`
 * **Lokasi File:** [BukuAgendaTemplatePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/correspondence/BukuAgendaTemplatePage.tsx)
@@ -192,6 +183,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
   * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki penanganan Empty State. Pastikan terdapat pengecekan kondisi data kosong (seperti 'data.length === 0', 'isEmpty', atau penegasian '!data.length').
   * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton. Sediakan loading state guard (seperti 'isLoading', 'isFetching', 'loading', atau komponen <Skeleton />).
+
+---
+
+### 📄 Halaman: `CheckoutPage.tsx`
+* **Lokasi File:** [CheckoutPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/billing/CheckoutPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
 
 ---
 

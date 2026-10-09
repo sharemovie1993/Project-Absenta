@@ -867,7 +867,42 @@ export class MigrationBundleService {
         return pid === 'paket-lengkap' || pname.includes('paket lengkap');
       });
 
-      const defaultPlan = await this.prisma.plan.findFirst({});
+      let defaultPlan = await this.prisma.plan.findFirst({});
+      if (!defaultPlan) {
+        try {
+          const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+          const axios = require('axios');
+          const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
+          if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
+            const p = res.data.data[0];
+            await this.prisma.module.upsert({
+              where: { id: p.module_id || 'CORE' },
+              update: {},
+              create: { id: p.module_id || 'CORE', name: p.module_id || 'CORE', is_active: true }
+            });
+            defaultPlan = await this.prisma.plan.create({
+              data: {
+                id: p.id,
+                code: p.id,
+                service_code: p.service_code || 'CORE',
+                module_id: p.module_id || 'CORE',
+                name: p.name || p.title,
+                price_monthly: p.price_monthly || 0,
+                price_yearly: p.price_yearly || 0,
+                max_user: p.device_limit || null,
+                features_json: [],
+                description: p.description || '',
+                billing_period: p.billing_period || 'YEAR',
+                is_active: true,
+                is_public: true,
+                currency: 'IDR'
+              }
+            });
+          }
+        } catch (e: any) {
+          console.warn('[MIGRATION BUNDLE] Gagal fetch default plan dari License Server:', e.message);
+        }
+      }
       const now = new Date();
 
       // A. MODUL FREE (HANYA CORE DAN ACADEMIC) -> Selalu Aktif Permanen

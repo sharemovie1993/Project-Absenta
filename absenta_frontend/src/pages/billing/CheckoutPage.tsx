@@ -87,34 +87,7 @@ function CheckoutContent() {
       } else if (Array.isArray(plansRes?.data)) {
         allPlans = plansRes.data as Plan[];
       }
-      let found = allPlans.find((p: Plan) => String(p.id) === String(planId) || String(p.code) === String(planId)) || null;
-      if (!found) {
-        try {
-          const lRes = await fetch('https://api.absenta.id/api/license/packages?product_id=cakola');
-          const lData = await lRes.json();
-          if (lData?.success && Array.isArray(lData.data)) {
-            const raw = lData.data.find((p: any) => String(p.id) === String(planId) || String(p.code) === String(planId));
-            if (raw) {
-              found = {
-                id: raw.id,
-                code: raw.id,
-                name: raw.name || raw.title,
-                service_code: raw.service_code || 'PAKET_LENGKAP',
-                module_id: raw.module_id || 'ABSENSI',
-                price_monthly: raw.price_monthly || 0,
-                price_yearly: raw.price_yearly || 0,
-                max_user: raw.device_limit || null,
-                features_json: raw.features_json || [],
-                description: raw.description || '',
-                billing_period: raw.billing_period || 'MONTH',
-                is_active: true,
-                is_public: true,
-                currency: 'IDR'
-              } as any;
-            }
-          }
-        } catch {}
-      }
+      const found = allPlans.find((p: Plan) => String(p.id) === String(planId) || String(p.code) === String(planId)) || null;
       return found;
     },
     enabled: !!planId,

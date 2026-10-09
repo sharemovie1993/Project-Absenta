@@ -24,6 +24,7 @@ export interface PlanResponse {
   price_monthly: number;
   price_onetime?: number;
   weight_grams?: number;
+  image_url?: string | null;
   module_id?: string | null;
   module?: any;
   max_user: number | null;
@@ -85,7 +86,7 @@ export class PlanService {
     return 'Enterprise';
   }
 
-  async getAllPlans(includeInactive: boolean = false): Promise<PlanResponse[]> {
+  async getAllPlans(_includeInactive: boolean = false): Promise<PlanResponse[]> {
     try {
       const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
 
@@ -153,54 +154,12 @@ export class PlanService {
           };
         });
       }
-    } catch (err) {
-      console.error('[PLAN SERVICE] Gagal mengambil plan dari Licensing Server, fallback ke database lokal:', err);
+
+      throw new Error('Data paket dari Licensing Server kosong atau tidak valid.');
+    } catch (err: any) {
+      console.error('[PLAN SERVICE] Gagal mengambil katalog paket dari Licensing Server:', err.message || err);
+      throw new Error(`Katalog paket tidak dapat dimuat dari Licensing Server: ${err.message || 'Layanan tidak dapat dijangkau'}`);
     }
-
-    const whereClause: any = {};
-    
-    if (!includeInactive) {
-      whereClause.is_active = true;
-    }
-
-    const plans = await prisma.plan.findMany({
-      where: whereClause,
-      include: {
-        _count: {
-          select: {
-            subscriptions: true,
-          },
-        },
-        Module: true,
-      },
-      orderBy: {
-        price_monthly: 'asc',
-      },
-    });
-
-    return plans.map(plan => ({
-      id: plan.id,
-      name: plan.name,
-      price_monthly: plan.price_monthly,
-      module_id: plan.module_id,
-      module: (plan as any).Module,
-      max_user: plan.max_user,
-      features_json: plan.features_json,
-      description: plan.description ?? null,
-      price_yearly: plan.price_yearly ?? null,
-      trial_days: plan.trial_days,
-      absensi_mode: (plan as any).absensi_mode,
-      billing_period: (plan as any).billing_period,
-      currency: plan.currency,
-      is_active: plan.is_active,
-      size_label: (plan as any).size_label,
-      tier: (plan as any).tier,
-      service_code: (plan as any).service_code || null,
-      metadata: (plan as any).metadata,
-      created_at: plan.created_at,
-      updated_at: plan.updated_at,
-      _count: plan._count,
-    }));
   }
 
   async getPlanById(id: string): Promise<PlanResponse | null> {
@@ -216,33 +175,92 @@ export class PlanService {
       },
     });
 
-    if (!plan) {
-      return null;
+    if (plan) {
+      return {
+        id: plan.id,
+        name: plan.name,
+        price_monthly: plan.price_monthly,
+        module_id: plan.module_id,
+        module: (plan as any).Module,
+        max_user: plan.max_user,
+        features_json: plan.features_json,
+        description: plan.description ?? null,
+        price_yearly: plan.price_yearly ?? null,
+        trial_days: plan.trial_days,
+        absensi_mode: (plan as any).absensi_mode,
+        billing_period: (plan as any).billing_period,
+        currency: plan.currency,
+        is_active: plan.is_active,
+        size_label: (plan as any).size_label,
+        tier: (plan as any).tier,
+        service_code: (plan as any).service_code || null,
+        metadata: (plan as any).metadata,
+        created_at: plan.created_at,
+        updated_at: plan.updated_at,
+        _count: plan._count,
+      };
     }
 
-    return {
-      id: plan.id,
-      name: plan.name,
-      price_monthly: plan.price_monthly,
-      module_id: plan.module_id,
-      module: (plan as any).Module,
-      max_user: plan.max_user,
-      features_json: plan.features_json,
-      description: plan.description ?? null,
-      price_yearly: plan.price_yearly ?? null,
-      trial_days: plan.trial_days,
-      absensi_mode: (plan as any).absensi_mode,
-      billing_period: (plan as any).billing_period,
-      currency: plan.currency,
-      is_active: plan.is_active,
-      size_label: (plan as any).size_label,
-      tier: (plan as any).tier,
-      service_code: (plan as any).service_code || null,
-      metadata: (plan as any).metadata,
-      created_at: plan.created_at,
-      updated_at: plan.updated_at,
-      _count: plan._count,
-    };
+    // Jika belum ada di snapshot lokal, cari real-time di Licensing Server
+    try {
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        const found = res.data.data.find((p: any) => p.id === id || p.code === id || p.name === id);
+        if (found) {
+          let features = found.features_json;
+          if (typeof features === 'string') {
+            try { features = JSON.parse(features); } catch { features = []; }
+          }
+          const MODULE_META: Record<string, { name: string; icon: string }> = {
+            SERVER_HARDWARE:   { name: 'Server Node',       icon: 'Server'      },
+            NETWORK_HARDWARE:  { name: 'Network Wi-Fi 6',   icon: 'Wifi'        },
+            ABSENSI_HARDWARE:  { name: 'Biometrik & RFID',  icon: 'Fingerprint' },
+            PHYSICAL_SERVICE:  { name: 'Kartu & Cetak',     icon: 'CreditCard'  },
+          };
+          const meta = MODULE_META[found.module_id];
+          const modObj = meta
+            ? { id: found.module_id, name: meta.name, icon: meta.icon }
+            : (found.module_id ? { id: found.module_id, name: found.module_id } : null);
+
+          const priceOnetime = found.price_onetime ||
+            Number(String(found.price || 0).replace(/[^0-9]/g, '')) || 0;
+
+          return {
+            id:            found.id,
+            name:          found.name || found.title || '',
+            price_monthly: found.price_monthly || 0,
+            price_onetime: priceOnetime,
+            weight_grams:  found.weight_grams  || 0,
+            image_url:     found.image_url     || null,
+            module_id:     found.module_id     || null,
+            module:        modObj,
+            max_user:      found.device_limit  || null,
+            features_json: features            || [],
+            description:   found.description   ?? null,
+            price_yearly:  found.price_yearly  ?? null,
+            trial_days:    0,
+            absensi_mode:  found.module_id === 'ABSENSI'
+              ? ((found.name || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE')
+              : undefined,
+            billing_period: found.billing_period || 'MONTH',
+            currency:       'IDR',
+            is_active:      true,
+            size_label:     this.getPlanSizeLabel(found),
+            tier:           this.getPlanSizeLabel(found),
+            service_code:   found.service_code || this.resolveServiceCode(found.name, features),
+            metadata:       null,
+            created_at:     new Date(found.created_at || Date.now()),
+            updated_at:     new Date(found.updated_at || Date.now()),
+            _count:         { subscriptions: 0 }
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn('[PLAN SERVICE] Gagal fetch plan by ID dari License Server:', err.message || err);
+    }
+
+    return null;
   }
 
   async createPlan(input: CreatePlanInput): Promise<PlanResponse> {

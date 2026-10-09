@@ -481,6 +481,56 @@ export class AuthService {
       });
     }
     if (!corePlan) {
+      // JIT Provisioning: Ambil paket dari Licensing Server pusat lalu simpan snapshot kontrak lokal
+      try {
+        const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+        const axios = (await import('axios')).default;
+        const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          const targetCode = `ACADEMIC_${tier}_TAHUNAN`;
+          const pkg = res.data.data.find((p: any) => p.id === targetCode || p.code === targetCode);
+          if (pkg) {
+            let features = pkg.features_json;
+            if (typeof features === 'string') {
+              try { features = JSON.parse(features); } catch { features = []; }
+            }
+            await prisma.module.upsert({
+              where: { id: 'CORE' },
+              update: {},
+              create: { id: 'CORE', name: 'Core Platform', is_active: true }
+            });
+
+            const maxUser = pkg.device_limit && pkg.device_limit > 0 ? pkg.device_limit : null;
+            corePlan = await prisma.plan.upsert({
+              where: { id: pkg.id },
+              update: { is_active: true },
+              create: {
+                id: pkg.id,
+                code: pkg.id,
+                service_code: 'CORE',
+                module_id: 'CORE',
+                name: pkg.name || `Academic Core (${tier}) - Tahunan`,
+                price_monthly: pkg.price_monthly || 0,
+                price_yearly: pkg.price_yearly || 0,
+                max_user: maxUser,
+                features_json: features || [],
+                description: pkg.description || `Academic Core capacity tier ${tier}`,
+                billing_period: 'YEAR',
+                absensi_mode: 'SIMPLE',
+                is_active: true,
+                is_public: true,
+                size_label: tier.charAt(0) + tier.slice(1).toLowerCase(),
+                currency: 'IDR'
+              }
+            });
+          }
+        }
+      } catch (jitErr: any) {
+        console.warn('[AUTH SERVICE] JIT snapshot gagal mengambil plan dari Licensing Server:', jitErr?.message || jitErr);
+      }
+    }
+
+    if (!corePlan) {
       // Fallback: Cari CORE_PLATFORM jika ACADEMIC tidak ada sama sekali
       corePlan = await prisma.plan.findFirst({
         where: { name: 'CORE_PLATFORM', is_active: true },

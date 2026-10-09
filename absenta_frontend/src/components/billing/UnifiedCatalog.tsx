@@ -143,50 +143,6 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       const plans: any[] = Array.isArray((res.data as any)?.plans)
         ? (res.data as any).plans
         : Array.isArray(res.data) ? res.data : [];
-
-      const hasHardware = plans.some((p: any) => HARDWARE_MODULE_IDS.includes(p.module_id));
-
-      if (!hasHardware) {
-        try {
-          const hwRes = await fetch('https://api.absenta.id/api/license/packages?product_id=cakola');
-          const hwData = await hwRes.json();
-          if (hwData?.success && Array.isArray(hwData.data)) {
-            const hwPlans = hwData.data
-              .filter((h: any) => HARDWARE_MODULE_IDS.includes(h.module_id))
-              .map((h: any) => ({
-                id: h.id,
-                name: h.name || h.title,
-                module_id: h.module_id,
-                service_code: h.service_code || h.module_id,
-                price_monthly: h.price_monthly || 0,
-                price_yearly: h.price_yearly || 0,
-                price_onetime: h.price_onetime || Number(String(h.price || 0).replace(/[^0-9]/g, '')) || 0,
-                weight_grams: h.weight_grams || 0,
-                size_label: 'Unit',
-                billing_period: h.billing_period || 'ONETIME',
-                max_user: h.device_limit || 0,
-                features_json: typeof h.features_json === 'string'
-                  ? JSON.parse(h.features_json)
-                  : (h.features_json || []),
-                module: {
-                  id: h.module_id,
-                  name: h.module_id === 'SERVER_HARDWARE' ? 'Server Node'
-                      : h.module_id === 'NETWORK_HARDWARE' ? 'Network Wi-Fi 6'
-                      : h.module_id === 'PHYSICAL_SERVICE' ? 'Kartu & Cetak'
-                      : 'Biometrik & RFID',
-                  icon: h.module_id === 'SERVER_HARDWARE' ? 'Server'
-                      : h.module_id === 'NETWORK_HARDWARE' ? 'Wifi'
-                      : h.module_id === 'PHYSICAL_SERVICE' ? 'CreditCard'
-                      : 'Fingerprint',
-                }
-              }));
-            return [...plans, ...hwPlans];
-          }
-        } catch (err) {
-          console.warn('[UnifiedCatalog] Hardware fallback fetch gagal:', err);
-        }
-      }
-
       return plans;
     },
     staleTime: 1000 * 60 * 5,

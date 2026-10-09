@@ -51,37 +51,54 @@ export const planController = {
   // Public endpoint: return Academic Core tier plans for registration form (no auth required)
   async getAcademicTierPlans(_request: any, reply: any) {
     try {
-      const { prisma } = await import('@/utils/prisma');
-      const plans = await prisma.plan.findMany({
-        where: {
-          id: { startsWith: 'ACADEMIC_' },
-          is_active: true,
-        },
-        select: {
-          id: true,
-          code: true,
-          name: true,
-          size_label: true,
-          max_user: true,
-          description: true,
-          price_monthly: true,
-          price_yearly: true,
-        },
-        orderBy: { max_user: 'asc' },
-      });
+      const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+      const axios = (await import('axios')).default;
+      const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
 
-      // Ensure ENTERPRISE (null max_user) comes last
-      const sorted = [
-        ...plans.filter((p) => p.max_user !== null),
-        ...plans.filter((p) => p.max_user === null),
-      ];
+      if (res.data?.success && Array.isArray(res.data.data)) {
+        const academicPackages = res.data.data.filter((p: any) =>
+          (p.id && p.id.startsWith('ACADEMIC_')) ||
+          (p.code && p.code.startsWith('ACADEMIC_'))
+        );
 
-      reply.status(200);
-      return {
-        success: true,
-        message: 'Academic tier plans retrieved successfully',
-        data: sorted,
-      };
+        const mapped = academicPackages.map((p: any) => {
+          let limit = p.device_limit !== undefined ? p.device_limit : null;
+          if (limit === 0) limit = null; // 0 represents unlimited / Enterprise
+
+          let sizeLabel = 'Custom';
+          if (limit === 100) sizeLabel = 'Micro';
+          else if (limit === 300) sizeLabel = 'Small';
+          else if (limit === 600) sizeLabel = 'Medium';
+          else if (limit === 1200) sizeLabel = 'Large';
+          else if (!limit) sizeLabel = 'Enterprise';
+
+          return {
+            id: p.id,
+            code: p.id,
+            name: p.name || p.title,
+            size_label: sizeLabel,
+            max_user: limit,
+            description: p.description || `Academic Core capacity tier ${sizeLabel}`,
+            price_monthly: p.price_monthly || 0,
+            price_yearly: p.price_yearly || 0,
+          };
+        });
+
+        // Ensure sorted by max_user asc, null (Enterprise) at the end
+        const sorted = [
+          ...mapped.filter((p: any) => p.max_user !== null).sort((a: any, b: any) => (a.max_user || 0) - (b.max_user || 0)),
+          ...mapped.filter((p: any) => p.max_user === null),
+        ];
+
+        reply.status(200);
+        return {
+          success: true,
+          message: 'Academic tier plans retrieved successfully',
+          data: sorted,
+        };
+      }
+
+      throw new Error('Data paket akademik dari Licensing Server kosong');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve academic tier plans';
       reply.status(500);
