@@ -60,7 +60,7 @@ function applyPBRNumeric() {
 
     // Buat rule PBR dengan tableId numerik (1001, 1002, 1003):
     const pbr = `Table = off\n` +
-      `PostUp = ip -4 rule add from ${clientIp}/32 table ${c.tableId} 2>/dev/null || true; ip -4 route add ${c.gatewayIp}/32 dev %i table ${c.tableId} 2>/dev/null || ip -4 route replace ${c.gatewayIp}/32 dev %i table ${c.tableId} 2>/dev/null || true\n` +
+      `PostUp = ip -4 rule add from ${clientIp}/32 table ${c.tableId} 2>/dev/null || true; ip -4 route add ${c.gatewayIp}/32 dev %i table ${c.tableId} 2>/dev/null || ip -4 route replace ${c.gatewayIp}/32 dev %i table ${c.tableId} 2>/dev/null || true; ip -4 route add default dev %i table ${c.tableId} 2>/dev/null || ip -4 route replace default dev %i table ${c.tableId} 2>/dev/null || true\n` +
       `PreDown = ip -4 rule del from ${clientIp}/32 table ${c.tableId} 2>/dev/null || true; ip -4 route flush table ${c.tableId} 2>/dev/null || true`;
 
     content = content.replace(/\[Interface\]/i, `[Interface]\n${pbr}`);
@@ -79,6 +79,7 @@ function applyPBRNumeric() {
     try {
       execSync(`sudo ip -4 rule add from ${clientIp}/32 table ${c.tableId} 2>/dev/null || true`, { stdio: 'pipe' });
       execSync(`sudo ip -4 route add ${c.gatewayIp}/32 dev ${c.name} table ${c.tableId} 2>/dev/null || sudo ip -4 route replace ${c.gatewayIp}/32 dev ${c.name} table ${c.tableId} 2>/dev/null || true`, { stdio: 'pipe' });
+      execSync(`sudo ip -4 route add default dev ${c.name} table ${c.tableId} 2>/dev/null || sudo ip -4 route replace default dev ${c.name} table ${c.tableId} 2>/dev/null || true`, { stdio: 'pipe' });
       console.log(`   └─ Kernel Rule applied: from ${clientIp}/32 -> lookup table ${c.tableId}`);
     } catch (e: any) {
       console.warn(`   └─ Note: ${e.message}`);

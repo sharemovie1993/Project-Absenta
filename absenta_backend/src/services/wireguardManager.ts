@@ -167,9 +167,9 @@ export class WireguardManager {
 
       // Pasang Policy-Based Routing (PBR) per-interface dengan Tabel Numerik:
       // - ip rule add from <CLIENT_IP>: Hanya mengarahkan paket keluar dari IP client spesifik ke tabel rute unik tableId
-      // - ip route add <GATEWAY_IP> dev %i table tableId: Mengarahkan traffic gateway ke interface %i tanpa mengganggu interface lain
+      // - ip route add <GATEWAY_IP> & default dev %i table tableId: Mengarahkan seluruh balasan traffic tunnel kembali ke interface %i tanpa bocor ke interface lain
       const pbrPostUp = `Table = off\n` +
-        `PostUp = ip -4 rule add from ${clientIp}/32 table ${tableId} 2>/dev/null || true; ip -4 route add ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || ip -4 route replace ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || true\n` +
+        `PostUp = ip -4 rule add from ${clientIp}/32 table ${tableId} 2>/dev/null || true; ip -4 route add ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || ip -4 route replace ${gatewayIp}/32 dev %i table ${tableId} 2>/dev/null || true; ip -4 route add default dev %i table ${tableId} 2>/dev/null || ip -4 route replace default dev %i table ${tableId} 2>/dev/null || true\n` +
         `PreDown = ip -4 rule del from ${clientIp}/32 table ${tableId} 2>/dev/null || true; ip -4 route flush table ${tableId} 2>/dev/null || true`;
 
       hardenedConfig = hardenedConfig.replace(/\[Interface\]/i, `[Interface]\n${pbrPostUp}`);
