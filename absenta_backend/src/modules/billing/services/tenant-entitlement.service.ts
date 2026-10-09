@@ -59,7 +59,8 @@ export const tenantEntitlementService = {
       orderBy: { end_date: 'desc' },
     });
 
-    const featureSet = new Set<string>(['CORE', 'WHATSAPP', 'ATTENDANCE', 'ACADEMIC', 'KESISWAAN', 'KURIKULUM']);
+    // Free modules bawaan: HANYA CORE dan ACADEMIC (termasuk kurikulum)
+    const featureSet = new Set<string>(['CORE', 'ACADEMIC', 'KURIKULUM']);
     for (const sub of subscriptions) {
       const plan = (sub as any).Plan;
       

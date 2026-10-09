@@ -279,6 +279,11 @@ export class MigrationBundleService {
       throw new Error(`Tenant dengan ID ${tenantId} tidak ditemukan.`);
     }
 
+    const sekolah = await this.prisma.sekolah.findFirst({
+      where: { tenant_id: tenantId }
+    });
+    const effectiveNpsn = sekolah?.npsn || (tenant as any).npsn || null;
+
     const zip = new AdmZip();
     const models = getDynamicTenantModels();
     const dataTables: Record<string, any[]> = {};
@@ -412,7 +417,7 @@ export class MigrationBundleService {
       entitlements = await fetchTenantProducts({
         server_license_key: serverKey,
         tenant_slug: tenant.subdomain || undefined,
-        npsn: (tenant as any).npsn || undefined,
+        npsn: effectiveNpsn || undefined,
         deploy_scenario: getDeployScenario()
       });
       if (Array.isArray(entitlements) && entitlements.length > 0) {
@@ -435,7 +440,7 @@ export class MigrationBundleService {
       source_tenant: {
         id: tenant.id,
         name: tenant.name,
-        npsn: (tenant as any).npsn || null,
+        npsn: effectiveNpsn || null,
         subdomain: tenant.subdomain || null,
         custom_domain: tenant.custom_domain || null,
         status: tenant.status || 'ACTIVE',
@@ -598,9 +603,19 @@ export class MigrationBundleService {
     }
 
     try {
-      const existingTenant = await this.prisma.tenant.findUnique({
+      let existingTenant = await this.prisma.tenant.findUnique({
         where: { id: effectiveTenantId }
       });
+
+      // Jika ID tidak ditemukan, cari berdasarkan subdomain untuk menghindari bentrok unik
+      if (!existingTenant && tenantPayload.subdomain) {
+        existingTenant = await this.prisma.tenant.findUnique({
+          where: { subdomain: tenantPayload.subdomain }
+        });
+        if (existingTenant) {
+          effectiveTenantId = existingTenant.id;
+        }
+      }
 
       if (existingTenant) {
         await this.prisma.tenant.update({
@@ -619,7 +634,6 @@ export class MigrationBundleService {
       }
     } catch (err: any) {
       console.warn(`[MigrationBundle] Notice upserting tenant profile:`, err?.message || err);
-      // Fallback jika subdomain / custom domain bentrok unik
       try {
         delete tenantPayload.subdomain;
         delete tenantPayload.custom_domain;
@@ -795,52 +809,20 @@ export class MigrationBundleService {
       message: 'Pemulihan data berhasil diselesaikan!'
     });
 
-    // Pastikan seluruh modul langganan tenant terpulihkan aktif otomatis (Anti-403)
-    try {
-      const defaultPlan = await this.prisma.plan.findFirst({});
-      if (defaultPlan) {
-        const serviceCodes = ['ABSENSI', 'CORE', 'KESISWAAN', 'ACADEMIC', 'HUBIN', 'SARPRAS', 'COOPERATIVE'];
-        const farFuture = new Date('2030-12-31T23:59:59.000Z');
-        for (const code of serviceCodes) {
-          const existing = await this.prisma.subscription.findFirst({
-            where: { tenant_id: effectiveTenantId, service_code: code }
-          });
-          if (!existing) {
-            await this.prisma.subscription.create({
-              data: {
-                tenant_id: effectiveTenantId,
-                plan_id: defaultPlan.id,
-                service_code: code,
-                status: 'ACTIVE',
-                start_date: new Date(),
-                end_date: farFuture,
-              }
-            });
-          } else if (existing.status !== 'ACTIVE' || !existing.end_date || existing.end_date < new Date()) {
-            await this.prisma.subscription.update({
-              where: { id: existing.id },
-              data: { status: 'ACTIVE', end_date: farFuture }
-            });
-          }
-        }
-      }
-    } catch (subErr: any) {
-      console.warn('[MigrationBundle] Gagal sinkronisasi otomatis subscription pasca restore:', subErr.message);
-    }
-
-    // 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan
+    // 1. 🔄 Re-bind Lisensi Produk / Entitlements secara otomatis ke Server Tujuan
+    let bundledEntitlements: any[] = [];
     try {
       const entEntry = zip.getEntry('entitlements.json');
       if (entEntry) {
         const entJsonStr = entEntry.getData().toString('utf8');
-        const entitlements = JSON.parse(entJsonStr);
-        if (Array.isArray(entitlements) && entitlements.length > 0) {
+        bundledEntitlements = JSON.parse(entJsonStr);
+        if (Array.isArray(bundledEntitlements) && bundledEntitlements.length > 0) {
           const targetHostKey = process.env.LICENSE_KEY || '';
           const targetScenario = getDeployScenario();
           const sourceScenario = manifest.source_scenario || 'unknown';
           const tenantSlug = manifest.source_tenant.subdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
           const npsn = manifest.source_tenant.npsn || undefined;
-          const entitlementKeys = entitlements.map((e: any) => e.license_key).filter(Boolean);
+          const entitlementKeys = bundledEntitlements.map((e: any) => e.license_key).filter(Boolean);
 
           console.log(`[MigrationBundle] 🔄 Memulai re-binding ${entitlementKeys.length} lisensi produk ke server tujuan (${targetScenario})...`);
           const rebindRes = await rebindTenantEntitlements({
@@ -855,7 +837,153 @@ export class MigrationBundleService {
         }
       }
     } catch (rebindErr: any) {
-      console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore dilewati:', rebindErr.message);
+      console.warn('[MigrationBundle] Re-binding lisensi produk pasca-restore notice:', rebindErr.message);
+    }
+
+    // 2. 🛡️ Sinkronisasi Subscription Patuh Model Komersial (Tanpa Bypass 2030)
+    try {
+      // Ambil data lisensi terkini langsung dari Server Lisensi
+      let liveEntitlements: any[] = [];
+      try {
+        const targetHostKey = process.env.LICENSE_KEY || '';
+        const tenantSlug = manifest.source_tenant.subdomain || manifest.source_tenant.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const npsn = manifest.source_tenant.npsn || undefined;
+        liveEntitlements = await fetchTenantProducts({
+          server_license_key: targetHostKey,
+          tenant_slug: tenantSlug,
+          npsn,
+          deploy_scenario: getDeployScenario()
+        });
+      } catch (liveErr: any) {
+        console.warn('[MigrationBundle] Gagal fetchTenantProducts live saat pemulihan:', liveErr.message);
+      }
+
+      const allEntitlements = [...bundledEntitlements, ...liveEntitlements];
+
+      // Periksa apakah tenant memiliki paket lengkap yang aktif
+      const paketLengkapEnt = allEntitlements.find((e: any) => {
+        const pid = String(e.product_id || '').toLowerCase();
+        const pname = String(e.product_name || e.package_title || '').toLowerCase();
+        return pid === 'paket-lengkap' || pname.includes('paket lengkap');
+      });
+
+      const defaultPlan = await this.prisma.plan.findFirst({});
+      const now = new Date();
+
+      // A. MODUL FREE (HANYA CORE DAN ACADEMIC) -> Selalu Aktif Permanen
+      const freeModules = ['CORE', 'ACADEMIC'];
+      const permanentDate = new Date('2099-12-31T23:59:59.000Z');
+
+      for (const freeCode of freeModules) {
+        const planForFree = await this.prisma.plan.findFirst({
+          where: { service_code: freeCode }
+        }) || defaultPlan;
+
+        if (planForFree) {
+          const existing = await this.prisma.subscription.findFirst({
+            where: { tenant_id: effectiveTenantId, service_code: freeCode }
+          });
+
+          if (!existing) {
+            await this.prisma.subscription.create({
+              data: {
+                tenant_id: effectiveTenantId,
+                plan_id: planForFree.id,
+                service_code: freeCode,
+                status: 'ACTIVE',
+                start_date: new Date(),
+                end_date: permanentDate,
+              }
+            });
+          } else if (existing.status !== 'ACTIVE' || !existing.end_date || existing.end_date < now) {
+            await this.prisma.subscription.update({
+              where: { id: existing.id },
+              data: { status: 'ACTIVE', end_date: permanentDate }
+            });
+          }
+        }
+      }
+
+      // B. MODUL BERBAYAR (COMMERCIAL PAID ADD-ONS)
+      // Modul: ABSENSI, KESISWAAN, HUBIN, SARPRAS, COOPERATIVE, WHATSAPP, EASY_TUNNEL
+      const paidModuleSpecs = [
+        { code: 'ABSENSI', keywords: ['absensi', 'attendance'] },
+        { code: 'KESISWAAN', keywords: ['kesiswaan', 'bpbk'] },
+        { code: 'HUBIN', keywords: ['hubin', 'bkk', 'prakerin'] },
+        { code: 'SARPRAS', keywords: ['sarpras', 'asset'] },
+        { code: 'COOPERATIVE', keywords: ['koperasi', 'cooperative'] },
+        { code: 'WHATSAPP', keywords: ['whatsapp', 'wa'] },
+        { code: 'EASY_TUNNEL', keywords: ['easy-tunnel', 'tunnel'] },
+      ];
+
+      for (const mod of paidModuleSpecs) {
+        let matchedEnt = paketLengkapEnt;
+        if (!matchedEnt) {
+          matchedEnt = allEntitlements.find((e: any) => {
+            const pid = String(e.product_id || '').toLowerCase();
+            const pname = String(e.product_name || e.package_title || '').toLowerCase();
+            return mod.keywords.some(k => pid.includes(k) || pname.includes(k));
+          });
+        }
+
+        const existingSub = await this.prisma.subscription.findFirst({
+          where: { tenant_id: effectiveTenantId, service_code: mod.code }
+        });
+
+        if (matchedEnt) {
+          // Ada lisensi resmi dari Server Lisensi
+          const expDate = matchedEnt.expires_at ? new Date(matchedEnt.expires_at) : null;
+          const isExpValid = expDate && !isNaN(expDate.getTime());
+          const isNotExpired = isExpValid && expDate.getTime() > now.getTime();
+          const isLicenseActive = matchedEnt.status === 'ACTIVE' || matchedEnt.is_active === 1 || matchedEnt.is_active === true;
+          const status = (isNotExpired && isLicenseActive) ? 'ACTIVE' : 'EXPIRED';
+          const targetEndDate = isExpValid ? expDate : new Date(now.getTime() - 24 * 3600 * 1000);
+
+          const planForPaid = await this.prisma.plan.findFirst({
+            where: { service_code: mod.code }
+          }) || defaultPlan;
+
+          if (existingSub) {
+            await this.prisma.subscription.update({
+              where: { id: existingSub.id },
+              data: {
+                status: status as any,
+                end_date: targetEndDate
+              }
+            });
+          } else if (planForPaid) {
+            await this.prisma.subscription.create({
+              data: {
+                tenant_id: effectiveTenantId,
+                plan_id: planForPaid.id,
+                service_code: mod.code,
+                status: status as any,
+                start_date: new Date(),
+                end_date: targetEndDate
+              }
+            });
+          }
+        } else if (existingSub) {
+          // Tidak ada lisensi baru di Server Lisensi, tapi ada record dari data backup asli
+          // Hormati tanggal aslinya; tandai EXPIRED jika masa aktifnya sudah lewat
+          if (existingSub.end_date && new Date(existingSub.end_date).getTime() <= now.getTime()) {
+            await this.prisma.subscription.update({
+              where: { id: existingSub.id },
+              data: { status: 'EXPIRED' }
+            });
+          }
+        }
+        // Jika tidak ada lisensi di Server Lisensi dan tidak ada di backup, modul tetap LOCKED (tanpa subscription).
+      }
+
+      // Bersihkan cache entitlement tenant di Redis
+      try {
+        const { tenantEntitlementService } = await import('@/modules/billing/services/tenant-entitlement.service');
+        await tenantEntitlementService.invalidateTenantFeaturesCache(effectiveTenantId);
+      } catch {}
+
+    } catch (subErr: any) {
+      console.warn('[MigrationBundle] Gagal rekonsiliasi subscription pasca restore:', subErr.message);
     }
 
     // Memicu pembaruan telemetri & sinkronisasi tenant ke Server Lisensi seketika
