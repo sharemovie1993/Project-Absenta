@@ -212,6 +212,55 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       }
 
+      // === TWO-WAY PRUNING & ENTITLEMENT REVOCATION (Anti-Zombie License) ===
+      // 1. Kumpulkan seluruh service_code komersial aktif yang masih diakui oleh Server Lisensi
+      const remoteActiveCommercialCodes = new Set<string>();
+      for (const rSub of subsToProcess) {
+        if (String(rSub.status || '').toLowerCase() === 'active') {
+          const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
+          const pData = remotePlans.find((p: any) => 
+            String(p.id).toLowerCase() === rSubPlanId || 
+            String(p.code).toLowerCase() === rSubPlanId
+          );
+          const mid = (pData?.module_id || rSub.plan_id?.split('_')[0] || '').toUpperCase();
+          const sCode = (pData?.service_code || (mid === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : mid)).toUpperCase();
+          if (sCode) remoteActiveCommercialCodes.add(sCode);
+        }
+      }
+
+      // 2. Cari langganan komersial lokal yang saat ini ACTIVE tetapi TIDAK ADA di Server Lisensi
+      const localCommercialSubs = await prisma.subscription.findMany({
+        where: {
+          tenant_id: tenantId,
+          service_code: { notIn: ['CORE', 'ACADEMIC', 'KESISWAAN', 'KURIKULUM'] },
+          status: 'ACTIVE' as any
+        }
+      });
+
+      for (const deadSub of localCommercialSubs) {
+        if (!remoteActiveCommercialCodes.has(deadSub.service_code.toUpperCase())) {
+          console.warn(`[TWO-WAY PRUNING] Revoking deleted/unlicensed subscription for tenant ${tenantId}, service: ${deadSub.service_code}`);
+          await prisma.subscription.update({
+            where: { id: deadSub.id },
+            data: {
+              status: 'EXPIRED' as any,
+              expired_reason: 'REVOKED_BY_CENTRAL_LICENSE_SERVER'
+            }
+          });
+        }
+      }
+
+      // 3. Flush Redis Entitlement Cache seketika agar gatekeeper langsung mengunci akses modul
+      try {
+        const { getRedisConnection } = require('@/infra/redis/redisClient');
+        const redis = getRedisConnection();
+        if (redis) {
+          await redis.del(`tenant:features:${tenantId}`);
+        }
+      } catch (err: any) {
+        // Abaikan jika Redis offline
+      }
+
       // Save last successful sync time
       const lastSyncKey = 'license_last_sync_time';
       const existingConfig = await prisma.config.findFirst({
