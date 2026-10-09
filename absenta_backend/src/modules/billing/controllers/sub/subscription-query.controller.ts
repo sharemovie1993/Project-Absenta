@@ -63,12 +63,33 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     const slug = tenant?.subdomain?.toLowerCase();
 
     // 2. Fetch remote subscriptions using 2-Tier protocol (Host Key + Tenant Slug)
-    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}${slug ? `?tenant_slug=${slug}` : ''}`, { timeout: 8000 });
-    if (response.data && response.data.success && Array.isArray(response.data.data)) {
-      const remoteSubs = response.data.data;
+    let remoteSubs: any[] = [];
+    let isLicenseRevokedOrNotFound = false;
 
-      // 3. Get all pricing plans from server without product_id filter to include all packages
-      let remotePlans: any[] = [];
+    try {
+      const response = await axios.get(
+        `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}${slug ? `?tenant_slug=${slug}` : ''}`,
+        { timeout: 8000 }
+      );
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        remoteSubs = response.data.data;
+      }
+    } catch (fetchErr: any) {
+      if (fetchErr.response && fetchErr.response.status === 404) {
+        // License key atau tenant telah DIHAPUS / DICABUT dari Server Lisensi
+        console.warn(`[SYNC SUBSCRIPTION] License key or tenant returned 404 Not Found from license server. Flagging as revoked/pruned.`);
+        isLicenseRevokedOrNotFound = true;
+        remoteSubs = [];
+      } else {
+        // Gangguan koneksi internet atau server lisensi temporary error -> offline tolerance
+        console.error(`[SYNC SUBSCRIPTION] Temporary error reaching license server: ${fetchErr.message}`);
+        return;
+      }
+    }
+
+    // 3. Get all pricing plans from server without product_id filter to include all packages
+    let remotePlans: any[] = [];
+    if (!isLicenseRevokedOrNotFound) {
       try {
         const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages`, { timeout: 8000 });
         if (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) {
@@ -77,214 +98,214 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
       } catch (err: any) {
         console.warn('[SYNC SUBSCRIPTION] Failed to fetch remote packages:', err.message);
       }
+    }
 
-      let applicableSubs = remoteSubs;
-      if (slug) {
-        const matched = remoteSubs.filter((s: any) => {
-          const sn = String(s.school_name || '').toLowerCase();
-          return sn.includes(`|${slug}`) || sn.endsWith(`|${slug}`) || sn === slug;
-        });
-        if (matched.length > 0) {
-          applicableSubs = matched;
+    let applicableSubs = remoteSubs;
+    if (slug) {
+      const matched = remoteSubs.filter((s: any) => {
+        const sn = String(s.school_name || '').toLowerCase();
+        return sn.includes(`|${slug}`) || sn.endsWith(`|${slug}`) || sn === slug;
+      });
+      if (matched.length > 0) {
+        applicableSubs = matched;
+      }
+    }
+
+    // Prioritize active subscriptions so that active records take precedence over pending records
+    const activeSubs = applicableSubs.filter((s: any) => String(s.status || '').toLowerCase() === 'active');
+    const subsToProcess = activeSubs.length > 0 ? activeSubs : applicableSubs;
+
+    for (const rSub of subsToProcess) {
+      // Find matching plan from remote plans or local DB
+      const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
+      let planData = remotePlans.find((p: any) => 
+        String(p.id).toLowerCase() === rSubPlanId || 
+        String(p.code).toLowerCase() === rSubPlanId
+      );
+
+      let plan = await prisma.plan.findFirst({
+        where: {
+          OR: [
+            { id: { equals: rSub.plan_id, mode: 'insensitive' } },
+            { code: { equals: rSub.plan_id, mode: 'insensitive' } }
+          ]
         }
+      });
+
+      const modId = (planData?.module_id || (plan as any)?.module_id || rSub.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
+      const serviceCode = (planData?.service_code || (plan as any)?.service_code || (modId === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : modId)).toUpperCase();
+
+      if (!plan && planData) {
+        let features = planData.features_json;
+        if (typeof features === 'string') {
+          try { features = JSON.parse(features); } catch (e) { features = []; }
+        }
+        // Ensure Module exists locally
+        let localMod = await prisma.module.findUnique({ where: { id: modId } });
+        if (!localMod) {
+          localMod = await prisma.module.create({
+            data: { id: modId, name: modId, is_active: true }
+          });
+        }
+        plan = await prisma.plan.create({
+          data: {
+            id: planData.id,
+            code: planData.id,
+            service_code: serviceCode,
+            module_id: modId,
+            name: planData.name || planData.title,
+            price_monthly: planData.price_monthly || 0,
+            price_yearly: planData.price_yearly || 0,
+            max_user: planData.device_limit || null,
+            features_json: features || [],
+            description: planData.description || '',
+            billing_period: planData.billing_period || 'MONTH',
+            absensi_mode: modId === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+            is_active: true,
+            is_public: true,
+            currency: 'IDR'
+          }
+        });
       }
 
-      // Prioritize active subscriptions so that active records take precedence over pending records
-      const activeSubs = applicableSubs.filter((s: any) => String(s.status || '').toLowerCase() === 'active');
-      const subsToProcess = activeSubs.length > 0 ? activeSubs : applicableSubs;
+      if (!plan) {
+        let localMod = await prisma.module.findUnique({ where: { id: modId } });
+        if (!localMod) {
+          localMod = await prisma.module.create({
+            data: { id: modId, name: modId, is_active: true }
+          });
+        }
+        plan = await prisma.plan.create({
+          data: {
+            id: rSub.plan_id,
+            code: rSub.plan_id,
+            service_code: serviceCode,
+            module_id: modId,
+            name: rSub.plan_id.replace(/_/g, ' '),
+            price_monthly: 0,
+            price_yearly: 0,
+            features_json: [],
+            description: '',
+            billing_period: 'MONTH',
+            is_active: true,
+            is_public: true,
+            currency: 'IDR'
+          }
+        });
+      }
 
-      for (const rSub of subsToProcess) {
-        // Find matching plan from remote plans or local DB
+      const rawStatus = String(rSub.status || '').toLowerCase();
+      const localStatus = rawStatus === 'active' ? 'ACTIVE' : (rawStatus === 'expired' ? 'EXPIRED' : 'TRIAL');
+
+      let localSub = await prisma.subscription.findFirst({
+        where: {
+          tenant_id: tenantId,
+          service_code: serviceCode,
+        }
+      });
+
+      const startDate = rSub.start_date ? new Date(rSub.start_date) : new Date();
+      const endDate = rSub.end_date ? new Date(rSub.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
+
+      if (localSub) {
+        await prisma.subscription.update({
+          where: { id: localSub.id },
+          data: {
+            plan_id: plan.id,
+            status: localStatus as any,
+            start_date: startDate,
+            end_date: endDate,
+            next_billing_date: endDate,
+          }
+        });
+      } else {
+        await prisma.subscription.create({
+          data: {
+            tenant_id: tenantId,
+            plan_id: plan.id,
+            service_code: serviceCode,
+            status: localStatus as any,
+            start_date: startDate,
+            end_date: endDate,
+            next_billing_date: endDate,
+            auto_renew: rSub.auto_renew === 1,
+          }
+        });
+      }
+    }
+
+    // === TWO-WAY PRUNING & ENTITLEMENT REVOCATION (Anti-Zombie License) ===
+    // 1. Kumpulkan seluruh service_code komersial aktif yang masih diakui oleh Server Lisensi
+    const remoteActiveCommercialCodes = new Set<string>();
+    for (const rSub of subsToProcess) {
+      if (String(rSub.status || '').toLowerCase() === 'active') {
         const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
-        let planData = remotePlans.find((p: any) => 
+        const pData = remotePlans.find((p: any) => 
           String(p.id).toLowerCase() === rSubPlanId || 
           String(p.code).toLowerCase() === rSubPlanId
         );
-
-        let plan = await prisma.plan.findFirst({
-          where: {
-            OR: [
-              { id: { equals: rSub.plan_id, mode: 'insensitive' } },
-              { code: { equals: rSub.plan_id, mode: 'insensitive' } }
-            ]
-          }
-        });
-
-        const modId = (planData?.module_id || (plan as any)?.module_id || rSub.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
-        const serviceCode = (planData?.service_code || (plan as any)?.service_code || (modId === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : modId)).toUpperCase();
-
-        if (!plan && planData) {
-          let features = planData.features_json;
-          if (typeof features === 'string') {
-            try { features = JSON.parse(features); } catch (e) { features = []; }
-          }
-          // Ensure Module exists locally
-          let localMod = await prisma.module.findUnique({ where: { id: modId } });
-          if (!localMod) {
-            localMod = await prisma.module.create({
-              data: { id: modId, name: modId, is_active: true }
-            });
-          }
-          plan = await prisma.plan.create({
-            data: {
-              id: planData.id,
-              code: planData.id,
-              service_code: serviceCode,
-              module_id: modId,
-              name: planData.name || planData.title,
-              price_monthly: planData.price_monthly || 0,
-              price_yearly: planData.price_yearly || 0,
-              max_user: planData.device_limit || null,
-              features_json: features || [],
-              description: planData.description || '',
-              billing_period: planData.billing_period || 'MONTH',
-              absensi_mode: modId === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
-              is_active: true,
-              is_public: true,
-              currency: 'IDR'
-            }
-          });
-        }
-
-        if (!plan) {
-          let localMod = await prisma.module.findUnique({ where: { id: modId } });
-          if (!localMod) {
-            localMod = await prisma.module.create({
-              data: { id: modId, name: modId, is_active: true }
-            });
-          }
-          plan = await prisma.plan.create({
-            data: {
-              id: rSub.plan_id,
-              code: rSub.plan_id,
-              service_code: serviceCode,
-              module_id: modId,
-              name: rSub.plan_id.replace(/_/g, ' '),
-              price_monthly: 0,
-              price_yearly: 0,
-              features_json: [],
-              description: '',
-              billing_period: 'MONTH',
-              is_active: true,
-              is_public: true,
-              currency: 'IDR'
-            }
-          });
-        }
-
-        const rawStatus = String(rSub.status || '').toLowerCase();
-        const localStatus = rawStatus === 'active' ? 'ACTIVE' : (rawStatus === 'expired' ? 'EXPIRED' : 'TRIAL');
-
-        let localSub = await prisma.subscription.findFirst({
-          where: {
-            tenant_id: tenantId,
-            service_code: serviceCode,
-          }
-        });
-
-        const startDate = rSub.start_date ? new Date(rSub.start_date) : new Date();
-        const endDate = rSub.end_date ? new Date(rSub.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
-
-        if (localSub) {
-          await prisma.subscription.update({
-            where: { id: localSub.id },
-            data: {
-              plan_id: plan.id,
-              status: localStatus as any,
-              start_date: startDate,
-              end_date: endDate,
-              next_billing_date: endDate,
-            }
-          });
-        } else {
-          await prisma.subscription.create({
-            data: {
-              tenant_id: tenantId,
-              plan_id: plan.id,
-              service_code: serviceCode,
-              status: localStatus as any,
-              start_date: startDate,
-              end_date: endDate,
-              next_billing_date: endDate,
-              auto_renew: rSub.auto_renew === 1,
-            }
-          });
-        }
+        const mid = (pData?.module_id || rSub.plan_id?.split('_')[0] || '').toUpperCase();
+        const sCode = (pData?.service_code || (mid === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : mid)).toUpperCase();
+        if (sCode) remoteActiveCommercialCodes.add(sCode);
       }
-
-      // === TWO-WAY PRUNING & ENTITLEMENT REVOCATION (Anti-Zombie License) ===
-      // 1. Kumpulkan seluruh service_code komersial aktif yang masih diakui oleh Server Lisensi
-      const remoteActiveCommercialCodes = new Set<string>();
-      for (const rSub of subsToProcess) {
-        if (String(rSub.status || '').toLowerCase() === 'active') {
-          const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
-          const pData = remotePlans.find((p: any) => 
-            String(p.id).toLowerCase() === rSubPlanId || 
-            String(p.code).toLowerCase() === rSubPlanId
-          );
-          const mid = (pData?.module_id || rSub.plan_id?.split('_')[0] || '').toUpperCase();
-          const sCode = (pData?.service_code || (mid === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : mid)).toUpperCase();
-          if (sCode) remoteActiveCommercialCodes.add(sCode);
-        }
-      }
-
-      // 2. Cari langganan komersial lokal yang saat ini ACTIVE tetapi TIDAK ADA di Server Lisensi
-      const localCommercialSubs = await prisma.subscription.findMany({
-        where: {
-          tenant_id: tenantId,
-          service_code: { notIn: ['CORE', 'ACADEMIC', 'KESISWAAN', 'KURIKULUM'] },
-          status: 'ACTIVE' as any
-        }
-      });
-
-      for (const deadSub of localCommercialSubs) {
-        if (!remoteActiveCommercialCodes.has(deadSub.service_code.toUpperCase())) {
-          console.warn(`[TWO-WAY PRUNING] Revoking deleted/unlicensed subscription for tenant ${tenantId}, service: ${deadSub.service_code}`);
-          await prisma.subscription.update({
-            where: { id: deadSub.id },
-            data: {
-              status: 'EXPIRED' as any,
-              expired_reason: 'REVOKED_BY_CENTRAL_LICENSE_SERVER'
-            }
-          });
-        }
-      }
-
-      // 3. Flush Redis Entitlement Cache seketika agar gatekeeper langsung mengunci akses modul
-      try {
-        const { getRedisConnection } = require('@/infra/redis/redisClient');
-        const redis = getRedisConnection();
-        if (redis) {
-          await redis.del(`tenant:features:${tenantId}`);
-        }
-      } catch (err: any) {
-        // Abaikan jika Redis offline
-      }
-
-      // Save last successful sync time
-      const lastSyncKey = 'license_last_sync_time';
-      const existingConfig = await prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: lastSyncKey }
-      });
-      if (existingConfig) {
-        await prisma.config.update({
-          where: { id: existingConfig.id },
-          data: { value: new Date().toISOString() }
-        });
-      } else {
-        await prisma.config.create({
-          data: {
-            tenant_id: tenantId,
-            key: lastSyncKey,
-            value: new Date().toISOString(),
-            description: 'Last successful online licensing sync time'
-          }
-        });
-      }
-      
-      // Invalidate features cache to apply new entitlements instantly
-      await tenantEntitlementService.invalidateTenantFeaturesCache(tenantId);
     }
+
+    // 2. Cari langganan komersial lokal yang saat ini ACTIVE tetapi TIDAK ADA di Server Lisensi
+    const localCommercialSubs = await prisma.subscription.findMany({
+      where: {
+        tenant_id: tenantId,
+        service_code: { notIn: ['CORE', 'ACADEMIC', 'KESISWAAN', 'KURIKULUM'] },
+        status: 'ACTIVE' as any
+      }
+    });
+
+    for (const deadSub of localCommercialSubs) {
+      if (!remoteActiveCommercialCodes.has(deadSub.service_code.toUpperCase())) {
+        console.warn(`[TWO-WAY PRUNING] Revoking deleted/unlicensed subscription for tenant ${tenantId}, service: ${deadSub.service_code}`);
+        await prisma.subscription.update({
+          where: { id: deadSub.id },
+          data: {
+            status: 'EXPIRED' as any,
+            expired_reason: 'REVOKED_BY_CENTRAL_LICENSE_SERVER'
+          }
+        });
+      }
+    }
+
+    // 3. Flush Redis Entitlement Cache seketika agar gatekeeper langsung mengunci akses modul
+    try {
+      const { getRedisConnection } = require('@/infra/redis/redisClient');
+      const redis = getRedisConnection();
+      if (redis) {
+        await redis.del(`tenant:features:${tenantId}`);
+      }
+    } catch (err: any) {
+      // Abaikan jika Redis offline
+    }
+
+    // Save last successful sync time
+    const lastSyncKey = 'license_last_sync_time';
+    const existingConfig = await prisma.config.findFirst({
+      where: { tenant_id: tenantId, key: lastSyncKey }
+    });
+    if (existingConfig) {
+      await prisma.config.update({
+        where: { id: existingConfig.id },
+        data: { value: new Date().toISOString() }
+      });
+    } else {
+      await prisma.config.create({
+        data: {
+          tenant_id: tenantId,
+          key: lastSyncKey,
+          value: new Date().toISOString(),
+          description: 'Last successful online licensing sync time'
+        }
+      });
+    }
+    
+    // Invalidate features cache to apply new entitlements instantly
+    await tenantEntitlementService.invalidateTenantFeaturesCache(tenantId);
   } catch (e: any) {
     console.error('[SYNC SUBSCRIPTION] Failed to sync local subscriptions with licensing server:', e.stack);
   }
