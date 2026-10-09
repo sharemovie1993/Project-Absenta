@@ -46,6 +46,7 @@ async function syncLicensePackages() {
 
       const priceMonthly = pkg.price_monthly || 0;
       const priceYearly = pkg.price_yearly ?? null;
+      const period = pkg.billing_period === 'YEAR' ? 'YEAR' : 'MONTH';
 
       // Upsert ke tabel Plan
       const existing = await prisma.plan.findUnique({ where: { id: planId } });
@@ -59,7 +60,7 @@ async function syncLicensePackages() {
         max_user: pkg.device_limit ?? pkg.max_user ?? null,
         features_json: features || [],
         description: pkg.description ?? null,
-        billing_period: pkg.billing_period || 'MONTH',
+        billing_period: period,
         currency: 'IDR',
         is_active: true,
         size_label: pkg.size_label ?? null,
