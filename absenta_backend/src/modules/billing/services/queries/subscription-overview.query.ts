@@ -107,16 +107,23 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     Plan: s.Plan || null, // Include full Plan object for UI richness
   }));
 
-  const rawTier = (primarySubscription.Plan?.tier || primarySubscription.Plan?.size_label || '') as string;
+  // Academic Core Tier harus diambil dari subscription CORE/ACADEMIC sekolah (sesuai tier registrasi)
+  const coreSub = activeSubscriptions.find(s => 
+    s.service_code === 'CORE' || 
+    s.service_code === 'ACADEMIC' || 
+    (s.plan_id && s.plan_id.startsWith('ACADEMIC_'))
+  ) || primarySubscription;
+
+  const rawTier = (coreSub?.Plan?.tier || coreSub?.Plan?.size_label || '') as string;
   let resolvedTier = rawTier;
   if (!resolvedTier) {
-    const pName = String(primarySubscription.Plan?.name || '');
-    if (/\b(Enterprise)\b/i.test(pName)) resolvedTier = 'Enterprise';
-    else if (/\b(Large)\b/i.test(pName)) resolvedTier = 'Large';
-    else if (/\b(Medium)\b/i.test(pName)) resolvedTier = 'Medium';
-    else if (/\b(Small)\b/i.test(pName)) resolvedTier = 'Small';
-    else if (/\b(Micro)\b/i.test(pName)) resolvedTier = 'Micro';
-    else resolvedTier = 'Standard';
+    const pName = String(coreSub?.Plan?.name || coreSub?.plan_id || '');
+    if (/\b(Enterprise)\b/i.test(pName) || /ENTERPRISE/i.test(pName)) resolvedTier = 'Enterprise';
+    else if (/\b(Large)\b/i.test(pName) || /LARGE/i.test(pName)) resolvedTier = 'Large';
+    else if (/\b(Medium)\b/i.test(pName) || /MEDIUM/i.test(pName)) resolvedTier = 'Medium';
+    else if (/\b(Small)\b/i.test(pName) || /SMALL/i.test(pName)) resolvedTier = 'Small';
+    else if (/\b(Micro)\b/i.test(pName) || /MICRO/i.test(pName)) resolvedTier = 'Micro';
+    else resolvedTier = 'Micro';
   }
 
   const resolvedPlanName = primarySubscription.Plan?.name || (primarySubscription as any).plan_name || 'Paket Layanan Absenta';

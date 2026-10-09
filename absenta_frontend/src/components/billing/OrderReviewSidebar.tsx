@@ -36,7 +36,7 @@ interface OrderReviewSidebarProps {
 const HARDWARE_MODULE_IDS = ['SERVER_HARDWARE', 'NETWORK_HARDWARE', 'ABSENSI_HARDWARE', 'PHYSICAL_SERVICE'];
 
 // Urutan ukuran Shopee-style: kecil ke besar
-const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise'];
 
 const extractSizeLabel = (v: any): string => {
   if (v?.size_label) return v.size_label;
@@ -370,9 +370,10 @@ export const OrderReviewSidebar: React.FC<OrderReviewSidebarProps> = ({
                     {groupedVariants.map(([sizeLabel]) => {
                       const isSelected = (activeOrder.size || '').toLowerCase() === sizeLabel.toLowerCase();
                       const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
-                      const academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+                      let academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+                      if (academicIdx === -1) academicIdx = 0;
                       const sizeIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === sizeLabel.toLowerCase());
-                      const isLocked = activeOrder.service_code !== 'KOPERASI' && academicIdx !== -1 && sizeIdx !== -1 && sizeIdx < academicIdx;
+                      const isLocked = activeOrder.service_code !== 'KOPERASI' && sizeIdx !== -1 && sizeIdx < academicIdx;
                       const tierMeta = TIER_CAPACITY_INFO[sizeLabel.toUpperCase()] || { capacityLabel: 'Kapasitas Siswa', suitableFor: '' };
 
                       return (

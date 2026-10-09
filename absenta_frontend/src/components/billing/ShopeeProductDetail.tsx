@@ -29,7 +29,7 @@ export interface ProductDetailProps {
   checkoutProcessing?: boolean;
 }
 
-const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise', 'Pro', 'Ultra', 'Lite', 'Basic', 'Standard'];
+const SIZE_ORDER = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise'];
 
 const TIER_CAPACITY_INFO: Record<string, { maxUsers: number; capacityLabel: string; suitableFor: string }> = {
   MICRO: { maxUsers: 200, capacityLabel: 's.d 200 Siswa', suitableFor: 'SD / SMP Kecil' },
@@ -564,9 +564,10 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
                 {groupedVariants.map(([sizeLabel]) => {
                   const isSelected = selectedSize.toLowerCase() === sizeLabel.toLowerCase();
                   const academicTierLower = String(activeAcademicTier || 'Micro').toLowerCase();
-                  const academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+                  let academicIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === academicTierLower);
+                  if (academicIdx === -1) academicIdx = 0;
                   const sizeIdx = SIZE_ORDER.findIndex(s => s.toLowerCase() === sizeLabel.toLowerCase());
-                  const isLocked = group.service_code !== 'KOPERASI' && academicIdx !== -1 && sizeIdx !== -1 && sizeIdx < academicIdx;
+                  const isLocked = group.service_code !== 'KOPERASI' && sizeIdx !== -1 && sizeIdx < academicIdx;
                   const tierMeta = TIER_CAPACITY_INFO[sizeLabel.toUpperCase()] || { capacityLabel: 'Siswa', suitableFor: '' };
 
                   return (
