@@ -15,7 +15,8 @@ import {
   RefreshCw,
   ShoppingBag,
   User,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from 'lucide-react';
 
 import * as UI from '../../components/ui';
@@ -243,6 +244,11 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     { id: 'invoices', label: 'Riwayat Tagihan & Invoice', icon: History }
   ], []);
 
+  const pendingInvoice = useMemo(() => {
+    const list = invoicesQuery.data || [];
+    return list.find((inv: any) => !['PAID', 'CANCELLED', 'OVERDUE'].includes(String(inv.status).toUpperCase()));
+  }, [invoicesQuery.data]);
+
   const handleExtend = useCallback((planId: string) => {
     navigate(`/billing/checkout?plan_id=${planId}`);
   }, [navigate]);
@@ -437,6 +443,32 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
               activeTab={activeTab === 'catalog' ? 'services' : activeTab}
               onChange={handleTabChange}
             />
+
+            {/* Pending Invoice Notification Banner */}
+            {pendingInvoice && (
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 shrink-0">
+                    <Clock size={18} className="animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-xs text-amber-950 dark:text-amber-100">
+                      Pesanan Menunggu Pembayaran: #{pendingInvoice.invoice_number}
+                    </h4>
+                    <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+                      {pendingInvoice.plan_name || 'Layanan Absenta'} &bull; {formatCurrency(pendingInvoice.total_amount || pendingInvoice.amount || 0)}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate(`/billing/checkout?token=${pendingInvoice.invoice_number}&plan_id=${pendingInvoice.plan_id || ''}`)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shrink-0"
+                >
+                  Lanjutkan Pembayaran
+                </Button>
+              </div>
+            )}
 
             {/* Tab: Services (Option A: Interactive Card Grid) */}
             {(activeTab === 'services' || activeTab === 'catalog') && (

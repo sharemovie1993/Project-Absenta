@@ -46,7 +46,13 @@ function CheckoutContent() {
 
   const initialToken = useMemo(() => {
     const q = new URLSearchParams(location.search);
-    return q.get('token') || q.get('invoice_token') || q.get('invoiceToken') || q.get('invoice_id') || q.get('invoiceId') || '';
+    const paramToken = q.get('token') || q.get('invoice_token') || q.get('invoiceToken') || q.get('invoice_id') || q.get('invoiceId');
+    if (paramToken) return paramToken;
+    try {
+      return sessionStorage.getItem('active_checkout_token') || '';
+    } catch {
+      return '';
+    }
   }, [location.search]);
 
   // States
@@ -146,6 +152,10 @@ function CheckoutContent() {
 
       if (token) {
         setInvoiceToken(token);
+        try {
+          sessionStorage.setItem('active_checkout_token', token);
+        } catch {}
+        navigate(`/billing/checkout?plan_id=${plan.id}&token=${token}&cycle=${cycle}`, { replace: true });
         setInvoiceDetails({
           success: true,
           data: {
@@ -215,6 +225,9 @@ function CheckoutContent() {
       const invData = res?.data || res;
       const invStatus = String(invData?.status || invData?.data?.status || '').toUpperCase();
       if (invStatus === 'PAID') {
+        try {
+          sessionStorage.removeItem('active_checkout_token');
+        } catch {}
         toast.success('Pembayaran berhasil dikonfirmasi!');
         setInvoiceDetails(res);
         setStep('activate');

@@ -21,12 +21,10 @@ export const mySubscriptionController = {
       });
     }
 
-    if (req.query?.refresh === 'true') {
-      try {
-        await syncLocalSubscriptionsWithLicensingServer(tenantId);
-      } catch (err: any) {
-        console.warn('[getSubscription] Background sync warning:', err.message);
-      }
+    try {
+      await syncLocalSubscriptionsWithLicensingServer(tenantId);
+    } catch (err: any) {
+      console.warn('[getSubscription] Background sync warning:', err.message);
     }
 
     const responseData = await subscriptionService.getMySubscriptionOverview(tenantId);

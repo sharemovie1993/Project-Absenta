@@ -54,11 +54,20 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
 
     const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
     const axios = require('axios');
-    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}`, { timeout: 8000 });
+
+    // 1. Resolve tenant identity (Tier 2)
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subdomain: true, name: true }
+    });
+    const slug = tenant?.subdomain?.toLowerCase();
+
+    // 2. Fetch remote subscriptions using 2-Tier protocol (Host Key + Tenant Slug)
+    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}${slug ? `?tenant_slug=${slug}` : ''}`, { timeout: 8000 });
     if (response.data && response.data.success && Array.isArray(response.data.data)) {
       const remoteSubs = response.data.data;
 
-      // 1. Get all pricing plans from server without product_id filter to include all packages
+      // 3. Get all pricing plans from server without product_id filter to include all packages
       let remotePlans: any[] = [];
       try {
         const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages`, { timeout: 8000 });
@@ -68,13 +77,6 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
       } catch (err: any) {
         console.warn('[SYNC SUBSCRIPTION] Failed to fetch remote packages:', err.message);
       }
-
-      // 2. Resolve tenant slug for filtering if multiple tenant entries exist
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { subdomain: true, name: true }
-      });
-      const slug = tenant?.subdomain?.toLowerCase();
 
       let applicableSubs = remoteSubs;
       if (slug) {
@@ -87,15 +89,23 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       }
 
-      for (const rSub of applicableSubs) {
+      // Prioritize active subscriptions so that active records take precedence over pending records
+      const activeSubs = applicableSubs.filter((s: any) => String(s.status || '').toLowerCase() === 'active');
+      const subsToProcess = activeSubs.length > 0 ? activeSubs : applicableSubs;
+
+      for (const rSub of subsToProcess) {
         // Find matching plan from remote plans or local DB
-        let planData = remotePlans.find((p: any) => p.id === rSub.plan_id || p.code === rSub.plan_id);
+        const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
+        let planData = remotePlans.find((p: any) => 
+          String(p.id).toLowerCase() === rSubPlanId || 
+          String(p.code).toLowerCase() === rSubPlanId
+        );
 
         let plan = await prisma.plan.findFirst({
           where: {
             OR: [
-              { id: rSub.plan_id },
-              { code: rSub.plan_id }
+              { id: { equals: rSub.plan_id, mode: 'insensitive' } },
+              { code: { equals: rSub.plan_id, mode: 'insensitive' } }
             ]
           }
         });
