@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback, useRef, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
@@ -205,9 +205,11 @@ function CheckoutContent() {
     }
   }, [initialToken, loadInvoiceDetails]);
 
-  const handleCheckPaymentStatus = useCallback(async () => {
-    if (!invoiceToken) return;
-    setProcessing(true);
+  const queryClient = useQueryClient();
+
+  const handleCheckPaymentStatus = useCallback(async (silent = false) => {
+    if (!invoiceToken) return false;
+    if (!silent) setProcessing(true);
     try {
       const res: any = await getPublicInvoiceLink(invoiceToken);
       const invData = res?.data || res;
@@ -216,15 +218,41 @@ function CheckoutContent() {
         toast.success('Pembayaran berhasil dikonfirmasi!');
         setInvoiceDetails(res);
         setStep('activate');
-      } else {
+        // Sinkronisasi data lisensi dan modul di cache frontend
+        queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+        queryClient.invalidateQueries({ queryKey: ['subscription-overview'] });
+        queryClient.invalidateQueries({ queryKey: ['academic-tier-plans'] });
+        queryClient.invalidateQueries({ queryKey: ['service-center'] });
+        return true;
+      } else if (!silent) {
         toast('Menunggu konfirmasi pembayaran...', { icon: '⏳' });
       }
     } catch {
-      toast.error('Gagal memeriksa status pembayaran.');
+      if (!silent) {
+        toast.error('Gagal memeriksa status pembayaran.');
+      }
     } finally {
-      setProcessing(false);
+      if (!silent) {
+        setProcessing(false);
+      }
     }
-  }, [invoiceToken]);
+    return false;
+  }, [invoiceToken, queryClient]);
+
+  // Auto-polling status pembayaran otomatis ke server lisensi (setiap 3 detik di Step payment, seperti Easy Tunnel)
+  React.useEffect(() => {
+    if (step !== 'payment' || !invoiceToken || expiredLocal) {
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      handleCheckPaymentStatus(true);
+    }, 3000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [step, invoiceToken, expiredLocal, handleCheckPaymentStatus]);
 
   const handleCancelUpgrade = useCallback(async () => {
     if (!hasPendingUpgrade?.invoiceId) return;

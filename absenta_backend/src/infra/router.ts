@@ -354,6 +354,15 @@ export async function registerRoutes(fastify: any, prisma: any) {
             const inv = response.data.data.invoices.find((i: any) => i.invoice_number === invoiceId || i.id === invoiceId);
             if (inv) {
               const mappedStatus = String(inv.status).toUpperCase();
+              if (mappedStatus === 'PAID') {
+                const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id ?? null;
+                if (tenantId) {
+                  const { syncLocalSubscriptionsWithLicensingServer } = require('../modules/billing/controllers/subscription.controller');
+                  syncLocalSubscriptionsWithLicensingServer(tenantId).catch((err: any) => {
+                    console.error('[Fallback public-link route] JIT sync error:', err.message);
+                  });
+                }
+              }
               let instructions: any[] = [];
               if (typeof inv.payment_instructions === 'string') {
                 try { instructions = JSON.parse(inv.payment_instructions); } catch (e) { instructions = []; }

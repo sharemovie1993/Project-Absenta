@@ -21,7 +21,7 @@ interface CheckoutPaymentStepProps {
   invoiceToken: string;
   setStep: (step: 'detail' | 'payment' | 'activate') => void;
   setError: (val: string | null) => void;
-  handleCheckPaymentStatus: () => void;
+  handleCheckPaymentStatus: (silent?: boolean) => void;
 }
 
 export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.memo(({
@@ -154,15 +154,23 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
 
           {/* Actions buttons */}
           <div className="space-y-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 py-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>Mengecek status pembayaran otomatis...</span>
+            </div>
+
             <Button
               variant="primary"
               size="lg"
-              onClick={handleCheckPaymentStatus}
+              onClick={() => handleCheckPaymentStatus(false)}
               disabled={processing}
               className="w-full flex items-center justify-center gap-2 rounded-2xl font-bold py-3.5 shadow-lg"
             >
               <RefreshCw size={16} className={`${processing ? 'animate-spin' : ''}`} />
-              <span>Verifikasi Pembayaran</span>
+              <span>Verifikasi Pembayaran Sekarang</span>
             </Button>
           </div>
         </div>
