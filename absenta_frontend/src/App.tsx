@@ -257,7 +257,7 @@ const ParentApp = lazy(() => import('./apps/parent/App'));
 function App() {
   const { isAuthenticated, user, hasCompletedOnboarding, loadUser, isLoading } = useAuthStore();
   const deployScenario = import.meta.env.VITE_DEPLOY_SCENARIO || 'onpremise';
-  const isSaas = deployScenario === 'saas-public' || deployScenario === 'saas-local';
+  const isSaas = deployScenario === 'saas-public' || deployScenario === 'saas-local' || deployScenario === 'saas';
   const shouldOnboard = false; // Disabled per user request
   const isImpersonating = !!localStorage.getItem('support_auth_state');
 
