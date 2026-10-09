@@ -186,8 +186,10 @@ function CheckoutContent() {
     setError(null);
     try {
       const res: any = await getPublicInvoiceLink(token);
-      if (res?.data || res) {
-        const invData = res.data || res;
+      const isSuccess = res && res.success !== false;
+      const invData = res?.data || (res?.invoice_number ? res : null);
+
+      if (isSuccess && invData) {
         setInvoiceDetails(res);
         setInvoiceToken(token);
         const invStatus = String(invData.status || invData.data?.status || '').toUpperCase();
@@ -197,11 +199,13 @@ function CheckoutContent() {
           setStep('payment');
         }
       } else {
-        setError('Data tagihan tidak ditemukan.');
+        setError(res?.message || 'Data tagihan tidak ditemukan atau sudah kedaluwarsa.');
+        setInvoiceDetails(null);
       }
     } catch (err: unknown) {
       const errObj = err as { message?: string };
       setError(errObj?.message || 'Gagal memuat invoice.');
+      setInvoiceDetails(null);
     } finally {
       setProcessing(false);
     }
@@ -222,23 +226,25 @@ function CheckoutContent() {
     if (!silent) setProcessing(true);
     try {
       const res: any = await getPublicInvoiceLink(invoiceToken);
-      const invData = res?.data || res;
-      const invStatus = String(invData?.status || invData?.data?.status || '').toUpperCase();
-      if (invStatus === 'PAID') {
-        try {
-          sessionStorage.removeItem('active_checkout_token');
-        } catch {}
-        toast.success('Pembayaran berhasil dikonfirmasi!');
-        setInvoiceDetails(res);
-        setStep('activate');
-        // Sinkronisasi data lisensi dan modul di cache frontend
-        queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
-        queryClient.invalidateQueries({ queryKey: ['subscription-overview'] });
-        queryClient.invalidateQueries({ queryKey: ['academic-tier-plans'] });
-        queryClient.invalidateQueries({ queryKey: ['service-center'] });
-        return true;
-      } else if (!silent) {
-        toast('Menunggu konfirmasi pembayaran...', { icon: '⏳' });
+      if (res && res.success !== false) {
+        const invData = res?.data || (res?.invoice_number ? res : null);
+        const invStatus = String(invData?.status || '').toUpperCase();
+        if (invStatus === 'PAID') {
+          try {
+            sessionStorage.removeItem('active_checkout_token');
+          } catch {}
+          toast.success('Pembayaran berhasil dikonfirmasi!');
+          setInvoiceDetails(res);
+          setStep('activate');
+          // Sinkronisasi data lisensi dan modul di cache frontend
+          queryClient.invalidateQueries({ queryKey: ['my-subscription'] });
+          queryClient.invalidateQueries({ queryKey: ['subscription-overview'] });
+          queryClient.invalidateQueries({ queryKey: ['academic-tier-plans'] });
+          queryClient.invalidateQueries({ queryKey: ['service-center'] });
+          return true;
+        } else if (!silent) {
+          toast('Menunggu konfirmasi pembayaran...', { icon: '⏳' });
+        }
       }
     } catch {
       if (!silent) {

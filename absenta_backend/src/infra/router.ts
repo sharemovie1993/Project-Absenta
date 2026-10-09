@@ -348,8 +348,21 @@ export async function registerRoutes(fastify: any, prisma: any) {
         const axios = require('axios');
         const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
         const coreKey = process.env.LICENSE_KEY || '';
+        const tenantId = request.tenantId ?? request.user?.tenantId ?? request.user?.tenant_id ?? null;
+        let slug: string | null = null;
+        if (tenantId) {
+          try {
+            const { prisma } = require('../utils/prisma');
+            const tenantRecord = await prisma.tenant.findUnique({
+              where: { id: tenantId },
+              select: { subdomain: true }
+            });
+            slug = tenantRecord?.subdomain?.toLowerCase() || null;
+          } catch {}
+        }
+        const qs = slug ? `?tenant_slug=${slug}` : '';
         try {
-          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
+          const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}${qs}`, { timeout: 8000 });
           if (response.data?.success && response.data?.data?.invoices) {
             const inv = response.data.data.invoices.find((i: any) => i.invoice_number === invoiceId || i.id === invoiceId);
             if (inv) {

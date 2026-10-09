@@ -37,7 +37,10 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
   setError,
   handleCheckPaymentStatus,
 }) => {
-  if (!invoiceDetails) {
+  const inv = invoiceDetails?.data || (invoiceDetails?.invoice_number ? invoiceDetails : null);
+  const activeTx = inv?.active_transaction;
+
+  if (!inv) {
     return (
       <Card className="p-8 text-center bg-white dark:bg-slate-900 rounded-3xl shadow-xl border-none">
         {error ? (
@@ -81,7 +84,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
               Selesaikan Pembayaran
             </h3>
             <p className="text-[11px] font-bold text-slate-400">
-              Invoice: <span className="font-mono text-slate-600 dark:text-slate-300">{invoiceDetails?.data?.invoice_number}</span>
+              Invoice: <span className="font-mono text-slate-600 dark:text-slate-300">{inv.invoice_number || invoiceToken}</span>
             </p>
           </div>
           <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider">
@@ -102,7 +105,7 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
               Jumlah Transfer Pas
             </span>
             <strong className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tight">
-              {formatCurrency(invoiceDetails.data.total_amount)}
+              {formatCurrency(Number(inv.total_amount ?? inv.amount ?? 0))}
             </strong>
             <span className="text-[10px] text-slate-400 block mt-1 font-medium italic">
               Harus persis sama hingga digit terakhir
@@ -110,11 +113,11 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
           </div>
 
           {/* QRIS Code Image */}
-          {invoiceDetails.data.active_transaction?.qr_url && (
+          {activeTx?.qr_url && (
             <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/20 dark:bg-slate-900/30">
               <div className="bg-white p-4 rounded-2xl shadow-xl inline-block">
                 <img
-                  src={invoiceDetails.data.active_transaction.qr_url}
+                  src={activeTx.qr_url}
                   alt="QRIS Code"
                   className="w-48 h-48 block object-contain"
                 />
@@ -126,19 +129,19 @@ export const CheckoutPaymentStep: React.FC<CheckoutPaymentStepProps> = React.mem
           )}
 
           {/* Virtual Account / Pay Code */}
-          {invoiceDetails.data.active_transaction?.pay_code && !invoiceDetails.data.active_transaction?.qr_url && (
+          {activeTx?.pay_code && !activeTx?.qr_url && (
             <div className="p-5 bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-2xl text-center">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-2">
                 Nomor Virtual Account / Kode Bayar
               </span>
               <div className="flex items-center justify-center gap-3">
                 <strong className="text-2xl font-mono font-black text-slate-800 dark:text-white tracking-widest">
-                  {invoiceDetails.data.active_transaction.pay_code}
+                  {activeTx.pay_code}
                 </strong>
                 <button
                   type="button"
                   onClick={() => {
-                    navigator.clipboard.writeText(invoiceDetails.data.active_transaction.pay_code);
+                    navigator.clipboard.writeText(activeTx.pay_code);
                     toast.success('Kode bayar disalin!');
                   }}
                   className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors"
