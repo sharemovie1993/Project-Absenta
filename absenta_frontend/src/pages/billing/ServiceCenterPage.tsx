@@ -16,13 +16,15 @@ import {
   ShoppingBag,
   User,
   ExternalLink,
-  Clock
+  Clock,
+  Layers
 } from 'lucide-react';
 
 import * as UI from '../../components/ui';
 import { Card, Button, Badge, Tabs, TabsTrigger, TabsContent, Loader } from '../../components/ui';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { TabSwitcher } from '../../components/ui/TabSwitcher';
+import { PackageComparisonModal } from './PackageComparisonModal';
 import { 
   getMySubscription, 
   syncMySubscription,
@@ -114,6 +116,19 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
   const [activeTab, setActiveTab] = useState(activeTabParam);
   const [selectedOrder, setSelectedOrder] = useState<OrderPayload | null>(null);
   const [isOrdering, setIsOrdering] = useState(false);
+
+  // Comparison Modal state
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [comparisonPlanName, setComparisonPlanName] = useState('Paket Lengkap');
+  const [comparisonVariant, setComparisonVariant] = useState<'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise'>('Enterprise');
+
+  const handleOpenComparison = useCallback((title: string, variant: string) => {
+    setComparisonPlanName(title);
+    const validVariants: ('Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise')[] = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise'];
+    const matched = validVariants.find(v => v.toLowerCase() === variant.toLowerCase());
+    setComparisonVariant(matched || 'Enterprise');
+    setShowComparisonModal(true);
+  }, []);
 
   const confirm = useConfirm();
 
@@ -506,31 +521,52 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                       const sCode = String(svc.service_code || svc.plan_snapshot?.service_code || svc.Plan?.service_code || '').toUpperCase();
                       const upperRaw = fullPlanName.toUpperCase();
 
+                      // 1. Ekstraksi Varian (Micro, Small, Medium, Large, Enterprise)
+                      let variantName = 'Standar';
+                      if (upperRaw.includes('ENTERPRISE')) {
+                        variantName = 'Enterprise';
+                      } else if (upperRaw.includes('LARGE')) {
+                        variantName = 'Large';
+                      } else if (upperRaw.includes('MEDIUM')) {
+                        variantName = 'Medium';
+                      } else if (upperRaw.includes('SMALL')) {
+                        variantName = 'Small';
+                      } else if (upperRaw.includes('MICRO')) {
+                        variantName = 'Micro';
+                      }
+
+                      // 2. Ekstraksi Nama Produk yang Simpel & Bersih
+                      let mainTitle = 'Aplikasi Absenta';
                       let isMasterPackage = false;
-                      let displayName = fullPlanName;
                       if (sCode === 'PAKET_LENGKAP' || upperRaw.includes('PAKET LENGKAP')) {
-                        displayName = upperRaw.includes('MULTI') ? 'PAKET LENGKAP MULTI (Enterprise)' : 'PAKET LENGKAP';
+                        mainTitle = 'Paket Lengkap';
                         isMasterPackage = true;
-                      } else if (sCode === 'ACADEMIC' || upperRaw.includes('ACADEMIC') || upperRaw.includes('KURIKULUM')) {
-                        displayName = 'MANAJEMEN KURIKULUM & AKADEMIK';
-                      } else if (sCode === 'KESISWAAN' || upperRaw.includes('KESISWAAN') || upperRaw.includes('BPBK')) {
-                        displayName = 'MANAJEMEN KESISWAAN & BP/BK';
-                      } else if (sCode === 'CORE' || upperRaw.includes('FREE LISENSI') || upperRaw.includes('AKTIVASI SERVER')) {
-                        displayName = 'LISENSI SERVER ABSENTA';
+                        if (variantName === 'Standar') variantName = upperRaw.includes('MULTI') ? 'Enterprise' : 'Enterprise';
                       } else if (sCode === 'ABSENSI' || upperRaw.includes('ABSENSI')) {
-                        displayName = upperRaw.includes('MULTI') ? 'ABSENSI MULTI SESI' : 'ABSENSI SEKOLAH';
-                      } else if (sCode === 'SAAS-NODE' || upperRaw.includes('SAAS-NODE')) {
-                        displayName = 'SAAS NODE ENGINE SERVER';
-                      } else if (sCode === 'HUBIN' || upperRaw.includes('HUBUNGAN INDUSTRI')) {
-                        displayName = 'HUBUNGAN INDUSTRI & PKL (HUBIN)';
+                        mainTitle = 'Aplikasi Absensi';
+                      } else if (sCode === 'ACADEMIC' || upperRaw.includes('ACADEMIC') || upperRaw.includes('KURIKULUM')) {
+                        mainTitle = 'Aplikasi Akademik & Kurikulum';
+                      } else if (sCode === 'KESISWAAN' || upperRaw.includes('KESISWAAN') || upperRaw.includes('BPBK')) {
+                        mainTitle = 'Aplikasi Kesiswaan & BP/BK';
+                      } else if (sCode === 'HUBIN' || upperRaw.includes('HUBUNGAN INDUSTRI') || upperRaw.includes('PKL')) {
+                        mainTitle = 'Aplikasi Hubin & PKL';
                       } else if (sCode === 'SARPRAS' || upperRaw.includes('SARANA PRASARANA') || upperRaw.includes('INVENTORY')) {
-                        displayName = 'SARANA & PRASARANA (SARPRAS)';
+                        mainTitle = 'Aplikasi Sarpras';
                       } else if (sCode === 'KOPERASI' || sCode === 'COOPERATIVE' || upperRaw.includes('KOPERASI')) {
-                        displayName = 'KOPERASI SEKOLAH DIGITAL';
+                        mainTitle = 'Aplikasi Koperasi Digital';
                       } else if (sCode === 'WHATSAPP' || upperRaw.includes('WHATSAPP')) {
-                        displayName = 'WHATSAPP GATEWAY NOTIFIKASI';
-                      } else if (sCode === 'EASY_TUNNEL' || upperRaw.includes('TUNNEL') || upperRaw.includes('VPN')) {
-                        displayName = 'EASY TUNNEL VPN ACCESS';
+                        mainTitle = 'WhatsApp Gateway Notifikasi';
+                      } else if (sCode === 'EASY_TUNNEL' || sCode === 'EASY' || upperRaw.includes('TUNNEL') || upperRaw.includes('VPN')) {
+                        mainTitle = 'Easy Tunnel VPN';
+                        if (variantName === 'Standar') variantName = 'Gateway';
+                      } else if (sCode === 'SAAS-NODE' || upperRaw.includes('SAAS-NODE')) {
+                        mainTitle = 'Server Appliance (SaaS Node)';
+                        if (variantName === 'Standar') variantName = 'Node Server';
+                      } else if (sCode === 'CORE' || upperRaw.includes('FREE LISENSI') || upperRaw.includes('AKTIVASI SERVER')) {
+                        mainTitle = 'Lisensi Server Absenta';
+                        if (variantName === 'Standar') variantName = 'Core';
+                      } else {
+                        mainTitle = fullPlanName;
                       }
 
                       const IconComp = getServiceIcon(sCode || svc.Plan?.service_code || svc.plan_snapshot?.service_code);
@@ -557,9 +593,12 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <h4 className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-snug">
-                                      {displayName}
+                                    <h4 className="text-base font-black text-slate-900 dark:text-white leading-snug">
+                                      {mainTitle}
                                     </h4>
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9.5px] font-extrabold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80">
+                                      Varian {variantName}
+                                    </span>
                                   </div>
                                   <p className="text-[10px] text-slate-400 font-mono mt-0.5">
                                     ID: {svc.id.substring(0, 8)}...
@@ -594,7 +633,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Kapasitas</span>
                                 <div className="font-bold text-slate-900 dark:text-white text-[11px] flex items-center gap-1 leading-tight">
                                   <User size={11} className="text-blue-500" />
-                                  <span>{maxUser ? `${maxUser.toLocaleString('id-ID')} Akun` : 'Unlimited'}</span>
+                                  <span>{maxUser ? `${maxUser.toLocaleString('id-ID')} Pengguna` : 'Unlimited'}</span>
                                 </div>
                                 <span className="text-[9px] text-slate-400">Kuota Institusi</span>
                               </div>
@@ -611,7 +650,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               </div>
                             </div>
 
-                            {/* Features / Module chips (Compact Clean Preview) */}
+                            {/* Features / Module chips */}
                             {Array.isArray(features) && features.length > 0 && (
                               <div className="space-y-1">
                                 <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
@@ -637,17 +676,30 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                           </div>
 
                           {/* Action Buttons */}
-                          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex flex-wrap items-center gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
                             <Button
                               type="button"
                               variant="toolbarPrimary"
                               size="toolbar"
                               aria-label="Perpanjang Masa Aktif"
                               onClick={() => handleExtend(svc.plan_id || svc.id)}
-                              className="flex-1 min-w-[140px] rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
+                              className="flex-1 min-w-[130px] rounded-xl font-bold text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
                             >
                               <Sparkles size={13} />
                               <span>Perpanjang Masa Aktif</span>
+                            </Button>
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              aria-label="Lihat Detail Paket & Komparasi"
+                              onClick={() => handleOpenComparison(mainTitle, variantName)}
+                              className="rounded-xl font-bold text-xs h-9 px-3 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 flex items-center gap-1.5"
+                              title="Lihat Detail Paket & Komparasi Varian"
+                            >
+                              <Layers size={13} />
+                              <span>Detail Paket</span>
                             </Button>
 
                             <Button
@@ -730,6 +782,18 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
             activeAcademicTier={activeAcademicTier}
           />
         </Suspense>
+
+        {/* Modal Komparasi Varian & Modul */}
+        <PackageComparisonModal
+          isOpen={showComparisonModal}
+          onClose={() => setShowComparisonModal(false)}
+          activePlanName={comparisonPlanName}
+          activePlanVariant={comparisonVariant}
+          onUpgrade={() => {
+            setShowComparisonModal(false);
+            navigate('/catalog');
+          }}
+        />
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
