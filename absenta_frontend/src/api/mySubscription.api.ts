@@ -71,3 +71,44 @@ export async function toggleAutoRenew(subscriptionId: string, autoRenew: boolean
 export async function getPaymentChannels(productId: string = 'cakola'): Promise<{ success: boolean; message: string; data?: any[] }> {
   return requestWithFallback<{ success: boolean; message: string; data?: any[] }>('get', `/billing/payment-channels?productId=${encodeURIComponent(productId)}`);
 }
+
+export interface PackageMatrixData {
+  context: {
+    service_id?: string;
+    is_master_package: boolean;
+    plan_name: string;
+    variant: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise';
+    target_module: string;
+    capacity: string;
+    status: string;
+    end_date?: string;
+    created_at?: string;
+  };
+  columns: {
+    id: string;
+    name: string;
+    shortDesc: string;
+    icon: string;
+  }[];
+  tiers: {
+    tier: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise';
+    capacity: string;
+    badge?: string;
+    description: string;
+    is_current_tier: boolean;
+    modules: Record<string, {
+      included_in_bundle: boolean;
+      is_active_for_tenant: boolean;
+      is_cross_owned?: boolean;
+      status_code: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_IN_BUNDLE' | 'NOT_INCLUDED';
+      tooltip: string;
+    }>;
+  }[];
+}
+
+export async function getMySubscriptionMatrix(serviceId?: string): Promise<{ success: boolean; message: string; data?: PackageMatrixData }> {
+  const query = serviceId ? `?service_id=${encodeURIComponent(serviceId)}` : '';
+  return requestWithFallback<{ success: boolean; message: string; data?: PackageMatrixData }>('get', `/me/subscription/matrix${query}`, {
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}

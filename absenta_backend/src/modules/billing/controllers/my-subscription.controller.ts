@@ -127,5 +127,32 @@ export const mySubscriptionController = {
       message: `Auto-renewal has been turned ${auto_renew ? 'ON' : 'OFF'}`,
       data: updated
     });
+  },
+
+  async getComparisonMatrix(req: any, reply: any) {
+    const user = req.user || {};
+    const roleName = user.roleName || user.role?.name;
+    const tenantId = user.tenantId || user.tenant_id || null;
+    const serviceId = (req.query?.service_id || req.query?.serviceId || null) as string | null;
+
+    if (!tenantId) {
+      if (!isSystemSuperAdmin(roleName, tenantId)) {
+        throw toHttpError(400, 'Tenant context missing');
+      }
+      return reply.send({
+        success: true,
+        message: 'No tenant context',
+        data: null
+      });
+    }
+
+    const { packageMatrixService } = await import('../services/package-matrix.service');
+    const matrix = await packageMatrixService.getComparisonMatrix(tenantId, serviceId || undefined);
+
+    return reply.send({
+      success: true,
+      message: 'Package comparison matrix generated',
+      data: matrix
+    });
   }
 };
