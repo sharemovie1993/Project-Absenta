@@ -119,10 +119,12 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
 
   // Comparison Modal state
   const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [comparisonServiceId, setComparisonServiceId] = useState<string | null>(null);
   const [comparisonPlanName, setComparisonPlanName] = useState('Paket Lengkap');
   const [comparisonVariant, setComparisonVariant] = useState<'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise'>('Enterprise');
 
-  const handleOpenComparison = useCallback((title: string, variant: string) => {
+  const handleOpenComparison = useCallback((title: string, variant: string, svcId?: string) => {
+    setComparisonServiceId(svcId || null);
     setComparisonPlanName(title);
     const validVariants: ('Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise')[] = ['Micro', 'Small', 'Medium', 'Large', 'Enterprise'];
     const matched = validVariants.find(v => v.toLowerCase() === variant.toLowerCase());
@@ -694,7 +696,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               variant="outline"
                               size="sm"
                               aria-label="Lihat Detail Paket & Komparasi"
-                              onClick={() => handleOpenComparison(mainTitle, variantName)}
+                              onClick={() => handleOpenComparison(mainTitle, variantName, svc.id)}
                               className="rounded-xl font-bold text-xs h-9 px-3 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 flex items-center gap-1.5"
                               title="Lihat Detail Paket & Komparasi Varian"
                             >
@@ -787,6 +789,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
         <PackageComparisonModal
           isOpen={showComparisonModal}
           onClose={() => setShowComparisonModal(false)}
+          serviceId={comparisonServiceId}
           activePlanName={comparisonPlanName}
           activePlanVariant={comparisonVariant}
           onUpgrade={() => {
