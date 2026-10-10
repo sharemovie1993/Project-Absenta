@@ -235,7 +235,11 @@ export const subscriptionOrdersController = {
       const tenantSlug = tenant?.subdomain ? tenant.subdomain.trim().toLowerCase() : '';
       const schoolName = tenant ? `${tenant.name}|${tenantSlug}` : 'Cakola School';
 
-      console.log(`[ORDER PROXY] Requesting central invoice for plan: ${targetPlanId} from licensing server (2-Tier: Host=${licenseKey}, Tenant=${tenantSlug})...`);
+      const isPaketLengkap = String(targetPlanId).toUpperCase().includes('PAKET_LENGKAP') || 
+                            String(localPlan.service_code || '').toUpperCase() === 'PAKET_LENGKAP' ||
+                            String(localPlan.name || '').toUpperCase().includes('PAKET LENGKAP');
+
+      console.log(`[ORDER PROXY] Requesting central invoice for plan: ${targetPlanId} from licensing server (2-Tier: Host=${licenseKey}, Tenant=${tenantSlug}, BundledTunnel=${isPaketLengkap})...`);
       const response = await axios.post(`${LICENSE_SERVER_URL}/api/license/request`, {
         school_name: schoolName,
         device_limit: localPlan.max_user || 100,
@@ -247,7 +251,8 @@ export const subscriptionOrdersController = {
         renew_license_key: licenseKey.trim(),
         server_license_key: licenseKey.trim(),
         requested_slug: tenantSlug,
-        tenant_identifier: tenantSlug
+        tenant_identifier: tenantSlug,
+        include_vpn: isPaketLengkap ? 1 : 0
       }, { timeout: 12000 });
 
       if (!response.data || !response.data.success || !response.data.data) {

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { easyTunnelApi, type Tunnel, type SystemInfo, type CustomDomainStatus } from '../../api/easyTunnel.api';
@@ -93,6 +94,8 @@ interface CloudLicenseItem {
   subdomain?: string;
   status?: string;
   is_expired?: boolean;
+  is_bundled?: boolean;
+  expires_at?: string;
 }
 
 interface InvoiceItem {
@@ -107,6 +110,7 @@ interface InvoiceItem {
 }
 
 export const EasyTunnelPage: React.FC = React.memo(() => {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const { user } = useAuthStore();
@@ -712,6 +716,12 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                   variant="toolbarOutline"
                   size="toolbar"
                   onClick={() => {
+                    const isBundleUser = hasCompleteBundleActive || (cloudLicenses ?? []).some(cl => cl.is_bundled);
+                    if (isBundleUser) {
+                      toast.info('Perpanjangan lisensi Easy Tunnel Anda otomatis mengikuti perpanjangan Paket Lengkap di Service Center.');
+                      navigate('/service-center');
+                      return;
+                    }
                     const defaultTunnel = tunnels[0];
                     setRenewLicenseKey(defaultTunnel?.license_key || '');
                     if (defaultTunnel?.slug) setSubdomainSlug(defaultTunnel.slug);
@@ -735,8 +745,8 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               </div>
             </div>
 
-            {/* 🌟 PAKET LENGKAP INCLUDED CLAIM BANNER 🌟 */}
-            {hasCompleteBundleActive && tunnels.length === 0 && (
+            {/* 🌟 PAKET LENGKAP INCLUDED CLAIM BANNER (hanya jika belum ada lisensi cloud terdeteksi) 🌟 */}
+            {hasCompleteBundleActive && tunnels.length === 0 && cloudLicenses.length === 0 && (
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-violet-50/60 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/90 dark:border-indigo-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1.5 max-w-xl">
                   <div className="flex items-center gap-2">
@@ -772,6 +782,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               <EasyTunnelCloudLicensesSection
                 cloudLicenses={cloudLicenses}
                 tunnels={tunnels}
+                hasCompleteBundleActive={hasCompleteBundleActive}
                 onUseLicense={(key, subdomain, schoolName) => {
                   setLicenseKey(key);
                   const effectiveSub = subdomain || tenantSubdomain || '';
@@ -814,6 +825,7 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                       tunnel={tunnel}
                       actionLoading={actionLoading}
                       tunnelBaseDomain={systemInfo?.tunnel_base_domain || 'absenta.id'}
+                      isBundled={hasCompleteBundleActive || (cloudLicenses ?? []).some(cl => cl.license_key === tunnel.license_key && cl.is_bundled)}
                       onStart={handleStart}
                       onStop={handleStop}
                       onRestart={handleRestart}

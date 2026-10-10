@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Activity,
   Play,
@@ -21,6 +22,7 @@ interface Props {
   tunnel: Tunnel;
   actionLoading: string | null;
   tunnelBaseDomain?: string;
+  isBundled?: boolean;
   onStart: (id: string) => void;
   onStop: (id: string) => void;
   onRestart: (id: string) => void;
@@ -35,6 +37,7 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
   tunnel,
   actionLoading,
   tunnelBaseDomain,
+  isBundled,
   onStart,
   onStop,
   onRestart,
@@ -44,6 +47,7 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
   onDiagnose,
   onCheckLicense
 }) => {
+  const navigate = useNavigate();
   const isConnected = tunnel.status === 'connected' || tunnel.wg_status?.status === 'connected';
   const baseDomain = tunnelBaseDomain || 'absenta.id';
   const slug = tunnel.slug || (tunnel as any).subdomain || '';
@@ -70,6 +74,11 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 {tunnel.app_name || 'Easy Tunnel Node'}
               </h3>
+              {isBundled && (
+                <Badge variant="secondary" className="text-[9px] font-extrabold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800">
+                  ⭐ BUNDLE PAKET LENGKAP
+                </Badge>
+              )}
               <Badge variant={isConnected ? 'success' : 'destructive'} className="text-[9px] font-bold">
                 {isConnected ? 'TERHUBUNG (ONLINE)' : 'TERPUTUS (OFFLINE)'}
               </Badge>
@@ -91,18 +100,32 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
         </div>
 
         <div className="flex items-center gap-1.5 self-end sm:self-center flex-wrap justify-end">
-          {onRenew && (
+          {isBundled ? (
             <Button
               type="button"
               variant="toolbarOutline"
               size="toolbar"
-              onClick={() => onRenew(tunnel)}
+              onClick={() => navigate('/service-center')}
               disabled={Boolean(actionLoading)}
-              className="rounded-xl border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold text-xs"
-              title="Perpanjang masa aktif lisensi Easy Tunnel ini"
+              className="rounded-xl border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 font-bold text-xs"
+              title="Perpanjangan lisensi ini otomatis dikelola terpadu via Paket Lengkap di Service Center"
             >
-              <Sparkles size={12} className="mr-1 text-amber-500" /> Perpanjang Lisensi
+              <ExternalLink size={12} className="mr-1 text-indigo-500" /> Service Center
             </Button>
+          ) : (
+            onRenew && (
+              <Button
+                type="button"
+                variant="toolbarOutline"
+                size="toolbar"
+                onClick={() => onRenew(tunnel)}
+                disabled={Boolean(actionLoading)}
+                className="rounded-xl border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 font-bold text-xs"
+                title="Perpanjang masa aktif lisensi Easy Tunnel ini"
+              >
+                <Sparkles size={12} className="mr-1 text-amber-500" /> Perpanjang Lisensi
+              </Button>
+            )
           )}
 
           {isConnected ? (
