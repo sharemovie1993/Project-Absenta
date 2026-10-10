@@ -33,6 +33,8 @@ export interface PackageMatrixResponse {
     target_module: string;
     capacity: string;
     status: string;
+    end_date?: string | Date;
+    created_at?: string | Date;
   };
   columns: ModuleColumn[];
   tiers: TierComparisonRow[];
@@ -113,28 +115,83 @@ function resolveModuleCodeFromService(service: any): string {
 
 export const packageMatrixService = {
   async getComparisonMatrix(tenantId: string, serviceId?: string): Promise<PackageMatrixResponse> {
-    const subscriptions = await prisma.subscription.findMany({
+    const now = new Date();
+
+    // 1. Ambil seluruh subscription tenant
+    const allSubscriptions = await prisma.subscription.findMany({
       where: {
         tenant_id: tenantId,
-        status: { in: ['ACTIVE', 'TRIAL', 'UPGRADE_PENDING', 'PENDING_PAYMENT'] as any }
+        status: { in: ['ACTIVE', 'TRIAL', 'UPGRADE_PENDING'] as any }
       },
       include: {
         Plan: {
           include: { Module: true }
         }
       },
-      orderBy: { end_date: 'desc' }
+      orderBy: [
+        { end_date: 'desc' },
+        { created_at: 'desc' }
+      ]
     });
 
-    // 1. Tentukan target service yang sedang diperiksa
-    let targetService = serviceId ? subscriptions.find(s => s.id === serviceId) : null;
+    // 2. Filter hanya subscription yang benar-benar aktif (belum kedaluwarsa)
+    // Toleransi grace period 7 hari jika end_date baru lewat sedikit
+    const graceCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const activeSubscriptions = allSubscriptions.filter(s => {
+      const isStatusActive = s.status === 'ACTIVE' || s.status === 'TRIAL' || s.status === 'UPGRADE_PENDING';
+      const isNotExpired = new Date(s.end_date) >= graceCutoff;
+      return isStatusActive && isNotExpired;
+    });
+
+    // Fallback jika tidak ada yang aktif sama sekali, gunakan subscriptions apa pun yang ada
+    const pool = activeSubscriptions.length > 0 ? activeSubscriptions : allSubscriptions;
+
+    // 3. Deduplikasi per Modul/Layanan untuk menangani siklus pembelian berulang:
+    // Jika modul yang sama dibeli berkali-kali, simpan HANYA paket yang terbaru (created_at / end_date terbaru)
+    const latestSubscriptionsByModule = new Map<string, typeof pool[0]>();
+    pool.forEach(sub => {
+      const mod = resolveModuleCodeFromService(sub);
+      const existing = latestSubscriptionsByModule.get(mod);
+      if (!existing) {
+        latestSubscriptionsByModule.set(mod, sub);
+      } else {
+        // Bandingkan mana yang lebih baru dibeli / memiliki masa aktif lebih panjang
+        const existingEndTime = new Date(existing.end_date).getTime();
+        const subEndTime = new Date(sub.end_date).getTime();
+        const existingCreateTime = new Date(existing.created_at || 0).getTime();
+        const subCreateTime = new Date(sub.created_at || 0).getTime();
+
+        if (subEndTime > existingEndTime || (subEndTime === existingEndTime && subCreateTime > existingCreateTime)) {
+          latestSubscriptionsByModule.set(mod, sub);
+        }
+      }
+    });
+
+    const deduplicatedActiveSubs = Array.from(latestSubscriptionsByModule.values());
+
+    // 4. Tentukan target service yang sedang diperiksa:
+    let targetService = serviceId ? pool.find(s => s.id === serviceId) : null;
     if (!targetService) {
-      // Fallback: Cari Paket Lengkap, lalu modul komersial, lalu sub pertama
-      targetService = subscriptions.find(s => 
+      // Prioritas Pemilihan Paket Terbaru & Teraktif:
+      // A. Paket Lengkap yang aktif & paling baru
+      // B. Modul satuan aktif dengan tanggal transaksi paling baru (created_at DESC)
+      // C. Record pertama dari pool aktif
+      targetService = deduplicatedActiveSubs.find(s => 
         s.service_code === 'PAKET_LENGKAP' || 
         s.Plan?.service_code === 'PAKET_LENGKAP' || 
         String(s.Plan?.name || '').toUpperCase().includes('PAKET LENGKAP')
-      ) || subscriptions[0] || null;
+      );
+
+      if (!targetService && deduplicatedActiveSubs.length > 0) {
+        // Ambil yang paling baru dibeli (created_at terbaru)
+        targetService = [...deduplicatedActiveSubs].sort((a, b) => 
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+        )[0];
+      }
+
+      if (!targetService) {
+        targetService = pool[0] || null;
+      }
     }
 
     const targetModuleCode = targetService ? resolveModuleCodeFromService(targetService) : 'PAKET_LENGKAP';
@@ -143,9 +200,9 @@ export const packageMatrixService = {
       ? extractVariantFromPlan(targetService.Plan, targetService.Plan?.max_user) 
       : 'Enterprise';
 
-    // 2. Kumpulkan seluruh modul yang aktif dimiliki tenant (cross-service)
+    // 5. Kumpulkan seluruh modul yang aktif dimiliki tenant dari siklus terbaru (cross-service)
     const activeModuleCodes = new Set<string>();
-    subscriptions.forEach(sub => {
+    deduplicatedActiveSubs.forEach(sub => {
       const mod = resolveModuleCodeFromService(sub);
       if (mod === 'PAKET_LENGKAP') {
         const subVariant = extractVariantFromPlan(sub.Plan, sub.Plan?.max_user);
@@ -156,7 +213,7 @@ export const packageMatrixService = {
       }
     });
 
-    // 3. Susun rows komparasi berdasarkan tier standar
+    // 6. Susun rows komparasi berdasarkan tier standar
     const tiers: TierComparisonRow[] = TIER_DETAILS.map(detail => {
       const isCurrentTier = detail.tier.toLowerCase() === targetVariant.toLowerCase();
       const bundleModules = STANDARD_BUNDLE_MAP[detail.tier] || [];
@@ -242,7 +299,9 @@ export const packageMatrixService = {
         variant: targetVariant,
         target_module: targetModuleCode,
         capacity: TIER_DETAILS.find(t => t.tier === targetVariant)?.capacity || 'Unlimited',
-        status: targetService?.status || 'ACTIVE'
+        status: targetService?.status || 'ACTIVE',
+        end_date: targetService?.end_date,
+        created_at: targetService?.created_at
       },
       columns: MODULE_COLUMNS,
       tiers

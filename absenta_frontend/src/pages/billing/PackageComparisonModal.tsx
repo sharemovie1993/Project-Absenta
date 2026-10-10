@@ -129,6 +129,11 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                     Modul Satuan Terlisensi
                   </span>
                 )}
+                {matrixData?.context?.end_date && (
+                  <span className="text-[10.5px] font-medium text-slate-500 dark:text-slate-400">
+                    • Aktif s/d {new Date(matrixData.context.end_date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </span>
+                )}
               </div>
             </div>
           </div>

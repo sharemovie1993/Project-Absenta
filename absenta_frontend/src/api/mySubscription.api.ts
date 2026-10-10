@@ -81,6 +81,8 @@ export interface PackageMatrixData {
     target_module: string;
     capacity: string;
     status: string;
+    end_date?: string;
+    created_at?: string;
   };
   columns: {
     id: string;
