@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -18,6 +19,7 @@ import {
 import { Button } from '../ui';
 import { formatCurrency, getServiceIcon, isCompleteBundlePlan } from '@/lib/billingUtils';
 import { useCartStore } from '../../store/useCartStore';
+import { BundleOverlapWarningModal } from './BundleOverlapWarningModal';
 import toast from 'react-hot-toast';
 
 export interface ProductDetailProps {
@@ -99,11 +101,25 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     return 'Micro';
   }, [groupedVariants, activeAcademicTier]);
 
+  const navigate = useNavigate();
   const [selectedSize, setSelectedSize] = useState<string>(defaultSize);
   const [selectedPeriod, setSelectedPeriod] = useState<'MONTH' | 'YEAR' | 'ONETIME'>(isHardware ? 'ONETIME' : 'MONTH');
   const [selectedHwVariantId, setSelectedHwVariantId] = useState<string>(group.variants?.[0]?.id || '');
   const [activeTab, setActiveTab] = useState<'features' | 'bos_guide' | 'faq'>('features');
   const [imgError, setImgError] = useState(false);
+
+  // Smart Soft Guard: Overlap Protection State
+  const [showOverlapWarning, setShowOverlapWarning] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'cart' | 'buy' | null>(null);
+
+  const activeBundle = useMemo(() => {
+    return (ownedServices || []).find((s: any) => {
+      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
+      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+    });
+  }, [ownedServices]);
+
+  const isTargetSingleModule = !isHardware && !isCompleteBundle;
 
   // Resolve matching plan
   const selectedPlan = useMemo(() => {
@@ -350,7 +366,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     });
   }, [isHardware, isCompleteBundle, group.service_code, group.module]);
 
-  const handleAddToCart = () => {
+  const executeAddToCart = () => {
     if (!selectedPlan) return;
     addItemToCart({
       plan_id: selectedPlan.id,
@@ -364,7 +380,7 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     toast.success(group.baseName + ' berhasil ditambahkan ke keranjang!');
   };
 
-  const handleBuyNow = () => {
+  const executeBuyNow = () => {
     if (!selectedPlan) return;
     const payload = {
       id: selectedPlan.id,
@@ -382,8 +398,26 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     if (onCheckout) {
       onCheckout(payload);
     } else {
-      handleAddToCart();
+      executeAddToCart();
     }
+  };
+
+  const handleAddToCart = () => {
+    if (activeBundle && isTargetSingleModule) {
+      setPendingAction('cart');
+      setShowOverlapWarning(true);
+      return;
+    }
+    executeAddToCart();
+  };
+
+  const handleBuyNow = () => {
+    if (activeBundle && isTargetSingleModule) {
+      setPendingAction('buy');
+      setShowOverlapWarning(true);
+      return;
+    }
+    executeBuyNow();
   };
 
   const IconComp = getServiceIcon(group.service_code, group.icon);
@@ -691,6 +725,14 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
             </div>
           )}
 
+          {/* Overlap Info Banner for Desktop */}
+          {activeBundle && isTargetSingleModule && (
+            <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-[11px] text-amber-800 dark:text-amber-300 flex items-center gap-2">
+              <Sparkles size={14} className="text-amber-500 shrink-0" />
+              <span>Sekolah Anda memiliki <strong>Paket Lengkap aktif</strong> yang sudah mencakup modul ini.</span>
+            </div>
+          )}
+
           {/* ── DESKTOP ACTION BUTTONS (SLIM & CRISP) ── */}
           <div className="hidden md:flex items-center gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
             <Button
@@ -993,6 +1035,27 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Smart Soft Guard: Overlap Warning Modal */}
+      <BundleOverlapWarningModal
+        isOpen={showOverlapWarning}
+        onClose={() => {
+          setShowOverlapWarning(false);
+          setPendingAction(null);
+        }}
+        activeBundle={activeBundle}
+        targetModuleName={group.baseName || group.module}
+        onExtendBundle={() => navigate('/services/SAAS_GROUP_PAKET_LENGKAP')}
+        onProceedSingle={() => {
+          setShowOverlapWarning(false);
+          if (pendingAction === 'buy') {
+            executeBuyNow();
+          } else {
+            executeAddToCart();
+          }
+          setPendingAction(null);
+        }}
+      />
     </div>
   );
 };

@@ -3,17 +3,19 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { AnimatePresence } from 'framer-motion';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
-import { Button, SectionCard } from '@/components/ui';
+import { AlertCircle, ArrowLeft, AlertTriangle, Sparkles } from 'lucide-react';
+import { Button, SectionCard, Badge } from '@/components/ui';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { ConfirmModal } from '@/components/ui/Modal';
 import { cancelPendingUpgrade, orderSubscriptionPlan } from '@/api/subscription.api';
-import { getPublicInvoiceLink, getPaymentChannels } from '@/api/mySubscription.api';
+import { getPublicInvoiceLink, getPaymentChannels, getMySubscription } from '@/api/mySubscription.api';
 import { getPublicPlans } from '@/api/plans.api';
 import type { Plan } from '@/types/plans';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { formatDate } from '@/utils/layoutUtils';
 import type { Step } from '@/components/billing/checkout/CheckoutWizardHeader';
+import { isCompleteBundlePlan } from '@/lib/billingUtils';
+import { BundleOverlapWarningModal } from '@/components/billing/BundleOverlapWarningModal';
 
 // Lazy loaded modular subcomponents (Pilar 11 & Pilar 21)
 const CheckoutWizardHeader = lazy(() => import('@/components/billing/checkout/CheckoutWizardHeader').then(m => ({ default: m.CheckoutWizardHeader })));
@@ -136,7 +138,37 @@ function CheckoutContent() {
     return Array.isArray(featJson) ? (featJson as string[]) : [];
   }, [plan]);
 
-  const handleProceedToPayment = useCallback(async () => {
+  // Smart Soft Guard Overlap Detection
+  const [showOverlapWarning, setShowOverlapWarning] = useState(false);
+  const [hasConfirmedOverlap, setHasConfirmedOverlap] = useState(false);
+
+  const { data: mySubData } = useQuery({
+    queryKey: ['my-subscription-details-checkout'],
+    queryFn: async () => {
+      try {
+        const res = await getMySubscription();
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 60 * 1000
+  });
+
+  const activeBundle = useMemo(() => {
+    const services = (mySubData as any)?.services || (mySubData as any)?.all_subscriptions || (mySubData as any)?.subscriptions || [];
+    return Array.isArray(services) && services.find((s: any) => {
+      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
+      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+    });
+  }, [mySubData]);
+
+  const isTargetSingleModule = useMemo(() => {
+    if (!plan) return false;
+    return !isCompleteBundlePlan(plan) && plan.service_code !== 'HARDWARE';
+  }, [plan]);
+
+  const executeProceedToPayment = useCallback(async () => {
     if (!plan) return;
     setProcessing(true);
     setError(null);
@@ -180,6 +212,14 @@ function CheckoutContent() {
       setProcessing(false);
     }
   }, [plan, cycle, selectedChannel, totalPrice]);
+
+  const handleProceedToPayment = useCallback(async () => {
+    if (activeBundle && isTargetSingleModule && !hasConfirmedOverlap) {
+      setShowOverlapWarning(true);
+      return;
+    }
+    executeProceedToPayment();
+  }, [activeBundle, isTargetSingleModule, hasConfirmedOverlap, executeProceedToPayment]);
 
   const loadInvoiceDetails = useCallback(async (token: string) => {
     setProcessing(true);
@@ -363,6 +403,40 @@ function CheckoutContent() {
             <CheckoutWizardHeader step={step} />
           </Suspense>
 
+          {/* Overlap Alert Banner in Checkout Step */}
+          {step === 'detail' && activeBundle && isTargetSingleModule && plan && (
+            <div className="p-4 rounded-2xl bg-amber-50/90 dark:bg-amber-950/40 border-2 border-amber-300 dark:border-amber-700/60 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
+                  <AlertTriangle size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-xs text-amber-950 dark:text-amber-200">
+                      Perhatian: Sekolah Anda Memiliki Paket Lengkap Aktif
+                    </span>
+                    <Badge variant="warning" className="text-[8px] font-black uppercase px-1.5 py-0.2">
+                      Active Bundle
+                    </Badge>
+                  </div>
+                  <p className="text-[11.5px] text-amber-800/80 dark:text-amber-300/80 leading-relaxed mt-0.5">
+                    Modul <strong>{plan.name}</strong> ini sudah termasuk di dalam Paket Lengkap sekolah. Membeli modul satuan ini tidak akan memperpanjang modul-modul lainnya.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => navigate('/services/SAAS_GROUP_PAKET_LENGKAP')}
+                className="rounded-xl border-amber-400 dark:border-amber-600 text-amber-900 dark:text-amber-100 hover:bg-amber-100/70 font-bold text-xs h-8 px-3 shrink-0"
+              >
+                <Sparkles size={13} className="mr-1 text-amber-600" />
+                Beralih ke Paket Lengkap
+              </Button>
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             {step === 'detail' && plan && (
               <Suspense fallback={<div className="h-96 bg-slate-100 dark:bg-slate-800 rounded-3xl animate-pulse" />}>
@@ -425,6 +499,20 @@ function CheckoutContent() {
         confirmText={cancelling ? 'Sesaat...' : 'Ya, Batalkan'}
         cancelText="Kembali"
         variant="danger"
+      />
+
+      {/* Smart Soft Guard Overlap Warning Modal */}
+      <BundleOverlapWarningModal
+        isOpen={showOverlapWarning}
+        onClose={() => setShowOverlapWarning(false)}
+        activeBundle={activeBundle}
+        targetModuleName={plan?.name || 'Modul Satuan'}
+        onExtendBundle={() => navigate('/services/SAAS_GROUP_PAKET_LENGKAP')}
+        onProceedSingle={() => {
+          setShowOverlapWarning(false);
+          setHasConfirmedOverlap(true);
+          executeProceedToPayment();
+        }}
       />
     </AcademicPageLayout>
   );

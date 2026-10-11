@@ -25,7 +25,8 @@ import {
   formatCurrency, 
   getServiceIcon,
   resolveServiceCatalogGroupKey,
-  extractPlanSizeLabel
+  extractPlanSizeLabel,
+  isCompleteBundlePlan
 } from '../../lib/billingUtils';
 import { useCartStore } from '../../store/useCartStore';
 import { CartDrawer } from './CartDrawer';
@@ -69,6 +70,16 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRABModalOpen, setIsRABModalOpen] = useState(false);
+
+  // Deteksi apakah tenant memiliki langganan Paket Lengkap aktif
+  const activeBundleSubscription = useMemo(() => {
+    if (mode !== 'private' || !ownedServices || !ownedServices.length) return null;
+    return ownedServices.find((s: any) => {
+      const status = String(s.status || '').toUpperCase();
+      const isAct = status === 'ACTIVE' || status === 'TRIAL' || status === 'GRACE_PERIOD';
+      return isAct && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+    });
+  }, [mode, ownedServices]);
 
   // Direct SaaS Order State
   const [activeOrder, setActiveOrder] = useState<OrderPayload | null>(null);
@@ -515,6 +526,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
                     group={group}
                     mode={mode}
                     isActive={isActive}
+                    hasActiveBundle={Boolean(activeBundleSubscription)}
                     onSelectGroup={(g) => setSelectedGroup(g)}
                   />
                 );
@@ -585,6 +597,7 @@ interface ProductCatalogCardProps {
   group: any;
   mode?: 'public' | 'private';
   isActive?: boolean;
+  hasActiveBundle?: boolean;
   onSelectGroup?: (group: any) => void;
   onSelectPlan?: (plan: any) => void;
 }
@@ -592,6 +605,7 @@ interface ProductCatalogCardProps {
 const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
   group,
   isActive,
+  hasActiveBundle,
   onSelectGroup,
   onSelectPlan
 }) => {
@@ -654,6 +668,11 @@ const ProductCatalogCard: React.FC<ProductCatalogCardProps> = ({
             <span className="bg-emerald-600 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs flex items-center gap-0.5">
               <CheckCircle2 size={9} />
               <span>Aktif</span>
+            </span>
+          ) : hasActiveBundle && !isHardware && !isCompleteBundlePlan(group) ? (
+            <span className="bg-indigo-600 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs flex items-center gap-0.5">
+              <Sparkles size={9} />
+              <span>Termasuk di Paket Lengkap</span>
             </span>
           ) : !isHardware ? (
             <span className="bg-amber-500 text-white font-bold text-[8px] sm:text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded-md sm:rounded-lg shadow-2xs">

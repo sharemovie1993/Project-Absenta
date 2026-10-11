@@ -33,8 +33,10 @@ import {
   getServiceTheme, 
   getServiceThumbnail,
   resolveServiceCatalogGroupKey,
-  extractPlanSizeLabel
+  extractPlanSizeLabel,
+  isCompleteBundlePlan
 } from '@/lib/billingUtils';
+import { BundleOverlapWarningModal } from '@/components/billing/BundleOverlapWarningModal';
 
 interface GroupedProduct {
   id: string;
@@ -292,7 +294,26 @@ export function ServiceDetailContent() {
     return { color: 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20', icon: <ArrowRight size={18} /> };
   }, [purchaseButtonLabel]);
 
-  const handleCheckout = useCallback(() => {
+  // Smart Soft Guard: Overlap Protection
+  const [showOverlapWarning, setShowOverlapWarning] = useState(false);
+
+  const activeBundle = useMemo(() => {
+    if (!isAuthenticated || !subQuery.data) return null;
+    const mySubsRaw = subQuery.data;
+    const mySubs = Array.isArray(mySubsRaw) ? mySubsRaw : (mySubsRaw?.subscriptions || []);
+    return (mySubs ?? []).find((s: SubscriptionItem) => {
+      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
+      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+    });
+  }, [isAuthenticated, subQuery.data]);
+
+  const isTargetSingleModule = useMemo(() => {
+    if (!product) return false;
+    const groupKey = resolveServiceCatalogGroupKey(product);
+    return groupKey !== 'SAAS_GROUP_PAKET_LENGKAP';
+  }, [product]);
+
+  const proceedCheckout = useCallback(() => {
     if (!currentVariant) return;
     const cycle = selectedPeriod === 'YEAR' ? 12 : 1;
     const targetUrl = isAuthenticated 
@@ -300,6 +321,14 @@ export function ServiceDetailContent() {
       : `/register-tenant?plan_id=${currentVariant.id}&cycle=${cycle}`;
     navigate(targetUrl);
   }, [currentVariant, selectedPeriod, isAuthenticated, navigate]);
+
+  const handleCheckout = useCallback(() => {
+    if (activeBundle && isTargetSingleModule) {
+      setShowOverlapWarning(true);
+      return;
+    }
+    proceedCheckout();
+  }, [activeBundle, isTargetSingleModule, proceedCheckout]);
 
   const handleGoHome = useCallback(() => navigate('/'), [navigate]);
   const handleGoCatalog = useCallback(() => navigate(isAuthenticated ? '/service-center?tab=catalog' : '/pricing'), [isAuthenticated, navigate]);
@@ -609,6 +638,19 @@ export function ServiceDetailContent() {
           </div>
         </div>
       </SectionCard>
+
+      {/* Smart Soft Guard: Overlap Warning Modal */}
+      <BundleOverlapWarningModal
+        isOpen={showOverlapWarning}
+        onClose={() => setShowOverlapWarning(false)}
+        activeBundle={activeBundle}
+        targetModuleName={product.baseName || product.module}
+        onExtendBundle={() => navigate('/services/SAAS_GROUP_PAKET_LENGKAP')}
+        onProceedSingle={() => {
+          setShowOverlapWarning(false);
+          proceedCheckout();
+        }}
+      />
     </div>
   );
 }

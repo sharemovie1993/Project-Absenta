@@ -471,6 +471,11 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
   };
 
   const handleRenewTunnel = (t: Tunnel) => {
+    if (hasCompleteBundleActive || (cloudLicenses ?? []).some(cl => cl.license_key === t.license_key && cl.is_bundled)) {
+      toast.info('Lisensi Easy Tunnel ini merupakan bagian dari Paket Lengkap Anda. Silakan perpanjang melalui Service Center.');
+      navigate('/service-center');
+      return;
+    }
     setRenewLicenseKey(t.license_key || '');
     setSubdomainSlug(t.slug || (t as unknown as { subdomain?: string })?.subdomain || '');
     setOrderStep(1);
@@ -478,6 +483,11 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
   };
 
   const handleRenewCloudLicense = (key: string, subdomain?: string) => {
+    if (hasCompleteBundleActive) {
+      toast.info('Lisensi Easy Tunnel ini merupakan bagian dari Paket Lengkap Anda. Silakan perpanjang melalui Service Center.');
+      navigate('/service-center');
+      return;
+    }
     setRenewLicenseKey(key);
     if (subdomain) setSubdomainSlug(subdomain);
     setOrderStep(1);
@@ -697,41 +707,53 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
                   <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
                 </Button>
 
-                <Button
-                  type="button"
-                  variant="toolbarOutline"
-                  size="toolbar"
-                  onClick={() => {
-                    setRenewLicenseKey('');
-                    setOrderStep(1);
-                    setShowOrderModal(true);
-                  }}
-                  className="rounded-xl font-bold"
-                >
-                  <ShoppingCart size={14} className="mr-1.5" /> Beli Lisensi
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="toolbarOutline"
-                  size="toolbar"
-                  onClick={() => {
-                    const isBundleUser = hasCompleteBundleActive || (cloudLicenses ?? []).some(cl => cl.is_bundled);
-                    if (isBundleUser) {
-                      toast.info('Perpanjangan lisensi Easy Tunnel Anda otomatis mengikuti perpanjangan Paket Lengkap di Service Center.');
+                {hasCompleteBundleActive ? (
+                  <Button
+                    type="button"
+                    variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={() => {
+                      toast.info('Layanan Easy Tunnel sekolah Anda sudah termasuk dalam Paket Lengkap All-in-One dan tidak memerlukan pembelian lisensi terpisah.');
                       navigate('/service-center');
-                      return;
-                    }
-                    const defaultTunnel = tunnels[0];
-                    setRenewLicenseKey(defaultTunnel?.license_key || '');
-                    if (defaultTunnel?.slug) setSubdomainSlug(defaultTunnel.slug);
-                    setOrderStep(1);
-                    setShowOrderModal(true);
-                  }}
-                  className="rounded-xl font-bold border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                >
-                  <Sparkles size={14} className="mr-1.5 text-amber-500" /> Perpanjang Lisensi
-                </Button>
+                    }}
+                    className="rounded-xl font-bold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                    title="Easy Tunnel sudah termasuk dalam Paket Lengkap sekolah Anda"
+                  >
+                    <Sparkles size={14} className="mr-1.5 text-indigo-500" /> Termasuk di Paket Lengkap
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      type="button"
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => {
+                        setRenewLicenseKey('');
+                        setOrderStep(1);
+                        setShowOrderModal(true);
+                      }}
+                      className="rounded-xl font-bold"
+                    >
+                      <ShoppingCart size={14} className="mr-1.5" /> Beli Lisensi
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => {
+                        const defaultTunnel = tunnels[0];
+                        setRenewLicenseKey(defaultTunnel?.license_key || '');
+                        if (defaultTunnel?.slug) setSubdomainSlug(defaultTunnel.slug);
+                        setOrderStep(1);
+                        setShowOrderModal(true);
+                      }}
+                      className="rounded-xl font-bold border-amber-300 dark:border-amber-700/60 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    >
+                      <Sparkles size={14} className="mr-1.5 text-amber-500" /> Perpanjang Lisensi
+                    </Button>
+                  </>
+                )}
 
                 <Button
                   type="button"
@@ -745,36 +767,68 @@ export const EasyTunnelPage: React.FC = React.memo(() => {
               </div>
             </div>
 
-            {/* 🌟 PAKET LENGKAP INCLUDED CLAIM BANNER (hanya jika belum ada lisensi cloud terdeteksi) 🌟 */}
-            {hasCompleteBundleActive && tunnels.length === 0 && cloudLicenses.length === 0 && (
-              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-violet-50/60 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/90 dark:border-indigo-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="space-y-1.5 max-w-xl">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
-                      <Sparkles size={11} className="mr-1 inline text-amber-500 fill-amber-500" /> Termasuk di Paket Lengkap
-                    </Badge>
-                    <span className="text-[10.5px] text-indigo-700 dark:text-indigo-300 font-bold">1x Lisensi Siap Diaktifkan</span>
+            {/* 🌟 PAKET LENGKAP STATUS BANNER 🌟 */}
+            {hasCompleteBundleActive && (
+              tunnels.length === 0 && cloudLicenses.length === 0 ? (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-violet-50/60 to-purple-50/70 dark:from-indigo-950/40 dark:via-violet-950/30 dark:to-purple-950/30 border border-indigo-200/90 dark:border-indigo-800/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1.5 max-w-xl">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="success" className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5">
+                        <Sparkles size={11} className="mr-1 inline text-amber-500 fill-amber-500" /> Termasuk di Paket Lengkap
+                      </Badge>
+                      <span className="text-[10.5px] text-indigo-700 dark:text-indigo-300 font-bold">1x Lisensi Siap Diaktifkan</span>
+                    </div>
+                    <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
+                      Klaim Domain Online Sekolah Anda
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Paket Lengkap Anda sudah mencakup 1 subdomain dedicated <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-indigo-100 dark:border-indigo-900">.absenta.id</code> + enkripsi SSL HTTPS tanpa biaya langganan tunnel tambahan.
+                    </p>
                   </div>
-                  <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                    Klaim Domain Online Sekolah Anda
-                  </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Paket Lengkap Anda sudah mencakup 1 subdomain dedicated <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold bg-white dark:bg-slate-900 px-1 py-0.5 rounded border border-indigo-100 dark:border-indigo-900">.absenta.id</code> + enkripsi SSL HTTPS tanpa biaya langganan tunnel tambahan.
-                  </p>
-                </div>
 
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setLicenseKey('BUNDLE-INCLUDED');
-                    setShowSetupModal(true);
-                  }}
-                  className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-10 px-4 flex items-center justify-center gap-1.5 shrink-0 shadow-xs"
-                >
-                  <Plus size={14} />
-                  <span>Klaim &amp; Pasang Subdomain</span>
-                </Button>
-              </div>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setLicenseKey('BUNDLE-INCLUDED');
+                      setShowSetupModal(true);
+                    }}
+                    className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs h-10 px-4 flex items-center justify-center gap-1.5 shrink-0 shadow-xs"
+                  >
+                    <Plus size={14} />
+                    <span>Klaim &amp; Pasang Subdomain</span>
+                  </Button>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-blue-50/40 dark:from-indigo-950/30 dark:via-purple-950/20 dark:to-blue-950/20 border border-indigo-200/80 dark:border-indigo-800/60 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                      <Sparkles size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-xs text-slate-900 dark:text-white">
+                          Easy Tunnel Terproteksi Paket Lengkap
+                        </span>
+                        <Badge variant="success" className="text-[8px] font-black uppercase px-1.5 py-0.2">
+                          All-In-One Active
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        Domain dan sertifikat SSL server ini otomatis diperpanjang melalui langganan Paket Lengkap.
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/service-center')}
+                    className="rounded-xl font-bold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 text-xs h-8 px-3 shrink-0"
+                  >
+                    Service Center
+                  </Button>
+                </div>
+              )
             )}
 
             {/* Cloud Licenses Section */}
