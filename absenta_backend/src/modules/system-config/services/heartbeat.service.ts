@@ -309,13 +309,13 @@ export const heartbeatService = {
         console.warn('[Heartbeat] Gagal mengumpulkan telemetri EasyTunnel:', e.message);
       }
 
-      // 6. Measure CPU usage ratio & HTTP response time
+      // 6. Measure CPU usage ratio & HTTP response time for this 2-minute interval
       const cpuUsage = await getCpuUsageRatio();
-      const { getGlobalStats } = require('@/middlewares/accessSourceMiddleware');
-      const globalHttpStats = getGlobalStats();
+      const { consumeIntervalStats } = require('@/middlewares/accessSourceMiddleware');
+      const intervalStats = consumeIntervalStats();
 
       // 7. Send metrics to License Server
-      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, resp=${globalHttpStats.overallAvgMs}ms, tenants=${tenantList.length}`);
+      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, resp=${intervalStats.overallAvgMs}ms (${intervalStats.totalHits} hits in 2m), tenants=${tenantList.length}`);
 
       const currentScenario = getDeployScenario();
       const payload: any = {
@@ -323,11 +323,12 @@ export const heartbeatService = {
         dbSize,
         memoryUsage,
         cpuUsage,
-        localAvgResponseTimeMs: globalHttpStats.localAvgMs || undefined,
-        publicAvgResponseTimeMs: globalHttpStats.publicAvgMs || undefined,
-        avgResponseTimeMs: globalHttpStats.overallAvgMs || undefined,
-        localRequestsToday: globalHttpStats.localHits || undefined,
-        publicRequestsToday: globalHttpStats.publicHits || undefined,
+        localAvgResponseTimeMs: intervalStats.localAvgMs || undefined,
+        publicAvgResponseTimeMs: intervalStats.publicAvgMs || undefined,
+        avgResponseTimeMs: intervalStats.overallAvgMs || undefined,
+        requestsCount: intervalStats.totalHits || 0,
+        localRequestsToday: intervalStats.localHits || undefined,
+        publicRequestsToday: intervalStats.publicHits || undefined,
         lastTapped: lastTapped.toISOString(),
         deployMode: currentScenario,
         schoolName: serverLabel,

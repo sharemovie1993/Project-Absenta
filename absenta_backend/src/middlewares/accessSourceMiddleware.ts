@@ -43,9 +43,10 @@ export function resetStatsForSlug(slug: string) {
   }
 }
 
-export function getGlobalStats(): {
+export function consumeIntervalStats(): {
   localHits: number;
   publicHits: number;
+  totalHits: number;
   localAvgMs: number;
   publicAvgMs: number;
   overallAvgMs: number;
@@ -60,6 +61,12 @@ export function getGlobalStats(): {
     totalLocalMs += statsStore[k].localTotalMs || 0;
     totalPublicHits += statsStore[k].publicHits || 0;
     totalPublicMs += statsStore[k].publicTotalMs || 0;
+
+    // Reset counter interval untuk siklus 2 menit berikutnya
+    statsStore[k].localHits = 0;
+    statsStore[k].localTotalMs = 0;
+    statsStore[k].publicHits = 0;
+    statsStore[k].publicTotalMs = 0;
   }
 
   const localAvgMs = totalLocalHits > 0 ? parseFloat((totalLocalMs / totalLocalHits).toFixed(1)) : 0;
@@ -70,6 +77,7 @@ export function getGlobalStats(): {
   return {
     localHits: totalLocalHits,
     publicHits: totalPublicHits,
+    totalHits: grandHits,
     localAvgMs,
     publicAvgMs,
     overallAvgMs
