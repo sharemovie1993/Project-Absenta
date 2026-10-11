@@ -258,22 +258,16 @@ export const packageMatrixService = {
 
           if (isTierMatch) {
             activeModuleNamesInThisTier.push(col.name);
-            if (isMasterPackage || isTargetModule) {
-              isActiveForTenant = true;
-              statusCode = 'ACTIVE';
-              tooltip = `Aktif: Varian ${detail.tier} (${detail.capacity})`;
-            } else {
-              isCrossOwned = true;
-              statusCode = 'CROSS_ACTIVE';
-              tooltip = `Aktif melalui lisensi terpisah (${detail.capacity})`;
-            }
+            isActiveForTenant = true;
+            statusCode = 'ACTIVE';
+            tooltip = `Aktif: Varian ${detail.tier} (${detail.capacity})`;
           } else {
-            // Modul dimiliki oleh sekolah, baris ini merupakan opsi kapasitas lain
-            statusCode = 'AVAILABLE_TIER';
-            tooltip = `Opsi kapasitas ${detail.capacity} (${detail.tier})`;
+            // Varian ini tidak aktif untuk modul yang dibeli (sekolah menggunakan varian lain)
+            statusCode = 'UNSUBSCRIBED';
+            tooltip = `Varian ${detail.tier} tidak aktif untuk ${col.name} (aktif pada varian ${ownedInfo.variant})`;
           }
         } else {
-          // Sekolah TIDAK BERLANGGANAN modul ini (mati / nonaktif)
+          // Sekolah belum berlangganan modul ini sama sekali
           statusCode = 'UNSUBSCRIBED';
           tooltip = `Belum berlangganan modul ${col.name}`;
         }

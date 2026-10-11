@@ -283,26 +283,16 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                         <div 
                           key={col.id}
                           className={`p-2.5 rounded-xl flex items-center justify-between text-xs border transition-all ${
-                            statusCode === 'ACTIVE'
+                            isActive
                               ? 'bg-emerald-50/70 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60 font-semibold'
-                              : statusCode === 'CROSS_ACTIVE'
-                              ? 'bg-cyan-50/70 dark:bg-cyan-950/20 border-cyan-300 dark:border-cyan-800/60 font-semibold'
-                              : statusCode === 'AVAILABLE_TIER'
-                              ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-800/50 text-indigo-700 dark:text-indigo-300'
                               : 'bg-slate-50/60 dark:bg-slate-800/30 border-dashed border-slate-200 dark:border-slate-800 text-slate-400 opacity-60'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            {statusCode === 'ACTIVE' ? (
+                            {isActive ? (
                               <span className="p-1 rounded-md bg-emerald-500 text-white shrink-0">
                                 <Check size={11} strokeWidth={3} />
                               </span>
-                            ) : statusCode === 'CROSS_ACTIVE' ? (
-                              <span className="p-1 rounded-md bg-cyan-600 text-white shrink-0">
-                                <Check size={11} strokeWidth={3} />
-                              </span>
-                            ) : statusCode === 'AVAILABLE_TIER' ? (
-                              <span className="w-2 h-2 rounded-full bg-indigo-500 shrink-0 ml-1" />
                             ) : (
                               <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 ml-1" />
                             )}
@@ -313,21 +303,11 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                           </div>
 
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                            statusCode === 'ACTIVE'
+                            isActive
                               ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-900/40 border border-emerald-300 dark:border-emerald-700'
-                              : statusCode === 'CROSS_ACTIVE'
-                              ? 'text-cyan-700 dark:text-cyan-300 bg-cyan-100/70 dark:bg-cyan-900/40 border border-cyan-300 dark:border-cyan-700'
-                              : statusCode === 'AVAILABLE_TIER'
-                              ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800'
                               : 'text-slate-400 bg-slate-100 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700'
                           }`}>
-                            {statusCode === 'ACTIVE' 
-                              ? `${tierName} Aktif` 
-                              : statusCode === 'CROSS_ACTIVE' 
-                              ? `${tierName} Lisensi Lain` 
-                              : statusCode === 'AVAILABLE_TIER' 
-                              ? `${tierName} Tersedia` 
-                              : `${tierName} (Nonaktif)`}
+                            {isActive ? `${tierName}` : `${tierName} (Nonaktif)`}
                           </span>
                         </div>
                       );
@@ -428,32 +408,17 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
                             return (
                               <td key={col.id} className="p-3 text-center border-r border-slate-100 dark:border-slate-800 last:border-r-0">
-                                {statusCode === 'ACTIVE' ? (
-                                  /* MODUL AKTIF: BADGE HIDUP BERWARNA HIJAU MENYALA */
-                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || "Modul Aktif pada Paket Anda"}>
+                                {statusCode === 'ACTIVE' || statusCode === 'CROSS_ACTIVE' ? (
+                                  /* MODUL & VARIAN AKTIF: BADGE HIJAU SIMPEL DENGAN CEKLIS */
+                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || `Varian ${row.tier} Aktif`}>
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[11px] shadow-xs border border-emerald-400 transition-all">
                                       <Check size={13} strokeWidth={3} />
-                                      <span>{row.tier} Aktif</span>
-                                    </div>
-                                  </div>
-                                ) : statusCode === 'CROSS_ACTIVE' ? (
-                                  /* MODUL AKTIF VIA LISENSI LAIN: BADGE HIDUP BERWARNA CYAN */
-                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || "Aktif via lisensi terpisah"}>
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-[11px] shadow-xs border border-cyan-400 transition-all">
-                                      <Check size={13} strokeWidth={3} />
-                                      <span>{row.tier} Lisensi Lain</span>
-                                    </div>
-                                  </div>
-                                ) : statusCode === 'AVAILABLE_TIER' ? (
-                                  /* MODUL DIMILIKI SEKOLAH (OPSI TIER LAIN): BADGE TERSEDIA */
-                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || `Tersedia pada varian ${row.tier}`}>
-                                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] border border-indigo-200 dark:border-indigo-800/60">
                                       <span>{row.tier}</span>
                                     </div>
                                   </div>
                                 ) : (
-                                  /* MODUL BELUM BERLANGGANAN / TIDAK DIMILIKI: BADGE SEPERTI MATI / NONAKTIF */
-                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || "Belum berlangganan modul ini"}>
+                                  /* MODUL / VARIAN TIDAK AKTIF: BADGE ABU-ABU REDUP DENGAN KATA (NONAKTIF) */
+                                  <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || `Varian ${row.tier} Nonaktif`}>
                                     <div className="inline-flex items-center justify-center px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 font-semibold text-[11px] border border-dashed border-slate-200 dark:border-slate-700/60 opacity-60">
                                       <span>{row.tier} (Nonaktif)</span>
                                     </div>
@@ -474,30 +439,18 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
         {/* FOOTER & LEGEND */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px]">
               <span className="p-0.5 rounded bg-emerald-500 text-white">
                 <Check size={9} strokeWidth={3} />
               </span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Modul Aktif di Varian Ini</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="p-0.5 rounded bg-cyan-600 text-white">
-                <Check size={9} strokeWidth={3} />
-              </span>
-              <span className="font-semibold text-slate-700 dark:text-slate-300">Modul Aktif via Lisensi Lain</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[11px]">
-              <span className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 font-bold text-[10px]">
-                Tersedia
-              </span>
-              <span className="text-slate-600 dark:text-slate-400">Opsi Kapasitas Tersedia</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">Modul &amp; Varian Aktif</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px]">
               <span className="px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 font-medium text-[10px]">
                 Nonaktif
               </span>
-              <span className="text-slate-400">Belum Berlangganan (Mati)</span>
+              <span className="text-slate-400">Tidak Aktif / Belum Berlangganan</span>
             </div>
           </div>
 
