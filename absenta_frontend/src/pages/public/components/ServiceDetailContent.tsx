@@ -31,7 +31,9 @@ import { getMySubscription } from '@/api/mySubscription.api';
 import { 
   getServiceIcon, 
   getServiceTheme, 
-  getServiceThumbnail 
+  getServiceThumbnail,
+  resolveServiceCatalogGroupKey,
+  extractPlanSizeLabel
 } from '@/lib/billingUtils';
 
 interface GroupedProduct {
@@ -96,19 +98,23 @@ export function ServiceDetailContent() {
     const products: Record<string, GroupedProduct> = {};
 
     plans.forEach((p: Plan) => {
-      const baseName = (p.name || '')
-        .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
-        .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
-        .replace(/-/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      const size = extractPlanSizeLabel(p);
+      const groupKey = resolveServiceCatalogGroupKey(p);
+      const isPaketLengkap = groupKey === 'SAAS_GROUP_PAKET_LENGKAP';
+
+      const baseName = isPaketLengkap
+        ? 'Paket Lengkap All-in-One Platform Absenta'
+        : (p.name || '')
+            .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
+            .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
+            .replace(/-/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
           
-      const moduleName = p.module?.name || 'Layanan';
+      const moduleName = p.module?.name || (isPaketLengkap ? 'Paket Komplit' : 'Layanan');
       const mode = p.absensi_mode || 'STANDARD';
-      const size = p.size_label || p.size || 'Standard';
       const serviceCode = String(p.serviceCode || p.service_code || p.moduleId || p.module_id || '').toUpperCase();
-      
-      const groupKey = serviceCode || `${baseName}-${mode}`;
+      const legacyKey = serviceCode || `${baseName}-${mode}`;
       
       if (!products[groupKey]) {
         products[groupKey] = {
@@ -116,13 +122,18 @@ export function ServiceDetailContent() {
           baseName,
           mode,
           module: p.module?.name || moduleName,
-          icon: p.module?.icon || 'Package',
+          icon: p.module?.icon || (isPaketLengkap ? 'Sparkles' : 'Package'),
           service_code: serviceCode,
           module_id: p.module_id || p.moduleId || '',
           variants: [],
           sizes: [],
           periods: []
         };
+      }
+
+      // Link legacy aliases as well for backwards compatibility
+      if (legacyKey && legacyKey !== groupKey && !products[legacyKey]) {
+        products[legacyKey] = products[groupKey];
       }
 
       if (!products[groupKey].sizes.includes(size)) products[groupKey].sizes.push(size);
@@ -143,15 +154,18 @@ export function ServiceDetailContent() {
   const product = useMemo(() => {
     if (!slug) return null;
     const slugUpper = slug.toUpperCase().trim();
+    const resolvedSlug = resolveServiceCatalogGroupKey(slug);
     
-    // 1. Direct match by group key
+    // 1. Direct match by exact slug or resolved group key
     if (groupedProducts[slug]) return groupedProducts[slug];
     if (groupedProducts[slugUpper]) return groupedProducts[slugUpper];
+    if (groupedProducts[resolvedSlug]) return groupedProducts[resolvedSlug];
     
-    // 2. Robust lookup by service_code, module_id, or baseName
+    // 2. Robust lookup by service_code, module_id, baseName, or variant ID
     const list = Object.values(groupedProducts);
     const matched = list.find(g => 
       g.id.toUpperCase() === slugUpper ||
+      g.id.toUpperCase() === resolvedSlug.toUpperCase() ||
       g.service_code.toUpperCase() === slugUpper ||
       g.module_id.toUpperCase() === slugUpper ||
       g.baseName.toUpperCase().includes(slugUpper) ||

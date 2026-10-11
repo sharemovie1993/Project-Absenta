@@ -44,7 +44,8 @@ import axiosInstance, { resolvePublicApiBaseUrl } from '../../lib/axiosInstance'
 import { UnifiedCatalog } from '@/components/billing/UnifiedCatalog';
 import { 
   formatCurrency, 
-  getServiceIcon
+  getServiceIcon,
+  resolveServiceCatalogGroupKey
 } from '@/lib/billingUtils';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
@@ -420,15 +421,9 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     navigate(`/billing/checkout?invoice_id=${invoiceId}`);
   }, [navigate]);
 
-  const handleChangePlan = useCallback((plan: Plan) => {
-    const baseName = (plan.name || 'Layanan')
-      .replace(/\((Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\)/gi, '')
-      .replace(/\b(Micro|Small|Medium|Large|Enterprise|Bulanan|Tahunan|Monthly|Yearly)\b/gi, '')
-      .replace(/-/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const mode = String(plan.absensi_mode || 'STANDARD');
-    const groupKey = `${baseName}-${mode}`;
+  const handleChangePlan = useCallback((item: any, grp?: any) => {
+    const payload = grp ? { ...item, ...grp } : item;
+    const groupKey = resolveServiceCatalogGroupKey(payload);
     navigate(`/services/${groupKey}`);
   }, [navigate]);
 
@@ -868,7 +863,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               variant="outline"
                               size="sm"
                               aria-label="Ganti Paket"
-                              onClick={() => handleChangePlan((svc.Plan || svc.plan_snapshot || {}) as Plan)}
+                              onClick={() => handleChangePlan(svc, group)}
                               className="rounded-xl font-bold text-xs h-8 px-2.5 border-slate-200 dark:border-slate-700 shrink-0 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                               title="Ganti atau Upgrade Paket"
                             >

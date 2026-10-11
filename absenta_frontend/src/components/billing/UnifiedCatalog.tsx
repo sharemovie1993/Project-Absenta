@@ -23,7 +23,9 @@ import { getPublicPlans } from '../../api/plans.api';
 import { getPublicModules } from '../../api/module.api';
 import { 
   formatCurrency, 
-  getServiceIcon 
+  getServiceIcon,
+  resolveServiceCatalogGroupKey,
+  extractPlanSizeLabel
 } from '../../lib/billingUtils';
 import { useCartStore } from '../../store/useCartStore';
 import { CartDrawer } from './CartDrawer';
@@ -161,27 +163,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   const catalogPlans = plansQuery.data || [];
 
   const extractSizeLabel = (plan: any): string => {
-    if (plan?.size_label) return plan.size_label;
-    const name = String(plan?.name || plan?.title || '');
-    const id = String(plan?.id || '');
-
-    if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
-    if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
-    if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
-    if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
-    if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
-    if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
-
-    const limit = plan?.device_limit || plan?.max_user || 0;
-    if (limit > 0) {
-      if (limit <= 300) return 'Micro';
-      if (limit <= 600) return 'Small';
-      if (limit <= 1200) return 'Medium';
-      if (limit <= 2500) return 'Large';
-      return 'Enterprise';
-    }
-
-    return 'Standard';
+    return extractPlanSizeLabel(plan);
   };
 
   // Grouping products into unique solutions
@@ -264,45 +246,38 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           highlightBadge = 'Hardware Resmi';
         }
       } else {
-        const pNameUp = (p.name || '').toUpperCase();
-        const pIdUp = (p.id || '').toUpperCase();
-        if (pNameUp.includes('PAKET LENGKAP') || pIdUp.includes('PAKET_LENGKAP')) {
-          groupKey = 'SAAS_GROUP_PAKET_LENGKAP';
+        groupKey = resolveServiceCatalogGroupKey(p);
+        if (groupKey === 'SAAS_GROUP_PAKET_LENGKAP') {
           categoryKey = 'PAKET_LENGKAP';
           cleanBaseName = 'Paket Lengkap All-in-One Platform Absenta';
           imageUrl = '/assets/modules/absensi.png';
           cleanDescription = 'Bundling komplit seluruh modul: Presensi Multi-Sesi, POS Koperasi, Hubin PKL, Sarpras, & WA Gateway.';
           highlightBadge = 'Semua Modul Termasuk';
-        } else if (pNameUp.includes('WHATSAPP') || pIdUp.includes('WHATSAPP')) {
-          groupKey = 'SAAS_GROUP_WHATSAPP';
+        } else if (groupKey === 'SAAS_GROUP_WHATSAPP') {
           categoryKey = 'WHATSAPP';
           cleanBaseName = 'WhatsApp Service & Broadcast Pengingat';
           imageUrl = '/assets/modules/whatsapp.png';
           cleanDescription = 'Engine notifikasi WhatsApp real-time untuk info presensi kehadiran, tagihan SPP, & pengumuman sekolah.';
           highlightBadge = 'Broadcast Real-Time';
-        } else if (pNameUp.includes('HUBUNGAN INDUSTRI') || pIdUp.includes('HUBIN')) {
-          groupKey = 'SAAS_GROUP_HUBIN';
+        } else if (groupKey === 'SAAS_GROUP_HUBIN') {
           categoryKey = 'HUBIN';
           cleanBaseName = 'Modul Hubungan Industri (Jurnal PKL & Tracer)';
           imageUrl = '/assets/modules/hubin.png';
           cleanDescription = 'Digitalisasi kemitraan industri, bursa kerja khusus (BKK), jurnal harian magang, & Tracer Study alumni.';
           highlightBadge = 'Kurikulum Merdeka SMK';
-        } else if (pNameUp.includes('KOPERASI') || pIdUp.includes('KOPERASI')) {
-          groupKey = 'SAAS_GROUP_KOPERASI';
+        } else if (groupKey === 'SAAS_GROUP_KOPERASI') {
           categoryKey = 'KOPERASI';
           cleanBaseName = 'Modul Koperasi Sekolah & POS Kantin';
           imageUrl = '/assets/modules/koperasi.png';
           cleanDescription = 'Sistem kasir POS minimarket & kantin sekolah, e-money kartu siswa, simpan pinjam, & SHU.';
           highlightBadge = 'Cashless Smartcard';
-        } else if (pNameUp.includes('INVENTORY') || pNameUp.includes('SARPRAS') || pIdUp.includes('SARPRAS')) {
-          groupKey = 'SAAS_GROUP_SARPRAS';
+        } else if (groupKey === 'SAAS_GROUP_SARPRAS') {
           categoryKey = 'SARPRAS';
           cleanBaseName = 'Modul Manajemen Sarana & Prasarana';
           imageUrl = '/assets/modules/inventory.png';
           cleanDescription = 'Pendataan aset inventaris sekolah, barcode QR barang, jadwal pemeliharaan, & peminjaman alat.';
           highlightBadge = 'Barcode & Aset Sekolah';
-        } else if (pNameUp.includes('MULTI') || planMode === 'MULTI_SESI') {
-          groupKey = 'SAAS_GROUP_ABSENSI_MULTI';
+        } else if (groupKey === 'SAAS_GROUP_ABSENSI_MULTI') {
           categoryKey = 'ABSENSI';
           cleanBaseName = 'Presensi Digital Multi-Sesi (Shift & Magang)';
           imageUrl = '/assets/modules/absensi-multi-sesi.png';

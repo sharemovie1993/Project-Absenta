@@ -186,3 +186,128 @@ export const isCompleteBundlePlan = (planOrGroup: any): boolean => {
   );
 };
 
+/**
+ * 🏷️ Helper untuk mengekstrak label ukuran paket (Micro, Small, Medium, Large, Enterprise, Ultra, Standard)
+ */
+export const extractPlanSizeLabel = (plan: any): string => {
+  if (plan?.size_label) return plan.size_label;
+  const name = String(plan?.name || plan?.title || '');
+  const id = String(plan?.id || '');
+
+  if (/\b(Micro)\b/i.test(name) || /MICRO/i.test(id)) return 'Micro';
+  if (/\b(Small)\b/i.test(name) || /SMALL/i.test(id)) return 'Small';
+  if (/\b(Medium)\b/i.test(name) || /MEDIUM/i.test(id)) return 'Medium';
+  if (/\b(Large)\b/i.test(name) || /LARGE/i.test(id)) return 'Large';
+  if (/\b(Enterprise)\b/i.test(name) || /ENTERPRISE/i.test(id)) return 'Enterprise';
+  if (/\b(Ultra|Campus)\b/i.test(name) || /ULTRA/i.test(id)) return 'Ultra';
+
+  const limit = plan?.device_limit || plan?.max_user || 0;
+  if (limit > 0) {
+    if (limit <= 300) return 'Micro';
+    if (limit <= 600) return 'Small';
+    if (limit <= 1200) return 'Medium';
+    if (limit <= 2500) return 'Large';
+    return 'Enterprise';
+  }
+
+  return 'Standard';
+};
+
+/**
+ * 🎯 Resolves the standardized Catalog Group Key (e.g. SAAS_GROUP_PAKET_LENGKAP)
+ * for any Plan, Subscription, Service, or slug string.
+ */
+export const resolveServiceCatalogGroupKey = (itemOrSlug: any): string => {
+  if (!itemOrSlug) return 'SAAS_GROUP_PAKET_LENGKAP';
+
+  // If itemOrSlug is a string (e.g. URL slug or key)
+  if (typeof itemOrSlug === 'string') {
+    const s = itemOrSlug.toUpperCase().trim();
+    if (s.startsWith('SAAS_GROUP_') || s.startsWith('HW_GROUP_')) return itemOrSlug;
+    if (s.includes('PAKET LENGKAP') || s.includes('PAKET_LENGKAP') || s.includes('ALL-IN-ONE') || s.includes('ALL_IN_ONE')) {
+      return 'SAAS_GROUP_PAKET_LENGKAP';
+    }
+    if (s.includes('WHATSAPP') || s.includes('WA')) return 'SAAS_GROUP_WHATSAPP';
+    if (s.includes('HUBIN') || s.includes('PKL') || s.includes('INDUSTRI')) return 'SAAS_GROUP_HUBIN';
+    if (s.includes('KOPERASI') || s.includes('COOPERATIVE') || s.includes('KANTIN')) return 'SAAS_GROUP_KOPERASI';
+    if (s.includes('SARPRAS') || s.includes('INVENTORY') || s.includes('ASET')) return 'SAAS_GROUP_SARPRAS';
+    if (s.includes('MULTI')) return 'SAAS_GROUP_ABSENSI_MULTI';
+    if (s.includes('ABSENSI') || s.includes('PRESENSI')) return 'SAAS_GROUP_ABSENSI_SIMPLE';
+    if (s.includes('DELL') || s.includes('SERVER')) return 'HW_GROUP_DELL_SERVER';
+    if (s.includes('MINI') || s.includes('NODE')) return 'HW_GROUP_MINI_PC';
+    if (s.includes('TERMINAL') || s.includes('FINGERPRINT') || s.includes('FACE')) return 'HW_GROUP_TERMINAL';
+    if (s.includes('NETWORK') || s.includes('WIFI')) return 'HW_GROUP_NETWORK';
+    if (s.includes('PVC') || s.includes('KARTU')) return 'HW_GROUP_PVC_CARDS';
+    return itemOrSlug;
+  }
+
+  // If itemOrSlug is an object (SubscriptionItem, Plan, Group, etc.)
+  const plan = itemOrSlug.Plan || itemOrSlug.plan_snapshot || itemOrSlug;
+  const nameUpper = String(plan.name || plan.baseName || plan.title || plan.mainTitle || itemOrSlug.name || itemOrSlug.mainTitle || '').toUpperCase();
+  const idUpper = String(plan.id || plan.plan_id || itemOrSlug.id || itemOrSlug.plan_id || '').toUpperCase();
+  const serviceCodeUpper = String(plan.service_code || plan.serviceCode || itemOrSlug.service_code || itemOrSlug.serviceCode || '').toUpperCase();
+  const moduleUpper = String(plan.module_id || plan.moduleId || itemOrSlug.module_id || itemOrSlug.moduleKey || (plan.module && plan.module.id) || '').toUpperCase();
+  const modeUpper = String(plan.absensi_mode || itemOrSlug.absensi_mode || itemOrSlug.mode || '').toUpperCase();
+
+  // 1. Hardware checks
+  const isHardware = 
+    idUpper.includes('SERVER') || idUpper.includes('DELL') || idUpper.includes('HW_') || idUpper.startsWith('SVC_') ||
+    serviceCodeUpper === 'HARDWARE' || serviceCodeUpper === 'PHYSICAL_GOODS' ||
+    itemOrSlug.type === 'HARDWARE_PERIPHERAL' || itemOrSlug.type === 'PHYSICAL_SERVICE';
+
+  if (isHardware) {
+    if (idUpper.includes('DELL') || nameUpper.includes('DELL')) return 'HW_GROUP_DELL_SERVER';
+    if (idUpper.includes('NODE') || nameUpper.includes('MINI PC') || nameUpper.includes('WORKSTATION')) return 'HW_GROUP_MINI_PC';
+    if (idUpper.includes('AP_') || idUpper.includes('SWITCH') || nameUpper.includes('WI-FI') || nameUpper.includes('SWITCH')) return 'HW_GROUP_NETWORK';
+    if (idUpper.includes('FP_') || idUpper.includes('RFID') || nameUpper.includes('HIKVISION') || nameUpper.includes('ZKTECO') || nameUpper.includes('FINGERPRINT') || nameUpper.includes('FACE')) return 'HW_GROUP_TERMINAL';
+    if (idUpper.includes('PVC') || nameUpper.includes('KARTU') || nameUpper.includes('MIFARE')) return 'HW_GROUP_PVC_CARDS';
+    return `HW_${plan.module_id || plan.id || 'DEVICE'}`;
+  }
+
+  // 2. Paket Lengkap (All-in-One)
+  if (
+    isCompleteBundlePlan(itemOrSlug) ||
+    isCompleteBundlePlan(plan) ||
+    nameUpper.includes('PAKET LENGKAP') ||
+    idUpper.includes('PAKET_LENGKAP') ||
+    serviceCodeUpper === 'PAKET_LENGKAP' ||
+    moduleUpper === 'PAKET_LENGKAP' ||
+    Boolean(itemOrSlug.isMasterPackage)
+  ) {
+    return 'SAAS_GROUP_PAKET_LENGKAP';
+  }
+
+  // 3. WhatsApp Gateway
+  if (nameUpper.includes('WHATSAPP') || idUpper.includes('WHATSAPP') || serviceCodeUpper === 'WHATSAPP' || moduleUpper === 'WHATSAPP') {
+    return 'SAAS_GROUP_WHATSAPP';
+  }
+
+  // 4. Hubungan Industri (Hubin & PKL)
+  if (nameUpper.includes('HUBUNGAN INDUSTRI') || nameUpper.includes('HUBIN') || nameUpper.includes('PKL') || idUpper.includes('HUBIN') || serviceCodeUpper === 'HUBIN' || moduleUpper === 'HUBIN') {
+    return 'SAAS_GROUP_HUBIN';
+  }
+
+  // 5. Koperasi Sekolah & POS Kantin
+  if (nameUpper.includes('KOPERASI') || idUpper.includes('KOPERASI') || serviceCodeUpper === 'KOPERASI' || moduleUpper === 'KOPERASI' || serviceCodeUpper === 'COOPERATIVE') {
+    return 'SAAS_GROUP_KOPERASI';
+  }
+
+  // 6. Sarana Prasarana & Inventory
+  if (nameUpper.includes('SARANA PRASARANA') || nameUpper.includes('SARPRAS') || nameUpper.includes('INVENTORY') || idUpper.includes('SARPRAS') || serviceCodeUpper === 'SARPRAS' || moduleUpper === 'SARPRAS') {
+    return 'SAAS_GROUP_SARPRAS';
+  }
+
+  // 7. Presensi Multi-Sesi
+  if (nameUpper.includes('MULTI') || modeUpper === 'MULTI_SESI' || idUpper.includes('MULTI')) {
+    return 'SAAS_GROUP_ABSENSI_MULTI';
+  }
+
+  // 8. Presensi Standar / Simple
+  if (nameUpper.includes('ABSENSI') || serviceCodeUpper === 'ABSENSI' || moduleUpper === 'ABSENSI' || nameUpper.includes('PRESENSI')) {
+    return 'SAAS_GROUP_ABSENSI_SIMPLE';
+  }
+
+  return 'SAAS_GROUP_PAKET_LENGKAP';
+};
+
+
