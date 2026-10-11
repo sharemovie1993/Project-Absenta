@@ -160,7 +160,18 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                       {formatCurrency(inv.total_amount, inv.currency)}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end">
+                      <div className="flex items-center justify-end gap-2">
+                        {typeof handleCancelInvoice === 'function' && inv.status !== 'PAID' && inv.status !== 'CANCELLED' && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleCancelInvoice(inv.invoice_number || inv.id)} 
+                            disabled={actionLoading === inv.id || actionLoading === inv.invoice_number}
+                            className="rounded-md border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 font-bold h-8 px-3 text-xs hover:bg-red-50 dark:hover:bg-red-950/30 transition-all active:scale-[0.97]"
+                          >
+                            {actionLoading === inv.id || actionLoading === inv.invoice_number ? <Loader size="sm" /> : 'Batalkan'}
+                          </Button>
+                        )}
                         <Button 
                           size="sm" 
                           onClick={() => onViewInvoice(inv)} 

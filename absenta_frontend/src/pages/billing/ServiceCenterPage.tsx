@@ -35,7 +35,8 @@ import {
   getMyInvoices, 
   getMyPayments,
   getPublicInvoiceLink,
-  toggleAutoRenew
+  toggleAutoRenew,
+  cancelMyInvoice
 } from '../../api/mySubscription.api';
 import { orderSubscriptionPlan, cancelPendingUpgrade } from '../../api/subscription.api';
 import { useAuthStore } from '../../store/authStore';
@@ -421,6 +422,42 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     navigate(`/billing/checkout?invoice_id=${invoiceId}`);
   }, [navigate]);
 
+  const [cancellingInvoiceId, setCancellingInvoiceId] = useState<string | null>(null);
+
+  const handleCancelInvoice = useCallback(async (invoiceId: string) => {
+    const cleanInvNum = String(invoiceId || '').replace(/^#/, '').trim();
+    if (!cleanInvNum) return;
+
+    const isConfirmed = await confirm({
+      title: 'Batalkan Pesanan Tagihan',
+      description: `Apakah Anda yakin ingin membatalkan pesanan tagihan #${cleanInvNum}? Tagihan yang dibatalkan akan ditutup dan Anda bebas memilih paket lain.`,
+      confirmText: 'Ya, Batalkan Pesanan',
+      cancelText: 'Kembali',
+      style: 'danger'
+    });
+
+    if (!isConfirmed) return;
+
+    setCancellingInvoiceId(cleanInvNum);
+    try {
+      const res = await cancelMyInvoice(cleanInvNum);
+      if (res.success) {
+        toast.success(res.message || 'Tagihan berhasil dibatalkan.');
+        await Promise.all([
+          invoicesQuery.refetch(),
+          subQuery.refetch(),
+          paymentsQuery.refetch()
+        ]);
+      } else {
+        toast.error(res.message || 'Gagal membatalkan tagihan.');
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || 'Terjadi kesalahan saat membatalkan tagihan.');
+    } finally {
+      setCancellingInvoiceId(null);
+    }
+  }, [confirm, invoicesQuery, subQuery, paymentsQuery]);
+
   const handleChangePlan = useCallback((item: any, grp?: any) => {
     const payload = grp ? { ...item, ...grp } : item;
     const groupKey = resolveServiceCatalogGroupKey(payload);
@@ -618,13 +655,24 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     </p>
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/billing/checkout?token=${pendingInvoice.invoice_number}&plan_id=${pendingInvoice.plan_id || ''}`)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shrink-0"
-                >
-                  Lanjutkan Pembayaran
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleCancelInvoice(pendingInvoice.invoice_number)}
+                    disabled={cancellingInvoiceId === String(pendingInvoice.invoice_number).replace(/^#/, '')}
+                    className="border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 font-bold text-xs rounded-xl hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                  >
+                    {cancellingInvoiceId === String(pendingInvoice.invoice_number).replace(/^#/, '') ? <Loader size="sm" /> : 'Batalkan Pesanan'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(`/billing/checkout?token=${pendingInvoice.invoice_number}&plan_id=${pendingInvoice.plan_id || ''}`)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs"
+                  >
+                    Lanjutkan Pembayaran
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -902,6 +950,8 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                     isLoading={invoicesQuery.isLoading}
                     onRefresh={() => invoicesQuery.refetch()}
                     handleViewInvoice={handleViewInvoice}
+                    handleCancelInvoice={handleCancelInvoice}
+                    actionLoading={cancellingInvoiceId}
                   />
                 </Suspense>
               </div>

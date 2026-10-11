@@ -230,7 +230,7 @@ export const packageMatrixService = {
         bundle.forEach(b => {
           ownedModuleVariants.set(b, { variant: subVariant, isMaster: true });
         });
-      } else {
+      } else if (mod) {
         ownedModuleVariants.set(mod, { variant: subVariant, isMaster: false });
       }
     });
@@ -245,7 +245,6 @@ export const packageMatrixService = {
       MODULE_COLUMNS.forEach(col => {
         const ownedInfo = ownedModuleVariants.get(col.id);
         const isModuleOwned = !!ownedInfo;
-        const isTargetModule = col.id === targetModuleCode;
 
         let isActiveForTenant = false;
         let isCrossOwned = false;
@@ -305,7 +304,7 @@ export const packageMatrixService = {
         is_master_package: isMasterPackage,
         plan_name: displayPlanName,
         variant: targetVariant,
-        target_module: targetModuleCode,
+        target_module: targetModuleCode || 'ABSENSI',
         capacity: TIER_DETAILS.find(t => t.tier === targetVariant)?.capacity || 'Unlimited',
         status: targetService?.status || 'ACTIVE',
         end_date: targetService?.end_date,

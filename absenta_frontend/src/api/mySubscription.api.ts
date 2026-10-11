@@ -39,6 +39,14 @@ export async function getMyInvoices(): Promise<MyInvoicesResponse> {
   });
 }
 
+export async function cancelMyInvoice(invoiceNumber: string): Promise<{ success: boolean; message: string; data?: any }> {
+  const cleanInvNum = encodeURIComponent(invoiceNumber.trim().replace(/^#/, ''));
+  return requestWithFallback<{ success: boolean; message: string; data?: any }>(
+    'post',
+    `/billing/my-subscription/invoices/${cleanInvNum}/cancel`
+  );
+}
+
 export async function getMyPayments(): Promise<MyPaymentsResponse> {
   return requestWithFallback<MyPaymentsResponse>('get', '/billing/my-subscription/payments', {
     headers: { 'X-Skip-403-Redirect': 'true' }

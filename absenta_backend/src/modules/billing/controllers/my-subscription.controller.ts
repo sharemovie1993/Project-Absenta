@@ -3,6 +3,7 @@ import { isSystemSuperAdmin } from '../../../utils/rbac';
 import { subscriptionService } from '../services/subscription.service';
 import { getInvoicesByTenantQuery, getPaymentsByTenantQuery } from '../services/queries/subscription-overview.query';
 import { syncLocalSubscriptionsWithLicensingServer } from './subscription.controller';
+import { billingDb as prisma } from '../services/repositories/billing.db';
 
 export const mySubscriptionController = {
   async getSubscription(req: any, reply: any) {
@@ -80,6 +81,60 @@ export const mySubscriptionController = {
       message: 'Invoices retrieved',
       data: invoices
     });
+  },
+
+  async cancelInvoice(req: any, reply: any) {
+    const tenantId = (req.user?.tenant_id || req.user?.tenantId);
+    if (!tenantId) {
+      throw toHttpError(400, 'Tenant context missing');
+    }
+
+    const { invoiceNumber } = req.params;
+    if (!invoiceNumber) {
+      throw toHttpError(400, 'Nomor invoice wajib disertakan');
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subdomain: true, name: true }
+    });
+    const slug = tenant?.subdomain?.toLowerCase();
+
+    const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+    const coreKey = process.env.LICENSE_KEY || '';
+
+    try {
+      const axios = require('axios');
+      const cleanInvNum = encodeURIComponent(invoiceNumber.trim().replace(/^#/, ''));
+      const response = await axios.post(
+        `${LICENSE_SERVER_URL}/api/license/invoice/${cleanInvNum}/cancel`,
+        {
+          license_key: coreKey,
+          tenant_slug: slug
+        },
+        { timeout: 10000 }
+      );
+
+      // Sinkronisasikan kembali status langganan lokal setelah pembatalan
+      try {
+        await syncLocalSubscriptionsWithLicensingServer(tenantId);
+      } catch (syncErr: any) {
+        console.warn('[cancelInvoice] Post-cancel sync warning:', syncErr.message);
+      }
+
+      return reply.send({
+        success: true,
+        message: response.data?.message || 'Invoice berhasil dibatalkan',
+        data: response.data?.data
+      });
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || err.message || 'Gagal membatalkan invoice di server lisensi';
+      const statusCode = err.response?.status || 500;
+      return reply.status(statusCode).send({
+        success: false,
+        message: errMsg
+      });
+    }
   },
 
   async getPayments(req: any, reply: any) {

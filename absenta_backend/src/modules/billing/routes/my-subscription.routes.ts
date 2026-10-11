@@ -19,6 +19,14 @@ export async function mySubscriptionRoutes(fastify: any) {
     mySubscriptionController.getInvoices
   );
 
+  fastify.post(
+    '/invoices/:invoiceNumber/cancel',
+    {
+      preHandler: [requireCapability("billing.my.subscription.view"), determineDataScope()]
+    },
+    mySubscriptionController.cancelInvoice
+  );
+
   fastify.get(
     '/payments',
     {
