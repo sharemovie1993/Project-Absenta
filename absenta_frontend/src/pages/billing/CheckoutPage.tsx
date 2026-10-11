@@ -158,8 +158,10 @@ function CheckoutContent() {
   const activeBundle = useMemo(() => {
     const services = (mySubData as any)?.services || (mySubData as any)?.all_subscriptions || (mySubData as any)?.subscriptions || [];
     return Array.isArray(services) && services.find((s: any) => {
-      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
-      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+      const status = String(s.status || '').toUpperCase();
+      const isActive = status === 'ACTIVE' || status === 'TRIAL' || status === 'GRACE_PERIOD';
+      const isNotExpired = !s.end_date || new Date(s.end_date).getTime() > Date.now();
+      return isActive && isNotExpired && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
     });
   }, [mySubData]);
 

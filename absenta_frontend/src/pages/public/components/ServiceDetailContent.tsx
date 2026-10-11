@@ -302,8 +302,9 @@ export function ServiceDetailContent() {
     const mySubsRaw = subQuery.data;
     const mySubs = Array.isArray(mySubsRaw) ? mySubsRaw : (mySubsRaw?.subscriptions || []);
     return (mySubs ?? []).find((s: SubscriptionItem) => {
-      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL';
-      return isActive && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+      const isActive = s.status === 'ACTIVE' || s.status === 'TRIAL' || s.status === 'GRACE_PERIOD';
+      const isNotExpired = !(s as any).end_date || new Date((s as any).end_date).getTime() > Date.now();
+      return isActive && isNotExpired && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
     });
   }, [isAuthenticated, subQuery.data]);
 

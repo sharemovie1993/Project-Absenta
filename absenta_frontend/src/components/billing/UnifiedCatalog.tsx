@@ -77,7 +77,8 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     return ownedServices.find((s: any) => {
       const status = String(s.status || '').toUpperCase();
       const isAct = status === 'ACTIVE' || status === 'TRIAL' || status === 'GRACE_PERIOD';
-      return isAct && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
+      const isNotExpired = !s.end_date || new Date(s.end_date).getTime() > Date.now();
+      return isAct && isNotExpired && (isCompleteBundlePlan(s) || isCompleteBundlePlan(s.Plan) || isCompleteBundlePlan(s.plan_snapshot));
     });
   }, [mode, ownedServices]);
 

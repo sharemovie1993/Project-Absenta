@@ -162,11 +162,50 @@ export const getServiceStyle = (name: string) => {
  */
 export const isCompleteBundlePlan = (planOrGroup: any): boolean => {
   if (!planOrGroup) return false;
-  const sCode = String(planOrGroup.service_code || planOrGroup.serviceCode || '').toUpperCase();
-  const mId = String(planOrGroup.module_id || planOrGroup.moduleId || (planOrGroup.module && planOrGroup.module.id) || '').toUpperCase();
+
+  const sCode = String(
+    planOrGroup.service_code || 
+    planOrGroup.serviceCode || 
+    (planOrGroup.Plan && planOrGroup.Plan.service_code) || 
+    ''
+  ).toUpperCase();
+
+  const pId = String(
+    planOrGroup.id || 
+    planOrGroup.plan_id || 
+    (planOrGroup.Plan && planOrGroup.Plan.id) || 
+    ''
+  ).toUpperCase();
+
+  const pName = String(
+    planOrGroup.name || 
+    planOrGroup.baseName || 
+    planOrGroup.title || 
+    (planOrGroup.Plan && planOrGroup.Plan.name) || 
+    ''
+  ).toUpperCase();
+
+  // 🛡️ Free Lisensi & Core Platform BUKAN Paket Lengkap All-in-One SaaS komersial
+  if (
+    sCode === 'CORE' || 
+    pName.includes('FREE LISENSI') || 
+    pName.includes('AKTIVASI SERVER') || 
+    pName.includes('CORE_PLATFORM') || 
+    pId.includes('CORE') ||
+    pId.includes('FREE')
+  ) {
+    return false;
+  }
+
+  const mId = String(
+    planOrGroup.module_id || 
+    planOrGroup.moduleId || 
+    (planOrGroup.module && planOrGroup.module.id) || 
+    (planOrGroup.Plan && planOrGroup.Plan.module_id) || 
+    ''
+  ).toUpperCase();
+
   const gKey = String(planOrGroup.groupKey || '').toUpperCase();
-  const pId = String(planOrGroup.id || planOrGroup.plan_id || '').toUpperCase();
-  const pName = String(planOrGroup.name || planOrGroup.baseName || planOrGroup.title || '').toUpperCase();
 
   const rawFeatures = planOrGroup.features_json || planOrGroup.features || (planOrGroup.Plan && planOrGroup.Plan.features_json) || [];
   const featuresUpper = Array.isArray(rawFeatures)
@@ -181,8 +220,7 @@ export const isCompleteBundlePlan = (planOrGroup: any): boolean => {
     pName.includes('PAKET LENGKAP') ||
     pName.includes('ALL-IN-ONE') ||
     featuresUpper.includes('PAKET_LENGKAP') ||
-    featuresUpper.includes('ALL_IN_ONE') ||
-    featuresUpper.includes('EASY_TUNNEL')
+    featuresUpper.includes('ALL_IN_ONE')
   );
 };
 
