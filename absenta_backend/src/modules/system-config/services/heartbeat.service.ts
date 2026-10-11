@@ -18,6 +18,44 @@ function getCpuSpec(): string {
   return 'Unknown CPU';
 }
 
+async function getCpuUsageRatio(): Promise<number> {
+  return new Promise((resolve) => {
+    try {
+      const cpusStart = os.cpus();
+      setTimeout(() => {
+        try {
+          const cpusEnd = os.cpus();
+          let idleDelta = 0;
+          let totalDelta = 0;
+
+          for (let i = 0; i < cpusStart.length; i++) {
+            const start = cpusStart[i].times;
+            const end = cpusEnd[i].times;
+
+            const startTotal = start.user + start.nice + start.sys + start.idle + start.irq;
+            const endTotal = end.user + end.nice + end.sys + end.idle + end.irq;
+
+            idleDelta += end.idle - start.idle;
+            totalDelta += endTotal - startTotal;
+          }
+
+          if (totalDelta <= 0) {
+            resolve(0);
+            return;
+          }
+
+          const usage = Math.max(0, Math.min(1, 1 - (idleDelta / totalDelta)));
+          resolve(parseFloat(usage.toFixed(4)));
+        } catch {
+          resolve(0);
+        }
+      }, 150);
+    } catch {
+      resolve(0);
+    }
+  });
+}
+
 function getRamSpecGB(): string {
   try {
     const totalBytes = os.totalmem();
@@ -271,14 +309,18 @@ export const heartbeatService = {
         console.warn('[Heartbeat] Gagal mengumpulkan telemetri EasyTunnel:', e.message);
       }
 
-      // 6. Send metrics to License Server
-      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, tenants=${tenantList.length}, easyTunnels=${easyTunnelTelemetry.length}`);
+      // 6. Measure CPU usage ratio
+      const cpuUsage = await getCpuUsageRatio();
+
+      // 7. Send metrics to License Server
+      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, tenants=${tenantList.length}, easyTunnels=${easyTunnelTelemetry.length}`);
 
       const currentScenario = getDeployScenario();
       const payload: any = {
         activeUsers,
         dbSize,
         memoryUsage,
+        cpuUsage,
         lastTapped: lastTapped.toISOString(),
         deployMode: currentScenario,
         schoolName: serverLabel,
