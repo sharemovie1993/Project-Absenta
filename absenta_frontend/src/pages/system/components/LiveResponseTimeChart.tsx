@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Activity, Wifi, Globe, Zap } from 'lucide-react';
-import { SocketContext } from '@/hooks/useSocket';
+import React, { useState, useEffect, useRef } from 'react';
+import { Activity, Wifi, Globe, RefreshCw } from 'lucide-react';
 import { easyTunnelApi } from '../../../api/easyTunnel.api';
 
 interface TrafficPoint {
@@ -20,13 +19,9 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
   hostName,
   initialTelemetry
 }) => {
-  const socketCtx = useContext(SocketContext);
-  const socket = socketCtx?.socket;
-  const isSocketConnected = !!socketCtx?.isConnected;
-
   const [telemetry, setTelemetry] = useState<any>(initialTelemetry || null);
   const [points, setPoints] = useState<TrafficPoint[]>(() => {
-    // 6 titik awal mundur agar kurva langsung terbentang mulus saat pertama dibuka
+    // Bangkitkan 6 titik awal mundur agar kurva langsung terbentang mulus saat halaman dimuat
     const now = Date.now();
     const initialLan = initialTelemetry?.local?.avg_response_time_ms ?? 2.8;
     const initialVpn = initialTelemetry?.public?.avg_response_time_ms ?? 28.5;
@@ -49,127 +44,69 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
   const latestLanRef = useRef<number>(initialTelemetry?.local?.avg_response_time_ms ?? 2.8);
   const latestVpnRef = useRef<number>(initialTelemetry?.public?.avg_response_time_ms ?? 28.5);
 
-  // 1. Initial Snapshot Fetch (hanya 1x saat pertama kali mount)
+  // 1. Polling Aktif Terpercaya (Interval 2.5 Detik - Persis Cara Kerja Asli Mikhmon RouterOS)
   useEffect(() => {
     if (!tunnelId) return;
-    easyTunnelApi.getTelemetry(tunnelId)
-      .then(res => {
+
+    let isMounted = true;
+
+    const fetchTelemetry = async () => {
+      try {
+        const res = await easyTunnelApi.getTelemetry(tunnelId);
+        if (!isMounted) return;
+
         if (res.success && res.data) {
           setTelemetry(res.data);
           const rawLan = Number(res.data?.local?.avg_response_time_ms);
           const rawVpn = Number(res.data?.public?.avg_response_time_ms);
-          if (!isNaN(rawLan) && rawLan > 0) latestLanRef.current = rawLan;
-          if (!isNaN(rawVpn) && rawVpn > 0) latestVpnRef.current = rawVpn;
-        }
-      })
-      .catch(() => {});
-  }, [tunnelId]);
 
-  // 2. Real-time WebSocket Push Stream via Socket.IO
-  useEffect(() => {
-    if (!socket) return;
+          const curLan = !isNaN(rawLan) && rawLan > 0 ? rawLan : latestLanRef.current;
+          const curVpn = !isNaN(rawVpn) && rawVpn > 0 ? rawVpn : latestVpnRef.current;
 
-    const subscribeToTelemetry = () => {
-      socket.emit('easytunnel:subscribe', { tunnelId, slug: hostName });
-    };
+          latestLanRef.current = curLan;
+          latestVpnRef.current = curVpn;
 
-    // Langganan awal & langganan ulang otomatis saat reconnect
-    subscribeToTelemetry();
-    socket.on('connect', subscribeToTelemetry);
+          const now = new Date();
+          const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    const handleTelemetryUpdate = (data: any) => {
-      if (!data) return;
-
-      const rawLan = Number(data.lanMs);
-      const rawVpn = Number(data.vpnMs);
-
-      const curLan = !isNaN(rawLan) && rawLan > 0 ? rawLan : latestLanRef.current;
-      const curVpn = !isNaN(rawVpn) && rawVpn > 0 ? rawVpn : latestVpnRef.current;
-
-      latestLanRef.current = curLan;
-      latestVpnRef.current = curVpn;
-
-      const timeStr = data.time || new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-      setPoints(prev => {
-        const next = [...prev, { time: timeStr, lanMs: curLan, vpnMs: curVpn }];
-        // Batasi 8 titik sliding window ala Mikhmon
-        return next.length > 8 ? next.slice(next.length - 8) : next;
-      });
-
-      if (data.localHits !== undefined || data.publicHits !== undefined) {
-        setTelemetry((prev: any) => ({
-          ...prev,
-          local: {
-            ...prev?.local,
-            hits: data.localHits ?? prev?.local?.hits ?? 0,
-            avg_response_time_ms: curLan
-          },
-          public: {
-            ...prev?.public,
-            hits: data.publicHits ?? prev?.public?.hits ?? 0,
-            avg_response_time_ms: curVpn
-          }
-        }));
-      }
-    };
-
-    socket.on('easytunnel:telemetry_update', handleTelemetryUpdate);
-
-    return () => {
-      socket.off('connect', subscribeToTelemetry);
-      socket.emit('easytunnel:unsubscribe');
-      socket.off('easytunnel:telemetry_update', handleTelemetryUpdate);
-    };
-  }, [socket, tunnelId, hostName]);
-
-  // 3. Anti-Freeze Clock Ticker (menjaga waktu sumbu X selalu berjalan walau server idle / tidak ada klik)
-  useEffect(() => {
-    const ticker = setInterval(() => {
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-      setPoints(prev => {
-        const last = prev[prev.length - 1];
-        if (last && last.time === timeStr) return prev;
-
-        const next = [...prev, {
-          time: timeStr,
-          lanMs: latestLanRef.current,
-          vpnMs: latestVpnRef.current
-        }];
-        return next.length > 8 ? next.slice(next.length - 8) : next;
-      });
-    }, 2000);
-
-    return () => clearInterval(ticker);
-  }, []);
-
-  // 4. Tab Visibility Recovery (saat tab dibuka kembali setelah ditinggal lama / sleep)
-  useEffect(() => {
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        const now = Date.now();
-        const resynced: TrafficPoint[] = [];
-        for (let i = 5; i >= 0; i--) {
-          const t = new Date(now - i * 3000);
-          resynced.push({
-            time: t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            lanMs: latestLanRef.current,
-            vpnMs: latestVpnRef.current
+          setPoints(prev => {
+            const next = [...prev, { time: timeStr, lanMs: curLan, vpnMs: curVpn }];
+            // Batasi 8 titik sliding window ala Mikhmon
+            return next.length > 8 ? next.slice(next.length - 8) : next;
           });
         }
-        setPoints(resynced);
-
-        if (socket?.connected) {
-          socket.emit('easytunnel:subscribe', { tunnelId, slug: hostName });
-        }
+      } catch (err) {
+        if (!isMounted) return;
+        // Fallback ticker agar jam sumbu X tetap mengalir walau jaringan sempat hening
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        setPoints(prev => {
+          const next = [...prev, { time: timeStr, lanMs: latestLanRef.current, vpnMs: latestVpnRef.current }];
+          return next.length > 8 ? next.slice(next.length - 8) : next;
+        });
       }
     };
 
+    // Ambil data pertama seketika
+    fetchTelemetry();
+
+    // Jalankan timer polling tiap 2.5 detik
+    const interval = setInterval(fetchTelemetry, 2500);
+
+    // Saat tab dibuka kembali setelah ditinggal lama (tab visibility recovery)
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchTelemetry();
+      }
+    };
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [socket, tunnelId, hostName]);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [tunnelId]);
 
   // Dimensi SVG Mikhmon Box
   const width = 640;
@@ -213,13 +150,9 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
           <span className="font-bold text-xs text-white tracking-wide">Traffic &amp; Live Response Time</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[9px] font-semibold border ${
-            isSocketConnected 
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-          }`}>
-            <Zap className={`w-3 h-3 ${isSocketConnected ? 'text-emerald-400 animate-pulse' : 'text-amber-400'}`} />
-            {isSocketConnected ? 'WebSocket Stream (1s)' : 'Menghubungkan Stream...'}
+          <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-mono text-[9px] font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            Live Monitor (2.5s)
           </span>
         </div>
       </div>
