@@ -7,8 +7,12 @@ import {
   ShieldCheck, 
   User, 
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  Key,
+  Copy,
+  Check
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -49,6 +53,19 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
     );
   }, [currentSubscription, historyItems]);
 
+  const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
+
+  const handleCopyKey = React.useCallback((key: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(key);
+    setCopiedKey(key);
+    toast.success('Kode lisensi disalin ke clipboard!');
+    setTimeout(() => setCopiedKey(null), 2500);
+  }, []);
+
+  // Ambil primary license key jika ada
+  const primaryLicenseKey = currentSubscription?.license_key || allCycles.find(c => c.item.license_key)?.item.license_key;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -72,17 +89,49 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
       }
     >
       <div className="p-4 sm:p-5 pt-1 space-y-4 text-left">
-        {/* Ringkasan Siklus */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <Sparkles size={15} className="text-indigo-600" />
-            <span className="font-bold text-slate-700 dark:text-slate-300">
-              Total {allCycles.length} Siklus Transaksi Terdata
+        {/* Ringkasan Siklus & Kode Lisensi */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-indigo-600" />
+              <span className="font-bold text-slate-700 dark:text-slate-300">
+                Total {allCycles.length} Siklus Transaksi Terdata
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Konsisten 1 Entitas Layanan
             </span>
           </div>
-          <span className="text-[10px] text-slate-400 font-mono">
-            Konsisten 1 Entitas Layanan
-          </span>
+
+          {primaryLicenseKey && (
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Key size={13} className="text-amber-500 shrink-0" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kunci Lisensi Produk:</span>
+                <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 truncate" title={primaryLicenseKey}>
+                  {primaryLicenseKey}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => handleCopyKey(primaryLicenseKey, e)}
+                className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 transition-colors shrink-0 flex items-center gap-1 text-[10px] font-bold"
+                title="Salin kunci lisensi"
+              >
+                {copiedKey === primaryLicenseKey ? (
+                  <>
+                    <Check size={11} className="text-emerald-500" />
+                    <span className="text-emerald-600 dark:text-emerald-400">Tersalin</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={11} />
+                    <span>Salin Kunci</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Linimasa Timeline */}
@@ -93,6 +142,7 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
             const maxUser = item.Plan?.max_user;
             const endYear = new Date(item.end_date).getFullYear();
             const isPermanent = endYear >= 2090;
+            const itemKey = item.license_key || primaryLicenseKey;
 
             return (
               <div key={item.id || idx} className="relative flex items-start gap-3 pl-1">
@@ -128,9 +178,17 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        ID: {item.id ? `${item.id.substring(0, 10)}...` : '-'}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          ID: {item.id ? `${item.id.substring(0, 10)}...` : '-'}
+                        </p>
+                        {itemKey && (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.2 rounded border border-amber-200/60 dark:border-amber-800/60">
+                            <Key size={10} className="shrink-0" />
+                            {itemKey}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="text-right shrink-0">

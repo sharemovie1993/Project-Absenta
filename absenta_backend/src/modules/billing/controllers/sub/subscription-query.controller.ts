@@ -225,6 +225,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
       const allCyclesClean = cycles.map((c: any) => ({
         id: c.id,
         plan_id: c.plan_id,
+        license_key: c.license_key || c.licenseKey || null,
         status: String(c.status || '').toUpperCase(),
         start_date: c.start_date,
         end_date: c.end_date,
@@ -237,6 +238,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
 
       const updatedMeta = {
         ...existingMeta,
+        license_key: primaryCycle.license_key || primaryCycle.licenseKey || existingMeta.license_key || null,
         cycles: allCyclesClean
       };
 

@@ -98,6 +98,7 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     fullSubList.push({
       id: s.id,
       plan_id: s.plan_id,
+      license_key: (s as any).pricing_meta?.license_key || (s as any).pricing_meta?.cycles?.[0]?.license_key || null,
       service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
       status: s.status,
       end_date: s.end_date,
@@ -119,6 +120,7 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
           fullSubList.push({
             id: c.id || `${s.id}-cycle-${cEndStr}`,
             plan_id: c.plan_id || s.plan_id,
+            license_key: c.license_key || (s as any).pricing_meta?.license_key || null,
             service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
             status: String(c.status || 'EXPIRED').toUpperCase(),
             end_date: c.end_date,

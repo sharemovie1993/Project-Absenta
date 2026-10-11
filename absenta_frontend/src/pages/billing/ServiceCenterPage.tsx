@@ -17,7 +17,10 @@ import {
   User,
   ExternalLink,
   Clock,
-  Layers
+  Layers,
+  Key,
+  Copy,
+  Check
 } from 'lucide-react';
 
 import * as UI from '../../components/ui';
@@ -88,6 +91,7 @@ export interface SubscriptionItem {
     price_yearly: number;
     features_json?: string[];
   };
+  license_key?: string | null;
 }
 
 // Zod Schema Validation Guard (Pilar 25)
@@ -153,6 +157,16 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
       currentSubscription: current,
       historyItems: history
     });
+  }, []);
+
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const handleCopyKey = useCallback((key: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    navigator.clipboard.writeText(key);
+    setCopiedKey(key);
+    toast.success('Kode lisensi disalin ke clipboard!');
+    setTimeout(() => setCopiedKey(null), 2500);
   }, []);
 
   const confirm = useConfirm();
@@ -732,6 +746,37 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                   </span>
                                 </div>
                               </div>
+
+                              {/* Row 3: Kode Lisensi Tenant (jika tersedia) */}
+                              {svc.license_key && (
+                                <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <Key size={11} className="text-amber-500 shrink-0" />
+                                    <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Lisensi:</span>
+                                    <span className="font-mono text-[10.5px] font-bold text-slate-800 dark:text-slate-200 truncate" title={svc.license_key}>
+                                      {svc.license_key}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleCopyKey(svc.license_key!, e)}
+                                    className="p-1 rounded-md hover:bg-slate-200/70 dark:hover:bg-slate-700/70 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 transition-colors shrink-0 flex items-center gap-1 text-[9.5px] font-semibold"
+                                    title="Salin kode lisensi ke clipboard"
+                                  >
+                                    {copiedKey === svc.license_key ? (
+                                      <>
+                                        <Check size={11} className="text-emerald-500" />
+                                        <span className="text-emerald-600 dark:text-emerald-400">Tersalin</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy size={11} />
+                                        <span>Salin</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             {/* Features / Module chips atau info bawaan platform */}

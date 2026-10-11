@@ -252,6 +252,7 @@ export interface Subscription {
   // Alias kompatibilitas untuk payload yang menggunakan lowercase 'plan'
   plan?: Plan;
   plan_snapshot?: Plan; // Snapshot plan saat subscription aktif
+  license_key?: string | null; // License key unik produk/modul yang dimiliki tenant
   // Relations
   billings?: Billing[];
   invoices?: any[]; // Typing loose to avoid circular dep
