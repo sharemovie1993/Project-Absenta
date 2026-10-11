@@ -1,4 +1,5 @@
 import { prisma } from '../utils/prisma';
+import { resolvePlanAbsensiMode } from '../utils/attendanceModeHelper';
 import axios from 'axios';
 
 async function syncLicensePackages() {
@@ -62,6 +63,7 @@ async function syncLicensePackages() {
         description: pkg.description ?? null,
         billing_period: period,
         currency: 'IDR',
+        absensi_mode: resolvePlanAbsensiMode({ id: planId, name: planName, features_json: features }),
         is_active: true,
         size_label: pkg.size_label ?? null,
         tier: pkg.size_label ?? null,

@@ -11,6 +11,7 @@ import { emitDomainEvent } from '@/infra/event-bus';
 import { cancelDowngradeCommand, scheduleDowngradeCommand } from '../../services/commands/schedule-downgrade.command';
 import { scheduleCancelCommand, undoCancelCommand } from '../../services/commands/schedule-cancel.command';
 import { cancelPendingUpgradeCommand } from '../../services/commands/cancel-pending-upgrade.command';
+import { resolvePlanAbsensiMode } from '@/utils/attendanceModeHelper';
 
 async function listPublicPlans() {
   return prisma.plan.findMany({
@@ -153,6 +154,17 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       });
 
+      if (plan) {
+        const correctMode = resolvePlanAbsensiMode(planData || plan);
+        if (plan.absensi_mode !== correctMode) {
+          await prisma.plan.update({
+            where: { id: plan.id },
+            data: { absensi_mode: correctMode }
+          }).catch(() => {});
+          plan.absensi_mode = correctMode;
+        }
+      }
+
       if (!plan && planData) {
         let features = planData.features_json;
         if (typeof features === 'string') {
@@ -177,7 +189,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
             features_json: features || [],
             description: planData.description || '',
             billing_period: planData.billing_period || 'MONTH',
-            absensi_mode: modId === 'ABSENSI' ? ((planData.name || planData.title || '').includes('Multi Sesi') ? 'MULTI_SESI' : 'SIMPLE') : undefined,
+            absensi_mode: resolvePlanAbsensiMode(planData),
             is_active: true,
             is_public: true,
             currency: 'IDR'
@@ -204,6 +216,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
             features_json: [],
             description: '',
             billing_period: 'MONTH',
+            absensi_mode: resolvePlanAbsensiMode({ id: primaryCycle.plan_id }),
             is_active: true,
             is_public: true,
             currency: 'IDR'
