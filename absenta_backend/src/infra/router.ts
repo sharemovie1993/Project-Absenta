@@ -144,7 +144,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
         });
 
         // Reverse-proxy route for viewing/printing invoice document directly from Central License Server without re-rendering
-        fastify.get('/invoice/:invoiceId/print', async (request: any, reply: any) => {
+        fastify.get('/invoice/:invoiceId/print', {
+          config: { skipAuth: true, public: true }
+        }, async (request: any, reply: any) => {
           const { invoiceId } = request.params;
           const cleanId = String(invoiceId || '').replace(/^#/, '').trim();
           const axios = require('axios');

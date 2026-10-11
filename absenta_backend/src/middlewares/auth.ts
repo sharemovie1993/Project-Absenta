@@ -118,7 +118,10 @@ export async function authMiddleware(
                        !urlPath.endsWith('/logout') && 
                        !urlPath.endsWith('/impersonate') && 
                        !urlPath.endsWith('/change-password');
-  const isInvoicePublic = urlPath.startsWith('/api/invoice/public') || urlPath.startsWith('/invoice/public');
+  const isInvoicePublic = 
+    urlPath.startsWith('/api/invoice/public') || 
+    urlPath.startsWith('/invoice/public') ||
+    ((urlPath.startsWith('/api/invoice/') || urlPath.startsWith('/invoice/')) && urlPath.endsWith('/print'));
   const isPaymentPublic = urlPath.startsWith('/api/payment/public') || urlPath.startsWith('/payment/public');
 
   const isPublicEndpoint =
