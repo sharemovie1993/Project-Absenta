@@ -102,10 +102,12 @@ export interface PackageMatrixData {
     description: string;
     is_current_tier: boolean;
     modules: Record<string, {
+      tier_name?: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise';
       included_in_bundle: boolean;
       is_active_for_tenant: boolean;
+      is_module_owned?: boolean;
       is_cross_owned?: boolean;
-      status_code: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_IN_BUNDLE' | 'NOT_INCLUDED';
+      status_code: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_TIER' | 'UNSUBSCRIBED' | 'AVAILABLE_IN_BUNDLE' | 'NOT_INCLUDED';
       tooltip: string;
     }>;
   }[];

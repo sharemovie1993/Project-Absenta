@@ -133,9 +133,11 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         const aActive = String(a.status || '').toLowerCase() === 'active' ? 1 : 0;
         const bActive = String(b.status || '').toLowerCase() === 'active' ? 1 : 0;
         if (aActive !== bActive) return bActive - aActive;
-        const aEnd = new Date(a.end_date || 0).getTime();
-        const bEnd = new Date(b.end_date || 0).getTime();
-        return bEnd - aEnd;
+        const aEnd = a.end_date ? new Date(a.end_date).getTime() : 0;
+        const bEnd = b.end_date ? new Date(b.end_date).getTime() : 0;
+        const aSafe = isNaN(aEnd) ? 0 : aEnd;
+        const bSafe = isNaN(bEnd) ? 0 : bEnd;
+        return bSafe - aSafe;
       });
 
       const primaryCycle = cycles[0];
@@ -219,8 +221,14 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       });
 
-      const startDate = primaryCycle.start_date ? new Date(primaryCycle.start_date) : new Date();
-      const endDate = primaryCycle.end_date ? new Date(primaryCycle.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
+      const parseSafeDate = (val: any, fallback: Date): Date => {
+        if (!val) return fallback;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? fallback : d;
+      };
+
+      const startDate = parseSafeDate(primaryCycle.start_date, new Date());
+      const endDate = parseSafeDate(primaryCycle.end_date, new Date(Date.now() + 30 * 24 * 3600 * 1000));
 
       const allCyclesClean = cycles.map((c: any) => ({
         id: c.id,

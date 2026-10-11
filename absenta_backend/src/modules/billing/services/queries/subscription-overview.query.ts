@@ -113,25 +113,34 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
     // Inklusi seluruh riwayat siklus terdahulu agar tombol Linimasa Siklus di UI aktif
     const meta = (s as any).pricing_meta;
     if (meta && Array.isArray(meta.cycles) && meta.cycles.length > 1) {
-      const sEndStr = new Date(s.end_date).toISOString().slice(0, 10);
+      const toSafeDateStr = (val: any): string => {
+        if (!val) return '';
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? '' : d.toISOString().slice(0, 10);
+      };
+
+      const sEndStr = toSafeDateStr(s.end_date);
       for (const c of meta.cycles) {
-        const cEndStr = new Date(c.end_date).toISOString().slice(0, 10);
-        if (cEndStr !== sEndStr) {
-          fullSubList.push({
-            id: c.id || `${s.id}-cycle-${cEndStr}`,
-            plan_id: c.plan_id || s.plan_id,
-            license_key: c.license_key || (s as any).pricing_meta?.license_key || null,
-            service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
-            status: String(c.status || 'EXPIRED').toUpperCase(),
-            end_date: c.end_date,
-            start_date: c.start_date,
-            auto_renew: false,
-            plan_snapshot: (s as any).plan_snapshot || null,
-            plan_name: (s as any).Plan?.name ?? null,
-            plan_features: (s as any).Plan?.features_json ?? null,
-            Plan: s.Plan || null,
-          });
+        const cEndStr = toSafeDateStr(c.end_date);
+        if (cEndStr && cEndStr === sEndStr) {
+          // Skip siklus yang sama persis dengan siklus utama aktif
+          continue;
         }
+
+        fullSubList.push({
+          id: c.id || `${s.id}-cycle-${cEndStr || 'history'}`,
+          plan_id: c.plan_id || s.plan_id,
+          license_key: c.license_key || (s as any).pricing_meta?.license_key || null,
+          service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
+          status: String(c.status || 'EXPIRED').toUpperCase(),
+          end_date: c.end_date || null,
+          start_date: c.start_date || null,
+          auto_renew: false,
+          plan_snapshot: (s as any).plan_snapshot || null,
+          plan_name: (s as any).Plan?.name ?? null,
+          plan_features: (s as any).Plan?.features_json ?? null,
+          Plan: s.Plan || null,
+        });
       }
     }
   }

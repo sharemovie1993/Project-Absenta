@@ -8,10 +8,12 @@ export interface ModuleColumn {
 }
 
 export interface TierModuleStatus {
+  tier_name: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise';
   included_in_bundle: boolean;
   is_active_for_tenant: boolean;
+  is_module_owned: boolean;
   is_cross_owned?: boolean;
-  status_code: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_IN_BUNDLE' | 'NOT_INCLUDED';
+  status_code: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_TIER' | 'UNSUBSCRIBED' | 'NOT_INCLUDED';
   tooltip: string;
 }
 
@@ -213,64 +215,48 @@ export const packageMatrixService = {
       }
     });
 
-    // 6. Susun rows komparasi berdasarkan tier standar
+    // 6. Susun rows komparasi berdasarkan varian kapasitas
     const tiers: TierComparisonRow[] = TIER_DETAILS.map(detail => {
       const isCurrentTier = detail.tier.toLowerCase() === targetVariant.toLowerCase();
-      const bundleModules = STANDARD_BUNDLE_MAP[detail.tier] || [];
 
       const modules: Record<string, TierModuleStatus> = {};
 
       MODULE_COLUMNS.forEach(col => {
-        const isIncludedInBundle = bundleModules.includes(col.id);
+        const isModuleOwned = isMasterPackage || activeModuleCodes.has(col.id);
+        const isTargetModule = col.id === targetModuleCode;
 
         let isActiveForTenant = false;
         let isCrossOwned = false;
-        let statusCode: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_IN_BUNDLE' | 'NOT_INCLUDED' = 'NOT_INCLUDED';
+        let statusCode: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_TIER' | 'UNSUBSCRIBED' | 'NOT_INCLUDED' = 'UNSUBSCRIBED';
         let tooltip = '';
 
-        if (isCurrentTier) {
-          if (isMasterPackage) {
-            // Jika tenant beli Paket Lengkap, seluruh modul di tier ini aktif!
-            isActiveForTenant = isIncludedInBundle;
-            if (isActiveForTenant) {
-              statusCode = 'ACTIVE';
-              tooltip = `Aktif pada Paket Lengkap Varian ${detail.tier}`;
-            } else {
-              statusCode = 'NOT_INCLUDED';
-              tooltip = `Tersedia pada varian yang lebih tinggi`;
-            }
-          } else {
-            // Jika tenant beli Modul Satuan (misal: Absensi Varian Small)
-            if (col.id === targetModuleCode) {
+        if (isModuleOwned) {
+          if (isCurrentTier) {
+            if (isMasterPackage || isTargetModule) {
               isActiveForTenant = true;
               statusCode = 'ACTIVE';
-              tooltip = `Aktif pada langganan Anda`;
-            } else if (activeModuleCodes.has(col.id)) {
+              tooltip = `Aktif: Varian ${detail.tier} (${detail.capacity})`;
+            } else {
               isCrossOwned = true;
               statusCode = 'CROSS_ACTIVE';
-              tooltip = `Aktif melalui lisensi terpisah Anda`;
-            } else if (isIncludedInBundle) {
-              statusCode = 'AVAILABLE_IN_BUNDLE';
-              tooltip = `Tersedia jika berlangganan Paket Lengkap Varian ${detail.tier}`;
-            } else {
-              statusCode = 'NOT_INCLUDED';
-              tooltip = `Tidak termasuk`;
+              tooltip = `Aktif melalui lisensi terpisah (${detail.capacity})`;
             }
+          } else {
+            // Modul dimiliki oleh sekolah, baris ini merupakan opsi kapasitas lain
+            statusCode = 'AVAILABLE_TIER';
+            tooltip = `Opsi kapasitas ${detail.capacity} (${detail.tier})`;
           }
         } else {
-          // Baris tier lain (bukan tier aktif tenant)
-          if (isIncludedInBundle) {
-            statusCode = 'AVAILABLE_IN_BUNDLE';
-            tooltip = `Tercakup pada Varian ${detail.tier}`;
-          } else {
-            statusCode = 'NOT_INCLUDED';
-            tooltip = `Tidak termasuk`;
-          }
+          // Sekolah TIDAK BERLANGGANAN modul ini (mati / nonaktif)
+          statusCode = 'UNSUBSCRIBED';
+          tooltip = `Belum berlangganan modul ${col.name}`;
         }
 
         modules[col.id] = {
-          included_in_bundle: isIncludedInBundle,
+          tier_name: detail.tier,
+          included_in_bundle: true, // Semua fitur dan modul terbuka penuh di model bisnis Absenta
           is_active_for_tenant: isActiveForTenant,
+          is_module_owned: isModuleOwned,
           is_cross_owned: isCrossOwned,
           status_code: statusCode,
           tooltip
