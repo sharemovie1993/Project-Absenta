@@ -29,14 +29,14 @@ interface PackageComparisonModalProps {
 }
 
 const FALLBACK_MODULE_COLUMNS = [
-  { id: 'ABSENSI', name: 'Absensi Multi-Sesi', shortDesc: 'Presensi RFID/QR/GPS' },
-  { id: 'ACADEMIC', name: 'Akademik & Kurikulum', shortDesc: 'Jadwal, Rapor & Nilai' },
-  { id: 'KESISWAAN', name: 'Kesiswaan & BP/BK', shortDesc: 'Poin & Konseling Siswa' },
-  { id: 'SARPRAS', name: 'Sarpras & Aset', shortDesc: 'Inventaris & Peminjaman' },
+  { id: 'ABSENSI', name: 'Absensi', shortDesc: 'Presensi RFID / QR / GPS' },
+  { id: 'ACADEMIC', name: 'Akademik', shortDesc: 'Jadwal, Rapor & Nilai' },
+  { id: 'KESISWAAN', name: 'Kesiswaan', shortDesc: 'Poin & Konseling BP/BK' },
+  { id: 'SARPRAS', name: 'Sarpras', shortDesc: 'Inventaris & Aset' },
   { id: 'HUBIN', name: 'Hubin & PKL', shortDesc: 'Kemitraan DUDI & Magang' },
-  { id: 'KOPERASI', name: 'Koperasi Digital', shortDesc: 'POS Kasir & Tabungan' },
-  { id: 'WHATSAPP', name: 'WhatsApp Gateway', shortDesc: 'Blast Notifikasi Wali' },
-  { id: 'EASY_TUNNEL', name: 'Easy Tunnel VPN', shortDesc: 'Akses Server Tanpa IP Publik' }
+  { id: 'KOPERASI', name: 'Koperasi', shortDesc: 'Kasir POS & Tabungan' },
+  { id: 'WHATSAPP', name: 'WhatsApp', shortDesc: 'Notifikasi Gateway' },
+  { id: 'EASY_TUNNEL', name: 'Easy Tunnel', shortDesc: 'Akses VPN Server' }
 ];
 
 export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({

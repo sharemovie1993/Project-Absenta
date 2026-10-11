@@ -45,14 +45,14 @@ export interface PackageMatrixResponse {
 }
 
 export const MODULE_COLUMNS: ModuleColumn[] = [
-  { id: 'ABSENSI', name: 'Absensi Multi-Sesi', shortDesc: 'Presensi RFID/QR/GPS', icon: 'Building2' },
-  { id: 'ACADEMIC', name: 'Akademik & Kurikulum', shortDesc: 'Jadwal, Rapor & Nilai', icon: 'BookOpen' },
-  { id: 'KESISWAAN', name: 'Kesiswaan & BP/BK', shortDesc: 'Poin & Konseling Siswa', icon: 'Users' },
-  { id: 'SARPRAS', name: 'Sarpras & Aset', shortDesc: 'Inventaris & Peminjaman', icon: 'Package' },
+  { id: 'ABSENSI', name: 'Absensi', shortDesc: 'Presensi RFID / QR / GPS', icon: 'Building2' },
+  { id: 'ACADEMIC', name: 'Akademik', shortDesc: 'Jadwal, Rapor & Nilai', icon: 'BookOpen' },
+  { id: 'KESISWAAN', name: 'Kesiswaan', shortDesc: 'Poin & Konseling BP/BK', icon: 'Users' },
+  { id: 'SARPRAS', name: 'Sarpras', shortDesc: 'Inventaris & Aset', icon: 'Package' },
   { id: 'HUBIN', name: 'Hubin & PKL', shortDesc: 'Kemitraan DUDI & Magang', icon: 'Briefcase' },
-  { id: 'KOPERASI', name: 'Koperasi Digital', shortDesc: 'POS Kasir & Tabungan', icon: 'Wallet' },
-  { id: 'WHATSAPP', name: 'WhatsApp Gateway', shortDesc: 'Blast Notifikasi Wali', icon: 'MessageSquare' },
-  { id: 'EASY_TUNNEL', name: 'Easy Tunnel VPN', shortDesc: 'Akses Server Tanpa IP Publik', icon: 'ShieldCheck' }
+  { id: 'KOPERASI', name: 'Koperasi', shortDesc: 'Kasir POS & Tabungan', icon: 'Wallet' },
+  { id: 'WHATSAPP', name: 'WhatsApp', shortDesc: 'Notifikasi Gateway', icon: 'MessageSquare' },
+  { id: 'EASY_TUNNEL', name: 'Easy Tunnel', shortDesc: 'Akses VPN Server', icon: 'ShieldCheck' }
 ];
 
 const STANDARD_BUNDLE_MAP: Record<string, string[]> = {
