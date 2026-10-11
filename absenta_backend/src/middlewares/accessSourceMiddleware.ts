@@ -43,6 +43,39 @@ export function resetStatsForSlug(slug: string) {
   }
 }
 
+export function getGlobalStats(): {
+  localHits: number;
+  publicHits: number;
+  localAvgMs: number;
+  publicAvgMs: number;
+  overallAvgMs: number;
+} {
+  let totalLocalHits = 0;
+  let totalLocalMs = 0;
+  let totalPublicHits = 0;
+  let totalPublicMs = 0;
+
+  for (const k of Object.keys(statsStore)) {
+    totalLocalHits += statsStore[k].localHits || 0;
+    totalLocalMs += statsStore[k].localTotalMs || 0;
+    totalPublicHits += statsStore[k].publicHits || 0;
+    totalPublicMs += statsStore[k].publicTotalMs || 0;
+  }
+
+  const localAvgMs = totalLocalHits > 0 ? parseFloat((totalLocalMs / totalLocalHits).toFixed(1)) : 0;
+  const publicAvgMs = totalPublicHits > 0 ? parseFloat((totalPublicMs / totalPublicHits).toFixed(1)) : 0;
+  const grandHits = totalLocalHits + totalPublicHits;
+  const overallAvgMs = grandHits > 0 ? parseFloat(((totalLocalMs + totalPublicMs) / grandHits).toFixed(1)) : (localAvgMs || publicAvgMs || 0);
+
+  return {
+    localHits: totalLocalHits,
+    publicHits: totalPublicHits,
+    localAvgMs,
+    publicAvgMs,
+    overallAvgMs
+  };
+}
+
 /**
  * Memeriksa apakah suatu alamat IP tergolong IP Lokal LAN Sekolah (misal 10.10.10.x, 192.168.x.x, 127.0.0.1)
  * PERHATIAN: IP Subnet WireGuard Tunnel (10.0.0.x, 10.8.0.x, 10.200.0.x) BUKAN LAN lokal, melainkan lalu lintas PUBLIK dari VPS!

@@ -309,11 +309,13 @@ export const heartbeatService = {
         console.warn('[Heartbeat] Gagal mengumpulkan telemetri EasyTunnel:', e.message);
       }
 
-      // 6. Measure CPU usage ratio
+      // 6. Measure CPU usage ratio & HTTP response time
       const cpuUsage = await getCpuUsageRatio();
+      const { getGlobalStats } = require('@/middlewares/accessSourceMiddleware');
+      const globalHttpStats = getGlobalStats();
 
       // 7. Send metrics to License Server
-      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, tenants=${tenantList.length}, easyTunnels=${easyTunnelTelemetry.length}`);
+      console.log(`[Heartbeat] Sending metrics: activeUsers=${activeUsers}, dbSize=${dbSize}MB, mem=${(memoryUsage * 100).toFixed(2)}%, cpu=${(cpuUsage * 100).toFixed(2)}%, resp=${globalHttpStats.overallAvgMs}ms, tenants=${tenantList.length}`);
 
       const currentScenario = getDeployScenario();
       const payload: any = {
@@ -321,6 +323,11 @@ export const heartbeatService = {
         dbSize,
         memoryUsage,
         cpuUsage,
+        localAvgResponseTimeMs: globalHttpStats.localAvgMs || undefined,
+        publicAvgResponseTimeMs: globalHttpStats.publicAvgMs || undefined,
+        avgResponseTimeMs: globalHttpStats.overallAvgMs || undefined,
+        localRequestsToday: globalHttpStats.localHits || undefined,
+        publicRequestsToday: globalHttpStats.publicHits || undefined,
         lastTapped: lastTapped.toISOString(),
         deployMode: currentScenario,
         schoolName: serverLabel,
