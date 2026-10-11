@@ -665,18 +665,16 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                           <div className={`absolute top-0 left-0 right-0 h-1 ${group.isMasterPackage ? 'bg-gradient-to-r from-indigo-500 via-blue-500 to-cyan-400' : group.isPermanent ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-600'}`} />
 
                           <div className="space-y-2.5 pt-0.5">
-                            {/* Card Header: Compact */}
-                            <div className="flex items-start justify-between gap-2.5">
-                              <div className="flex items-start gap-2.5 min-w-0">
-                                <div className={`w-9 h-9 rounded-xl ${group.isMasterPackage ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-xs' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 border border-blue-100/80 dark:border-blue-800/80'} flex items-center justify-center shrink-0`}>
+                            {/* Card Header: Bebas Truncate */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                <div className={`w-9 h-9 rounded-xl ${group.isMasterPackage ? 'bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-xs' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 border border-blue-100/80 dark:border-blue-800/80'} flex items-center justify-center shrink-0 mt-0.5`}>
                                   <IconComp size={18} />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-tight truncate">
-                                      {group.mainTitle}
-                                    </h4>
-                                  </div>
+                                  <h4 className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug line-clamp-2" title={group.mainTitle}>
+                                    {group.mainTitle}
+                                  </h4>
                                   <div className="flex items-center gap-1.5 flex-wrap mt-1">
                                     <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-black bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/70">
                                       Varian {group.variantName}
@@ -702,46 +700,43 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               </div>
                             </div>
 
-                            {/* Compact Metrics Row */}
-                            <div className="grid grid-cols-3 gap-1.5 p-2 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 text-[11px]">
-                              {/* Masa Aktif */}
-                              <div className="min-w-0">
-                                <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider block truncate">Masa Aktif</span>
-                                <div className="font-extrabold text-slate-900 dark:text-white text-[11px] leading-tight truncate">
-                                  {group.isPermanent ? 'Permanen' : formatDate(svc.end_date)}
+                            {/* Clean Structured Metrics Box (Bebas Potong) */}
+                            <div className="p-2.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5 text-xs">
+                              {/* Row 1: Masa Aktif */}
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Masa Aktif</span>
+                                <div className="text-right">
+                                  <span className="font-extrabold text-slate-900 dark:text-white text-[11px]">
+                                    {group.isPermanent ? 'Permanen' : formatDate(svc.end_date)}
+                                  </span>
+                                  <span className={`text-[9.5px] font-bold ml-1.5 ${
+                                    group.isPermanent ? 'text-emerald-600 dark:text-emerald-400' : isExpired ? 'text-rose-500' : daysLeft <= 14 ? 'text-amber-500' : 'text-slate-500'
+                                  }`}>
+                                    {group.isPermanent ? '(Seumur Hidup)' : `(${daysLeft} Hari)`}
+                                  </span>
                                 </div>
-                                <span className={`text-[8.5px] font-bold truncate block ${
-                                  group.isPermanent ? 'text-emerald-600 dark:text-emerald-400' : isExpired ? 'text-rose-500' : daysLeft <= 14 ? 'text-amber-500' : 'text-slate-500'
-                                }`}>
-                                  {group.isPermanent ? 'Seumur Hidup' : isExpired ? 'Kedaluwarsa' : `${daysLeft} Hari Lagi`}
-                                </span>
                               </div>
 
-                              {/* Kapasitas */}
-                              <div className="min-w-0 border-l border-slate-200/80 dark:border-slate-700/80 pl-1.5">
-                                <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider block truncate">Kapasitas</span>
-                                <div className="font-extrabold text-slate-900 dark:text-white text-[11px] leading-tight truncate flex items-center gap-1">
-                                  <User size={10} className="text-blue-500 shrink-0" />
-                                  <span className="truncate">{maxUser ? `${maxUser.toLocaleString('id-ID')}` : 'Unlimited'}</span>
+                              {/* Row 2: Kapasitas & Biaya */}
+                              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Kuota:</span>
+                                  <span className="font-bold text-slate-900 dark:text-white truncate">
+                                    {maxUser ? `${maxUser.toLocaleString('id-ID')} Siswa` : 'Unlimited'}
+                                  </span>
                                 </div>
-                                <span className="text-[8.5px] text-slate-400 truncate block">Kuota Siswa</span>
-                              </div>
-
-                              {/* Biaya & Tagihan */}
-                              <div className="min-w-0 border-l border-slate-200/80 dark:border-slate-700/80 pl-1.5">
-                                <span className="text-[8.5px] font-bold text-slate-400 uppercase tracking-wider block truncate">Biaya</span>
-                                <div className="font-extrabold text-slate-900 dark:text-white text-[11px] leading-tight truncate">
-                                  {price > 0 ? formatCurrency(price) : 'Gratis'}
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">Biaya:</span>
+                                  <span className="font-bold text-slate-900 dark:text-white">
+                                    {price > 0 ? formatCurrency(price) : 'Gratis'}
+                                  </span>
                                 </div>
-                                <span className="text-[8.5px] text-slate-400 truncate block">
-                                  {svc.auto_renew ? 'Otomatis' : 'Manual'}
-                                </span>
                               </div>
                             </div>
 
-                            {/* Features / Module chips (Ringkas) */}
-                            {Array.isArray(features) && features.length > 0 && group.isMasterPackage && (
-                              <div className="flex items-center gap-1 text-[9px] flex-wrap pt-0.5">
+                            {/* Features / Module chips atau info bawaan platform */}
+                            {Array.isArray(features) && features.length > 0 && group.isMasterPackage ? (
+                              <div className="flex items-center gap-1 text-[9.5px] flex-wrap pt-0.5 min-h-[22px]">
                                 <span className="font-bold text-slate-400">Cakupan:</span>
                                 {features.filter((f: string) => !String(f).toUpperCase().includes('CORE')).slice(0, 3).map((feat: string, fIdx: number) => (
                                   <span key={fIdx} className="font-medium px-1.5 py-0.2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded">
@@ -754,6 +749,13 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                   </span>
                                 )}
                               </div>
+                            ) : group.isPermanent ? (
+                              <div className="flex items-center gap-1.5 text-[9.5px] text-slate-400 dark:text-slate-500 pt-0.5 min-h-[22px]">
+                                <ShieldCheck size={12} className="text-emerald-500 shrink-0" />
+                                <span>Termasuk dalam lisensi dasar platform institusi.</span>
+                              </div>
+                            ) : (
+                              <div className="min-h-[22px]" />
                             )}
 
                             {/* History indicator jika ada riwayat perpanjangan */}
@@ -766,13 +768,13 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                   title="Lihat riwayat siklus terdahulu"
                                 >
                                   <History size={11} />
-                                  <span>Siklus ke-{group.history.length + 1} (Lihat Riwayat {group.history.length} Siklus Lampau)</span>
+                                  <span>Siklus ke-{group.history.length + 1} (Lihat Riwayat)</span>
                                 </button>
                               </div>
                             )}
                           </div>
 
-                          {/* Action Buttons: Compact & Sleek */}
+                          {/* Action Buttons: Rapi, Lega & Bebas Meluber */}
                           <div className="flex items-center gap-1.5 pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800">
                             {!group.isPermanent ? (
                               <Button
@@ -781,7 +783,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                 size="sm"
                                 aria-label="Perpanjang Masa Aktif"
                                 onClick={() => handleExtend(svc.plan_id || svc.id)}
-                                className="flex-1 rounded-xl font-bold text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1"
+                                className="flex-1 rounded-xl font-bold text-xs h-8 bg-blue-600 hover:bg-blue-700 text-white shadow-xs flex items-center justify-center gap-1.5"
                               >
                                 <Sparkles size={12} />
                                 <span>Perpanjang</span>
@@ -804,7 +806,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               size="sm"
                               aria-label="Detail Paket & Komparasi"
                               onClick={() => handleOpenComparison(group.mainTitle, group.variantName, svc.id)}
-                              className="rounded-xl font-bold text-xs h-8 px-2.5 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 flex items-center gap-1"
+                              className="rounded-xl font-bold text-xs h-8 px-3 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 shrink-0 flex items-center gap-1.5"
                               title="Lihat Detail Paket & Komparasi Varian"
                             >
                               <Layers size={12} />
@@ -817,7 +819,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                               size="sm"
                               aria-label="Ganti Paket"
                               onClick={() => handleChangePlan((svc.Plan || svc.plan_snapshot || {}) as Plan)}
-                              className="rounded-xl font-bold text-xs h-8 px-2.5 border-slate-200 dark:border-slate-700 shrink-0 text-slate-600 dark:text-slate-300"
+                              className="rounded-xl font-bold text-xs h-8 px-2.5 border-slate-200 dark:border-slate-700 shrink-0 text-slate-600 dark:text-slate-300 hover:bg-slate-50"
                               title="Ganti atau Upgrade Paket"
                             >
                               Ganti
@@ -832,10 +834,10 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                                 setSelectedServiceId(svc.id);
                                 handleOpenAutoRenew();
                               }}
-                              className="rounded-xl font-bold text-xs h-8 px-2 border-slate-200 dark:border-slate-700 shrink-0 text-slate-500 hover:text-slate-800"
+                              className="rounded-xl font-bold text-xs h-8 w-8 p-0 flex items-center justify-center border-slate-200 dark:border-slate-700 shrink-0 text-slate-500 hover:text-slate-800"
                               title="Pengaturan Tagihan & Auto-Renew"
                             >
-                              <Settings size={12} />
+                              <Settings size={13} />
                             </Button>
                           </div>
                         </Card>
