@@ -101,6 +101,8 @@ export interface PackageMatrixData {
     badge?: string;
     description: string;
     is_current_tier: boolean;
+    has_active_modules?: boolean;
+    active_module_names?: string[];
     modules: Record<string, {
       tier_name?: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise';
       included_in_bundle: boolean;

@@ -23,6 +23,8 @@ export interface TierComparisonRow {
   badge?: string;
   description: string;
   is_current_tier: boolean;
+  has_active_modules?: boolean;
+  active_module_names?: string[];
   modules: Record<string, TierModuleStatus>;
 }
 
@@ -98,21 +100,33 @@ function extractVariantFromPlan(plan: any, maxUser?: number | null): 'Micro' | '
   return 'Enterprise';
 }
 
-function resolveModuleCodeFromService(service: any): string {
+function resolveModuleCodeFromService(service: any): string | null {
   const code = String(service?.service_code || service?.Plan?.service_code || service?.Plan?.module_id || '').toUpperCase();
   const name = String(service?.Plan?.name || service?.plan_name || '').toUpperCase();
+
+  // Abaikan lisensi server appliance / host node / infrastruktur
+  if (
+    code.includes('SAAS-NODE') || 
+    code.includes('SERVER') || 
+    code.includes('NODE') || 
+    code.includes('APPLIANCE') || 
+    name.includes('SAAS NODE') || 
+    name.includes('APPLIANCE')
+  ) {
+    return null;
+  }
 
   if (code === 'PAKET_LENGKAP' || name.includes('PAKET LENGKAP') || name.includes('ALL-IN-ONE')) return 'PAKET_LENGKAP';
   if (code.includes('ABSENSI') || name.includes('ABSENSI')) return 'ABSENSI';
   if (code.includes('KOPERASI') || name.includes('KOPERASI')) return 'KOPERASI';
-  if (code.includes('HUBIN') || name.includes('HUBIN')) return 'HUBIN';
-  if (code.includes('SARPRAS') || name.includes('SARPRAS')) return 'SARPRAS';
+  if (code.includes('HUBIN') || name.includes('HUBIN') || name.includes('INDUSTRI')) return 'HUBIN';
+  if (code.includes('SARPRAS') || name.includes('SARPRAS') || name.includes('ASET')) return 'SARPRAS';
   if (code.includes('WHATSAPP') || name.includes('WHATSAPP')) return 'WHATSAPP';
   if (code.includes('TUNNEL') || code.includes('EASY') || name.includes('TUNNEL')) return 'EASY_TUNNEL';
-  if (code.includes('ACADEMIC') || code.includes('KURIKULUM') || name.includes('KURIKULUM')) return 'ACADEMIC';
-  if (code.includes('KESISWAAN') || name.includes('KESISWAAN')) return 'KESISWAAN';
+  if (code.includes('ACADEMIC') || code.includes('KURIKULUM') || name.includes('KURIKULUM') || name.includes('AKADEMIK')) return 'ACADEMIC';
+  if (code.includes('KESISWAAN') || name.includes('KESISWAAN') || name.includes('BP/BK') || name.includes('KONSELING')) return 'KESISWAAN';
 
-  return 'ABSENSI';
+  return null;
 }
 
 export const packageMatrixService = {
@@ -153,6 +167,7 @@ export const packageMatrixService = {
     const latestSubscriptionsByModule = new Map<string, typeof pool[0]>();
     pool.forEach(sub => {
       const mod = resolveModuleCodeFromService(sub);
+      if (!mod) return; // Lewati lisensi server node appliance
       const existing = latestSubscriptionsByModule.get(mod);
       if (!existing) {
         latestSubscriptionsByModule.set(mod, sub);
@@ -202,16 +217,21 @@ export const packageMatrixService = {
       ? extractVariantFromPlan(targetService.Plan, targetService.Plan?.max_user) 
       : 'Enterprise';
 
-    // 5. Kumpulkan seluruh modul yang aktif dimiliki tenant dari siklus terbaru (cross-service)
-    const activeModuleCodes = new Set<string>();
+    // 5. Kumpulkan seluruh modul yang aktif dimiliki tenant dari siklus terbaru beserta varian masing-masing
+    // Map: moduleCode -> { variant: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise', isMaster: boolean }
+    const ownedModuleVariants = new Map<string, { variant: 'Micro' | 'Small' | 'Medium' | 'Large' | 'Enterprise'; isMaster: boolean }>();
+
     deduplicatedActiveSubs.forEach(sub => {
       const mod = resolveModuleCodeFromService(sub);
+      const subVariant = extractVariantFromPlan(sub.Plan, sub.Plan?.max_user);
+
       if (mod === 'PAKET_LENGKAP') {
-        const subVariant = extractVariantFromPlan(sub.Plan, sub.Plan?.max_user);
         const bundle = STANDARD_BUNDLE_MAP[subVariant] || STANDARD_BUNDLE_MAP.Enterprise;
-        bundle.forEach(b => activeModuleCodes.add(b));
+        bundle.forEach(b => {
+          ownedModuleVariants.set(b, { variant: subVariant, isMaster: true });
+        });
       } else {
-        activeModuleCodes.add(mod);
+        ownedModuleVariants.set(mod, { variant: subVariant, isMaster: false });
       }
     });
 
@@ -220,9 +240,11 @@ export const packageMatrixService = {
       const isCurrentTier = detail.tier.toLowerCase() === targetVariant.toLowerCase();
 
       const modules: Record<string, TierModuleStatus> = {};
+      const activeModuleNamesInThisTier: string[] = [];
 
       MODULE_COLUMNS.forEach(col => {
-        const isModuleOwned = isMasterPackage || activeModuleCodes.has(col.id);
+        const ownedInfo = ownedModuleVariants.get(col.id);
+        const isModuleOwned = !!ownedInfo;
         const isTargetModule = col.id === targetModuleCode;
 
         let isActiveForTenant = false;
@@ -230,8 +252,12 @@ export const packageMatrixService = {
         let statusCode: 'ACTIVE' | 'CROSS_ACTIVE' | 'AVAILABLE_TIER' | 'UNSUBSCRIBED' | 'NOT_INCLUDED' = 'UNSUBSCRIBED';
         let tooltip = '';
 
-        if (isModuleOwned) {
-          if (isCurrentTier) {
+        if (isModuleOwned && ownedInfo) {
+          // Modul ini aktif tepat di tier varian yang dibeli!
+          const isTierMatch = ownedInfo.variant.toLowerCase() === detail.tier.toLowerCase();
+
+          if (isTierMatch) {
+            activeModuleNamesInThisTier.push(col.name);
             if (isMasterPackage || isTargetModule) {
               isActiveForTenant = true;
               statusCode = 'ACTIVE';
@@ -269,6 +295,8 @@ export const packageMatrixService = {
         badge: detail.badge,
         description: detail.desc,
         is_current_tier: isCurrentTier,
+        has_active_modules: activeModuleNamesInThisTier.length > 0,
+        active_module_names: activeModuleNamesInThisTier,
         modules
       };
     });
