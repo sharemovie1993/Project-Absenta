@@ -12,6 +12,7 @@ export function getDynamicTenantModels(): string[] {
   const dmmfModels = Prisma.dmmf.datamodel.models;
   const ignoreModels = new Set([
     'Tenant', 'TenantBackup', 'Plan', 'PlanAddon', 'Addon', 'Permission', 
+    'Subscription', 'Billing', 'Invoice', 'Payment',
     'Menu', 'MasterSekolah', 'RefWilayah', 'AlertLog', 'SarprasGlobalCatalog', 
     'SupportQuickReply', 'SupportKnowledgeBase', 'EasyTunnel', 'BahanAjarPreset', 
     'GlobalMapelPreset', 'GlobalCalendarPreset', 'GlobalKurikulumStandard', 

@@ -1017,6 +1017,15 @@ export class MigrationBundleService {
         await tenantEntitlementService.invalidateTenantFeaturesCache(effectiveTenantId);
       } catch {}
 
+      // 🌟 SINKRONISASI RESMI LANGGANAN DARI SERVER LISENSI (Master Authority)
+      try {
+        const { syncLocalSubscriptionsWithLicensingServer } = await import('@/modules/billing/controllers/sub/subscription-query.controller');
+        await syncLocalSubscriptionsWithLicensingServer(effectiveTenantId);
+        console.log(`[MigrationBundle] ✅ Berhasil menyinkronkan status langganan resmi untuk tenant ${effectiveTenantId}`);
+      } catch (syncErr: any) {
+        console.warn('[MigrationBundle] Gagal sinkronisasi resmi subscription pasca-restore:', syncErr.message);
+      }
+
     } catch (subErr: any) {
       console.warn('[MigrationBundle] Gagal rekonsiliasi subscription pasca restore:', subErr.message);
     }

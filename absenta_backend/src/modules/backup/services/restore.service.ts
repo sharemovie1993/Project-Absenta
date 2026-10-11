@@ -421,6 +421,15 @@ export class RestoreService {
               tenant_id: newTenantId,
               metadata: { restored_from_backup: backupId }
           });
+
+          // 🌟 SINKRONISASI RESMI LANGGANAN DARI SERVER LISENSI
+          try {
+            const { syncLocalSubscriptionsWithLicensingServer } = await import('@/modules/billing/controllers/sub/subscription-query.controller');
+            await syncLocalSubscriptionsWithLicensingServer(newTenantId);
+            console.log(`[RESTORE] Successfully reconciled official subscription for tenant: ${newTenantId}`);
+          } catch (syncErr: any) {
+            console.warn('[RESTORE] Notice: Post-restore subscription sync skipped:', syncErr.message);
+          }
       } catch (e) {
           // Update status to FAILED
           // Only update if it's NOT a locking error (we don't want to mark failed if we just couldn't get lock)
