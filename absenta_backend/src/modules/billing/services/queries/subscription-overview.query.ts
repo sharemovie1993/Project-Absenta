@@ -93,19 +93,48 @@ export async function getMySubscriptionOverviewQuery(tenantId: string) {
   }
   const aggregatedFeatures = Array.from(featureSet);
 
-  const subList = (activeSubscriptions as any[]).map((s) => ({
-    id: s.id,
-    plan_id: s.plan_id,
-    service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
-    status: s.status,
-    end_date: s.end_date,
-    start_date: s.start_date,
-    auto_renew: s.auto_renew,
-    plan_snapshot: (s as any).plan_snapshot || null,
-    plan_name: (s as any).Plan?.name ?? null,
-    plan_features: (s as any).Plan?.features_json ?? null,
-    Plan: s.Plan || null, // Include full Plan object for UI richness
-  }));
+  const fullSubList: any[] = [];
+  for (const s of (activeSubscriptions as any[])) {
+    fullSubList.push({
+      id: s.id,
+      plan_id: s.plan_id,
+      service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
+      status: s.status,
+      end_date: s.end_date,
+      start_date: s.start_date,
+      auto_renew: s.auto_renew,
+      plan_snapshot: (s as any).plan_snapshot || null,
+      plan_name: (s as any).Plan?.name ?? null,
+      plan_features: (s as any).Plan?.features_json ?? null,
+      Plan: s.Plan || null, // Include full Plan object for UI richness
+    });
+
+    // Inklusi seluruh riwayat siklus terdahulu agar tombol Linimasa Siklus di UI aktif
+    const meta = (s as any).pricing_meta;
+    if (meta && Array.isArray(meta.cycles) && meta.cycles.length > 1) {
+      const sEndStr = new Date(s.end_date).toISOString().slice(0, 10);
+      for (const c of meta.cycles) {
+        const cEndStr = new Date(c.end_date).toISOString().slice(0, 10);
+        if (cEndStr !== sEndStr) {
+          fullSubList.push({
+            id: c.id || `${s.id}-cycle-${cEndStr}`,
+            plan_id: c.plan_id || s.plan_id,
+            service_code: s.service_code || (s as any).Plan?.service_code || 'ABSENSI',
+            status: String(c.status || 'EXPIRED').toUpperCase(),
+            end_date: c.end_date,
+            start_date: c.start_date,
+            auto_renew: false,
+            plan_snapshot: (s as any).plan_snapshot || null,
+            plan_name: (s as any).Plan?.name ?? null,
+            plan_features: (s as any).Plan?.features_json ?? null,
+            Plan: s.Plan || null,
+          });
+        }
+      }
+    }
+  }
+
+  const subList = fullSubList;
 
   // Academic Core Tier harus diambil dari subscription CORE/ACADEMIC sekolah (sesuai tier registrasi)
   const coreSub = activeSubscriptions.find(s => 

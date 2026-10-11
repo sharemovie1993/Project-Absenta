@@ -248,7 +248,6 @@ export const subscriptionOrdersController = {
         plan_id: String(targetPlanId),
         price: targetPrice,
         payment_method: payment_method || 'QRIS2',
-        renew_license_key: licenseKey.trim(),
         server_license_key: licenseKey.trim(),
         requested_slug: tenantSlug,
         tenant_identifier: tenantSlug,

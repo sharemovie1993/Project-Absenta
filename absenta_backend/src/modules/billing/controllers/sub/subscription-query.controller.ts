@@ -111,36 +111,51 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
       }
     }
 
-    // Prioritize active subscriptions so that active records take precedence over pending records
-    const activeSubs = applicableSubs.filter((s: any) => String(s.status || '').toLowerCase() === 'active');
-    const subsToProcess = activeSubs.length > 0 ? activeSubs : applicableSubs;
-
-    for (const rSub of subsToProcess) {
-      // Find matching plan from remote plans or local DB
+    // Kelompokkan subscriptions per service_code untuk memisahkan siklus aktif utama dan riwayat siklus
+    const serviceGroupMap = new Map<string, any[]>();
+    for (const rSub of applicableSubs) {
       const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
       let planData = remotePlans.find((p: any) => 
         String(p.id).toLowerCase() === rSubPlanId || 
         String(p.code).toLowerCase() === rSubPlanId
       );
+      const modId = (planData?.module_id || rSub.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
+      const serviceCode = (planData?.service_code || (modId === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : modId)).toUpperCase();
+
+      const existing = serviceGroupMap.get(serviceCode) || [];
+      existing.push({ ...rSub, serviceCode, planData });
+      serviceGroupMap.set(serviceCode, existing);
+    }
+
+    for (const [serviceCode, cycles] of serviceGroupMap.entries()) {
+      // Urutkan siklus: Prioritaskan active, kemudian urutkan end_date paling baru di urutan teratas
+      cycles.sort((a, b) => {
+        const aActive = String(a.status || '').toLowerCase() === 'active' ? 1 : 0;
+        const bActive = String(b.status || '').toLowerCase() === 'active' ? 1 : 0;
+        if (aActive !== bActive) return bActive - aActive;
+        const aEnd = new Date(a.end_date || 0).getTime();
+        const bEnd = new Date(b.end_date || 0).getTime();
+        return bEnd - aEnd;
+      });
+
+      const primaryCycle = cycles[0];
+      const planData = primaryCycle.planData;
+      const modId = (planData?.module_id || primaryCycle.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
 
       let plan = await prisma.plan.findFirst({
         where: {
           OR: [
-            { id: { equals: rSub.plan_id, mode: 'insensitive' } },
-            { code: { equals: rSub.plan_id, mode: 'insensitive' } }
+            { id: { equals: primaryCycle.plan_id, mode: 'insensitive' } },
+            { code: { equals: primaryCycle.plan_id, mode: 'insensitive' } }
           ]
         }
       });
-
-      const modId = (planData?.module_id || (plan as any)?.module_id || rSub.plan_id?.split('_')[0] || 'ABSENSI').toUpperCase();
-      const serviceCode = (planData?.service_code || (plan as any)?.service_code || (modId === 'PAKET_LENGKAP' ? 'PAKET_LENGKAP' : modId)).toUpperCase();
 
       if (!plan && planData) {
         let features = planData.features_json;
         if (typeof features === 'string') {
           try { features = JSON.parse(features); } catch (e) { features = []; }
         }
-        // Ensure Module exists locally
         let localMod = await prisma.module.findUnique({ where: { id: modId } });
         if (!localMod) {
           localMod = await prisma.module.create({
@@ -177,11 +192,11 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
         plan = await prisma.plan.create({
           data: {
-            id: rSub.plan_id,
-            code: rSub.plan_id,
+            id: primaryCycle.plan_id,
+            code: primaryCycle.plan_id,
             service_code: serviceCode,
             module_id: modId,
-            name: rSub.plan_id.replace(/_/g, ' '),
+            name: primaryCycle.plan_id.replace(/_/g, ' '),
             price_monthly: 0,
             price_yearly: 0,
             features_json: [],
@@ -194,7 +209,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         });
       }
 
-      const rawStatus = String(rSub.status || '').toLowerCase();
+      const rawStatus = String(primaryCycle.status || '').toLowerCase();
       const localStatus = rawStatus === 'active' ? 'ACTIVE' : (rawStatus === 'expired' ? 'EXPIRED' : 'TRIAL');
 
       let localSub = await prisma.subscription.findFirst({
@@ -204,8 +219,26 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
         }
       });
 
-      const startDate = rSub.start_date ? new Date(rSub.start_date) : new Date();
-      const endDate = rSub.end_date ? new Date(rSub.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
+      const startDate = primaryCycle.start_date ? new Date(primaryCycle.start_date) : new Date();
+      const endDate = primaryCycle.end_date ? new Date(primaryCycle.end_date) : new Date(Date.now() + 30 * 24 * 3600 * 1000);
+
+      const allCyclesClean = cycles.map((c: any) => ({
+        id: c.id,
+        plan_id: c.plan_id,
+        status: String(c.status || '').toUpperCase(),
+        start_date: c.start_date,
+        end_date: c.end_date,
+        created_at: c.created_at
+      }));
+
+      const existingMeta = (localSub?.pricing_meta && typeof localSub.pricing_meta === 'object')
+        ? (localSub.pricing_meta as any)
+        : {};
+
+      const updatedMeta = {
+        ...existingMeta,
+        cycles: allCyclesClean
+      };
 
       if (localSub) {
         await prisma.subscription.update({
@@ -216,6 +249,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
             start_date: startDate,
             end_date: endDate,
             next_billing_date: endDate,
+            pricing_meta: updatedMeta as any,
           }
         });
       } else {
@@ -228,7 +262,8 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
             start_date: startDate,
             end_date: endDate,
             next_billing_date: endDate,
-            auto_renew: rSub.auto_renew === 1,
+            auto_renew: primaryCycle.auto_renew === 1,
+            pricing_meta: updatedMeta as any,
           }
         });
       }
@@ -237,7 +272,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     // === TWO-WAY PRUNING & ENTITLEMENT REVOCATION (Anti-Zombie License) ===
     // 1. Kumpulkan seluruh service_code komersial aktif yang masih diakui oleh Server Lisensi
     const remoteActiveCommercialCodes = new Set<string>();
-    for (const rSub of subsToProcess) {
+    for (const rSub of applicableSubs) {
       if (String(rSub.status || '').toLowerCase() === 'active') {
         const rSubPlanId = String(rSub.plan_id || '').toLowerCase();
         const pData = remotePlans.find((p: any) => 
