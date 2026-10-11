@@ -723,16 +723,10 @@ export function setupSocketRooms(
     registerWebRTCSignaling(socket, ioApi, fastify);
   });
 
-  // ── 1-Second Realtime Ticker for Easy Tunnel Telemetry ──
-  // Hanya memancarkan jika ada client aktif yang berada di room 'easytunnel:telemetry'
+  // ── 2-Second Realtime Ticker for Easy Tunnel Telemetry ──
   if (!(globalThis as any).__easytunnelTicker) {
     (globalThis as any).__easytunnelTicker = setInterval(() => {
       try {
-        const room1 = io?.sockets?.adapter?.rooms?.get('easytunnel:telemetry');
-        const room2 = ioApi?.sockets?.adapter?.rooms?.get('easytunnel:telemetry');
-        const hasSubscribers = (room1 && room1.size > 0) || (room2 && room2.size > 0);
-        if (!hasSubscribers) return;
-
         const { getStatsForSlug } = require('../../middlewares/accessSourceMiddleware');
         const liveStats = getStatsForSlug('');
         const now = new Date();
@@ -746,9 +740,9 @@ export function setupSocketRooms(
           isHeartbeatTick: true
         };
 
-        if (room1 && room1.size > 0) io.to('easytunnel:telemetry').emit('easytunnel:telemetry_update', payload);
-        if (room2 && room2.size > 0) ioApi.to('easytunnel:telemetry').emit('easytunnel:telemetry_update', payload);
+        if (io) io.to('easytunnel:telemetry').emit('easytunnel:telemetry_update', payload);
+        if (ioApi) ioApi.to('easytunnel:telemetry').emit('easytunnel:telemetry_update', payload);
       } catch {}
-    }, 1000);
+    }, 2000);
   }
 }

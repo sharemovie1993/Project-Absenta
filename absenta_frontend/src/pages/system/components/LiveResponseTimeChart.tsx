@@ -69,8 +69,13 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
   useEffect(() => {
     if (!socket) return;
 
-    // Bergabung ke room WebSocket Easy Tunnel Telemetry
-    socket.emit('easytunnel:subscribe', { tunnelId, slug: hostName });
+    const subscribeToTelemetry = () => {
+      socket.emit('easytunnel:subscribe', { tunnelId, slug: hostName });
+    };
+
+    // Langganan awal & langganan ulang otomatis saat reconnect
+    subscribeToTelemetry();
+    socket.on('connect', subscribeToTelemetry);
 
     const handleTelemetryUpdate = (data: any) => {
       if (!data) return;
@@ -88,7 +93,7 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
 
       setPoints(prev => {
         const next = [...prev, { time: timeStr, lanMs: curLan, vpnMs: curVpn }];
-        // Batasi 8-10 titik sliding window ala Mikhmon
+        // Batasi 8 titik sliding window ala Mikhmon
         return next.length > 8 ? next.slice(next.length - 8) : next;
       });
 
@@ -112,9 +117,58 @@ export const LiveResponseTimeChart: React.FC<LiveResponseTimeChartProps> = ({
     socket.on('easytunnel:telemetry_update', handleTelemetryUpdate);
 
     return () => {
+      socket.off('connect', subscribeToTelemetry);
       socket.emit('easytunnel:unsubscribe');
       socket.off('easytunnel:telemetry_update', handleTelemetryUpdate);
     };
+  }, [socket, tunnelId, hostName]);
+
+  // 3. Anti-Freeze Clock Ticker (menjaga waktu sumbu X selalu berjalan walau server idle / tidak ada klik)
+  useEffect(() => {
+    const ticker = setInterval(() => {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      setPoints(prev => {
+        const last = prev[prev.length - 1];
+        if (last && last.time === timeStr) return prev;
+
+        const next = [...prev, {
+          time: timeStr,
+          lanMs: latestLanRef.current,
+          vpnMs: latestVpnRef.current
+        }];
+        return next.length > 8 ? next.slice(next.length - 8) : next;
+      });
+    }, 2000);
+
+    return () => clearInterval(ticker);
+  }, []);
+
+  // 4. Tab Visibility Recovery (saat tab dibuka kembali setelah ditinggal lama / sleep)
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const now = Date.now();
+        const resynced: TrafficPoint[] = [];
+        for (let i = 5; i >= 0; i--) {
+          const t = new Date(now - i * 3000);
+          resynced.push({
+            time: t.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            lanMs: latestLanRef.current,
+            vpnMs: latestVpnRef.current
+          });
+        }
+        setPoints(resynced);
+
+        if (socket?.connected) {
+          socket.emit('easytunnel:subscribe', { tunnelId, slug: hostName });
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [socket, tunnelId, hostName]);
 
   // Dimensi SVG Mikhmon Box
