@@ -171,5 +171,36 @@ export function registerTelemetryHook(fastify: any) {
       statsStore[slug].localHits += 1;
       statsStore[slug].localTotalMs += duration;
     }
+
+    // ── Real-time Instant Broadcast via WebSocket Socket.IO ──
+    try {
+      const ioApi = (globalThis as any).__ioApi || (fastify as any).ioApi;
+      const io = (globalThis as any).__io || (fastify as any).io;
+      const socketServer = ioApi || io;
+
+      if (socketServer) {
+        const localAvg = statsStore[slug].localHits > 0
+          ? parseFloat((statsStore[slug].localTotalMs / statsStore[slug].localHits).toFixed(1))
+          : 2.4;
+        const publicAvg = statsStore[slug].publicHits > 0
+          ? parseFloat((statsStore[slug].publicTotalMs / statsStore[slug].publicHits).toFixed(1))
+          : 28.1;
+
+        const now = new Date();
+        socketServer.to('easytunnel:telemetry').emit('easytunnel:telemetry_update', {
+          slug,
+          timestamp: now.toISOString(),
+          time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+          lanMs: isPublic ? localAvg : duration,
+          vpnMs: isPublic ? duration : publicAvg,
+          latestSource: isPublic ? 'PUBLIC_INTERNET' : 'LAN_SCHOOL',
+          latestDurationMs: duration,
+          localHits: statsStore[slug].localHits,
+          publicHits: statsStore[slug].publicHits
+        });
+      }
+    } catch {
+      // ignore socket emission errors
+    }
   });
 }
