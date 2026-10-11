@@ -143,6 +143,26 @@ export async function registerRoutes(fastify: any, prisma: any) {
           return KalenderAkademikController.exportICal(request, reply);
         });
 
+        // Reverse-proxy route for viewing/printing invoice document directly from Central License Server without re-rendering
+        fastify.get('/invoice/:invoiceId/print', async (request: any, reply: any) => {
+          const { invoiceId } = request.params;
+          const cleanId = String(invoiceId || '').replace(/^#/, '').trim();
+          const axios = require('axios');
+          const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
+          try {
+            const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/print-invoice/${encodeURIComponent(cleanId)}`, {
+              timeout: 10000,
+              responseType: 'text'
+            });
+            return reply.type('text/html').send(response.data);
+          } catch (err: any) {
+            console.error('[Invoice Print Proxy Error]:', err.message);
+            return reply.status(err.response?.status || 500).type('text/html').send(
+              `<!DOCTYPE html><html><head><title>Gagal Memuat Invoice</title><meta charset="utf-8"></head><body style="font-family:sans-serif;text-align:center;padding:50px;"><h2>Gagal Memuat Dokumen Invoice</h2><p>Tidak dapat mengambil invoice #${cleanId} dari Server Lisensi.</p><p style="color:#666;font-size:12px;">${err.message}</p></body></html>`
+            );
+          }
+        });
+
         // Public route for viewing central invoice details on the public payment page
         fastify.get('/invoice/public/:token', async (request: any, reply: any) => {
           const { token } = request.params;

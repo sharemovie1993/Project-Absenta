@@ -62,6 +62,11 @@ export async function getPublicInvoiceLink(invoiceId: string): Promise<{ success
   }
 }
 
+export function getInvoicePrintUrl(invoiceId: string): string {
+  const cleanId = encodeURIComponent(String(invoiceId || '').replace(/^#/, '').trim());
+  return `/api/invoice/${cleanId}/print`;
+}
+
 export async function toggleAutoRenew(subscriptionId: string, autoRenew: boolean): Promise<{ success: boolean; message: string; data?: any }> {
   return requestWithFallback<{ success: boolean; message: string; data?: any }>('patch', `/billing/my-subscription/${subscriptionId}/auto-renew`, {
     data: { auto_renew: autoRenew }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, ShieldCheck, FileText } from 'lucide-react';
+import { Check, ShieldCheck, FileText, Printer } from 'lucide-react';
 import { Button, Card, Badge } from '@/components/ui';
 import { useNavigate } from 'react-router-dom';
 import { formatCurrency } from '@/lib/billingUtils';
@@ -67,6 +67,21 @@ export const CheckoutSuccessStep: React.FC<CheckoutSuccessStepProps> = React.mem
             <ShieldCheck size={16} />
             <span>Lihat Layanan Aktif</span>
           </Button>
+          {(inv?.invoice_number || inv?.id) && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const invNum = inv?.invoice_number || inv?.id;
+                const cleanId = encodeURIComponent(String(invNum).replace(/^#/, '').trim());
+                window.open(`/api/invoice/${cleanId}/print`, '_blank');
+              }}
+              className="w-full h-10 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border-slate-200 hover:bg-slate-50 text-slate-700 dark:text-slate-200"
+            >
+              <Printer size={16} />
+              <span>Cetak Invoice</span>
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"

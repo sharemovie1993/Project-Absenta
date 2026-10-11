@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Loader } from '../ui';
-import { Receipt, CheckCircle, Box } from 'lucide-react';
+import { Receipt, CheckCircle, Box, Printer } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { Invoice } from '../../types/invoice';
 import { formatCurrency, getServiceStyle } from '@/lib/billingUtils';
@@ -261,9 +261,11 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
                             size="sm" 
                             variant="outline" 
                             onClick={() => onViewInvoice(inv, true)} 
-                            className="rounded-md h-8 px-4 font-bold text-xs border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="rounded-md h-8 px-3 font-bold text-xs border-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 text-slate-700 dark:text-slate-200"
+                            title="Buka Dokumen / Cetak PDF Resmi"
                           >
-                            Detail
+                            <Printer size={13} className="text-slate-500" />
+                            <span>Detail / Cetak</span>
                           </Button>
                         </div>
                       </td>

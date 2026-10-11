@@ -411,7 +411,12 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     navigate(`/billing/checkout?plan_id=${planId}`);
   }, [navigate]);
 
-  const handleViewInvoice = useCallback((invoiceId: string) => {
+  const handleViewInvoice = useCallback((invoiceId: string, forceDocument?: boolean) => {
+    if (forceDocument) {
+      const cleanId = encodeURIComponent(String(invoiceId || '').replace(/^#/, '').trim());
+      window.open(`/api/invoice/${cleanId}/print`, '_blank');
+      return;
+    }
     navigate(`/billing/checkout?invoice_id=${invoiceId}`);
   }, [navigate]);
 
