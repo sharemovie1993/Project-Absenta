@@ -119,8 +119,6 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
     });
   }, [ownedServices]);
 
-  const isTargetSingleModule = !isHardware && !isCompleteBundle;
-
   // Resolve matching plan
   const selectedPlan = useMemo(() => {
     if (!group?.variants || group.variants.length === 0) return null;
@@ -179,6 +177,8 @@ export const ShopeeProductDetail: React.FC<ProductDetailProps> = ({
   const isCompleteBundle = useMemo(() => {
     return isCompleteBundlePlan(group) || isCompleteBundlePlan(selectedPlan);
   }, [group, selectedPlan]);
+
+  const isTargetSingleModule = !isHardware && !isCompleteBundle;
 
   const detailedFeatures = useMemo(() => {
     const list: { title: string; description: string; isHighlight?: boolean }[] = [];
