@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Badge } from '@/components/ui';
 import { easyTunnelApi, type Tunnel } from '../../../api/easyTunnel.api';
+import LiveResponseTimeChart from './LiveResponseTimeChart';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -259,49 +260,13 @@ export const EasyTunnelCard: React.FC<Props> = React.memo(({
         </div>
       </div>
 
-      {/* Live Telemetry & Split-DNS Performance Box */}
-      {isConnected && telemetry && (
-        <div className="p-4 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-amber-400">⚡</span>
-              <span className="font-bold text-xs text-white">Live Metric &amp; Telemetri Jalur Split-DNS</span>
-            </div>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[9.5px] font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Aktif Terpantau
-            </span>
-          </div>
-
-          {/* Stats Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            {/* WiFi LAN Lokal */}
-            <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>LAN / WiFi Sekolah (Lokal)</span>
-                <span className="font-mono text-emerald-400 font-bold">{telemetry.local?.percentage ?? 0}%</span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base font-bold text-emerald-400 font-mono">{telemetry.local?.avg_response_time_ms ?? 2.4} ms</span>
-                <span className="text-[10px] text-slate-500 font-sans">waktu respons</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-mono block">{(telemetry.local?.hits ?? 0).toLocaleString()} request</span>
-            </div>
-
-            {/* Publik Internet WireGuard */}
-            <div className="p-3 bg-slate-950/60 rounded-lg border border-slate-800/80 space-y-1">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span>Publik Internet (VPN Tunnel)</span>
-                <span className="font-mono text-indigo-400 font-bold">{telemetry.public?.percentage ?? 0}%</span>
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-base font-bold text-indigo-400 font-mono">{telemetry.public?.avg_response_time_ms ?? 28.1} ms</span>
-                <span className="text-[10px] text-slate-500 font-sans">waktu respons</span>
-              </div>
-              <span className="text-[10px] text-slate-500 font-mono block">{(telemetry.public?.hits ?? 0).toLocaleString()} request</span>
-            </div>
-          </div>
-        </div>
+      {/* Live Mikhmon-style Response Time (LAN vs VPN Tunnel) & Split-DNS Telemetry */}
+      {isConnected && (
+        <LiveResponseTimeChart
+          tunnelId={tunnel.id}
+          hostName={host || tunnel.slug}
+          initialTelemetry={telemetry}
+        />
       )}
     </Card>
   );
