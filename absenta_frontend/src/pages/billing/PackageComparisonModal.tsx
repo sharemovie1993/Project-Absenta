@@ -255,17 +255,6 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                   </div>
                 </div>
 
-                {selectedMobileRow.is_current_tier ? (
-                  <div className="my-2.5 p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                    <ShieldCheck size={14} className="shrink-0" />
-                    <span>Kapasitas Modul Ini ({selectedMobileRow.tier})</span>
-                  </div>
-                ) : selectedMobileRow.has_active_modules ? (
-                  <div className="my-2.5 p-2 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 flex items-center gap-2 text-xs font-bold text-cyan-700 dark:text-cyan-300">
-                    <ShieldCheck size={14} className="shrink-0" />
-                    <span>Memiliki Lisensi Aktif Lain ({selectedMobileRow.active_module_names?.join(', ')})</span>
-                  </div>
-                ) : null}
 
                 {/* MODULE CHECKLIST FOR MOBILE */}
                 <div className="space-y-2 mt-3">
@@ -333,9 +322,9 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                 <table className="w-full text-left border-collapse min-w-[850px] lg:min-w-[960px]">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-850/90 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      {/* STICKY FIRST COLUMN: KAPASITAS PENGGUNA (Varian tier dipindahkan ke dalam tiap modul) */}
-                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-850 z-20 p-3.5 pl-4 w-44 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
-                        Kapasitas Siswa/Pengguna
+                      {/* STICKY FIRST COLUMN: KAPASITAS SISWA */}
+                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-850 z-20 p-3.5 pl-4 w-36 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
+                        Kapasitas Siswa
                       </th>
                       {columns.map((col, idx) => (
                         <th key={col.id || idx} className="p-3 text-center min-w-[110px] border-r border-slate-100 dark:border-slate-800 last:border-r-0" title={col.shortDesc}>
@@ -354,50 +343,17 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                       return (
                         <tr 
                           key={row.tier}
-                          className={`transition-colors ${
-                            isCurrentTier 
-                              ? 'bg-indigo-50/60 dark:bg-indigo-950/25 font-semibold text-slate-900 dark:text-white' 
-                              : row.has_active_modules
-                              ? 'bg-cyan-50/30 dark:bg-cyan-950/15'
-                              : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/30'
-                          }`}
+                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
                         >
-                          {/* STICKY KAPASITAS COLUMN */}
-                          <td className={`sticky left-0 z-10 p-3.5 pl-4 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800 ${
-                            isCurrentTier 
-                              ? 'bg-indigo-50 dark:bg-slate-850' 
-                              : row.has_active_modules
-                              ? 'bg-cyan-50/40 dark:bg-slate-850'
-                              : 'bg-white dark:bg-slate-900'
-                          }`}>
+                          {/* STICKY KAPASITAS COLUMN (BERSIH & MINIMALIS) */}
+                          <td className="sticky left-0 z-10 p-3.5 pl-4 bg-white dark:bg-slate-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
                             <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-1.5 text-xs font-black">
-                                <Users size={13} className={isCurrentTier ? 'text-indigo-600 dark:text-indigo-400' : (row.has_active_modules ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400')} />
-                                <span className={isCurrentTier ? 'text-indigo-700 dark:text-indigo-300' : (row.has_active_modules ? 'text-cyan-800 dark:text-cyan-200' : 'text-slate-900 dark:text-white')}>
-                                  {row.capacity}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] text-slate-400 font-medium">
-                                  Tingkat {row.tier}
-                                </span>
-                                {row.badge && (
-                                  <span className="px-1.5 py-0.2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded text-[8px] font-black uppercase">
-                                    {row.badge}
-                                  </span>
-                                )}
-                              </div>
-                              {isCurrentTier ? (
-                                <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1 mt-1">
-                                  <ShieldCheck size={11} />
-                                  Kapasitas Modul Ini
-                                </span>
-                              ) : row.has_active_modules ? (
-                                <span className="text-[9px] font-extrabold text-cyan-600 dark:text-cyan-400 uppercase flex items-center gap-1 mt-1" title={row.active_module_names?.join(', ')}>
-                                  <ShieldCheck size={11} />
-                                  Lisensi Aktif Lain
-                                </span>
-                              ) : null}
+                              <span className="text-xs font-black text-slate-800 dark:text-slate-100 leading-snug">
+                                {row.capacity.replace('Pengguna', 'Siswa')}
+                              </span>
+                              <span className="text-[10.5px] font-medium text-slate-400 dark:text-slate-500">
+                                Tingkat {row.tier}
+                              </span>
                             </div>
                           </td>
 
