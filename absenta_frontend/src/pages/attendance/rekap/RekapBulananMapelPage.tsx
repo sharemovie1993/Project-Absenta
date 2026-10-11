@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import toast from 'react-hot-toast';
@@ -49,6 +50,7 @@ interface SubscriptionRecord {
 }
 
 export function RekapBulananMapelContent() {
+  const navigate = useNavigate();
   const { user, subscription } = useAuthStore();
   const { can } = useCapabilities();
 
