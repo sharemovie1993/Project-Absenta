@@ -307,59 +307,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 4. Kurikulum (hanya jika ada SK Kurikulum / Admin murni)
-    if ((isKurikulum || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'kurikulum',
-        label: 'Kurikulum',
-        shortLabel: 'Kurikulum',
-        icon: ShieldCheck,
-        badge: 'WAKA',
-        targetPath: '/dashboard?tab=kurikulum',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kurikulum' || pathname.startsWith('/kurikulum')
-      });
-    }
-
-    // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Admin murni)
-    if ((isKesiswaan || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'kesiswaan',
-        label: 'Kesiswaan',
-        shortLabel: 'Kesiswaan',
-        icon: Users,
-        badge: 'WAKA',
-        targetPath: '/dashboard?tab=kesiswaan',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kesiswaan' || pathname.startsWith('/kesiswaan')
-      });
-    }
-
-    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin murni)
-    if ((isSarpras || isToolman || isKabeng || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'sarpras',
-        label: 'Sarpras',
-        shortLabel: 'Sarpras',
-        icon: Building,
-        badge: 'WAKA',
-        targetPath: '/dashboard?tab=sarpras',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'sarpras' || pathname.startsWith('/sarpras')
-      });
-    }
-
-    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin murni)
-    if ((isHubin || isBkk || isKaprog || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'hubin',
-        label: 'Hubin',
-        shortLabel: 'Hubin',
-        icon: Briefcase,
-        badge: 'WAKA',
-        targetPath: '/dashboard?tab=hubin',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'hubin' || pathname.startsWith('/hubin')
-      });
-    }
-
-    // 7.1 Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
+    // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
       list.push({
         id: 'pembimbing_pkl',
@@ -372,33 +320,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 8. Koperasi (hanya jika ada SK Koperasi / Admin murni)
-    if ((isKoperasi || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'koperasi',
-        label: 'Koperasi',
-        shortLabel: 'Koperasi',
-        icon: ShoppingCart,
-        badge: 'UNIT',
-        targetPath: '/dashboard?tab=koperasi',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'koperasi' || pathname.startsWith('/cooperative')
-      });
-    }
-
-    // 9. BP/BK (hanya jika ada SK BPBK / Admin murni)
-    if ((isBpbk || isAdminRole && !isKepsek) && !isKepsek) {
-      list.push({
-        id: 'bpbk',
-        label: 'BP/BK',
-        shortLabel: 'BP/BK',
-        icon: UserCheck,
-        badge: 'BK',
-        targetPath: '/dashboard?tab=bpbk',
-        isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'bpbk' || pathname.startsWith('/bpbk')
-      });
-    }
-
-    // 10. TU (hanya jika ada SK TU / Admin murni)
+    // 5. TU (hanya jika ada SK TU / Admin murni)
     if ((isTUKepegawaian || isTU || isAdminRole && !isKepsek) && !isKepsek) {
       list.push({
         id: 'kepegawaian',
@@ -411,14 +333,15 @@ export const BottomNavigation: React.FC = React.memo(() => {
       });
     }
 
-    // 11. Piket Harian (Strict: Hanya untuk Petugas Gerbang, Kesiswaan, atau Guru Piket biasa. Sembunyikan untuk Admin murni & Kepsek)
-    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik) && !isKepsek) {
+    // 6. Piket Harian & Operasional
+    const canAccessPiket = isPiketGuru || isGerbang || isKesiswaan || isKurikulum || isPendidik || can('attendance.piket.view') || can('attendance.piket.manage');
+    if (canAccessPiket && (!isAdminRole || isPendidik) && !isKepsek) {
       list.push({
         id: 'kelola',
-        label: 'Piket Operasional',
-        shortLabel: 'Piket',
+        label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian',
+        shortLabel: isPureGerbangStaff ? 'Gerbang' : 'Piket',
         icon: Clock,
-        badge: 'PIKET',
+        badge: isPureGerbangStaff ? 'IZIN' : hasGerbangDuty ? 'SCAN' : 'PIKET',
         targetPath: '/dashboard?tab=kelola',
         isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'kelola' || pathname.startsWith('/kesiswaan/piket')
       });
@@ -434,7 +357,26 @@ export const BottomNavigation: React.FC = React.memo(() => {
       isActive: (pathname, tabParam) => pathname.startsWith('/dashboard') && tabParam === 'profil' || pathname.startsWith('/profile')
     });
     return list;
-  }, [isAdminRole, isTuStaff, isKurikulum, isWaliKelas, waliKelasNama, isKesiswaan, isKepsek, isSarpras, isToolman, isKabeng, isHubin, isPembimbingPkl, isBkk, isKaprog, isKoperasi, isBpbk, isGerbang, isTUKepegawaian, isTU, tuTabMeta, guruProfile, isPendidik, isPureGerbangStaff, isPiketGuru]);
+  }, [
+    isAdminRole,
+    isTuStaff,
+    isKurikulum,
+    isWaliKelas,
+    waliKelasNama,
+    isKesiswaan,
+    isKepsek,
+    isPembimbingPkl,
+    isGerbang,
+    isTUKepegawaian,
+    isTU,
+    tuTabMeta,
+    guruProfile,
+    isPendidik,
+    isPureGerbangStaff,
+    isPiketGuru,
+    hasGerbangDuty,
+    can,
+  ]);
   if (location.pathname.startsWith('/parent-app')) {
     return null;
   }
