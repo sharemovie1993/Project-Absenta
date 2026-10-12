@@ -407,6 +407,7 @@ export const pembinaUpacaraService = {
         nama_guru: true,
         nip: true,
         no_hp: true,
+        jenis_ptk: true,
       },
       orderBy: {
         nama_guru: 'asc',
@@ -418,6 +419,7 @@ export const pembinaUpacaraService = {
       nama_guru: string;
       nip: string | null;
       no_hp: string | null;
+      jenis_ptk: string | null;
     }> = [];
 
     for (const g of allGurus) {
@@ -426,6 +428,7 @@ export const pembinaUpacaraService = {
         nama_guru: g.nama_guru,
         nip: g.nip || null,
         no_hp: g.no_hp || null,
+        jenis_ptk: g.jenis_ptk || 'PENDIDIK',
       });
     }
 

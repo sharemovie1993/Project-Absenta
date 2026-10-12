@@ -109,6 +109,7 @@ export interface CandidateGuruBiasaItem {
   nama_guru: string;
   nip: string | null;
   no_hp: string | null;
+  jenis_ptk?: string | null;
 }
 
 export interface UpacaraCandidateGroups {

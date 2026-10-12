@@ -28,7 +28,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (payload: AutoGenerateUpacaraPayload) => Promise<void>;
   waliKelasList?: WaliKelasStrukturAssignment[];
-  guruList: Array<{ id: string; nama_guru: string; nip?: string | null }>;
+  guruList: Array<{ id: string; nama_guru: string; nip?: string | null; jenis_ptk?: string | null }>;
   classList: Array<{ id: string; nama_kelas: string }>;
   tahunPelajaranId: string;
   semesterId?: string;
@@ -78,6 +78,7 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
   const [includeWaka, setIncludeWaka] = useState(true);
   const [includeWaliKelas, setIncludeWaliKelas] = useState(true);
   const [includeGuruBiasa, setIncludeGuruBiasa] = useState(false);
+  const [includeTendik, setIncludeTendik] = useState(false);
 
   // Strategi Urutan & Pasangan
   const [rotationStrategy, setRotationStrategy] = useState<RotationStrategy>('WAKA_FIRST');
@@ -269,7 +270,7 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
       guru_id: g.guru_id,
       nama_guru: g.nama_guru,
       nip: g.nip,
-      role_label: 'Guru Mapel',
+      role_label: g.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? 'Tenaga Kependidikan' : 'Guru Mapel',
       role_type: 'GURU_BIASA',
       kelas_id: null,
       nama_kelas: null,
@@ -294,6 +295,23 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
     rotationStrategy,
     autoPairKelasPetugas,
   ]);
+
+  // Filter personil guru biasa / pelengkap berdasarkan toggle Tendik (default: hanya PTK Pendidik)
+  const filteredGuruBiasaList = useMemo(() => {
+    if (includeTendik) {
+      return guruBiasaList;
+    }
+    return guruBiasaList.filter(
+      (g) => !g.jenis_ptk || g.jenis_ptk.toUpperCase() === 'PENDIDIK'
+    );
+  }, [guruBiasaList, includeTendik]);
+
+  // Hitung jumlah Tenaga Kependidikan yang ada dalam master data
+  const totalTendikCount = useMemo(() => {
+    return guruBiasaList.filter(
+      (g) => g.jenis_ptk && g.jenis_ptk.toUpperCase() === 'TENAGA_KEPENDIDIKAN'
+    ).length;
+  }, [guruBiasaList]);
 
   // Simulasi Jadwal Per Pekan
   const previewSchedule = useMemo(() => {
@@ -381,17 +399,19 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
     );
   };
   const handleToggleAllGuruBiasa = () => {
-    // Utamakan memilih guru yang murni belum terpilih di Waka maupun Wali Kelas
-    const availableGurus = guruBiasaList.filter(
+    // Utamakan memilih personil yang tampil di filter DAN murni belum terpilih di Waka maupun Wali Kelas
+    const availableGurus = filteredGuruBiasaList.filter(
       (g) => !selectedWakaMap.has(g.guru_id) && !selectedWaliMap.has(g.guru_id)
     );
-    const targetList = availableGurus.length > 0 ? availableGurus : guruBiasaList;
+    const targetList = availableGurus.length > 0 ? availableGurus : filteredGuruBiasaList;
     const allTargetSelected = targetList.every((g) => selectedGuruBiasaIds.includes(g.guru_id));
 
     if (allTargetSelected) {
-      setSelectedGuruBiasaIds([]);
+      const targetIds = new Set(targetList.map((g) => g.guru_id));
+      setSelectedGuruBiasaIds((prev) => prev.filter((id) => !targetIds.has(id)));
     } else {
-      setSelectedGuruBiasaIds(targetList.map((g) => g.guru_id));
+      const newIds = new Set([...selectedGuruBiasaIds, ...targetList.map((g) => g.guru_id)]);
+      setSelectedGuruBiasaIds(Array.from(newIds));
     }
   };
 
@@ -673,11 +693,11 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
           </div>
         )}
 
-        {/* ── STEP 3: GURU MATA PELAJARAN ──────────────────────────────── */}
+        {/* ── STEP 3: GURU MATA PELAJARAN / PELENGKAP ──────────────────── */}
         {currentStep === 3 && (
           <div className="space-y-3">
             {/* Control Bar Ringkas */}
-            <div className="flex items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl text-xs">
               <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 dark:text-slate-200">
                 <input
                   type="checkbox"
@@ -685,11 +705,11 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                   onChange={(e) => setIncludeGuruBiasa(e.target.checked)}
                   className="w-4 h-4 rounded text-slate-700 focus:ring-slate-500"
                 />
-                <span>Libatkan Guru Mapel / Pelengkap ({guruBiasaList.length})</span>
+                <span>Libatkan Guru Mapel / Pelengkap ({filteredGuruBiasaList.length})</span>
               </label>
 
-              {includeGuruBiasa && guruBiasaList.length > 0 && (
-                <div className="flex items-center gap-2">
+              {includeGuruBiasa && (
+                <div className="flex items-center gap-3">
                   <span className="text-slate-500 font-medium">
                     {selectedGuruBiasaIds.length} dipilih
                   </span>
@@ -704,22 +724,40 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
               )}
             </div>
 
-            <p className="text-[11px] text-slate-400 px-1">
-              Pilih guru pengajar tambahan jika kuota pekan upacara 1 semester belum mencukupi hanya dari pimpinan & wali kelas.
-            </p>
+            {/* Sub-toolbar Toggle Fleksibel Tenaga Kependidikan */}
+            {includeGuruBiasa && (
+              <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+                <p className="text-[11px] text-slate-400">
+                  Secara default menampilkan jenis PTK Pendidik (Guru).
+                </p>
 
-            {guruBiasaList.length === 0 ? (
+                <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-semibold select-none bg-white dark:bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-800 shadow-2xs hover:border-slate-300 transition">
+                  <input
+                    type="checkbox"
+                    checked={includeTendik}
+                    onChange={(e) => setIncludeTendik(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span>Tampilkan Tenaga Kependidikan ({totalTendikCount})</span>
+                </label>
+              </div>
+            )}
+
+            {filteredGuruBiasaList.length === 0 ? (
               <div className="p-8 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
-                Belum ada data guru lain yang terdaftar.
+                {includeTendik
+                  ? 'Belum ada data guru atau tenaga kependidikan yang terdaftar.'
+                  : 'Belum ada data guru pendidik yang terdaftar.'}
               </div>
             ) : (
               <div className="max-h-80 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 p-1">
-                {guruBiasaList.map((item) => {
+                {filteredGuruBiasaList.map((item) => {
                   const isSelected = selectedGuruBiasaIds.includes(item.guru_id) && includeGuruBiasa;
                   const wakaInfo = selectedWakaMap.get(item.guru_id);
                   const waliInfo = selectedWaliMap.get(item.guru_id);
                   const isCheckedInWaka = Boolean(wakaInfo);
                   const isCheckedInWali = Boolean(waliInfo);
+                  const isTendik = item.jenis_ptk === 'TENAGA_KEPENDIDIKAN';
 
                   return (
                     <div
@@ -765,9 +803,15 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                         </div>
                       </div>
 
-                      <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0">
-                        Guru Mapel
-                      </span>
+                      {isTendik ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 shrink-0 border border-amber-200 dark:border-amber-800">
+                          Tenaga Kependidikan
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500 shrink-0">
+                          Guru Mapel
+                        </span>
+                      )}
                     </div>
                   );
                 })}
