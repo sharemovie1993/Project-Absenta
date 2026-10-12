@@ -194,7 +194,7 @@ export const pembinaUpacaraService = {
    */
   async getCandidateGroups(
     scope: DataScope,
-    tahunPelajaranId?: string,
+    _tahunPelajaranId?: string,
     _semesterId?: string
   ) {
     const tenantId = scope.tenantId;
@@ -338,16 +338,10 @@ export const pembinaUpacaraService = {
       tenant_id: tenantId,
       is_active: true,
       Position: {
-        code: STRUKTUR_CODES.WALIKELAS,
+        code: { in: [STRUKTUR_CODES.WALIKELAS, 'WALIKELAS', 'WALI_KELAS'] },
       },
       kelas_id: { not: null },
     };
-
-    if (tahunPelajaranId) {
-      waliWhere.Kelas = {
-        tahun_pelajaran_id: tahunPelajaranId,
-      };
-    }
 
     const waliAssignments = await prisma.organizationalAssignment.findMany({
       where: waliWhere,
