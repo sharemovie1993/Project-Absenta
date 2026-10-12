@@ -1,7 +1,9 @@
 import { prisma } from '@/utils/prisma';
 import { DataScope } from '@/types/fastify';
-import { StatusPelaksanaanUpacara } from '@prisma/client';
+import { StatusPelaksanaanUpacara, Hari } from '@prisma/client';
 import { appLogger } from '@/utils/app-logger';
+import { getTenantTimezone, getTimezoneLabel } from '@/utils/timezone.utils';
+import { getHariEnum, isSchoolDay } from '@/utils/school-day.utils';
 
 export interface CreatePembinaUpacaraDto {
   tahun_pelajaran_id: string;
@@ -303,13 +305,7 @@ export const pembinaUpacaraService = {
    */
 
   async getTenantTimezone(tenantId: string): Promise<string> {
-    try {
-      const config = await prisma.config.findFirst({
-        where: { tenant_id: tenantId, key: 'TIMEZONE' },
-      });
-      if (config?.value) return config.value;
-    } catch (_) {}
-    return 'Asia/Jakarta';
+    return getTenantTimezone(tenantId);
   },
 
   async getWaNotifConfig(tenantId: string) {
@@ -390,6 +386,7 @@ export const pembinaUpacaraService = {
     const guruPenggantiNip = schedule.GuruPengganti?.nip ? ` (NIP. ${schedule.GuruPengganti.nip})` : '';
     const kelasPetugasNama = schedule.KelasPetugas?.nama_kelas || '-';
     const temaAmanat = schedule.tema_amanat ? `"${schedule.tema_amanat}"` : '_Umum / Amanat Kedisiplinan_';
+    const tzLabel = getTimezoneLabel(timezone);
 
     let pembinaSection = `👨‍🏫 *Pembina Upacara:*\n• *${guruUtamaNama}*${guruUtamaNip}`;
     if (isReplaced) {
@@ -398,7 +395,7 @@ export const pembinaUpacaraService = {
 
     let msg = `🇮🇩 *PELAKSANAAN UPACARA BENDERA HARI SENIN*\n`;
     msg += `📅 *${tglStr}*\n`;
-    msg += `⏰ *Pukul 07.00 WIB* (Lapangan Upacara)\n\n`;
+    msg += `⏰ *Pukul 07.00 ${tzLabel}* (Lapangan Upacara)\n\n`;
 
     msg += `${pembinaSection}\n\n`;
     msg += `👥 *Petugas Upacara:*\n• Kelas: *${kelasPetugasNama}*\n\n`;
@@ -479,22 +476,23 @@ export const pembinaUpacaraService = {
       return { success: false, skipped: true, message: 'Tenant tidak aktif' };
     }
 
-    const timezone = await this.getTenantTimezone(tenantId);
+    const timezone = await getTenantTimezone(tenantId);
 
-    // Ambil tanggal hari ini dalam timezone tenant
-    const nowStr = new Intl.DateTimeFormat('en-CA', {
+    // Ambil tanggal hari ini dalam zona waktu lokal tenant (YYYY-MM-DD)
+    const now = new Date();
+    const targetDateStr = new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date());
+    }).format(now);
 
-    const dateTarget = new Date(`${nowStr}T12:00:00Z`);
-    const dateOnlyTarget = new Date(`${nowStr}T00:00:00.000Z`);
-    const targetDateStr = nowStr;
+    const dateTarget = new Date(`${targetDateStr}T12:00:00Z`);
+    const startOfDay = new Date(`${targetDateStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${targetDateStr}T23:59:59.999Z`);
     const idempotencyRelatedId = `UPACARA:${targetDateStr}:GROUP`;
 
-    // Idempotency Guard (jika bukan force test)
+    // 🛡️ 1. Idempotency Outbox Guard: Cek apakah hari ini sudah pernah terkirim di database
     if (!forceSend) {
       const existingSentLog = await prisma.notificationLog.findFirst({
         where: {
@@ -510,15 +508,18 @@ export const pembinaUpacaraService = {
         return {
           success: true,
           skipped: true,
-          message: `Pengumuman upacara sudah pernah terkirim untuk tanggal ${targetDateStr}`,
+          message: `Pengumuman upacara sudah pernah terkirim untuk tanggal ${targetDateStr} (Idempotency Skip)`,
         };
       }
     }
 
-    // Cek apakah hari ini adalah hari kerja sekolah
-    const { isSchoolDay } = await import('@/utils/school-day.utils');
+    // 🔍 2. Kalender & Hari Operasional Guard: Cek apakah hari ini hari kerja sekolah aktif
     const workingDayCheck = await isSchoolDay(tenantId, dateTarget, timezone);
     if (!workingDayCheck.isWorkingDay && !forceSend) {
+      appLogger.info(
+        { tenantId, targetDateStr, reason: workingDayCheck.reason },
+        'Pengumuman upacara bendera dilewati (Hari Libur / Non-Hari Kerja Sekolah)'
+      );
       return {
         success: true,
         skipped: true,
@@ -526,11 +527,14 @@ export const pembinaUpacaraService = {
       };
     }
 
-    // Ambil jadwal upacara hari ini
+    // 🔍 3. Ambil jadwal upacara hari ini dengan query rentang tanggal aman
     const schedule = await prisma.jadwalPembinaUpacara.findFirst({
       where: {
         tenant_id: tenantId,
-        tanggal: dateOnlyTarget,
+        tanggal: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
       },
       include: {
         GuruUtama: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
@@ -547,9 +551,9 @@ export const pembinaUpacaraService = {
       };
     }
 
-    // Jika forceSend dan tidak ada schedule, buat dummy preview
+    // Jika forceSend (Uji Coba) dan belum ada schedule, buat sampel data realistis
     const activeSchedule = schedule || {
-      tanggal: dateOnlyTarget,
+      tanggal: startOfDay,
       GuruUtama: { nama_guru: 'Contoh Guru Pembina, S.Pd', nip: '198501012010011001' },
       KelasPetugas: { nama_kelas: 'X RPL 1' },
       tema_amanat: 'Disiplin dan Tanggung Jawab Generasi Muda',
@@ -560,7 +564,7 @@ export const pembinaUpacaraService = {
     const { waGatewayService } = await import('@/services/wa-gateway.service');
     await waGatewayService.sendMessageToJid(tenantId, targetGroupId, messageText);
 
-    // Audit log
+    // 📝 4. Rekam ke NotificationLog untuk Garansi Anti-Duplikasi Persisten
     if (!forceSend) {
       try {
         await prisma.notificationLog.create({
@@ -575,7 +579,9 @@ export const pembinaUpacaraService = {
             related_id: idempotencyRelatedId,
           },
         });
-      } catch (_) {}
+      } catch (err: any) {
+        appLogger.warn({ tenantId, idempotencyRelatedId, err: err?.message }, 'Warning saat mencatat NotificationLog upacara group');
+      }
     }
 
     return {
@@ -605,26 +611,32 @@ export const pembinaUpacaraService = {
       return { success: false, skipped: true, message: 'Tenant tidak aktif' };
     }
 
-    const timezone = await this.getTenantTimezone(tenantId);
+    const timezone = await getTenantTimezone(tenantId);
 
-    // Hitung tanggal Senin depan (H+3 dari Jum'at)
+    // Ambil tanggal hari ini dalam timezone tenant
     const now = new Date();
-    const nextMonday = new Date(now);
-    // Cari hari Senin terdekat berikutnya (1 = Senin)
-    const dayOfWeek = nextMonday.getDay();
-    const daysUntilNextMonday = ((1 - dayOfWeek + 7) % 7) || 7;
-    nextMonday.setDate(nextMonday.getDate() + daysUntilNextMonday);
-
-    const nextMondayStr = new Intl.DateTimeFormat('en-CA', {
+    const todayDateStr = new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(nextMonday);
+    }).format(now);
 
-    const dateOnlyMonday = new Date(`${nextMondayStr}T00:00:00.000Z`);
+    // Hitung tanggal Senin berikutnya dari hari Jum'at (H+3) secara deterministik
+    const [y, m, d] = todayDateStr.split('-').map(Number);
+    const hariIni = getHariEnum(now, timezone);
+    let daysUntilMonday = 3;
+    if (hariIni === Hari.SABTU) daysUntilMonday = 2;
+    else if (hariIni === Hari.MINGGU) daysUntilMonday = 1;
+    else if (hariIni !== Hari.JUMAT) daysUntilMonday = 7;
+
+    const nextMondayDate = new Date(Date.UTC(y, m - 1, d + daysUntilMonday));
+    const nextMondayStr = nextMondayDate.toISOString().split('T')[0];
+    const startOfMonday = new Date(`${nextMondayStr}T00:00:00.000Z`);
+    const endOfMonday = new Date(`${nextMondayStr}T23:59:59.999Z`);
     const idempotencyRelatedId = `UPACARA:${nextMondayStr}:JUMAT_GLADI`;
 
+    // 🛡️ 1. Idempotency Outbox Guard
     if (!forceSend) {
       const existingSentLog = await prisma.notificationLog.findFirst({
         where: {
@@ -639,15 +651,19 @@ export const pembinaUpacaraService = {
         return {
           success: true,
           skipped: true,
-          message: `Pengingat Jum'at untuk upacara ${nextMondayStr} sudah pernah terkirim.`,
+          message: `Pengingat Jum'at untuk upacara ${nextMondayStr} sudah pernah terkirim (Idempotency Skip).`,
         };
       }
     }
 
+    // 🔍 2. Cari jadwal penugasan hari Senin depan
     const schedule: any = await prisma.jadwalPembinaUpacara.findFirst({
       where: {
         tenant_id: tenantId,
-        tanggal: dateOnlyMonday,
+        tanggal: {
+          gte: startOfMonday,
+          lte: endOfMonday,
+        },
       },
       include: {
         GuruUtama: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
@@ -678,7 +694,7 @@ export const pembinaUpacaraService = {
       const personalMsg = await this.formatUpacaraPersonalMessage(
         tenantId,
         schedule,
-        nextMonday,
+        nextMondayDate,
         timezone,
         activeGuru.nama_guru
       );
@@ -690,7 +706,7 @@ export const pembinaUpacaraService = {
       }
     }
 
-    // 2. Kirim juga ke Wali Kelas Petugas jika berbeda dengan Pembina
+    // 2. Kirim juga ke Wali Kelas Petugas jika berbeda nomor HP dengan Pembina
     if (schedule.kelas_petugas_id) {
       const waliAssignment: any = await prisma.organizationalAssignment.findFirst({
         where: {
@@ -714,7 +730,7 @@ export const pembinaUpacaraService = {
         const waliMsg = await this.formatUpacaraPersonalMessage(
           tenantId,
           schedule,
-          nextMonday,
+          nextMondayDate,
           timezone,
           waliGuru.nama_guru
         );
@@ -727,7 +743,7 @@ export const pembinaUpacaraService = {
       }
     }
 
-    // Catat log
+    // 📝 3. Catat log persisten ke NotificationLog
     if (!forceSend) {
       try {
         await prisma.notificationLog.create({
@@ -742,7 +758,9 @@ export const pembinaUpacaraService = {
             related_id: idempotencyRelatedId,
           },
         });
-      } catch (_) {}
+      } catch (err: any) {
+        appLogger.warn({ tenantId, idempotencyRelatedId, err: err?.message }, 'Warning saat mencatat NotificationLog upacara jumat');
+      }
     }
 
     return {
@@ -753,8 +771,16 @@ export const pembinaUpacaraService = {
   },
 
   /**
-   * Dispatcher berkala untuk mengevaluasi waktu lokal semua tenant
+   * 🚀 SaaS Dynamic Minute Dispatcher untuk Jadwal Pembina Upacara
    * Dipanggil setiap 1 menit oleh cron job: upacaraScheduleDispatcher.job.ts
+   * 
+   * 🛡️ Reboot Server Resilience & Timezone Alignment:
+   * 1. Menggunakan engine timezone terpusat tenant (WIB / WITA / WIT).
+   * 2. Menghindari exact minute match (`===`). Menggunakan Scheduled Window (`>= targetJam && <= cutoffJam`).
+   * 3. Jika server di-reboot kapan saja dalam rentang waktu pagi/siang, dispatcher akan otomatis catch-up
+   *    mengirim pengumuman yang belum terkirim.
+   * 4. Garansi Strict Idempotency via `NotificationLog` persisten di database: reboot server berkali-kali
+   *    tidak akan pernah memicu pengiriman ganda.
    */
   async dispatchDueTenantReminders(): Promise<{ processedCount: number; sentCount: number; skippedCount: number }> {
     const configRows = await prisma.config.findMany({
@@ -771,6 +797,8 @@ export const pembinaUpacaraService = {
     let sentCount = 0;
     let skippedCount = 0;
 
+    const now = new Date();
+
     for (const row of configRows) {
       try {
         if (!row.value) continue;
@@ -778,10 +806,9 @@ export const pembinaUpacaraService = {
         if (!config.enabled) continue;
 
         processedCount++;
-        const timezone = await this.getTenantTimezone(row.tenant_id);
+        const timezone = await getTenantTimezone(row.tenant_id);
 
-        // Ambil info hari & jam lokal tenant
-        const now = new Date();
+        // Ambil waktu lokal tenant dalam format HH:mm
         const localTimeStr = new Intl.DateTimeFormat('en-GB', {
           timeZone: timezone,
           hour: '2-digit',
@@ -789,32 +816,86 @@ export const pembinaUpacaraService = {
           hour12: false,
         }).format(now);
 
-        const localDayName = new Intl.DateTimeFormat('en-US', {
+        // Dapatkan nama hari saat ini berbasis zona waktu lokal tenant
+        const hariEnum = getHariEnum(now, timezone);
+
+        // Tanggal hari ini di timezone tenant (YYYY-MM-DD)
+        const todayDateStr = new Intl.DateTimeFormat('en-CA', {
           timeZone: timezone,
-          weekday: 'short',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
         }).format(now);
 
-        // 1. Evaluasi Pengumuman Hari Senin Pagi (Group WA)
-        if (localDayName === 'Mon' && config.seninEnabled && config.targetGroupId) {
-          const targetSeninJam = config.seninJam || '06:00';
-          if (localTimeStr === targetSeninJam) {
-            const res = await this.sendSeninGroupReminder(row.tenant_id, false);
-            if (res.success && !res.skipped) sentCount++;
-            else if (res.skipped) skippedCount++;
+        // ── 1. EVALUASI SIARAN RESMI HARI SENIN PAGI (GROUP WA DEWAN GURU) ─────
+        // Cutoff Jam 09:30: Toleransi catch-up jika server di-reboot antara jam target (misal 06:00) hingga 09:30
+        if (hariEnum === Hari.SENIN && config.seninEnabled && config.targetGroupId) {
+          const targetSeninJam = (config.seninJam || '06:00').trim();
+          const cutoffSeninJam = '09:30';
+
+          if (localTimeStr >= targetSeninJam && localTimeStr <= cutoffSeninJam) {
+            const idempotencyRelatedId = `UPACARA:${todayDateStr}:GROUP`;
+            const alreadySent = await prisma.notificationLog.findFirst({
+              where: {
+                tenant_id: row.tenant_id,
+                event: 'UPACARA_REMINDER_GROUP',
+                related_id: idempotencyRelatedId,
+                status: 'SENT',
+              },
+              select: { id: true },
+            });
+
+            if (!alreadySent) {
+              appLogger.info(
+                { tenantId: row.tenant_id, tenantName: row.Tenant?.name, localTimeStr, targetSeninJam, timezone },
+                '[UpacaraDispatcher] Memicu siaran pengumuman Upacara Senin Pagi (Catch-up / Scheduled window)'
+              );
+              const res = await this.sendSeninGroupReminder(row.tenant_id, false);
+              if (res.success && !res.skipped) sentCount++;
+              else if (res.skipped) skippedCount++;
+            }
           }
         }
 
-        // 2. Evaluasi Pengingat Gladi Hari Jum'at Siang (Personal WA)
-        if (localDayName === 'Fri' && config.jumatReminderEnabled) {
-          const targetJumatJam = config.jumatJam || '13:30';
-          if (localTimeStr === targetJumatJam) {
-            const res = await this.sendJumatPreparationReminder(row.tenant_id, false);
-            if (res.success && !res.skipped) sentCount++;
-            else if (res.skipped) skippedCount++;
+        // ── 2. EVALUASI PENGINGAT GLADI HARI JUM'AT SIANG (PERSONAL WA) ─────────
+        // Cutoff Jam 20:00: Toleransi catch-up jika server di-reboot antara jam target (misal 13:30) hingga 20:00
+        if (hariEnum === Hari.JUMAT && config.jumatReminderEnabled) {
+          const targetJumatJam = (config.jumatJam || '13:30').trim();
+          const cutoffJumatJam = '20:00';
+
+          if (localTimeStr >= targetJumatJam && localTimeStr <= cutoffJumatJam) {
+            // Hitung tanggal hari Senin depan
+            const [y, m, d] = todayDateStr.split('-').map(Number);
+            const targetMonday = new Date(Date.UTC(y, m - 1, d + 3));
+            const nextMondayStr = targetMonday.toISOString().split('T')[0];
+
+            const idempotencyRelatedId = `UPACARA:${nextMondayStr}:JUMAT_GLADI`;
+            const alreadySent = await prisma.notificationLog.findFirst({
+              where: {
+                tenant_id: row.tenant_id,
+                event: 'UPACARA_REMINDER_JUMAT',
+                related_id: idempotencyRelatedId,
+                status: 'SENT',
+              },
+              select: { id: true },
+            });
+
+            if (!alreadySent) {
+              appLogger.info(
+                { tenantId: row.tenant_id, tenantName: row.Tenant?.name, localTimeStr, targetJumatJam, timezone },
+                '[UpacaraDispatcher] Memicu pengingat gladi persiapan Upacara Jum\'at (Catch-up / Scheduled window)'
+              );
+              const res = await this.sendJumatPreparationReminder(row.tenant_id, false);
+              if (res.success && !res.skipped) sentCount++;
+              else if (res.skipped) skippedCount++;
+            }
           }
         }
       } catch (err: any) {
-        appLogger.error({ tenantId: row.tenant_id, err: err?.message }, 'Error in dispatchDueTenantReminders (Upacara)');
+        appLogger.error(
+          { tenantId: row.tenant_id, error: err?.message },
+          '[UpacaraDispatcher] Gagal mengevaluasi pengingat upacara untuk tenant'
+        );
       }
     }
 
