@@ -47,7 +47,7 @@ import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 
 export default React.memo(function JadwalPembinaUpacaraPage() {
   const navigate = useNavigate();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
   const isMobile = useIsMobile();
 
   // Konteks Akademik
