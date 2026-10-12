@@ -169,6 +169,7 @@ const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
 const JadwalKegiatanPage = lazy(() => import('./pages/attendance/JadwalKegiatanPage'));
+const JadwalPembinaUpacaraPage = lazy(() => import('./pages/attendance/JadwalPembinaUpacaraPage'));
 const AnggotaKegiatanEskulPage = lazy(() => import('./pages/attendance/AnggotaKegiatanEskulPage'));
 const PetugasPage = lazy(() => import('./pages/attendance/PetugasPage'));
 const AttendanceSettingsPage = lazy(() => import('./pages/attendance/AttendanceSettingsPage'));
@@ -1337,6 +1338,13 @@ function App() {
                     <Route path="/kesiswaan/jadwal-kegiatan" element={
                       <ProtectedRoute requiredCapability="attendance.schedules.view.list">
                         <JadwalKegiatanPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/pembina-upacara" element={
+                      <ProtectedRoute requiredCapability="attendance.schedules.view.list">
+                        <Suspense fallback={<div className="p-8"><Loader /></div>}>
+                          <JadwalPembinaUpacaraPage />
+                        </Suspense>
                       </ProtectedRoute>
                     } />
                     <Route path="/attendance/anggota-kegiatan-eskul" element={

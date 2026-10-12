@@ -558,7 +558,7 @@ export const StaffPortalAppLauncher: React.FC<StaffPortalAppLauncherProps> = ({
 
     if (p.includes('/rapor/cetak') || t.includes('cetak e-rapor')) return 30;
     if (p.includes('/kesiswaan/risikolog') || t.includes('risikolog')) return 35;
-    if (p.includes('/kesiswaan/jadwal-kegiatan') || t.includes('jadwal kegiatan')) return 40;
+    if (p.includes('/kesiswaan/jadwal-kegiatan') || t.includes('jadwal kegiatan') || p.includes('/kesiswaan/pembina-upacara') || t.includes('pembina upacara')) return 40;
     if (p.includes('/bpbk/asesmen') || t.includes('asesmen')) return 45;
 
     if (p.includes('/bpbk/rujukan') || t.includes('rujukan')) return 50;

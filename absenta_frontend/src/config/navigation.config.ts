@@ -279,6 +279,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/bpbk/cases',
       '/bpbk/asesmen',
       '/kesiswaan/jadwal-kegiatan',
+      '/kesiswaan/pembina-upacara',
       '/kurikulum/jadwal-piket'
     ]
   },
@@ -297,7 +298,8 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     targetGroupKeywords: ['KESISWAAN'],
     crossModulePaths: [
       '/kurikulum/jadwal',
-      '/bpbk/cases'
+      '/bpbk/cases',
+      '/kesiswaan/pembina-upacara'
     ]
   },
   {

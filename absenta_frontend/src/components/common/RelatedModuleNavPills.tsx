@@ -100,6 +100,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Prestasi Siswa', shortLabel: 'Prestasi', path: '/kesiswaan/prestasi', icon: Trophy },
       { label: 'Piket & Izin Keluar', shortLabel: 'Piket', path: '/kesiswaan/piket', icon: ShieldCheck },
       { label: 'Jadwal Kegiatan', shortLabel: 'Kegiatan', path: '/kesiswaan/jadwal-kegiatan', icon: Calendar },
+      { label: 'Pembina Upacara', shortLabel: 'Upacara', path: '/kesiswaan/pembina-upacara', icon: UserCheck },
     ]
   },
   // 5. Grup Sarpras & Fasilitas

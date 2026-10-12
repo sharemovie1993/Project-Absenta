@@ -145,6 +145,7 @@ const DEFAULT_KESISWAAN_PRIMARY: FlatMenuItem[] = [
   { id: 'prs', title: 'Prestasi Siswa', path: '/kesiswaan/prestasi', icon: 'Award' },
   { id: 'pkt', title: 'Piket & Izin Keluar', path: '/kesiswaan/piket', icon: 'ShieldCheck' },
   { id: 'jdw', title: 'Jadwal Kegiatan', path: '/kesiswaan/jadwal-kegiatan', icon: 'Calendar' },
+  { id: 'upc', title: 'Pembina Upacara', path: '/kesiswaan/pembina-upacara', icon: 'UserCheck' },
   { id: 'set', title: 'Pengaturan Poin', path: '/kesiswaan/settings', icon: 'Settings' },
   { id: 'ctk', title: 'Cetak Berkas', path: '/kesiswaan/cetak-berkas', icon: 'ClipboardList' },
 ];

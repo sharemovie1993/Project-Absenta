@@ -25,10 +25,13 @@ import {
   ToggleLeft,
   ToggleRight,
   Users,
+  UserCheck,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, SectionCard, TabSwitcher } from '@/components/ui';
 import { Loader } from '@/components/ui/Loader';
+import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { useAcademicContext } from '@/hooks/useAcademicContext';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import type { JadwalKegiatanFormData } from '@/components/attendance/kegiatan/JadwalKegiatanFormModal';
 import { formatDate } from '@/utils/layoutUtils';
@@ -67,29 +70,25 @@ export default React.memo(function JadwalKegiatanPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
 
-  const [activeTab, setActiveTab] = useState<'ALL' | 'PEMBIASAAN' | 'ESKUL'>('ALL');
+  const [activeTab, setActiveTab] = useState<'PEMBIASAAN' | 'ESKUL'>('PEMBIASAAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalKegiatanItem | null>(null);
   const [presetMasterNama, setPresetMasterNama] = useState<string | undefined>(undefined);
 
-  // Data Fetching
-  const { data: activeTp, isLoading: loadingTp } = useQuery({
-    queryKey: ['active-tahun-pelajaran'],
-    queryFn: getActiveTahunPelajaran,
-    staleTime: 10 * 60 * 1000,
-  });
+  // Konteks Akademik Terpusat
+  const {
+    selectedTahunPelajaran: selectedTpId,
+    selectedSemester: selectedSemId,
+    handleTpChange: setSelectedTpId,
+    handleSemesterChange: setSelectedSemId,
+    tpOptions,
+    semesterOptions,
+    tpRawList: tahunPelajaranList,
+  } = useAcademicContext();
 
-  const { data: tpListRes } = useQuery({
-    queryKey: ['tahun-pelajaran-list-active-check'],
-    queryFn: () => getActiveTahunPelajaran(),
-    staleTime: 10 * 60 * 1000,
-  });
-
-  const activeTpData = (activeTp as Record<string, unknown>)?.data || activeTp;
-  const tpList = (tpListRes as Record<string, unknown>)?.data || [];
-  const activeTpFromList = Array.isArray(tpList) ? (tpList.find((t: { is_active?: boolean }) => t.is_active) || tpList[0]) : null;
-  const activeTahunPelajaranId = (activeTpData as { id?: string })?.id || activeTpFromList?.id || '';
-  const activeTahunPelajaranName = (activeTpData as { tahun?: string })?.tahun || activeTpFromList?.tahun || 'Tahun Ajaran Aktif';
+  const activeTpData = tahunPelajaranList.find(tp => tp.id === selectedTpId) || tahunPelajaranList.find(tp => tp.is_active) || tahunPelajaranList[0];
+  const activeTahunPelajaranId = selectedTpId || activeTpData?.id || '';
+  const activeTahunPelajaranName = activeTpData?.tahun || 'Tahun Ajaran Aktif';
 
   const { rawList: jadwalItems = [], isLoading: loadingJadwal } = useJadwalKegiatan();
   const { rawList: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
@@ -207,7 +206,6 @@ export default React.memo(function JadwalKegiatanPage() {
     const list = Array.isArray(masterKegiatans) ? masterKegiatans : [];
     return list.filter(m => {
       if (m.tipe === 'KBM') return false;
-      if (activeTab === 'ALL') return true;
       return m.tipe === activeTab;
     });
   }, [masterKegiatans, activeTab]);
@@ -236,7 +234,7 @@ export default React.memo(function JadwalKegiatanPage() {
         item.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
       );
       if (!existsInList) {
-        if (activeTab === 'ALL' || j.jenis_kegiatan === activeTab) {
+        if (j.jenis_kegiatan === activeTab) {
           list.push({
             id: j.id,
             nama: j.nama,
@@ -251,7 +249,7 @@ export default React.memo(function JadwalKegiatanPage() {
     return list;
   }, [filteredMasters, jadwalItems, activeTab]);
 
-  const loading = loadingTp || loadingJadwal || loadingMasters || loadingClasses;
+  const loading = loadingJadwal || loadingMasters || loadingClasses;
 
   const breadcrumbs = useMemo(() => [
     { label: 'Presensi', path: '/attendance' },
@@ -259,7 +257,6 @@ export default React.memo(function JadwalKegiatanPage() {
   ], []);
 
   const tabOptions = useMemo(() => [
-    { id: 'ALL', label: 'Semua Kegiatan' },
     { id: 'PEMBIASAAN', label: 'Pembiasaan Karakter' },
     { id: 'ESKUL', label: 'Ekstrakurikuler' },
   ], []);
@@ -271,7 +268,16 @@ export default React.memo(function JadwalKegiatanPage() {
       breadcrumbs={breadcrumbs}
       hardeningModuleKey="attendance_jadwal_kegiatan"
       topSlot={
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <Button
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => navigate('/kesiswaan/pembina-upacara')}
+            className="flex items-center gap-1.5 font-bold rounded-xl text-indigo-600 dark:text-indigo-400"
+          >
+            <UserCheck className="w-4 h-4" />
+            Jadwal Pembina Upacara
+          </Button>
           <Button
             variant="toolbarOutline"
             size="toolbar"
@@ -299,7 +305,8 @@ export default React.memo(function JadwalKegiatanPage() {
         items: [
           { text: "Atur waktu mulai dan selesai untuk masing-masing kegiatan pembiasaan/eskul." },
           { text: "Gunakan toggle status untuk mengaktifkan atau menonaktifkan jadwal." },
-          { text: "Klik Anggota & Pembina Eskul untuk memetakan siswa dan guru ke kegiatan." }
+          { text: "Klik Anggota & Pembina Eskul untuk memetakan siswa dan guru ke kegiatan." },
+          { text: "Klik Jadwal Pembina Upacara untuk menyusun rotasi giliran pembina upacara Senin." }
         ]
       }}
     >
@@ -309,12 +316,25 @@ export default React.memo(function JadwalKegiatanPage() {
         moduleName="KESISWAAN"
         description="Kelola jadwal kegiatan rutin pembiasaan dan eskul sekolah."
       >
+        <div className="mb-4">
+          <AcademicContextBar
+            id="jadwal-kegiatan-context"
+            tahunPelajaranId={selectedTpId}
+            semesterId={selectedSemId}
+            onTahunPelajaranChange={setSelectedTpId}
+            onSemesterChange={setSelectedSemId}
+            tpOptions={tpOptions}
+            semesterOptions={semesterOptions}
+            variant="toolbar"
+          />
+        </div>
+
         <SectionCard fullWidth className="p-0">
           <div className="p-6 pb-0">
             <TabSwitcher
               tabs={tabOptions}
               activeTab={activeTab}
-              onChange={(id) => setActiveTab(id as 'ALL' | 'PEMBIASAAN' | 'ESKUL')}
+              onChange={(id) => setActiveTab(id as 'PEMBIASAAN' | 'ESKUL')}
             />
           </div>
           {loading ? (
