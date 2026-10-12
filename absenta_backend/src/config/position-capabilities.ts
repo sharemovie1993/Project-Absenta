@@ -395,8 +395,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   [STRUKTUR_CODES.PEMBINA_ESKUL]: [
     'organization.scope.unit_restricted',
     'dashboard.view.overview',
+    // Referensi Siswa & Kegiatan
     'academic.students.view.list',
     'academic.students.view.detail',
+    'academic.activities.types.view',
 
     // Sesi Presensi Latihan Eskul
     'attendance.sessions.view.list',
@@ -476,6 +478,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'dashboard.view.kurikulum',
     'academic.manage.academic',
     'academic.activities.view.grouped',
+    'academic.activities.types.view',
+    'academic.activities.types.manage',
     'academic.teaching.rekap',
 
     // Tahun Ajaran, Semester, & Struktur Sekolah
@@ -549,6 +553,13 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.history',
     'academic.teachers.view.list',
     'academic.structures.view.list',
+    'academic.activities.types.view',
+    'academic.activities.types.manage',
+    'attendance.schedules.view.list',
+    'attendance.schedules.manage',
+    'attendance.schedules.create',
+    'attendance.schedules.update',
+    'attendance.schedules.delete',
     'attendance.student.view.stats',
     'attendance.piket.manage',
     'attendance.piket.view',

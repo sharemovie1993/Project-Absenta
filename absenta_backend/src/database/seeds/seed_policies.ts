@@ -88,6 +88,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'academic.schedules.manage',
     'academic.student.card.view.config',
     'academic.view.student.card',
+    'academic.activities.types.view',
     'bk.assessment.view.list',
     'bk.referrals.view.list',
     'bk.referrals.manage',

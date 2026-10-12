@@ -6,7 +6,7 @@ import { RoleName } from '../../../../constants/enums';
 export default async function jenisKegiatanMasterRoutes(fastify: any) {
   fastify.get('/grouped', {
     preHandler: [
-      requireCapability('academic.activities.types.view', { exemptRoles: [RoleName.SISWA] }),
+      requireCapability('academic.activities.types.view', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }),
       determineDataScope()
     ]
   }, async (request: any, reply: any) => {
@@ -15,7 +15,7 @@ export default async function jenisKegiatanMasterRoutes(fastify: any) {
 
   fastify.get('/', {
     preHandler: [
-      requireCapability('academic.activities.types.view', { exemptRoles: [RoleName.SISWA] }),
+      requireCapability('academic.activities.types.view', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }),
       determineDataScope()
     ]
   }, async (request: any, reply: any) => {
@@ -25,7 +25,7 @@ export default async function jenisKegiatanMasterRoutes(fastify: any) {
 
   fastify.get('/:id', {
     preHandler: [
-      requireCapability('academic.activities.types.view'),
+      requireCapability('academic.activities.types.view', { exemptRoles: [RoleName.SISWA, RoleName.GURU] }),
       determineDataScope()
     ]
   }, async (request: any, reply: any) => {
