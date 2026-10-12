@@ -396,7 +396,7 @@ export const pembinaUpacaraService = {
       }
     }
 
-    // ── 3. AMBIL GURU BIASA (BUKAN WAKA & BUKAN WALI KELAS) ──────────────
+    // ── 3. AMBIL SELURUH DEWAN GURU AKTIF (GURU MAPEL / PELENGKAP) ──────
     const allGurus = await prisma.guru.findMany({
       where: {
         tenant_id: tenantId,
@@ -421,14 +421,12 @@ export const pembinaUpacaraService = {
     }> = [];
 
     for (const g of allGurus) {
-      if (!wakaGuruIds.has(g.id) && !waliGuruIds.has(g.id)) {
-        guruBiasaList.push({
-          guru_id: g.id,
-          nama_guru: g.nama_guru,
-          nip: g.nip || null,
-          no_hp: g.no_hp || null,
-        });
-      }
+      guruBiasaList.push({
+        guru_id: g.id,
+        nama_guru: g.nama_guru,
+        nip: g.nip || null,
+        no_hp: g.no_hp || null,
+      });
     }
 
     return {

@@ -330,6 +330,30 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
     });
   }, [simulatedMondays, orderedCandidatePairs, classList]);
 
+  // Map guru_id -> CandidateWakaItem untuk referensi status terpilih di Waka
+  const selectedWakaMap = useMemo(() => {
+    const map = new Map<string, CandidateWakaItem>();
+    if (!includeWaka) return map;
+    for (const w of wakaList) {
+      if (selectedWakaIds.includes(w.guru_id)) {
+        map.set(w.guru_id, w);
+      }
+    }
+    return map;
+  }, [includeWaka, wakaList, selectedWakaIds]);
+
+  // Map guru_id -> CandidateWaliItem untuk referensi status terpilih di Wali Kelas
+  const selectedWaliMap = useMemo(() => {
+    const map = new Map<string, CandidateWaliItem>();
+    if (!includeWaliKelas) return map;
+    for (const w of waliList) {
+      if (selectedWaliIds.includes(w.guru_id)) {
+        map.set(w.guru_id, w);
+      }
+    }
+    return map;
+  }, [includeWaliKelas, waliList, selectedWaliIds]);
+
   // Handlers Checkbox
   const handleToggleWaka = (id: string) => {
     setSelectedWakaIds((prev) =>
@@ -357,8 +381,18 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
     );
   };
   const handleToggleAllGuruBiasa = () => {
-    if (selectedGuruBiasaIds.length === guruBiasaList.length) setSelectedGuruBiasaIds([]);
-    else setSelectedGuruBiasaIds(guruBiasaList.map((g) => g.guru_id));
+    // Utamakan memilih guru yang murni belum terpilih di Waka maupun Wali Kelas
+    const availableGurus = guruBiasaList.filter(
+      (g) => !selectedWakaMap.has(g.guru_id) && !selectedWaliMap.has(g.guru_id)
+    );
+    const targetList = availableGurus.length > 0 ? availableGurus : guruBiasaList;
+    const allTargetSelected = targetList.every((g) => selectedGuruBiasaIds.includes(g.guru_id));
+
+    if (allTargetSelected) {
+      setSelectedGuruBiasaIds([]);
+    } else {
+      setSelectedGuruBiasaIds(targetList.map((g) => g.guru_id));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -590,6 +624,9 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
               <div className="max-h-80 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 p-1">
                 {sortedWaliItems.map((item) => {
                   const isSelected = selectedWaliIds.includes(item.guru_id) && includeWaliKelas;
+                  const wakaInfo = selectedWakaMap.get(item.guru_id);
+                  const isCheckedInWaka = Boolean(wakaInfo);
+
                   return (
                     <div
                       key={item.id}
@@ -607,9 +644,20 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                           <Square className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <p className="truncate text-slate-800 dark:text-slate-100 font-bold">
-                            {item.nama_guru}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="truncate text-slate-800 dark:text-slate-100 font-bold">
+                              {item.nama_guru}
+                            </p>
+                            {isCheckedInWaka && (
+                              <span
+                                title={`Guru ini telah diceklis di langkah Waka/Struktural (${wakaInfo?.jabatan})`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0"
+                              >
+                                <ShieldCheck className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                Terpilih di Waka {wakaInfo?.jabatan ? `(${wakaInfo.jabatan})` : ''}
+                              </span>
+                            )}
+                          </div>
                           {item.nip && <p className="text-[10px] text-slate-400">NIP: {item.nip}</p>}
                         </div>
                       </div>
@@ -650,24 +698,29 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                     onClick={handleToggleAllGuruBiasa}
                     className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
                   >
-                    {selectedGuruBiasaIds.length === guruBiasaList.length ? 'Batal' : 'Pilih Semua'}
+                    {selectedGuruBiasaIds.length > 0 ? 'Batal' : 'Pilih Semua'}
                   </button>
                 </div>
               )}
             </div>
 
             <p className="text-[11px] text-slate-400 px-1">
-              Aktifkan kelompok ini jika total pekan upacara dalam 1 semester belum mencukupi hanya dari pimpinan & wali kelas.
+              Pilih guru pengajar tambahan jika kuota pekan upacara 1 semester belum mencukupi hanya dari pimpinan & wali kelas.
             </p>
 
             {guruBiasaList.length === 0 ? (
               <div className="p-8 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
-                Semua guru aktif telah terdaftar sebagai Pimpinan Struktural atau Wali Kelas.
+                Belum ada data guru lain yang terdaftar.
               </div>
             ) : (
               <div className="max-h-80 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 p-1">
                 {guruBiasaList.map((item) => {
                   const isSelected = selectedGuruBiasaIds.includes(item.guru_id) && includeGuruBiasa;
+                  const wakaInfo = selectedWakaMap.get(item.guru_id);
+                  const waliInfo = selectedWaliMap.get(item.guru_id);
+                  const isCheckedInWaka = Boolean(wakaInfo);
+                  const isCheckedInWali = Boolean(waliInfo);
+
                   return (
                     <div
                       key={item.guru_id}
@@ -685,9 +738,29 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                           <Square className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <p className="truncate text-slate-800 dark:text-slate-100 font-bold">
-                            {item.nama_guru}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="truncate text-slate-800 dark:text-slate-100 font-bold">
+                              {item.nama_guru}
+                            </p>
+                            {isCheckedInWaka && (
+                              <span
+                                title={`Guru ini telah diceklis di langkah Waka/Struktural (${wakaInfo?.jabatan})`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0"
+                              >
+                                <ShieldCheck className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                Terpilih di Waka {wakaInfo?.jabatan ? `(${wakaInfo.jabatan})` : ''}
+                              </span>
+                            )}
+                            {isCheckedInWali && (
+                              <span
+                                title={`Guru ini telah diceklis di langkah Wali Kelas (${waliInfo?.nama_kelas})`}
+                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0"
+                              >
+                                <GraduationCap className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                Terpilih di Wali Kelas ({waliInfo?.nama_kelas})
+                              </span>
+                            )}
+                          </div>
                           {item.nip && <p className="text-[10px] text-slate-400">NIP: {item.nip}</p>}
                         </div>
                       </div>
