@@ -75,13 +75,7 @@ import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
-// Lazy Module Dashboards for In-Tab Rendering (Bebas Sidebar, 100% Full Width)
-const KurikulumDashboard = React.lazy(() => import('@/pages/kurikulum/Dashboard'));
-const KesiswaanDashboard = React.lazy(() => import('@/pages/kesiswaan/MonitoringKesiswaanPage'));
-const SarprasDashboard = React.lazy(() => import('@/pages/sarpras/SarprasDashboard'));
-const HubinDashboard = React.lazy(() => import('@/pages/hubin/HubinDashboardPage'));
-const CooperativeDashboard = React.lazy(() => import('@/pages/cooperative/Dashboard'));
-const BpbkDashboard = React.lazy(() => import('@/pages/bpbk/DashboardPage'));
+// Modular Dashboards are accessed via Google-style App Launcher & Portal tab
 // Admin Overview Tab — dirender di tab Admin untuk role ADMIN/SUPERADMIN
 import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 // Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
@@ -833,44 +827,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
     }
 
-    // 4. Kurikulum (hanya jika ada SK Kurikulum / Admin)
-    if (isKurikulum || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'kurikulum', label: 'Kurikulum', icon: ShieldCheck, badge: 'WAKA' });
-    }
-
-    // 5. Kesiswaan (hanya jika ada SK Kesiswaan / Admin)
-    if (isKesiswaan || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'kesiswaan', label: 'Kesiswaan', icon: Users, badge: 'WAKA' });
-    }
-
-    // 6. Sarpras (hanya jika ada SK Sarpras / Toolman / Kabeng / Admin)
-    if (isSarpras || isToolman || isKabeng || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'sarpras', label: 'Sarpras', icon: Building, badge: 'WAKA' });
-    }
-
-    // 7. Hubin (hanya jika ada SK Hubin / BKK / Kaprog / Admin)
-    if (isHubin || isBkk || isKaprog || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'hubin', label: 'Hubin', icon: Briefcase, badge: 'WAKA' });
-    }
-
-    // 7.1 Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
+    // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
       list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase, badge: 'PKL' });
     }
 
-    // 7.2 Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
+    // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles, badge: 'P5' });
-    }
-
-    // 8. Koperasi (hanya jika ada SK Pengelola Koperasi / Admin)
-    if (isKoperasi || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'koperasi', label: 'Koperasi', icon: ShoppingCart, badge: 'UNIT' });
-    }
-
-    // 9. BP/BK (hanya jika ada SK Guru BK / Admin)
-    if (isBpbk || (isAdminRole && !isKepsek)) {
-      list.push({ id: 'bpbk', label: 'BP/BK', icon: UserCheck, badge: 'BK' });
     }
 
     // 10. Tab Tata Usaha Sesuai Spesialisasi Fungsional
@@ -900,24 +864,19 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isAdminRole,
     isPureGerbangStaff,
     hasGerbangDuty,
+    isGerbang,
     isTuStaff,
     isKurikulum,
     isWaliKelas,
     waliKelasNama,
     isKesiswaan,
     isKepsek,
-    isSarpras,
-    isToolman,
-    isKabeng,
-    isHubin,
     isPembimbingPkl,
-    isBkk,
-    isKaprog,
-    isKoperasi,
-    isBpbk,
-    isGerbang,
+    isFasilitatorP5Actual,
     isTUKepegawaian,
     isTU,
+    tuTabMeta,
+    isPiketGuru,
   ]);
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
@@ -1202,33 +1161,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 📘 TAB 4: KURIKULUM DASHBOARD */}
-        {activeTab === 'kurikulum' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <KurikulumDashboard />
-          </Suspense>
-        )}
 
-        {/* 👥 TAB 5: KESISWAAN DASHBOARD */}
-        {activeTab === 'kesiswaan' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <KesiswaanDashboard />
-          </Suspense>
-        )}
-
-        {/* 🏢 TAB 6: SARPRAS DASHBOARD */}
-        {activeTab === 'sarpras' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <SarprasDashboard />
-          </Suspense>
-        )}
-
-        {/* 💼 TAB 7: HUBIN DASHBOARD */}
-        {activeTab === 'hubin' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <HubinDashboard />
-          </Suspense>
-        )}
 
         {/* 💼 TAB 7.1: BIMBINGAN PKL DASHBOARD (KHUSUS GURU PEMBIMBING) */}
         {activeTab === 'pembimbing_pkl' && (
@@ -1238,19 +1171,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 🛒 TAB 8: KOPERASI DASHBOARD */}
-        {activeTab === 'koperasi' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <CooperativeDashboard />
-          </Suspense>
-        )}
 
-        {/* 🤝 TAB 9: BP/BK DASHBOARD */}
-        {activeTab === 'bpbk' && (
-          <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <BpbkDashboard />
-          </Suspense>
-        )}
 
         {/* 🛡️ TAB ADMIN: DASHBOARD OPERASIONAL ADMIN/SUPERADMIN */}
         {activeTab === 'admin' && (
