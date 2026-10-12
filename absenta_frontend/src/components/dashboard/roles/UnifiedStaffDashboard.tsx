@@ -842,8 +842,9 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'kepegawaian', label: tuTabMeta.label, icon: Users, badge: tuTabMeta.badge });
     }
 
-    // 11. Piket & Gerbang (Hanya jika ada tugas piket / gerbang / kesiswaan nyata, bukan Admin murni)
-    if (!isKurikulum && (isPiketGuru || isGerbang || isKesiswaan) && (!isAdminRole || isPendidik) && !isKepsek) {
+    // 11. Piket & Gerbang (Tugas piket harian, gerbang, kesiswaan, kurikulum, dan seluruh guru pendidik)
+    const canAccessPiket = isPiketGuru || isGerbang || isKesiswaan || isKurikulum || isPendidik || can('attendance.piket.view') || can('attendance.piket.manage');
+    if (canAccessPiket && (!isAdminRole || isPendidik) && !isKepsek) {
       list.push({ 
         id: 'kelola', 
         label: isPureGerbangStaff ? 'Pos Keamanan' : hasGerbangDuty ? 'Piket & Gerbang' : 'Piket Harian', 
@@ -871,6 +872,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     waliKelasNama,
     isKesiswaan,
     isKepsek,
+    isPendidik,
+    can,
     isPembimbingPkl,
     isFasilitatorP5Actual,
     isTUKepegawaian,
