@@ -404,9 +404,9 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
         <div className="p-3.5 bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 dark:from-indigo-950/30 dark:via-purple-950/30 dark:to-blue-950/30 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-3">
           <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
           <div className="text-xs text-indigo-950 dark:text-indigo-200">
-            <p className="font-bold">Generator Cerdas Multi-Kelompok (Waka ➔ Wali Kelas ➔ Guru Biasa)</p>
+            <p className="font-bold">Generator Cerdas Multi-Kelompok (Pimpinan & Struktural ➔ Wali Kelas ➔ Guru Biasa)</p>
             <p className="text-slate-600 dark:text-slate-400 mt-0.5 leading-relaxed">
-              Susun giliran pembina upacara bendera semester ini dengan memprioritaskan <strong>Jajaran Waka</strong> di awal semester, dilanjutkan <strong>Wali Kelas</strong> bersama rombel binaannya, serta <strong>Guru Mata Pelajaran</strong> untuk memenuhi seluruh pekan.
+              Susun giliran pembina upacara bendera semester ini dengan memprioritaskan <strong>Jajaran Pimpinan & Struktural (Kepala Sekolah, Waka, Kaprog, BP/BK)</strong> di awal semester, dilanjutkan <strong>Wali Kelas</strong> bersama rombel binaannya, serta <strong>Guru Mata Pelajaran</strong> untuk memenuhi seluruh pekan.
               {academicContextLabel && (
                 <span className="block mt-1 font-semibold text-indigo-600 dark:text-indigo-400">
                   📍 Konteks Akademik: {academicContextLabel}
@@ -453,8 +453,8 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
               onChange={(e) => setRotationStrategy(e.target.value as RotationStrategy)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="WAKA_FIRST">Waka (Awal) ➔ Wali Kelas ➔ Guru Biasa</option>
-              <option value="WALI_FIRST">Wali Kelas (Awal) ➔ Waka ➔ Guru Biasa</option>
+              <option value="WAKA_FIRST">Pimpinan & Struktural (Awal) ➔ Wali Kelas ➔ Guru Biasa</option>
+              <option value="WALI_FIRST">Wali Kelas (Awal) ➔ Pimpinan & Struktural ➔ Guru Biasa</option>
               <option value="COMBINED">Campuran Proporsional</option>
             </select>
             <span className="text-[10px] text-indigo-500 font-semibold">
@@ -474,8 +474,8 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            <Award className="w-3.5 h-3.5 text-purple-600" />
-            <span>1. Para Waka</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+            <span>1. Pimpinan & Struktural</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
               {includeWaka ? selectedWakaIds.length : 0}/{wakaList.length}
             </span>
@@ -527,7 +527,7 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
           </button>
         </div>
 
-        {/* ── TAB 1: KELOMPOK PARA WAKA ───────────────────────────────── */}
+        {/* ── TAB 1: KELOMPOK JAJARAN STRUKTURAL ────────────────────────── */}
         {activeTab === 'WAKA' && (
           <div className="space-y-3">
             <div className="flex items-center justify-between p-2.5 bg-purple-50/50 dark:bg-purple-950/20 rounded-xl border border-purple-100/60 dark:border-purple-900/30">
@@ -540,10 +540,10 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
                 />
                 <div>
                   <span className="font-bold text-xs text-purple-900 dark:text-purple-200">
-                    Sertakan Kelompok Para Waka dalam Giliran Pembina
+                    Sertakan Jajaran Pimpinan & Struktural dalam Giliran Pembina
                   </span>
                   <p className="text-[11px] text-purple-700/80 dark:text-purple-300/80">
-                    Wakil Kepala Sekolah (Kurikulum, Kesiswaan, Sarpras, Hubin) bertugas di pekan-pekan awal semester.
+                    Mencakup Kepala Sekolah, Waka Kurikulum, Waka Kesiswaan, Waka Sarpras, Waka Hubin, Kaprog, dan BP/BK.
                   </p>
                 </div>
               </label>

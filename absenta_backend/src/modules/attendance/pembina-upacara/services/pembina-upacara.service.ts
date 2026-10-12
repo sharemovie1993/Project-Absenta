@@ -200,29 +200,44 @@ export const pembinaUpacaraService = {
     const tenantId = scope.tenantId;
     if (!tenantId) throw new Error('Tenant ID diperlukan');
 
-    // ── 1. AMBIL PARA WAKA ──────────────────────────────────────────────
-    const wakaAssignments = await prisma.organizationalAssignment.findMany({
+    // ── 1. AMBIL JAJARAN STRUKTURAL (KEPALA SEKOLAH, WAKA, KAPROG, BPBK) ──
+    const targetStrukturalCodes = [
+      STRUKTUR_CODES.KEPALA_SEKOLAH,
+      STRUKTUR_CODES.KURIKULUM,
+      STRUKTUR_CODES.KESISWAAN,
+      STRUKTUR_CODES.SARPRAS,
+      STRUKTUR_CODES.HUBIN,
+      STRUKTUR_CODES.KAPROG,
+      STRUKTUR_CODES.BPBK,
+      'KEPSEK',
+      'WAKASEK',
+      'WAKA',
+      'BK',
+    ];
+
+    const strukturalAssignments = await prisma.organizationalAssignment.findMany({
       where: {
         tenant_id: tenantId,
         is_active: true,
         Position: {
           is_active: true,
           OR: [
-            {
-              code: {
-                in: [
-                  STRUKTUR_CODES.KURIKULUM,
-                  STRUKTUR_CODES.KESISWAAN,
-                  STRUKTUR_CODES.HUBIN,
-                  STRUKTUR_CODES.SARPRAS,
-                  'WAKASEK',
-                  'WAKA',
-                ],
-              },
-            },
+            { code: { in: targetStrukturalCodes } },
+            { code: { contains: 'KEPALA', mode: 'insensitive' } },
             { code: { contains: 'WAKA', mode: 'insensitive' } },
+            { code: { contains: 'KURIKULUM', mode: 'insensitive' } },
+            { code: { contains: 'KESISWAAN', mode: 'insensitive' } },
+            { code: { contains: 'SARPRAS', mode: 'insensitive' } },
+            { code: { contains: 'HUBIN', mode: 'insensitive' } },
+            { code: { contains: 'KAPROG', mode: 'insensitive' } },
+            { code: { contains: 'BPBK', mode: 'insensitive' } },
+            { code: { contains: 'BK', mode: 'insensitive' } },
+            { name: { contains: 'Kepala Sekolah', mode: 'insensitive' } },
             { name: { contains: 'Waka', mode: 'insensitive' } },
             { name: { contains: 'Wakil', mode: 'insensitive' } },
+            { name: { contains: 'Kaprog', mode: 'insensitive' } },
+            { name: { contains: 'BP/BK', mode: 'insensitive' } },
+            { name: { contains: 'Bimbingan', mode: 'insensitive' } },
           ],
         },
       },
@@ -252,8 +267,22 @@ export const pembinaUpacaraService = {
     }> = [];
     const wakaGuruIds = new Set<string>();
 
-    for (const asg of wakaAssignments) {
-      const guru = asg.User?.Guru;
+    for (const asg of strukturalAssignments) {
+      let guru = asg.User?.Guru;
+      // Fallback: Jika User belum berelasi langsung dengan Guru
+      if (!guru && asg.user_id) {
+        guru = await prisma.guru.findFirst({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { user_id: asg.user_id },
+              { nama_guru: asg.User?.full_name },
+            ],
+          },
+          select: { id: true, nama_guru: true, nip: true, no_hp: true },
+        });
+      }
+
       if (guru && !wakaGuruIds.has(guru.id)) {
         wakaGuruIds.add(guru.id);
         wakaList.push({
@@ -262,9 +291,45 @@ export const pembinaUpacaraService = {
           nama_guru: guru.nama_guru,
           nip: guru.nip || null,
           no_hp: guru.no_hp || null,
-          jabatan: asg.Position?.name || 'Wakil Kepala Sekolah',
-          kode_jabatan: asg.Position?.code || 'WAKA',
+          jabatan: asg.Position?.name || 'Jajaran Pimpinan / Struktural',
+          kode_jabatan: asg.Position?.code || 'STRUKTURAL',
         });
+      }
+    }
+
+    // Fallback: Pastikan Kepala Sekolah terdeteksi jika tersimpan di profil Sekolah
+    const hasKepsek = wakaList.some(
+      (w) =>
+        w.kode_jabatan.includes('KEPALA') ||
+        w.kode_jabatan.includes('KEPSEK') ||
+        w.jabatan.toLowerCase().includes('kepala sekolah')
+    );
+
+    if (!hasKepsek) {
+      const sekolah = await prisma.sekolah.findFirst({
+        where: { tenant_id: tenantId },
+        select: { kepala_sekolah: true },
+      });
+      if (sekolah?.kepala_sekolah && sekolah.kepala_sekolah.trim()) {
+        const kepsekGuru = await prisma.guru.findFirst({
+          where: {
+            tenant_id: tenantId,
+            nama_guru: { contains: sekolah.kepala_sekolah.trim(), mode: 'insensitive' },
+          },
+          select: { id: true, nama_guru: true, nip: true, no_hp: true },
+        });
+        if (kepsekGuru && !wakaGuruIds.has(kepsekGuru.id)) {
+          wakaGuruIds.add(kepsekGuru.id);
+          wakaList.unshift({
+            id: `kepsek-${kepsekGuru.id}`,
+            guru_id: kepsekGuru.id,
+            nama_guru: kepsekGuru.nama_guru,
+            nip: kepsekGuru.nip || null,
+            no_hp: kepsekGuru.no_hp || null,
+            jabatan: 'Kepala Sekolah',
+            kode_jabatan: 'KEPALA_SEKOLAH',
+          });
+        }
       }
     }
 
