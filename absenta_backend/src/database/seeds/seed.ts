@@ -293,6 +293,7 @@ async function main() {
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Agenda & Kebijakan Poin
         { label: 'Agenda Kesiswaan', icon: 'Calendar', path: '/kesiswaan/jadwal-kegiatan', required_capability: 'attendance.schedules.view.list, dashboard.view.kesiswaan' },
+        { label: 'Pembina Upacara', icon: 'Award', path: '/kesiswaan/pembina-upacara', required_capability: 'attendance.schedules.view.list, dashboard.view.kesiswaan' },
         { label: 'Master Poin', icon: 'List', path: '/kesiswaan/jenis-pelanggaran', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
         { label: 'Pengaturan', icon: 'Settings', path: '/kesiswaan/settings', required_capability: 'affairs.violation.types.manage, dashboard.view.kesiswaan' },
         { label: 'Cetak Berkas', icon: 'ClipboardList', path: '/kesiswaan/cetak-berkas', required_capability: 'dashboard.view.kesiswaan' },
