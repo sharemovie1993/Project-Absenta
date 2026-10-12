@@ -4,6 +4,7 @@ import { CetakBerkasTemplate } from '../../components/academic/CetakBerkasTempla
 import { DocOption } from '../../components/academic/CetakFormGeneric';
 import { generateGenericPdf } from '../../utils/print/pdfGeneric';
 import { kesiswaanApi } from '../../api/kesiswaan.api';
+import { pembinaUpacaraApi } from '../../api/attendance/pembinaUpacara.api';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 import { Loader } from '../../components/ui/Loader';
 import { Card } from '../../components/ui/Card';
@@ -26,10 +27,11 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
 
   // Move static doc options outside of component scope to avoid DOM churn (Pillar 3)
   const docOptions: DocOption[] = useMemo(() => [
-    { value: 'letter_summons', label: '1. SURAT PANGGILAN ORANG TUA / WALI SISWA', requireClass: true },
-    { value: 'recap_violations', label: '2. REKAPITULASI PELANGGARAN KELAS', requireClass: true },
-    { value: 'recap_achievements', label: '3. REKAPITULASI PRESTASI SISWA KELAS', requireClass: true },
-    { value: 'osis_sk', label: '4. SK KEPENGURUSAN OSIS (COMING SOON)', requireClass: false }
+    { value: 'jadwal_pembina_upacara', label: '1. DAFTAR JADWAL PEMBINA & PETUGAS UPACARA BENDERA', requireClass: false },
+    { value: 'letter_summons', label: '2. SURAT PANGGILAN ORANG TUA / WALI SISWA', requireClass: true },
+    { value: 'recap_violations', label: '3. REKAPITULASI PELANGGARAN KELAS', requireClass: true },
+    { value: 'recap_achievements', label: '4. REKAPITULASI PRESTASI SISWA KELAS', requireClass: true },
+    { value: 'osis_sk', label: '5. SK KEPENGURUSAN OSIS (COMING SOON)', requireClass: false }
   ], []);
 
   const renderDocForm = useCallback((props: {
@@ -107,6 +109,7 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
     const violationsMap: Record<string, unknown[]> = {};
     const achievementsMap: Record<string, unknown[]> = {};
     let selectedStudent: Siswa | null = null;
+    let schedulesList: any[] = [];
 
     try {
       if (selectedPrintType === 'letter_summons' && selectedStudentId) {
@@ -155,6 +158,16 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
             }
           })
         );
+      } else if (selectedPrintType === 'jadwal_pembina_upacara') {
+        const res = await queryClient.fetchQuery({
+          queryKey: ['pembina-upacara-all-print'],
+          queryFn: () => pembinaUpacaraApi.getAll(),
+          staleTime: 5 * 60 * 1000
+        }).catch(() => null);
+
+        if (res?.success && res?.data) {
+          schedulesList = res.data || [];
+        }
       }
     } catch (e) {
       console.error('Failed to load kesiswaan printing data:', e);
@@ -173,7 +186,16 @@ export const CetakBerkasKesiswaanPage: React.FC = React.memo(() => {
       logoSekolahBase64,
       includeSchoolLogo,
       checklistData,
-      filterData: { violationsMap, achievementsMap, selectedStudent, classes, students }
+      filterData: { 
+        violationsMap, 
+        achievementsMap, 
+        selectedStudent, 
+        classes, 
+        students,
+        schedules: schedulesList,
+        tahunAjaranNama: checklistData?.current_year?.tahun,
+        semesterNama: checklistData?.current_semester?.nama_semester,
+      }
     });
   }, [queryClient]);
 

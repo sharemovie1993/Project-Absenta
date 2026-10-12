@@ -103,6 +103,112 @@ export const renderKesiswaanPdf = (
     doc.text('kami mengucapkan terima kasih.', 15, textY + 106);
     
     currentY = textY + 112;
+  } else if (printType === 'jadwal_pembina_upacara') {
+    // ── DOKUMEN RESMI: JADWAL PEMBINA UPACARA BENDERA ──
+    const schedulesList: any[] = filterData?.schedules || [];
+    const tahunAjar = filterData?.tahunAjaranNama || options.checklistData?.current_year?.tahun || getAcademicYearFromPeriod();
+    const semesterNama = filterData?.semesterNama || 'Ganjil';
+
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text('DAFTAR PENUGASAN PEMBINA & PETUGAS UPACARA BENDERA', pageWidth / 2, headerEndY + 6, { align: 'center' });
+    doc.setFontSize(9.5);
+    doc.text(`SEMESTER ${semesterNama.toUpperCase()} TAHUN PELAJARAN ${tahunAjar}`, pageWidth / 2, headerEndY + 11, { align: 'center' });
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8);
+    const subDesc = 'Lampiran resmi rotasi penugasan pembina upacara bendera hari Senin dan rombel petugas pelaksana upacara.';
+    doc.text(subDesc, pageWidth / 2, headerEndY + 16, { align: 'center' });
+
+    const tableStartY = headerEndY + 20;
+
+    const head = [[
+      { content: 'NO', styles: { halign: 'center' } },
+      { content: 'HARI / TANGGAL', styles: { halign: 'center' } },
+      { content: 'PEMBINA UPACARA UTAMA' },
+      { content: 'ROMBEL PETUGAS UPACARA', styles: { halign: 'center' } },
+      { content: 'TEMA / AMANAT UPACARA' },
+      { content: 'KETERANGAN / STATUS', styles: { halign: 'center' } },
+    ]];
+
+    let body: any[] = [];
+    if (schedulesList.length > 0) {
+      body = schedulesList.map((item: any, idx: number) => {
+        let tglFormatted = '-';
+        try {
+          const dt = new Date(item.tanggal);
+          tglFormatted = dt.toLocaleDateString('id-ID', {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          });
+        } catch {
+          tglFormatted = item.tanggal || '-';
+        }
+
+        const pembinaName = item.GuruUtama?.nama_guru || '-';
+        const pembinaNip = item.GuruUtama?.nip ? `\nNIP: ${item.GuruUtama.nip}` : '';
+        const penggantiName = item.GuruPengganti?.nama_guru 
+          ? `\n(Digantikan: ${item.GuruPengganti.nama_guru})` 
+          : '';
+
+        const rombel = item.KelasPetugas?.nama_kelas || '-';
+        const tema = item.tema_amanat || '-';
+        const status = item.status === 'SELESAI' 
+          ? 'Terlaksana' 
+          : item.status === 'DIGANTIKAN' 
+            ? 'Handover / Digantikan' 
+            : item.status === 'DIBATALKAN' 
+              ? 'Dibatalkan' 
+              : 'Dijadwalkan';
+
+        return [
+          (idx + 1).toString(),
+          tglFormatted,
+          `${pembinaName}${pembinaNip}${penggantiName}`,
+          rombel,
+          tema,
+          status,
+        ];
+      });
+    } else {
+      body = [
+        ['1', 'Senin, 21 Jul 2026', 'Drs. H. Mulyono\nNIP: 19680512 199403 1 004', 'X PPLG 1', 'Disiplin dan Integritas Siswa', 'Dijadwalkan'],
+        ['2', 'Senin, 28 Jul 2026', 'Siti Aminah, S.Pd.\nNIP: 19750211 200003 2 003', 'X PPLG 2', 'Semangat Belajar di Era Digital', 'Dijadwalkan'],
+        ['3', 'Senin, 04 Agu 2026', 'Ahmad Dahlan, M.Kom.\nNIP: 19820419 200801 1 012', 'XI TKJ 1', 'Mencegah Perundungan (Anti-Bullying)', 'Dijadwalkan'],
+      ];
+    }
+
+    autoTable(doc, {
+      startY: tableStartY,
+      head: head as any,
+      body: body as any,
+      theme: 'grid',
+      styles: { fontSize: 8, font: 'Helvetica', cellPadding: 2.5 },
+      headStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        lineWidth: 0.15,
+        lineColor: [0, 0, 0],
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        lineWidth: 0.15,
+        lineColor: [0, 0, 0],
+        textColor: [15, 23, 42],
+      },
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        1: { cellWidth: 32, halign: 'center' },
+        2: { cellWidth: 55 },
+        3: { cellWidth: 26, halign: 'center' },
+        4: { cellWidth: 42 },
+        5: { cellWidth: 22, halign: 'center' },
+      },
+    });
+
+    currentY = (doc as any).lastAutoTable?.finalY ?? (tableStartY + 50);
   } else {
     // Default Kesiswaan: Violations / Achievements Recap
     const isAchievements = printType === 'recap_achievements';

@@ -18,6 +18,7 @@ import {
   CalendarDays,
   FileSpreadsheet,
   GraduationCap,
+  Printer,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
@@ -37,6 +38,7 @@ import { Loader } from '@/components/ui/Loader';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import { PembinaUpacaraFormModal } from '@/components/attendance/pembina-upacara/PembinaUpacaraFormModal';
 import { AutoGenerateUpacaraModal } from '@/components/attendance/pembina-upacara/AutoGenerateUpacaraModal';
+import { CetakDokumenUpacaraModal } from '@/components/attendance/pembina-upacara/CetakDokumenUpacaraModal';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 
 export default React.memo(function JadwalPembinaUpacaraPage() {
@@ -86,6 +88,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StatusPelaksanaanUpacara>('ALL');
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPembinaUpacaraItem | null>(null);
 
   // Filtered List
@@ -228,6 +231,15 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
           >
             <Clock className="w-4 h-4 text-slate-500" />
             Slot Jadwal Kegiatan
+          </Button>
+          <Button
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="flex items-center gap-1.5 font-bold rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+          >
+            <Printer className="w-4 h-4" />
+            Cetak Dokumen Resmi
           </Button>
           <Button
             variant="toolbarOutline"
@@ -534,6 +546,17 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
           tahunPelajaranId={activeTahunPelajaranId}
           semesterId={selectedSemId}
           academicContextLabel={academicContextLabel}
+        />
+      )}
+
+      {/* Modal Cetak Dokumen Resmi Kop Surat */}
+      {isPrintModalOpen && (
+        <CetakDokumenUpacaraModal
+          isOpen={isPrintModalOpen}
+          onClose={() => setIsPrintModalOpen(false)}
+          schedules={filteredList}
+          tahunAjaranNama={activeTpData?.tahun}
+          semesterNama={activeSemesterData?.label}
         />
       )}
     </AcademicPageLayout>
