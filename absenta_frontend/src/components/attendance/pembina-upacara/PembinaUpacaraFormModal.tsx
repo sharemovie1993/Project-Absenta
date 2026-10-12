@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui';
-import { Calendar, User, Users, FileText, CheckCircle, AlertTriangle } from 'lucide-react';
-import { JadwalPembinaUpacaraItem, CreatePembinaUpacaraPayload, StatusPelaksanaanUpacara } from '@/api/attendance/pembinaUpacara.api';
+import { Calendar, User, Users, FileText, CheckCircle, AlertTriangle, Zap, GraduationCap } from 'lucide-react';
+import {
+  JadwalPembinaUpacaraItem,
+  CreatePembinaUpacaraPayload,
+  StatusPelaksanaanUpacara,
+} from '@/api/attendance/pembinaUpacara.api';
+import type { WaliKelasStrukturAssignment } from '@/types/academic';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: CreatePembinaUpacaraPayload) => Promise<void>;
   editingItem?: JadwalPembinaUpacaraItem | null;
+  waliKelasList?: WaliKelasStrukturAssignment[];
   guruList: Array<{ id: string; nama_guru: string; nip?: string | null }>;
   classList: Array<{ id: string; nama_kelas: string }>;
   tahunPelajaranId: string;
@@ -20,6 +26,7 @@ export const PembinaUpacaraFormModal: React.FC<Props> = ({
   onClose,
   onSubmit,
   editingItem,
+  waliKelasList = [],
   guruList,
   classList,
   tahunPelajaranId,
@@ -33,16 +40,20 @@ export const PembinaUpacaraFormModal: React.FC<Props> = ({
   const [catatan, setCatatan] = useState('');
   const [status, setStatus] = useState<StatusPelaksanaanUpacara>('DIJADWALKAN');
   const [loading, setLoading] = useState(false);
+  const [quickWaliMessage, setQuickWaliMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (editingItem) {
-      setTanggal(editingItem.tanggal ? new Date(editingItem.tanggal).toISOString().split('T')[0] : '');
+      setTanggal(
+        editingItem.tanggal ? new Date(editingItem.tanggal).toISOString().split('T')[0] : ''
+      );
       setGuruId(editingItem.guru_id || '');
       setGuruPenggantiId(editingItem.guru_pengganti_id || '');
       setKelasPetugasId(editingItem.kelas_petugas_id || '');
       setTemaAmanat(editingItem.tema_amanat || '');
       setCatatan(editingItem.catatan || '');
       setStatus(editingItem.status || 'DIJADWALKAN');
+      setQuickWaliMessage(null);
     } else {
       // Default ke Senin berikutnya jika buat baru
       const today = new Date();
@@ -58,8 +69,28 @@ export const PembinaUpacaraFormModal: React.FC<Props> = ({
       setTemaAmanat('');
       setCatatan('');
       setStatus('DIJADWALKAN');
+      setQuickWaliMessage(null);
     }
   }, [editingItem, isOpen]);
+
+  const handleSelectWaliKelas = (assignmentId: string) => {
+    if (!assignmentId) return;
+    const selectedWali = waliKelasList.find((w) => w.id === assignmentId);
+    if (selectedWali) {
+      if (selectedWali.guru_id) {
+        setGuruId(selectedWali.guru_id);
+      }
+      const kelasId =
+        selectedWali.StrukturOrganisasi?.kelas_id ||
+        selectedWali.StrukturOrganisasi?.Kelas?.id;
+      if (kelasId) {
+        setKelasPetugasId(kelasId);
+      }
+      const guruNama = selectedWali.Guru?.nama_guru || 'Guru';
+      const kelasNama = selectedWali.StrukturOrganisasi?.Kelas?.nama_kelas || 'Kelas';
+      setQuickWaliMessage(`Disinkronkan: ${guruNama} (Wali Kelas ${kelasNama})`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,6 +123,42 @@ export const PembinaUpacaraFormModal: React.FC<Props> = ({
       maxWidth="max-w-xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Quick Fill from Wali Kelas (hanya saat buat baru & ada data wali kelas) */}
+        {!editingItem && waliKelasList.length > 0 && (
+          <div className="p-3 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-800/40 rounded-xl space-y-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-200">
+              <Zap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Isi Cepat Berdasarkan Wali Kelas (Konteks Akademik)</span>
+            </div>
+            <select
+              defaultValue=""
+              onChange={(e) => handleSelectWaliKelas(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800 bg-white dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-100 font-medium focus:ring-2 focus:ring-amber-500"
+            >
+              <option value="">-- Pilih Wali Kelas untuk Mengisi Otomatis Pembina & Petugas --</option>
+              {waliKelasList.map((w) => {
+                const guruNama = w.Guru?.nama_guru || 'Guru';
+                const kelasNama = w.StrukturOrganisasi?.Kelas?.nama_kelas || 'Kelas';
+                return (
+                  <option key={w.id} value={w.id}>
+                    {guruNama} — [Wali Kelas {kelasNama}]
+                  </option>
+                );
+              })}
+            </select>
+            {quickWaliMessage ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <CheckCircle className="w-3.5 h-3.5" />
+                {quickWaliMessage}
+              </p>
+            ) : (
+              <p className="text-[10px] text-amber-700/80 dark:text-amber-300/80">
+                Memilih wali kelas akan otomatis menentukan Pembina Utama sekaligus Kelas Petugas upacara.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Tanggal Pelaksanaan */}
         <div>
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">

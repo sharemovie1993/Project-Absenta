@@ -22,9 +22,15 @@ export const autoGenerateUpacaraSchema = z.object({
   semester_id: z.string().optional().nullable(),
   tanggal_mulai: z.string().optional(),
   tanggal_selesai: z.string().optional(),
-  guru_ids: z.array(z.string()).min(1, 'Pilih minimal 1 guru pembina'),
+  guru_ids: z.array(z.string()).optional(),
   kelas_ids: z.array(z.string()).optional(),
+  rotasi_pairs: z.array(z.object({
+    guru_id: z.string(),
+    kelas_id: z.string().optional().nullable(),
+  })).optional(),
   tema_presets: z.array(z.string()).optional(),
+}).refine(data => (data.guru_ids && data.guru_ids.length > 0) || (data.rotasi_pairs && data.rotasi_pairs.length > 0), {
+  message: 'Pilih minimal 1 guru pembina atau tentukan rotasi wali kelas',
 });
 
 export const pembinaUpacaraController = {

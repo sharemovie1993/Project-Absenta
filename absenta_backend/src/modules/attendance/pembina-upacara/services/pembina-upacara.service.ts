@@ -20,8 +20,9 @@ export interface AutoGenerateUpacaraDto {
   semester_id?: string | null;
   tanggal_mulai?: string; // YYYY-MM-DD (default: semester start or today)
   tanggal_selesai?: string; // YYYY-MM-DD (default: semester end or +6 months)
-  guru_ids: string[];
+  guru_ids?: string[];
   kelas_ids?: string[];
+  rotasi_pairs?: Array<{ guru_id: string; kelas_id?: string | null }>;
   tema_presets?: string[];
 }
 
@@ -180,8 +181,11 @@ export const pembinaUpacaraService = {
   },
 
   async autoGenerate(scope: DataScope, dto: AutoGenerateUpacaraDto, userId?: string) {
-    if (!dto.guru_ids || dto.guru_ids.length === 0) {
-      throw new Error('Daftar guru pembina tidak boleh kosong.');
+    const hasPairs = dto.rotasi_pairs && dto.rotasi_pairs.length > 0;
+    const hasGurus = dto.guru_ids && dto.guru_ids.length > 0;
+
+    if (!hasPairs && !hasGurus) {
+      throw new Error('Daftar guru pembina atau rotasi wali kelas tidak boleh kosong.');
     }
 
     // Tentukan rentang tanggal
@@ -226,10 +230,20 @@ export const pembinaUpacaraService = {
     const results = [];
     for (let i = 0; i < mondays.length; i++) {
       const tgl = mondays[i];
-      const guruId = dto.guru_ids[i % dto.guru_ids.length];
-      const kelasId = dto.kelas_ids && dto.kelas_ids.length > 0 
-        ? dto.kelas_ids[i % dto.kelas_ids.length] 
-        : null;
+      let guruId: string;
+      let kelasId: string | null = null;
+
+      if (hasPairs) {
+        const pair = dto.rotasi_pairs![i % dto.rotasi_pairs!.length];
+        guruId = pair.guru_id;
+        kelasId = pair.kelas_id || null;
+      } else {
+        guruId = dto.guru_ids![i % dto.guru_ids!.length];
+        kelasId = dto.kelas_ids && dto.kelas_ids.length > 0
+          ? dto.kelas_ids[i % dto.kelas_ids.length]
+          : null;
+      }
+
       const tema = dto.tema_presets && dto.tema_presets.length > 0
         ? dto.tema_presets[i % dto.tema_presets.length]
         : null;

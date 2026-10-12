@@ -59,8 +59,9 @@ export interface AutoGenerateUpacaraPayload {
   semester_id?: string | null;
   tanggal_mulai?: string; // YYYY-MM-DD
   tanggal_selesai?: string; // YYYY-MM-DD
-  guru_ids: string[];
+  guru_ids?: string[];
   kelas_ids?: string[];
+  rotasi_pairs?: Array<{ guru_id: string; kelas_id?: string | null }>;
   tema_presets?: string[];
 }
 

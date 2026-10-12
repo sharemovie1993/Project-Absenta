@@ -17,12 +17,14 @@ import {
   CheckCircle2,
   CalendarDays,
   FileSpreadsheet,
+  GraduationCap,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
 import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
+import { useWaliKelasOptions } from '@/hooks/useWaliKelasOptions';
 import { usePembinaUpacara } from '@/hooks/attendance/usePembinaUpacara';
 import {
   JadwalPembinaUpacaraItem,
@@ -61,6 +63,10 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
   // Data References
   const { rawList: guruList, isLoading: loadingGuru } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: classList, isLoading: loadingKelas } = useKelasOptions();
+  const { rawList: waliKelasList, isLoading: loadingWaliKelas } = useWaliKelasOptions({ onlyActive: true });
+
+  const activeSemesterData = semesterOptions.find((s) => s.value === selectedSemId);
+  const academicContextLabel = `${activeTpData?.tahun || ''} ${activeSemesterData?.label ? `— ${activeSemesterData.label}` : ''}`.trim();
 
   // Data Schedules
   const {
@@ -155,7 +161,45 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
     [autoGenerateMutation]
   );
 
-  const loading = loadingGuru || loadingKelas || loadingSchedules;
+  const loading = loadingGuru || loadingKelas || loadingSchedules || loadingWaliKelas;
+
+  const academicStats = useMemo(() => {
+    const total = schedules.length;
+    const selesai = schedules.filter((s) => s.status === 'SELESAI').length;
+    const digantikan = schedules.filter((s) => s.status === 'DIGANTIKAN').length;
+    const totalWali = waliKelasList.length;
+
+    return [
+      {
+        title: 'Total Upacara Semester Ini',
+        value: total,
+        subtitle: `${selesai} selesai dilaksanakan`,
+        icon: <CalendarDays className="w-4 h-4 text-indigo-500" />,
+        gradient: 'from-indigo-500 to-blue-600',
+      },
+      {
+        title: 'Wali Kelas Terdata',
+        value: totalWali,
+        subtitle: 'Sumber rotasi pembina upacara',
+        icon: <GraduationCap className="w-4 h-4 text-emerald-500" />,
+        gradient: 'from-emerald-500 to-teal-600',
+      },
+      {
+        title: 'Pelaksanaan Selesai',
+        value: selesai,
+        subtitle: `${total - selesai} jadwal tersisa`,
+        icon: <CheckCircle2 className="w-4 h-4 text-green-500" />,
+        gradient: 'from-green-500 to-emerald-600',
+      },
+      {
+        title: 'Handover / Digantikan',
+        value: digantikan,
+        subtitle: 'Guru pengganti bertugas',
+        icon: <ShieldAlert className="w-4 h-4 text-amber-500" />,
+        gradient: 'from-amber-500 to-orange-600',
+      },
+    ];
+  }, [schedules, waliKelasList]);
 
   const breadcrumbs = useMemo(
     () => [
@@ -171,6 +215,8 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
       title="Jadwal Pembina Upacara"
       description="Susun jadwal giliran pembina upacara bendera hari Senin, kelas petugas pengibar, dan tema amanat upacara per semester."
       breadcrumbs={breadcrumbs}
+      stats={academicStats}
+      isLoadingStats={loading}
       hardeningModuleKey="attendance_jadwal_kegiatan"
       topSlot={
         <div className="flex items-center justify-end gap-2 flex-wrap">
@@ -468,6 +514,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
           onClose={() => setIsFormModalOpen(false)}
           onSubmit={handleFormSubmit}
           editingItem={editingItem}
+          waliKelasList={waliKelasList}
           guruList={guruList}
           classList={classList}
           tahunPelajaranId={activeTahunPelajaranId}
@@ -481,10 +528,12 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
           isOpen={isAutoModalOpen}
           onClose={() => setIsAutoModalOpen(false)}
           onSubmit={handleAutoSubmit}
+          waliKelasList={waliKelasList}
           guruList={guruList}
           classList={classList}
           tahunPelajaranId={activeTahunPelajaranId}
           semesterId={selectedSemId}
+          academicContextLabel={academicContextLabel}
         />
       )}
     </AcademicPageLayout>
