@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui';
-import { Printer, Download, Loader2, FileText, CheckCircle, ExternalLink } from 'lucide-react';
+import { Printer, Download, Loader2, FileText, CheckCircle, GraduationCap } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { sekolahApi } from '@/api/academic/sekolah.api';
 import { getTenantById } from '@/api/tenants.api';
@@ -9,22 +9,26 @@ import { getStrukturList } from '@/api/academic/strukturOrganisasi.api';
 import { useAuthStore } from '@/store/authStore';
 import { getBase64ImageFromUrl } from '@/utils/cooperative/coopDocUtils';
 import { generateGenericPdf } from '@/utils/print/pdfGeneric';
-import type { JadwalPembinaUpacaraItem } from '@/api/attendance/pembinaUpacara.api';
+import { pembinaUpacaraApi, type JadwalPembinaUpacaraItem } from '@/api/attendance/pembinaUpacara.api';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  schedules: JadwalPembinaUpacaraItem[];
+  tahunPelajaranId?: string;
+  semesterId?: string;
   tahunAjaranNama?: string;
   semesterNama?: string;
+  schedules?: JadwalPembinaUpacaraItem[];
 }
 
 export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
   isOpen,
   onClose,
-  schedules,
+  tahunPelajaranId,
+  semesterId,
   tahunAjaranNama,
   semesterNama,
+  schedules: initialSchedules,
 }) => {
   const { user } = useAuthStore();
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
@@ -32,7 +36,23 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [includeSchoolLogo, setIncludeSchoolLogo] = useState<boolean>(true);
 
-  // Load School & Tenant Profiles
+  // 1. Fetch fresh schedules strictly based on selected Academic Context
+  const { data: fetchedSchedules, isLoading: isLoadingSchedules } = useQuery({
+    queryKey: ['pembina-upacara-pdf-context', tahunPelajaranId, semesterId],
+    queryFn: async () => {
+      const res = await pembinaUpacaraApi.getAll({
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+      return res?.data || [];
+    },
+    enabled: isOpen && !!tahunPelajaranId,
+    staleTime: 30 * 1000,
+  });
+
+  const activeSchedules = fetchedSchedules ?? initialSchedules ?? [];
+
+  // 2. Load School & Tenant Profiles for official Kop Surat
   const { data: sekolahData } = useQuery({
     queryKey: ['sekolah-profile'],
     queryFn: () => sekolahApi.getProfile().catch(() => null),
@@ -64,7 +84,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
   });
   const strukturList = strukturData || [];
 
-  // Generate PDF Document
+  // 3. Generate PDF Document via print engine
   useEffect(() => {
     if (!isOpen) {
       if (pdfUrl) {
@@ -74,6 +94,8 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
       setPdfBlob(null);
       return;
     }
+
+    if (isLoadingSchedules) return;
 
     let isMounted = true;
     const generatePdf = async () => {
@@ -103,7 +125,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
             current_semester: { nama_semester: semesterNama || '' },
           },
           filterData: {
-            schedules,
+            schedules: activeSchedules,
             tahunAjaranNama,
             semesterNama,
           },
@@ -129,7 +151,17 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, schedules, tahunAjaranNama, semesterNama, sekolah, tenantInfo, strukturList, includeSchoolLogo]);
+  }, [
+    isOpen,
+    isLoadingSchedules,
+    activeSchedules,
+    tahunAjaranNama,
+    semesterNama,
+    sekolah,
+    tenantInfo,
+    strukturList,
+    includeSchoolLogo
+  ]);
 
   const handlePrint = () => {
     if (pdfUrl) {
@@ -163,6 +195,24 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
       maxWidth="max-w-4xl"
     >
       <div className="space-y-4">
+        {/* Banner Konteks Akademik Aktif */}
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200/80 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div className="text-xs">
+              <span className="font-bold text-slate-800 dark:text-slate-200">
+                Konteks Akademik: {tahunAjaranNama || '-'} {semesterNama ? `(${semesterNama})` : ''}
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Engine cetak otomatis mengambil data jadwal resmi yang terdaftar pada semester ini.
+              </p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+            {isLoadingSchedules ? 'Memuat data...' : `${activeSchedules.length} Sesi Terjadwal`}
+          </span>
+        </div>
+
         {/* Header Controls & Options */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2">
@@ -187,7 +237,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
               variant="outline"
               size="sm"
               onClick={handleDownload}
-              disabled={!pdfUrl || isGenerating}
+              disabled={!pdfUrl || isGenerating || isLoadingSchedules}
               className="flex items-center gap-1.5 text-xs font-bold rounded-lg"
             >
               <Download size={14} />
@@ -198,7 +248,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
               variant="primary"
               size="sm"
               onClick={handlePrint}
-              disabled={!pdfUrl || isGenerating}
+              disabled={!pdfUrl || isGenerating || isLoadingSchedules}
               className="flex items-center gap-1.5 text-xs font-bold rounded-lg shadow-sm"
             >
               <Printer size={14} />
@@ -209,11 +259,13 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
 
         {/* Live PDF Viewer Frame */}
         <div className="relative bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 h-[560px] flex items-center justify-center">
-          {isGenerating && (
-            <div className="absolute inset-0 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3">
+          {(isGenerating || isLoadingSchedules) && (
+            <div className="absolute inset-0 bg-white/85 dark:bg-slate-950/85 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                Memproses format resmi & kop surat dokumen...
+                {isLoadingSchedules
+                  ? 'Mengambil data jadwal upacara berdasarkan konteks akademik terpilih...'
+                  : 'Me-render dokumen resmi dengan Kop Surat & Tanda Tangan...'}
               </span>
             </div>
           )}
@@ -240,7 +292,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
         {/* Info & Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
           <p>
-            Total <strong>{schedules.length}</strong> sesi upacara siap diterbitkan untuk arsip Kesiswaan & dibagikan ke dewan guru.
+            Dokumen resmi ini ditandatangani oleh Kepala Sekolah dan siap diarsipkan atau dibagikan ke dewan guru.
           </p>
           <Button variant="ghost" size="sm" onClick={onClose} className="rounded-lg">
             Tutup

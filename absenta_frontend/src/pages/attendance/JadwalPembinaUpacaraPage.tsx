@@ -239,7 +239,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
             className="flex items-center gap-1.5 font-bold rounded-xl text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
           >
             <Printer className="w-4 h-4" />
-            Cetak Dokumen Resmi
+            Cetak ke PDF
           </Button>
           <Button
             variant="toolbarOutline"
@@ -305,30 +305,42 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
             />
           </div>
 
-          {/* Status Badges Filter */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {(
-              [
-                { id: 'ALL', label: 'Semua Status' },
-                { id: 'DIJADWALKAN', label: 'Dijadwalkan' },
-                { id: 'SELESAI', label: 'Selesai' },
-                { id: 'DIGANTIKAN', label: 'Digantikan' },
-              ] as const
-            ).map((s) => (
+            {/* Status Badges Filter */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {(
+                [
+                  { id: 'ALL', label: 'Semua Status' },
+                  { id: 'DIJADWALKAN', label: 'Dijadwalkan' },
+                  { id: 'SELESAI', label: 'Selesai' },
+                  { id: 'DIGANTIKAN', label: 'Digantikan' },
+                ] as const
+              ).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setStatusFilter(s.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                    statusFilter === s.id
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+
+              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1 hidden sm:block" />
+
               <button
-                key={s.id}
                 type="button"
-                onClick={() => setStatusFilter(s.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
-                  statusFilter === s.id
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
-                }`}
+                onClick={() => setIsPrintModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition shadow-xs"
+                title="Cetak Jadwal Pembina Upacara ke Dokumen PDF"
               >
-                {s.label}
+                <Printer className="w-3.5 h-3.5" />
+                <span>Cetak ke PDF</span>
               </button>
-            ))}
-          </div>
+            </div>
         </div>
 
         {/* Main Content Area */}
@@ -554,6 +566,8 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
         <CetakDokumenUpacaraModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
+          tahunPelajaranId={activeTahunPelajaranId}
+          semesterId={selectedSemId}
           schedules={filteredList}
           tahunAjaranNama={activeTpData?.tahun}
           semesterNama={activeSemesterData?.label}
