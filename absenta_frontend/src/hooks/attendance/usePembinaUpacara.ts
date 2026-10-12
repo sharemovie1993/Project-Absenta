@@ -66,6 +66,17 @@ export function usePembinaUpacara(filters?: {
     },
   });
 
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => pembinaUpacaraApi.bulkDelete(ids),
+    onSuccess: (res) => {
+      invalidate();
+      toast.success(res?.message || 'Jadwal pembina upacara terpilih berhasil dihapus.');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || err.message || 'Gagal menghapus jadwal terpilih.');
+    },
+  });
+
   const autoGenerateMutation = useMutation({
     mutationFn: (payload: AutoGenerateUpacaraPayload) => pembinaUpacaraApi.autoGenerate(payload),
     onSuccess: (res) => {
@@ -85,6 +96,7 @@ export function usePembinaUpacara(filters?: {
     createMutation,
     updateMutation,
     deleteMutation,
+    bulkDeleteMutation,
     autoGenerateMutation,
   };
 }

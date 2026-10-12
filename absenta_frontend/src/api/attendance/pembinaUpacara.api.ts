@@ -187,6 +187,14 @@ export const pembinaUpacaraApi = {
     );
   },
 
+  bulkDelete: async (ids: string[]): Promise<PembinaUpacaraResponse<{ count: number }>> => {
+    return requestWithFallback<PembinaUpacaraResponse<{ count: number }>>(
+      'post',
+      '/kesiswaan/pembina-upacara/bulk-delete',
+      { data: { ids } }
+    );
+  },
+
   autoGenerate: async (payload: AutoGenerateUpacaraPayload): Promise<PembinaUpacaraResponse<{ count: number; items: JadwalPembinaUpacaraItem[] }>> => {
     return requestWithFallback<PembinaUpacaraResponse<{ count: number; items: JadwalPembinaUpacaraItem[] }>>(
       'post',

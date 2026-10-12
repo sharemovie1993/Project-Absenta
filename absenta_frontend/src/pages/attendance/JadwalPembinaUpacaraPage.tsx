@@ -33,6 +33,7 @@ import {
 } from '@/api/attendance/pembinaUpacara.api';
 import { Button, SectionCard } from '@/components/ui';
 import { Input } from '@/components/ui/Input';
+import { Checkbox } from '@/components/ui/Checkbox';
 import { Table, type Column } from '@/components/ui/Table';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
@@ -82,6 +83,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
     createMutation,
     updateMutation,
     deleteMutation,
+    bulkDeleteMutation,
     autoGenerateMutation,
   } = usePembinaUpacara({
     tahun_pelajaran_id: selectedTpId,
@@ -93,6 +95,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | StatusPelaksanaanUpacara>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
@@ -124,9 +127,10 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
     });
   }, [schedules, statusFilter, searchTerm]);
 
-  // Reset page when filter or search changes
+  // Reset page and selections when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedRowKeys(new Set());
   }, [searchTerm, statusFilter, selectedTpId, selectedSemId]);
 
   const totalItems = filteredList.length;
@@ -165,10 +169,30 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
       });
       if (ok) {
         await deleteMutation.mutateAsync(id);
+        setSelectedRowKeys((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
     },
     [confirm, deleteMutation]
   );
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedRowKeys.size === 0) return;
+    const ok = await confirm({
+      title: 'Hapus Jadwal Terpilih',
+      description: `Apakah Anda yakin ingin menghapus ${selectedRowKeys.size} jadwal pembina upacara terpilih? Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: `Ya, Hapus (${selectedRowKeys.size})`,
+      cancelText: 'Batal',
+      style: 'danger',
+    });
+    if (ok) {
+      await bulkDeleteMutation.mutateAsync(Array.from(selectedRowKeys));
+      setSelectedRowKeys(new Set());
+    }
+  }, [confirm, selectedRowKeys, bulkDeleteMutation]);
 
   const handleFormSubmit = useCallback(
     async (payload: CreatePembinaUpacaraPayload) => {
@@ -387,15 +411,37 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
       });
       const hariNama = dateObj.toLocaleDateString('id-ID', { weekday: 'long' });
       const isReplaced = !!item.guru_pengganti_id;
+      const isSelected = selectedRowKeys.has(item.id);
+
+      const toggleSelect = () => {
+        setSelectedRowKeys((prev) => {
+          const next = new Set(prev);
+          if (next.has(item.id)) {
+            next.delete(item.id);
+          } else {
+            next.add(item.id);
+          }
+          return next;
+        });
+      };
 
       return (
         <div
           key={item.id}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3"
+          className={`bg-white dark:bg-slate-900 border ${
+            isSelected
+              ? 'border-indigo-500 dark:border-indigo-500 ring-2 ring-indigo-500/20'
+              : 'border-slate-200/80 dark:border-slate-800'
+          } rounded-2xl p-4 shadow-xs space-y-3 transition-colors`}
         >
-          {/* Header Card: Tanggal & Badge Status */}
+          {/* Header Card: Checkbox + Tanggal & Badge Status */}
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={toggleSelect}
+                aria-label={`Pilih jadwal ${formattedDate}`}
+              />
               <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-bold">
                 <Calendar className="w-4 h-4" />
               </div>
@@ -461,7 +507,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
         </div>
       );
     },
-    [handleOpenEdit, handleDelete, renderStatusBadge]
+    [handleOpenEdit, handleDelete, renderStatusBadge, selectedRowKeys]
   );
 
   return (
@@ -547,6 +593,18 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
 
                 {/* Action Buttons on Mobile */}
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  {selectedRowKeys.size > 0 && (
+                    <Button
+                      variant="toolbarDanger"
+                      size="toolbar"
+                      onClick={handleBulkDelete}
+                      disabled={bulkDeleteMutation.isPending}
+                      className="w-full flex items-center justify-center gap-1.5 rounded-xl font-bold shadow-xs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      Hapus ({selectedRowKeys.size}) Terpilih
+                    </Button>
+                  )}
                   <Button
                     onClick={handleOpenCreate}
                     variant="toolbarPrimary"
@@ -628,6 +686,9 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
                 loading={loadingSchedules}
                 emptyMessage="Belum ada jadwal pembina upacara pada semester ini"
                 compact={true}
+                rowKey="id"
+                selectedRowKeys={selectedRowKeys}
+                onSelectedRowKeysChange={setSelectedRowKeys}
                 pagination={{
                   currentPage,
                   totalPages,
@@ -715,6 +776,22 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
                         <Plus className="w-4 h-4 mr-1.5" />
                         Tambah Jadwal
                       </Button>
+
+                      {selectedRowKeys.size > 0 && (
+                        <>
+                          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+                          <Button
+                            variant="toolbarDanger"
+                            size="toolbar"
+                            onClick={handleBulkDelete}
+                            disabled={bulkDeleteMutation.isPending}
+                            className="rounded-xl shadow-xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                            Hapus ({selectedRowKeys.size})
+                          </Button>
+                        </>
+                      )}
 
                       <Button
                         variant="toolbarOutline"

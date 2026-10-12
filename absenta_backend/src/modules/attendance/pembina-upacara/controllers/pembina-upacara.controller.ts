@@ -119,6 +119,25 @@ export const pembinaUpacaraController = {
     }
   },
 
+  async bulkDelete(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const { ids } = request.body || {};
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return reply.status(400).send({ success: false, message: 'Daftar ID jadwal tidak valid' });
+      }
+      const result = await pembinaUpacaraService.bulkDelete(scope, ids);
+      return reply.status(200).send({
+        success: true,
+        message: `Berhasil menghapus ${result.count} jadwal pembina upacara`,
+        data: result,
+      });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Error bulk deleting pembina upacara');
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
+
   async autoGenerate(request: any, reply: any) {
     try {
       const scope = request.dataScope;

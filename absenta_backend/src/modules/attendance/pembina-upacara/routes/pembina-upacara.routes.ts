@@ -73,6 +73,13 @@ export async function pembinaUpacaraRoutes(fastify: any) {
     ],
   }, pembinaUpacaraController.autoGenerate);
 
+  fastify.post('/bulk-delete', {
+    preHandler: [
+      requireCapability(['attendance.schedules.delete', 'attendance.schedules.manage', 'academic.schedules.manage']),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.bulkDelete);
+
   fastify.put('/:id', {
     preHandler: [
       requireCapability(['attendance.schedules.update', 'attendance.schedules.manage', 'academic.schedules.manage']),

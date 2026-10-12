@@ -186,6 +186,22 @@ export const pembinaUpacaraService = {
     });
   },
 
+  async bulkDelete(scope: DataScope, ids: string[]): Promise<{ count: number }> {
+    if (!scope.tenantId) throw new Error('Tenant ID diperlukan');
+    if (!ids || ids.length === 0) {
+      throw new Error('Daftar ID jadwal tidak boleh kosong');
+    }
+
+    const result = await prisma.jadwalPembinaUpacara.deleteMany({
+      where: {
+        id: { in: ids },
+        tenant_id: scope.tenantId,
+      },
+    });
+
+    return { count: result.count };
+  },
+
   /**
    * Mengambil kandidat pembina upacara yang dipisahkan ke dalam 3 kelompok terstruktur:
    * 1. Kelompok Waka (Wakil Kepala Sekolah / Pimpinan)
