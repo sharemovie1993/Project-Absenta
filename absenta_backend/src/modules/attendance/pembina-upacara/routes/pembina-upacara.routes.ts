@@ -13,6 +13,34 @@ export async function pembinaUpacaraRoutes(fastify: any) {
     ],
   }, pembinaUpacaraController.getAll);
 
+  fastify.get('/wa-config', {
+    preHandler: [
+      requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list']),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.getWaConfig);
+
+  fastify.post('/wa-config', {
+    preHandler: [
+      requireCapability(['attendance.schedules.manage', 'academic.schedules.manage']),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.saveWaConfig);
+
+  fastify.get('/wa-groups', {
+    preHandler: [
+      requireCapability(['attendance.schedules.manage', 'academic.schedules.manage']),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.getWaGroups);
+
+  fastify.post('/test-wa', {
+    preHandler: [
+      requireCapability(['attendance.schedules.manage', 'academic.schedules.manage']),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.testSendWa);
+
   fastify.get('/:id', {
     preHandler: [
       requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list'], {

@@ -135,4 +135,51 @@ export const pembinaUpacaraController = {
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
+
+  async getWaConfig(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const data = await pembinaUpacaraService.getWaNotifConfig(scope.tenantId);
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
+  async saveWaConfig(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const data = await pembinaUpacaraService.saveWaNotifConfig(scope.tenantId, request.body || {});
+      return reply.status(200).send({
+        success: true,
+        message: 'Konfigurasi pengingat WhatsApp upacara berhasil disimpan',
+        data,
+      });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
+
+  async getWaGroups(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const { waGatewayService } = await import('@/services/wa-gateway.service');
+      const force = request.query?.refresh === 'true';
+      const groups = await waGatewayService.getParticipatingGroups(scope.tenantId, force).catch(() => []);
+      return reply.status(200).send({ success: true, data: groups || [] });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
+
+  async testSendWa(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const { targetGroupId } = request.body || {};
+      const result = await pembinaUpacaraService.sendSeninGroupReminder(scope.tenantId, true, targetGroupId);
+      return reply.status(200).send({ success: true, message: result.message });
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
 };

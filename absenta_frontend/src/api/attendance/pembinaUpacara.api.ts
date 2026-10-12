@@ -65,6 +65,24 @@ export interface AutoGenerateUpacaraPayload {
   tema_presets?: string[];
 }
 
+export interface UpacaraWaNotifConfig {
+  enabled: boolean;
+  targetGroupId?: string;
+  targetGroupName?: string;
+  seninJam: string;
+  seninEnabled: boolean;
+  jumatReminderEnabled: boolean;
+  jumatJam: string;
+  includeTema: boolean;
+}
+
+export interface WaGroupOption {
+  id: string;
+  name: string;
+  subject?: string;
+  desc?: string;
+}
+
 export interface PembinaUpacaraResponse<T> {
   success: boolean;
   message: string;
@@ -123,6 +141,37 @@ export const pembinaUpacaraApi = {
       'post',
       '/kesiswaan/pembina-upacara/auto-generate',
       { data: payload }
+    );
+  },
+
+  getWaConfig: async (): Promise<PembinaUpacaraResponse<UpacaraWaNotifConfig>> => {
+    return requestWithFallback<PembinaUpacaraResponse<UpacaraWaNotifConfig>>(
+      'get',
+      '/kesiswaan/pembina-upacara/wa-config'
+    );
+  },
+
+  saveWaConfig: async (payload: Partial<UpacaraWaNotifConfig>): Promise<PembinaUpacaraResponse<UpacaraWaNotifConfig>> => {
+    return requestWithFallback<PembinaUpacaraResponse<UpacaraWaNotifConfig>>(
+      'post',
+      '/kesiswaan/pembina-upacara/wa-config',
+      { data: payload }
+    );
+  },
+
+  getWaGroups: async (refresh = false): Promise<PembinaUpacaraResponse<WaGroupOption[]>> => {
+    return requestWithFallback<PembinaUpacaraResponse<WaGroupOption[]>>(
+      'get',
+      '/kesiswaan/pembina-upacara/wa-groups',
+      { params: { refresh: refresh ? 'true' : 'false' } }
+    );
+  },
+
+  testSendWa: async (payload?: { targetGroupId?: string }): Promise<{ success: boolean; message: string }> => {
+    return requestWithFallback<{ success: boolean; message: string }>(
+      'post',
+      '/kesiswaan/pembina-upacara/test-wa',
+      { data: payload || {} }
     );
   },
 };

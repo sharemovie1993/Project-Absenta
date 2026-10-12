@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Printer,
   RefreshCw,
+  Bell,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { useAcademicContext } from '@/hooks/useAcademicContext';
@@ -40,6 +41,7 @@ import { useConfirm } from '@/providers/ConfirmProvider';
 import { PembinaUpacaraFormModal } from '@/components/attendance/pembina-upacara/PembinaUpacaraFormModal';
 import { AutoGenerateUpacaraModal } from '@/components/attendance/pembina-upacara/AutoGenerateUpacaraModal';
 import { CetakDokumenUpacaraModal } from '@/components/attendance/pembina-upacara/CetakDokumenUpacaraModal';
+import { PengaturanNotifUpacaraModal } from '@/components/attendance/pembina-upacara/PengaturanNotifUpacaraModal';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 
 export default React.memo(function JadwalPembinaUpacaraPage() {
@@ -95,6 +97,7 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isWaConfigModalOpen, setIsWaConfigModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<JadwalPembinaUpacaraItem | null>(null);
 
   // Filtered List
@@ -573,6 +576,15 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
                   </Button>
                   <Button
                     variant="toolbarOutline"
+                    size="toolbar"
+                    onClick={() => setIsWaConfigModalOpen(true)}
+                    className="flex-1 text-teal-600 dark:text-teal-400"
+                  >
+                    <Bell className="w-3.5 h-3.5 mr-1" />
+                    Notif WA
+                  </Button>
+                  <Button
+                    variant="toolbarOutline"
                     size="toolbarIcon"
                     onClick={() => refetch()}
                     aria-label="Refresh Data"
@@ -727,6 +739,16 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
                       <Button
                         variant="toolbarOutline"
                         size="toolbar"
+                        onClick={() => setIsWaConfigModalOpen(true)}
+                        className="rounded-xl text-teal-600 dark:text-teal-400 bg-teal-50/40 dark:bg-teal-950/20 border-teal-200 dark:border-teal-800 hover:bg-teal-100 dark:hover:bg-teal-900/40 font-bold"
+                      >
+                        <Bell className="w-3.5 h-3.5 mr-1.5 text-teal-500" />
+                        Notifikasi WA
+                      </Button>
+
+                      <Button
+                        variant="toolbarOutline"
+                        size="toolbar"
                         onClick={() => navigate('/kesiswaan/jadwal-kegiatan')}
                         className="rounded-xl text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                       >
@@ -793,6 +815,14 @@ export default React.memo(function JadwalPembinaUpacaraPage() {
           schedules={filteredList}
           tahunAjaranNama={activeTpData?.tahun}
           semesterNama={activeSemesterData?.label}
+        />
+      )}
+
+      {/* Modal Pengaturan Notifikasi WA */}
+      {isWaConfigModalOpen && (
+        <PengaturanNotifUpacaraModal
+          isOpen={isWaConfigModalOpen}
+          onClose={() => setIsWaConfigModalOpen(false)}
         />
       )}
     </AcademicPageLayout>
