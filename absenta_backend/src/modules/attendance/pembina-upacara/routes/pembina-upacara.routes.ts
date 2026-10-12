@@ -41,6 +41,15 @@ export async function pembinaUpacaraRoutes(fastify: any) {
     ],
   }, pembinaUpacaraController.testSendWa);
 
+  fastify.get('/candidate-groups', {
+    preHandler: [
+      requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list'], {
+        exemptRoles: [RoleName.SISWA, RoleName.GURU],
+      }),
+      determineDataScope(),
+    ],
+  }, pembinaUpacaraController.getCandidateGroups);
+
   fastify.get('/:id', {
     preHandler: [
       requireCapability(['attendance.schedules.view.list', 'academic.schedules.view.list'], {

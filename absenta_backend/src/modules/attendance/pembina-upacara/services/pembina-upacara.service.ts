@@ -4,6 +4,7 @@ import { StatusPelaksanaanUpacara, Hari } from '@prisma/client';
 import { appLogger } from '@/utils/app-logger';
 import { getTenantTimezone, getTimezoneLabel } from '@/utils/timezone.utils';
 import { getHariEnum, isSchoolDay } from '@/utils/school-day.utils';
+import { STRUKTUR_CODES } from '@/config/organization-structure';
 
 export interface CreatePembinaUpacaraDto {
   tahun_pelajaran_id: string;
@@ -183,6 +184,199 @@ export const pembinaUpacaraService = {
     return prisma.jadwalPembinaUpacara.delete({
       where: { id },
     });
+  },
+
+  /**
+   * Mengambil kandidat pembina upacara yang dipisahkan ke dalam 3 kelompok terstruktur:
+   * 1. Kelompok Waka (Wakil Kepala Sekolah / Pimpinan)
+   * 2. Kelompok Wali Kelas (Wali Kelas pada tahun ajaran / semester aktif)
+   * 3. Kelompok Guru Biasa (Guru aktif lainnya yang bukan Waka & bukan Wali Kelas)
+   */
+  async getCandidateGroups(
+    scope: DataScope,
+    tahunPelajaranId?: string,
+    _semesterId?: string
+  ) {
+    const tenantId = scope.tenantId;
+    if (!tenantId) throw new Error('Tenant ID diperlukan');
+
+    // ── 1. AMBIL PARA WAKA ──────────────────────────────────────────────
+    const wakaAssignments = await prisma.organizationalAssignment.findMany({
+      where: {
+        tenant_id: tenantId,
+        is_active: true,
+        Position: {
+          is_active: true,
+          OR: [
+            {
+              code: {
+                in: [
+                  STRUKTUR_CODES.KURIKULUM,
+                  STRUKTUR_CODES.KESISWAAN,
+                  STRUKTUR_CODES.HUBIN,
+                  STRUKTUR_CODES.SARPRAS,
+                  'WAKASEK',
+                  'WAKA',
+                ],
+              },
+            },
+            { code: { contains: 'WAKA', mode: 'insensitive' } },
+            { name: { contains: 'Waka', mode: 'insensitive' } },
+            { name: { contains: 'Wakil', mode: 'insensitive' } },
+          ],
+        },
+      },
+      include: {
+        Position: {
+          select: { id: true, code: true, name: true, order: true },
+        },
+        User: {
+          include: {
+            Guru: {
+              select: { id: true, nama_guru: true, nip: true, no_hp: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ Position: { order: 'asc' } }, { created_at: 'asc' }],
+    });
+
+    const wakaList: Array<{
+      id: string;
+      guru_id: string;
+      nama_guru: string;
+      nip: string | null;
+      no_hp: string | null;
+      jabatan: string;
+      kode_jabatan: string;
+    }> = [];
+    const wakaGuruIds = new Set<string>();
+
+    for (const asg of wakaAssignments) {
+      const guru = asg.User?.Guru;
+      if (guru && !wakaGuruIds.has(guru.id)) {
+        wakaGuruIds.add(guru.id);
+        wakaList.push({
+          id: asg.id,
+          guru_id: guru.id,
+          nama_guru: guru.nama_guru,
+          nip: guru.nip || null,
+          no_hp: guru.no_hp || null,
+          jabatan: asg.Position?.name || 'Wakil Kepala Sekolah',
+          kode_jabatan: asg.Position?.code || 'WAKA',
+        });
+      }
+    }
+
+    // ── 2. AMBIL PARA WALI KELAS ────────────────────────────────────────
+    const waliWhere: any = {
+      tenant_id: tenantId,
+      is_active: true,
+      Position: {
+        code: STRUKTUR_CODES.WALIKELAS,
+      },
+      kelas_id: { not: null },
+    };
+
+    if (tahunPelajaranId) {
+      waliWhere.Kelas = {
+        tahun_pelajaran_id: tahunPelajaranId,
+      };
+    }
+
+    const waliAssignments = await prisma.organizationalAssignment.findMany({
+      where: waliWhere,
+      include: {
+        Kelas: { select: { id: true, nama_kelas: true, tingkat: true } },
+        User: {
+          include: {
+            Guru: {
+              select: { id: true, nama_guru: true, nip: true, no_hp: true },
+            },
+          },
+        },
+      },
+      orderBy: [
+        { Kelas: { tingkat: 'asc' } },
+        { Kelas: { nama_kelas: 'asc' } },
+      ],
+    });
+
+    const waliKelasList: Array<{
+      id: string;
+      guru_id: string;
+      nama_guru: string;
+      nip: string | null;
+      no_hp: string | null;
+      kelas_id: string | null;
+      nama_kelas: string;
+      tingkat: number;
+    }> = [];
+    const waliGuruIds = new Set<string>();
+
+    for (const asg of waliAssignments) {
+      const guru = asg.User?.Guru;
+      if (guru && !waliGuruIds.has(guru.id)) {
+        waliGuruIds.add(guru.id);
+        waliKelasList.push({
+          id: asg.id,
+          guru_id: guru.id,
+          nama_guru: guru.nama_guru,
+          nip: guru.nip || null,
+          no_hp: guru.no_hp || null,
+          kelas_id: asg.Kelas?.id || asg.kelas_id || null,
+          nama_kelas: asg.Kelas?.nama_kelas || 'Kelas Binaan',
+          tingkat: asg.Kelas?.tingkat || 10,
+        });
+      }
+    }
+
+    // ── 3. AMBIL GURU BIASA (BUKAN WAKA & BUKAN WALI KELAS) ──────────────
+    const allGurus = await prisma.guru.findMany({
+      where: {
+        tenant_id: tenantId,
+        User: { status: 'ACTIVE' },
+      },
+      select: {
+        id: true,
+        nama_guru: true,
+        nip: true,
+        no_hp: true,
+      },
+      orderBy: {
+        nama_guru: 'asc',
+      },
+    });
+
+    const guruBiasaList: Array<{
+      guru_id: string;
+      nama_guru: string;
+      nip: string | null;
+      no_hp: string | null;
+    }> = [];
+
+    for (const g of allGurus) {
+      if (!wakaGuruIds.has(g.id) && !waliGuruIds.has(g.id)) {
+        guruBiasaList.push({
+          guru_id: g.id,
+          nama_guru: g.nama_guru,
+          nip: g.nip || null,
+          no_hp: g.no_hp || null,
+        });
+      }
+    }
+
+    return {
+      waka: wakaList,
+      waliKelas: waliKelasList,
+      guruBiasa: guruBiasaList,
+      counts: {
+        totalWaka: wakaList.length,
+        totalWaliKelas: waliKelasList.length,
+        totalGuruBiasa: guruBiasaList.length,
+        totalKeseluruhan: wakaList.length + waliKelasList.length + guruBiasaList.length,
+      },
+    };
   },
 
   async autoGenerate(scope: DataScope, dto: AutoGenerateUpacaraDto, userId?: string) {

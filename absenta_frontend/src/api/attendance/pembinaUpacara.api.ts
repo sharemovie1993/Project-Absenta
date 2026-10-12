@@ -83,6 +83,46 @@ export interface WaGroupOption {
   desc?: string;
 }
 
+export interface CandidateWakaItem {
+  id: string;
+  guru_id: string;
+  nama_guru: string;
+  nip: string | null;
+  no_hp: string | null;
+  jabatan: string;
+  kode_jabatan: string;
+}
+
+export interface CandidateWaliItem {
+  id: string;
+  guru_id: string;
+  nama_guru: string;
+  nip: string | null;
+  no_hp: string | null;
+  kelas_id: string | null;
+  nama_kelas: string;
+  tingkat: number;
+}
+
+export interface CandidateGuruBiasaItem {
+  guru_id: string;
+  nama_guru: string;
+  nip: string | null;
+  no_hp: string | null;
+}
+
+export interface UpacaraCandidateGroups {
+  waka: CandidateWakaItem[];
+  waliKelas: CandidateWaliItem[];
+  guruBiasa: CandidateGuruBiasaItem[];
+  counts: {
+    totalWaka: number;
+    totalWaliKelas: number;
+    totalGuruBiasa: number;
+    totalKeseluruhan: number;
+  };
+}
+
 export interface PembinaUpacaraResponse<T> {
   success: boolean;
   message: string;
@@ -90,6 +130,16 @@ export interface PembinaUpacaraResponse<T> {
 }
 
 export const pembinaUpacaraApi = {
+  getCandidateGroups: async (params?: {
+    tahun_pelajaran_id?: string;
+    semester_id?: string;
+  }): Promise<PembinaUpacaraResponse<UpacaraCandidateGroups>> => {
+    return requestWithFallback<PembinaUpacaraResponse<UpacaraCandidateGroups>>(
+      'get',
+      '/kesiswaan/pembina-upacara/candidate-groups',
+      { params }
+    );
+  },
   getAll: async (params?: {
     tahun_pelajaran_id?: string;
     semester_id?: string;

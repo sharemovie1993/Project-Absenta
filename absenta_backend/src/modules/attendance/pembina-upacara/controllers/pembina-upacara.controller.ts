@@ -182,4 +182,20 @@ export const pembinaUpacaraController = {
       return reply.status(400).send({ success: false, message: error.message });
     }
   },
+
+  async getCandidateGroups(request: any, reply: any) {
+    try {
+      const scope = request.dataScope;
+      const { tahun_pelajaran_id, semester_id } = request.query as any;
+      const data = await pembinaUpacaraService.getCandidateGroups(
+        scope,
+        tahun_pelajaran_id,
+        semester_id
+      );
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'Error fetching upacara candidate groups');
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  },
 };
