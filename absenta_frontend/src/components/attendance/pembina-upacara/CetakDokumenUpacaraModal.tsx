@@ -192,11 +192,13 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
       isOpen={isOpen}
       onClose={onClose}
       title="Cetak Dokumen Resmi Jadwal Pembina Upacara"
-      maxWidth="max-w-4xl"
+      size="full"
+      className="max-w-[96vw] max-h-[96vh] h-[95vh] flex flex-col"
+      contentClassName="p-3 sm:p-5 flex-1 flex flex-col overflow-y-auto max-h-[calc(95vh-80px)] space-y-3 sm:space-y-4"
     >
-      <div className="space-y-4">
+      <div className="flex-1 flex flex-col space-y-3 sm:space-y-4 min-h-0">
         {/* Banner Konteks Akademik Aktif */}
-        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200/80 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2">
+        <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-xl border border-blue-200/80 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2 shrink-0">
           <div className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <div className="text-xs">
@@ -214,7 +216,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
         </div>
 
         {/* Header Controls & Options */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0">
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -231,14 +233,14 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
             </label>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleDownload}
               disabled={!pdfUrl || isGenerating || isLoadingSchedules}
-              className="flex items-center gap-1.5 text-xs font-bold rounded-lg"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg"
             >
               <Download size={14} />
               Unduh PDF
@@ -249,7 +251,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
               size="sm"
               onClick={handlePrint}
               disabled={!pdfUrl || isGenerating || isLoadingSchedules}
-              className="flex items-center gap-1.5 text-xs font-bold rounded-lg shadow-sm"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 text-xs font-bold rounded-lg shadow-sm"
             >
               <Printer size={14} />
               Cetak Fisik Sekarang
@@ -258,7 +260,7 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
         </div>
 
         {/* Live PDF Viewer Frame */}
-        <div className="relative bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 h-[560px] flex items-center justify-center">
+        <div className="relative bg-slate-100 dark:bg-slate-900 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-800 flex-1 min-h-[460px] sm:min-h-[520px] lg:min-h-[580px] flex items-center justify-center">
           {(isGenerating || isLoadingSchedules) && (
             <div className="absolute inset-0 bg-white/85 dark:bg-slate-950/85 backdrop-blur-sm z-10 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -290,11 +292,11 @@ export const CetakDokumenUpacaraModal: React.FC<Props> = React.memo(({
         </div>
 
         {/* Info & Footer */}
-        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
-          <p>
+        <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 shrink-0">
+          <p className="text-[11px] sm:text-xs">
             Dokumen resmi ini ditandatangani oleh Kepala Sekolah dan siap diarsipkan atau dibagikan ke dewan guru.
           </p>
-          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-lg">
+          <Button variant="ghost" size="sm" onClick={onClose} className="rounded-lg shrink-0">
             Tutup
           </Button>
         </div>
