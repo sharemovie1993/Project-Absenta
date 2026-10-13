@@ -43,6 +43,8 @@ export interface Saving {
   };
   type?: string;
   transactions?: Transaction[];
+  fiscalYearDepositAmount?: number;
+  fiscalYearYear?: number;
 }
 
 export interface Transaction {

@@ -46,13 +46,40 @@ export class SavingService {
             include: {
                 category: true,
                 member: { include: MEMBER_NAME_INCLUDE },
-                transactions: { take: 5, orderBy: { date: 'desc' } },
+                transactions: { take: 10, orderBy: { date: 'desc' } },
             },
+        });
+
+        // Ambil rentang Tahun Buku aktif tenant
+        const { FiscalYearGuard } = await import('../fiscal-year.guard');
+        const activeFiscalYear = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+        const currentYear = new Date().getFullYear();
+        const startDate = activeFiscalYear?.startDate ? new Date(activeFiscalYear.startDate) : new Date(currentYear, 0, 1);
+        const endDate   = activeFiscalYear?.endDate   ? new Date(activeFiscalYear.endDate)   : new Date(currentYear, 11, 31, 23, 59, 59);
+        const fiscalYearVal = activeFiscalYear?.year || currentYear;
+
+        // Ambil akumulasi DEPOSIT tahun buku ini untuk setiap rekening
+        const savingIds = savings.map(s => s.id);
+        const fiscalDeposits = await prisma.savingTransaction.groupBy({
+            by: ['savingId'],
+            where: {
+                savingId: { in: savingIds },
+                type: 'DEPOSIT',
+                date: { gte: startDate, lte: endDate },
+            },
+            _sum: { amount: true },
+        });
+
+        const depositMap = new Map<string, number>();
+        fiscalDeposits.forEach(fd => {
+            depositMap.set(fd.savingId, Number(fd._sum.amount || 0));
         });
 
         return savings.map(s => ({
             ...s,
             member: { ...s.member, name: resolveMemberName(s.member) },
+            fiscalYearDepositAmount: depositMap.get(s.id) || 0,
+            fiscalYearYear: fiscalYearVal,
         }));
     }
 

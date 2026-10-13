@@ -155,20 +155,27 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                 return visible.map((s) => {
                   const code = (s.category?.code || s.type || '').toUpperCase();
                   const isWajib = code === 'WAJIB';
+                  const defaultAmt = Number(s.category?.defaultAmount || 20000);
+                  
+                  // Deposit bulan berjalan
                   const isWajibPaidThisMonth = isWajib && s.transactions?.some(t => {
                     if (t.type !== 'DEPOSIT') return false;
                     const txDate = new Date(t.date);
                     return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
                   });
 
-                  // Hitung jumlah setoran di tahun buku ini
-                  const yearlyDepositCount = isWajib ? (s.transactions?.filter(t => {
-                    if (t.type !== 'DEPOSIT') return false;
-                    const txDate = new Date(t.date);
-                    return txDate.getFullYear() === currentYear;
-                  }).length || 0) : 0;
+                  // Kalkulasi Kuota Nominal Pintar Berdasarkan Tahun Buku
+                  // Gunakan fiscalYearDepositAmount dari backend jika tersedia, fallback ke saldo simpanan
+                  const fiscalDeposited = isWajib ? Number(s.fiscalYearDepositAmount ?? s.amount ?? 0) : 0;
+                  const targetAnnualAmount = defaultAmt * 12;
+                  
+                  // Hitung jumlah bulan yang terpenuhi (maks 12)
+                  const monthsFulfilled = isWajib 
+                    ? Math.min(12, Math.floor(fiscalDeposited / (defaultAmt > 0 ? defaultAmt : 1)))
+                    : 0;
 
-                  const isWajibFullyPaidYear = isWajib && yearlyDepositCount >= 12;
+                  const isWajibFullyPaidYear = isWajib && (fiscalDeposited >= targetAnnualAmount || monthsFulfilled >= 12);
+                  const remainingToPay = Math.max(0, targetAnnualAmount - fiscalDeposited);
 
                   return (
                     <button
@@ -177,7 +184,9 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                       disabled={isWajibFullyPaidYear && quickTxType === 'DEPOSIT'}
                       onClick={() => {
                         onSelectedScannedSavingIdChange(s.id);
-                        if (s.category?.defaultAmount) {
+                        if (isWajib && remainingToPay > 0 && remainingToPay < defaultAmt) {
+                          onQuickAmountChange(String(remainingToPay));
+                        } else if (s.category?.defaultAmount) {
                           onQuickAmountChange(String(s.category.defaultAmount));
                         } else {
                           onQuickAmountChange('');
@@ -209,15 +218,15 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                           {isWajib && quickTxType === 'DEPOSIT' && (
                             isWajibFullyPaidYear ? (
                               <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                                🌟 Lunas Penuh 1 Tahun ({yearlyDepositCount}/12)
+                                🌟 Lunas Penuh (12/12 Bulan)
                               </span>
                             ) : isWajibPaidThisMonth ? (
                               <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-                                ✓ Bulan Ini Lunas ({yearlyDepositCount}/12)
+                                ✓ Bulan Ini Lunas ({monthsFulfilled}/12 Bulan)
                               </span>
                             ) : (
                               <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
-                                Wajib Bulan Ini ({yearlyDepositCount}/12)
+                                Wajib Bulan Ini ({monthsFulfilled}/12 Bulan)
                               </span>
                             )
                           )}
