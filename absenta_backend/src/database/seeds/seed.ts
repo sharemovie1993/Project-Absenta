@@ -422,7 +422,7 @@ async function main() {
     {
       label: 'KOPERASI', icon: 'ShoppingCart', path: null, required_features: ['KOPERASI'], order: 40, children: [
         // Klaster 1: Layanan Anggota & Simpan Pinjam
-        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.members.view.list, cooperative.reports.view.financial, cooperative.store.orders.manage' },
+        { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.dashboard.view.overview, cooperative.members.view.list, cooperative.reports.view.financial, cooperative.store.orders.manage' },
         { label: 'Data Anggota', icon: 'Users', path: '/cooperative/members', required_capability: 'cooperative.members.view.list' },
         { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.history, cooperative.savings.deposit' },
         { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.apply, cooperative.loans.approve' },
