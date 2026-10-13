@@ -10,7 +10,8 @@ import {
   Eye, 
   Edit, 
   Trash2,
-  Filter
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -141,6 +142,37 @@ const AssetsPage: React.FC = React.memo(() => {
       deleteMutation.mutate(id);
     }
   }, [confirm, deleteMutation]);
+
+  // Sync Existing Assets to General Ledger Mutation
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/cooperative/assets/sync-accounting');
+      return res.data;
+    },
+    onSuccess: (res: { message?: string; data?: { syncedCount: number } }) => {
+      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
+      const count = res?.data?.syncedCount ?? 0;
+      toast.success(res?.message || `Sinkronisasi selesai. ${count} aset dibukukan ke Neraca.`);
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Gagal menyinkronkan aset ke neraca keuangan');
+    }
+  });
+
+  const handleSyncToLedger = useCallback(async () => {
+    const isConfirmed = await confirm({
+      title: 'Sinkronkan Aset ke Neraca',
+      message: 'Apakah Anda ingin membukukan semua aset inventaris aktif yang belum tercatat ke Buku Besar & Laporan Neraca Keuangan?',
+      confirmText: 'Sinkronkan Sekarang',
+      cancelText: 'Batal',
+      type: 'info',
+    });
+
+    if (isConfirmed) {
+      syncMutation.mutate();
+    }
+  }, [confirm, syncMutation]);
 
   const handleOpenEdit = useCallback((asset: CoopAssetItem) => {
     setSelectedAsset(asset);
@@ -401,18 +433,30 @@ const AssetsPage: React.FC = React.memo(() => {
                     </div>
                   </div>
 
-                  <Button
-                    size="sm"
-                    variant="primary"
-                    onClick={() => {
-                      setSelectedAsset(null);
-                      setIsFormOpen(true);
-                    }}
-                    className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shrink-0"
-                  >
-                    <Plus size={14} />
-                    <span>Tambah Aset</span>
-                  </Button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSyncToLedger}
+                      disabled={syncMutation.isPending}
+                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <RefreshCw size={14} className={syncMutation.isPending ? 'animate-spin' : ''} />
+                      <span>{syncMutation.isPending ? 'Menyinkronkan...' : 'Sinkron ke Neraca'}</span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        setSelectedAsset(null);
+                        setIsFormOpen(true);
+                      }}
+                      className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    >
+                      <Plus size={14} />
+                      <span>Tambah Aset</span>
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Table Data Master */}

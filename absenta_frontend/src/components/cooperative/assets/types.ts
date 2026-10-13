@@ -46,8 +46,9 @@ export interface CoopAssetFormData {
   condition: CoopAssetCondition;
   status: CoopAssetStatus;
   usefulLifeMonths: number;
-  salvageValue?: number;
   serialNumber?: string;
   picName?: string;
   notes?: string;
+  fundingSource?: 'CASH' | 'RESERVE_CAPITAL';
+  postToLedger?: boolean;
 }

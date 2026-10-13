@@ -141,4 +141,27 @@ export default async function assetRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // POST /cooperative/assets/sync-accounting (Sinkronisasi aset eksisting ke Neraca Akuntansi)
+  fastify.post(
+    '/sync-accounting',
+    { preHandler: [requireCapability(['cooperative.assets.create', 'cooperative.dashboard.view.overview', 'cooperative.reports.view.financial'])] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const result = await AssetService.syncExistingAssetsToJournal(tenantId);
+        return reply.status(200).send({
+          success: true,
+          message: `Berhasil menyinkronkan ${result.syncedCount} aset ke Neraca Keuangan (Total: Rp ${result.totalSyncedValue.toLocaleString('id-ID')})`,
+          data: result
+        });
+      } catch (error: any) {
+        appLogger.error({ err: error }, '[AssetRoutes] Gagal menyinkronkan aset ke neraca');
+        return reply.status(500).send({
+          success: false,
+          message: error.message || 'Gagal menyinkronkan aset ke neraca'
+        });
+      }
+    }
+  );
 }

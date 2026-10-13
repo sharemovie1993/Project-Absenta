@@ -18,6 +18,8 @@ const assetFormSchema = z.object({
   serialNumber: z.string().optional(),
   picName: z.string().optional(),
   notes: z.string().optional(),
+  fundingSource: z.enum(['CASH', 'RESERVE_CAPITAL']).optional(),
+  postToLedger: z.boolean().optional(),
 });
 
 interface AssetFormModalProps {
@@ -48,6 +50,8 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = React.memo(({
     serialNumber: '',
     picName: '',
     notes: '',
+    fundingSource: 'RESERVE_CAPITAL',
+    postToLedger: true,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -67,6 +71,8 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = React.memo(({
         serialNumber: asset.serialNumber || '',
         picName: asset.picName || '',
         notes: asset.notes || '',
+        fundingSource: 'RESERVE_CAPITAL',
+        postToLedger: false, // saat update tidak auto repost
       });
     } else {
       setFormData({
@@ -82,6 +88,8 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = React.memo(({
         serialNumber: '',
         picName: '',
         notes: '',
+        fundingSource: 'RESERVE_CAPITAL',
+        postToLedger: true,
       });
     }
     setErrors({});
@@ -308,6 +316,67 @@ export const AssetFormModal: React.FC<AssetFormModalProps> = React.memo(({
               className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-indigo-500 outline-hidden"
             />
           </div>
+
+          {/* Integrasi Neraca Keuangan (Otomasi Jurnal) */}
+          {!asset && (
+            <div className="p-3.5 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 block">
+                    Integrasi Neraca Keuangan
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    Otomatis catat penambahan Aktiva Tetap (Akun 1510)
+                  </span>
+                </div>
+                <label className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    aria-label="Catat otomatis ke Neraca Keuangan"
+                    checked={formData.postToLedger !== false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, postToLedger: e.target.checked }))}
+                    className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  Posting Jurnal
+                </label>
+              </div>
+
+              {formData.postToLedger !== false && (
+                <div className="pt-1">
+                  <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                    Sumber Dana Pengadaan:
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, fundingSource: 'RESERVE_CAPITAL' }))}
+                      className={`p-2 rounded-xl text-left border text-xs transition-all cursor-pointer ${
+                        formData.fundingSource === 'RESERVE_CAPITAL'
+                          ? 'bg-white dark:bg-slate-900 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs'
+                          : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <span className="block font-bold">Modal Cadangan</span>
+                      <span className="text-[10px] text-slate-400">Aset awal / Hibah / Modal</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, fundingSource: 'CASH' }))}
+                      className={`p-2 rounded-xl text-left border text-xs transition-all cursor-pointer ${
+                        formData.fundingSource === 'CASH'
+                          ? 'bg-white dark:bg-slate-900 border-indigo-500 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs'
+                          : 'bg-transparent border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <span className="block font-bold">Kas Tunai Koperasi</span>
+                      <span className="text-[10px] text-slate-400">Potong saldo kas operasional</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Footer Submit */}
           <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">

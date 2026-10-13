@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { prisma } from '../../../utils/prisma';
 import { appLogger } from '@/utils/app-logger';
+import { AccountingService } from '../laporan/accounting.service';
 
 export interface CreateAssetInput {
   name: string;
@@ -16,6 +17,8 @@ export interface CreateAssetInput {
   picName?: string;
   photoUrl?: string;
   notes?: string;
+  fundingSource?: 'CASH' | 'RESERVE_CAPITAL';
+  postToLedger?: boolean;
 }
 
 export interface UpdateAssetInput {
@@ -156,31 +159,66 @@ export class AssetService {
   /**
    * Daftarkan aset baru
    */
+  /**
+   * Daftarkan aset baru dan posting ke Jurnal Akuntansi (Aktiva Tetap)
+   */
   static async createAsset(tenantId: string, data: CreateAssetInput) {
     const code = await this.generateAssetCode(tenantId);
     const purchaseDate = data.purchaseDate ? new Date(data.purchaseDate) : new Date();
+    const purchasePrice = Math.round(Number(data.purchasePrice || 0));
+    const shouldPostJournal = data.postToLedger !== false && purchasePrice > 0;
+    const creditAccountCode = data.fundingSource === 'CASH' ? '1010' : '3020'; // 1010 = Kas Koperasi, 3020 = Dana Cadangan / Modal Ekuitas
 
-    const created = await prisma.coopAsset.create({
-      data: {
-        tenantId,
-        code,
-        name: data.name,
-        category: (data.category as any) || 'EQUIPMENT',
-        location: data.location,
-        purchaseDate,
-        purchasePrice: Number(data.purchasePrice || 0),
-        condition: (data.condition as any) || 'GOOD',
-        status: (data.status as any) || 'IN_USE',
-        usefulLifeMonths: Number(data.usefulLifeMonths || 48),
-        salvageValue: Number(data.salvageValue || 0),
-        serialNumber: data.serialNumber || null,
-        picName: data.picName || null,
-        photoUrl: data.photoUrl || null,
-        notes: data.notes || null,
+    // Pre-warm accounts sebelum prisma.$transaction
+    if (shouldPostJournal) {
+      await AccountingService.getOrCreateDefaultAccounts(tenantId);
+      await AccountingService.resolveAccountId(tenantId, '1510', 'Aktiva Tetap & Peralatan Koperasi');
+      await AccountingService.resolveAccountId(
+        tenantId, 
+        creditAccountCode, 
+        creditAccountCode === '1010' ? 'Kas Koperasi' : 'Dana Cadangan Koperasi'
+      );
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const asset = await tx.coopAsset.create({
+        data: {
+          tenantId,
+          code,
+          name: data.name,
+          category: (data.category as any) || 'EQUIPMENT',
+          location: data.location,
+          purchaseDate,
+          purchasePrice,
+          condition: (data.condition as any) || 'GOOD',
+          status: (data.status as any) || 'IN_USE',
+          usefulLifeMonths: Number(data.usefulLifeMonths || 48),
+          salvageValue: Number(data.salvageValue || 0),
+          serialNumber: data.serialNumber || null,
+          picName: data.picName || null,
+          photoUrl: data.photoUrl || null,
+          notes: data.notes || null,
+        }
+      });
+
+      if (shouldPostJournal) {
+        await AccountingService.createJournalEntry(
+          tenantId,
+          `Pengadaan Aset Koperasi: ${data.name} (${code})`,
+          `AST-${code}`,
+          [
+            { accountCode: '1510', type: 'DEBIT', amount: purchasePrice },
+            { accountCode: creditAccountCode, type: 'CREDIT', amount: purchasePrice },
+          ],
+          tx,
+          purchaseDate
+        );
       }
+
+      return asset;
     });
 
-    appLogger.info({ tenantId, assetId: created.id, code }, '[AssetService] Berhasil mendaftarkan aset koperasi baru');
+    appLogger.info({ tenantId, assetId: created.id, code }, '[AssetService] Berhasil mendaftarkan aset koperasi dan memposting ke jurnal akuntansi');
     return {
       ...created,
       purchasePrice: Number(created.purchasePrice || 0),
@@ -227,7 +265,7 @@ export class AssetService {
   }
 
   /**
-   * Hapus aset
+   * Hapus aset dan bersihkan entri jurnal terkait
    */
   static async deleteAsset(tenantId: string, id: string) {
     const existing = await prisma.coopAsset.findFirst({
@@ -237,9 +275,69 @@ export class AssetService {
       throw new Error('Aset tidak ditemukan');
     }
 
-    await prisma.coopAsset.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      // Bersihkan jurnal terkait pengadaan aset ini jika ada
+      const ref = `AST-${existing.code}`;
+      const journal = await tx.journal.findFirst({
+        where: { reference: ref, tenantId }
+      });
+      if (journal) {
+        await tx.journalItem.deleteMany({ where: { journalId: journal.id } });
+        await tx.journal.delete({ where: { id: journal.id } });
+      }
+
+      await tx.coopAsset.delete({
+        where: { id }
+      });
     });
+
     return true;
+  }
+
+  /**
+   * Sinkronisasi Aset Eksisting ke Jurnal Neraca (Idempotent)
+   */
+  static async syncExistingAssetsToJournal(tenantId: string) {
+    await AccountingService.getOrCreateDefaultAccounts(tenantId);
+    await AccountingService.resolveAccountId(tenantId, '1510', 'Aktiva Tetap & Peralatan Koperasi');
+    await AccountingService.resolveAccountId(tenantId, '3020', 'Dana Cadangan Koperasi');
+
+    const assets = await prisma.coopAsset.findMany({
+      where: { tenantId }
+    });
+
+    let syncedCount = 0;
+    let totalSyncedValue = 0;
+
+    for (const asset of assets) {
+      const price = Math.round(Number(asset.purchasePrice || 0));
+      if (price <= 0) continue;
+
+      const ref = `AST-${asset.code}`;
+      const existingJournal = await prisma.journal.findFirst({
+        where: { reference: ref, tenantId }
+      });
+
+      if (!existingJournal) {
+        await prisma.$transaction(async (tx) => {
+          await AccountingService.createJournalEntry(
+            tenantId,
+            `Sinkronisasi Neraca: Aset Koperasi ${asset.name} (${asset.code})`,
+            ref,
+            [
+              { accountCode: '1510', type: 'DEBIT', amount: price },
+              { accountCode: '3020', type: 'CREDIT', amount: price },
+            ],
+            tx,
+            asset.purchaseDate || new Date()
+          );
+        });
+        syncedCount++;
+        totalSyncedValue += price;
+      }
+    }
+
+    appLogger.info({ tenantId, syncedCount, totalSyncedValue }, '[AssetService] Selesai sinkronisasi aset ke neraca');
+    return { syncedCount, totalSyncedValue };
   }
 }

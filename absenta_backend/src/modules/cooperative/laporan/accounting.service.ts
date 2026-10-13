@@ -23,8 +23,11 @@ export class AccountingService {
         { code: '3020', name: 'Dana Cadangan Koperasi',          type: 'EQUITY'    as AccountType },
         { code: '4010', name: 'Pendapatan Toko Koperasi',        type: 'REVENUE'   as AccountType },
         { code: '4020', name: 'Pendapatan Bunga Pinjaman',       type: 'REVENUE'   as AccountType },
+        { code: '1510', name: 'Aktiva Tetap & Peralatan Koperasi', type: 'ASSET'     as AccountType },
+        { code: '1520', name: 'Akumulasi Penyusutan Aktiva Tetap', type: 'ASSET'     as AccountType },
         { code: '5010', name: 'Beban Pokok Penjualan (COGS)',     type: 'EXPENSE'   as AccountType },
         { code: '5020', name: 'Beban Administrasi Koperasi',     type: 'EXPENSE'   as AccountType },
+        { code: '5030', name: 'Beban Penyusutan Aktiva Tetap',     type: 'EXPENSE'   as AccountType },
     ];
 
     /**
