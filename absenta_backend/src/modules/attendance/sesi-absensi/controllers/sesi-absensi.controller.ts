@@ -375,7 +375,8 @@ export const sesiAbsensiController = {
       }
 
       const cfg = await systemConfigService.getActive(tenantId);
-      const { dateStr, timeZone } = getTenantLocalTime(cfg?.timezone, new Date());
+      const { dateStr: todayDateStr, timeZone } = getTenantLocalTime(cfg?.timezone, new Date());
+      const dateStr = (request.body as any)?.tanggal || todayDateStr;
 
       // Trigger direct generation first for instantaneous response
       let result;

@@ -78,7 +78,7 @@ export function useUnifiedKbmSessions(options: UnifiedKbmSessionQueryOptions = {
           allowedKelasIds: options.allowedKelasIds,
           include_scheduled: true,
           summary: true,
-          limit: 100,
+          limit: 1000,
         } as any);
 
         const rawData = res.data;
@@ -106,8 +106,8 @@ export function useUnifiedKbmSessions(options: UnifiedKbmSessionQueryOptions = {
 
         // Ensure chronological sorting across all UI modules
         return mapped.sort((a, b) => {
-          const timeA = a.waktu_mulai || a.jam_mulai || '00:00';
-          const timeB = b.waktu_mulai || b.jam_mulai || '00:00';
+          const timeA = a.jam_mulai || a.waktu_mulai || '00:00';
+          const timeB = b.jam_mulai || b.waktu_mulai || '00:00';
           return String(timeA).localeCompare(String(timeB));
         });
       } catch (err: any) {

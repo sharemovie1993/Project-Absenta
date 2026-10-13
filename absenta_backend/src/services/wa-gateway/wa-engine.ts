@@ -946,7 +946,7 @@ async function executeLocalMethod(method: string, tenantId: string, args: any[] 
   }
 }
 
-async export function callMasterViaRpc(method: string, tenantId: string, args: any[] = []): Promise<any> {
+export async function callMasterViaRpc(method: string, tenantId: string, args: any[] = []): Promise<any> {
   if (isMasterInstance()) {
     return executeLocalMethod(method, tenantId, args);
   }

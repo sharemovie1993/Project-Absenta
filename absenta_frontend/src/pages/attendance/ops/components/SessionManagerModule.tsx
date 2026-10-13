@@ -1,4 +1,5 @@
-import React, { useState, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useRef, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader } from '../../../../components/ui/Loader';
 import toast from 'react-hot-toast';
@@ -46,12 +47,11 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   setSelectedKelasId,
   kelasOptions,
   isPetugasSiswa,
-  userRole,
   canCreateSession,
   managedKelasIds,
-  user,
 }) => {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
   const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
   const invalidateAllKbmQueries = useCallback(() => {
@@ -62,7 +62,28 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   }, [queryClient]);
   const [filterDate, setFilterDate] = useState<string>(toLocalDate(new Date()));
   const [filterGuruId, setFilterGuruId] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>('KBM');
+  const subtabParam = (searchParams.get('subtab') || '').toLowerCase();
+  const [activeTab, setActiveTab] = useState<'KBM' | 'KEGIATAN'>(
+    subtabParam === 'kegiatan' ? 'KEGIATAN' : 'KBM'
+  );
+
+  useEffect(() => {
+    if (subtabParam === 'kegiatan') {
+      setActiveTab('KEGIATAN');
+    } else if (subtabParam === 'kbm') {
+      setActiveTab('KBM');
+    }
+  }, [subtabParam]);
+
+  const handleTabChange = useCallback((nextTab: 'KBM' | 'KEGIATAN') => {
+    setActiveTab(nextTab);
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('subtab', nextTab === 'KEGIATAN' ? 'kegiatan' : 'kbm');
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingSesiId, setDeletingSesiId] = useState<string | null>(null);
@@ -120,13 +141,11 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
       return (res.data || []) as Array<{ id: string; nama?: string; kode?: string }>;
     }
   });
-  const { sessions = [], loading, refetch: fetchSessions } = useUnifiedKbmSessions({
-    filterDate,
-    selectedKelasId,
-    filterGuruId,
-    user,
-    userRole,
-    managedKelasIds,
+  const { sessions = [], isLoading: loading, refetch: fetchSessions } = useUnifiedKbmSessions({
+    tanggal: filterDate,
+    kelas_id: selectedKelasId,
+    guru_id: filterGuruId,
+    allowedKelasIds: managedKelasIds,
   });
   const getGuruLabel = useCallback((id?: string) => {
     if (!id) return '-';
@@ -302,7 +321,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
           <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <button
               type="button"
-              onClick={() => setActiveTab('KBM')}
+              onClick={() => handleTabChange('KBM')}
               className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'KBM'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
@@ -317,7 +336,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('KEGIATAN')}
+              onClick={() => handleTabChange('KEGIATAN')}
               className={`px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'KEGIATAN'
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'

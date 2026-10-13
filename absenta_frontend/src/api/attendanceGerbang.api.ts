@@ -576,8 +576,9 @@ export async function upsertProgresMateri(sesi_id: string, payload: { judul_mate
   });
 }
 
-export async function generateSesiFromTemplate(): Promise<{ success: boolean; message: string }> {
+export async function generateSesiFromTemplate(params?: { tanggal?: string; kelas_id?: string }): Promise<{ success: boolean; message: string }> {
   return requestWithFallback<{ success: boolean; message: string }>('post', '/attendance/sesi-absensi/generate-from-template', {
+    data: params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }

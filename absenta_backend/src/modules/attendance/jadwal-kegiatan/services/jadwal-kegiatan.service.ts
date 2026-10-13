@@ -2,6 +2,8 @@ import { prisma } from '@/utils/prisma';
 import { DataScope } from '../../../../types/fastify';
 import { Hari } from '@prisma/client';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { getTenantTimezone } from '@/utils/timezone.utils';
+import { getTenantLocalTime, generateSessionsForTenantDirect } from '@/jobs/attendanceAutoSession.job';
 
 export interface CreateJadwalKegiatanInput {
   nama: string;
@@ -30,6 +32,16 @@ export interface UpdateJadwalKegiatanInput {
 }
 
 export class JadwalKegiatanService {
+  private async syncTodayActivitySessions(tenantId: string) {
+    try {
+      const tz = await getTenantTimezone(tenantId);
+      const { dateStr, timeZone } = getTenantLocalTime(tz, new Date());
+      await generateSessionsForTenantDirect(tenantId, dateStr, timeZone);
+    } catch {
+      // Non-blocking sync
+    }
+  }
+
   async getAll(scope: DataScope, activeOnly = false) {
     if (!scope.tenantId) throw new Error('Tenant ID required');
 
@@ -97,6 +109,7 @@ export class JadwalKegiatanService {
       },
     });
 
+    await this.syncTodayActivitySessions(scope.tenantId);
     await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
     await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
     return created;
@@ -110,8 +123,8 @@ export class JadwalKegiatanService {
     if (input.nama !== undefined) data.nama = input.nama;
     if (input.jenis_kegiatan !== undefined) data.jenis_kegiatan = input.jenis_kegiatan;
     if (input.hari !== undefined) data.hari = input.hari;
-    if (input.waktu_mulai !== undefined) data.waktu_mulai = input.waktu_mulai;
-    if (input.waktu_selesai !== undefined) data.waktu_selesai = input.waktu_selesai;
+    if (input.waktu_mulai !== undefined) data.waktu_mulai = input.waktu_mulai.slice(0, 5);
+    if (input.waktu_selesai !== undefined) data.waktu_selesai = input.waktu_selesai ? input.waktu_selesai.slice(0, 5) : null;
     if (input.target_semua_kelas !== undefined) data.target_semua_kelas = input.target_semua_kelas;
     if (input.target_kelas_ids !== undefined) data.target_kelas_ids = input.target_kelas_ids;
     if (input.berlaku_mulai !== undefined) data.berlaku_mulai = new Date(input.berlaku_mulai);
@@ -124,6 +137,13 @@ export class JadwalKegiatanService {
     });
 
     if (scope.tenantId) {
+      if (input.aktif === false) {
+        await prisma.sesiAbsensi.deleteMany({
+          where: { tenant_id: scope.tenantId, jadwal_kegiatan_id: id, status: 'MENDATANG' },
+        });
+      } else {
+        await this.syncTodayActivitySessions(scope.tenantId);
+      }
       await cacheInvalidationService.invalidateAttendanceCache(scope.tenantId);
       await cacheInvalidationService.invalidatePelanggaranCache(scope.tenantId);
     }
@@ -132,6 +152,12 @@ export class JadwalKegiatanService {
 
   async delete(scope: DataScope, id: string) {
     await this.getById(scope, id);
+
+    if (scope.tenantId) {
+      await prisma.sesiAbsensi.deleteMany({
+        where: { tenant_id: scope.tenantId, jadwal_kegiatan_id: id, status: 'MENDATANG' },
+      });
+    }
 
     const deleted = await prisma.jadwalKegiatan.delete({
       where: { id },

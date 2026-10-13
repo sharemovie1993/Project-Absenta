@@ -214,6 +214,114 @@ export class SesiQueryService {
     const take = Number(limit);
     const skip = (Number(page) - 1) * take;
 
+    // 0. Auto-ensure SesiAbsensi records exist for active JadwalKegiatan on the requested date
+    try {
+      const checkDateStr = tanggal || new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+      const checkDateLocalStart = new Date(`${checkDateStr}T00:00:00.000${tzOffset}`);
+      const checkDateLocalEnd = new Date(`${checkDateStr}T23:59:59.999${tzOffset}`);
+      const checkDateUtcStart = new Date(`${checkDateStr}T00:00:00.000Z`);
+      const checkDateUtcEnd = new Date(`${checkDateStr}T23:59:59.999Z`);
+      const checkHariName = new Intl.DateTimeFormat('id-ID', { weekday: 'long', timeZone: tz }).format(checkDateLocalStart).toUpperCase();
+      const validHariEnums = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
+
+      if (validHariEnums.includes(checkHariName)) {
+        const activeKegiatans = await prisma.jadwalKegiatan.findMany({
+          where: {
+            tenant_id: tenantId,
+            aktif: true,
+            hari: { has: checkHariName as any },
+            berlaku_mulai: { lte: checkDateUtcEnd },
+            OR: [
+              { berlaku_sampai: null },
+              { berlaku_sampai: { gte: checkDateUtcStart } },
+            ],
+          },
+        });
+
+        if (activeKegiatans.length > 0) {
+          const [activeYear, existingActSessions] = await Promise.all([
+            prisma.tahunPelajaran.findFirst({
+              where: { tenant_id: tenantId, is_active: true },
+              include: { Semester: { where: { is_active: true }, take: 1 } },
+            }),
+            prisma.sesiAbsensi.findMany({
+              where: {
+                tenant_id: tenantId,
+                tanggal: { gte: checkDateLocalStart, lte: checkDateLocalEnd },
+                jadwal_kegiatan_id: { in: activeKegiatans.map((k: any) => k.id) },
+              },
+              select: { jadwal_kegiatan_id: true, kelas_id: true },
+            }),
+          ]);
+
+          const activeSemId = activeYear?.Semester?.[0]?.id;
+          if (activeYear && activeSemId) {
+            const existingSet = new Set(existingActSessions.map((s: any) => `${s.jadwal_kegiatan_id}_${s.kelas_id}`));
+            let allActiveKelasIds: string[] | null = null;
+            const toCreate: any[] = [];
+
+            // Cek bila ada pembina upacara terjadwal pada tanggal ini
+            const upacaraSchedule = await prisma.jadwalPembinaUpacara.findFirst({
+              where: {
+                tenant_id: tenantId,
+                tanggal: { gte: checkDateUtcStart, lte: checkDateUtcEnd },
+              },
+              select: { guru_id: true, guru_pengganti_id: true },
+            });
+            const pembinaGuruId = upacaraSchedule?.guru_pengganti_id || upacaraSchedule?.guru_id || null;
+
+            for (const kegiatan of activeKegiatans) {
+              let targetKelasIds: string[] = [];
+              if (kegiatan.target_semua_kelas) {
+                if (!allActiveKelasIds) {
+                  const allK = await prisma.kelas.findMany({
+                    where: { tenant_id: tenantId, is_active: true },
+                    select: { id: true },
+                  });
+                  allActiveKelasIds = allK.map((k: any) => k.id);
+                }
+                targetKelasIds = allActiveKelasIds;
+              } else {
+                targetKelasIds = Array.isArray(kegiatan.target_kelas_ids) ? kegiatan.target_kelas_ids : [];
+              }
+
+              const startMulai = new Date(`${checkDateStr}T${kegiatan.waktu_mulai}:00.000${tzOffset}`);
+              const startSelesai = kegiatan.waktu_selesai
+                ? new Date(`${checkDateStr}T${kegiatan.waktu_selesai}:00.000${tzOffset}`)
+                : new Date(startMulai.getTime() + 60 * 60 * 1000);
+              const isUpacara = String(kegiatan.nama || '').toLowerCase().includes('upacara');
+
+              for (const kId of targetKelasIds) {
+                if (!existingSet.has(`${kegiatan.id}_${kId}`)) {
+                  toCreate.push({
+                    tenant_id: tenantId,
+                    kelas_id: kId,
+                    guru_id: isUpacara ? pembinaGuruId : null,
+                    semester_id: activeSemId,
+                    tahun_pelajaran_id: kegiatan.tahun_pelajaran_id || activeYear.id,
+                    tanggal: checkDateLocalStart,
+                    waktu_mulai: startMulai,
+                    waktu_selesai: startSelesai,
+                    jenis_kegiatan: kegiatan.nama,
+                    sumber_sesi: 'TEMPLATE',
+                    jadwal_kegiatan_id: kegiatan.id,
+                    status: 'MENDATANG',
+                  });
+                  existingSet.add(`${kegiatan.id}_${kId}`);
+                }
+              }
+            }
+
+            if (toCreate.length > 0) {
+              await prisma.sesiAbsensi.createMany({ data: toCreate, skipDuplicates: true });
+            }
+          }
+        }
+      }
+    } catch (syncErr: any) {
+      appLogger.warn({ error: syncErr?.message }, '[getSesiAbsensiList] Auto-sync JadwalKegiatan warning');
+    }
+
     // 1. Fetch physical DB sessions
     const rawData = await prisma.sesiAbsensi.findMany({
       where,
@@ -224,6 +332,7 @@ export class SesiQueryService {
         mapel_id: true,
         guru_id: true,
         jadwal_kbm_id: true,
+        jadwal_kegiatan_id: true,
         jenis_kegiatan: true,
         tanggal: true,
         waktu_mulai: true,
@@ -426,11 +535,14 @@ export class SesiQueryService {
     // Match merged schedule ranges with physical sessions
     const matchedPhysicalIds = new Set<string>();
 
+    const isKbmPhysical = (ps: any) =>
+      !ps.jadwal_kegiatan_id && (!ps.jenis_kegiatan || String(ps.jenis_kegiatan).toUpperCase() === 'KBM');
+
     const unifiedList = mergedRanges.map((mRange: any) => {
       // Find matching physical session:
       // Priority 1 = Matches schedule link OR (kelas_id + mapel_id) with active (BERLANGSUNG) or completed (SELESAI) status
       let physicalMatch = physicalSessions.find((ps: any) => {
-        if (matchedPhysicalIds.has(ps.id)) return false;
+        if (matchedPhysicalIds.has(ps.id) || !isKbmPhysical(ps)) return false;
         const matchesSchedule = ps.jadwal_kbm_id && mRange.schedule_ids.includes(ps.jadwal_kbm_id);
         const matchesClassMapel = ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id;
         const isStarted = ps.status === 'BERLANGSUNG' || Boolean(ps.foto_kegiatan) || ps.status === 'SELESAI';
@@ -440,7 +552,7 @@ export class SesiQueryService {
       // Priority 2 = Fallback match by exact jadwal_kbm_id link (e.g. unstarted MENDATANG physical sessions)
       if (!physicalMatch) {
         physicalMatch = physicalSessions.find((ps: any) => {
-          if (matchedPhysicalIds.has(ps.id)) return false;
+          if (matchedPhysicalIds.has(ps.id) || !isKbmPhysical(ps)) return false;
           return ps.jadwal_kbm_id && mRange.schedule_ids.includes(ps.jadwal_kbm_id);
         });
       }
@@ -448,7 +560,7 @@ export class SesiQueryService {
       // Priority 3 = Fallback match by kelas_id and mapel_id
       if (!physicalMatch) {
         physicalMatch = physicalSessions.find((ps: any) => {
-          if (matchedPhysicalIds.has(ps.id)) return false;
+          if (matchedPhysicalIds.has(ps.id) || !isKbmPhysical(ps)) return false;
           return ps.kelas_id === mRange.kelas_id && ps.mapel_id === mRange.mapel_id;
         });
       }
@@ -528,7 +640,10 @@ export class SesiQueryService {
     // Merge multiple session/schedule fragments belonging to the same lesson block (kelas, guru, mapel)
     const blockMap = new Map<string, any[]>();
     unifiedList.forEach((item: any) => {
-      const key = `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}`;
+      const isActivity = !!item.jadwal_kegiatan_id || (item.jenis_kegiatan && String(item.jenis_kegiatan).toUpperCase() !== 'KBM');
+      const key = isActivity
+        ? `activity_${item.id}`
+        : `${item.kelas_id || 'no_kelas'}_${item.guru_id || 'no_guru'}_${item.mapel_id || 'no_mapel'}`;
       if (!blockMap.has(key)) blockMap.set(key, []);
       blockMap.get(key)!.push(item);
     });
@@ -604,10 +719,10 @@ export class SesiQueryService {
       });
     });
 
-    // Sort unified list chronologically (by waktu_mulai/jam_mulai ascending)
+    // Sort unified list chronologically (by jam_mulai / waktu_mulai ascending)
     consolidatedList.sort((a: any, b: any) => {
-      const timeA = a.waktu_mulai || a.jam_mulai || '00:00';
-      const timeB = b.waktu_mulai || b.jam_mulai || '00:00';
+      const timeA = a.jam_mulai || (a.waktu_mulai ? new Date(a.waktu_mulai).toISOString() : '00:00');
+      const timeB = b.jam_mulai || (b.waktu_mulai ? new Date(b.waktu_mulai).toISOString() : '00:00');
       return String(timeA).localeCompare(String(timeB));
     });
 
