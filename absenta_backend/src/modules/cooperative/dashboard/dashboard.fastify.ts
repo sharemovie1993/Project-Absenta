@@ -74,8 +74,8 @@ export default async function dashboardRoutes(fastify: any) {
                     member: {
                         include: {
                             User: { select: { full_name: true } },
-                            Siswa: { select: { namaLengkap: true } },
-                            Guru: { select: { namaLengkap: true } },
+                            Siswa: { select: { nama_siswa: true } },
+                            Guru: { select: { nama_guru: true } },
                         }
                     }
                 }
@@ -86,7 +86,7 @@ export default async function dashboardRoutes(fastify: any) {
                 amount: Number(l.amount),
                 duration: l.duration,
                 createdAt: l.createdAt,
-                memberName: l.member?.User?.full_name || l.member?.Guru?.namaLengkap || l.member?.Siswa?.namaLengkap || 'Anggota Koperasi'
+                memberName: l.member?.User?.full_name || l.member?.Guru?.nama_guru || l.member?.Siswa?.nama_siswa || 'Anggota Koperasi'
             }));
 
             // Cicilan Jatuh Tempo (Status UNPAID dan dueDate < now)
@@ -192,8 +192,8 @@ export default async function dashboardRoutes(fastify: any) {
                             member: {
                                 include: {
                                     User: { select: { full_name: true } },
-                                    Siswa: { select: { namaLengkap: true } },
-                                    Guru: { select: { namaLengkap: true } },
+                                    Siswa: { select: { nama_siswa: true } },
+                                    Guru: { select: { nama_guru: true } },
                                 }
                             }
                         }
@@ -209,8 +209,8 @@ export default async function dashboardRoutes(fastify: any) {
                     member: {
                         include: {
                             User: { select: { full_name: true } },
-                            Siswa: { select: { namaLengkap: true } },
-                            Guru: { select: { namaLengkap: true } },
+                            Siswa: { select: { nama_siswa: true } },
+                            Guru: { select: { nama_guru: true } },
                         }
                     }
                 }
@@ -221,7 +221,7 @@ export default async function dashboardRoutes(fastify: any) {
                     id: s.id,
                     type: 'SAVING',
                     title: `Setoran ${s.saving?.category?.name || 'Simpanan'}`,
-                    description: s.saving?.member?.User?.full_name || s.saving?.member?.Guru?.namaLengkap || s.saving?.member?.Siswa?.namaLengkap || 'Anggota',
+                    description: s.saving?.member?.User?.full_name || s.saving?.member?.Guru?.nama_guru || s.saving?.member?.Siswa?.nama_siswa || 'Anggota',
                     amount: Number(s.amount),
                     date: s.date
                 })),
@@ -229,7 +229,7 @@ export default async function dashboardRoutes(fastify: any) {
                     id: sl.id,
                     type: 'SALE',
                     title: 'Penjualan Kasir POS',
-                    description: sl.member ? (sl.member?.User?.full_name || sl.member?.Guru?.namaLengkap || sl.member?.Siswa?.namaLengkap) : 'Pembeli Umum',
+                    description: sl.member ? (sl.member?.User?.full_name || sl.member?.Guru?.nama_guru || sl.member?.Siswa?.nama_siswa) : 'Pembeli Umum',
                     amount: Number(sl.total),
                     date: sl.date
                 }))

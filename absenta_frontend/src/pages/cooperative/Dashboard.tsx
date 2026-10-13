@@ -58,15 +58,8 @@ const Dashboard: React.FC = React.memo(() => {
     { id: 'member', label: 'Akun Anggota Saya', icon: UserCheck },
   ], []);
 
-  // Dummy data for chart - 6 bulan
-  const chartData = useMemo(() => [
-    { name: 'Jan', simpanan: 4000000, pinjaman: 2400000 },
-    { name: 'Feb', simpanan: 3000000, pinjaman: 1398000 },
-    { name: 'Mar', simpanan: 2000000, pinjaman: 9800000 },
-    { name: 'Apr', simpanan: 2780000, pinjaman: 3908000 },
-    { name: 'May', simpanan: 1890000, pinjaman: 4800000 },
-    { name: 'Jun', simpanan: 2390000, pinjaman: 3800000 },
-  ], []);
+  // Default empty monthly trend
+  const emptyMonthlyTrend = useMemo(() => [], []);
 
   // ── React Query Hooks ──
   const { data: memberInfo = null, isLoading: loadingMemberInfo } = useQuery<MemberInfo | null>({
@@ -279,7 +272,7 @@ const Dashboard: React.FC = React.memo(() => {
               <CoopManagementDashboard
                 stats={stats}
                 loadingStats={loadingStats}
-                chartData={stats.monthlyTrend || chartData}
+                chartData={stats.monthlyTrend || emptyMonthlyTrend}
                 announcements={announcements}
                 criticalStock={criticalStock}
                 criticalStockLoading={criticalStockLoading}
