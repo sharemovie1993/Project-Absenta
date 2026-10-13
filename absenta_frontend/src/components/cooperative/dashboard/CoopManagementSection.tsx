@@ -4,15 +4,11 @@ import {
   Users, 
   Wallet, 
   TrendingUp, 
-  AlertCircle, 
-  Bell, 
-  CheckCircle2, 
   Package, 
-  ShoppingBag, 
   PiggyBank, 
-  Coins, 
-  Sparkles,
-  Receipt
+  Receipt,
+  CheckCircle2,
+  Bell
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -28,7 +24,6 @@ import { SectionCard } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/date.utils';
-import { CoopPortfolioCards } from './CoopPortfolioCards';
 import { CoopApprovalHub } from './CoopApprovalHub';
 import type { CoopManagementSectionProps } from './types';
 
@@ -41,7 +36,6 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
 }) => {
   const [activeChartMetric, setActiveChartMetric] = useState<'all' | 'simpanan' | 'pinjaman' | 'penjualan'>('all');
 
-  // Gunakan data tren bulanan riil dari stats jika tersedia
   const realChartData = (stats.monthlyTrend && stats.monthlyTrend.length > 0)
     ? stats.monthlyTrend
     : (propChartData || []);
@@ -49,127 +43,57 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
   const recentActivities = stats.recentActivities || [];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* ── SECTION 1: Ringkasan Statistik Agregat & Finansial Koperasi ──────────────── */}
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Total Anggota */}
-          <AnalyticsCard 
-            title="Total Anggota" 
-            value={stats.totalMembers.toString()} 
-            icon={<Users size={24} />} 
-            gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30" 
-            subtitle={`${stats.activeMembers || stats.totalMembers} Anggota aktif`}
-          />
-
-          {/* Total Simpanan Terkumpul */}
-          <AnalyticsCard 
-            title="Total Simpanan" 
-            value={`Rp ${Math.round(Number(stats.totalSavings || 0)).toLocaleString('id-ID')}`} 
-            icon={<Wallet size={24} />} 
-            gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
-            subtitle={`Pokok: Rp ${(stats.simpananPokok || 0).toLocaleString('id-ID')} | Wajib: Rp ${(stats.simpananWajib || 0).toLocaleString('id-ID')}`}
-          />
-
-          {/* Pinjaman Aktif */}
-          <AnalyticsCard 
-            title="Pinjaman Beredar" 
-            value={`Rp ${Math.round(Number(stats.totalLoans || 0)).toLocaleString('id-ID')}`} 
-            icon={<TrendingUp size={24} />} 
-            gradient="from-amber-500 to-amber-700 text-white border-amber-400/30" 
-            subtitle={`${stats.activeLoansCount || 0} Pinjaman sedang berjalan`}
-          />
-
-          {/* Cicilan Jatuh Tempo */}
-          <AnalyticsCard 
-            title="Jatuh Tempo" 
-            value={stats.dueInstallments.toString()} 
-            icon={<AlertCircle size={24} />} 
-            gradient="from-rose-500 to-rose-700 text-white border-rose-400/30" 
-            subtitle={stats.dueInstallmentsAmount ? `Tunggakan: Rp ${stats.dueInstallmentsAmount.toLocaleString('id-ID')}` : 'Semua cicilan lancar'}
-          />
-        </div>
-
-        {/* Baris Sekunder: Mini Metric Toko & SHU */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
-                <ShoppingBag size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Omzet Toko Bulan Ini</p>
-                <p className="text-base font-black text-slate-800 dark:text-white">
-                  Rp {Math.round(Number(stats.storeSalesMonth || 0)).toLocaleString('id-ID')}
-                </p>
-              </div>
-            </div>
-            <span className="text-[11px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-lg">
-              {stats.storeSalesCountMonth || 0} Transaksi
-            </span>
-          </div>
-
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-xl">
-                <Coins size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Tahun Buku SHU</p>
-                <p className="text-base font-black text-slate-800 dark:text-white">
-                  {stats.activePeriod ? `Tahun ${stats.activePeriod.year}` : 'Belum Ditetapkan'}
-                </p>
-              </div>
-            </div>
-            <span className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-lg ${
-              stats.activePeriod 
-                ? 'bg-purple-50 text-purple-600 dark:bg-purple-950/60' 
-                : 'bg-slate-100 text-slate-500'
-            }`}>
-              {stats.activePeriod ? stats.activePeriod.status : 'DRAFT'}
-            </span>
-          </div>
-
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                <CheckCircle2 size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tiket & Pengaduan</p>
-                <p className="text-base font-black text-slate-800 dark:text-white">
-                  {stats.openTickets ? `${stats.openTickets} Menunggu` : 'Semua Tertangani'}
-                </p>
-              </div>
-            </div>
-            <Link 
-              to="/cooperative/tickets"
-              className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 flex items-center gap-0.5"
-            >
-              Lihat Tiket &rarr;
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* ── SECTION 2: 4 Indikator Eksekutif: Kepatuhan Wajib, NPL Kredit & Estimasi SHU YTD ── */}
-      <CoopPortfolioCards 
-        wajibCompliance={stats.wajibCompliance}
-        loanPortfolio={stats.loanPortfolio}
-        estimatedShuYtd={stats.estimatedShuYtd}
-      />
-
-      {/* ── SECTION 3: Pusat Aksi & Persetujuan Pengurus (Pending Loans & Members) ── */}
+      {/* ── NOTIFIKASI AKSI PENGURUS (Hanya tampil jika ada pengajuan/antrean tertunda) ── */}
       <CoopApprovalHub 
         pendingLoans={stats.pendingLoans}
         pendingMembers={stats.pendingMembers}
       />
 
-      {/* ── SECTION 4: Grafik Pertumbuhan Riil & Aktivitas Finansial Terkini ───────── */}
+      {/* ── 4 KARTU EKSEKUTIF INTI (Ramping, Padat & Bebas Noise) ───────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 1. Keanggotaan & Kepatuhan Iuran */}
+        <AnalyticsCard 
+          title="Total Anggota" 
+          value={stats.totalMembers.toString()} 
+          icon={<Users size={24} />} 
+          gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30" 
+          subtitle={`${stats.wajibCompliance?.compliancePercent ?? 100}% Iuran Wajib Lunas (${stats.wajibCompliance?.unpaidCount ?? 0} belum)`}
+        />
+
+        {/* 2. Total Simpanan Terkumpul */}
+        <AnalyticsCard 
+          title="Total Simpanan" 
+          value={`Rp ${Math.round(Number(stats.totalSavings || 0)).toLocaleString('id-ID')}`} 
+          icon={<Wallet size={24} />} 
+          gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
+          subtitle={`Pokok: Rp ${(stats.simpananPokok || 0).toLocaleString('id-ID')} | Wajib: Rp ${(stats.simpananWajib || 0).toLocaleString('id-ID')}`}
+        />
+
+        {/* 3. Portofolio Pinjaman & Rasio NPL */}
+        <AnalyticsCard 
+          title="Pinjaman Beredar" 
+          value={`Rp ${Math.round(Number(stats.totalLoans || 0)).toLocaleString('id-ID')}`} 
+          icon={<TrendingUp size={24} />} 
+          gradient="from-amber-500 to-amber-700 text-white border-amber-400/30" 
+          subtitle={`${stats.loanPortfolio?.nplRatio ?? 0}% NPL (${stats.activeLoansCount || 0} Pinjaman Aktif)`}
+        />
+
+        {/* 4. Estimasi Akumulasi SHU Tahun Berjalan */}
+        <AnalyticsCard 
+          title={`Estimasi SHU ${stats.estimatedShuYtd?.year || ''}`.trim()} 
+          value={`Rp ${Math.round(Number(stats.estimatedShuYtd?.totalEstimatedShu || 0)).toLocaleString('id-ID')}`} 
+          icon={<PiggyBank size={24} />} 
+          gradient="from-purple-500 to-purple-700 text-white border-purple-400/30" 
+          subtitle={`Omzet Toko: Rp ${Math.round(Number(stats.storeSalesMonth || 0)).toLocaleString('id-ID')}`}
+        />
+      </div>
+
+      {/* ── GRAFIK TREN BULANAN & AKTIVITAS REAL-TIME ─────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Kolom Kiri: Grafik Analisis Finansial (6 Bulan Riil) */}
+        {/* Kolom Kiri (2/3): Grafik Analisis Finansial */}
         <div className="lg:col-span-2 min-w-0">
           <SectionCard 
             title="Tren Finansial & Operasional (6 Bulan Terakhir)" 
@@ -261,7 +185,7 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
           </SectionCard>
         </div>
 
-        {/* Kolom Kanan: Log Aktivitas Keuangan Terkini (Real-time Mutasi) */}
+        {/* Kolom Kanan (1/3): Aktivitas Mutasi Terkini & Pengumuman */}
         <div className="lg:col-span-1 min-w-0 space-y-6">
           <SectionCard title="Aktivitas Mutasi Terkini" fullWidth noPadding>
             <div className="p-4 space-y-3">
@@ -299,13 +223,10 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
             </div>
           </SectionCard>
 
-          {/* Pengumuman Terbaru */}
-          <SectionCard title="Pengumuman Koperasi" fullWidth noPadding>
-            <div className="space-y-3 p-4">
-              {announcements.length === 0 ? (
-                <p className="text-gray-400 text-center py-4 text-xs italic">Tidak ada pengumuman baru.</p>
-              ) : (
-                announcements?.slice(0, 2)?.map((ann, idx) => (
+          {announcements.length > 0 && (
+            <SectionCard title="Pengumuman Koperasi" fullWidth noPadding>
+              <div className="space-y-3 p-4">
+                {announcements?.slice(0, 2)?.map((ann, idx) => (
                   <div key={idx} className="bg-indigo-50/60 dark:bg-indigo-950/20 p-3 rounded-xl border-l-4 border-indigo-500 space-y-1">
                     <div className="flex items-start gap-2">
                       <Bell className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" size={14} />
@@ -315,95 +236,50 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
                       </div>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </SectionCard>
-        </div>
-
-      </div>
-
-      {/* ── SECTION 5: Detail Inventori Minimarket & Restock ─────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <Package size={16} className="text-rose-500" />
-                Peringatan Stok Kritis Minimarket
-              </h3>
-              <Link 
-                to="/cooperative/products" 
-                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-              >
-                Katalog Produk &rarr;
-              </Link>
-            </div>
-
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {criticalStockLoading ? (
-                <div className="text-center py-8 text-slate-400 italic text-xs">Memeriksa stok barang...</div>
-              ) : criticalStock.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 rounded-2xl text-center gap-2">
-                  <CheckCircle2 size={24} className="text-emerald-500" />
-                  <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Semua Stok Barang Terkendali</p>
-                  <p className="text-[10px] text-slate-500">Tidak ada produk dengan stok di bawah batas minimum.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {criticalStock?.slice(0, 6)?.map((item, i) => (
-                    <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl flex items-center justify-between">
-                      <div className="min-w-0 flex-1 pr-2">
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.name}</p>
-                        <p className="text-[10px] text-slate-400">{item.category}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className={cn(
-                          "px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
-                          item.status === 'HABIS' 
-                            ? "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:text-red-400" 
-                            : "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400"
-                        )}>
-                          {item.status}: {item.stock} pcs
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          {criticalStock.length > 6 && (
-            <p className="text-[10px] text-slate-400 font-semibold mt-3">
-              * Dan {criticalStock.length - 6} produk kritis lainnya. Silakan cek menu Katalog Produk untuk laporan selengkapnya.
-            </p>
+                ))}
+              </div>
+            </SectionCard>
           )}
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between min-h-[220px]">
-          <div className="space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-              <Sparkles size={14} />
-              Panduan Manajemen Koperasi
-            </h3>
-            <p className="text-xs text-slate-500 leading-relaxed font-medium dark:text-slate-400">
-              Gunakan dashboard pengelola untuk memantau sirkulasi kas, persetujuan pinjaman anggota, kelancaran minimarket, dan persiapan pembagian SHU pada RAT.
-            </p>
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 space-y-1">
-              <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">Tip Efisiensi:</p>
-              <p className="text-[10px] text-slate-500 leading-normal">
-                Pastikan transaksi kasir POS selalu memasukkan nomor anggota agar SHU Jasa Transaksi terhitung otomatis ke hak anggota.
-              </p>
-            </div>
-          </div>
-          <Link 
-            to="/cooperative/accounting" 
-            className="text-xs font-bold text-center text-white bg-indigo-600 hover:bg-indigo-700 py-2.5 rounded-xl transition-all shadow-sm mt-3"
-          >
-            Buka Laporan Keuangan Lengkap &rarr;
-          </Link>
-        </div>
       </div>
+
+      {/* ── STOK KRITIS MINIMARKET (Hanya Tampil Jika Ada Peringatan) ───────────────── */}
+      {criticalStock.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-2">
+              <Package size={15} className="text-rose-500" />
+              Peringatan Stok Kritis Minimarket ({criticalStock.length} Barang)
+            </h3>
+            <Link 
+              to="/cooperative/products" 
+              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Lihat Katalog &rarr;
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {criticalStock?.slice(0, 6)?.map((item, i) => (
+              <div key={i} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 rounded-xl flex items-center justify-between">
+                <div className="min-w-0 pr-2">
+                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.name}</p>
+                  <p className="text-[10px] text-slate-400">{item.category}</p>
+                </div>
+                <span className={cn(
+                  "px-2 py-0.5 rounded-full text-[9px] font-black uppercase shrink-0",
+                  item.status === 'HABIS' 
+                    ? "bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/40 dark:text-red-400" 
+                    : "bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400"
+                )}>
+                  {item.status}: {item.stock} pcs
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );
