@@ -2942,6 +2942,11 @@ model Sale {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, date])
+  @@index([tenantId, paymentMethod])
+  @@index([memberId])
 }
 
 model SaleItem {
@@ -2954,6 +2959,9 @@ model SaleItem {
 
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+  @@index([productId])
 }
 
 // --- FITUR TAMBAHAN ---

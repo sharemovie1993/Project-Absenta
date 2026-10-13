@@ -655,8 +655,17 @@ export default async function tokoRoutes(fastify: any) {
     });
 
     // ==========================================
-    // LAPORAN OPERASIONAL PENJUALAN TOKO KOPERASI
+    // LAPORAN OPERASIONAL PENJUALAN TOKO KOPERASI (Phase 4 Hardened)
     // ==========================================
+
+    const salesReportQuerySchema = z.object({
+        startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+        endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+        paymentMethod: z.enum(['ALL', 'CASH', 'SAVING']).optional(),
+        search: z.string().max(100).optional(),
+        page: z.coerce.number().int().min(1).optional().default(1),
+        limit: z.coerce.number().int().min(1).max(100).optional().default(15),
+    });
 
     // GET /cooperative/toko/sales-report/summary
     fastify.get('/sales-report/summary', {
@@ -664,12 +673,20 @@ export default async function tokoRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { startDate, endDate, paymentMethod } = req.query as any;
-            const summary = await TokoService.getSalesReportSummary(tenantId, { startDate, endDate, paymentMethod });
+            const query = salesReportQuerySchema.partial().parse(req.query);
+            const summary = await TokoService.getSalesReportSummary(tenantId, {
+                startDate: query.startDate,
+                endDate: query.endDate,
+                paymentMethod: query.paymentMethod
+            });
             return reply.send({ success: true, data: summary });
         } catch (error: any) {
             appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat ringkasan laporan penjualan');
-            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat ringkasan penjualan' });
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat ringkasan penjualan')
+            });
         }
     });
 
@@ -679,19 +696,23 @@ export default async function tokoRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { page, limit, startDate, endDate, paymentMethod, search } = req.query as any;
+            const query = salesReportQuerySchema.parse(req.query);
             const result = await TokoService.getSalesTransactionsPaginated(tenantId, {
-                page: page ? Number(page) : 1,
-                limit: limit ? Number(limit) : 15,
-                startDate,
-                endDate,
-                paymentMethod,
-                search
+                page: query.page,
+                limit: query.limit,
+                startDate: query.startDate,
+                endDate: query.endDate,
+                paymentMethod: query.paymentMethod,
+                search: query.search
             });
             return reply.send({ success: true, data: result });
         } catch (error: any) {
             appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat daftar transaksi penjualan');
-            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat daftar transaksi penjualan' });
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat daftar transaksi penjualan')
+            });
         }
     });
 
@@ -701,16 +722,20 @@ export default async function tokoRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { startDate, endDate, limit } = req.query as any;
+            const query = salesReportQuerySchema.partial().parse(req.query);
             const products = await TokoService.getTopSellingProducts(tenantId, {
-                startDate,
-                endDate,
-                limit: limit ? Number(limit) : 10
+                startDate: query.startDate,
+                endDate: query.endDate,
+                limit: query.limit || 10
             });
             return reply.send({ success: true, data: products });
         } catch (error: any) {
             appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat produk terlaris');
-            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat produk terlaris' });
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat produk terlaris')
+            });
         }
     });
 
@@ -720,12 +745,19 @@ export default async function tokoRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { startDate, endDate } = req.query as any;
-            const daily = await TokoService.getDailySalesReport(tenantId, { startDate, endDate });
+            const query = salesReportQuerySchema.partial().parse(req.query);
+            const daily = await TokoService.getDailySalesReport(tenantId, {
+                startDate: query.startDate,
+                endDate: query.endDate
+            });
             return reply.send({ success: true, data: daily });
         } catch (error: any) {
             appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat rekap penjualan harian');
-            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat rekap penjualan harian' });
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat rekap penjualan harian')
+            });
         }
     });
 }
