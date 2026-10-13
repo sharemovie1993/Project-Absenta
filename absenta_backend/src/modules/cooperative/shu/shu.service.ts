@@ -871,11 +871,15 @@ export class ShuService {
 
         const myTotalTransaksi = myBelanja + myPinjaman + myDeposit;
 
-        // Total Transaksi Gabungan Seluruh Anggota
+        // Total Transaksi Gabungan Seluruh Anggota (Hanya transaksi yang dilakukan oleh Anggota Koperasi)
         let grandTotalTransaksi = 0;
         if (activePeriod.includeStorePurchases) {
             const allSales = await prisma.sale.aggregate({
-                where: { tenantId, date: { gte: startDate, lte: endDate } },
+                where: { 
+                    tenantId, 
+                    memberId: { not: null },
+                    date: { gte: startDate, lte: endDate } 
+                },
                 _sum: { total: true },
             });
             grandTotalTransaksi += Number(allSales._sum.total || 0);
