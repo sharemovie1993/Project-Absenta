@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, UserCheck, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, UserCheck } from 'lucide-react';
 import api from '../../lib/axiosInstance';
 import { SectionCard } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
@@ -15,9 +15,11 @@ import { useTvStore } from '../../store/tvStore';
 import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import type { CriticalStockItem, Announcement, Sale, CoopUserInfo } from '@/components/cooperative/types';
 import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
-import { CoopManagementDashboard } from './components/CoopManagementDashboard';
-import { CoopMemberDashboard, type MemberInfo } from './components/CoopMemberDashboard';
+import { formatDate } from '../../utils/date.utils';
+import type { MemberInfo } from '@/components/cooperative/dashboard/types';
 
+const CoopManagementSection = lazy(() => import('@/components/cooperative/dashboard/CoopManagementSection').then(m => ({ default: m.CoopManagementSection })));
+const CoopMemberSection = lazy(() => import('@/components/cooperative/dashboard/CoopMemberSection').then(m => ({ default: m.CoopMemberSection })));
 const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
 
@@ -203,7 +205,7 @@ const Dashboard: React.FC = React.memo(() => {
           announcements={announcements}
           salesHistory={salesHistory}
           stats={stats}
-          chartData={chartData}
+          chartData={stats.monthlyTrend || emptyMonthlyTrend}
           criticalStockLoading={criticalStockLoading}
           criticalStock={criticalStock}
         />
@@ -269,26 +271,30 @@ const Dashboard: React.FC = React.memo(() => {
 
             {/* Rendering View Sesuai Context Mode */}
             {activeTab === 'management' ? (
-              <CoopManagementDashboard
-                stats={stats}
-                loadingStats={loadingStats}
-                chartData={stats.monthlyTrend || emptyMonthlyTrend}
-                announcements={announcements}
-                criticalStock={criticalStock}
-                criticalStockLoading={criticalStockLoading}
-              />
+              <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Pengelola...</div>}>
+                <CoopManagementSection
+                  stats={stats}
+                  loadingStats={loadingStats}
+                  chartData={stats.monthlyTrend || emptyMonthlyTrend}
+                  announcements={announcements}
+                  criticalStock={criticalStock}
+                  criticalStockLoading={criticalStockLoading}
+                />
+              </Suspense>
             ) : (
-              <CoopMemberDashboard
-                memberStatus={memberStatus}
-                memberInfo={memberInfo}
-                user={user}
-                mySavingsSum={mySavingsSum}
-                myShuSum={myShuSum}
-                announcements={announcements}
-                salesHistory={salesHistory}
-                salesLoading={salesLoading}
-                printReceipt={printReceipt}
-              />
+              <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Anggota...</div>}>
+                <CoopMemberSection
+                  memberStatus={memberStatus}
+                  memberInfo={memberInfo}
+                  user={user as CoopUserInfo | null}
+                  mySavingsSum={mySavingsSum}
+                  myShuSum={myShuSum}
+                  announcements={announcements}
+                  salesHistory={salesHistory}
+                  salesLoading={salesLoading}
+                  printReceipt={printReceipt}
+                />
+              </Suspense>
             )}
           </div>
         </SectionCard>

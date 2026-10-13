@@ -15,10 +15,12 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { SectionCard, Table, Button } from '../../../components/ui';
-import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
-import { NonMemberBanner } from '../../../components/cooperative/shared/NonMemberBanner';
-import type { Announcement, Sale, SaleItem, CoopUserInfo } from '@/components/cooperative/types';
+import { SectionCard, Table, Button } from '@/components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { NonMemberBanner } from '@/components/cooperative/shared/NonMemberBanner';
+import { formatDate } from '@/utils/date.utils';
+import type { Sale, SaleItem } from '@/components/cooperative/types';
+import type { CoopMemberSectionProps } from './types';
 
 const StrukBadge: React.FC<{ id: string }> = ({ id: receiptId }) => {
   const [copied, setCopied] = useState(false);
@@ -42,26 +44,7 @@ const StrukBadge: React.FC<{ id: string }> = ({ id: receiptId }) => {
   );
 };
 
-export interface MemberInfo {
-  User?: { full_name?: string };
-  memberNo?: string;
-  status?: string;
-  name?: string;
-}
-
-interface CoopMemberDashboardProps {
-  memberStatus: 'loading' | 'member' | 'non-member';
-  memberInfo: MemberInfo | null;
-  user: any;
-  mySavingsSum: number;
-  myShuSum: number;
-  announcements: Announcement[];
-  salesHistory: Sale[];
-  salesLoading: boolean;
-  printReceipt: (sale: Sale) => void;
-}
-
-export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.memo(({
+export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   memberStatus,
   memberInfo,
   user,
@@ -146,7 +129,7 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
               </div>
               <div>
                 <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
-                  {memberInfo?.User?.full_name || memberInfo?.name || (user?.full_name as string) || 'Anggota Koperasi'}
+                  {memberInfo?.User?.full_name || memberInfo?.name || user?.full_name || 'Anggota Koperasi'}
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   No. Anggota: <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{memberInfo?.memberNo || '—'}</span> &bull; Status: <span className="text-emerald-500 font-bold">AKTIF</span>
@@ -172,7 +155,7 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
             {announcements.length === 0 ? (
               <p className="col-span-3 text-gray-500 text-center py-8">Tidak ada pengumuman baru saat ini.</p>
             ) : (
-              announcements.slice(0, 3)?.map((ann, idx) => (
+              announcements?.slice(0, 3)?.map((ann, idx) => (
                 <div key={idx} className="bg-blue-50/50 dark:bg-blue-950/10 p-5 rounded-2xl border border-blue-100/50 dark:border-blue-900/20 shadow-sm flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-3">
@@ -185,7 +168,7 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-2 line-clamp-4 leading-relaxed">{ann.content}</p>
                   </div>
                   <p className="text-slate-400 text-[9px] mt-4 font-bold">
-                    Diterbitkan: {new Date(ann.created_at || (ann as any).createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    Diterbitkan: {formatDate(ann.created_at || (ann as { createdAt?: string }).createdAt)}
                   </p>
                 </div>
               ))
@@ -220,8 +203,8 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
                       label: 'Tanggal & Jam',
                       key: 'date',
                       sortable: true,
-                      render: (date: string, row: any) => {
-                        const raw = date || row?.created_at;
+                      render: (date: string, row: Sale) => {
+                        const raw = date || (row as { created_at?: string })?.created_at;
                         if (!raw) return '-';
                         try {
                           return (
@@ -263,8 +246,8 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
                       label: 'Total Belanja',
                       key: 'total',
                       sortable: true,
-                      render: (val: number, row: any) => {
-                        const totalVal = val ?? row?.total_amount ?? 0;
+                      render: (val: number, row: Sale) => {
+                        const totalVal = val ?? (row as { total_amount?: number })?.total_amount ?? 0;
                         return (
                           <span className="font-bold text-blue-600 dark:text-blue-400">
                             Rp {Number(totalVal).toLocaleString('id-ID')}
@@ -319,4 +302,4 @@ export const CoopMemberDashboard: React.FC<CoopMemberDashboardProps> = React.mem
   );
 });
 
-CoopMemberDashboard.displayName = 'CoopMemberDashboard';
+CoopMemberSection.displayName = 'CoopMemberSection';

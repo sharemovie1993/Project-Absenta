@@ -23,47 +23,16 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  Legend,
-  AreaChart,
-  Area
+  Legend
 } from 'recharts';
-import { SectionCard } from '../../../components/ui';
-import { AnalyticsCard } from '../../../components/ui/AnalyticsCard';
-import { cn } from '../../../lib/utils';
-import type { CriticalStockItem, Announcement } from '@/components/cooperative/types';
+import { SectionCard } from '@/components/ui';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
+import { cn } from '@/lib/utils';
+import { formatDate, formatTime } from '@/utils/date.utils';
+import type { CoopManagementSectionProps } from './types';
 
-interface CoopManagementDashboardProps {
-  stats: {
-    totalMembers: number;
-    activeMembers?: number;
-    totalSavings: number;
-    simpananPokok?: number;
-    simpananWajib?: number;
-    simpananSukarela?: number;
-    totalLoans: number;
-    activeLoansCount?: number;
-    dueInstallments: number;
-    dueInstallmentsAmount?: number;
-    storeSalesToday?: number;
-    storeSalesCountToday?: number;
-    storeSalesMonth?: number;
-    storeSalesCountMonth?: number;
-    activePeriod?: { id: string; year: number; totalShu: number; status: string } | null;
-    openTickets?: number;
-    pendingLoans?: Array<{ id: string; amount: number; duration: number; createdAt: string; memberName: string }>;
-    monthlyTrend?: Array<{ name: string; simpanan: number; pinjaman: number; penjualan: number }>;
-    recentActivities?: Array<{ id: string; type: 'SAVING' | 'SALE'; title: string; description: string; amount: number; date: string }>;
-  };
-  loadingStats?: boolean;
-  chartData?: Array<{ name: string; simpanan: number; pinjaman: number; penjualan?: number }>;
-  announcements: Announcement[];
-  criticalStock: CriticalStockItem[];
-  criticalStockLoading: boolean;
-}
-
-export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = React.memo(({
+export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React.memo(({
   stats,
-  loadingStats,
   chartData: propChartData,
   announcements,
   criticalStock,
@@ -201,7 +170,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
-            {pendingLoans.map(loan => (
+            {pendingLoans?.map((loan) => (
               <div key={loan.id} className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-amber-100 dark:border-slate-800 flex items-center justify-between shadow-2xs">
                 <div>
                   <p className="text-xs font-bold text-slate-800 dark:text-white">{loan.memberName}</p>
@@ -209,7 +178,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
                     Rp {Number(loan.amount).toLocaleString('id-ID')} ({loan.duration} Bulan)
                   </p>
                   <p className="text-[10px] text-slate-400">
-                    Diajukan: {new Date(loan.createdAt).toLocaleDateString('id-ID')}
+                    Diajukan: {formatDate(loan.createdAt)}
                   </p>
                 </div>
                 <Link
@@ -326,7 +295,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
               {recentActivities.length === 0 ? (
                 <p className="text-gray-400 text-center py-8 text-xs italic">Belum ada transaksi mutasi terkini.</p>
               ) : (
-                recentActivities.map(act => (
+                recentActivities?.map((act) => (
                   <div key={act.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className={`p-2 rounded-xl shrink-0 ${
@@ -348,7 +317,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
                         Rp {act.amount.toLocaleString('id-ID')}
                       </p>
                       <p className="text-[9px] text-slate-400">
-                        {new Date(act.date).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        {formatTime(act.date)}
                       </p>
                     </div>
                   </div>
@@ -363,7 +332,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
               {announcements.length === 0 ? (
                 <p className="text-gray-400 text-center py-4 text-xs italic">Tidak ada pengumuman baru.</p>
               ) : (
-                announcements.slice(0, 2).map((ann, idx) => (
+                announcements?.slice(0, 2)?.map((ann, idx) => (
                   <div key={idx} className="bg-indigo-50/60 dark:bg-indigo-950/20 p-3 rounded-xl border-l-4 border-indigo-500 space-y-1">
                     <div className="flex items-start gap-2">
                       <Bell className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" size={14} />
@@ -409,7 +378,7 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {criticalStock.slice(0, 6).map((item, i) => (
+                  {criticalStock?.slice(0, 6)?.map((item, i) => (
                     <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800 rounded-xl flex items-center justify-between">
                       <div className="min-w-0 flex-1 pr-2">
                         <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.name}</p>
@@ -467,4 +436,4 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
   );
 });
 
-CoopManagementDashboard.displayName = 'CoopManagementDashboard';
+CoopManagementSection.displayName = 'CoopManagementSection';
