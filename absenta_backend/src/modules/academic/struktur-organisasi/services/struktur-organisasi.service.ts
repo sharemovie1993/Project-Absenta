@@ -75,7 +75,7 @@ export class StrukturOrganisasiService {
     const cached = await CacheService.getInstance().get<any>(cacheKey);
     if (cached) return cached;
 
-    const list = await prisma.organizationalPosition.findMany({
+    let list = await prisma.organizationalPosition.findMany({
       where: { tenant_id: tenantId, is_active: true },
       orderBy: { order: 'asc' },
       include: {
@@ -95,6 +95,43 @@ export class StrukturOrganisasiService {
         },
       },
     }) as any[];
+
+    // Self-healing: pastikan KETUA_PEMBINA_TARUNA selalu ada di database tenant
+    const hasTaruna = list.some(p => p.code === 'KETUA_PEMBINA_TARUNA');
+    if (!hasTaruna) {
+      try {
+        const newPos = await prisma.organizationalPosition.create({
+          data: {
+            tenant_id: tenantId,
+            code: 'KETUA_PEMBINA_TARUNA',
+            name: 'Ketua Pembina Taruna',
+            scope_type: 'global',
+            unit_type: 'student',
+            order: 50,
+            is_active: true,
+          },
+          include: {
+            organizationalAssigns: {
+              where: { is_active: true },
+              include: {
+                User: {
+                  include: {
+                    Guru: { select: { id: true, nama_guru: true, nip: true } },
+                    Siswa: { select: { id: true, nama_siswa: true, nis: true } },
+                  },
+                },
+                Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
+                Kelas: { select: { id: true, nama_kelas: true, tingkat: true } }
+              },
+            },
+          },
+        });
+        await this.seedCapabilitiesForPosition(newPos.id, newPos.code);
+        list.push(newPos);
+      } catch (err) {
+        // Abaikan jika race condition terjadi
+      }
+    }
 
     // Fetch master data for auto-filling required slots
     const allJurusans = await prisma.jurusan.findMany({ 
