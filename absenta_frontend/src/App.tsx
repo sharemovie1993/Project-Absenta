@@ -193,6 +193,8 @@ const SubdomainRedirect = lazy(() => import('./pages/auth/SubdomainRedirect'));
 const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
 const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggaranPage'));
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
+const ProgramKetarunaanPage = lazy(() => import('./pages/kesiswaan/ProgramKetarunaanPage'));
+
 
 const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
 const SuratKeluarPage = lazy(() => import('./pages/correspondence/SuratKeluarPage'));
@@ -632,6 +634,11 @@ function App() {
                     <Route path="/kesiswaan/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="affairs.violations.view.list">
                         <CetakBerkasKesiswaanPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/program-ketarunaan" element={
+                      <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                        <ProgramKetarunaanPage />
                       </ProtectedRoute>
                     } />
 

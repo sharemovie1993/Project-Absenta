@@ -417,6 +417,24 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
                 Jadwal Resmi
               </span>
             )}
+
+            {/* 🎖️ Ketarunaan Awareness Badge — muncul jika guru hadir via Terminal Ketarunaan */}
+            {(() => {
+              const guruCatatan = item?.AbsenGuru?.[0]?.catatan || item?.guru_catatan || item?.session?.catatan || '';
+              const isSyncedKetarunaan = Boolean(item?.is_synced_ketarunaan) || 
+                (typeof guruCatatan === 'string' && guruCatatan.toLowerCase().includes('ketarunaan'));
+              if (!isSyncedKetarunaan) return null;
+              return (
+                <span 
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-yellow-50 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-700 text-[10px] font-bold shrink-0"
+                  title={`Kehadiran tercatat via Terminal Ketarunaan. ${guruCatatan}`}
+                >
+                  <ShieldCheck size={10} className="text-yellow-600 dark:text-yellow-400" />
+                  Via Terminal Ketarunaan
+                </span>
+              );
+            })()}
+
           </div>
 
           {/* Right Header: Presensi Count or Test Alert */}

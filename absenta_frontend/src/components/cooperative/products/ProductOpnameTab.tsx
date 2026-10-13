@@ -10,6 +10,7 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Plus, ArrowLeft, Calendar, ChevronDown, CheckCircle2, AlertTriangle, FileText, Clock, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useNavigate } from 'react-router-dom';
 import OpnameDetail from '../../../pages/cooperative/components/OpnameDetail';
 import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
@@ -64,7 +65,8 @@ export const ProductOpnameTab = React.memo<ProductOpnameTabProps>(({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
+  const { isAdmin, isKoperasiStore, isKoperasiHead, can } = useCapabilities();
+  const canUpdate = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.products.update') || Boolean(user?.capabilities?.includes('cooperative.store.products.update'));
 
   const [activeOpnameSessionId, setActiveOpnameSessionId] = useState<string | null>(null);
   const [isCreateOpnameModalOpen, setIsCreateOpnameModalOpen] = useState(false);

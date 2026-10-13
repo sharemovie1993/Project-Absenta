@@ -32,7 +32,13 @@ export const STRUKTUR_CODES = {
   KETUA_KOPERASI: 'KETUA_KOPERASI',
   SEKRETARIS_KOPERASI: 'SEKRETARIS_KOPERASI',
   MANAJER_TOKO_KOPERASI: 'MANAJER_TOKO_KOPERASI',
-  PENGAWAS_KOPERASI: 'PENGAWAS_KOPERASI'
+  PENGAWAS_KOPERASI: 'PENGAWAS_KOPERASI',
+  KETUA_PEMBINA_TARUNA: 'KETUA_PEMBINA_TARUNA',     // Ketua Pembina Taruna (Tim Ketarunaan)
+  KETARUNAAN_DOKUMEN: 'KETARUNAAN_DOKUMEN',         // Bid. Dokumen dan Data
+  KETARUNAAN_KEDISIPLINAN: 'KETARUNAAN_KEDISIPLINAN', // Bid. Kedisiplinan
+  KETARUNAAN_PENDIDIKAN: 'KETARUNAAN_PENDIDIKAN',   // Bid. Pendidikan
+  KETARUNAAN_ADM_OPERASI: 'KETARUNAAN_ADM_OPERASI', // Bid. Adm dan Operasi
+  KETARUNAAN_KEBERSIHAN_KES: 'KETARUNAAN_KEBERSIHAN_KES' // Bid. Kebersihan dan Kes.
 } as const;
 
 export type StrukturKode = keyof typeof STRUKTUR_CODES;
@@ -229,5 +235,53 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
     scope_type: 'global',
     deskripsi: 'Dewan Pengawas - Melakukan audit berkala dan memantau kepatuhan keuangan (Read-Only).',
     order: 29
-  }
+  },
+  { 
+    kode: STRUKTUR_CODES.KETUA_PEMBINA_TARUNA, 
+    nama: 'Ketua Pembina Taruna', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Koordinator utama pelaksana kegiatan Ketarunaan',
+    order: 50
+  },
+  { 
+    kode: STRUKTUR_CODES.KETARUNAAN_DOKUMEN, 
+    nama: 'Bid. Dokumen dan Data', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola dokumentasi dan data kegiatan Ketarunaan',
+    order: 51
+  },
+  { 
+    kode: STRUKTUR_CODES.KETARUNAAN_KEDISIPLINAN, 
+    nama: 'Bid. Kedisiplinan', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Mengawasi dan menegakkan kedisiplinan dalam kegiatan Ketarunaan',
+    order: 52
+  },
+  { 
+    kode: STRUKTUR_CODES.KETARUNAAN_PENDIDIKAN, 
+    nama: 'Bid. Pendidikan', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Merancang dan melaksanakan program pendidikan Ketarunaan',
+    order: 53
+  },
+  { 
+    kode: STRUKTUR_CODES.KETARUNAAN_ADM_OPERASI, 
+    nama: 'Bid. Adm dan Operasi', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Mengelola administrasi dan operasional kegiatan Ketarunaan',
+    order: 54
+  },
+  { 
+    kode: STRUKTUR_CODES.KETARUNAAN_KEBERSIHAN_KES, 
+    nama: 'Bid. Kebersihan dan Kes.', 
+    scope: 'student', 
+    scope_type: 'global',
+    deskripsi: 'Mengawasi kebersihan dan kesehatan dalam kegiatan Ketarunaan',
+    order: 55
+  },
 ];

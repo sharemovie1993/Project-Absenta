@@ -3088,6 +3088,11 @@ model ShuConfig {
   porsiSosial        Decimal @default(5)
   porsiPembangunan   Decimal @default(10)
 
+  // Komponen pembentuk Volume Jasa Transaksi (Transparansi RAT)
+  includeStorePurchases Boolean @default(true)
+  includeLoans          Boolean @default(true)
+  includeSavingsDeposit Boolean @default(false)
+
   Tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
@@ -3123,9 +3128,12 @@ model ShuAllocation {
   periodId String
   memberId String
 
-  // Data kalkulasi (audit trail)
+  // Data kalkulasi (audit trail & transparansi unit usaha)
   totalSimpananModal Decimal @default(0)
   totalTransaksi     Decimal @default(0)
+  volumeBelanja      Decimal @default(0)
+  volumePinjaman     Decimal @default(0)
+  volumeDeposit      Decimal @default(0)
 
   jasaModal     Decimal @default(0)
   jasaTransaksi Decimal @default(0)

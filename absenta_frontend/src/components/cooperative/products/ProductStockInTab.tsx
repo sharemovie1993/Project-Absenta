@@ -107,13 +107,15 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   const [stockInShippingFee, setStockInShippingFee] = useState<number>(0);
 
   // Fetch supplier list for checkout dropdown
-  const { data: supplierList = [] } = useQuery<CoopSupplier[]>({
+  const { data: rawSupplierList } = useQuery<CoopSupplier[]>({
     queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
       const res = await api.get('/cooperative/suppliers');
-      return res.data;
+      const raw = res?.data;
+      return Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : []);
     }
   });
+  const supplierList = Array.isArray(rawSupplierList) ? rawSupplierList : [];
 
   // Search, Filter & Sort states
   const [searchQuery, setSearchQuery] = useState('');

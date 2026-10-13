@@ -21,7 +21,8 @@ import {
   HeartHandshake,
   ShieldCheck,
   ClipboardList,
-  ShoppingCart
+  ShoppingCart,
+  Medal
 } from 'lucide-react';
 import { StrukturDiagram } from '@/components/academic/struktur/StrukturDiagram';
 
@@ -36,7 +37,26 @@ const TABS = [
   { id: 'BP_BK', label: 'BP/BK', icon: HeartHandshake, codes: ['BPBK'] },
   { id: 'GERBANG', label: 'Gerbang', icon: ShieldCheck, codes: ['GERBANG'] },
   { id: 'PETUGAS_KELAS', label: 'Petugas Kelas', icon: ClipboardList, codes: ['PETUGAS_KELAS', 'PETUGAS_ABSENSI'] },
-  { id: 'KOPERASI', label: 'Koperasi', icon: ShoppingCart, codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] }
+  { id: 'KOPERASI', label: 'Koperasi', icon: ShoppingCart, codes: ['KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI'] },
+  { 
+    id: 'KETARUNAAN', 
+    label: 'Ketarunaan', 
+    icon: Medal, 
+    codes: [
+      'KEPALA_SEKOLAH',         // Reuse — puncak hierarki
+      'HUBIN',                  // Reuse — Waka Hubinmas
+      'SARPRAS',                // Reuse — Waka Sarpras
+      'KURIKULUM',              // Reuse — Waka Kurikulum
+      'KESISWAAN',              // Reuse — Waka Kesiswaan
+      'KETUA_PEMBINA_TARUNA',   // Baru — Ketua Pembina Taruna
+      'PEMBINA_ESKUL',          // Reuse — Pembina OSIS (slot)
+      'KETARUNAAN_DOKUMEN',     // Baru — Bid. Dokumen dan Data
+      'KETARUNAAN_KEDISIPLINAN',// Baru — Bid. Kedisiplinan
+      'KETARUNAAN_PENDIDIKAN',  // Baru — Bid. Pendidikan
+      'KETARUNAAN_ADM_OPERASI', // Baru — Bid. Adm dan Operasi
+      'KETARUNAAN_KEBERSIHAN_KES' // Baru — Bid. Kebersihan dan Kes.
+    ] 
+  },
 ];
 
 const StrukturOrganisasiPage: React.FC = () => {

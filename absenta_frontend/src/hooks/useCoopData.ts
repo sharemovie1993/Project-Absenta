@@ -47,7 +47,8 @@ export function useCoopProducts(options?: { enabled?: boolean }) {
     queryKey: COOP_QUERY_KEYS.productsCatalog,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko');
-      return (Array.isArray(response.data) ? response.data : []) as CoopProduct[];
+      const raw = response?.data;
+      return (Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : [])) as CoopProduct[];
     },
     staleTime: 5 * 60 * 1000,
     enabled: options?.enabled ?? true,
@@ -62,7 +63,8 @@ export function useCoopCategories(options?: { enabled?: boolean }) {
     queryKey: COOP_QUERY_KEYS.categories,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko/categories');
-      return (Array.isArray(response.data) ? response.data : []) as CoopCategory[];
+      const raw = response?.data;
+      return (Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : [])) as CoopCategory[];
     },
     staleTime: 5 * 60 * 1000,
     enabled: options?.enabled ?? true,
@@ -77,7 +79,8 @@ export function useCoopSuppliers(options?: { enabled?: boolean }) {
     queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
       const response = await api.get('/cooperative/suppliers');
-      return (Array.isArray(response.data) ? response.data : []) as CoopSupplier[];
+      const raw = response?.data;
+      return (Array.isArray(raw) ? raw : (Array.isArray(raw?.data) ? raw.data : [])) as CoopSupplier[];
     },
     staleTime: 5 * 60 * 1000,
     enabled: options?.enabled ?? true,

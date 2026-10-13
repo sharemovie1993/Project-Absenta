@@ -289,6 +289,7 @@ async function main() {
         { label: 'Meja Piket', icon: 'ClipboardCheck', path: '/kesiswaan/piket', required_capability: 'attendance.piket.view, attendance.piket.manage' },
         { label: 'Pelanggaran Siswa', icon: 'AlertTriangle', path: '/kesiswaan/pelanggaran', required_capability: 'affairs.violations.view.list, affairs.violations.manage' },
         { label: 'Prestasi Siswa', icon: 'Trophy', path: '/kesiswaan/prestasi', required_capability: 'affairs.achievements.view.list, affairs.achievements.create' },
+        { label: 'Program Ketarunaan', icon: 'Shield', path: '/kesiswaan/program-ketarunaan', required_capability: 'attendance.sessions.view.list, dashboard.view.kesiswaan' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Agenda & Kebijakan Poin

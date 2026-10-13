@@ -1313,8 +1313,80 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'createProjekSchema dan bulkScoresSchema terintegrasi pada handler submit.'
       }
     ]
+  },
+
+  // ─── Program Ketarunaan ────────────────────────────────────────────────────
+  program_ketarunaan: {
+    moduleName: 'program_ketarunaan',
+    displayName: 'Program Ketarunaan',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan AcademicPageLayout & ErrorBoundary.',
+        status: 'VERIFIED',
+        details: 'Halaman menggunakan AcademicPageLayout sebagai Error Boundary standar.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Komputasi guard status, breadcrumbs, dan statistik dimemosisasi dengan useMemo.',
+        status: 'VERIFIED',
+        details: 'useMemo terintegrasi pada guard, hari aktif label, breadcrumbs, dan tab options.'
+      },
+      {
+        id: 'network_fallback',
+        name: 'Fault Tolerance & Graceful Degradation (Network Fallback)',
+        description: 'Setiap query dilindungi .catch() fallback sehingga halaman tetap bisa render meski ada endpoint yang gagal.',
+        status: 'VERIFIED',
+        details: 'Semua fungsi API di programKetarunaan.api.ts menggunakan .catch() fallback dengan data kosong yang aman.'
+      },
+      {
+        id: 'guard_toggle',
+        name: 'Guard Halaman Berbasis Toggle JadwalKegiatan',
+        description: 'Halaman dilindungi guard yang memeriksa status aktif JadwalKegiatan Ketarunaan. Jika non-aktif, tampil Guard State dengan tombol aktivasi.',
+        status: 'VERIFIED',
+        details: 'getKetarunaanGuardStatus() dipanggil saat mount. Jika is_active=false, render GuardState dengan link ke /kesiswaan/jadwal-kegiatan.'
+      },
+      {
+        id: 'ssot_compliance',
+        name: 'Single Source of Truth (SSOT) Kehadiran',
+        description: 'Seluruh data presensi (siswa & guru) diambil murni dari SesiAbsensi + AbsenGuru + AbsenSiswa tanpa tabel bayangan.',
+        status: 'VERIFIED',
+        details: 'API /kesiswaan/program-ketarunaan/pendamping dan /stats menggunakan SSOT SesiAbsensi. Badge awareness di UniversalKbmCard berbasis AbsenGuru.catatan.'
+      },
+      {
+        id: 'bidirectional_sync',
+        name: 'Sinkronisasi 2 Arah KBM ↔ Ketarunaan',
+        description: 'Satu tap di Terminal Ketarunaan menghasilkan 2 record fisik: AbsenGuru di SesiAbsensi Ketarunaan + sinkronisasi ke SesiAbsensi KBM Reguler yang beririsan.',
+        status: 'VERIFIED',
+        details: 'tapKetarunaanPendamping() memanggil POST /kesiswaan/program-ketarunaan/tap yang menjalankan logika materialisasi + upsert dengan catatan audit trail.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna (Instruction)',
+        description: 'Mewajibkan adanya properti instruction pada layout untuk memberikan panduan penggunaan fitur kepada pengguna.',
+        status: 'VERIFIED',
+        details: 'Properti instruction ter-mount pada AcademicPageLayout dengan penjelasan 4 tab dan tips penggunaan Terminal Ketarunaan.'
+      },
+      {
+        id: 'architectural_breadcrumbs',
+        name: 'Standarisasi Navigasi Portal & Tombol Kembali Capsule',
+        description: 'Memverifikasi integrasi navigasi portal terpusat dan tombol kembali Glass Capsule di level layout.',
+        status: 'VERIFIED',
+        details: 'Navigasi App Launcher Hub & Tombol Kembali Glass Capsule terintegrasi pada AcademicPageLayout.'
+      },
+      {
+        id: 'code_splitting',
+        name: 'Pemecahan Bundle (Code Splitting)',
+        description: 'Komponen berat dimuat secara lazy menggunakan React.lazy & Suspense untuk menjaga TTI (Time to Interactive) di bawah 3 detik.',
+        status: 'VERIFIED',
+        details: 'TahunPelajaranSelect dimuat secara lazy. Route /kesiswaan/program-ketarunaan menggunakan lazy import di App.tsx.'
+      }
+    ]
   }
 };
+
 
 
 

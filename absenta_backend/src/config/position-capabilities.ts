@@ -744,17 +744,17 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
-    'cooperative.announcements.view.list',
-    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
-    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.store.view.catalog',
-    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.approve', 'cooperative.loans.repay',
+    'cooperative.announcements.view.list', 'cooperative.announcements.create', 'cooperative.announcements.delete',
+    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage', 'cooperative.members.activate', 'cooperative.members.deactivate', 'cooperative.members.view.status',
+    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.points.manage', 'cooperative.store.view.catalog',
+    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.approve', 'cooperative.loans.repay', 'cooperative.loans.types.manage',
     'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
     'cooperative.loans.view.detail', 'cooperative.loans.reject',
-    'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw',
-    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
-    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
-    'cooperative.shu.manage', 'cooperative.shu.approve', 'cooperative.shu.view.report',
-    'cooperative.settings.view', 'cooperative.vouchers.view.list'
+    'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw', 'cooperative.savings.types.manage', 'cooperative.savings.manage',
+    'cooperative.store.orders.view.list', 'cooperative.store.orders.manage', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.products.create', 'cooperative.store.products.update', 'cooperative.store.products.delete', 'cooperative.store.categories.manage', 'cooperative.store.inventory.manage',
+    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail', 'cooperative.tickets.create', 'cooperative.tickets.reply', 'cooperative.tickets.update.status',
+    'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.approve', 'cooperative.shu.view.report',
+    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.vouchers.manage'
   ],
 
   [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: [
@@ -787,5 +787,201 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
     'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
     'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list'
-  ]
+  ],
+
+  // ═══════════════════════════════════════════════════════════════════
+  // TIM KETARUNAAN (PROGRAM KETARUNAAN SEKOLAH)
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Capabilities dasar bersama untuk semua jabatan Tim Ketarunaan
+  // (didefinisikan di setiap jabatan agar seedCapabilitiesForPosition bekerja mandiri)
+
+  // Ketua Pembina Taruna (Koordinator Utama Tim Ketarunaan)
+  [STRUKTUR_CODES.KETUA_PEMBINA_TARUNA]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    'dashboard.view.violation.stats',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    'attendance.schedules.manage',
+    'attendance.schedules.create',
+    'attendance.schedules.update',
+    'attendance.schedules.delete',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    'attendance.sessions.close',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    'attendance.student.view.stats',
+    // Pelanggaran & Kedisiplinan (Monitoring)
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'affairs.violations.report',
+    'affairs.violation.types.view.list',
+    // Events Kegiatan
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
+  ],
+
+  // Bid. Dokumen dan Data
+  [STRUKTUR_CODES.KETARUNAAN_DOKUMEN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.students.view.history',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    'attendance.student.view.stats',
+    // Dokumen
+    'documents.view.list',
+    'documents.view.detail',
+    'documents.upload',
+  ],
+
+  // Bid. Kedisiplinan
+  [STRUKTUR_CODES.KETARUNAAN_KEDISIPLINAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    'dashboard.view.violation.stats',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    // Pelanggaran & Kedisiplinan
+    'affairs.violations.report',
+    'affairs.violations.update',
+    'affairs.violations.view.list',
+    'affairs.violations.view.detail',
+    'affairs.violation.types.view.list',
+  ],
+
+  // Bid. Pendidikan
+  [STRUKTUR_CODES.KETARUNAAN_PENDIDIKAN]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    // Kegiatan & Prestasi
+    'academic.activities.types.view',
+    'affairs.achievements.view.list',
+    'affairs.achievements.create',
+  ],
+
+  // Bid. Adm dan Operasi
+  [STRUKTUR_CODES.KETARUNAAN_ADM_OPERASI]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    'attendance.schedules.manage',
+    'attendance.schedules.create',
+    'attendance.schedules.update',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    // Events
+    'attendance.events.view.list',
+    'attendance.events.create',
+    'attendance.events.delete',
+  ],
+
+  // Bid. Kebersihan dan Kes.
+  [STRUKTUR_CODES.KETARUNAAN_KEBERSIHAN_KES]: [
+    'organization.scope.tenant_wide',
+    'dashboard.view.kesiswaan',
+    // Data Referensi
+    'academic.students.view.list',
+    'academic.students.view.detail',
+    'academic.teachers.view.list',
+    'academic.structures.view.list',
+    // Jadwal & Sesi Kegiatan
+    'attendance.schedules.view.list',
+    // Presensi & Terminal Ketarunaan
+    'attendance.sessions.view.list',
+    'attendance.sessions.view.detail',
+    'attendance.sessions.create',
+    'attendance.sessions.update',
+    'attendance.sessions.tap',
+    'attendance.sessions.update.attendance',
+    // Rekap & Laporan
+    'attendance.reports.view',
+    'attendance.recap.view.daily',
+    'attendance.recap.view.monthly',
+    // Pelanggaran Kebersihan/Kesehatan
+    'affairs.violations.report',
+    'affairs.violations.view.list',
+    'affairs.violation.types.view.list',
+  ],
 };
