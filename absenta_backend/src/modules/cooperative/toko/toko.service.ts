@@ -1037,4 +1037,394 @@ export class TokoService {
             errors
         };
     }
+
+    // ==========================================
+    // LAPORAN OPERASIONAL PENJUALAN TOKO KOPERASI
+    // ==========================================
+
+    /**
+     * Ringkasan KPI Penjualan Toko (Omset, Transaksi, Margin Kotor, Metode Bayar)
+     */
+    static async getSalesReportSummary(tenantId: string, options?: { startDate?: string; endDate?: string; paymentMethod?: string }) {
+        const where: any = { tenantId };
+
+        if (options?.paymentMethod && options.paymentMethod !== 'ALL') {
+            where.paymentMethod = options.paymentMethod;
+        }
+
+        if (options?.startDate || options?.endDate) {
+            const dateFilter: any = {};
+            if (options.startDate) dateFilter.gte = new Date(options.startDate + 'T00:00:00.000Z');
+            if (options.endDate)   dateFilter.lte = new Date(options.endDate   + 'T23:59:59.999Z');
+            where.date = dateFilter;
+        }
+
+        const sales = await prisma.sale.findMany({
+            where,
+            include: {
+                items: {
+                    include: {
+                        product: {
+                            select: { costPrice: true, price: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        let totalSales = 0;
+        let totalEstimatedCost = 0;
+        let totalItemsSold = 0;
+
+        const paymentBreakdown: Record<string, { total: number; count: number }> = {
+            CASH: { total: 0, count: 0 },
+            SAVING: { total: 0, count: 0 },
+            OTHER: { total: 0, count: 0 }
+        };
+
+        for (const sale of sales) {
+            const saleTotal = Number(sale.total || 0);
+            totalSales += saleTotal;
+
+            const methodKey = (sale.paymentMethod === 'CASH' || sale.paymentMethod === 'SAVING') 
+                ? sale.paymentMethod 
+                : 'OTHER';
+            
+            paymentBreakdown[methodKey].total += saleTotal;
+            paymentBreakdown[methodKey].count += 1;
+
+            for (const item of sale.items) {
+                const qty = item.quantity || 0;
+                const cost = Number(item.product?.costPrice || 0);
+                totalItemsSold += qty;
+                totalEstimatedCost += cost * qty;
+            }
+        }
+
+        const totalTransactions = sales.length;
+        const avgBasketSize = totalTransactions > 0 ? Math.round(totalSales / totalTransactions) : 0;
+        const totalEstimatedGrossProfit = Math.max(0, totalSales - totalEstimatedCost);
+        const grossProfitMarginPct = totalSales > 0 
+            ? Math.round((totalEstimatedGrossProfit / totalSales) * 1000) / 10 
+            : 0;
+
+        return {
+            totalSales,
+            totalTransactions,
+            avgBasketSize,
+            totalItemsSold,
+            totalEstimatedGrossProfit,
+            grossProfitMarginPct,
+            paymentBreakdown
+        };
+    }
+
+    /**
+     * Daftar Transaksi Penjualan Berpaginasi dengan Detail Keranjang & Anggota
+     */
+    static async getSalesTransactionsPaginated(
+        tenantId: string, 
+        options?: { 
+            page?: number; 
+            limit?: number; 
+            startDate?: string; 
+            endDate?: string; 
+            paymentMethod?: string; 
+            search?: string;
+        }
+    ) {
+        const page = Math.max(1, Number(options?.page || 1));
+        const limit = Math.max(1, Math.min(100, Number(options?.limit || 15)));
+        const skip = (page - 1) * limit;
+
+        const where: any = { tenantId };
+
+        if (options?.paymentMethod && options.paymentMethod !== 'ALL') {
+            where.paymentMethod = options.paymentMethod;
+        }
+
+        if (options?.startDate || options?.endDate) {
+            const dateFilter: any = {};
+            if (options.startDate) dateFilter.gte = new Date(options.startDate + 'T00:00:00.000Z');
+            if (options.endDate)   dateFilter.lte = new Date(options.endDate   + 'T23:59:59.999Z');
+            where.date = dateFilter;
+        }
+
+        if (options?.search && options.search.trim()) {
+            const query = options.search.trim();
+            where.OR = [
+                { voucherCode: { contains: query, mode: 'insensitive' } },
+                { id: { contains: query, mode: 'insensitive' } },
+                {
+                    member: {
+                        OR: [
+                            { memberNo: { contains: query, mode: 'insensitive' } },
+                            { Siswa: { nama_siswa: { contains: query, mode: 'insensitive' } } },
+                            { Guru: { nama_guru: { contains: query, mode: 'insensitive' } } },
+                            { User: { full_name: { contains: query, mode: 'insensitive' } } },
+                        ]
+                    }
+                }
+            ];
+        }
+
+        const [total, sales] = await prisma.$transaction([
+            prisma.sale.count({ where }),
+            prisma.sale.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { date: 'desc' },
+                include: {
+                    items: {
+                        include: {
+                            product: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    code: true,
+                                    category: true,
+                                    costPrice: true,
+                                    price: true,
+                                }
+                            }
+                        }
+                    },
+                    member: {
+                        include: {
+                            Siswa: { select: { nama_siswa: true, nis: true } },
+                            Guru: { select: { nama_guru: true, nip: true } },
+                            User: { select: { full_name: true } }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const items = sales.map(s => {
+            let customerName = 'Pembeli Umum / Non-Anggota';
+            let customerIdentifier = '-';
+
+            if (s.member) {
+                if (s.member.Siswa?.nama_siswa) {
+                    customerName = `${s.member.Siswa.nama_siswa} (Siswa)`;
+                    customerIdentifier = s.member.Siswa.nis || s.member.memberNo || '-';
+                } else if (s.member.Guru?.nama_guru) {
+                    customerName = `${s.member.Guru.nama_guru} (Guru)`;
+                    customerIdentifier = s.member.Guru.nip || s.member.memberNo || '-';
+                } else if (s.member.User?.full_name) {
+                    customerName = `${s.member.User.full_name} (Anggota)`;
+                    customerIdentifier = s.member.memberNo || '-';
+                }
+            }
+
+            const parsedItems = s.items.map(it => ({
+                id: it.id,
+                productId: it.productId,
+                productName: it.product?.name || 'Produk',
+                productCode: it.product?.code || '-',
+                category: it.product?.category || 'OTHER',
+                quantity: it.quantity,
+                price: Number(it.price || 0),
+                costPrice: Number(it.product?.costPrice || 0),
+                subtotal: Number(it.price || 0) * it.quantity
+            }));
+
+            const itemCount = parsedItems.reduce((acc, curr) => acc + curr.quantity, 0);
+
+            return {
+                id: s.id,
+                date: s.date,
+                total: Number(s.total || 0),
+                paymentMethod: s.paymentMethod,
+                cashAmount: s.cashAmount ? Number(s.cashAmount) : null,
+                changeAmount: s.changeAmount ? Number(s.changeAmount) : null,
+                discount: Number(s.discount || 0),
+                voucherCode: s.voucherCode || null,
+                itemCount,
+                customerName,
+                customerIdentifier,
+                items: parsedItems
+            };
+        });
+
+        return {
+            items,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit) || 1
+            }
+        };
+    }
+
+    /**
+     * Ranking Produk Terlaris (Top Selling Products / Fast Moving)
+     */
+    static async getTopSellingProducts(
+        tenantId: string, 
+        options?: { startDate?: string; endDate?: string; limit?: number }
+    ) {
+        const limit = Math.max(1, Math.min(50, Number(options?.limit || 10)));
+        const where: any = {
+            sale: {
+                tenantId
+            }
+        };
+
+        if (options?.startDate || options?.endDate) {
+            const dateFilter: any = {};
+            if (options.startDate) dateFilter.gte = new Date(options.startDate + 'T00:00:00.000Z');
+            if (options.endDate)   dateFilter.lte = new Date(options.endDate   + 'T23:59:59.999Z');
+            where.sale.date = dateFilter;
+        }
+
+        const saleItems = await prisma.saleItem.findMany({
+            where,
+            include: {
+                product: {
+                    select: {
+                        id: true,
+                        name: true,
+                        code: true,
+                        category: true,
+                        costPrice: true,
+                        price: true
+                    }
+                }
+            }
+        });
+
+        const productMap = new Map<string, {
+            productId: string;
+            code: string;
+            name: string;
+            category: string;
+            unitPrice: number;
+            costPrice: number;
+            qtySold: number;
+            totalRevenue: number;
+            totalCost: number;
+        }>();
+
+        for (const item of saleItems) {
+            const pid = item.productId;
+            const qty = item.quantity || 0;
+            const price = Number(item.price || item.product?.price || 0);
+            const cost = Number(item.product?.costPrice || 0);
+
+            if (!productMap.has(pid)) {
+                productMap.set(pid, {
+                    productId: pid,
+                    code: item.product?.code || '-',
+                    name: item.product?.name || 'Produk',
+                    category: item.product?.category || 'OTHER',
+                    unitPrice: price,
+                    costPrice: cost,
+                    qtySold: 0,
+                    totalRevenue: 0,
+                    totalCost: 0,
+                });
+            }
+
+            const agg = productMap.get(pid)!;
+            agg.qtySold += qty;
+            agg.totalRevenue += price * qty;
+            agg.totalCost += cost * qty;
+        }
+
+        const results = Array.from(productMap.values()).map(p => {
+            const estimatedGrossProfit = Math.max(0, p.totalRevenue - p.totalCost);
+            const marginPct = p.totalRevenue > 0 
+                ? Math.round((estimatedGrossProfit / p.totalRevenue) * 1000) / 10 
+                : 0;
+            return {
+                productId: p.productId,
+                code: p.code,
+                name: p.name,
+                category: p.category,
+                unitPrice: p.unitPrice,
+                qtySold: p.qtySold,
+                totalRevenue: p.totalRevenue,
+                estimatedGrossProfit,
+                marginPct
+            };
+        });
+
+        // Urutkan berdasarkan volume terjual tertinggi
+        results.sort((a, b) => b.qtySold - a.qtySold);
+
+        return results.slice(0, limit);
+    }
+
+    /**
+     * Rekap Penjualan Harian Kasir (Z-Report) untuk Pencocokan Kas
+     */
+    static async getDailySalesReport(tenantId: string, options?: { startDate?: string; endDate?: string }) {
+        const where: any = { tenantId };
+
+        if (options?.startDate || options?.endDate) {
+            const dateFilter: any = {};
+            if (options.startDate) dateFilter.gte = new Date(options.startDate + 'T00:00:00.000Z');
+            if (options.endDate)   dateFilter.lte = new Date(options.endDate   + 'T23:59:59.999Z');
+            where.date = dateFilter;
+        }
+
+        const sales = await prisma.sale.findMany({
+            where,
+            include: {
+                items: {
+                    select: { quantity: true }
+                }
+            },
+            orderBy: { date: 'desc' }
+        });
+
+        const dailyMap = new Map<string, {
+            date: string;
+            transactionCount: number;
+            cashTotal: number;
+            savingTotal: number;
+            otherTotal: number;
+            grandTotal: number;
+            totalItems: number;
+        }>();
+
+        for (const sale of sales) {
+            const d = new Date(sale.date);
+            const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const total = Number(sale.total || 0);
+            const itemCount = sale.items.reduce((acc, it) => acc + (it.quantity || 0), 0);
+
+            if (!dailyMap.has(dateKey)) {
+                dailyMap.set(dateKey, {
+                    date: dateKey,
+                    transactionCount: 0,
+                    cashTotal: 0,
+                    savingTotal: 0,
+                    otherTotal: 0,
+                    grandTotal: 0,
+                    totalItems: 0
+                });
+            }
+
+            const row = dailyMap.get(dateKey)!;
+            row.transactionCount += 1;
+            row.grandTotal += total;
+            row.totalItems += itemCount;
+
+            if (sale.paymentMethod === 'CASH') {
+                row.cashTotal += total;
+            } else if (sale.paymentMethod === 'SAVING') {
+                row.savingTotal += total;
+            } else {
+                row.otherTotal += total;
+            }
+        }
+
+        const result = Array.from(dailyMap.values());
+        result.sort((a, b) => b.date.localeCompare(a.date));
+        return result;
+    }
 }

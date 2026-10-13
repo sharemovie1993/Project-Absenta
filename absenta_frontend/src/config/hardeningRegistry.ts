@@ -627,6 +627,26 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_sales_report: {
+    moduleName: 'coop_sales_report',
+    displayName: 'Laporan Penjualan Toko Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat menganalisis transaksi kasir, struk belanja, dan rekap Z-Report.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Penyaringan data transaksi, pemfilteran tanggal, dan kalkulasi KPI omset dimemosisasi secara terisolasi.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada modal struk, tabel berpaginasi, dan ekspor excel.'
+      }
+    ]
+  },
   coop_settings: {
     moduleName: 'coop_settings',
     displayName: 'Pengaturan Koperasi',

@@ -653,4 +653,79 @@ export default async function tokoRoutes(fastify: any) {
             }
         }
     });
+
+    // ==========================================
+    // LAPORAN OPERASIONAL PENJUALAN TOKO KOPERASI
+    // ==========================================
+
+    // GET /cooperative/toko/sales-report/summary
+    fastify.get('/sales-report/summary', {
+        preHandler: [requireCapability(['cooperative.store.transactions.view', 'cooperative.reports.view.financial', 'cooperative.dashboard.view.overview', 'cooperative.store.view.catalog'])]
+    }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { startDate, endDate, paymentMethod } = req.query as any;
+            const summary = await TokoService.getSalesReportSummary(tenantId, { startDate, endDate, paymentMethod });
+            return reply.send({ success: true, data: summary });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat ringkasan laporan penjualan');
+            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat ringkasan penjualan' });
+        }
+    });
+
+    // GET /cooperative/toko/sales-report/transactions
+    fastify.get('/sales-report/transactions', {
+        preHandler: [requireCapability(['cooperative.store.transactions.view', 'cooperative.reports.view.financial', 'cooperative.dashboard.view.overview', 'cooperative.store.view.catalog'])]
+    }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { page, limit, startDate, endDate, paymentMethod, search } = req.query as any;
+            const result = await TokoService.getSalesTransactionsPaginated(tenantId, {
+                page: page ? Number(page) : 1,
+                limit: limit ? Number(limit) : 15,
+                startDate,
+                endDate,
+                paymentMethod,
+                search
+            });
+            return reply.send({ success: true, data: result });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat daftar transaksi penjualan');
+            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat daftar transaksi penjualan' });
+        }
+    });
+
+    // GET /cooperative/toko/sales-report/top-products
+    fastify.get('/sales-report/top-products', {
+        preHandler: [requireCapability(['cooperative.store.transactions.view', 'cooperative.reports.view.financial', 'cooperative.dashboard.view.overview', 'cooperative.store.view.catalog'])]
+    }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { startDate, endDate, limit } = req.query as any;
+            const products = await TokoService.getTopSellingProducts(tenantId, {
+                startDate,
+                endDate,
+                limit: limit ? Number(limit) : 10
+            });
+            return reply.send({ success: true, data: products });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat produk terlaris');
+            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat produk terlaris' });
+        }
+    });
+
+    // GET /cooperative/toko/sales-report/daily
+    fastify.get('/sales-report/daily', {
+        preHandler: [requireCapability(['cooperative.store.transactions.view', 'cooperative.reports.view.financial', 'cooperative.dashboard.view.overview', 'cooperative.store.view.catalog'])]
+    }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { startDate, endDate } = req.query as any;
+            const daily = await TokoService.getDailySalesReport(tenantId, { startDate, endDate });
+            return reply.send({ success: true, data: daily });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[TokoRoutes] Gagal memuat rekap penjualan harian');
+            return reply.status(500).send({ success: false, message: error.message || 'Gagal memuat rekap penjualan harian' });
+        }
+    });
 }

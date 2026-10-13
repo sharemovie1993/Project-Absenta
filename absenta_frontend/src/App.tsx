@@ -152,6 +152,7 @@ const CoopSettings = lazy(() => import('./pages/cooperative/Settings'));
 const CoopSHU = lazy(() => import('./pages/cooperative/SHU'));
 const CoopProducts = lazy(() => import('./pages/cooperative/Products'));
 const CoopInventoryReport = lazy(() => import('./pages/cooperative/LaporanInventori'));
+const CoopSalesReport = lazy(() => import('./pages/cooperative/SalesReportPage'));
 const CoopAnnouncements = lazy(() => import('./pages/cooperative/Announcements'));
 const CoopTickets = lazy(() => import('./pages/cooperative/Tickets'));
 const CoopTicketDetail = lazy(() => import('./pages/cooperative/TicketDetail'));
@@ -1078,6 +1079,11 @@ function App() {
                     <Route path="/cooperative/inventory-report" element={
                       <ProtectedRoute requiredCapability="cooperative.store.products.view.list">
                         <CoopInventoryReport />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cooperative/sales-report" element={
+                      <ProtectedRoute requiredCapability={['cooperative.store.transactions.view', 'cooperative.reports.view.financial', 'cooperative.dashboard.view.overview']}>
+                        <CoopSalesReport />
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/shu" element={
