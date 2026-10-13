@@ -212,7 +212,7 @@ export const DEFAULT_STRUKTUR_ORGANISASI: StrukturOrganisasiDef[] = [
     nama: 'Sekretaris Koperasi', 
     scope: 'admin', 
     scope_type: 'global',
-    deskripsi: 'Pengurus Koperasi - Mengelola pendaftaran anggota, keluhan tiket bantuan, dan pengumuman.',
+    deskripsi: 'Pengurus Koperasi - Mengelola pendaftaran anggota, inventaris aset tetap, tiket bantuan, dan pengumuman.',
     order: 27
   },
   { 

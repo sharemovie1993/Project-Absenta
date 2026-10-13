@@ -203,6 +203,22 @@ const POSITION_JOBDESK_DEFAULTS: Record<string, { description: string; tasks: st
       'Memproses dan mengaudit transaksi belanja toko koperasi dan kas keuangan koperasi.',
       'Mengevaluasi laporan sisa hasil usaha (SHU) harian dan bulanan koperasi.'
     ]
+  },
+  KETUA_KOPERASI: {
+    description: 'Pimpinan Pengurus Koperasi yang mengarahkan operasional usaha, kebijakan simpan pinjam, dan perlindungan aset.',
+    tasks: [
+      'Memimpin rapat kerja pengurus dan memonitor perkembangan unit usaha koperasi.',
+      'Menyetujui permohonan pinjaman anggota dan pengadaan belanja aktiva tetap koperasi.',
+      'Mempertanggungjawabkan laporan operasional dan neraca keuangan pada RAT tahunan.'
+    ]
+  },
+  SEKRETARIS_KOPERASI: {
+    description: 'Pengurus Koperasi yang mengelola tata kelola administrasi keanggotaan, pencatatan inventaris aktiva tetap, dan informasi resmi.',
+    tasks: [
+      'Mencatat dan menginventarisasi barang dan aktiva tetap milik koperasi serta penempelan label identitas aset.',
+      'Mengelola data registrasi, verifikasi berkas, dan kartu keanggotaan koperasi.',
+      'Memantau tiket aspirasi/aduan anggota serta menerbitkan pengumuman resmi berkala.'
+    ]
   }
 };
 

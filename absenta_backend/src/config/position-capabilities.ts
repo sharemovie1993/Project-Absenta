@@ -737,7 +737,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
     'cooperative.points.manage',
     'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.view.report',
-    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.tickets.view.list', 'cooperative.tickets.view.detail'
+    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
+    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
   ],
 
   [STRUKTUR_CODES.KETUA_KOPERASI]: [
@@ -754,7 +755,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.store.orders.view.list', 'cooperative.store.orders.manage', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.products.create', 'cooperative.store.products.update', 'cooperative.store.products.delete', 'cooperative.store.categories.manage', 'cooperative.store.inventory.manage',
     'cooperative.tickets.view.list', 'cooperative.tickets.view.detail', 'cooperative.tickets.create', 'cooperative.tickets.reply', 'cooperative.tickets.update.status',
     'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.approve', 'cooperative.shu.view.report',
-    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.vouchers.manage'
+    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.vouchers.manage',
+    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
   ],
 
   [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: [
@@ -770,7 +772,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.savings.view.list', 'cooperative.savings.view.detail',
     'cooperative.loans.view.list', 'cooperative.loans.view.detail',
     'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
-    'cooperative.shu.view.report', 'cooperative.settings.view'
+    'cooperative.shu.view.report', 'cooperative.settings.view',
+    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
   ],
 
   [STRUKTUR_CODES.PENGAWAS_KOPERASI]: [
@@ -786,7 +789,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.savings.view.detail', 'cooperative.loans.view.detail',
     'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
     'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
-    'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list'
+    'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list',
+    'cooperative.assets.view.list', 'cooperative.assets.view.detail'
   ],
 
   // ═══════════════════════════════════════════════════════════════════
