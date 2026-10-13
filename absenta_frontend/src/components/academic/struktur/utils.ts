@@ -282,3 +282,125 @@ export const transformTuTabToTree = (
   return rootNode;
 };
 
+/**
+ * JALUR KHUSUS TAB KETARUNAAN (HIERARKI TERSTRUKTUR DI BAWAH KESISWAAN)
+ */
+export const transformKetarunaanTabToTree = (
+  data: GroupedStruktur,
+  jurusans: Record<string, string>,
+  tingkatList?: number[]
+): TopologyNodeData | null => {
+  if (!data) return null;
+
+  // 1. Puncak Hierarki: Kepala Sekolah
+  const kepsekNodes = data['KEPALA_SEKOLAH'] || [];
+  const kepsekNode = kepsekNodes[0];
+  const kepsekSortedMembers = [...(kepsekNode?.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+  const kepsekHead = kepsekSortedMembers[0];
+
+  // 2. Penanggung Jawab: Waka Kesiswaan
+  const kesiswaanNodes = data['KESISWAAN'] || [];
+  const kesiswaanNode = kesiswaanNodes[0];
+  const kesiswaanSortedMembers = [...(kesiswaanNode?.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+  const kesiswaanHead = kesiswaanSortedMembers[0];
+
+  // 3. Koordinator Utama: Ketua Pembina Taruna
+  const tarunaNodes = data['KETUA_PEMBINA_TARUNA'] || [];
+  const tarunaNode = tarunaNodes[0];
+  const tarunaSortedMembers = [...(tarunaNode?.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+  const tarunaHead = tarunaSortedMembers[0];
+
+  // 4. Mitra Kesiswaan: Pembina OSIS (dari PEMBINA_ESKUL yang memiliki unit OSIS)
+  const eskulNodes = data['PEMBINA_ESKUL'] || [];
+  const osisNode = eskulNodes.find((n: any) => 
+    (n.eskul_name && n.eskul_name.toUpperCase().includes('OSIS')) ||
+    (n.nama && n.nama.toUpperCase().includes('OSIS'))
+  );
+  const osisSortedMembers = [...(osisNode?.members || [])].sort((a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime());
+  const osisHead = osisSortedMembers[0];
+
+  // Susun Node Ketua Pembina Taruna
+  const tarunaTreeNode: TopologyNodeData = {
+    id: tarunaNode ? `node-KETUA_PEMBINA_TARUNA-${tarunaNode.id}` : 'virtual-taruna-ketua',
+    label: 'Ketua Pembina Taruna',
+    subLabel: tarunaHead ? tarunaHead.name : 'Belum diisi',
+    type: 'STRUCT' as any,
+    data: {
+      roleCode: 'KETUA_PEMBINA_TARUNA',
+      realStrukturId: tarunaNode?.id,
+      realMemberId: tarunaHead?.id,
+      isUnassigned: !tarunaHead,
+      forceVertical: true
+    },
+    children: []
+  };
+
+  // Tambahkan anggota staf binaan jika ada (members ke-2 dst dari Ketua Pembina Taruna)
+  if (tarunaSortedMembers.length > 1) {
+    tarunaTreeNode.children = tarunaSortedMembers.slice(1).map((m: any, idx: number) => ({
+      id: `member-taruna-${m.id}`,
+      label: `Staf Pembina ${idx + 1}`,
+      subLabel: m.name,
+      type: 'MEMBER' as any,
+      data: {
+        roleCode: 'KETUA_PEMBINA_TARUNA',
+        realMemberId: m.id,
+        realStrukturId: tarunaNode?.id,
+        details: cleanDetails(m.details)
+      }
+    }));
+  }
+
+  // Node Waka Kesiswaan yang menaungi Ketua Pembina Taruna & Pembina OSIS
+  const kesiswaanTreeNode: TopologyNodeData = {
+    id: kesiswaanNode ? `node-KESISWAAN-${kesiswaanNode.id}` : 'virtual-kesiswaan-root',
+    label: 'Waka Kesiswaan',
+    subLabel: kesiswaanHead ? kesiswaanHead.name : 'Belum diisi',
+    type: 'STRUCT' as any,
+    data: {
+      roleCode: 'KESISWAAN',
+      realStrukturId: kesiswaanNode?.id,
+      realMemberId: kesiswaanHead?.id,
+      isUnassigned: !kesiswaanHead
+    },
+    children: [tarunaTreeNode]
+  };
+
+  // Jika ada slot OSIS, letakkan berdampingan dengan Ketua Pembina Taruna di bawah Kesiswaan
+  if (osisNode) {
+    kesiswaanTreeNode.children!.push({
+      id: `node-PEMBINA_OSIS-${osisNode.id}`,
+      label: 'Pembina OSIS',
+      subLabel: osisHead ? osisHead.name : 'Belum diisi',
+      type: 'STRUCT' as any,
+      data: {
+        roleCode: 'PEMBINA_ESKUL',
+        realStrukturId: osisNode.id,
+        realMemberId: osisHead?.id,
+        jenis_kegiatan_id: osisNode.jenis_kegiatan_id,
+        isUnassigned: !osisHead
+      }
+    });
+  }
+
+  // Jika ada Kepala Sekolah, jadikan Kepala Sekolah sebagai Root puncak
+  if (kepsekNode) {
+    return {
+      id: `node-KEPALA_SEKOLAH-${kepsekNode.id}`,
+      label: 'Kepala Sekolah',
+      subLabel: kepsekHead ? kepsekHead.name : 'Belum diisi',
+      type: 'STRUCT' as any,
+      data: {
+        roleCode: 'KEPALA_SEKOLAH',
+        realStrukturId: kepsekNode.id,
+        realMemberId: kepsekHead?.id,
+        isUnassigned: !kepsekHead
+      },
+      children: [kesiswaanTreeNode]
+    };
+  }
+
+  // Fallback: Waka Kesiswaan sebagai Root
+  return kesiswaanTreeNode;
+};
+

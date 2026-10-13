@@ -43,18 +43,10 @@ const TABS = [
     label: 'Ketarunaan', 
     icon: Medal, 
     codes: [
-      'KEPALA_SEKOLAH',         // Reuse — puncak hierarki
-      'HUBIN',                  // Reuse — Waka Hubinmas
-      'SARPRAS',                // Reuse — Waka Sarpras
-      'KURIKULUM',              // Reuse — Waka Kurikulum
-      'KESISWAAN',              // Reuse — Waka Kesiswaan
-      'KETUA_PEMBINA_TARUNA',   // Baru — Ketua Pembina Taruna
-      'PEMBINA_ESKUL',          // Reuse — Pembina OSIS (slot)
-      'KETARUNAAN_DOKUMEN',     // Baru — Bid. Dokumen dan Data
-      'KETARUNAAN_KEDISIPLINAN',// Baru — Bid. Kedisiplinan
-      'KETARUNAAN_PENDIDIKAN',  // Baru — Bid. Pendidikan
-      'KETARUNAAN_ADM_OPERASI', // Baru — Bid. Adm dan Operasi
-      'KETARUNAAN_KEBERSIHAN_KES' // Baru — Bid. Kebersihan dan Kes.
+      'KEPALA_SEKOLAH',         // Pelindung (Puncak Hierarki)
+      'KESISWAAN',              // Penanggung Jawab (Waka Kesiswaan & Staf)
+      'KETUA_PEMBINA_TARUNA',   // Koordinator Pelaksana Ketarunaan
+      'PEMBINA_ESKUL'           // Sinergi Pembina OSIS
     ] 
   },
 ];

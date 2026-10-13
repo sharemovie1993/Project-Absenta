@@ -17,7 +17,7 @@ import { LiveNodeEditor } from './LiveNodeEditor';
 import { TreeErrorBoundary } from './TreeErrorBoundary';
 import { TreeSkeleton } from './NodeSkeleton';
 import { GROUP_CONFIG } from './constants';
-import { transformDataToTree, transformManagementToTree, transformTuTabToTree } from './utils';
+import { transformDataToTree, transformManagementToTree, transformTuTabToTree, transformKetarunaanTabToTree } from './utils';
 import type { GroupedStruktur, StrukturDiagramProps, TopologyNodeData } from './types';
 import { useConfirm } from '@/providers/ConfirmProvider';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -226,6 +226,10 @@ export const StrukturDiagram: React.FC<StrukturDiagramProps> = React.memo(({
 
     if (activeTab === 'TATA_USAHA') {
       return transformTuTabToTree(data, jurusans, tingkatList);
+    }
+
+    if (activeTab === 'KETARUNAAN') {
+      return transformKetarunaanTabToTree(data, jurusans, tingkatList);
     }
 
     return transformDataToTree(activeCodes, data, jurusans, tingkatList);
