@@ -162,11 +162,70 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         key: 'amount',
         label: 'Saldo',
         sortable: true,
-        render: (_, row: Saving) => (
-          <span className="font-extrabold text-blue-600 dark:text-blue-400">
-            Rp {parseFloat(row.amount).toLocaleString('id-ID')}
-          </span>
-        )
+        render: (_, row: Saving) => {
+          const numAmount = parseFloat(row.amount) || 0;
+          const code = (row.category?.code || row.type || '').toUpperCase();
+          const defaultAmt = Number(row.category?.defaultAmount || 0);
+
+          // Evaluasi status pelunasan
+          let statusBadge: React.ReactNode = null;
+
+          if (code === 'POKOK') {
+            const isLunas = defaultAmt > 0 ? numAmount >= defaultAmt : numAmount > 0;
+            statusBadge = isLunas ? (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                ✓ Lunas
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                ⚠️ Belum Lunas
+              </span>
+            );
+          } else if (code === 'WAJIB') {
+            const fiscalDeposited = Number(row.fiscalYearDepositAmount ?? numAmount);
+            const targetAnnual = (defaultAmt > 0 ? defaultAmt : 20000) * 12;
+            const isFullYear = fiscalDeposited >= targetAnnual;
+
+            // Cek bulan berjalan
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            const paidThisMonth = row.transactions?.some(t => {
+              if (t.type !== 'DEPOSIT') return false;
+              const d = new Date(t.date);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+
+            if (isFullYear) {
+              statusBadge = (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                  🌟 Lunas 1 Thn
+                </span>
+              );
+            } else if (paidThisMonth) {
+              statusBadge = (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
+                  ✓ Bulan Ini
+                </span>
+              );
+            } else {
+              statusBadge = (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.2 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+                  ⚠️ Belum Setor
+                </span>
+              );
+            }
+          }
+
+          return (
+            <div className="flex items-center gap-2">
+              <span className="font-extrabold text-blue-600 dark:text-blue-400">
+                Rp {numAmount.toLocaleString('id-ID')}
+              </span>
+              {statusBadge}
+            </div>
+          );
+        }
       },
       {
         key: 'actions',
