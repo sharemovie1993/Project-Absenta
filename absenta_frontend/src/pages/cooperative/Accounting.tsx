@@ -104,7 +104,7 @@ const Accounting: React.FC = React.memo(() => {
         { id: 'cash-flow', label: 'Arus Kas (Cash Flow)', icon: Activity },
         { id: 'ledger', label: 'Buku Besar Akun', icon: BookOpen },
         { id: 'journal', label: 'Jurnal Umum', icon: FileText },
-        { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
+        { id: 'balance', label: 'Neraca Saldo (Trial Balance)', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
     ], []);
 
@@ -483,7 +483,7 @@ const Accounting: React.FC = React.memo(() => {
             { text: 'Tab Arus Kas (Cash Flow) menyajikan arus kas masuk & keluar dari aktivitas Operasi, Investasi, dan Pendanaan serta rekonsiliasi kas riil.' },
             { text: 'Tab Buku Besar Akun memungkinkan drill-down mutasi debit/kredit dan saldo berjalan (running balance) spesifik per nomor rekening akun.' },
             { text: 'Tab Jurnal Umum digunakan untuk audit jejak transaksi debit/kredit setiap mutasi keuangan koperasi.' },
-            { text: 'Tab Neraca Saldo menampilkan rekapitulasi saldo buku besar seluruh akun koperasi.' },
+            { text: 'Tab Neraca Saldo (Trial Balance) menampilkan rekapitulasi kontrol saldo buku besar seluruh akun koperasi untuk verifikasi audit Debit/Kredit.' },
             { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan potongan gaji bulanan dan memposting setoran massal.' },
             { text: 'Untuk pencatatan pengeluaran harian (BKK) dan kas masuk (BKM), silakan akses menu terpisah "Kas & Bank".' }
         ]
@@ -565,7 +565,7 @@ const Accounting: React.FC = React.memo(() => {
 
     const balanceToolbarLeft = useMemo(() => (
         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-2">
-            Neraca Saldo Koperasi
+            Neraca Saldo (Trial Balance) Koperasi
         </div>
     ), []);
 
