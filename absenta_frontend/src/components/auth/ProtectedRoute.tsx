@@ -138,7 +138,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (requiredCapability) {
-    const requiredList = Array.isArray(requiredCapability) ? requiredCapability : [requiredCapability];
+    const requiredList = Array.isArray(requiredCapability)
+      ? requiredCapability
+      : typeof requiredCapability === 'string'
+      ? requiredCapability.split(',').map((s) => s.trim()).filter(Boolean)
+      : [requiredCapability];
     const hasCapabilityAccess = requiredList.some((cap) => hasCapability(user as any, cap));
 
     if (!hasCapabilityAccess) {
