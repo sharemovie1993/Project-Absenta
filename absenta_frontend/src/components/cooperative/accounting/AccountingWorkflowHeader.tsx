@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowDownLeft, 
   ArrowUpRight, 
@@ -16,7 +17,8 @@ import {
   Calendar, 
   FileSpreadsheet,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  ExternalLink
 } from 'lucide-react';
 
 export type AccountingTabId = 
@@ -44,6 +46,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
   onOpenQuickDeposit,
   onOpenQuickTransfer
 }) => {
+  const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
@@ -53,10 +56,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
         {/* Tombol Catat Pengeluaran (BKK) */}
         <button
           type="button"
-          onClick={() => {
-            onSelectTab('expenses');
-            if (onOpenQuickExpense) onOpenQuickExpense();
-          }}
+          onClick={() => navigate('/cooperative/cash-bank?action=expense')}
           className="group relative flex items-center justify-between p-3.5 bg-gradient-to-br from-rose-50/90 to-rose-100/40 dark:from-rose-950/30 dark:to-rose-900/10 border border-rose-200/80 dark:border-rose-900/50 rounded-2xl hover:shadow-md hover:border-rose-300 dark:hover:border-rose-700 transition-all text-left"
         >
           <div className="flex items-center gap-3">
@@ -83,10 +83,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
         {/* Tombol Catat Pemasukan (BKM) */}
         <button
           type="button"
-          onClick={() => {
-            onSelectTab('expenses');
-            if (onOpenQuickDeposit) onOpenQuickDeposit();
-          }}
+          onClick={() => navigate('/cooperative/cash-bank?action=deposit')}
           className="group relative flex items-center justify-between p-3.5 bg-gradient-to-br from-emerald-50/90 to-emerald-100/40 dark:from-emerald-950/30 dark:to-emerald-900/10 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl hover:shadow-md hover:border-emerald-300 dark:hover:border-emerald-700 transition-all text-left"
         >
           <div className="flex items-center gap-3">
@@ -113,10 +110,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
         {/* Tombol Pindah Kas/Bank (Transfer) */}
         <button
           type="button"
-          onClick={() => {
-            onSelectTab('expenses');
-            if (onOpenQuickTransfer) onOpenQuickTransfer();
-          }}
+          onClick={() => navigate('/cooperative/cash-bank?action=transfer')}
           className="group relative flex items-center justify-between p-3.5 bg-gradient-to-br from-sky-50/90 to-sky-100/40 dark:from-sky-950/30 dark:to-sky-900/10 border border-sky-200/80 dark:border-sky-900/50 rounded-2xl hover:shadow-md hover:border-sky-300 dark:hover:border-sky-700 transition-all text-left"
         >
           <div className="flex items-center gap-3">
@@ -219,19 +213,15 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                 <div className="space-y-1.5 pt-1">
                   <button
                     type="button"
-                    onClick={() => onSelectTab('expenses')}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                      activeTab === 'expenses'
-                        ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                    }`}
+                    onClick={() => navigate('/cooperative/cash-bank')}
+                    className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-all bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 group/btn"
                   >
                     <div className="flex items-center gap-2">
-                      <Receipt size={14} className={activeTab === 'expenses' ? 'text-white' : 'text-rose-500'} />
+                      <Receipt size={14} className="text-rose-500 group-hover/btn:scale-110 transition-transform" />
                       <span className="text-xs font-semibold">Kas & Bank (BKK / BKM)</span>
                     </div>
-                    <span className={`text-[9px] ${activeTab === 'expenses' ? 'text-indigo-100' : 'text-slate-400'}`}>
-                      Harian
+                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      Buka ➔
                     </span>
                   </button>
 

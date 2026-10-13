@@ -8,9 +8,9 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **208 Halaman** | 100% | - |
+| **Total Halaman Utama** | **209 Halaman** | 100% | - |
 | **✅ Lolos Sempurna (Hardened)** | **161 Halaman** | 77% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **44 Halaman** | 21% | **Butuh Sentuhan Ringan** |
+| **⚠️ Sebagian Terstandar (Partial)** | **45 Halaman** | 22% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
@@ -242,6 +242,15 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 982 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Accounting.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Accounting.tsx) (982 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `CashBankPage.tsx`
+* **Lokasi File:** [CashBankPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/CashBankPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Memuat list data tetapi tidak menggunakan useMemo untuk data list/kolom dan useCallback untuk event handlers (Beban DOM Churn Tinggi)
+  * ⚠️  Halaman melakukan fetch data tetapi tidak memiliki guard Loading/Skeleton. Sediakan loading state guard (seperti 'isLoading', 'isFetching', 'loading', atau komponen <Skeleton />).
 
 ---
 

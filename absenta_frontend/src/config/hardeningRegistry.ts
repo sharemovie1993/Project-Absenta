@@ -607,6 +607,26 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_cash_bank: {
+    moduleName: 'coop_cash_bank',
+    displayName: 'Kas & Bank Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat mengelola kas masuk (BKM), kas keluar (BKK), dan transfer dana.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Penyaringan data, visualisasi, dan callback dimemosisasi dengan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada modal handlers, dropdown, dan form.'
+      }
+    ]
+  },
   coop_settings: {
     moduleName: 'coop_settings',
     displayName: 'Pengaturan Koperasi',
