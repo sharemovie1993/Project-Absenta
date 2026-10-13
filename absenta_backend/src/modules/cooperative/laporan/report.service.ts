@@ -23,8 +23,12 @@ const payrollLocks = new Set<string>();
 
 export class ReportService {
     
-    // Get Balance Sheet (Neraca)
-    static async getBalanceSheet(tenantId: string) {
+    // Get Balance Sheet (Neraca) — format standar akuntansi (Aktiva = Pasiva)
+    static async getBalanceSheet(tenantId: string, asOfDate?: Date) {
+        const journalDateFilter = asOfDate 
+            ? { journal: { date: { lte: asOfDate } } }
+            : {};
+
         // Get all accounts with type ASSET, LIABILITY, EQUITY
         const accounts = await prisma.account.findMany({
             where: {
@@ -33,6 +37,7 @@ export class ReportService {
             },
             include: {
                 journalItems: {
+                    where: journalDateFilter,
                     select: {
                         amount: true,
                         type: true
@@ -68,10 +73,30 @@ export class ReportService {
             };
         });
 
+        // Hitung Laba/Rugi (SHU) Berjalan dari Income Statement hingga tanggal ini
+        let currentYearEarnings = 0;
+        try {
+            const incomeStmt = await this.getIncomeStatement(tenantId, undefined, asOfDate);
+            currentYearEarnings = Math.round(Number(incomeStmt.summary?.netIncome || 0));
+        } catch (e) {
+            appLogger.warn({ err: e }, '[ReportService] Gagal menghitung current year earnings untuk neraca');
+        }
+
         // Group by Type
         const assets = reportData.filter(a => a.type === 'ASSET');
         const liabilities = reportData.filter(a => a.type === 'LIABILITY');
         const equity = reportData.filter(a => a.type === 'EQUITY');
+
+        // Jika ada Laba/Rugi berjalan dan belum ada akun penutup, sertakan ke baris Ekuitas
+        if (currentYearEarnings !== 0) {
+            equity.push({
+                id: 'current-year-shu',
+                code: '3099',
+                name: 'Sisa Hasil Usaha (SHU) Berjalan',
+                type: 'EQUITY',
+                balance: currentYearEarnings
+            });
+        }
 
         const totalAssets = assets.reduce((sum, a) => sum + a.balance, 0);
         const totalLiabilities = liabilities.reduce((sum, a) => sum + a.balance, 0);
@@ -85,6 +110,9 @@ export class ReportService {
                 totalAssets,
                 totalLiabilities,
                 totalEquity,
+                totalLiabilitiesAndEquity: totalLiabilities + totalEquity,
+                currentYearEarnings,
+                isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) === 0,
                 balanceCheck: totalAssets - (totalLiabilities + totalEquity) // Should be 0
             }
         };

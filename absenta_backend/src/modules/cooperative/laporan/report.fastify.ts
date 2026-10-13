@@ -14,7 +14,9 @@ export default async function reportRoutes(fastify: any) {
     // Get Balance Sheet (Neraca)
     fastify.get('/neraca', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
         const tenantId = getTenantId(req);
-        const report = await ReportService.getBalanceSheet(tenantId);
+        const { asOfDate } = req.query as any;
+        const asOf = asOfDate ? new Date(asOfDate) : undefined;
+        const report = await ReportService.getBalanceSheet(tenantId, asOf);
         return reply.send({ data: report });
     });
 

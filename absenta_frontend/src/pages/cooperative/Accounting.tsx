@@ -14,7 +14,7 @@ import Table from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import Card from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -25,7 +25,7 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 
-import { JournalTable } from '../../components/cooperative/accounting';
+import { JournalTable, IncomeStatementReport, BalanceSheetReport } from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -64,10 +64,13 @@ const Accounting: React.FC = React.memo(() => {
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
-    const activeTab: 'journal' | 'balance' | 'payroll' = useMemo(() => {
+    const activeTab: 'income-statement' | 'neraca' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
+        if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
+        if (tabParam === 'neraca') return 'neraca';
         if (tabParam === 'balance') return 'balance';
         if (tabParam === 'payroll') return 'payroll';
-        return 'journal';
+        if (tabParam === 'journal') return 'journal';
+        return 'income-statement';
     }, [tabParam]);
 
     const handleTabChange = useCallback((tabId: string) => {
@@ -79,8 +82,10 @@ const Accounting: React.FC = React.memo(() => {
     }, [setSearchParams]);
 
     const tabOptions: TabOption[] = useMemo(() => [
+        { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
+        { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
         { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
-        { id: 'balance', label: 'Neraca Saldo', icon: FileText },
+        { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
     ], []);
     
@@ -444,12 +449,14 @@ const Accounting: React.FC = React.memo(() => {
     ], []);
 
     const instruction = useMemo(() => ({
-        title: 'Panduan Laporan Keuangan & Akuntansi',
-        description: 'Halaman ini digunakan untuk melihat jurnal umum, neraca saldo, dan mengelola rekapitulasi potongan gaji anggota koperasi.',
+        title: 'Panduan Laporan Keuangan & Akuntansi Koperasi',
+        description: 'Halaman ini menyajikan laporan keuangan berstandar akuntansi resmi (Accurate / SAK ETAP), jurnal umum, neraca saldo, dan rekapitulasi potongan gaji anggota.',
         items: [
-            { text: 'Gunakan tab Jurnal Umum untuk memantau aliran kas dan pembukuan debit/kredit koperasi.' },
-            { text: 'Tab Neraca Saldo menampilkan rekap saldo akun keuangan koperasi yang terstandar dengan pencarian dan pagination.' },
-            { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan bulanan Excel/PDF dan memposting setoran anggota secara massal.' }
+            { text: 'Tab Laba Rugi (PHU) menampilkan pendapatan usaha, HPP, laba kotor, dan beban operasional untuk menghasilkan Sisa Hasil Usaha (SHU) bersih koperasi.' },
+            { text: 'Tab Neraca menyajikan posisi keuangan resmi: Aktiva (Aset) vs Pasiva (Kewajiban & Ekuitas) lengkap dengan indikator keseimbangan (Balance Check).' },
+            { text: 'Tab Jurnal Umum digunakan untuk audit jejak transaksi debit/kredit setiap mutasi keuangan koperasi.' },
+            { text: 'Tab Neraca Saldo menampilkan rekapitulasi saldo buku besar seluruh akun akun koperasi.' },
+            { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan potongan gaji bulanan dan memposting setoran massal.' }
         ]
     }), []);
 
@@ -662,6 +669,24 @@ const Accounting: React.FC = React.memo(() => {
                     </div>
                 ) : (
                     <Card className="p-0 border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 overflow-hidden rounded-2xl">
+                        {activeTab === 'income-statement' && (
+                            <div className="p-4 sm:p-6">
+                                <IncomeStatementReport 
+                                    coopSettings={coopSettings} 
+                                    defaultYear={currentFiscalYear?.year} 
+                                />
+                            </div>
+                        )}
+
+                        {activeTab === 'neraca' && (
+                            <div className="p-4 sm:p-6">
+                                <BalanceSheetReport 
+                                    coopSettings={coopSettings} 
+                                    defaultYear={currentFiscalYear?.year} 
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'journal' && (
                             <JournalTable journals={journals} />
                         )}

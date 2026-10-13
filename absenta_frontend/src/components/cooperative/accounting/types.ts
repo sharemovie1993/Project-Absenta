@@ -21,6 +21,9 @@ export interface BalanceSheetItem {
     name: string;
     type: string;
     balance: number;
+    category?: string;
+    debit?: number;
+    credit?: number;
 }
 
 export interface PayrollItem {
@@ -34,4 +37,39 @@ export interface PayrollItem {
         jasa: number;
     };
     total: number;
+}
+
+// ─── TIPE LAPORAN KEUANGAN STANDAR AKUNTANSI (ACCURATE / SAK ETAP) ────────────
+
+export interface FinancialAccountLine {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    balance: number;
+}
+
+export interface IncomeStatementData {
+    revenue: FinancialAccountLine[];
+    expense: FinancialAccountLine[];
+    summary: {
+        totalRevenue: number;
+        totalExpense: number;
+        netIncome: number;
+    };
+}
+
+export interface BalanceSheetReportData {
+    assets: FinancialAccountLine[];
+    liabilities: FinancialAccountLine[];
+    equity: FinancialAccountLine[];
+    summary: {
+        totalAssets: number;
+        totalLiabilities: number;
+        totalEquity: number;
+        totalLiabilitiesAndEquity: number;
+        currentYearEarnings: number;
+        isBalanced: boolean;
+        balanceCheck: number;
+    };
 }

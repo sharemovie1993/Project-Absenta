@@ -888,14 +888,28 @@ export class ShuService {
             grandTotalTransaksi += Number(allLoans._sum.amount || 0);
         }
 
-        // 3. Estimasi Pendapatan & Biaya Berjalan dari Laporan
+        // 3. Estimasi Pendapatan & Biaya Berjalan dari Laporan Keuangan Riil Koperasi
         let estimatedTotalShu = Number(activePeriod.totalShu || 0);
         if (estimatedTotalShu <= 0) {
-            const salesAgg = await prisma.sale.aggregate({
-                where: { tenantId, date: { gte: startDate, lte: endDate } },
-                _sum: { total: true },
-            });
-            estimatedTotalShu = Number(salesAgg._sum.total || 0) * 0.15; // Estimasi konservatif 15% margin
+            try {
+                const { ReportService } = require('../laporan/report.service');
+                const report = await ReportService.getIncomeStatement(tenantId, startDate, endDate);
+                const netIncome = Math.round(Number(report.summary?.totalRevenue || 0) - Number(report.summary?.totalExpense || 0));
+                if (netIncome > 0) {
+                    estimatedTotalShu = netIncome;
+                }
+            } catch (err) {
+                appLogger.warn({ err }, '[SHU] Gagal mengambil Laba Rugi riil untuk live estimation, fallback ke omzet toko');
+            }
+
+            // Fallback cadangan jika pembukuan akuntansi belum memiliki jurnal transaksi sama sekali
+            if (estimatedTotalShu <= 0) {
+                const salesAgg = await prisma.sale.aggregate({
+                    where: { tenantId, date: { gte: startDate, lte: endDate } },
+                    _sum: { total: true },
+                });
+                estimatedTotalShu = Number(salesAgg._sum.total || 0) * 0.15;
+            }
         }
 
         const porsiModalPct = Number(activePeriod.porsiJasaModal || 30) / 100;
@@ -928,8 +942,9 @@ export class ShuService {
             estimatedJasaModal: myShareModal,
             estimatedJasaTransaksi,
             estimatedTotalShu: estimatedTotalShuMyShare,
+            isOfficialCalculated: false,
             isEstimate: true,
-            notes: 'Angka ini adalah simulasi perkiraan sementara berdasarkan keaktifan simpanan dan transaksi Anda tahun ini. Angka resmi akan ditetapkan pada RAT.'
+            notes: `Estimasi dihitung dinamis dari Laba Bersih Pembukuan Koperasi berjalan (Laba: Rp ${estimatedTotalShu.toLocaleString('id-ID')}) berdasarkan proporsi modal & transaksi Anda saat ini.`
         };
     }
 }
