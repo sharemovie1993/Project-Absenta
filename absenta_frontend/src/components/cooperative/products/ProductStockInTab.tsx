@@ -267,6 +267,17 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     }));
   }, []);
 
+  const handleSetItemQty = handleUpdateItemQuantity;
+  const handleUpdateItemQty = useCallback((productId: string, delta: number) => {
+    setSelectedStockInItems(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        const nextQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: nextQty };
+      }
+      return item;
+    }));
+  }, []);
+
   const handleUpdateItemCostPrice = useCallback((productId: string, costPrice: number) => {
     setSelectedStockInItems(prev => prev.map(item => {
       if (item.product.id === productId) {
@@ -275,6 +286,8 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       return item;
     }));
   }, []);
+
+  const handleSetItemCostPrice = handleUpdateItemCostPrice;
 
   const handleRemoveItem = useCallback((productId: string) => {
     setSelectedStockInItems(prev => prev.filter(item => item.product.id !== productId));
