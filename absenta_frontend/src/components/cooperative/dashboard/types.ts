@@ -7,6 +7,52 @@ export interface MemberInfo {
   name?: string;
 }
 
+export interface WajibComplianceData {
+  totalActive: number;
+  paidCount: number;
+  unpaidCount: number;
+  compliancePercent: number;
+}
+
+export interface OverdueDebtor {
+  id: string;
+  memberName: string;
+  amount: number;
+  dueDate: string;
+  daysOverdue: number;
+}
+
+export interface LoanPortfolioData {
+  totalActiveLoans: number;
+  totalOutstanding: number;
+  currentAmount: number;
+  overdue1to30Amount: number;
+  overdueOver30Amount: number;
+  nplRatio: number;
+  topOverdue: OverdueDebtor[];
+}
+
+export interface PendingMemberItem {
+  id: string;
+  name: string;
+  identifier: string;
+  createdAt: string;
+}
+
+export interface PendingMembersData {
+  count: number;
+  list: PendingMemberItem[];
+}
+
+export interface EstimatedShuYtdData {
+  year: number;
+  totalEstimatedShu: number;
+  estimatedStoreProfit: number;
+  interestIncome: number;
+  totalYearSales: number;
+  status: string;
+}
+
 export interface CoopManagementStats {
   totalMembers: number;
   activeMembers?: number;
@@ -27,6 +73,12 @@ export interface CoopManagementStats {
   pendingLoans?: Array<{ id: string; amount: number; duration: number; createdAt: string; memberName: string }>;
   monthlyTrend?: Array<{ name: string; simpanan: number; pinjaman: number; penjualan: number }>;
   recentActivities?: Array<{ id: string; type: 'SAVING' | 'SALE'; title: string; description: string; amount: number; date: string }>;
+  
+  // 4 Executive Metrics
+  wajibCompliance?: WajibComplianceData;
+  loanPortfolio?: LoanPortfolioData;
+  pendingMembers?: PendingMembersData;
+  estimatedShuYtd?: EstimatedShuYtdData;
 }
 
 export interface CoopManagementSectionProps {

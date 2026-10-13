@@ -10,7 +10,6 @@ import {
   Package, 
   ShoppingBag, 
   PiggyBank, 
-  ShieldAlert, 
   Coins, 
   Sparkles,
   Receipt
@@ -28,7 +27,9 @@ import {
 import { SectionCard } from '@/components/ui';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { cn } from '@/lib/utils';
-import { formatDate, formatTime } from '@/utils/date.utils';
+import { formatTime } from '@/utils/date.utils';
+import { CoopPortfolioCards } from './CoopPortfolioCards';
+import { CoopApprovalHub } from './CoopApprovalHub';
 import type { CoopManagementSectionProps } from './types';
 
 export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React.memo(({
@@ -45,7 +46,6 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
     ? stats.monthlyTrend
     : (propChartData || []);
 
-  const pendingLoans = stats.pendingLoans || [];
   const recentActivities = stats.recentActivities || [];
 
   return (
@@ -153,47 +153,20 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
         </div>
       </div>
 
-      {/* ── SECTION 2: Approval Center / Tindakan Pengurus yang Tertunda ───────────── */}
-      {pendingLoans.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-3xl p-5 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200/80 dark:border-amber-800/40">
-            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
-              <ShieldAlert size={18} className="text-amber-600" />
-              <span>Persetujuan Pinjaman Mendesak ({pendingLoans.length} Pengajuan Menunggu)</span>
-            </div>
-            <Link
-              to="/cooperative/loans"
-              className="text-xs font-bold text-amber-800 dark:text-amber-300 hover:underline flex items-center gap-1"
-            >
-              Buka Semua Pinjaman &rarr;
-            </Link>
-          </div>
+      {/* ── SECTION 2: 4 Indikator Eksekutif: Kepatuhan Wajib, NPL Kredit & Estimasi SHU YTD ── */}
+      <CoopPortfolioCards 
+        wajibCompliance={stats.wajibCompliance}
+        loanPortfolio={stats.loanPortfolio}
+        estimatedShuYtd={stats.estimatedShuYtd}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
-            {pendingLoans?.map((loan) => (
-              <div key={loan.id} className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-amber-100 dark:border-slate-800 flex items-center justify-between shadow-2xs">
-                <div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-white">{loan.memberName}</p>
-                  <p className="text-[11px] font-extrabold text-amber-600 dark:text-amber-400">
-                    Rp {Number(loan.amount).toLocaleString('id-ID')} ({loan.duration} Bulan)
-                  </p>
-                  <p className="text-[10px] text-slate-400">
-                    Diajukan: {formatDate(loan.createdAt)}
-                  </p>
-                </div>
-                <Link
-                  to={`/cooperative/loans?detail=${loan.id}`}
-                  className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs transition-colors shrink-0"
-                >
-                  Tinjau
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── SECTION 3: Pusat Aksi & Persetujuan Pengurus (Pending Loans & Members) ── */}
+      <CoopApprovalHub 
+        pendingLoans={stats.pendingLoans}
+        pendingMembers={stats.pendingMembers}
+      />
 
-      {/* ── SECTION 3: Grafik Pertumbuhan Riil & Aktivitas Finansial Terkini ───────── */}
+      {/* ── SECTION 4: Grafik Pertumbuhan Riil & Aktivitas Finansial Terkini ───────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Kolom Kiri: Grafik Analisis Finansial (6 Bulan Riil) */}
@@ -350,7 +323,7 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
 
       </div>
 
-      {/* ── SECTION 4: Detail Inventori Minimarket & Restock ─────────────────────── */}
+      {/* ── SECTION 5: Detail Inventori Minimarket & Restock ─────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
           <div>

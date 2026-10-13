@@ -235,6 +235,179 @@ export default async function dashboardRoutes(fastify: any) {
                 }))
             ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
 
+            // ─── 9. KEPATUHAN SIMPANAN WAJIB BULAN INI ────────────────────────
+            const wajibCategory = categories.find(c => c.code === 'WAJIB');
+            const paidWajibMemberIds = new Set();
+            if (wajibCategory && activeMembers > 0) {
+                const wajibDeposits = await prisma.savingTransaction.findMany({
+                    where: {
+                        saving: {
+                            categoryId: wajibCategory.id,
+                            member: { tenantId, status: 'ACTIVE' }
+                        },
+                        type: 'DEPOSIT',
+                        date: { gte: startOfMonth }
+                    },
+                    select: { saving: { select: { memberId: true } } }
+                });
+                for (const wd of wajibDeposits) {
+                    if (wd.saving?.memberId) paidWajibMemberIds.add(wd.saving.memberId);
+                }
+            }
+            const wajibPaidCount = paidWajibMemberIds.size;
+            const wajibUnpaidCount = Math.max(0, activeMembers - wajibPaidCount);
+            const wajibCompliancePercent = activeMembers > 0 ? Math.round((wajibPaidCount / activeMembers) * 100) : 100;
+
+            const wajibCompliance = {
+                totalActive: activeMembers,
+                paidCount: wajibPaidCount,
+                unpaidCount: wajibUnpaidCount,
+                compliancePercent: wajibCompliancePercent
+            };
+
+            // ─── 10. PORTOFOLIO PINJAMAN & RISIKO NPL ─────────────────────────
+            const unpaidInstallments = await prisma.installment.findMany({
+                where: {
+                    loan: { member: { tenantId }, status: 'APPROVED' },
+                    status: 'UNPAID'
+                },
+                include: {
+                    loan: {
+                        include: {
+                            member: {
+                                include: {
+                                    User: { select: { full_name: true } },
+                                    Guru: { select: { nama_guru: true } },
+                                    Siswa: { select: { nama_siswa: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            let currentAmount = 0;
+            let overdue1to30Amount = 0;
+            let overdueOver30Amount = 0;
+            const overdueList: Array<{ id: string; memberName: string; amount: number; dueDate: Date; daysOverdue: number }> = [];
+
+            for (const inst of unpaidInstallments) {
+                const amt = Number(inst.amount || 0);
+                const dueDate = new Date(inst.dueDate);
+                const diffDays = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 0) {
+                    currentAmount += amt;
+                } else if (diffDays <= 30) {
+                    overdue1to30Amount += amt;
+                    overdueList.push({
+                        id: inst.id,
+                        memberName: inst.loan?.member?.User?.full_name || inst.loan?.member?.Guru?.nama_guru || inst.loan?.member?.Siswa?.nama_siswa || 'Anggota',
+                        amount: amt,
+                        dueDate: inst.dueDate,
+                        daysOverdue: diffDays
+                    });
+                } else {
+                    overdueOver30Amount += amt;
+                    overdueList.push({
+                        id: inst.id,
+                        memberName: inst.loan?.member?.User?.full_name || inst.loan?.member?.Guru?.nama_guru || inst.loan?.member?.Siswa?.nama_siswa || 'Anggota',
+                        amount: amt,
+                        dueDate: inst.dueDate,
+                        daysOverdue: diffDays
+                    });
+                }
+            }
+
+            const totalLoanExposure = totalLoans > 0 ? totalLoans : (currentAmount + overdue1to30Amount + overdueOver30Amount);
+            const nplRatio = totalLoanExposure > 0 
+                ? Math.min(100, Number(((overdueOver30Amount / totalLoanExposure) * 100).toFixed(1))) 
+                : 0;
+
+            const topOverdue = overdueList
+                .sort((a, b) => b.daysOverdue - a.daysOverdue)
+                .slice(0, 3);
+
+            const loanPortfolio = {
+                totalActiveLoans: activeLoansCount,
+                totalOutstanding: totalLoanExposure,
+                currentAmount,
+                overdue1to30Amount,
+                overdueOver30Amount,
+                nplRatio,
+                topOverdue
+            };
+
+            // ─── 11. ANTREAN VERIFIKASI ANGGOTA BARU ──────────────────────────
+            const pendingMembersList = await prisma.member.findMany({
+                where: { tenantId, status: 'PENDING' },
+                take: 5,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    User: { select: { full_name: true, email: true } },
+                    Guru: { select: { nama_guru: true, nip: true } },
+                    Siswa: { select: { nama_siswa: true, nis: true } }
+                }
+            });
+            const pendingMembersCount = await prisma.member.count({
+                where: { tenantId, status: 'PENDING' }
+            });
+            const pendingMembers = {
+                count: pendingMembersCount,
+                list: pendingMembersList.map(m => ({
+                    id: m.id,
+                    name: m.User?.full_name || m.Guru?.nama_guru || m.Siswa?.nama_siswa || 'Calon Anggota',
+                    identifier: m.memberNo || m.Guru?.nip || m.Siswa?.nis || m.User?.email || '-',
+                    createdAt: m.createdAt
+                }))
+            };
+
+            // ─── 12. ESTIMASI SHU BERJALAN YTD ───────────────────────────────
+            const currentYear = activePeriod?.year || now.getFullYear();
+            const startOfYear = new Date(currentYear, 0, 1);
+            const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
+
+            const yearSalesAgg = await prisma.sale.aggregate({
+                where: { tenantId, date: { gte: startOfYear, lte: endOfYear } },
+                _sum: { total: true }
+            });
+            const totalYearSales = Number(yearSalesAgg._sum.total || 0);
+            const estimatedStoreProfit = Math.round(totalYearSales * 0.15); // Rata-rata margin toko 15%
+
+            const paidInstallmentsThisYear = await prisma.installment.findMany({
+                where: {
+                    loan: { member: { tenantId } },
+                    status: 'PAID',
+                    paidDate: { gte: startOfYear, lte: endOfYear }
+                },
+                include: {
+                    loan: { select: { amount: true, interestRate: true, duration: true } }
+                }
+            });
+
+            let interestIncome = 0;
+            for (const inst of paidInstallmentsThisYear) {
+                const loanAmt = Number(inst.loan?.amount || 0);
+                const rate = Number(inst.loan?.interestRate || 0);
+                const dur = inst.loan?.duration || 1;
+                const monthlyInterest = (loanAmt * (rate / 100)) / dur;
+                interestIncome += monthlyInterest;
+            }
+            interestIncome = Math.round(interestIncome);
+
+            const totalEstimatedShu = Number(activePeriod?.totalShu || 0) > 0
+                ? Number(activePeriod.totalShu)
+                : (estimatedStoreProfit + interestIncome);
+
+            const estimatedShuYtd = {
+                year: currentYear,
+                totalEstimatedShu,
+                estimatedStoreProfit,
+                interestIncome,
+                totalYearSales,
+                status: activePeriod?.status || 'BERJALAN'
+            };
+
             return reply.send({
                 data: {
                     // Backward-compatible properties
@@ -258,7 +431,13 @@ export default async function dashboardRoutes(fastify: any) {
                     openTickets,
                     pendingLoans,
                     monthlyTrend,
-                    recentActivities
+                    recentActivities,
+
+                    // 4 Executive Metrics
+                    wajibCompliance,
+                    loanPortfolio,
+                    pendingMembers,
+                    estimatedShuYtd
                 }
             });
         } catch (error: any) {
