@@ -96,6 +96,11 @@ import {
   ClipboardList,
   Award,
   Inbox,
+  Landmark,
+  Receipt,
+  Banknote,
+  Coins,
+  Tag,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -193,6 +198,11 @@ const iconMap: Record<string, LucideIcon> = {
   Sparkles,
   Building2,
   Hammer,
+  Landmark,
+  Receipt,
+  Banknote,
+  Coins,
+  Tag,
 
   // Action Icons
   CheckCircle,
@@ -245,6 +255,13 @@ const synonyms: Record<string, string> = {
   inputabsensi: 'Fingerprint',
   'kelompok laporan': 'FilePieChart',
   kelompoklaporan: 'FilePieChart',
+  'kas & bank': 'Landmark',
+  'kas bank': 'Landmark',
+  'kas': 'Banknote',
+  'bank': 'Landmark',
+  'voucher & promo': 'Tag',
+  'voucher': 'Tag',
+  'promo': 'Tag',
 };
 
 // Convert various string styles to PascalCase expected by lucide-react exports

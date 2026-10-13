@@ -23,7 +23,7 @@ async function main() {
       where: { id: existingMenu.id },
       data: {
         name: 'Kas & Bank',
-        icon: 'Receipt',
+        icon: 'Landmark',
         parent_id: parentMenu.id,
         order: 155,
         required_capability: 'cooperative.reports.view.financial, cooperative.savings.deposit',
@@ -32,12 +32,12 @@ async function main() {
         is_active: true
       }
     });
-    console.log('✅ Menu /cooperative/cash-bank berhasil diperbarui.');
+    console.log('✅ Menu /cooperative/cash-bank berhasil diperbarui dengan icon Landmark.');
   } else {
     await prisma.menu.create({
       data: {
         name: 'Kas & Bank',
-        icon: 'Receipt',
+        icon: 'Landmark',
         path: '/cooperative/cash-bank',
         parent_id: parentMenu.id,
         order: 155,
