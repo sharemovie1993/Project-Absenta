@@ -228,6 +228,7 @@ const SHUPage: React.FC = React.memo(() => {
           includeStorePurchases: res.data.data.includeStorePurchases ?? true,
           includeLoans: res.data.data.includeLoans ?? true,
           includeSavingsDeposit: res.data.data.includeSavingsDeposit ?? false,
+          enableLiveEstimation: res.data.data.enableLiveEstimation ?? false,
         } as ShuConfig;
       }
       return null;
@@ -246,10 +247,27 @@ const SHUPage: React.FC = React.memo(() => {
     includeStorePurchases: true,
     includeLoans: true,
     includeSavingsDeposit: false,
+    enableLiveEstimation: false,
   }), []);
 
+  // Update localConfig when backend query loads fresh data
+  useEffect(() => {
+    if (configQuery.data) {
+      setLocalConfig(prev => prev ? { ...configQuery.data, ...prev } : configQuery.data);
+    }
+  }, [configQuery.data]);
+
   const config = localConfig || configQuery.data || defaultConfig;
-  const setConfig = setLocalConfig;
+
+  const setConfig = useCallback((updater: React.SetStateAction<ShuConfig>) => {
+    setLocalConfig(prev => {
+      const base = prev || configQuery.data || defaultConfig;
+      if (typeof updater === 'function') {
+        return updater(base);
+      }
+      return updater;
+    });
+  }, [configQuery.data, defaultConfig]);
 
   const fetchConfig = useCallback(async () => {
     await configQuery.refetch();
@@ -347,10 +365,12 @@ const SHUPage: React.FC = React.memo(() => {
         includeStorePurchases: config.includeStorePurchases ?? true,
         includeLoans: config.includeLoans ?? true,
         includeSavingsDeposit: config.includeSavingsDeposit ?? false,
+        enableLiveEstimation: config.enableLiveEstimation ?? false,
       };
       const res = await api.put('/cooperative/shu/config', payload);
       if (res.data?.success) {
         toast.success('Konfigurasi persentase alokasi SHU berhasil disimpan!');
+        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-config'] });
       }
     } catch (err) {
       console.error(err);
