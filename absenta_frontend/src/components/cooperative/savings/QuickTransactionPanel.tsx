@@ -161,10 +161,20 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                     return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
                   });
 
+                  // Hitung jumlah setoran di tahun buku ini
+                  const yearlyDepositCount = isWajib ? (s.transactions?.filter(t => {
+                    if (t.type !== 'DEPOSIT') return false;
+                    const txDate = new Date(t.date);
+                    return txDate.getFullYear() === currentYear;
+                  }).length || 0) : 0;
+
+                  const isWajibFullyPaidYear = isWajib && yearlyDepositCount >= 12;
+
                   return (
                     <button
                       key={s.id}
                       type="button"
+                      disabled={isWajibFullyPaidYear && quickTxType === 'DEPOSIT'}
                       onClick={() => {
                         onSelectedScannedSavingIdChange(s.id);
                         if (s.category?.defaultAmount) {
@@ -175,7 +185,9 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                         onQuickDescriptionChange(getAutoMemo(s, quickTxType));
                       }}
                       className={`w-full p-2.5 rounded-xl border transition-all duration-300 text-left flex justify-between items-center ${
-                        selectedScannedSavingId === s.id
+                        isWajibFullyPaidYear && quickTxType === 'DEPOSIT'
+                          ? 'opacity-60 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 cursor-not-allowed'
+                          : selectedScannedSavingId === s.id
                           ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 ring-1 ring-indigo-500'
                           : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50'
                       }`}
@@ -195,13 +207,17 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                           </span>
                           {/* Badge Status Pembayaran Khusus Simpanan Wajib */}
                           {isWajib && quickTxType === 'DEPOSIT' && (
-                            isWajibPaidThisMonth ? (
+                            isWajibFullyPaidYear ? (
+                              <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                                🌟 Lunas Penuh 1 Tahun ({yearlyDepositCount}/12)
+                              </span>
+                            ) : isWajibPaidThisMonth ? (
                               <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
-                                ✓ Bulan Ini Lunas
+                                ✓ Bulan Ini Lunas ({yearlyDepositCount}/12)
                               </span>
                             ) : (
                               <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
-                                Wajib Bulan Ini
+                                Wajib Bulan Ini ({yearlyDepositCount}/12)
                               </span>
                             )
                           )}

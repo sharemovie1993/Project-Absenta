@@ -204,6 +204,48 @@ export class SavingService {
                 throw new Error(`Tarik tunai tidak diperbolehkan untuk kategori Simpanan ${saving.category.name}.`);
             }
 
+            // [GUARD 5.1: Pembatasan Maksimal 12x Iuran Wajib per Tahun Buku]
+            if (code === 'WAJIB' && type === 'DEPOSIT') {
+                const activeFiscalYear = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+                const currentYear = new Date().getFullYear();
+                const startDate = activeFiscalYear?.startDate ? new Date(activeFiscalYear.startDate) : new Date(currentYear, 0, 1);
+                const endDate   = activeFiscalYear?.endDate   ? new Date(activeFiscalYear.endDate)   : new Date(currentYear, 11, 31, 23, 59, 59);
+                const yearLabel = activeFiscalYear?.year || currentYear;
+
+                // Hitung total setoran DEPOSIT yang sudah berhasil di tahun buku ini
+                const aggregateResult = await tx.savingTransaction.aggregate({
+                    where: {
+                        savingId,
+                        type: 'DEPOSIT',
+                        date: { gte: startDate, lte: endDate },
+                    },
+                    _count: { id: true },
+                    _sum: { amount: true },
+                });
+
+                const depositedCount = aggregateResult._count.id || 0;
+                const depositedTotalAmount = Number(aggregateResult._sum.amount || 0);
+                const defaultAmount = Number(saving.category.defaultAmount || 0);
+
+                // Batasan 12 kali setoran
+                if (depositedCount >= 12) {
+                    throw new Error(
+                        `Simpanan Wajib untuk Tahun Buku ${yearLabel} sudah lunas penuh (12/12 bulan). ` +
+                        `Kelebihan dana tidak diperkenankan masuk ke Simpanan Wajib dan disarankan disetorkan ke Simpanan Sukarela.`
+                    );
+                }
+
+                // Jika kategori memiliki nominal pasti (defaultAmount > 0), batas maksimal total nominal = 12 * defaultAmount
+                if (defaultAmount > 0 && (depositedTotalAmount + amount) > (defaultAmount * 12)) {
+                    const remainingNominal = Math.max(0, (defaultAmount * 12) - depositedTotalAmount);
+                    throw new Error(
+                        `Setoran sebesar Rp ${amount.toLocaleString('id-ID')} melebihi batas maksimal Iuran Wajib Tahun Buku ${yearLabel}. ` +
+                        `Sisa kewajiban maksimal tahun ini: Rp ${remainingNominal.toLocaleString('id-ID')}. ` +
+                        `Kelebihan dana dapat disetorkan ke Simpanan Sukarela.`
+                    );
+                }
+            }
+
             if ((type === 'WITHDRAWAL' || type === 'ADMIN_FEE') && currentBalance < amount) {
                 throw new Error(
                     `Saldo tidak mencukupi. Saldo saat ini: Rp ${currentBalance.toLocaleString('id-ID')}, ` +
