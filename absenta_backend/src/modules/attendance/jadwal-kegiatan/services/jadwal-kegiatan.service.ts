@@ -59,11 +59,14 @@ export class JadwalKegiatanService {
   async create(scope: DataScope, userId: string, input: CreateJadwalKegiatanInput) {
     if (!scope.tenantId) throw new Error('Tenant ID required');
 
-    // Validasi format jam
-    const timeRegex = /^\d{2}:\d{2}$/;
-    if (!timeRegex.test(input.waktu_mulai) || (input.waktu_selesai && !timeRegex.test(input.waktu_selesai))) {
+    // Validasi format jam (mendukung HH:mm maupun HH:mm:ss dari input time browser)
+    const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/;
+    if (!input?.waktu_mulai || !timeRegex.test(input.waktu_mulai) || (input.waktu_selesai && !timeRegex.test(input.waktu_selesai))) {
       throw new Error('Format waktu_mulai dan waktu_selesai harus HH:mm');
     }
+
+    const cleanMulai = input.waktu_mulai.slice(0, 5);
+    const cleanSelesai = input.waktu_selesai ? input.waktu_selesai.slice(0, 5) : null;
 
     let tpId = input.tahun_pelajaran_id;
     if (!tpId || tpId.trim() === '') {
@@ -82,14 +85,14 @@ export class JadwalKegiatanService {
         nama: input.nama,
         jenis_kegiatan: input.jenis_kegiatan,
         hari: input.hari,
-        waktu_mulai: input.waktu_mulai,
-        waktu_selesai: input.waktu_selesai || null,
-        target_semua_kelas: input.target_semua_kelas,
+        waktu_mulai: cleanMulai,
+        waktu_selesai: cleanSelesai,
+        target_semua_kelas: input.target_semua_kelas ?? true,
         target_kelas_ids: input.target_kelas_ids || [],
         berlaku_mulai: new Date(input.berlaku_mulai),
         berlaku_sampai: input.berlaku_sampai ? new Date(input.berlaku_sampai) : null,
         tahun_pelajaran_id: tpId,
-        dibuat_oleh: userId,
+        dibuat_oleh: userId || 'system',
         aktif: true,
       },
     });

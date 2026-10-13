@@ -45,9 +45,9 @@ export const jadwalKegiatanController = {
   async create(request: any, reply: any) {
     try {
       const scope = request.dataScope;
-      const userId = request.user?.id;
+      const userId = request.user?.id || 'system';
       const parsedBody = createJadwalKegiatanSchema.parse(request.body || {});
-      const data = await jadwalKegiatanService.create(scope, parsedBody as any, userId);
+      const data = await jadwalKegiatanService.create(scope, userId, parsedBody as any);
       appLogger.info({ id: data.id }, 'Jadwal kegiatan created');
       return reply.status(201).send({ success: true, message: 'Jadwal kegiatan berhasil dibuat', data });
     } catch (error: any) {

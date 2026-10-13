@@ -110,6 +110,8 @@ export const PembinaUpacaraFormModal: React.FC<Props> = ({
         status,
       });
       onClose();
+    } catch {
+      // Error sudah ditampilkan melalui toast pada mutation onError
     } finally {
       setLoading(false);
     }

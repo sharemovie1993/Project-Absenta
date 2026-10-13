@@ -68,7 +68,7 @@ const parseArrayField = (field: unknown): string[] => {
 export default React.memo(function JadwalKegiatanPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const confirm = useConfirm();
+  const { confirm } = useConfirm();
 
   const [activeTab, setActiveTab] = useState<'PEMBIASAAN' | 'ESKUL'>('PEMBIASAAN');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,6 +94,11 @@ export default React.memo(function JadwalKegiatanPage() {
   const { rawList: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
   const { rawList: classes = [], isLoading: loadingClasses } = useKelasOptions();
 
+  const invalidateJadwal = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan-list'] });
+    queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan'] });
+  }, [queryClient]);
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: (payload: JadwalKegiatanFormData) => createJadwalKegiatan({
@@ -102,13 +107,13 @@ export default React.memo(function JadwalKegiatanPage() {
       tahun_pelajaran_id: activeTahunPelajaranId,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      invalidateJadwal();
       toast.success('Jadwal kegiatan berhasil disimpan!');
       setIsModalOpen(false);
     },
-    onError: (err: unknown) => {
-      const errObj = err as { message?: string };
-      toast.error(errObj.message || 'Gagal menyimpan jadwal kegiatan.');
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan jadwal kegiatan.';
+      toast.error(msg);
     }
   });
 
@@ -119,25 +124,25 @@ export default React.memo(function JadwalKegiatanPage() {
       tahun_pelajaran_id: activeTahunPelajaranId,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      invalidateJadwal();
       toast.success('Jadwal kegiatan berhasil diperbarui!');
       setIsModalOpen(false);
     },
-    onError: (err: unknown) => {
-      const errObj = err as { message?: string };
-      toast.error(errObj.message || 'Gagal memperbarui jadwal kegiatan.');
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Gagal memperbarui jadwal kegiatan.';
+      toast.error(msg);
     }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteJadwalKegiatan(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      invalidateJadwal();
       toast.success('Jadwal kegiatan berhasil dihapus.');
     },
-    onError: (err: unknown) => {
-      const errObj = err as { message?: string };
-      toast.error(errObj.message || 'Gagal menghapus jadwal kegiatan.');
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menghapus jadwal kegiatan.';
+      toast.error(msg);
     }
   });
 
@@ -195,12 +200,12 @@ export default React.memo(function JadwalKegiatanPage() {
     const nextAktif = !item.aktif;
     try {
       await updateJadwalKegiatan(item.id, { aktif: nextAktif });
-      queryClient.invalidateQueries({ queryKey: ['jadwal-kegiatan', activeTahunPelajaranId] });
+      invalidateJadwal();
       toast.success(`Jadwal "${item.nama}" berhasil ${nextAktif ? 'diaktifkan' : 'dinonaktifkan'}.`);
     } catch {
       toast.error('Gagal mengubah status aktif jadwal.');
     }
-  }, [handleOpenCreateFromMaster, queryClient, activeTahunPelajaranId]);
+  }, [handleOpenCreateFromMaster, invalidateJadwal]);
 
   const filteredMasters = useMemo(() => {
     const list = Array.isArray(masterKegiatans) ? masterKegiatans : [];
@@ -213,11 +218,13 @@ export default React.memo(function JadwalKegiatanPage() {
   const cards = useMemo<CardItem[]>(() => {
     const safeJadwal = Array.isArray(jadwalItems) ? jadwalItems : [];
     const safeFilteredMasters = Array.isArray(filteredMasters) ? filteredMasters : [];
+    const allMasters = Array.isArray(masterKegiatans) ? masterKegiatans : [];
 
     const list: CardItem[] = safeFilteredMasters.map(master => {
       const match = safeJadwal.find(j => 
         j.jenis_kegiatan_id === master.id ||
-        j.nama?.toLowerCase().trim() === master.nama.toLowerCase().trim()
+        j.nama?.toLowerCase().trim() === master.nama.toLowerCase().trim() ||
+        j.jenis_kegiatan?.toLowerCase().trim() === master.nama.toLowerCase().trim()
       );
       return {
         id: master.id,
@@ -230,16 +237,21 @@ export default React.memo(function JadwalKegiatanPage() {
 
     safeJadwal.forEach(j => {
       const existsInList = list.some(item => 
+        item.dbItem?.id === j.id ||
         (item.master && item.master.id === j.jenis_kegiatan_id) ||
         item.nama?.toLowerCase().trim() === j.nama?.toLowerCase().trim()
       );
       if (!existsInList) {
-        if (j.jenis_kegiatan === activeTab) {
+        const matchedMaster = allMasters.find(
+          m => m.nama?.toLowerCase().trim() === j.jenis_kegiatan?.toLowerCase().trim() || m.id === j.jenis_kegiatan_id
+        );
+        const resolvedTab = matchedMaster?.tipe || j.jenis_kegiatan;
+        if (resolvedTab === activeTab || (activeTab === 'PEMBIASAAN' && resolvedTab !== 'ESKUL')) {
           list.push({
             id: j.id,
             nama: j.nama,
             jenis_kegiatan: j.jenis_kegiatan,
-            master: null,
+            master: matchedMaster || null,
             dbItem: j,
           });
         }
@@ -247,7 +259,7 @@ export default React.memo(function JadwalKegiatanPage() {
     });
 
     return list;
-  }, [filteredMasters, jadwalItems, activeTab]);
+  }, [filteredMasters, masterKegiatans, jadwalItems, activeTab]);
 
   const loading = loadingJadwal || loadingMasters || loadingClasses;
 

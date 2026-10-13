@@ -434,6 +434,8 @@ export const AutoGenerateUpacaraModal: React.FC<Props> = ({
         rotasi_pairs: rotasiPairs,
       });
       onClose();
+    } catch {
+      // Error sudah ditampilkan melalui toast pada mutation onError
     } finally {
       setSubmitting(false);
     }

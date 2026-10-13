@@ -266,6 +266,8 @@ export default React.memo(function JadwalKegiatanFormModal({
     setSubmitting(true);
     try {
       await onSubmit(result.data);
+    } catch {
+      // Error sudah ditampilkan melalui toast pada mutation onError
     } finally {
       setSubmitting(false);
     }
