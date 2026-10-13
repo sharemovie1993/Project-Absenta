@@ -343,7 +343,7 @@ export class SesiQueryService {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
-        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true } },
+        AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
         ProgresMateri: { select: { id: true, judul_materi: true, deskripsi: true, pencapaian_persen: true, kendala: true, updated_at: true } }
       },
       orderBy: { waktu_mulai: 'desc' }
