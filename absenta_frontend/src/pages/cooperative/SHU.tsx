@@ -7,7 +7,7 @@ import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
-import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight, Calendar, Sliders, Award } from 'lucide-react';
+import { AlertCircle, Plus, Eye, Trash2, ArrowUpRight, Calendar, Sliders, Award, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -178,6 +178,17 @@ const SHUPage: React.FC = React.memo(() => {
   // New Period Modal State
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [loadingSync, setLoadingSync] = useState(false);
+  const [guideExpanded, setGuideExpanded] = useState(() => {
+    return localStorage.getItem('shu_workflow_guide_expanded') !== 'false';
+  });
+
+  const toggleGuideExpand = useCallback(() => {
+    setGuideExpanded(prev => {
+      const next = !prev;
+      localStorage.setItem('shu_workflow_guide_expanded', String(next));
+      return next;
+    });
+  }, []);
 
   // Member status
   const memberStatusQuery = useQuery({
@@ -625,82 +636,117 @@ const SHUPage: React.FC = React.memo(() => {
             </Suspense>
           ) : (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Card Panduan Alur Kerja SHU */}
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-slate-900/50 dark:to-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-600/10">
-                <AlertCircle size={18} />
+          {/* Card Panduan Alur Kerja SHU (Collapsible) */}
+          <div className="bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-indigo-50/80 dark:from-slate-900/50 dark:via-indigo-950/20 dark:to-slate-900/50 border border-indigo-100/70 dark:border-indigo-900/40 rounded-2xl p-4 sm:p-5 shadow-xs transition-all duration-300">
+            <div 
+              onClick={toggleGuideExpand}
+              className="flex items-center justify-between cursor-pointer select-none group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-600/15 group-hover:scale-105 transition-transform">
+                  <AlertCircle size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    Panduan Siklus Pembagian SHU
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100/70 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50">
+                      4 Langkah
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Langkah operasional dari penentuan aturan, tahun buku, kalkulasi, hingga distribusi ke anggota.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Panduan Siklus Pembagian SHU</h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Berikut adalah langkah-langkah dalam memproses pembagian Sisa Hasil Usaha (SHU):</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-              {/* Step 1 */}
-              <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-indigo-300 dark:hover:border-indigo-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">01</div>
-                <h5 className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 mb-1 tracking-wider">Atur Aturan</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Buka tab <strong>Aturan Distribusi SHU</strong> untuk menentukan porsi pembagian (Jasa Modal, Jasa Transaksi, Cadangan, Pengurus, Sosial, dll). Total aturan harus 100%.
-                </p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-purple-300 dark:hover:border-purple-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">02</div>
-                <h5 className="text-xs font-black uppercase text-purple-600 dark:text-purple-400 mb-1 tracking-wider">Buat Periode</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Klik tombol <strong>Buat Periode SHU Baru</strong>. Masukkan tahun buku, rentang tanggal, serta Total Pendapatan & Biaya Koperasi pada periode tersebut.
-                </p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">03</div>
-                <h5 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Kalkulasi & Setujui</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Pilih <strong>Kelola SHU</strong> pada periode yang dibuat. Klik <strong>Hitung Alokasi SHU</strong> (oleh Bendahara), lalu minta Ketua Koperasi untuk meninjau dan klik <strong>Setujui Pembagian</strong>.
-                </p>
-              </div>
-
-              {/* Step 4 */}
-              <div className="bg-white/80 dark:bg-slate-900/80 p-4 rounded-xl border border-slate-100 dark:border-slate-800 shadow-xs relative group hover:border-emerald-300 dark:hover:border-emerald-800 transition-all duration-300">
-                <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">04</div>
-                <h5 className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Distribusikan</h5>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Setelah disetujui, klik <strong>Distribusikan ke Tabungan</strong>. Sistem secara otomatis menyetor dana SHU masing-masing anggota ke rekening Simpanan Sukarela mereka.
-                </p>
+              <div className="text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors p-1">
+                {guideExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </div>
             </div>
+
+            {guideExpanded && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 sm:gap-4 mt-4 pt-4 border-t border-indigo-100/60 dark:border-indigo-900/30 animate-in fade-in zoom-in-95 duration-200">
+                {/* Step 1 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs relative group hover:border-indigo-300 dark:hover:border-indigo-800 transition-all duration-300">
+                  <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">01</div>
+                  <h5 className="text-xs font-black uppercase text-indigo-600 dark:text-indigo-400 mb-1 tracking-wider">Atur Aturan</h5>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Buka tab <strong>Aturan Distribusi SHU</strong> untuk menentukan porsi pembagian (Jasa Modal, Jasa Transaksi, Cadangan, Pengurus, Sosial, dll). Total aturan harus 100%.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs relative group hover:border-purple-300 dark:hover:border-purple-800 transition-all duration-300">
+                  <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">02</div>
+                  <h5 className="text-xs font-black uppercase text-purple-600 dark:text-purple-400 mb-1 tracking-wider">Buat Periode</h5>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Klik tombol <strong>Buat Periode SHU Baru</strong>. Masukkan tahun buku, rentang tanggal, serta Total Pendapatan & Biaya Koperasi pada periode tersebut.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs relative group hover:border-blue-300 dark:hover:border-blue-800 transition-all duration-300">
+                  <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">03</div>
+                  <h5 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 mb-1 tracking-wider">Kalkulasi & Setujui</h5>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Pilih <strong>Kelola SHU</strong> pada periode yang dibuat. Klik <strong>Hitung Alokasi SHU</strong> (oleh Bendahara), lalu minta Ketua Koperasi untuk meninjau dan klik <strong>Setujui Pembagian</strong>.
+                  </p>
+                </div>
+
+                {/* Step 4 */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800 shadow-xs relative group hover:border-emerald-300 dark:hover:border-emerald-800 transition-all duration-300">
+                  <div className="absolute top-3 right-3 text-[18px] font-black text-slate-200 dark:text-slate-800 select-none">04</div>
+                  <h5 className="text-xs font-black uppercase text-emerald-600 dark:text-emerald-400 mb-1 tracking-wider">Distribusikan</h5>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Setelah disetujui, klik <strong>Distribusikan ke Tabungan</strong>. Sistem secara otomatis menyetor dana SHU masing-masing anggota ke rekening Simpanan Sukarela mereka.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Tahun Buku SHU</h3>
-              <p className="text-xs text-slate-400">Daftar periode pembukuan pembagian SHU koperasi</p>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Calendar className="text-indigo-600 dark:text-indigo-400 w-5 h-5" />
+                Tahun Buku & Periode SHU
+              </h3>
+              <p className="text-xs text-slate-400">Daftar periode pembukuan pembagian Sisa Hasil Usaha koperasi</p>
             </div>
             {canManageShu && (
               <Button
                 onClick={() => setShowPeriodModal(true)}
                 size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 rounded-xl shadow-md shadow-indigo-600/10"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-1.5 rounded-xl shadow-md shadow-indigo-600/15"
               >
-                <Plus size={14} /> Buat Periode SHU Baru
+                <Plus size={15} /> Buat Periode SHU Baru
               </Button>
             )}
           </div>
 
           {loadingPeriods ? (
-            <div className="flex items-center justify-center min-h-[200px]">
+            <div className="flex items-center justify-center min-h-[220px]">
               <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
             </div>
           ) : periods.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-800 rounded-2xl">
-              {canManageShu 
-                ? 'Belum ada periode SHU yang dikonfigurasi. Klik tombol "+ Buat Periode SHU Baru".' 
-                : 'Belum ada periode SHU yang dikonfigurasi.'}
+            <div className="p-10 sm:p-14 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900/60 shadow-xs flex flex-col items-center justify-center space-y-3">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shadow-xs">
+                <Calendar size={28} />
+              </div>
+              <div className="max-w-md">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Belum Ada Periode Tahun Buku</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Inisialisasi periode pembukuan untuk mengaktifkan perhitungan otomatis SHU, pelaporan laba-rugi, dan pendistribusian jasa anggota.
+                </p>
+              </div>
+              {canManageShu && (
+                <Button
+                  onClick={() => setShowPeriodModal(true)}
+                  size="sm"
+                  className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 rounded-xl shadow-md shadow-indigo-600/15"
+                >
+                  <Plus size={15} /> Buat Periode Tahun Buku Sekarang
+                </Button>
+              )}
             </div>
           ) : (
             <SectionCard fullWidth className="p-0 border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
