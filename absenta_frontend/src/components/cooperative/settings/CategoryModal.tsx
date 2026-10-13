@@ -206,15 +206,71 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
               </div>
             </div>
 
-            {/* Banner Khusus Simpanan Pokok */}
-            {catFormData.code?.trim().toUpperCase() === 'POKOK' && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-2">
-                <span className="text-base leading-none">ℹ️</span>
-                <span>
-                  <strong>Aturan Regulasi Koperasi:</strong> Simpanan Pokok adalah ekuitas awal anggota yang disetorkan <strong>hanya 1 (satu) kali saat pertama kali mendaftar</strong>. Sesuai UU Perkoperasian, Simpanan Pokok <em>dilarang ditagihkan per bulan</em> dan tidak dapat ditarik selama masih menjadi anggota aktif.
-                </span>
-              </div>
-            )}
+            {/* Banner Edukasi Regulasi Berdasarkan Kategori */}
+            {(() => {
+              const code = catFormData.code?.trim().toUpperCase();
+              if (code === 'POKOK') {
+                return (
+                  <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-2.5">
+                    <span className="text-base leading-none select-none">🏛️</span>
+                    <div>
+                      <strong className="block text-[11px] font-bold text-amber-900 dark:text-amber-200 mb-0.5">
+                        Edukasi Simpanan Pokok (Modal Dasar Koperasi)
+                      </strong>
+                      <span>
+                        Simpanan Pokok adalah ekuitas awal anggota yang disetorkan <strong>hanya 1 (satu) kali saat mendaftar</strong>. Sesuai UU Perkoperasian, simpanan ini <em>dilarang ditagihkan bulanan</em> dan tidak dapat ditarik selama masih aktif menjadi anggota. Berkontribusi penuh dalam pembagian SHU Jasa Modal.
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              if (code === 'WAJIB') {
+                return (
+                  <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/50 rounded-xl text-[11px] text-indigo-800 dark:text-indigo-300 leading-relaxed flex items-start gap-2.5">
+                    <span className="text-base leading-none select-none">📅</span>
+                    <div>
+                      <strong className="block text-[11px] font-bold text-indigo-900 dark:text-indigo-200 mb-0.5">
+                        Edukasi Simpanan Wajib (Iuran Rutin Anggota)
+                      </strong>
+                      <span>
+                        Simpanan Wajib adalah kewajiban anggota yang disetor secara <strong>rutin setiap bulan</strong> dengan nominal yang sama sesuai kesepakatan RAT. Simpanan ini tidak dapat ditarik sewaktu-waktu (hanya saat keluar/berhenti) dan menjadi instrumen utama pemupukan modal kerja koperasi serta penghitungan SHU.
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              if (code === 'SUKARELA') {
+                return (
+                  <div className="p-3.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed flex items-start gap-2.5">
+                    <span className="text-base leading-none select-none">💳</span>
+                    <div>
+                      <strong className="block text-[11px] font-bold text-emerald-900 dark:text-emerald-200 mb-0.5">
+                        Edukasi Simpanan Sukarela (Tabungan Fleksibel)
+                      </strong>
+                      <span>
+                        Simpanan Sukarela berfungsi seperti tabungan rekening giro/harian. <strong>Tidak ada kewajiban setoran rutin bulanan</strong> (nominal bebas) dan <strong>dapat disetor maupun ditarik kapan saja</strong> sesuai kebutuhan likuiditas anggota tanpa harus mengundurkan diri dari koperasi.
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              if (code === 'SHR' || code.includes('RAYA') || catFormData.name?.toLowerCase().includes('hari raya')) {
+                return (
+                  <div className="p-3.5 bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/50 rounded-xl text-[11px] text-teal-800 dark:text-teal-300 leading-relaxed flex items-start gap-2.5">
+                    <span className="text-base leading-none select-none">🕌</span>
+                    <div>
+                      <strong className="block text-[11px] font-bold text-teal-900 dark:text-teal-200 mb-0.5">
+                        Edukasi Simpanan Hari Raya / SHR (Simpanan Berjangka Khusus)
+                      </strong>
+                      <span>
+                        SHR adalah simpanan terencana yang dikumpulkan anggota sepanjang tahun dan <strong>hanya dapat ditarik/dicairkan menjelang Hari Raya Idul Fitri</strong>. Membantu anggota mempersiapkan dana perayaan hari raya tanpa membebani keuangan bulanan secara mendadak.
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Boolean Rules */}
             <div className="p-4 border border-slate-200/50 dark:border-slate-800/80 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
