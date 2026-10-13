@@ -119,16 +119,16 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
               </div>
               <div className="mt-3 space-y-1.5">
                 <p className="text-[9px] text-slate-400">
-                  Porsi Jasa Modal: <span className="font-bold text-slate-700 dark:text-slate-300">{config.porsiJasaModal}%</span> | Porsi Jasa Transaksi: <span className="font-bold text-slate-700 dark:text-slate-300">{config.porsiJasaTransaksi}%</span>
+                  Porsi Jasa Modal: <span className="font-bold text-slate-700 dark:text-slate-300">{periodDetail.porsiJasaModal ?? config.porsiJasaModal}%</span> | Porsi Jasa Transaksi: <span className="font-bold text-slate-700 dark:text-slate-300">{periodDetail.porsiJasaTransaksi ?? config.porsiJasaTransaksi}%</span>
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeStorePurchases !== false ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${(periodDetail.includeStorePurchases ?? config.includeStorePurchases) !== false ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
                     POS Toko
                   </span>
-                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeLoans !== false ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${(periodDetail.includeLoans ?? config.includeLoans) !== false ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
                     Pinjaman
                   </span>
-                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeSavingsDeposit ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${(periodDetail.includeSavingsDeposit ?? config.includeSavingsDeposit) ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
                     Deposit Simpanan
                   </span>
                 </div>
@@ -139,12 +139,12 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
               <div>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Alokasi Kas Cadangan & Sosial</p>
                 <h3 className="text-xl font-extrabold text-amber-600 dark:text-amber-400 mt-1">
-                  Rp {(Number(periodDetail.totalShu) * (Number(config.porsiCadangan) + Number(config.porsiSosial) + Number(config.porsiPengurus) + Number(config.porsiPembangunan)) / 100).toLocaleString('id-ID')}
+                  Rp {(Number(periodDetail.totalShu) * (Number(periodDetail.porsiCadangan ?? config.porsiCadangan) + Number(periodDetail.porsiSosial ?? config.porsiSosial) + Number(periodDetail.porsiPengurus ?? config.porsiPengurus) + Number(periodDetail.porsiPembangunan ?? config.porsiPembangunan)) / 100).toLocaleString('id-ID')}
                 </h3>
               </div>
               <p className="text-[9px] text-slate-400 mt-4">
-                Cadangan: {config.porsiCadangan}% | Pembangunan: {config.porsiPembangunan}% <br/>
-                Pengurus: {config.porsiPengurus}% | Sosial: {config.porsiSosial}%
+                Cadangan: {periodDetail.porsiCadangan ?? config.porsiCadangan}% | Pembangunan: {periodDetail.porsiPembangunan ?? config.porsiPembangunan}% <br/>
+                Pengurus: {periodDetail.porsiPengurus ?? config.porsiPengurus}% | Sosial: {periodDetail.porsiSosial ?? config.porsiSosial}%
               </p>
             </SectionCard>
 

@@ -47,6 +47,7 @@ export interface ShuPeriod {
   year: number;
   startDate: string;
   endDate: string;
+  isActive?: boolean;
   totalRevenue: string;
   totalExpense: string;
   totalShu: string;
@@ -54,6 +55,15 @@ export interface ShuPeriod {
   approvedBy?: string;
   approvedAt?: string;
   notes?: string;
+  porsiJasaModal?: string | number;
+  porsiJasaTransaksi?: string | number;
+  porsiCadangan?: string | number;
+  porsiPengurus?: string | number;
+  porsiSosial?: string | number;
+  porsiPembangunan?: string | number;
+  includeStorePurchases?: boolean;
+  includeLoans?: boolean;
+  includeSavingsDeposit?: boolean;
 }
 
 export interface ShuAllocation {

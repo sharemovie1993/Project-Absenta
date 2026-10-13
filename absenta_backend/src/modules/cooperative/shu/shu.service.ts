@@ -23,6 +23,15 @@ export interface CreateShuPeriodDto {
     totalRevenue?: number;
     totalExpense?: number;
     notes?: string;
+    porsiJasaModal?: number;
+    porsiJasaTransaksi?: number;
+    porsiCadangan?: number;
+    porsiPengurus?: number;
+    porsiSosial?: number;
+    porsiPembangunan?: number;
+    includeStorePurchases?: boolean;
+    includeLoans?: boolean;
+    includeSavingsDeposit?: boolean;
 }
 
 // In-Memory Idempotency Cache (5 menit TTL) untuk mencegah duplicate calculation / duplicate distribution
@@ -108,12 +117,15 @@ export class ShuService {
         });
     }
 
-    /** Buat periode SHU baru */
+    /** Buat periode SHU baru (mengambil snapshot default dari ShuConfig jika tidak ditentukan) */
     static async createPeriod(tenantId: string, data: CreateShuPeriodDto) {
         const existing = await prisma.shuPeriod.findFirst({
             where: { tenantId, year: data.year },
         });
         if (existing) throw new Error(`Periode SHU tahun ${data.year} sudah ada.`);
+
+        // Ambil default dari ShuConfig untuk snapshot
+        const config = await this.getConfig(tenantId);
 
         const revenue = data.totalRevenue ?? 0;
         const expense = data.totalExpense ?? 0;
@@ -128,7 +140,49 @@ export class ShuService {
                 totalShu: revenue - expense,
                 notes: data.notes,
                 status: 'DRAFT',
+                porsiJasaModal: data.porsiJasaModal ?? config.porsiJasaModal,
+                porsiJasaTransaksi: data.porsiJasaTransaksi ?? config.porsiJasaTransaksi,
+                porsiCadangan: data.porsiCadangan ?? config.porsiCadangan,
+                porsiPengurus: data.porsiPengurus ?? config.porsiPengurus,
+                porsiSosial: data.porsiSosial ?? config.porsiSosial,
+                porsiPembangunan: data.porsiPembangunan ?? config.porsiPembangunan,
+                includeStorePurchases: data.includeStorePurchases !== undefined ? Boolean(data.includeStorePurchases) : (config.includeStorePurchases ?? true),
+                includeLoans: data.includeLoans !== undefined ? Boolean(data.includeLoans) : (config.includeLoans ?? true),
+                includeSavingsDeposit: data.includeSavingsDeposit !== undefined ? Boolean(data.includeSavingsDeposit) : (config.includeSavingsDeposit ?? false),
             },
+        });
+    }
+
+    /** Update aturan RAT khusus untuk periode tertentu (hanya jika DRAFT atau CALCULATED) */
+    static async updatePeriodRules(periodId: string, tenantId: string, data: Partial<CreateShuPeriodDto>) {
+        const period = await prisma.shuPeriod.findFirst({
+            where: { id: periodId, tenantId },
+        });
+        if (!period) throw new Error('Periode SHU tidak ditemukan.');
+        if (period.status === 'APPROVED' || period.status === 'DISTRIBUTED') {
+            throw new Error('Periode SHU yang sudah disetujui atau didistribusikan telah terkunci dan aturannya tidak dapat diubah.');
+        }
+
+        const merged = {
+            porsiJasaModal: data.porsiJasaModal ?? Number(period.porsiJasaModal),
+            porsiJasaTransaksi: data.porsiJasaTransaksi ?? Number(period.porsiJasaTransaksi),
+            porsiCadangan: data.porsiCadangan ?? Number(period.porsiCadangan),
+            porsiPengurus: data.porsiPengurus ?? Number(period.porsiPengurus),
+            porsiSosial: data.porsiSosial ?? Number(period.porsiSosial),
+            porsiPembangunan: data.porsiPembangunan ?? Number(period.porsiPembangunan),
+            includeStorePurchases: data.includeStorePurchases !== undefined ? Boolean(data.includeStorePurchases) : (period.includeStorePurchases ?? true),
+            includeLoans: data.includeLoans !== undefined ? Boolean(data.includeLoans) : (period.includeLoans ?? true),
+            includeSavingsDeposit: data.includeSavingsDeposit !== undefined ? Boolean(data.includeSavingsDeposit) : (period.includeSavingsDeposit ?? false),
+        };
+
+        const total = (merged.porsiJasaModal + merged.porsiJasaTransaksi + merged.porsiCadangan + merged.porsiPengurus + merged.porsiSosial + merged.porsiPembangunan);
+        if (Math.abs(total - 100) > 0.01) {
+            throw new Error(`Total persentase alokasi SHU harus 100%. Saat ini: ${total}%`);
+        }
+
+        return prisma.shuPeriod.update({
+            where: { id: periodId },
+            data: merged,
         });
     }
 
@@ -248,10 +302,10 @@ export class ShuService {
             );
         }
 
-        const config = await this.getConfig(tenantId);
+        // Ambil aturan RAT langsung dari snapshot periode (bukan config global)
         const totalShu = updatedTotalShu;
-        const porsiJasaModal = Number(config.porsiJasaModal) / 100;
-        const porsiJasaTransaksi = Number(config.porsiJasaTransaksi) / 100;
+        const porsiJasaModal = Number(period.porsiJasaModal ?? 30) / 100;
+        const porsiJasaTransaksi = Number(period.porsiJasaTransaksi ?? 30) / 100;
 
         // Pool SHU yang dibagi ke anggota
         const poolJasaModal = totalShu * porsiJasaModal;
@@ -344,10 +398,10 @@ export class ShuService {
             }
         }
 
-        // ─── [4] Gabungkan: Volume Transaksi Dinamis Sesuai Aturan Transparan di Config
-        const includeStore = config.includeStorePurchases ?? true;
-        const includeLoan = config.includeLoans ?? true;
-        const includeDeposit = config.includeSavingsDeposit ?? false;
+        // ─── [4] Gabungkan: Volume Transaksi Dinamis Sesuai Aturan Transparan di Snapshot Periode
+        const includeStore = period.includeStorePurchases ?? true;
+        const includeLoan = period.includeLoans ?? true;
+        const includeDeposit = period.includeSavingsDeposit ?? false;
 
         // Gunakan Array.from() untuk kompatibilitas ES target lama (TS2802 fix)
         const allMemberIds = Array.from(new Set([

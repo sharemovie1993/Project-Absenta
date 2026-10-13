@@ -379,6 +379,10 @@ export class TokoService {
         if (lockKey) checkoutLocks.add(lockKey);
 
         try {
+            // [GUARD: Period Lock & Fiscal Year Validation]
+            const { FiscalYearGuard } = await import('../fiscal-year.guard');
+            await FiscalYearGuard.validateNotClosed(tenantId, new Date(), 'Transaksi Kasir POS');
+
             // [GUARD: Validasi input]
             if (!items || items.length === 0) throw new Error('Minimal satu produk harus dipilih.');
             for (const item of items) {

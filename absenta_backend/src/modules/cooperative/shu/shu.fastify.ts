@@ -66,6 +66,35 @@ export async function shuRoutes(fastify: any) {
         return reply.send({ success: true, data });
     });
 
+    // PUT /cooperative/shu/periods/:id/rules — Update aturan RAT periode (hanya DRAFT/CALCULATED)
+    fastify.put('/shu/periods/:id/rules', {
+        preHandler: requireCapability('cooperative.shu.manage'),
+    }, async (req: any, reply: any) => {
+        try {
+            const data = await ShuService.updatePeriodRules(req.params.id, req.tenantId, req.body);
+            broadcastCoopShu(req, 'PERIOD_RULES_UPDATED', { periodId: req.params.id });
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative route error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
+    });
+
+    // POST /cooperative/shu/periods/:id/set-active — Set sebagai Tahun Buku aktif
+    fastify.post('/shu/periods/:id/set-active', {
+        preHandler: requireCapability('cooperative.shu.manage'),
+    }, async (req: any, reply: any) => {
+        try {
+            const { FiscalYearGuard } = await import('../fiscal-year.guard');
+            const data = await FiscalYearGuard.setActiveFiscalYear(req.tenantId, req.params.id);
+            broadcastCoopShu(req, 'FISCAL_YEAR_ACTIVATED', { periodId: req.params.id });
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative route error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
+    });
+
     // DELETE /cooperative/shu/periods/:id — Hapus periode SHU
     fastify.delete('/shu/periods/:id', {
         preHandler: requireCapability('cooperative.shu.manage'),

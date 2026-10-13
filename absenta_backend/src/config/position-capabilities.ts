@@ -793,10 +793,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   // TIM KETARUNAAN (PROGRAM KETARUNAAN SEKOLAH)
   // ═══════════════════════════════════════════════════════════════════
 
-  // Capabilities dasar bersama untuk semua jabatan Tim Ketarunaan
-  // (didefinisikan di setiap jabatan agar seedCapabilitiesForPosition bekerja mandiri)
-
-  // Ketua Pembina Taruna (Koordinator Utama Tim Ketarunaan)
+  // Ketua Pembina Taruna (Koordinator Pelaksana Ketarunaan — dinaungi di bawah Kesiswaan)
+  // Catatan: Staf pembina/binaan dinaungi langsung oleh KESISWAAN, sedangkan Pembina OSIS me-reuse PEMBINA_ESKUL.
   [STRUKTUR_CODES.KETUA_PEMBINA_TARUNA]: [
     'organization.scope.tenant_wide',
     'dashboard.view.kesiswaan',

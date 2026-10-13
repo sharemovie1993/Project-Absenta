@@ -3098,13 +3098,27 @@ model ShuConfig {
   @@index([tenantId])
 }
 
-// --- PERIODE SHU PER TAHUN BUKU ---
+// --- PERIODE SHU / TAHUN BUKU KOPERASI ---
 model ShuPeriod {
   id        String   @id @default(uuid())
   tenantId  String
   year      Int
   startDate DateTime
   endDate   DateTime
+
+  // Flag Tahun Buku Aktif berjalan
+  isActive Boolean @default(false)
+
+  // Snapshot Aturan Kebijakan RAT per Tahun Buku (Immutable setelah disahkan)
+  porsiJasaModal        Decimal @default(30)
+  porsiJasaTransaksi    Decimal @default(30)
+  porsiCadangan         Decimal @default(20)
+  porsiPengurus         Decimal @default(5)
+  porsiSosial           Decimal @default(5)
+  porsiPembangunan      Decimal @default(10)
+  includeStorePurchases Boolean @default(true)
+  includeLoans          Boolean @default(true)
+  includeSavingsDeposit Boolean @default(false)
 
   totalRevenue Decimal @default(0)
   totalExpense Decimal @default(0)
