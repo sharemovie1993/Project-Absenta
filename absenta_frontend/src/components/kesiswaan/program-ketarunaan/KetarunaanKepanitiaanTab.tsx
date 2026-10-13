@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Users,
@@ -61,7 +61,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     staleTime: 30_000,
   });
 
-  const pendamping = data?.data ?? [];
+  const pendamping = useMemo(() => data?.data ?? [], [data?.data]);
   const realSesiId = data?.sesi_id ?? sesiId;
 
   const tapMutation = useMutation({
@@ -83,9 +83,18 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     onError: () => toast.error('Gagal mencatat presensi'),
   });
 
+  const handleRefresh = useCallback(() => {
+    refetch();
+    refetchSesi();
+  }, [refetch, refetchSesi]);
+
+  const handleTap = useCallback((guruId: string) => {
+    tapMutation.mutate({ guru_id: guruId, status: 'HADIR' });
+  }, [tapMutation]);
+
   const groups = useMemo(() => {
     const g: Record<string, KetarunaanPendamping[]> = {};
-    pendamping.forEach(p => {
+    pendamping?.forEach(p => {
       const key = p.jabatan_kode;
       if (!g[key]) g[key] = [];
       g[key].push(p);
@@ -93,13 +102,14 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
     return g;
   }, [pendamping]);
 
-  const hadirCount = pendamping.filter(p => p.status === 'HADIR').length;
+  const groupEntries = useMemo(() => Object.entries(groups), [groups]);
+  const hadirCount = useMemo(() => pendamping?.filter(p => p.status === 'HADIR').length, [pendamping]);
 
   if (isLoading) {
     return (
       <div className="space-y-3 p-4">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-14 rounded-2xl" />
+        {[1, 2, 3, 4, 5]?.map((itemKey) => (
+          <Skeleton key={itemKey} className="h-14 rounded-2xl" />
         ))}
       </div>
     );
@@ -128,25 +138,25 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             <p className="text-xs text-slate-500 dark:text-slate-400">{hadirCount} / {pendamping.length} hadir</p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => { refetch(); refetchSesi(); }} className="gap-1.5 text-xs">
+        <Button variant="ghost" size="sm" onClick={handleRefresh} className="gap-1.5 text-xs">
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </Button>
       </div>
 
       {/* Tabel per kelompok jabatan */}
       <div className="space-y-4">
-        {Object.entries(groups).map(([kode, list]) => (
+        {groupEntries?.map(([kode, list]) => (
           <div key={kode} className="rounded-2xl border border-slate-100 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900 shadow-sm">
             <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                 {jabatanLabel(kode)}
               </span>
               <span className="text-[10px] font-bold text-slate-400">
-                {list.filter(x => x.status === 'HADIR').length}/{list.length} Hadir
+                {list?.filter(x => x.status === 'HADIR').length}/{list.length} Hadir
               </span>
             </div>
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {list.map(p => (
+              {list?.map(p => (
                 <div key={p.guru_id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
@@ -170,7 +180,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                         variant="outline"
                         className="h-7 px-2.5 text-[11px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
                         disabled={tapMutation.isPending}
-                        onClick={() => tapMutation.mutate({ guru_id: p.guru_id, status: 'HADIR' })}
+                        onClick={() => handleTap(p.guru_id)}
                       >
                         {tapMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                       </Button>

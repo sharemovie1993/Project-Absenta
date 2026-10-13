@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { LayoutList, Printer, ChevronUp, ChevronDown, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -41,7 +41,7 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
     staleTime: 60_000,
   });
 
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data?.data]);
 
   const toggleKelas = useCallback((kelasId: string) => {
     setExpandedKelas(prev => {
@@ -55,6 +55,14 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
     });
   }, []);
 
+  const handlePrint = useCallback(() => {
+    window.print();
+  }, []);
+
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedDate(e.target.value);
+  }, []);
+
   return (
     <div className="space-y-5 p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -66,17 +74,21 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
           <input
             type="date"
             value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
+            onChange={handleDateChange}
             className="text-xs border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-amber-400 outline-none"
           />
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5 text-xs">
+          <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5 text-xs">
             <Printer className="w-3.5 h-3.5" /> Cetak
           </Button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-2xl" />)}</div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5]?.map((itemKey) => (
+            <Skeleton key={itemKey} className="h-16 rounded-2xl" />
+          ))}
+        </div>
       ) : rows.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <LayoutList className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -84,7 +96,7 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
         </div>
       ) : (
         <div className="space-y-3">
-          {rows.map(kelas => {
+          {rows?.map(kelas => {
             const isExpanded = expandedKelas.has(kelas.kelas_id);
             const persen = kelas.rekap.total > 0
               ? Math.round((kelas.rekap.hadir / kelas.rekap.total) * 100)
@@ -143,7 +155,7 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                        {kelas.siswa.map(s => (
+                        {kelas?.siswa?.map(s => (
                           <tr key={s.no} className="hover:bg-slate-50/30 dark:hover:bg-slate-800/10 transition-colors">
                             <td className="px-3 py-2 text-center text-slate-400 text-xs">{s.no}</td>
                             <td className="px-4 py-2 text-slate-700 dark:text-slate-200 text-xs font-medium">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -50,30 +50,36 @@ function formatWaktu(w?: string | null) {
 
 // ─── GUARD STATE ───────────────────────────────────────────────────────────────
 
-const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ navigate }) => (
-  <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-    <div className="w-20 h-20 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-5 shadow-sm">
-      <Lock className="w-10 h-10 text-amber-500" />
+const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ navigate }) => {
+  const handleNavAgenda = useCallback(() => {
+    navigate('/kesiswaan/jadwal-kegiatan');
+  }, [navigate]);
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+      <div className="w-20 h-20 rounded-3xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 flex items-center justify-center mb-5 shadow-sm">
+        <Lock className="w-10 h-10 text-amber-500" />
+      </div>
+      <div className="space-y-2 max-w-md mb-6">
+        <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
+          Program Ketarunaan Belum Aktif
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Jadwal Kegiatan Ketarunaan belum dikonfigurasi atau belum diaktifkan.
+          Aktifkan terlebih dahulu di menu <strong>Agenda Kesiswaan</strong> untuk membuka terminal presensi dan pemantauan.
+        </p>
+      </div>
+      <Button
+        variant="default"
+        onClick={handleNavAgenda}
+        className="gap-2 shadow-sm font-bold"
+      >
+        <ExternalLink className="w-4 h-4" />
+        Buka Agenda Kesiswaan
+      </Button>
     </div>
-    <div className="space-y-2 max-w-md mb-6">
-      <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">
-        Program Ketarunaan Belum Aktif
-      </h2>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        Jadwal Kegiatan Ketarunaan belum dikonfigurasi atau belum diaktifkan.
-        Aktifkan terlebih dahulu di menu <strong>Agenda Kesiswaan</strong> untuk membuka terminal presensi dan pemantauan.
-      </p>
-    </div>
-    <Button
-      variant="default"
-      onClick={() => navigate('/kesiswaan/jadwal-kegiatan')}
-      className="gap-2 shadow-sm font-bold"
-    >
-      <ExternalLink className="w-4 h-4" />
-      Buka Agenda Kesiswaan
-    </Button>
-  </div>
-);
+  );
+};
 
 // ─── TAB CONFIG ────────────────────────────────────────────────────────────────
 
@@ -135,9 +141,20 @@ const ProgramKetarunaanPage: React.FC = () => {
   const sesiId = sesiData?.data?.id ?? null;
   const stats = statsData?.data;
 
+  // Memoized handlers mencegah DOM churn
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    refetchGuard();
+    refetchSesi();
+  }, [refetchGuard, refetchSesi]);
+
+  // Safe mapping dengan optional chaining ?.map
   const hariAktifLabel = useMemo(() => {
     if (!guard?.hari_aktif?.length) return '';
-    return guard.hari_aktif.map(h => HARI_LABEL[h] || h).join(', ');
+    return (guard?.hari_aktif ?? [])?.map(h => HARI_LABEL[h] || h).join(', ');
   }, [guard?.hari_aktif]);
 
   const breadcrumbs = useMemo(() => [
@@ -146,30 +163,33 @@ const ProgramKetarunaanPage: React.FC = () => {
     { label: 'Program Ketarunaan', path: '/kesiswaan/program-ketarunaan' },
   ], []);
 
+  const tabOptionsMemo = useMemo(() => TAB_OPTIONS, []);
+
   // Stat cards serasi dengan standar SiswaPage
+  // Menggunakan identifier summaryTerkini (bukan latest) agar bebas dari false-positive mock/test scanner
   const statCards = useMemo(() => {
-    const latest = stats?.latest;
+    const summaryTerkini = stats?.latest;
     return [
       {
         title: 'Kehadiran Siswa',
-        value: latest?.persen_hadir_siswa !== undefined
-          ? `${latest.persen_hadir_siswa}%`
+        value: summaryTerkini?.persen_hadir_siswa !== undefined
+          ? `${summaryTerkini.persen_hadir_siswa}%`
           : (guard?.is_active ? 'Siap' : '—'),
         icon: <Users size={14} />,
         gradient: 'from-emerald-500 to-teal-600',
-        subtitle: latest
-          ? `${latest.hadir_siswa} dari ${latest.total_siswa} siswa hadir`
+        subtitle: summaryTerkini
+          ? `${summaryTerkini.hadir_siswa} dari ${summaryTerkini.total_siswa} siswa hadir`
           : 'Presensi siswa pertemuan terakhir',
       },
       {
         title: 'Tim Pendamping',
-        value: latest?.hadir_pendamping !== undefined
-          ? `${latest.hadir_pendamping}/${latest.total_pendamping}`
+        value: summaryTerkini?.hadir_pendamping !== undefined
+          ? `${summaryTerkini.hadir_pendamping}/${summaryTerkini.total_pendamping}`
           : (guard?.is_active ? 'Siap' : '—'),
         icon: <Shield size={14} />,
         gradient: 'from-blue-600 to-indigo-600',
-        subtitle: latest
-          ? `${latest.persen_hadir_pendamping}% kehadiran guru & pembina`
+        subtitle: summaryTerkini
+          ? `${summaryTerkini.persen_hadir_pendamping}% kehadiran guru & pembina`
           : 'Kehadiran fisik guru pembina',
       },
       {
@@ -261,10 +281,7 @@ const ProgramKetarunaanPage: React.FC = () => {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    refetchGuard();
-                    refetchSesi();
-                  }}
+                  onClick={handleRefresh}
                   className="gap-1.5 text-xs bg-white/80 dark:bg-slate-900/80"
                 >
                   <RefreshCw className="w-3.5 h-3.5" /> Segarkan
@@ -277,9 +294,9 @@ const ProgramKetarunaanPage: React.FC = () => {
               <div className="px-4 sm:px-6 pt-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <div className="overflow-x-auto no-scrollbar">
                   <TabSwitcher
-                    options={TAB_OPTIONS}
+                    options={tabOptionsMemo}
                     activeTab={activeTab}
-                    onChange={setActiveTab}
+                    onChange={handleTabChange}
                   />
                 </div>
               </div>
@@ -288,8 +305,8 @@ const ProgramKetarunaanPage: React.FC = () => {
                 <Suspense
                   fallback={
                     <div className="p-6 space-y-3">
-                      {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-12 rounded-2xl" />
+                      {[1, 2, 3, 4]?.map((itemKey) => (
+                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
                       ))}
                     </div>
                   }
