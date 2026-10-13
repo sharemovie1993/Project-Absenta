@@ -66,6 +66,7 @@ export interface ConfirmTxData {
   amount: number;
   type: 'DEPOSIT' | 'WITHDRAWAL';
   description: string;
+  isWajibPaidThisMonth?: boolean;
 }
 
 // Tipe lama untuk backward compat di PDF/export (savingType masih dipakai sebagai display string)

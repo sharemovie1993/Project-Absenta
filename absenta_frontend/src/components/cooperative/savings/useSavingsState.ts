@@ -229,11 +229,31 @@ export const useSavingsState = () => {
     if (!saving) return txType === 'DEPOSIT' ? 'Setoran Tabungan' : 'Penarikan Tabungan';
     const code = (saving.category?.code || saving.type || '').toUpperCase();
     const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
     const bulan = now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-    const tahun = now.getFullYear();
+    const tahun = currentYear;
 
     if (code === 'POKOK') return 'Simpanan Pokok – Iuran Keanggotaan';
-    if (code === 'WAJIB') return txType === 'DEPOSIT' ? `Iuran Wajib – ${bulan}` : `Penarikan Wajib – ${bulan}`;
+    if (code === 'WAJIB') {
+      if (txType === 'DEPOSIT') {
+        // Cek apakah di bulan berjalan sudah ada setoran DEPOSIT pada rekening ini
+        const hasDepositedThisMonth = saving.transactions?.some(t => {
+          if (t.type !== 'DEPOSIT') return false;
+          const txDate = new Date(t.date);
+          return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+        });
+
+        if (hasDepositedThisMonth) {
+          // Jika sudah pernah setor bulan ini, sarankan periode bulan berikutnya (Advance/Di Muka)
+          const nextDate = new Date(currentYear, currentMonth + 1, 1);
+          const nextMonthStr = nextDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+          return `Iuran Wajib – Pembayaran di Muka (${nextMonthStr})`;
+        }
+        return `Iuran Wajib – ${bulan}`;
+      }
+      return `Penarikan Wajib – ${bulan}`;
+    }
     if (code === 'SUKARELA') return txType === 'DEPOSIT' ? `Setoran Sukarela – ${bulan}` : `Penarikan Sukarela – ${bulan}`;
     if (code === 'HARIRAYA' || code === 'HARI_RAYA' || code.includes('RAYA')) return txType === 'DEPOSIT' ? `Simpanan Hari Raya – ${tahun}` : `Penarikan Simpanan Hari Raya – ${tahun}`;
     // fallback generic
@@ -381,6 +401,19 @@ export const useSavingsState = () => {
       return;
     }
 
+    const isWajib = (selectedAcc.category?.code || selectedAcc.type || '').toUpperCase() === 'WAJIB';
+    let isWajibPaidThisMonth = false;
+    if (isWajib && quickTxType === 'DEPOSIT') {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      isWajibPaidThisMonth = selectedAcc.transactions?.some(t => {
+        if (t.type !== 'DEPOSIT') return false;
+        const txDate = new Date(t.date);
+        return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+      }) ?? false;
+    }
+
     setConfirmTxData({
       savingId: selectedScannedSavingId,
       savingType: selectedAcc.category?.name || selectedAcc.type || 'Simpanan',
@@ -388,7 +421,8 @@ export const useSavingsState = () => {
       memberNo: selectedAcc.member.memberNo,
       amount: amountNum,
       type: quickTxType,
-      description: quickDescription || (quickTxType === 'DEPOSIT' ? 'Setoran Tabungan' : 'Penarikan Tabungan')
+      description: quickDescription || (quickTxType === 'DEPOSIT' ? 'Setoran Tabungan' : 'Penarikan Tabungan'),
+      isWajibPaidThisMonth
     });
     setShowQuickTxConfirm(true);
   }, [selectedScannedSavingId, quickAmount, quickTxType, quickDescription, scannedMemberSavings, scannedStudent, isLocked]);

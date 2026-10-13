@@ -71,6 +71,16 @@ export const QuickTxConfirmModal: React.FC<QuickTxConfirmModalProps> = React.mem
               <span className="font-extrabold text-slate-700 dark:text-slate-350 truncate max-w-[200px]">{confirmTxData.description || '-'}</span>
             </div>
           </div>
+
+          {/* Catatan Cerdas Jika Anggota Sudah Setor Simpanan Wajib Bulan Ini */}
+          {confirmTxData.isWajibPaidThisMonth && confirmTxData.type === 'DEPOSIT' && (
+            <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-2">
+              <span className="text-sm select-none">ℹ️</span>
+              <span>
+                <strong>Catatan Teller:</strong> Anggota telah tercatat melunasi Simpanan Wajib periode bulan ini. Transaksi ini akan diproses sebagai <strong>pembayaran di muka (bulan berikutnya) / akumulasi modal</strong>.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

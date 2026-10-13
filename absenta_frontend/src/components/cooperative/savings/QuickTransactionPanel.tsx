@@ -148,43 +148,71 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
                     </div>
                   );
                 }
-                return visible.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectedScannedSavingIdChange(s.id);
-                      if (s.category?.defaultAmount) {
-                        onQuickAmountChange(String(s.category.defaultAmount));
-                      } else {
-                        onQuickAmountChange('');
-                      }
-                      onQuickDescriptionChange(getAutoMemo(s, quickTxType));
-                    }}
-                    className={`w-full p-2.5 rounded-xl border transition-all duration-300 text-left flex justify-between items-center ${
-                      selectedScannedSavingId === s.id
-                        ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 ring-1 ring-indigo-500'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CreditCard
-                        size={14}
-                        className={selectedScannedSavingId === s.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}
-                      />
-                      <span
-                        className={`text-xs font-black tracking-wider ${
-                          selectedScannedSavingId === s.id ? 'text-indigo-900 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-400'
-                        }`}
-                      >
-                        {s.category?.name || s.type}
+                const now = new Date();
+                const currentMonth = now.getMonth();
+                const currentYear = now.getFullYear();
+
+                return visible.map((s) => {
+                  const code = (s.category?.code || s.type || '').toUpperCase();
+                  const isWajib = code === 'WAJIB';
+                  const isWajibPaidThisMonth = isWajib && s.transactions?.some(t => {
+                    if (t.type !== 'DEPOSIT') return false;
+                    const txDate = new Date(t.date);
+                    return txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+                  });
+
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectedScannedSavingIdChange(s.id);
+                        if (s.category?.defaultAmount) {
+                          onQuickAmountChange(String(s.category.defaultAmount));
+                        } else {
+                          onQuickAmountChange('');
+                        }
+                        onQuickDescriptionChange(getAutoMemo(s, quickTxType));
+                      }}
+                      className={`w-full p-2.5 rounded-xl border transition-all duration-300 text-left flex justify-between items-center ${
+                        selectedScannedSavingId === s.id
+                          ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 ring-1 ring-indigo-500'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <CreditCard
+                          size={14}
+                          className={selectedScannedSavingId === s.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}
+                        />
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`text-xs font-black tracking-wider ${
+                              selectedScannedSavingId === s.id ? 'text-indigo-900 dark:text-indigo-300' : 'text-slate-700 dark:text-slate-400'
+                            }`}
+                          >
+                            {s.category?.name || s.type}
+                          </span>
+                          {/* Badge Status Pembayaran Khusus Simpanan Wajib */}
+                          {isWajib && quickTxType === 'DEPOSIT' && (
+                            isWajibPaidThisMonth ? (
+                              <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                                ✓ Bulan Ini Lunas
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-black tracking-normal px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
+                                Wajib Bulan Ini
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-xs font-extrabold text-slate-600 dark:text-slate-350">
+                        Rp {parseFloat(s.amount).toLocaleString('id-ID')}
                       </span>
-                    </div>
-                    <span className="text-xs font-extrabold text-slate-600 dark:text-slate-350">
-                      Rp {parseFloat(s.amount).toLocaleString('id-ID')}
-                    </span>
-                  </button>
-                ));
+                    </button>
+                  );
+                });
               })()}
             </div>
           </div>
