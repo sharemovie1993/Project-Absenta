@@ -351,12 +351,16 @@ export const useSavingsState = () => {
   const executeQuickTransaction = useCallback(async () => {
     if (!confirmTxData || isLocked) return;
 
-    await quickTxMutation.mutateAsync({
-      savingId: confirmTxData.savingId,
-      type: confirmTxData.type,
-      amount: confirmTxData.amount,
-      description: confirmTxData.description
-    });
+    try {
+      await quickTxMutation.mutateAsync({
+        savingId: confirmTxData.savingId,
+        type: confirmTxData.type,
+        amount: confirmTxData.amount,
+        description: confirmTxData.description
+      });
+    } catch {
+      // Error sudah ditangani secara elegan di onError quickTxMutation (menampilkan toast dan refokus)
+    }
   }, [confirmTxData, isLocked, quickTxMutation]);
 
   const handleQuickTransactionSubmit = useCallback(async (e: React.FormEvent) => {

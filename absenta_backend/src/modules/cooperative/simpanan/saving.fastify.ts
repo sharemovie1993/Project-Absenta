@@ -71,6 +71,7 @@ export default async function savingRoutes(fastify: any) {
     fastify.post('/transaction', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.savings.withdraw'])] }, async (req: any, reply: any) => {
         try {
             const parsed = processSavingTransactionSchema.parse(req.body);
+            const { savingId, amount, type, description } = parsed;
             const idempotencyKey = req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey;
             const transaction = await SavingService.processTransaction(
                 savingId, 

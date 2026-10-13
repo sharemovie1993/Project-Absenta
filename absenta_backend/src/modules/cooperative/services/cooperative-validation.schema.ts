@@ -47,9 +47,9 @@ export const processSavingTransactionSchema = z.object({
   amount: z.coerce.number({
     invalid_type_error: 'amount harus berupa angka'
   }).min(1, 'Jumlah transaksi minimal Rp 1'),
-  type: z.enum(['DEPOSIT', 'WITHDRAW'], {
-    required_error: 'type transaksi wajib diisi (DEPOSIT / WITHDRAW)'
-  }),
+  type: z.enum(['DEPOSIT', 'WITHDRAW', 'WITHDRAWAL', 'INTEREST', 'ADMIN_FEE'], {
+    required_error: 'type transaksi wajib diisi'
+  }).transform(v => (v === 'WITHDRAW' ? 'WITHDRAWAL' : v)),
   description: z.string().nullable().optional().transform(v => v === null ? undefined : v)
 });
 
