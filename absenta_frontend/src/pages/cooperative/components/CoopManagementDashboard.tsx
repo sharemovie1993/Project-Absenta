@@ -9,17 +9,10 @@ import {
   CheckCircle2, 
   Package, 
   ShoppingBag, 
-  Scale, 
-  FileText, 
   PiggyBank, 
-  PlusCircle, 
-  ArrowUpRight, 
   ShieldAlert, 
-  Clock, 
   Coins, 
-  ArrowRight,
   Sparkles,
-  HelpCircle,
   Receipt
 } from 'lucide-react';
 import { 
@@ -89,98 +82,6 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       
-      {/* ── SECTION 0: Quick Action Command Bar (Aksi Cepat Pengurus) ──────────────── */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-indigo-900/50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                Pusat Kendali Pengurus
-              </span>
-              <span className="text-xs text-indigo-200/70">
-                Tahun Buku {stats.activePeriod ? stats.activePeriod.year : new Date().getFullYear()}
-              </span>
-            </div>
-            <h2 className="text-lg sm:text-xl font-black text-white mt-1">
-              Aksi Cepat Manajemen Koperasi
-            </h2>
-          </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-200/80">
-            <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Operasional Koperasi Berjalan Normal
-          </div>
-        </div>
-
-        {/* Tombol Jalan Pintas Pengurus */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-4">
-          <Link
-            to="/cooperative/savings"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 group-hover:scale-110 transition-transform mb-1.5">
-              <PiggyBank size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Catat Simpanan</span>
-            <span className="text-[10px] text-emerald-300/80">Setor/Tarik</span>
-          </Link>
-
-          <Link
-            to="/cooperative/pos"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 group-hover:scale-110 transition-transform mb-1.5">
-              <ShoppingBag size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Kasir Toko (POS)</span>
-            <span className="text-[10px] text-indigo-300/80">Transaksi Kasir</span>
-          </Link>
-
-          <Link
-            to="/cooperative/loans"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 group-hover:scale-110 transition-transform mb-1.5">
-              <Wallet size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Kelola Pinjaman</span>
-            <span className="text-[10px] text-amber-300/80">{pendingLoans.length > 0 ? `${pendingLoans.length} Menunggu` : 'Cicilan & Akad'}</span>
-          </Link>
-
-          <Link
-            to="/cooperative/accounting?tab=income-statement"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-sky-500/20 text-sky-400 group-hover:scale-110 transition-transform mb-1.5">
-              <Scale size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Laporan Keuangan</span>
-            <span className="text-[10px] text-sky-300/80">Laba Rugi & Neraca</span>
-          </Link>
-
-          <Link
-            to="/cooperative/shu"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform mb-1.5">
-              <Coins size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Kelola SHU</span>
-            <span className="text-[10px] text-purple-300/80">Kalkulasi RAT</span>
-          </Link>
-
-          <Link
-            to="/cooperative/products"
-            className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-98 border border-white/10 hover:border-indigo-400/50 transition-all text-center group cursor-pointer"
-          >
-            <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-400 group-hover:scale-110 transition-transform mb-1.5">
-              <Package size={18} />
-            </div>
-            <span className="text-xs font-bold text-white">Katalog & Stok</span>
-            <span className="text-[10px] text-rose-300/80">{criticalStock.length > 0 ? `${criticalStock.length} Kritis` : 'Inventori'}</span>
-          </Link>
-        </div>
-      </div>
-
       {/* ── SECTION 1: Ringkasan Statistik Agregat & Finansial Koperasi ──────────────── */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
