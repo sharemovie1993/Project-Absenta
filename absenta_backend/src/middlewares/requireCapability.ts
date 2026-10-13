@@ -28,8 +28,13 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
     const capabilities = Array.isArray(capabilityOrCapabilities) ? capabilityOrCapabilities : [capabilityOrCapabilities];
 
     // Superadmin & Admin bypass (System Owner & Tenant Administrator)
+    // PENTING: Modul keuangan / koperasi TETAP WAJIB memiliki capability resmi (Jabatan Bendahara/Ketua/Petugas)
+    // agar Superadmin/Admin tidak bisa sembarangan memanipulasi arus kas tanpa penugasan struktural.
     if (roleName === RoleName.SUPERADMIN || roleName === RoleName.ADMIN) {
-        return;
+        const hasCoopCapability = capabilities.some(cap => cap.startsWith('cooperative.'));
+        if (!hasCoopCapability) {
+            return;
+        }
     }
 
     // Check Exempt Roles
