@@ -37,6 +37,9 @@ export interface ShuConfig {
   porsiPengurus: string;
   porsiSosial: string;
   porsiPembangunan: string;
+  includeStorePurchases?: boolean;
+  includeLoans?: boolean;
+  includeSavingsDeposit?: boolean;
 }
 
 export interface ShuPeriod {
@@ -58,6 +61,9 @@ export interface ShuAllocation {
   memberId: string;
   totalSimpananModal: string;
   totalTransaksi: string;
+  volumeBelanja?: string | number;
+  volumePinjaman?: string | number;
+  volumeDeposit?: string | number;
   jasaModal: string;
   jasaTransaksi: string;
   totalShu: string;
@@ -207,7 +213,10 @@ const SHUPage: React.FC = React.memo(() => {
           porsiCadangan: String(res.data.data.porsiCadangan),
           porsiPengurus: String(res.data.data.porsiPengurus),
           porsiSosial: String(res.data.data.porsiSosial),
-          porsiPembangunan: String(res.data.data.porsiPembangunan)
+          porsiPembangunan: String(res.data.data.porsiPembangunan),
+          includeStorePurchases: res.data.data.includeStorePurchases ?? true,
+          includeLoans: res.data.data.includeLoans ?? true,
+          includeSavingsDeposit: res.data.data.includeSavingsDeposit ?? false,
         } as ShuConfig;
       }
       return null;
@@ -222,7 +231,10 @@ const SHUPage: React.FC = React.memo(() => {
     porsiCadangan: '20',
     porsiPengurus: '5',
     porsiSosial: '5',
-    porsiPembangunan: '10'
+    porsiPembangunan: '10',
+    includeStorePurchases: true,
+    includeLoans: true,
+    includeSavingsDeposit: false,
   }), []);
 
   const config = localConfig || configQuery.data || defaultConfig;
@@ -320,7 +332,10 @@ const SHUPage: React.FC = React.memo(() => {
         porsiCadangan: Number(config.porsiCadangan),
         porsiPengurus: Number(config.porsiPengurus),
         porsiSosial: Number(config.porsiSosial),
-        porsiPembangunan: Number(config.porsiPembangunan)
+        porsiPembangunan: Number(config.porsiPembangunan),
+        includeStorePurchases: config.includeStorePurchases ?? true,
+        includeLoans: config.includeLoans ?? true,
+        includeSavingsDeposit: config.includeSavingsDeposit ?? false,
       };
       const res = await api.put('/cooperative/shu/config', payload);
       if (res.data?.success) {

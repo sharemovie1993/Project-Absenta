@@ -11,6 +11,9 @@ export interface UpdateShuConfigDto {
     porsiPengurus?: number;
     porsiSosial?: number;
     porsiPembangunan?: number;
+    includeStorePurchases?: boolean;
+    includeLoans?: boolean;
+    includeSavingsDeposit?: boolean;
 }
 
 export interface CreateShuPeriodDto {
@@ -58,6 +61,9 @@ export class ShuService {
                 porsiPengurus: 5,
                 porsiSosial: 5,
                 porsiPembangunan: 10,
+                includeStorePurchases: true,
+                includeLoans: true,
+                includeSavingsDeposit: false,
             },
         });
     }
@@ -73,8 +79,11 @@ export class ShuService {
             porsiPengurus: data.porsiPengurus ?? Number(config.porsiPengurus),
             porsiSosial: data.porsiSosial ?? Number(config.porsiSosial),
             porsiPembangunan: data.porsiPembangunan ?? Number(config.porsiPembangunan),
+            includeStorePurchases: data.includeStorePurchases !== undefined ? Boolean(data.includeStorePurchases) : (config.includeStorePurchases ?? true),
+            includeLoans: data.includeLoans !== undefined ? Boolean(data.includeLoans) : (config.includeLoans ?? true),
+            includeSavingsDeposit: data.includeSavingsDeposit !== undefined ? Boolean(data.includeSavingsDeposit) : (config.includeSavingsDeposit ?? false),
         };
-        const total = Object.values(merged).reduce((a, b) => a + b, 0);
+        const total = (merged.porsiJasaModal + merged.porsiJasaTransaksi + merged.porsiCadangan + merged.porsiPengurus + merged.porsiSosial + merged.porsiPembangunan);
         if (Math.abs(total - 100) > 0.01) {
             throw new Error(`Total persentase alokasi SHU harus 100%. Saat ini: ${total}%`);
         }
@@ -335,18 +344,22 @@ export class ShuService {
             }
         }
 
-        // ─── [4] Gabungkan: Volume Transaksi = Deposit + Pinjaman + Belanja Toko
+        // ─── [4] Gabungkan: Volume Transaksi Dinamis Sesuai Aturan Transparan di Config
+        const includeStore = config.includeStorePurchases ?? true;
+        const includeLoan = config.includeLoans ?? true;
+        const includeDeposit = config.includeSavingsDeposit ?? false;
+
         // Gunakan Array.from() untuk kompatibilitas ES target lama (TS2802 fix)
         const allMemberIds = Array.from(new Set([
-            ...Array.from(depositPerMember.keys()),
-            ...Array.from(pinjamanPerMember.keys()),
-            ...Array.from(belanjaPerMember.keys()),
+            ...(includeDeposit ? Array.from(depositPerMember.keys()) : []),
+            ...(includeLoan ? Array.from(pinjamanPerMember.keys()) : []),
+            ...(includeStore ? Array.from(belanjaPerMember.keys()) : []),
         ]));
         const transaksiGabunganPerMember = new Map<string, number>();
         for (const memberId of allMemberIds) {
-            const deposit = depositPerMember.get(memberId) ?? 0;
-            const pinjaman = pinjamanPerMember.get(memberId) ?? 0;
-            const belanja = belanjaPerMember.get(memberId) ?? 0;
+            const deposit = includeDeposit ? (depositPerMember.get(memberId) ?? 0) : 0;
+            const pinjaman = includeLoan ? (pinjamanPerMember.get(memberId) ?? 0) : 0;
+            const belanja = includeStore ? (belanjaPerMember.get(memberId) ?? 0) : 0;
             transaksiGabunganPerMember.set(memberId, deposit + pinjaman + belanja);
         }
         const totalTransaksiGabungan = Array.from(transaksiGabunganPerMember.values()).reduce((a, b) => a + b, 0);
@@ -357,18 +370,24 @@ export class ShuService {
         // Buat alokasi baru per anggota
         const allocations = members.map(member => {
             const simpananModal = member.savings.reduce((s, sv) => s + Number(sv.amount), 0);
+            const volumeBelanja = belanjaPerMember.get(member.id) ?? 0;
+            const volumePinjaman = pinjamanPerMember.get(member.id) ?? 0;
+            const volumeDeposit = depositPerMember.get(member.id) ?? 0;
             const volumeGabungan = (transaksiGabunganPerMember.get(member.id) ?? 0);
 
             const jasaModal = totalModal > 0 ? (simpananModal / totalModal) * poolJasaModal : 0;
-            // jasaTransaksi = proporsi dari volume gabungan (simpanan + pinjaman + belanja) anggota
+            // jasaTransaksi = proporsi dari volume gabungan (sesuai aturan aktif) anggota
             const jasaTransaksi = totalTransaksiGabungan > 0 ? (volumeGabungan / totalTransaksiGabungan) * poolJasaTransaksi : 0;
 
             return {
                 periodId,
                 memberId: member.id,
                 totalSimpananModal: new Decimal(simpananModal),
-                // totalTransaksi menyimpan volume gabungan untuk transparansi audit
+                // totalTransaksi menyimpan volume gabungan yang aktif untuk transparansi audit
                 totalTransaksi: new Decimal(volumeGabungan),
+                volumeBelanja: new Decimal(volumeBelanja),
+                volumePinjaman: new Decimal(volumePinjaman),
+                volumeDeposit: new Decimal(volumeDeposit),
                 jasaModal: new Decimal(Math.round(jasaModal)),
                 jasaTransaksi: new Decimal(Math.round(jasaTransaksi)),
                 totalShu: new Decimal(Math.round(jasaModal + jasaTransaksi)),
@@ -398,6 +417,11 @@ export class ShuService {
                 calculated: validAllocations.length,
                 skipped: allocations.length - validAllocations.length, // anggota dengan SHU = 0
                 totalShuDistributed,
+                configApplied: {
+                    includeStorePurchases: includeStore,
+                    includeLoans: includeLoan,
+                    includeSavingsDeposit: includeDeposit,
+                },
                 summary: {
                     poolJasaModal: Math.round(poolJasaModal),
                     poolJasaTransaksi: Math.round(poolJasaTransaksi),

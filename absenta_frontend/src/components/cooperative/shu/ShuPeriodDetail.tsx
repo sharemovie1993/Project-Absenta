@@ -117,10 +117,22 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
                   Rp {totalDistributedAllocations.toLocaleString('id-ID')}
                 </h3>
               </div>
-              <p className="text-[9px] text-slate-400 mt-4">
-                Porsi Jasa Modal: {config.porsiJasaModal}% <br/>
-                Porsi Jasa Transaksi: {config.porsiJasaTransaksi}%
-              </p>
+              <div className="mt-3 space-y-1.5">
+                <p className="text-[9px] text-slate-400">
+                  Porsi Jasa Modal: <span className="font-bold text-slate-700 dark:text-slate-300">{config.porsiJasaModal}%</span> | Porsi Jasa Transaksi: <span className="font-bold text-slate-700 dark:text-slate-300">{config.porsiJasaTransaksi}%</span>
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeStorePurchases !== false ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                    POS Toko
+                  </span>
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeLoans !== false ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                    Pinjaman
+                  </span>
+                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded ${config.includeSavingsDeposit ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-800 line-through'}`}>
+                    Deposit Simpanan
+                  </span>
+                </div>
+              </div>
             </SectionCard>
 
             <SectionCard className="p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between">
@@ -232,7 +244,9 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">Daftar Penerimaan SHU Anggota</h3>
-                <p className="text-[10px] text-slate-400">Jasa Modal = proporsi simpanan pokok/wajib | Jasa Transaksi = proporsi gabungan deposit simpanan + volume pinjaman (standar KSP Indonesia)</p>
+                <p className="text-[10px] text-slate-400">
+                  Transparansi Pembagian: Jasa Modal dihitung dari Simpanan Pokok & Wajib. Jasa Transaksi dihitung proporsional dari partisipasi usaha anggota berdasarkan aturan aktif di atas.
+                </p>
               </div>
               <div className="w-full md:w-64">
                 <input
@@ -259,36 +273,55 @@ export const ShuPeriodDetail = React.memo<ShuPeriodDetailProps>(({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                      <th className="p-4 text-center w-12">No</th>
-                      <th className="p-4">Anggota</th>
-                      <th className="p-4 text-right">Simpanan Modal (Rp)</th>
-                      <th className="p-4 text-right">Vol. Transaksi Gabungan (Rp)
-                        <span className="block text-[8px] font-normal text-slate-400 normal-case">Deposit Simpanan + Pinjaman</span>
+                      <th className="p-3 text-center w-10">No</th>
+                      <th className="p-3">Anggota</th>
+                      <th className="p-3 text-right">Simpanan Modal (Rp)</th>
+                      <th className="p-3 text-right">
+                        Rincian Transaksi Anggota
+                        <span className="block text-[8px] font-normal text-slate-400 normal-case">Toko POS | Pinjaman | Setoran</span>
                       </th>
-                      <th className="p-4 text-right">Jasa Modal (Rp)</th>
-                      <th className="p-4 text-right">Jasa Transaksi (Rp)</th>
-                      <th className="p-4 text-right font-black text-indigo-600 dark:text-indigo-400">Total SHU (Rp)</th>
-                      <th className="p-4 text-center">Status</th>
+                      <th className="p-3 text-right font-bold text-slate-700 dark:text-slate-300">Vol. Aktif (Rp)</th>
+                      <th className="p-3 text-right">Jasa Modal (Rp)</th>
+                      <th className="p-3 text-right">Jasa Transaksi (Rp)</th>
+                      <th className="p-3 text-right font-black text-indigo-600 dark:text-indigo-400">Total SHU (Rp)</th>
+                      <th className="p-3 text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                     {(filteredAllocations || []).map((a, idx) => (
                       <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
-                        <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
-                        <td className="p-4">
+                        <td className="p-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                        <td className="p-3">
                           <div>
                             <p className="font-bold text-slate-800 dark:text-slate-100">{a.Member.name}</p>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{a.Member.memberNo}</p>
                           </div>
                         </td>
-                        <td className="p-4 text-right font-medium">Rp {Number(a.totalSimpananModal).toLocaleString('id-ID')}</td>
-                        <td className="p-4 text-right font-medium">Rp {Number(a.totalTransaksi).toLocaleString('id-ID')}</td>
-                        <td className="p-4 text-right font-medium text-emerald-600 dark:text-emerald-400">Rp {Number(a.jasaModal).toLocaleString('id-ID')}</td>
-                        <td className="p-4 text-right font-medium text-sky-600 dark:text-sky-400">Rp {Number(a.jasaTransaksi).toLocaleString('id-ID')}</td>
-                        <td className="p-4 text-right font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
+                        <td className="p-3 text-right font-medium">Rp {Number(a.totalSimpananModal).toLocaleString('id-ID')}</td>
+                        <td className="p-3 text-right text-[11px]">
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-slate-600 dark:text-slate-400">
+                              Belanja: <span className="font-semibold text-slate-800 dark:text-slate-200">Rp {Number(a.volumeBelanja || 0).toLocaleString('id-ID')}</span>
+                            </span>
+                            <span className="text-slate-600 dark:text-slate-400">
+                              Pinjaman: <span className="font-semibold text-slate-800 dark:text-slate-200">Rp {Number(a.volumePinjaman || 0).toLocaleString('id-ID')}</span>
+                            </span>
+                            {Number(a.volumeDeposit || 0) > 0 && (
+                              <span className="text-slate-600 dark:text-slate-400">
+                                Deposit: <span className="font-semibold text-slate-800 dark:text-slate-200">Rp {Number(a.volumeDeposit || 0).toLocaleString('id-ID')}</span>
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 text-right font-bold text-slate-800 dark:text-slate-200 bg-slate-50/50 dark:bg-slate-900/50">
+                          Rp {Number(a.totalTransaksi).toLocaleString('id-ID')}
+                        </td>
+                        <td className="p-3 text-right font-medium text-emerald-600 dark:text-emerald-400">Rp {Number(a.jasaModal).toLocaleString('id-ID')}</td>
+                        <td className="p-3 text-right font-medium text-sky-600 dark:text-sky-400">Rp {Number(a.jasaTransaksi).toLocaleString('id-ID')}</td>
+                        <td className="p-3 text-right font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/5">
                           Rp {Number(a.totalShu).toLocaleString('id-ID')}
                         </td>
-                        <td className="p-4 text-center">
+                        <td className="p-3 text-center">
                           <span className={`inline-block px-2 py-0.5 text-[9px] font-bold rounded-full ${
                             a.status === 'DISTRIBUTED' 
                               ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' 

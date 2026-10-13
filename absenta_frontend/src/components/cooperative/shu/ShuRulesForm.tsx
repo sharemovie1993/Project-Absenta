@@ -160,6 +160,72 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
               </div>
             </div>
 
+            {/* Komponen Pembentuk Jasa Transaksi (Transparansi Aturan Usaha) */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Percent size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  Komponen Pembentuk Jasa Transaksi (Jasa Usaha)
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilih transaksi apa saja yang diakui sebagai volume partisipasi anggota untuk pembagian Jasa Transaksi:
+                </p>
+              </div>
+
+              <div className="space-y-2.5 pt-1">
+                {/* 1. Belanja Toko */}
+                <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={config.includeStorePurchases ?? true}
+                    onChange={(e) => setConfig(prev => ({ ...prev, includeStorePurchases: e.target.checked }))}
+                    disabled={!canManageShu}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Belanja di Toko / POS Koperasi</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      Menghitung total nilai transaksi pembelian barang/kantin oleh anggota terdaftar di kasir POS koperasi.
+                    </span>
+                  </div>
+                </label>
+
+                {/* 2. Pinjaman Anggota */}
+                <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={config.includeLoans ?? true}
+                    onChange={(e) => setConfig(prev => ({ ...prev, includeLoans: e.target.checked }))}
+                    disabled={!canManageShu}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Plafon Pinjaman Anggota (Kredit KSP)</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      Standar KSP Indonesia (UU 25/1992): Peminjam berpartisipasi dalam usaha koperasi & jasa bunga yang dibayar membentuk laba koperasi.
+                    </span>
+                  </div>
+                </label>
+
+                {/* 3. Setoran Simpanan (Deposit) */}
+                <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={config.includeSavingsDeposit ?? false}
+                    onChange={(e) => setConfig(prev => ({ ...prev, includeSavingsDeposit: e.target.checked }))}
+                    disabled={!canManageShu}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <div className="text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 block">Setoran Simpanan Baru (Deposit)</span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                      Catatan: Saldo simpanan anggota normalnya sudah mendapatkan porsi di Jasa Modal. Aktifkan hanya jika RAT menetapkan transaksi setoran tabungan diakui ganda ke Jasa Transaksi.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <div className="flex justify-between items-center p-4 border border-dashed rounded-xl bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Total Akumulasi Persentase:</span>
               <span className={`text-sm font-black ${sumConfig === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>
@@ -205,14 +271,14 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                 </p>
               </div>
               <div>
-                <p className="font-bold text-slate-800 dark:text-slate-200">2. Jasa Transaksi (Jasa Anggota)</p>
+                <p className="font-bold text-slate-800 dark:text-slate-200">2. Jasa Transaksi (Jasa Usaha)</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                  Makin sering Anda bertransaksi di unit usaha / POS Koperasi Sekolah, makin besar porsi jasa transaksi yang didapat.
+                  Makin aktif Anda bertransaksi pada unit usaha koperasi, makin besar dividen jasa transaksi yang didapat. Komponen yang diakui dapat diatur secara transparan di atas (Belanja POS, Pinjaman, dan/atau Setoran Tabungan).
                 </p>
               </div>
             </div>
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-800 dark:text-amber-300">
-              * Untuk simpanan sukarela atau simpanan khusus (misal SHR), Anda dapat menyertakannya dalam hitungan SHU dengan mengaktifkan opsi <strong>"Masuk SHU"</strong> pada menu Pengaturan Kategori Simpanan.
+              * Pengaturan komponen ini sepenuhnya transparan dan langsung diterapkan saat Bendahara melakukan perhitungan ("Hitung Alokasi SHU") pada periode bersangkutan.
             </div>
           </div>
         </SectionCard>
