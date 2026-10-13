@@ -31,7 +31,6 @@ import {
     BalanceSheetReport, 
     CashFlowStatementReport, 
     GeneralLedgerSection,
-    AccountingWorkflowHeader,
     type AccountingTabId
 } from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
@@ -170,6 +169,13 @@ const Accounting: React.FC = React.memo(() => {
         }
         return activeFiscalYear;
     }, [selectedFiscalYearId, fiscalYears, activeFiscalYear]);
+
+    const fiscalYearOptions = useMemo(() => {
+        return fiscalYears?.map(fy => ({
+            value: fy.id,
+            label: `Tahun ${fy.year} ${fy.isActive ? '(Aktif)' : `(${fy.status})`}`
+        })) || [];
+    }, [fiscalYears]);
 
     const journalsQuery = useQuery({
         queryKey: ['koperasi-accounting-journals', currentFiscalYear?.id],
@@ -662,29 +668,19 @@ const Accounting: React.FC = React.memo(() => {
                     </div>
 
                     {fiscalYears.length > 0 && (
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                            <label htmlFor="select-fiscal-year-acc" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Pilih Periode:</label>
-                            <select
-                                id="select-fiscal-year-acc"
-                                value={currentFiscalYear?.id || ''}
-                                onChange={(e) => setSelectedFiscalYearId(e.target.value)}
-                                className="h-8 px-2.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-700 dark:text-slate-200 cursor-pointer shadow-sm"
-                            >
-                                {fiscalYears.map(fy => (
-                                    <option key={fy.id} value={fy.id}>
-                                        Tahun {fy.year} {fy.isActive ? '(Aktif)' : `(${fy.status})`}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="flex items-center gap-2 self-end sm:self-center w-full sm:w-64">
+                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">Pilih Periode:</label>
+                            <div className="w-full">
+                                <SearchableSelect
+                                    options={fiscalYearOptions}
+                                    value={currentFiscalYear?.id || ''}
+                                    onChange={(val) => setSelectedFiscalYearId(val)}
+                                    placeholder="Pilih Tahun Buku"
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
-
-                {/* Interactive Workflow Header & Quick Actions for Non-Accountant Users */}
-                <AccountingWorkflowHeader
-                    activeTab={activeTab}
-                    onSelectTab={(tabId) => handleTabChange(tabId)}
-                />
 
                 <TabSwitcher
                     tabs={tabOptions}
