@@ -1,7 +1,9 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/axiosInstance';
 import { SectionCard } from '../../ui';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
-import { TrendingUp, Award, DollarSign, AlertCircle } from 'lucide-react';
+import { TrendingUp, Award, DollarSign, AlertCircle, Sparkles, ShoppingBag, PiggyBank, ArrowUpRight } from 'lucide-react';
 import PremiumFeatureGate from '../../auth/PremiumFeatureGate';
 import { NonMemberBanner } from '../shared/NonMemberBanner';
 import type { MyShuHistory } from '../../../pages/cooperative/SHU';
@@ -27,6 +29,16 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
   memberInstruction,
   embedded = false
 }) => {
+  const { data: estimateData } = useQuery({
+    queryKey: ['my-shu-live-estimate'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/shu/my-estimate');
+      return res.data?.data;
+    },
+    enabled: memberStatus === 'member',
+    staleTime: 60 * 1000,
+  });
+
   if (memberStatus === 'loading') {
     const loadingContent = (
       <div className="flex justify-center items-center h-64">
@@ -83,6 +95,68 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
 
   const mainContent = (
     <div className="space-y-6 animate-in fade-in duration-300">
+      {/* Live Estimate Banner (Hanya jika diaktifkan oleh Ketua Koperasi) */}
+      {estimateData?.enabled && estimateData?.hasActivePeriod && (
+        <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden border border-indigo-700/40">
+          <div className="relative z-10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-black uppercase tracking-wider">
+                <Sparkles size={14} className="text-amber-400 animate-pulse" />
+                Simulasi / Proyeksi SHU Berjalan Tahun {estimateData.year}
+              </div>
+              <span className="text-[11px] text-indigo-200/70 italic">
+                *Estimasi sementara sebelum RAT disahkan
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+              <div className="space-y-1">
+                <p className="text-xs text-indigo-200/80 font-medium">Estimasi Total SHU Anda</p>
+                <h2 className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight">
+                  Rp {Number(estimateData.estimatedTotalShu || 0).toLocaleString('id-ID')}
+                </h2>
+                <p className="text-[10px] text-indigo-300/70">
+                  (Modal: Rp {Number(estimateData.estimatedJasaModal || 0).toLocaleString('id-ID')} + Transaksi: Rp {Number(estimateData.estimatedJasaTransaksi || 0).toLocaleString('id-ID')})
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-300">
+                  <PiggyBank size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-indigo-200/70 uppercase font-black tracking-wider">Simpanan Modal Saya</p>
+                  <p className="text-base font-bold text-white">
+                    Rp {Number(estimateData.myTotalSimpananModal || 0).toLocaleString('id-ID')}
+                  </p>
+                  <p className="text-[9px] text-emerald-400 font-medium">Pokok + Wajib Aktif</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="p-2.5 rounded-xl bg-purple-500/20 text-purple-300">
+                  <ShoppingBag size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-indigo-200/70 uppercase font-black tracking-wider">Volume Belanja Saya</p>
+                  <p className="text-base font-bold text-white">
+                    Rp {Number(estimateData.myBelanja || 0).toLocaleString('id-ID')}
+                  </p>
+                  <p className="text-[9px] text-sky-400 font-medium">Belanja di POS Tahun {estimateData.year}</p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-indigo-200/60 leading-relaxed pt-2 border-t border-indigo-800/60">
+              💡 <strong>Tips Meningkatkan SHU:</strong> Semakin aktif Anda berbelanja kebutuhan sekolah di toko koperasi dan menabung simpanan wajib, semakin besar porsi pembagian dividen SHU yang akan Anda terima di akhir tahun!
+            </p>
+          </div>
+
+          <div className="absolute -top-16 -right-16 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <SectionCard className="p-6 border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl bg-white/70 dark:bg-slate-900/50 backdrop-blur-md relative overflow-hidden flex items-center gap-4">

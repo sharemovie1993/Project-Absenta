@@ -14,6 +14,7 @@ export interface UpdateShuConfigDto {
     includeStorePurchases?: boolean;
     includeLoans?: boolean;
     includeSavingsDeposit?: boolean;
+    enableLiveEstimation?: boolean;
 }
 
 export interface CreateShuPeriodDto {
@@ -73,6 +74,7 @@ export class ShuService {
                 includeStorePurchases: true,
                 includeLoans: true,
                 includeSavingsDeposit: false,
+                enableLiveEstimation: false,
             },
         });
     }
@@ -91,6 +93,7 @@ export class ShuService {
             includeStorePurchases: data.includeStorePurchases !== undefined ? Boolean(data.includeStorePurchases) : (config.includeStorePurchases ?? true),
             includeLoans: data.includeLoans !== undefined ? Boolean(data.includeLoans) : (config.includeLoans ?? true),
             includeSavingsDeposit: data.includeSavingsDeposit !== undefined ? Boolean(data.includeSavingsDeposit) : (config.includeSavingsDeposit ?? false),
+            enableLiveEstimation: data.enableLiveEstimation !== undefined ? Boolean(data.enableLiveEstimation) : (config.enableLiveEstimation ?? false),
         };
         const total = (merged.porsiJasaModal + merged.porsiJasaTransaksi + merged.porsiCadangan + merged.porsiPengurus + merged.porsiSosial + merged.porsiPembangunan);
         if (Math.abs(total - 100) > 0.01) {
@@ -716,5 +719,147 @@ export class ShuService {
             include: { Period: { select: { year: true, status: true } } },
             orderBy: { Period: { year: 'desc' } },
         });
+    }
+
+    /**
+     * Hitung simulasi / perkiraan perolehan SHU tahun berjalan untuk member (Live Estimation).
+     * Hanya mengembalikan data jika fitur diaktifkan oleh Ketua Koperasi (enableLiveEstimation = true).
+     */
+    static async getLiveEstimation(tenantId: string, userId: string) {
+        const config = await this.getConfig(tenantId);
+        if (!config.enableLiveEstimation) {
+            return { enabled: false, message: 'Simulasi SHU berjalan dinonaktifkan oleh Pengurus.' };
+        }
+
+        const member = await prisma.member.findFirst({
+            where: { tenantId, userId },
+        });
+        if (!member) {
+            return { enabled: false, message: 'Data anggota tidak ditemukan.' };
+        }
+
+        // Cari periode aktif berjalan
+        const { FiscalYearGuard } = await import('../fiscal-year.guard');
+        const activePeriod = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+        if (!activePeriod) {
+            return { enabled: true, hasActivePeriod: false, message: 'Belum ada tahun buku aktif yang dikonfigurasi.' };
+        }
+
+        const startDate = new Date(activePeriod.startDate);
+        const endDate = new Date(activePeriod.endDate);
+
+        // 1. Simpanan Modal Saya (POKOK + WAJIB)
+        const modalCategories = await prisma.savingCategory.findMany({
+            where: { tenantId, code: { in: ['POKOK', 'WAJIB'] } },
+            select: { id: true },
+        });
+        const modalCatIds = modalCategories.map(c => c.id);
+
+        const mySavings = await prisma.saving.findMany({
+            where: { memberId: member.id, categoryId: { in: modalCatIds } },
+            select: { amount: true },
+        });
+        const myTotalSimpananModal = mySavings.reduce((sum, s) => sum + Number(s.amount), 0);
+
+        // Total Simpanan Modal Seluruh Anggota Aktif
+        const allSavings = await prisma.saving.aggregate({
+            where: {
+                member: { tenantId, status: 'ACTIVE' },
+                categoryId: { in: modalCatIds },
+            },
+            _sum: { amount: true },
+        });
+        const grandTotalSimpananModal = Number(allSavings._sum.amount || 0);
+
+        // 2. Volume Transaksi Saya
+        let myBelanja = 0;
+        let myPinjaman = 0;
+        let myDeposit = 0;
+
+        if (activePeriod.includeStorePurchases) {
+            const belanja = await prisma.sale.aggregate({
+                where: {
+                    tenantId,
+                    memberId: member.id,
+                    date: { gte: startDate, lte: endDate },
+                },
+                _sum: { total: true },
+            });
+            myBelanja = Number(belanja._sum.total || 0);
+        }
+
+        if (activePeriod.includeLoans) {
+            const loans = await prisma.loan.aggregate({
+                where: {
+                    memberId: member.id,
+                    createdAt: { gte: startDate, lte: endDate },
+                    status: { in: ['APPROVED', 'PAID'] },
+                },
+                _sum: { amount: true },
+            });
+            myPinjaman = Number(loans._sum.amount || 0);
+        }
+
+        if (activePeriod.includeSavingsDeposit) {
+            const sukarelaCategory = await prisma.savingCategory.findFirst({
+                where: { tenantId, code: 'SUKARELA' },
+                select: { id: true },
+            });
+            if (sukarelaCategory) {
+                const deposits = await prisma.savingTransaction.aggregate({
+                    where: {
+                        saving: { memberId: member.id, categoryId: sukarelaCategory.id },
+                        type: 'DEPOSIT',
+                        date: { gte: startDate, lte: endDate },
+                    },
+                    _sum: { amount: true },
+                });
+                myDeposit = Number(deposits._sum.amount || 0);
+            }
+        }
+
+        const myTotalTransaksi = myBelanja + myPinjaman + myDeposit;
+
+        // 3. Estimasi Pendapatan & Biaya Berjalan dari Laporan
+        let estimatedTotalShu = Number(activePeriod.totalShu || 0);
+        if (estimatedTotalShu <= 0) {
+            // Hitung estimasi laba kotor berjalan dari toko jika belum ada totalShu statis
+            const salesAgg = await prisma.sale.aggregate({
+                where: { tenantId, date: { gte: startDate, lte: endDate } },
+                _sum: { total: true },
+            });
+            estimatedTotalShu = Number(salesAgg._sum.total || 0) * 0.15; // Estimasi konservatif 15% margin
+        }
+
+        const porsiModalPct = Number(activePeriod.porsiJasaModal || 30) / 100;
+        const porsiTxPct = Number(activePeriod.porsiJasaTransaksi || 30) / 100;
+
+        const poolJasaModal = Math.round(estimatedTotalShu * porsiModalPct);
+        const poolJasaTx = Math.round(estimatedTotalShu * porsiTxPct);
+
+        const myShareModal = grandTotalSimpananModal > 0
+            ? Math.round(poolJasaModal * (myTotalSimpananModal / grandTotalSimpananModal))
+            : 0;
+
+        // Estimasi kasar jasa transaksi
+        const estimatedJasaTransaksi = myTotalTransaksi > 0 ? Math.round(myTotalTransaksi * 0.03) : 0;
+        const estimatedTotalShuMyShare = myShareModal + estimatedJasaTransaksi;
+
+        return {
+            enabled: true,
+            hasActivePeriod: true,
+            year: activePeriod.year,
+            myTotalSimpananModal,
+            myTotalTransaksi,
+            myBelanja,
+            myPinjaman,
+            myDeposit,
+            poolJasaModal,
+            estimatedJasaModal: myShareModal,
+            estimatedJasaTransaksi,
+            estimatedTotalShu: estimatedTotalShuMyShare,
+            isEstimate: true,
+            notes: 'Angka ini adalah simulasi perkiraan sementara berdasarkan keaktifan simpanan dan transaksi Anda tahun ini. Angka resmi akan ditetapkan pada RAT.'
+        };
     }
 }

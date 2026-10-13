@@ -226,6 +226,37 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
               </div>
             </div>
 
+            {/* Hak Akses & Visibilitas Estimasi SHU Berjalan (Ketua Koperasi) */}
+            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200/60 dark:border-indigo-900/40 rounded-xl space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Percent size={13} className="text-indigo-600 dark:text-indigo-400" />
+                  Visibilitas Simulasi / Estimasi SHU Berjalan
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Kendali khusus Ketua Koperasi untuk memotivasi keaktifan belanja & menabung anggota:
+                </p>
+              </div>
+
+              <label className="flex items-start gap-3 p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-900/50 bg-white dark:bg-slate-900 cursor-pointer hover:border-indigo-400 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={config.enableLiveEstimation ?? false}
+                  onChange={(e) => setConfig(prev => ({ ...prev, enableLiveEstimation: e.target.checked }))}
+                  disabled={!canManageShu}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                    Tampilkan Simulasi & Estimasi SHU Berjalan di Tab &quot;SHU Saya&quot;
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                    Jika dicentang, anggota (siswa/guru) dapat melihat perkiraan perolehan SHU sementara tahun ini secara real-time. Jika tidak dicentang, anggota hanya melihat riwayat tahun lalu yang sudah disahkan.
+                  </span>
+                </div>
+              </label>
+            </div>
+
             <div className="flex justify-between items-center p-4 border border-dashed rounded-xl bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-600 dark:text-slate-400">Total Akumulasi Persentase:</span>
               <span className={`text-sm font-black ${sumConfig === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'}`}>

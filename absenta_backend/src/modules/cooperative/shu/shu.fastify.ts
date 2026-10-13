@@ -194,4 +194,18 @@ export async function shuRoutes(fastify: any) {
         const data = await ShuService.getMyShuHistory(req.tenantId, userId);
         return reply.send({ success: true, data });
     });
+
+    // GET /cooperative/shu/my-estimate — anggota lihat simulasi/estimasi SHU berjalan (jika diaktifkan)
+    fastify.get('/shu/my-estimate', {
+        preHandler: requireCapability('cooperative.savings.view.history'),
+    }, async (req: any, reply: any) => {
+        try {
+            const userId = String(req.user?.id ?? '');
+            const data = await ShuService.getLiveEstimation(req.tenantId, userId);
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative route error');
+            return reply.code(400).send({ success: false, message: error.message });
+        }
+    });
 }

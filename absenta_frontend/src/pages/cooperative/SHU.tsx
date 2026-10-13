@@ -40,6 +40,7 @@ export interface ShuConfig {
   includeStorePurchases?: boolean;
   includeLoans?: boolean;
   includeSavingsDeposit?: boolean;
+  enableLiveEstimation?: boolean;
 }
 
 export interface ShuPeriod {

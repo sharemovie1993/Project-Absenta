@@ -3093,6 +3093,9 @@ model ShuConfig {
   includeLoans          Boolean @default(true)
   includeSavingsDeposit Boolean @default(false)
 
+  // Toggle Hak Akses Pengurus: Izinkan Anggota Melihat Simulasi / Estimasi SHU Berjalan
+  enableLiveEstimation  Boolean @default(false)
+
   Tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
