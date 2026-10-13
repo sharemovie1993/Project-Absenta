@@ -73,3 +73,29 @@ export interface BalanceSheetReportData {
         balanceCheck: number;
     };
 }
+
+export interface CoopExpenseItem {
+    id: string;
+    voucherNumber: string;
+    date: string;
+    amount: number;
+    categoryCode: string;
+    categoryName: string;
+    paymentMethod: 'CASH' | 'BANK_TRANSFER';
+    payee: string | null;
+    description: string;
+    receiptImageUrl?: string | null;
+    journalId?: string | null;
+    createdAt?: string;
+}
+
+export interface CoopExpenseFormData {
+    date: string;
+    amount: number;
+    categoryCode: string;
+    categoryName?: string;
+    paymentMethod: 'CASH' | 'BANK_TRANSFER';
+    payee?: string;
+    description: string;
+    receiptImageUrl?: string;
+}

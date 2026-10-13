@@ -96,6 +96,7 @@ model Tenant {
   ProductCategory      ProductCategory[]
   CoopPointTransaction CoopPointTransaction[]
   CoopAsset            CoopAsset[]
+  CoopExpense          CoopExpense[]
 
   organizationalPositions   OrganizationalPosition[]
   organizationalAssignments OrganizationalAssignment[]
@@ -3220,6 +3221,30 @@ model CoopAsset {
   @@index([tenantId, category])
   @@index([tenantId, condition])
   @@index([tenantId, status])
+}
+
+model CoopExpense {
+  id              String   @id @default(uuid())
+  tenantId        String
+  voucherNumber   String   // Contoh: BKK-202610-0001
+  date            DateTime
+  amount          Decimal  @default(0) @db.Decimal(15, 2)
+  categoryCode    String   // '5021', '5022', etc.
+  categoryName    String
+  paymentMethod   String   @default("CASH") // CASH | BANK_TRANSFER
+  payee           String?
+  description     String
+  receiptImageUrl String?
+  journalId       String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  Tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, voucherNumber])
+  @@index([tenantId, date])
+  @@index([tenantId, categoryCode])
 }
 
 enum ShuStatus {

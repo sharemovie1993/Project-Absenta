@@ -14,7 +14,7 @@ import Table from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import Card from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet } from 'lucide-react';
+import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -25,7 +25,7 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 
-import { JournalTable, IncomeStatementReport, BalanceSheetReport } from '../../components/cooperative/accounting';
+import { JournalTable, IncomeStatementReport, BalanceSheetReport, ExpenseVoucherSection } from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -64,9 +64,10 @@ const Accounting: React.FC = React.memo(() => {
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
-    const activeTab: 'income-statement' | 'neraca' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
+    const activeTab: 'income-statement' | 'neraca' | 'expenses' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
         if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
         if (tabParam === 'neraca') return 'neraca';
+        if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') return 'expenses';
         if (tabParam === 'balance') return 'balance';
         if (tabParam === 'payroll') return 'payroll';
         if (tabParam === 'journal') return 'journal';
@@ -84,6 +85,7 @@ const Accounting: React.FC = React.memo(() => {
     const tabOptions: TabOption[] = useMemo(() => [
         { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
         { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
+        { id: 'expenses', label: 'Kas Keluar & Beban (BKK)', icon: Receipt },
         { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
         { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
@@ -684,6 +686,12 @@ const Accounting: React.FC = React.memo(() => {
                                     coopSettings={coopSettings} 
                                     defaultYear={currentFiscalYear?.year} 
                                 />
+                            </div>
+                        )}
+
+                        {activeTab === 'expenses' && (
+                            <div className="p-4 sm:p-6">
+                                <ExpenseVoucherSection />
                             </div>
                         )}
 

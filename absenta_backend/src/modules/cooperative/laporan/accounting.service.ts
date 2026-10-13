@@ -8,6 +8,7 @@ export class AccountingService {
     // Akun default untuk inisialisasi per tenant (termasuk kode simpanan koperasi)
     static DEFAULT_COOP_ACCOUNTS = [
         { code: '1010', name: 'Kas Koperasi',                    type: 'ASSET'     as AccountType },
+        { code: '1011', name: 'Kas Bank Koperasi',               type: 'ASSET'     as AccountType },
         { code: '1020', name: 'Piutang Anggota',                 type: 'ASSET'     as AccountType },
         { code: '1030', name: 'Persediaan Barang Toko',          type: 'ASSET'     as AccountType },
         { code: '2010', name: 'Tabungan Sukarela Anggota',       type: 'LIABILITY' as AccountType },
@@ -27,7 +28,14 @@ export class AccountingService {
         { code: '1520', name: 'Akumulasi Penyusutan Aktiva Tetap', type: 'ASSET'     as AccountType },
         { code: '5010', name: 'Beban Pokok Penjualan (COGS)',     type: 'EXPENSE'   as AccountType },
         { code: '5020', name: 'Beban Administrasi Koperasi',     type: 'EXPENSE'   as AccountType },
-        { code: '5030', name: 'Beban Penyusutan Aktiva Tetap',     type: 'EXPENSE'   as AccountType },
+        { code: '5021', name: 'Beban Listrik, Air & Utilitas',   type: 'EXPENSE'   as AccountType },
+        { code: '5022', name: 'Beban Komunikasi & Internet',     type: 'EXPENSE'   as AccountType },
+        { code: '5023', name: 'Beban Aplikasi, Perangkat Lunak & TI', type: 'EXPENSE' as AccountType },
+        { code: '5024', name: 'Beban ATK & Perlengkapan Kantor', type: 'EXPENSE'   as AccountType },
+        { code: '5025', name: 'Beban Pemeliharaan & Servis Sarana', type: 'EXPENSE' as AccountType },
+        { code: '5026', name: 'Beban Rapat & Operasional Pengurus', type: 'EXPENSE' as AccountType },
+        { code: '5030', name: 'Beban Penyusutan Aktiva Tetap',   type: 'EXPENSE'   as AccountType },
+        { code: '5090', name: 'Beban Operasional Lain-lain',     type: 'EXPENSE'   as AccountType },
     ];
 
     /**
