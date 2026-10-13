@@ -4,9 +4,11 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 interface ConfirmOptions {
   title?: React.ReactNode;
   description?: React.ReactNode;
+  message?: React.ReactNode;
   confirmText?: string;
   cancelText?: string;
   style?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
+  type?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
   /** If true, after user clicks Confirm the dialog stays open with a progress bar until you call setLoading(false) */
   withProgress?: boolean;
   progressLabel?: string;
@@ -28,7 +30,12 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [resolver, setResolver] = useState<((value: boolean) => void) | null>(null);
 
   const confirm = useCallback((opts: ConfirmOptions) => {
-    setOptions(opts);
+    const normalizedOptions: ConfirmOptions = {
+      ...opts,
+      description: opts.description ?? opts.message,
+      style: opts.style ?? opts.type ?? 'danger'
+    };
+    setOptions(normalizedOptions);
     setOpen(true);
     setLoading(false);
     setProgress(undefined);

@@ -5,9 +5,11 @@ import type { ReactNode } from 'react';
 export interface UseConfirmOptions {
   title?: ReactNode;
   description?: ReactNode;
+  message?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   style?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
+  type?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
   /** Set true to keep dialog open with progress bar after user clicks Confirm */
   withProgress?: boolean;
   progressLabel?: string;

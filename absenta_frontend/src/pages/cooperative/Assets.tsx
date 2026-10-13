@@ -133,10 +133,10 @@ const AssetsPage: React.FC = React.memo(() => {
   const handleDelete = useCallback(async (id: string, name: string) => {
     const isConfirmed = await confirm({
       title: 'Hapus Aset Koperasi',
-      message: `Apakah Anda yakin ingin menghapus data inventaris aset "${name}"? Tindakan ini tidak dapat dibatalkan.`,
+      description: `Apakah Anda yakin ingin menghapus data inventaris aset "${name}"? Tindakan ini tidak dapat dibatalkan.`,
       confirmText: 'Hapus',
       cancelText: 'Batal',
-      type: 'danger',
+      style: 'danger',
     });
 
     if (isConfirmed) {
@@ -164,10 +164,10 @@ const AssetsPage: React.FC = React.memo(() => {
   const handleSyncToLedger = useCallback(async () => {
     const isConfirmed = await confirm({
       title: 'Sinkronkan Aset ke Neraca',
-      message: 'Apakah Anda ingin membukukan semua aset inventaris aktif yang belum tercatat ke Buku Besar & Laporan Neraca Keuangan?',
+      description: 'Apakah Anda ingin membukukan semua aset inventaris aktif yang belum tercatat ke Buku Besar & Laporan Neraca Keuangan?',
       confirmText: 'Sinkronkan Sekarang',
       cancelText: 'Batal',
-      type: 'info',
+      style: 'info',
     });
 
     if (isConfirmed) {
@@ -202,10 +202,10 @@ const AssetsPage: React.FC = React.memo(() => {
     const periodName = `${now.toLocaleString('id-ID', { month: 'long' })} ${now.getFullYear()}`;
     const isConfirmed = await confirm({
       title: 'Hitung & Bukukan Penyusutan Aset',
-      message: `Apakah Anda ingin menghitung dan membukukan ayat jurnal penyesuaian beban penyusutan (Straight-Line) untuk seluruh aset aktif periode ${periodName}?`,
+      description: `Apakah Anda ingin menghitung dan membukukan ayat jurnal penyesuaian beban penyusutan (Straight-Line) untuk seluruh aset aktif periode ${periodName}?`,
       confirmText: 'Proses Penyusutan',
       cancelText: 'Batal',
-      type: 'info',
+      style: 'primary',
     });
 
     if (isConfirmed) {
