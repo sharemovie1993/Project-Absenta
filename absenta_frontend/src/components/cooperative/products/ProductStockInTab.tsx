@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { ProductFormModal } from '../../../pages/cooperative/components/ProductFormModal';
+import { SupplierFormModal, type SupplierFormData } from '../../../pages/cooperative/components/SupplierFormModal';
 import { cn } from '@/lib/utils';
 
 interface ProductCategory {
@@ -128,6 +129,7 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [isDraftsModalOpen, setIsDraftsModalOpen] = useState(false);
   const [isAddFeeModalOpen, setIsAddFeeModalOpen] = useState(false);
+  const [isAddSupplierModalOpen, setIsAddSupplierModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<TempStockInItem | null>(null);
 
   // Auto-select initial purchase product (e.g. from Detail Sisa Stok 'Beli Barang' button)
@@ -388,6 +390,27 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Gagal membuat produk');
+    }
+  });
+
+  // Create Supplier on the fly
+  const createSupplierMutation = useMutation({
+    mutationFn: async (data: SupplierFormData) => {
+      const res = await api.post('/cooperative/suppliers', data);
+      return res.data;
+    },
+    onSuccess: (resData) => {
+      toast.success('Supplier baru berhasil ditambahkan');
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
+      setIsAddSupplierModalOpen(false);
+      const newSup = resData?.data || resData;
+      if (newSup?.id) {
+        setStockInSupplierId(newSup.id);
+        setStockInSupplier(newSup.name || '');
+      }
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Gagal menambahkan supplier');
     }
   });
 
@@ -1011,20 +1034,38 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
       >
         <div className="space-y-4 py-1 text-xs">
           
-          {/* Supplier Selection: Dropdown dari DB + fallback manual */}
+          {/* Supplier Selection: Dropdown dari DB + Tambah Supplier Baru + fallback manual */}
           <div>
-            <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-              Pilih Supplier *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block font-bold text-slate-700 dark:text-slate-300">
+                Pilih Supplier *
+              </label>
+              <button
+                type="button"
+                onClick={() => setIsAddSupplierModalOpen(true)}
+                className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:underline flex items-center gap-1 cursor-pointer"
+              >
+                <Plus size={13} className="stroke-[2.5]" />
+                <span>Tambah Supplier</span>
+              </button>
+            </div>
             <select
               value={stockInSupplierId}
               onChange={(e) => {
-                setStockInSupplierId(e.target.value);
-                if (e.target.value) setStockInSupplier(''); // clear manual input if DB supplier chosen
+                const val = e.target.value;
+                if (val === '__ADD_NEW__') {
+                  setIsAddSupplierModalOpen(true);
+                  return;
+                }
+                setStockInSupplierId(val);
+                if (val) setStockInSupplier(''); // clear manual input if DB supplier chosen
               }}
               className="w-full h-10 px-3 border rounded-xl bg-white dark:bg-slate-900 font-medium outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
             >
               <option value="">-- Pilih dari daftar atau ketik manual --</option>
+              <option value="__ADD_NEW__" className="text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950">
+                ➕ Tambah Supplier Baru...
+              </option>
               {supplierList.map(sup => (
                 <option key={sup.id} value={sup.id}>{sup.name}{sup.phone ? ` · ${sup.phone}` : ''}</option>
               ))}
@@ -1184,6 +1225,21 @@ export const ProductStockInTab = React.memo<ProductStockInTabProps>(({
             createProductMutation.mutate(data);
           }}
           isLoading={createProductMutation.isPending}
+        />
+      )}
+
+      {/* ───────────────────────────────────────────────────────────────────────
+          MODAL: Buat Supplier Baru On The Fly
+          ─────────────────────────────────────────────────────────────────────── */}
+      {isAddSupplierModalOpen && (
+        <SupplierFormModal
+          isOpen={isAddSupplierModalOpen}
+          onClose={() => setIsAddSupplierModalOpen(false)}
+          editingSupplier={null}
+          onSubmit={(data) => {
+            createSupplierMutation.mutate(data);
+          }}
+          isSubmitting={createSupplierMutation.isPending}
         />
       )}
     </div>
