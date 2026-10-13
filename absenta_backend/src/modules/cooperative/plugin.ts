@@ -54,6 +54,39 @@ const cooperativePlugin: FastifyPluginAsync<CooperativePluginOptions> = async (f
     fastify.register(supplierRoutes, { prefix: '/suppliers' }); // Supplier management
     fastify.register(require('./settings/settings.fastify').default, { prefix: '/settings' });
 
+    // Upload Product Image
+    fastify.post('/upload-product-image', {
+        preHandler: [requireCapability('cooperative.store.products.create')]
+    }, async (request: any, reply: any) => {
+        try {
+            const { uploadController } = await import('../upload/controllers/upload.controller');
+            const data = await request.file();
+            if (!data) {
+                return reply.status(400).send({ success: false, message: 'Tidak ada file yang diunggah' });
+            }
+            const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            if (!allowedMimeTypes.includes(data.mimetype)) {
+                return reply.status(400).send({ success: false, message: 'Format gambar harus berupa JPG, PNG, atau WebP' });
+            }
+            const { UploadService } = await import('../upload/services/upload.service');
+            const uploadService = new UploadService();
+            const fileUrl = await uploadService.saveFile(data);
+            return reply.send({
+                success: true,
+                message: 'Foto barang berhasil diunggah',
+                data: {
+                    imageUrl: fileUrl,
+                    url: fileUrl,
+                    filename: data.filename,
+                    mimetype: data.mimetype
+                }
+            });
+        } catch (error: any) {
+            fastify.log.error(error);
+            return reply.status(500).send({ success: false, message: 'Gagal mengunggah foto', error: error.message });
+        }
+    });
+
     // Health Check for Plugin
     fastify.get('/health', { preHandler: [requireCapability('cooperative.dashboard.view.overview')] }, async () => {
         return { status: 'ok', module: 'cooperative' };

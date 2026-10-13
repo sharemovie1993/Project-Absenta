@@ -233,20 +233,32 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = React.memo(({
 
     const uploadPayload = new FormData();
     uploadPayload.append('image', file);
+    uploadPayload.append('file', file);
 
     setIsUploadingImage(true);
     try {
-      const res = await api.post('/cooperative/upload-product-image', uploadPayload, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (res.data?.success && res.data?.data?.imageUrl) {
-        setFormData(prev => ({ ...prev, imageUrl: res.data.data.imageUrl }));
+      let res;
+      try {
+        res = await api.post('/cooperative/upload-product-image', uploadPayload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } catch {
+        // Fallback ke general /upload jika ada kendala di /cooperative
+        res = await api.post('/upload', uploadPayload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
+
+      const imageUrl = res.data?.data?.imageUrl || res.data?.data?.url || res.data?.imageUrl || res.data?.url;
+      if (imageUrl) {
+        setFormData(prev => ({ ...prev, imageUrl }));
         toast.success('Foto barang berhasil diunggah!');
       } else {
         toast.error(res.data?.message || 'Gagal mengunggah foto');
       }
-    } catch {
-      toast.error('Gagal mengunggah foto');
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Gagal mengunggah foto';
+      toast.error(errMsg);
     } finally {
       setIsUploadingImage(false);
     }
