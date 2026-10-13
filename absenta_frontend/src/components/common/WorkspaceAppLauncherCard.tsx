@@ -189,11 +189,12 @@ const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
   { id: 'vch_mng', title: 'Voucher & Promo', path: '/cooperative/vouchers/manage', icon: 'Sparkles' },
   { id: 'inv_rep', title: 'Laporan Stok', path: '/cooperative/inventory-report', icon: 'Printer' },
   { id: 'sup', title: 'Supplier', path: '/cooperative/suppliers', icon: 'Building2' },
-  // 💼 Manajemen Pengurus (7 menu)
+  // 💼 Manajemen Pengurus (8 menu)
   { id: 'mbr', title: 'Kelola Anggota', path: '/cooperative/members', icon: 'Users' },
   { id: 'svg_mng', title: 'Input Simpanan', path: '/cooperative/savings/manage', icon: 'Wallet' },
   { id: 'lon_mng', title: 'Approval Pinjam', path: '/cooperative/loans/manage', icon: 'CheckCircle2' },
   { id: 'ppb', title: 'PPOB Admin', path: '/cooperative/ppob', icon: 'Zap' },
+  { id: 'ast', title: 'Inventaris Aset', path: '/cooperative/assets', icon: 'Package' },
   { id: 'rep', title: 'Laporan Keuangan', path: '/cooperative/reports', icon: 'BarChart2' },
   { id: 'shu_mng', title: 'Bagi Hasil SHU', path: '/cooperative/shu/manage', icon: 'Award' },
   { id: 'stg', title: 'Pengaturan Koperasi', path: '/cooperative/settings', icon: 'Settings' },

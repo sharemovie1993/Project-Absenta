@@ -1105,7 +1105,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/assets" element={
-                      <ProtectedRoute requiredCapability="cooperative.dashboard.view.overview">
+                      <ProtectedRoute requiredCapability="cooperative.assets.view.list, cooperative.dashboard.view.overview">
                         <CoopAssets />
                       </ProtectedRoute>
                     } />

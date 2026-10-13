@@ -234,6 +234,11 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.announcements.create
 - cooperative.announcements.delete
 - cooperative.announcements.view.list
+- cooperative.assets.create
+- cooperative.assets.delete
+- cooperative.assets.update
+- cooperative.assets.view.detail
+- cooperative.assets.view.list
 - cooperative.dashboard.view.overview
 - cooperative.loans.apply
 - cooperative.loans.approve

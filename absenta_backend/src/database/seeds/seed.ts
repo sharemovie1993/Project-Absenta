@@ -440,6 +440,7 @@ async function main() {
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Manajemen & Pengaturan
+        { label: 'Inventaris Aset', icon: 'Package', path: '/cooperative/assets', required_capability: 'cooperative.assets.view.list' },
         { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial' },
         { label: 'Pengaturan', icon: 'Settings', path: '/cooperative/settings', required_capability: 'cooperative.settings.view' },
       ]
