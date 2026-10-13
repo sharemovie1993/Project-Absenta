@@ -1,6 +1,7 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
+import { useSocket } from '../../../hooks/useSocket';
 import { SectionCard } from '../../ui';
 import { AcademicPageLayout } from '../../academic/AcademicPageLayout';
 import { TrendingUp, Award, DollarSign, AlertCircle, Sparkles, ShoppingBag, PiggyBank, ArrowUpRight } from 'lucide-react';
@@ -29,6 +30,7 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
   memberInstruction,
   embedded = false
 }) => {
+  const queryClient = useQueryClient();
   const { data: estimateData } = useQuery({
     queryKey: ['my-shu-live-estimate'],
     queryFn: async () => {
@@ -36,8 +38,24 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
       return res.data?.data;
     },
     enabled: memberStatus === 'member',
-    staleTime: 60 * 1000,
+    staleTime: 30 * 1000,
   });
+
+  const { subscribe, unsubscribe } = useSocket();
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: ['my-shu-live-estimate'] });
+    };
+    subscribe('coop_shu_update', handleUpdate);
+    subscribe('coop_pos_update', handleUpdate);
+    subscribe('coop_saving_update', handleUpdate);
+    return () => {
+      unsubscribe('coop_shu_update', handleUpdate);
+      unsubscribe('coop_pos_update', handleUpdate);
+      unsubscribe('coop_saving_update', handleUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
 
   if (memberStatus === 'loading') {
     const loadingContent = (

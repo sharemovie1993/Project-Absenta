@@ -740,9 +740,22 @@ export class ShuService {
 
         // Cari periode aktif berjalan
         const { FiscalYearGuard } = await import('../fiscal-year.guard');
-        const activePeriod = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+        let activePeriod = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+        
+        const currentYear = new Date().getFullYear();
         if (!activePeriod) {
-            return { enabled: true, hasActivePeriod: false, message: 'Belum ada tahun buku aktif yang dikonfigurasi.' };
+            // Auto fallback: Gunakan tahun kalender berjalan dengan aturan alokasi dari config
+            activePeriod = {
+                year: currentYear,
+                startDate: new Date(`${currentYear}-01-01T00:00:00.000Z`),
+                endDate: new Date(`${currentYear}-12-31T23:59:59.999Z`),
+                totalShu: 0,
+                porsiJasaModal: Number(config.porsiJasaModal || 30),
+                porsiJasaTransaksi: Number(config.porsiJasaTransaksi || 30),
+                includeStorePurchases: config.includeStorePurchases ?? true,
+                includeLoans: config.includeLoans ?? true,
+                includeSavingsDeposit: config.includeSavingsDeposit ?? false,
+            } as any;
         }
 
         const startDate = new Date(activePeriod.startDate);
