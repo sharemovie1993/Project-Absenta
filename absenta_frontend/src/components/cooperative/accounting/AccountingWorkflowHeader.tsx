@@ -25,7 +25,6 @@ export type AccountingTabId =
   | 'income-statement' 
   | 'neraca' 
   | 'cash-flow' 
-  | 'expenses' 
   | 'ledger' 
   | 'journal' 
   | 'balance' 
@@ -34,17 +33,11 @@ export type AccountingTabId =
 interface AccountingWorkflowHeaderProps {
   activeTab: AccountingTabId;
   onSelectTab: (tabId: AccountingTabId) => void;
-  onOpenQuickExpense?: () => void;
-  onOpenQuickDeposit?: () => void;
-  onOpenQuickTransfer?: () => void;
 }
 
 export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> = React.memo(({
   activeTab,
-  onSelectTab,
-  onOpenQuickExpense,
-  onOpenQuickDeposit,
-  onOpenQuickTransfer
+  onSelectTab
 }) => {
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(true);

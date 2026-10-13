@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { generateImportTemplate } from '@/utils/export.utils';
 import { formatDate } from '@/utils/date.utils';
 import { SectionCard } from '../../components/ui/SectionCard';
@@ -14,7 +14,7 @@ import Table from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import Card from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Receipt, Activity } from 'lucide-react';
+import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -29,7 +29,6 @@ import {
     JournalTable, 
     IncomeStatementReport, 
     BalanceSheetReport, 
-    ExpenseVoucherSection, 
     CashFlowStatementReport, 
     GeneralLedgerSection,
     AccountingWorkflowHeader,
@@ -67,17 +66,24 @@ const accountingFilterSchema = z.object({
 
 const Accounting: React.FC = React.memo(() => {
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
     const { subscription } = useAuthStore();
     const { isKoperasiFinance, isKoperasiHead, isAdmin, isSuperAdmin, can } = useCapabilities();
     const isMobile = useIsMobile();
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
-    const activeTab: 'income-statement' | 'neraca' | 'cash-flow' | 'expenses' | 'ledger' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
+    // Auto-redirect jika pengguna membuka tab expenses/kas-keluar legacy ke halaman mandiri Kas & Bank
+    useEffect(() => {
+        if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') {
+            navigate('/cooperative/cash-bank', { replace: true });
+        }
+    }, [tabParam, navigate]);
+
+    const activeTab: AccountingTabId = useMemo(() => {
         if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
         if (tabParam === 'neraca') return 'neraca';
         if (tabParam === 'cash-flow' || tabParam === 'arus-kas') return 'cash-flow';
-        if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') return 'expenses';
         if (tabParam === 'ledger' || tabParam === 'buku-besar') return 'ledger';
         if (tabParam === 'balance') return 'balance';
         if (tabParam === 'payroll') return 'payroll';
@@ -97,41 +103,11 @@ const Accounting: React.FC = React.memo(() => {
         { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
         { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
         { id: 'cash-flow', label: 'Arus Kas (Cash Flow)', icon: Activity },
-        { id: 'expenses', label: 'Kas & Bank (BKK/BKM/TRF)', icon: Receipt },
         { id: 'ledger', label: 'Buku Besar Akun', icon: BookOpen },
         { id: 'journal', label: 'Jurnal Umum', icon: FileText },
         { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
     ], []);
-    
-    // Quick actions states for non-accountant users
-    const [quickExpenseSubTab, setQuickExpenseSubTab] = useState<'EXPENSE' | 'DEPOSIT' | 'TRANSFER'>('EXPENSE');
-    const [autoOpenModal, setAutoOpenModal] = useState<boolean>(false);
-
-    const handleOpenQuickExpense = useCallback(() => {
-        setQuickExpenseSubTab('EXPENSE');
-        setAutoOpenModal(true);
-        handleTabChange('expenses');
-    }, [handleTabChange]);
-
-    const handleOpenQuickDeposit = useCallback(() => {
-        setQuickExpenseSubTab('DEPOSIT');
-        setAutoOpenModal(true);
-        handleTabChange('expenses');
-    }, [handleTabChange]);
-
-    const handleOpenQuickTransfer = useCallback(() => {
-        setQuickExpenseSubTab('TRANSFER');
-        setAutoOpenModal(true);
-        handleTabChange('expenses');
-    }, [handleTabChange]);
-
-    // Reset autoOpenModal when switching away from expenses
-    useEffect(() => {
-        if (activeTab !== 'expenses' && autoOpenModal) {
-            setAutoOpenModal(false);
-        }
-    }, [activeTab, autoOpenModal]);
 
     // Payroll recap states
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -499,11 +475,11 @@ const Accounting: React.FC = React.memo(() => {
             { text: 'Tab Laba Rugi (PHU) menampilkan pendapatan usaha, HPP, laba kotor, dan beban operasional untuk menghasilkan Sisa Hasil Usaha (SHU) bersih koperasi.' },
             { text: 'Tab Neraca menyajikan posisi keuangan resmi: Aktiva (Aset) vs Pasiva (Kewajiban & Ekuitas) lengkap dengan indikator keseimbangan (Balance Check).' },
             { text: 'Tab Arus Kas (Cash Flow) menyajikan arus kas masuk & keluar dari aktivitas Operasi, Investasi, dan Pendanaan serta rekonsiliasi kas riil.' },
-            { text: 'Tab Kas & Bank memfasilitasi pencatatan Bukti Kas Masuk (BKM), Kas Keluar (BKK), dan Mutasi/Transfer Dana antar kas bank.' },
             { text: 'Tab Buku Besar Akun memungkinkan drill-down mutasi debit/kredit dan saldo berjalan (running balance) spesifik per nomor rekening akun.' },
             { text: 'Tab Jurnal Umum digunakan untuk audit jejak transaksi debit/kredit setiap mutasi keuangan koperasi.' },
             { text: 'Tab Neraca Saldo menampilkan rekapitulasi saldo buku besar seluruh akun koperasi.' },
-            { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan potongan gaji bulanan dan memposting setoran massal.' }
+            { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan potongan gaji bulanan dan memposting setoran massal.' },
+            { text: 'Untuk pencatatan pengeluaran harian (BKK) dan kas masuk (BKM), silakan akses menu terpisah "Kas & Bank".' }
         ]
     }), []);
 
@@ -708,9 +684,6 @@ const Accounting: React.FC = React.memo(() => {
                 <AccountingWorkflowHeader
                     activeTab={activeTab}
                     onSelectTab={(tabId) => handleTabChange(tabId)}
-                    onOpenQuickExpense={handleOpenQuickExpense}
-                    onOpenQuickDeposit={handleOpenQuickDeposit}
-                    onOpenQuickTransfer={handleOpenQuickTransfer}
                 />
 
                 <TabSwitcher
@@ -748,15 +721,6 @@ const Accounting: React.FC = React.memo(() => {
                                 <CashFlowStatementReport 
                                     coopSettings={coopSettings} 
                                     defaultYear={currentFiscalYear?.year} 
-                                />
-                            </div>
-                        )}
-
-                        {activeTab === 'expenses' && (
-                            <div className="p-4 sm:p-6">
-                                <ExpenseVoucherSection 
-                                    initialSubTab={quickExpenseSubTab}
-                                    autoOpenCreateModal={autoOpenModal}
                                 />
                             </div>
                         )}
