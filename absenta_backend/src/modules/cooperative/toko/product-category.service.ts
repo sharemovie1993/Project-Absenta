@@ -74,16 +74,40 @@ export class ProductCategoryService {
         order: 9,
       },
       {
+        code: 'PERAWATAN_TUBUH',
+        name: 'Perawatan Tubuh',
+        description: 'Deodoran, parfum, cuci muka, lotion, pembalut, dan perawatan diri.',
+        order: 9,
+      },
+      {
+        code: 'RUMAH_TANGGA',
+        name: 'Rumah Tangga',
+        description: 'Pembersih lantai, spons, kantong plastik, pengharum ruangan, dan perlengkapan rumah.',
+        order: 10,
+      },
+      {
+        code: 'PRODUK_SEGAR',
+        name: 'Produk Segar & Roti',
+        description: 'Es krim, aneka roti harian, sosis siap makan, dan olahan segar.',
+        order: 11,
+      },
+      {
+        code: 'BAYI_ANAK',
+        name: 'Perlengkapan Bayi',
+        description: 'Minyak telon, bedak bayi, popok/pampers, tisu basah, dan susu.',
+        order: 12,
+      },
+      {
         code: 'KARYA_SISWA',
         name: 'Karya Siswa',
         description: 'Produk kreatif jurusan/teaching factory dan merchandise sekolah.',
-        order: 10,
+        order: 13,
       },
       {
         code: 'LAIN_LAIN',
         name: 'Lain-lain',
         description: 'Barang umum lainnya yang belum masuk kategori khusus.',
-        order: 11,
+        order: 14,
       }
     ];
 
