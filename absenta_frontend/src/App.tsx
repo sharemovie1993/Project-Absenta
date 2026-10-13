@@ -155,6 +155,7 @@ const CoopAnnouncements = lazy(() => import('./pages/cooperative/Announcements')
 const CoopTickets = lazy(() => import('./pages/cooperative/Tickets'));
 const CoopTicketDetail = lazy(() => import('./pages/cooperative/TicketDetail'));
 const CoopSuppliers = lazy(() => import('./pages/cooperative/Suppliers'));
+const CoopAssets = lazy(() => import('./pages/cooperative/Assets'));
 const KurikulumDashboard = lazy(() => import('./pages/kurikulum/Dashboard'));
 const CorrespondenceDashboard = lazy(() => import('./pages/correspondence/Dashboard'));
 const RaporDashboard = lazy(() => import('./pages/rapor/Dashboard'));
@@ -1101,6 +1102,11 @@ function App() {
                     <Route path="/cooperative/suppliers" element={
                       <ProtectedRoute requiredCapability="cooperative.store.products.view.list">
                         <CoopSuppliers />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cooperative/assets" element={
+                      <ProtectedRoute requiredCapability="cooperative.dashboard.view.overview">
+                        <CoopAssets />
                       </ProtectedRoute>
                     } />
                     {/* Billing & Service Center Canonical Routes */}

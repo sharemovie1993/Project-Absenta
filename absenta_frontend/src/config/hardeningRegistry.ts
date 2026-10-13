@@ -462,6 +462,26 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_assets: {
+    moduleName: 'coop_assets',
+    displayName: 'Inventaris Aset Tetap Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Render (Fault Isolation)',
+        description: 'Mencegah visual crash halaman total melalui Error Boundary terisolasi saat menampilkan list data aset tetap.',
+        status: 'VERIFIED',
+        details: 'Tabel inventaris aset terisolasi secara aman.'
+      },
+      {
+        id: 'zod_validation',
+        name: 'Validasi Skema Zod (Zod Schema Guard)',
+        description: 'Validasi form pendaftaran dan pembaruan aset tetap menggunakan skema Zod secara ketat.',
+        status: 'VERIFIED',
+        details: 'Formulir aset dilindungi oleh assetFormSchema.safeParse.'
+      }
+    ]
+  },
   coop_laporaninventori: {
     moduleName: 'coop_laporaninventori',
     displayName: 'Laporan Persediaan & Stok Koperasi',

@@ -18,6 +18,7 @@ import announcementRoutes from './announcement/announcement.fastify';
 import dashboardRoutes from './dashboard/dashboard.fastify';
 import { shuRoutes } from './shu/shu.fastify';
 import supplierRoutes from './supplier/supplier.fastify';
+import assetRoutes from './asset/asset.fastify';
 
 export interface CooperativePluginOptions {
     prefix?: string;
@@ -52,6 +53,7 @@ const cooperativePlugin: FastifyPluginAsync<CooperativePluginOptions> = async (f
     fastify.register(announcementRoutes, { prefix: '/announcements' });
     fastify.register(dashboardRoutes, { prefix: '/dashboard' });
     fastify.register(supplierRoutes, { prefix: '/suppliers' }); // Supplier management
+    fastify.register(assetRoutes, { prefix: '/assets' }); // Fixed asset management
     fastify.register(require('./settings/settings.fastify').default, { prefix: '/settings' });
 
     // Upload Product Image

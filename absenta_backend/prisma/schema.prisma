@@ -95,6 +95,7 @@ model Tenant {
   ShuPeriod            ShuPeriod[]
   ProductCategory      ProductCategory[]
   CoopPointTransaction CoopPointTransaction[]
+  CoopAsset            CoopAsset[]
 
   organizationalPositions   OrganizationalPosition[]
   organizationalAssignments OrganizationalAssignment[]
@@ -3166,6 +3167,59 @@ model ShuAllocation {
   @@unique([periodId, memberId])
   @@index([periodId])
   @@index([memberId])
+}
+
+// --- INVENTARIS ASET TETAP KOPERASI ---
+enum CoopAssetCategory {
+  EQUIPMENT
+  DISPLAY_FURNITURE
+  COOLING_APPLIANCE
+  BUILDING_FACILITY
+  VEHICLE
+  OTHER
+}
+
+enum CoopAssetCondition {
+  GOOD
+  FAIR
+  DAMAGED
+  DISPOSED
+}
+
+enum CoopAssetStatus {
+  IN_USE
+  IN_REPAIR
+  IDLE
+  WRITTEN_OFF
+}
+
+model CoopAsset {
+  id               String             @id @default(uuid())
+  tenantId         String
+  code             String
+  name             String
+  category         CoopAssetCategory  @default(EQUIPMENT)
+  location         String
+  purchaseDate     DateTime
+  purchasePrice    Decimal            @default(0)
+  condition        CoopAssetCondition @default(GOOD)
+  status           CoopAssetStatus    @default(IN_USE)
+  usefulLifeMonths Int                @default(48)
+  salvageValue     Decimal            @default(0)
+  serialNumber     String?
+  picName          String?
+  photoUrl         String?
+  notes            String?
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  Tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, category])
+  @@index([tenantId, condition])
+  @@index([tenantId, status])
 }
 
 enum ShuStatus {
