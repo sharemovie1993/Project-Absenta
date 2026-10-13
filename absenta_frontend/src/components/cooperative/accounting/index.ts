@@ -9,3 +9,4 @@ export { DepositFormModal } from './DepositFormModal';
 export { TransferFormModal } from './TransferFormModal';
 export { CashFlowStatementReport } from './CashFlowStatementReport';
 export { GeneralLedgerSection } from './GeneralLedgerSection';
+export { AccountingWorkflowHeader } from './AccountingWorkflowHeader';

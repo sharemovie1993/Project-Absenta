@@ -25,7 +25,16 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 
-import { JournalTable, IncomeStatementReport, BalanceSheetReport, ExpenseVoucherSection, CashFlowStatementReport, GeneralLedgerSection } from '../../components/cooperative/accounting';
+import { 
+    JournalTable, 
+    IncomeStatementReport, 
+    BalanceSheetReport, 
+    ExpenseVoucherSection, 
+    CashFlowStatementReport, 
+    GeneralLedgerSection,
+    AccountingWorkflowHeader,
+    type AccountingTabId
+} from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -95,6 +104,35 @@ const Accounting: React.FC = React.memo(() => {
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
     ], []);
     
+    // Quick actions states for non-accountant users
+    const [quickExpenseSubTab, setQuickExpenseSubTab] = useState<'EXPENSE' | 'DEPOSIT' | 'TRANSFER'>('EXPENSE');
+    const [autoOpenModal, setAutoOpenModal] = useState<boolean>(false);
+
+    const handleOpenQuickExpense = useCallback(() => {
+        setQuickExpenseSubTab('EXPENSE');
+        setAutoOpenModal(true);
+        handleTabChange('expenses');
+    }, [handleTabChange]);
+
+    const handleOpenQuickDeposit = useCallback(() => {
+        setQuickExpenseSubTab('DEPOSIT');
+        setAutoOpenModal(true);
+        handleTabChange('expenses');
+    }, [handleTabChange]);
+
+    const handleOpenQuickTransfer = useCallback(() => {
+        setQuickExpenseSubTab('TRANSFER');
+        setAutoOpenModal(true);
+        handleTabChange('expenses');
+    }, [handleTabChange]);
+
+    // Reset autoOpenModal when switching away from expenses
+    useEffect(() => {
+        if (activeTab !== 'expenses' && autoOpenModal) {
+            setAutoOpenModal(false);
+        }
+    }, [activeTab, autoOpenModal]);
+
     // Payroll recap states
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -666,6 +704,15 @@ const Accounting: React.FC = React.memo(() => {
                     )}
                 </div>
 
+                {/* Interactive Workflow Header & Quick Actions for Non-Accountant Users */}
+                <AccountingWorkflowHeader
+                    activeTab={activeTab}
+                    onSelectTab={(tabId) => handleTabChange(tabId)}
+                    onOpenQuickExpense={handleOpenQuickExpense}
+                    onOpenQuickDeposit={handleOpenQuickDeposit}
+                    onOpenQuickTransfer={handleOpenQuickTransfer}
+                />
+
                 <TabSwitcher
                     tabs={tabOptions}
                     activeTab={activeTab}
@@ -707,7 +754,10 @@ const Accounting: React.FC = React.memo(() => {
 
                         {activeTab === 'expenses' && (
                             <div className="p-4 sm:p-6">
-                                <ExpenseVoucherSection />
+                                <ExpenseVoucherSection 
+                                    initialSubTab={quickExpenseSubTab}
+                                    autoOpenCreateModal={autoOpenModal}
+                                />
                             </div>
                         )}
 

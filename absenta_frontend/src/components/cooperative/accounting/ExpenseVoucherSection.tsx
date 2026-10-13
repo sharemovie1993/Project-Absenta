@@ -36,21 +36,41 @@ import type {
 } from './types';
 import { useIsMobile } from '@/hooks/useIsMobile';
 
-export const ExpenseVoucherSection: React.FC = React.memo(() => {
+interface ExpenseVoucherSectionProps {
+  initialSubTab?: 'EXPENSE' | 'DEPOSIT' | 'TRANSFER';
+  autoOpenCreateModal?: boolean;
+}
+
+export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React.memo(({
+  initialSubTab = 'EXPENSE',
+  autoOpenCreateModal = false
+}) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const isMobile = useIsMobile();
 
-  const [subTab, setSubTab] = useState<'EXPENSE' | 'DEPOSIT' | 'TRANSFER'>('EXPENSE');
+  const [subTab, setSubTab] = useState<'EXPENSE' | 'DEPOSIT' | 'TRANSFER'>(initialSubTab);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
 
   // Modals state
-  const [isExpenseOpen, setIsExpenseOpen] = useState(false);
-  const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [isExpenseOpen, setIsExpenseOpen] = useState(autoOpenCreateModal && initialSubTab === 'EXPENSE');
+  const [isDepositOpen, setIsDepositOpen] = useState(autoOpenCreateModal && initialSubTab === 'DEPOSIT');
+  const [isTransferOpen, setIsTransferOpen] = useState(autoOpenCreateModal && initialSubTab === 'TRANSFER');
+
+  // Sync if initialSubTab prop changes
+  React.useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+      if (autoOpenCreateModal) {
+        if (initialSubTab === 'EXPENSE') setIsExpenseOpen(true);
+        if (initialSubTab === 'DEPOSIT') setIsDepositOpen(true);
+        if (initialSubTab === 'TRANSFER') setIsTransferOpen(true);
+      }
+    }
+  }, [initialSubTab, autoOpenCreateModal]);
 
   const handleSubTabChange = (tab: 'EXPENSE' | 'DEPOSIT' | 'TRANSFER') => {
     setSubTab(tab);
