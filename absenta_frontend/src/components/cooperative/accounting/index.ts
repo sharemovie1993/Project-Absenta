@@ -7,5 +7,5 @@ export { ExpenseVoucherSection } from './ExpenseVoucherSection';
 export { ExpenseFormModal } from './ExpenseFormModal';
 export { DepositFormModal } from './DepositFormModal';
 export { TransferFormModal } from './TransferFormModal';
-
-
+export { CashFlowStatementReport } from './CashFlowStatementReport';
+export { GeneralLedgerSection } from './GeneralLedgerSection';

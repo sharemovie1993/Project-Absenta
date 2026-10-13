@@ -1,0 +1,299 @@
+import React, { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import api from '@/lib/axiosInstance';
+import { 
+  BookOpen, 
+  Search, 
+  Printer, 
+  Calendar, 
+  Filter, 
+  TrendingUp, 
+  TrendingDown, 
+  DollarSign, 
+  Scale,
+  RefreshCw
+} from 'lucide-react';
+import Table from '../../ui/Table';
+import Button from '../../ui/Button';
+import { SearchableSelect } from '../../ui/SearchableSelect';
+import { AnalyticsCard } from '../../ui/AnalyticsCard';
+import { formatDate } from '@/utils/date.utils';
+
+const POPULAR_COOP_ACCOUNTS = [
+  { value: '1010', label: '1010 - Kas Koperasi (Kas Tunai)' },
+  { value: '1011', label: '1011 - Kas Bank Koperasi' },
+  { value: '1020', label: '1020 - Piutang Anggota' },
+  { value: '1030', label: '1030 - Persediaan Barang Toko' },
+  { value: '1510', label: '1510 - Aktiva Tetap & Peralatan Koperasi' },
+  { value: '1520', label: '1520 - Akumulasi Penyusutan Aktiva Tetap' },
+  { value: '2010', label: '2010 - Tabungan Sukarela Anggota' },
+  { value: '3010', label: '3010 - Ekuitas Koperasi' },
+  { value: '3020', label: '3020 - Dana Cadangan Koperasi' },
+  { value: '4010', label: '4010 - Pendapatan Toko Koperasi' },
+  { value: '4020', label: '4020 - Pendapatan Bunga Pinjaman' },
+  { value: '4030', label: '4030 - Pendapatan Sewa & Kerjasama' },
+  { value: '4040', label: '4040 - Pendapatan Jasa Giro & Bank' },
+  { value: '5010', label: '5010 - Beban Pokok Penjualan (HPP)' },
+  { value: '5020', label: '5020 - Beban Administrasi Koperasi' },
+  { value: '5021', label: '5021 - Beban Listrik, Air & Utilitas' },
+  { value: '5022', label: '5022 - Beban Komunikasi & Internet' },
+  { value: '5023', label: '5023 - Beban Aplikasi & TI' },
+  { value: '5024', label: '5024 - Beban ATK & Perlengkapan' },
+  { value: '5025', label: '5025 - Beban Pemeliharaan Sarana' },
+  { value: '5026', label: '5026 - Beban Operasional Pengurus' },
+  { value: '5030', label: '5030 - Beban Penyusutan Aktiva Tetap' },
+];
+
+export const GeneralLedgerSection: React.FC = React.memo(() => {
+  const [selectedAccountCode, setSelectedAccountCode] = useState('1010');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [periodPreset, setPeriodPreset] = useState<'year' | 'custom'>('year');
+  const [customStartDate, setCustomStartDate] = useState(`${new Date().getFullYear()}-01-01`);
+  const [customEndDate, setCustomEndDate] = useState(`${new Date().getFullYear()}-12-31`);
+
+  const effectiveStartDate = periodPreset === 'year' ? `${selectedYear}-01-01` : customStartDate;
+  const effectiveEndDate = periodPreset === 'year' ? `${selectedYear}-12-31` : customEndDate;
+
+  const { data, isLoading, isRefetching, refetch } = useQuery<{
+    account: { id: string; code: string; name: string; type: string };
+    openingBalance: number;
+    totalDebit: number;
+    totalCredit: number;
+    endingBalance: number;
+    entries: {
+      id: string;
+      date: string;
+      reference: string;
+      description: string;
+      type: 'DEBIT' | 'CREDIT';
+      debit: number;
+      credit: number;
+      runningBalance: number;
+    }[];
+  }>({
+    queryKey: ['cooperative-general-ledger', selectedAccountCode, effectiveStartDate, effectiveEndDate],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (effectiveStartDate) params.append('startDate', effectiveStartDate);
+      if (effectiveEndDate) params.append('endDate', effectiveEndDate);
+      const res = await api.get(`/cooperative/reports/ledger/${selectedAccountCode}?${params.toString()}`);
+      return res.data?.data;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const ledger = data || {
+    account: { id: '', code: selectedAccountCode, name: 'Memuat...', type: 'ASSET' },
+    openingBalance: 0,
+    totalDebit: 0,
+    totalCredit: 0,
+    endingBalance: 0,
+    entries: []
+  };
+
+  const columns = useMemo(() => [
+    {
+      label: 'Tanggal',
+      key: 'date',
+      render: (d: string) => (
+        <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+          {formatDate(d)}
+        </span>
+      ),
+    },
+    {
+      label: 'No. Referensi',
+      key: 'reference',
+      render: (ref: string) => (
+        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
+          {ref}
+        </span>
+      ),
+    },
+    {
+      label: 'Keterangan Transaksi',
+      key: 'description',
+      render: (desc: string) => (
+        <span className="text-xs text-slate-800 dark:text-slate-200 line-clamp-1">
+          {desc}
+        </span>
+      ),
+    },
+    {
+      label: 'Debit',
+      key: 'debit',
+      render: (d: number) => (
+        <span className={`font-mono text-xs ${d > 0 ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-700'}`}>
+          {d > 0 ? `Rp ${Math.round(d).toLocaleString('id-ID')}` : '-'}
+        </span>
+      ),
+    },
+    {
+      label: 'Kredit',
+      key: 'credit',
+      render: (c: number) => (
+        <span className={`font-mono text-xs ${c > 0 ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-700'}`}>
+          {c > 0 ? `Rp ${Math.round(c).toLocaleString('id-ID')}` : '-'}
+        </span>
+      ),
+    },
+    {
+      label: 'Saldo Berjalan',
+      key: 'runningBalance',
+      render: (b: number) => (
+        <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-400">
+          Rp {Math.round(b).toLocaleString('id-ID')}
+        </span>
+      ),
+    },
+  ], []);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Toolbar Filter & Pemilihan Akun */}
+      <div className="print:hidden flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4 bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="w-72">
+            <SearchableSelect
+              id="gl-account-select"
+              value={selectedAccountCode}
+              onChange={(val) => setSelectedAccountCode(String(val))}
+              options={POPULAR_COOP_ACCOUNTS}
+              placeholder="Pilih Nomor Akun Buku Besar..."
+              aria-label="Pilih Akun Buku Besar"
+            />
+          </div>
+
+          <div className="inline-flex rounded-xl bg-slate-200/70 dark:bg-slate-800 p-0.5 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setPeriodPreset('year')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                periodPreset === 'year'
+                  ? 'bg-white dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Tahun Buku
+            </button>
+            <button
+              type="button"
+              onClick={() => setPeriodPreset('custom')}
+              className={`px-3 py-1.5 rounded-lg transition-all ${
+                periodPreset === 'custom'
+                  ? 'bg-white dark:bg-slate-950 text-indigo-600 dark:text-indigo-400 font-bold shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Kustom
+            </button>
+          </div>
+
+          {periodPreset === 'year' ? (
+            <input
+              type="number"
+              aria-label="Tahun Buku Besar"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              min="2020"
+              max="2035"
+              className="w-24 px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-200"
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                aria-label="Tanggal Mulai"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+              />
+              <span className="text-xs text-slate-400">s/d</span>
+              <input
+                type="date"
+                aria-label="Tanggal Akhir"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950"
+              />
+            </div>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isRefetching}
+            className="gap-1.5 border-slate-300 dark:border-slate-700 text-xs"
+          >
+            <RefreshCw size={13} className={isRefetching ? 'animate-spin' : ''} />
+            <span>Segarkan</span>
+          </Button>
+        </div>
+
+        <Button
+          size="sm"
+          variant="primary"
+          onClick={handlePrint}
+          className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs shrink-0"
+        >
+          <Printer size={14} />
+          <span>Cetak Buku Besar</span>
+        </Button>
+      </div>
+
+      {/* Metric Cards Saldo Akun */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <AnalyticsCard
+          title="Saldo Awal"
+          value={`Rp ${Math.round(ledger.openingBalance).toLocaleString('id-ID')}`}
+          icon={Scale}
+          description="Posisi saldo sebelum awal periode"
+        />
+        <AnalyticsCard
+          title="Total Mutasi Debit"
+          value={`Rp ${Math.round(ledger.totalDebit).toLocaleString('id-ID')}`}
+          icon={TrendingUp}
+          description="Akumulasi penambahan debit"
+        />
+        <AnalyticsCard
+          title="Total Mutasi Kredit"
+          value={`Rp ${Math.round(ledger.totalCredit).toLocaleString('id-ID')}`}
+          icon={TrendingDown}
+          description="Akumulasi pengurangan kredit"
+        />
+        <AnalyticsCard
+          title="Saldo Akhir Berjalan"
+          value={`Rp ${Math.round(ledger.endingBalance).toLocaleString('id-ID')}`}
+          icon={DollarSign}
+          description={`Posisi saldo per ${effectiveEndDate}`}
+        />
+      </div>
+
+      {/* Main Table Card */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 space-y-4 shadow-xs">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <h3 className="font-black text-sm text-slate-900 dark:text-white">
+              Buku Besar: {ledger.account.code} - {ledger.account.name}
+            </h3>
+            <span className="text-[11px] font-mono text-slate-400">
+              Klasifikasi: {ledger.account.type} | Total {ledger.entries.length} baris mutasi
+            </span>
+          </div>
+        </div>
+
+        <Table
+          data={ledger.entries}
+          columns={columns}
+          loading={isLoading}
+          emptyMessage={`Belum ada mutasi pembukuan pada rekening ${ledger.account.code} untuk periode yang dipilih.`}
+        />
+      </div>
+    </div>
+  );
+});

@@ -229,6 +229,288 @@ export class ReportService {
             }
         });
     }
+
+    /**
+     * Buku Besar Detail per Akun (General Ledger Detail Drill-down)
+     */
+    static async getGeneralLedgerByAccount(tenantId: string, accountCode: string, startDate?: Date, endDate?: Date) {
+        const account = await prisma.account.findFirst({
+            where: { tenantId, code: accountCode }
+        });
+
+        if (!account) {
+            throw new Error(`Akun dengan kode ${accountCode} tidak ditemukan`);
+        }
+
+        let openingBalance = 0;
+        if (startDate) {
+            const priorItems = await prisma.journalItem.findMany({
+                where: {
+                    accountId: account.id,
+                    journal: {
+                        tenantId,
+                        date: { lt: startDate }
+                    }
+                },
+                select: { amount: true, type: true }
+            });
+
+            for (const item of priorItems) {
+                const amt = Number(item.amount || 0);
+                if (account.type === 'ASSET' || account.type === 'EXPENSE') {
+                    if (item.type === 'DEBIT') openingBalance += amt;
+                    else openingBalance -= amt;
+                } else {
+                    if (item.type === 'CREDIT') openingBalance += amt;
+                    else openingBalance -= amt;
+                }
+            }
+        }
+
+        const dateFilter: any = {};
+        if (startDate) dateFilter.gte = startDate;
+        if (endDate) dateFilter.lte = endDate;
+
+        const journalWhere: any = { tenantId };
+        if (Object.keys(dateFilter).length > 0) {
+            journalWhere.date = dateFilter;
+        }
+
+        const items = await prisma.journalItem.findMany({
+            where: {
+                accountId: account.id,
+                journal: journalWhere
+            },
+            include: {
+                journal: true
+            },
+            orderBy: {
+                journal: { date: 'asc' }
+            }
+        });
+
+        let runningBalance = openingBalance;
+        let totalDebit = 0;
+        let totalCredit = 0;
+
+        const entries = items.map(item => {
+            const amt = Number(item.amount || 0);
+            const isDebit = item.type === 'DEBIT';
+            const debit = isDebit ? amt : 0;
+            const credit = !isDebit ? amt : 0;
+
+            totalDebit += debit;
+            totalCredit += credit;
+
+            if (account.type === 'ASSET' || account.type === 'EXPENSE') {
+                runningBalance = runningBalance + debit - credit;
+            } else {
+                runningBalance = runningBalance + credit - debit;
+            }
+
+            return {
+                id: item.id,
+                journalId: item.journalId,
+                date: item.journal.date,
+                reference: item.journal.reference || '-',
+                description: item.journal.description || '-',
+                type: item.type,
+                debit,
+                credit,
+                runningBalance
+            };
+        });
+
+        return {
+            account: {
+                id: account.id,
+                code: account.code,
+                name: account.name,
+                type: account.type,
+            },
+            openingBalance,
+            totalDebit,
+            totalCredit,
+            endingBalance: runningBalance,
+            entries
+        };
+    }
+
+    /**
+     * Laporan Arus Kas Koperasi (Statement of Cash Flows)
+     */
+    static async getCashFlowStatement(tenantId: string, startDate?: Date, endDate?: Date) {
+        const cashAccounts = await prisma.account.findMany({
+            where: {
+                tenantId,
+                code: { in: ['1010', '1011'] }
+            }
+        });
+        const cashAccountIds = cashAccounts.map(a => a.id);
+
+        if (cashAccountIds.length === 0) {
+            return {
+                operating: { inflows: [], outflows: [], totalInflows: 0, totalOutflows: 0, net: 0 },
+                investing: { inflows: [], outflows: [], totalInflows: 0, totalOutflows: 0, net: 0 },
+                financing: { inflows: [], outflows: [], totalInflows: 0, totalOutflows: 0, net: 0 },
+                netChangeInCash: 0,
+                beginningCash: 0,
+                endingCash: 0
+            };
+        }
+
+        let beginningCash = 0;
+        if (startDate) {
+            const priorCashItems = await prisma.journalItem.findMany({
+                where: {
+                    accountId: { in: cashAccountIds },
+                    journal: { tenantId, date: { lt: startDate } }
+                },
+                select: { amount: true, type: true }
+            });
+            for (const item of priorCashItems) {
+                const amt = Number(item.amount || 0);
+                if (item.type === 'DEBIT') beginningCash += amt;
+                else beginningCash -= amt;
+            }
+        }
+
+        const dateFilter: any = {};
+        if (startDate) dateFilter.gte = startDate;
+        if (endDate) dateFilter.lte = endDate;
+
+        const journalWhere: any = {
+            tenantId,
+            items: {
+                some: { accountId: { in: cashAccountIds } }
+            }
+        };
+        if (Object.keys(dateFilter).length > 0) {
+            journalWhere.date = dateFilter;
+        }
+
+        const journals = await prisma.journal.findMany({
+            where: journalWhere,
+            include: {
+                items: {
+                    include: { account: true }
+                }
+            },
+            orderBy: { date: 'asc' }
+        });
+
+        const operatingInflows: any[] = [];
+        const operatingOutflows: any[] = [];
+        const investingOutflows: any[] = [];
+        const financingInflows: any[] = [];
+        const financingOutflows: any[] = [];
+
+        for (const j of journals) {
+            const cashItems = j.items.filter(i => cashAccountIds.includes(i.accountId));
+            const nonCashItems = j.items.filter(i => !cashAccountIds.includes(i.accountId));
+
+            if (nonCashItems.length === 0) continue;
+
+            for (const cashItem of cashItems) {
+                const amount = Number(cashItem.amount || 0);
+                const isCashIn = cashItem.type === 'DEBIT';
+
+                const counterpart = nonCashItems[0]?.account;
+                const counterpartCode = counterpart?.code || '';
+                const counterpartName = counterpart?.name || j.description || 'Transaksi Kas';
+
+                if (counterpartCode.startsWith('15')) {
+                    if (!isCashIn) {
+                        investingOutflows.push({
+                            date: j.date,
+                            description: j.description,
+                            reference: j.reference,
+                            accountName: counterpartName,
+                            amount
+                        });
+                    }
+                } else if (counterpartCode.startsWith('20') || counterpartCode.startsWith('30')) {
+                    if (isCashIn) {
+                        financingInflows.push({
+                            date: j.date,
+                            description: j.description,
+                            reference: j.reference,
+                            accountName: counterpartName,
+                            amount
+                        });
+                    } else {
+                        financingOutflows.push({
+                            date: j.date,
+                            description: j.description,
+                            reference: j.reference,
+                            accountName: counterpartName,
+                            amount
+                        });
+                    }
+                } else {
+                    if (isCashIn) {
+                        operatingInflows.push({
+                            date: j.date,
+                            description: j.description,
+                            reference: j.reference,
+                            accountName: counterpartName,
+                            amount
+                        });
+                    } else {
+                        operatingOutflows.push({
+                            date: j.date,
+                            description: j.description,
+                            reference: j.reference,
+                            accountName: counterpartName,
+                            amount
+                        });
+                    }
+                }
+            }
+        }
+
+        const totalOperatingIn = operatingInflows.reduce((s, i) => s + i.amount, 0);
+        const totalOperatingOut = operatingOutflows.reduce((s, o) => s + o.amount, 0);
+        const netOperating = totalOperatingIn - totalOperatingOut;
+
+        const totalInvestingOut = investingOutflows.reduce((s, o) => s + o.amount, 0);
+        const netInvesting = -totalInvestingOut;
+
+        const totalFinancingIn = financingInflows.reduce((s, i) => s + i.amount, 0);
+        const totalFinancingOut = financingOutflows.reduce((s, o) => s + o.amount, 0);
+        const netFinancing = totalFinancingIn - totalFinancingOut;
+
+        const netChangeInCash = netOperating + netInvesting + netFinancing;
+        const endingCash = beginningCash + netChangeInCash;
+
+        return {
+            operating: {
+                inflows: operatingInflows,
+                outflows: operatingOutflows,
+                totalInflows: totalOperatingIn,
+                totalOutflows: totalOperatingOut,
+                net: netOperating
+            },
+            investing: {
+                inflows: [],
+                outflows: investingOutflows,
+                totalInflows: 0,
+                totalOutflows: totalInvestingOut,
+                net: netInvesting
+            },
+            financing: {
+                inflows: financingInflows,
+                outflows: financingOutflows,
+                totalInflows: totalFinancingIn,
+                totalOutflows: totalFinancingOut,
+                net: netFinancing
+            },
+            netChangeInCash,
+            beginningCash,
+            endingCash
+        };
+    }
+
     // Get Payroll Deductions Report
     static async getPayrollDeductionsReport(tenantId: string, month: number, year: number) {
         // Cek apakah sudah pernah diposting untuk periode & tenant ini

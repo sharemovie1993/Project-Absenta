@@ -14,7 +14,7 @@ import Table from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import Card from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Receipt } from 'lucide-react';
+import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Receipt, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -25,7 +25,7 @@ import type { CooperativeSettings } from '../../components/cooperative/loans/typ
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
 
-import { JournalTable, IncomeStatementReport, BalanceSheetReport, ExpenseVoucherSection } from '../../components/cooperative/accounting';
+import { JournalTable, IncomeStatementReport, BalanceSheetReport, ExpenseVoucherSection, CashFlowStatementReport, GeneralLedgerSection } from '../../components/cooperative/accounting';
 const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -64,10 +64,12 @@ const Accounting: React.FC = React.memo(() => {
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
-    const activeTab: 'income-statement' | 'neraca' | 'expenses' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
+    const activeTab: 'income-statement' | 'neraca' | 'cash-flow' | 'expenses' | 'ledger' | 'journal' | 'balance' | 'payroll' = useMemo(() => {
         if (tabParam === 'income-statement' || tabParam === 'laba-rugi') return 'income-statement';
         if (tabParam === 'neraca') return 'neraca';
+        if (tabParam === 'cash-flow' || tabParam === 'arus-kas') return 'cash-flow';
         if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') return 'expenses';
+        if (tabParam === 'ledger' || tabParam === 'buku-besar') return 'ledger';
         if (tabParam === 'balance') return 'balance';
         if (tabParam === 'payroll') return 'payroll';
         if (tabParam === 'journal') return 'journal';
@@ -85,8 +87,10 @@ const Accounting: React.FC = React.memo(() => {
     const tabOptions: TabOption[] = useMemo(() => [
         { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
         { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
+        { id: 'cash-flow', label: 'Arus Kas (Cash Flow)', icon: Activity },
         { id: 'expenses', label: 'Kas & Bank (BKK/BKM/TRF)', icon: Receipt },
-        { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
+        { id: 'ledger', label: 'Buku Besar Akun', icon: BookOpen },
+        { id: 'journal', label: 'Jurnal Umum', icon: FileText },
         { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }
     ], []);
@@ -456,8 +460,11 @@ const Accounting: React.FC = React.memo(() => {
         items: [
             { text: 'Tab Laba Rugi (PHU) menampilkan pendapatan usaha, HPP, laba kotor, dan beban operasional untuk menghasilkan Sisa Hasil Usaha (SHU) bersih koperasi.' },
             { text: 'Tab Neraca menyajikan posisi keuangan resmi: Aktiva (Aset) vs Pasiva (Kewajiban & Ekuitas) lengkap dengan indikator keseimbangan (Balance Check).' },
+            { text: 'Tab Arus Kas (Cash Flow) menyajikan arus kas masuk & keluar dari aktivitas Operasi, Investasi, dan Pendanaan serta rekonsiliasi kas riil.' },
+            { text: 'Tab Kas & Bank memfasilitasi pencatatan Bukti Kas Masuk (BKM), Kas Keluar (BKK), dan Mutasi/Transfer Dana antar kas bank.' },
+            { text: 'Tab Buku Besar Akun memungkinkan drill-down mutasi debit/kredit dan saldo berjalan (running balance) spesifik per nomor rekening akun.' },
             { text: 'Tab Jurnal Umum digunakan untuk audit jejak transaksi debit/kredit setiap mutasi keuangan koperasi.' },
-            { text: 'Tab Neraca Saldo menampilkan rekapitulasi saldo buku besar seluruh akun akun koperasi.' },
+            { text: 'Tab Neraca Saldo menampilkan rekapitulasi saldo buku besar seluruh akun koperasi.' },
             { text: 'Tab Rekap Potongan Gaji memfasilitasi operator untuk mengunduh laporan potongan gaji bulanan dan memposting setoran massal.' }
         ]
     }), []);
@@ -689,9 +696,24 @@ const Accounting: React.FC = React.memo(() => {
                             </div>
                         )}
 
+                        {activeTab === 'cash-flow' && (
+                            <div className="p-4 sm:p-6">
+                                <CashFlowStatementReport 
+                                    coopSettings={coopSettings} 
+                                    defaultYear={currentFiscalYear?.year} 
+                                />
+                            </div>
+                        )}
+
                         {activeTab === 'expenses' && (
                             <div className="p-4 sm:p-6">
                                 <ExpenseVoucherSection />
+                            </div>
+                        )}
+
+                        {activeTab === 'ledger' && (
+                            <div className="p-4 sm:p-6">
+                                <GeneralLedgerSection />
                             </div>
                         )}
 

@@ -31,6 +31,27 @@ export default async function reportRoutes(fastify: any) {
         return reply.send({ data: report });
     });
 
+    // Get Cash Flow Statement (Laporan Arus Kas)
+    fastify.get('/arus-kas', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
+        const tenantId = getTenantId(req);
+        const { startDate, endDate } = req.query as any;
+        const start = startDate ? new Date(startDate) : undefined;
+        const end = endDate ? new Date(endDate) : undefined;
+        const report = await ReportService.getCashFlowStatement(tenantId, start, end);
+        return reply.send({ data: report });
+    });
+
+    // Get General Ledger Detail by Account Code (Buku Besar Per Akun)
+    fastify.get('/ledger/:code', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
+        const tenantId = getTenantId(req);
+        const { code } = req.params as { code: string };
+        const { startDate, endDate } = req.query as any;
+        const start = startDate ? new Date(startDate) : undefined;
+        const end = endDate ? new Date(endDate) : undefined;
+        const report = await ReportService.getGeneralLedgerByAccount(tenantId, code, start, end);
+        return reply.send({ data: report });
+    });
+
     // Get Balance Sheet (Neraca - Flattened for Accounting.tsx)
     fastify.get('/balance-sheet', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
         const tenantId = getTenantId(req);

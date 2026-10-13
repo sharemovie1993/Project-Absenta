@@ -241,7 +241,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
   * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 902 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Accounting.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Accounting.tsx) (902 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 932 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [Accounting.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/Accounting.tsx) (932 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 
