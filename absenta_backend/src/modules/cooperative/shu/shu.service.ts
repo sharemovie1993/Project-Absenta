@@ -761,6 +761,44 @@ export class ShuService {
         const startDate = new Date(activePeriod.startDate);
         const endDate = new Date(activePeriod.endDate);
 
+        // [CEK PRIORITAS 1]: Jika periode aktif ini SUDAH DIKALKULASI (CALCULATED / APPROVED / DISTRIBUTED),
+        // ambil alokasi resmi dari ShuAllocation agar angka pengurus dan member 100% SINKRON SATU ENGINE!
+        if (activePeriod.id) {
+            const existingAllocation = await prisma.shuAllocation.findFirst({
+                where: {
+                    periodId: activePeriod.id,
+                    memberId: member.id,
+                },
+            });
+
+            if (existingAllocation) {
+                const jModal = Number(existingAllocation.jasaModal);
+                const jTx = Number(existingAllocation.jasaTransaksi);
+                const tShu = Number(existingAllocation.totalShu);
+                const sModal = Number(existingAllocation.totalSimpananModal);
+                const vBelanja = Number(existingAllocation.volumeBelanja || existingAllocation.totalTransaksi);
+
+                return {
+                    enabled: true,
+                    hasActivePeriod: true,
+                    year: activePeriod.year,
+                    myTotalSimpananModal: sModal,
+                    myTotalTransaksi: Number(existingAllocation.totalTransaksi),
+                    myBelanja: vBelanja,
+                    myPinjaman: Number(existingAllocation.volumePinjaman || 0),
+                    myDeposit: Number(existingAllocation.volumeDeposit || 0),
+                    poolJasaModal: Math.round(Number(activePeriod.totalShu || 0) * (Number(activePeriod.porsiJasaModal || 30) / 100)),
+                    estimatedJasaModal: jModal,
+                    estimatedJasaTransaksi: jTx,
+                    estimatedTotalShu: tShu,
+                    isOfficialCalculated: true,
+                    status: existingAllocation.status,
+                    notes: `Alokasi SHU Tahun Buku ${activePeriod.year} telah dihitung resmi oleh Bendahara Koperasi.`
+                };
+            }
+        }
+
+        // [CEK PRIORITAS 2]: Jika belum dikalkulasi resmi, hitung proporsional berbasis pool
         // 1. Simpanan Modal Saya (POKOK + WAJIB)
         const modalCategories = await prisma.savingCategory.findMany({
             where: { tenantId, code: { in: ['POKOK', 'WAJIB'] } },
@@ -833,10 +871,26 @@ export class ShuService {
 
         const myTotalTransaksi = myBelanja + myPinjaman + myDeposit;
 
+        // Total Transaksi Gabungan Seluruh Anggota
+        let grandTotalTransaksi = 0;
+        if (activePeriod.includeStorePurchases) {
+            const allSales = await prisma.sale.aggregate({
+                where: { tenantId, date: { gte: startDate, lte: endDate } },
+                _sum: { total: true },
+            });
+            grandTotalTransaksi += Number(allSales._sum.total || 0);
+        }
+        if (activePeriod.includeLoans) {
+            const allLoans = await prisma.loan.aggregate({
+                where: { member: { tenantId }, createdAt: { gte: startDate, lte: endDate }, status: { in: ['APPROVED', 'PAID'] } },
+                _sum: { amount: true },
+            });
+            grandTotalTransaksi += Number(allLoans._sum.amount || 0);
+        }
+
         // 3. Estimasi Pendapatan & Biaya Berjalan dari Laporan
         let estimatedTotalShu = Number(activePeriod.totalShu || 0);
         if (estimatedTotalShu <= 0) {
-            // Hitung estimasi laba kotor berjalan dari toko jika belum ada totalShu statis
             const salesAgg = await prisma.sale.aggregate({
                 where: { tenantId, date: { gte: startDate, lte: endDate } },
                 _sum: { total: true },
@@ -854,8 +908,11 @@ export class ShuService {
             ? Math.round(poolJasaModal * (myTotalSimpananModal / grandTotalSimpananModal))
             : 0;
 
-        // Estimasi kasar jasa transaksi
-        const estimatedJasaTransaksi = myTotalTransaksi > 0 ? Math.round(myTotalTransaksi * 0.03) : 0;
+        // Jasa transaksi proporsional terhadap total transaksi anggota koperasi
+        const estimatedJasaTransaksi = grandTotalTransaksi > 0
+            ? Math.round(poolJasaTx * (myTotalTransaksi / grandTotalTransaksi))
+            : (myTotalTransaksi > 0 ? poolJasaTx : 0);
+
         const estimatedTotalShuMyShare = myShareModal + estimatedJasaTransaksi;
 
         return {

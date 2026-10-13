@@ -233,22 +233,40 @@ export const ShuMemberView = React.memo<ShuMemberViewProps>(({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-black uppercase tracking-wider">
                 <Sparkles size={14} className="text-amber-400 animate-pulse" />
-                Simulasi / Proyeksi SHU Berjalan Tahun {estimateData.year}
+                {estimateData.isOfficialCalculated ? (
+                  <span>Kalkulasi Resmi SHU Tahun Buku {estimateData.year}</span>
+                ) : (
+                  <span>Simulasi / Proyeksi SHU Berjalan Tahun {estimateData.year}</span>
+                )}
               </div>
               <span className="text-[11px] text-indigo-200/70 italic">
-                *Estimasi sementara sebelum RAT disahkan
+                {estimateData.isOfficialCalculated ? (
+                  <span className="inline-flex items-center gap-1.5 text-emerald-300 font-semibold not-italic">
+                    <Check size={13} className="text-emerald-400" />
+                    Terverifikasi: Hasil Perhitungan Pengurus ({estimateData.status})
+                  </span>
+                ) : (
+                  '*Estimasi sementara sebelum RAT disahkan'
+                )}
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
               <div className="space-y-1">
-                <p className="text-xs text-indigo-200/80 font-medium">Estimasi Total SHU Anda</p>
+                <p className="text-xs text-indigo-200/80 font-medium">
+                  {estimateData.isOfficialCalculated ? 'Alokasi SHU Anda' : 'Estimasi Total SHU Anda'}
+                </p>
                 <h2 className="text-2xl sm:text-3xl font-black text-amber-300 tracking-tight">
                   Rp {Number(estimateData.estimatedTotalShu || 0).toLocaleString('id-ID')}
                 </h2>
                 <p className="text-[10px] text-indigo-300/70">
                   (Modal: Rp {Number(estimateData.estimatedJasaModal || 0).toLocaleString('id-ID')} + Transaksi: Rp {Number(estimateData.estimatedJasaTransaksi || 0).toLocaleString('id-ID')})
                 </p>
+                {estimateData.notes && (
+                  <p className="text-[10px] text-indigo-200/70 pt-1 leading-relaxed">
+                    {estimateData.notes}
+                  </p>
+                )}
               </div>
 
               {/* Card 1: Simpanan Modal Saya (Clickable -> Buka Detail Simpanan) */}
