@@ -13,7 +13,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // GET /cooperative/assets (List aset dengan filter & summary)
   fastify.get(
     '/',
-    { preHandler: [requireCapability('cooperative.dashboard.view.overview')] },
+    { preHandler: [requireCapability(['cooperative.assets.view.list', 'cooperative.dashboard.view.overview'])] },
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
@@ -36,7 +36,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // GET /cooperative/assets/:id (Detail satu aset)
   fastify.get(
     '/:id',
-    { preHandler: [requireCapability('cooperative.dashboard.view.overview')] },
+    { preHandler: [requireCapability(['cooperative.assets.view.detail', 'cooperative.assets.view.list', 'cooperative.dashboard.view.overview'])] },
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
@@ -66,7 +66,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // POST /cooperative/assets (Daftarkan aset baru)
   fastify.post(
     '/',
-    { preHandler: [requireCapability('cooperative.store.products.create')] },
+    { preHandler: [requireCapability(['cooperative.assets.create', 'cooperative.dashboard.view.overview', 'cooperative.store.products.create'])] },
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
@@ -98,7 +98,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // PUT /cooperative/assets/:id (Perbarui aset)
   fastify.put(
     '/:id',
-    { preHandler: [requireCapability('cooperative.store.products.create')] },
+    { preHandler: [requireCapability(['cooperative.assets.update', 'cooperative.dashboard.view.overview', 'cooperative.store.products.create'])] },
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
@@ -122,7 +122,7 @@ export default async function assetRoutes(fastify: FastifyInstance) {
   // DELETE /cooperative/assets/:id (Hapus aset)
   fastify.delete(
     '/:id',
-    { preHandler: [requireCapability('cooperative.store.products.create')] },
+    { preHandler: [requireCapability(['cooperative.assets.delete', 'cooperative.dashboard.view.overview', 'cooperative.store.products.create'])] },
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
