@@ -360,7 +360,7 @@ export class SavingService {
         const savings = await prisma.saving.findMany({
             where: { member: { userId, tenantId } },
             include: {
-                category: { select: { id: true, code: true, name: true, color: true, defaultAmount: true } },
+                category: { select: { id: true, code: true, name: true, color: true, defaultAmount: true, isMandatory: true, isWithdrawable: true } },
             },
         });
 
@@ -433,20 +433,52 @@ export class SavingService {
         const depositedThisMonth = new Set(currentMonthTxs.map(t => t.savingId));
 
         const accountStatuses = savings.map(s => {
-            // Kategori "periodik" = yang punya defaultAmount > 0 (biasanya WAJIB, dll)
-            const isPeriodic = Number(s.category?.defaultAmount || 0) > 0;
-            const deposited  = depositedThisMonth.has(s.id);
+            const code = (s.category?.code || '').toUpperCase();
+            const defaultAmt = Number(s.category?.defaultAmount || 0);
+            const currentBalance = Number(s.amount || 0);
+            const isMandatory = s.category?.isMandatory === true;
+
+            const isPokok = code === 'POKOK';
+            const isMandatoryMonthly = !isPokok && isMandatory;
+            const isVoluntary = !isPokok && !isMandatoryMonthly;
+
+            // Logika pelunasan:
+            let isPaid = false;
+            let statusText = 'Lunas';
+            let obligationType: 'INITIAL_ONCE' | 'MONTHLY_MANDATORY' | 'VOLUNTARY' = 'VOLUNTARY';
+
+            if (isPokok) {
+                obligationType = 'INITIAL_ONCE';
+                // Simpanan Pokok: lunas jika saldo saat ini >= defaultAmount (atau > 0 jika tidak ada defaultAmount)
+                isPaid = defaultAmt > 0 ? (currentBalance >= defaultAmt) : (currentBalance > 0);
+                statusText = isPaid ? 'Lunas (Setoran Awal)' : 'Belum Lunas (Setoran Awal)';
+            } else if (isMandatoryMonthly) {
+                obligationType = 'MONTHLY_MANDATORY';
+                // Simpanan Wajib bulanan: lunas jika sudah ada DEPOSIT di bulan berjalan
+                isPaid = depositedThisMonth.has(s.id);
+                statusText = isPaid ? 'Lunas (Bulan Ini)' : 'Belum Disetor (Bulan Ini)';
+            } else {
+                obligationType = 'VOLUNTARY';
+                isPaid = true; // Sukarela tidak ada tagihan / tunggakan
+                statusText = 'Fleksibel / Sukarela';
+            }
+
             const txThisMonth = currentMonthTxs.find(t => t.savingId === s.id);
 
             return {
-                savingId:     s.id,
-                categoryCode: s.category?.code  || '',
-                categoryName: s.category?.name  || 'Simpanan',
-                categoryColor:s.category?.color || null,
-                defaultAmount:Number(s.category?.defaultAmount || 0),
-                currentBalance: Number(s.amount),
-                isPeriodic,
-                depositedThisMonth: deposited,
+                savingId:           s.id,
+                categoryCode:       s.category?.code  || '',
+                categoryName:       s.category?.name  || 'Simpanan',
+                categoryColor:      s.category?.color || null,
+                defaultAmount:      defaultAmt,
+                currentBalance,
+                obligationType,
+                isPeriodic:         isMandatoryMonthly || isPokok,
+                isMandatoryMonthly,
+                isPokok,
+                isPaid,
+                statusText,
+                depositedThisMonth: depositedThisMonth.has(s.id),
                 lastDepositAmount:  txThisMonth ? Number(txThisMonth.amount) : null,
                 lastDepositDate:    txThisMonth ? txThisMonth.date           : null,
             };

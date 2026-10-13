@@ -175,8 +175,8 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
             <div className="grid grid-cols-2 gap-4">
               {/* Default Amount */}
               <div className="space-y-1.5">
-                <label htmlFor="cat-default-amount" className="text-[10px] font-black text-slate-505 uppercase tracking-wider">
-                  Nominal Setoran Default (Rp)
+                <label htmlFor="cat-default-amount" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                  {catFormData.code?.trim().toUpperCase() === 'POKOK' ? 'Nominal Setoran Awal 1x (Rp)' : 'Nominal Setoran Default (Rp)'}
                 </label>
                 <input
                   id="cat-default-amount"
@@ -184,14 +184,14 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
                   name="defaultAmount"
                   value={catFormData.defaultAmount}
                   onChange={onInputChange}
-                  placeholder="Kosongkan jika bebas"
+                  placeholder={catFormData.code?.trim().toUpperCase() === 'POKOK' ? 'Misal: 100000' : 'Kosongkan jika bebas'}
                   className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium text-slate-800 dark:text-slate-100"
                 />
               </div>
 
               {/* Order */}
               <div className="space-y-1.5">
-                <label htmlFor="cat-order" className="text-[10px] font-black text-slate-505 uppercase tracking-wider">
+                <label htmlFor="cat-order" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                   Urutan Tampilan
                 </label>
                 <input
@@ -206,19 +206,42 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
               </div>
             </div>
 
+            {/* Banner Khusus Simpanan Pokok */}
+            {catFormData.code?.trim().toUpperCase() === 'POKOK' && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed flex items-start gap-2">
+                <span className="text-base leading-none">ℹ️</span>
+                <span>
+                  <strong>Aturan Regulasi Koperasi:</strong> Simpanan Pokok adalah ekuitas awal anggota yang disetorkan <strong>hanya 1 (satu) kali saat pertama kali mendaftar</strong>. Sesuai UU Perkoperasian, Simpanan Pokok <em>dilarang ditagihkan per bulan</em> dan tidak dapat ditarik selama masih menjadi anggota aktif.
+                </span>
+              </div>
+            )}
+
             {/* Boolean Rules */}
             <div className="p-4 border border-slate-200/50 dark:border-slate-800/80 rounded-2xl bg-slate-50/50 dark:bg-slate-950/20 space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-[11px] font-extrabold text-slate-850 dark:text-slate-200">Simpanan Wajib Bulanan?</p>
-                  <p className="text-[9px] text-slate-400">Anggota wajib menyetor nominal tertentu tiap bulan</p>
+                  <p className="text-[11px] font-extrabold text-slate-850 dark:text-slate-200 flex items-center gap-1.5">
+                    Simpanan Wajib Bulanan?
+                    {catFormData.code?.trim().toUpperCase() === 'POKOK' && (
+                      <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded font-normal">
+                        Terkunci OFF
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[9px] text-slate-400">
+                    {catFormData.code?.trim().toUpperCase() === 'POKOK'
+                      ? 'Dilarang untuk Simpanan Pokok (hanya 1x saat bergabung)'
+                      : 'Anggota wajib menyetor nominal tertentu tiap bulan'
+                    }
+                  </p>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className={`relative inline-flex items-center ${catFormData.code?.trim().toUpperCase() === 'POKOK' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                   <input 
                     type="checkbox" 
                     name="isMandatory"
-                    checked={catFormData.isMandatory}
+                    checked={catFormData.code?.trim().toUpperCase() === 'POKOK' ? false : catFormData.isMandatory}
                     onChange={onInputChange}
+                    disabled={catFormData.code?.trim().toUpperCase() === 'POKOK'}
                     className="sr-only peer" 
                   />
                   <div className="w-8 h-4 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3.5 after:transition-all dark:border-gray-650 peer-checked:bg-indigo-600" />

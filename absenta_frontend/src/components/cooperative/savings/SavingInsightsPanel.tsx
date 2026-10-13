@@ -13,7 +13,12 @@ interface AccountStatus {
   categoryColor:       string | null;
   defaultAmount:       number;
   currentBalance:      number;
+  obligationType:      'INITIAL_ONCE' | 'MONTHLY_MANDATORY' | 'VOLUNTARY';
   isPeriodic:          boolean;
+  isMandatoryMonthly:  boolean;
+  isPokok:             boolean;
+  isPaid:              boolean;
+  statusText:          string;
   depositedThisMonth:  boolean;
   lastDepositAmount:   number | null;
   lastDepositDate:     string | null;
@@ -137,13 +142,13 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
   };
 
   const periodicStatuses = useMemo(
-    () => insights?.accountStatuses?.filter(a => a.isPeriodic) ?? [],
+    () => insights?.accountStatuses?.filter(a => a.obligationType === 'MONTHLY_MANDATORY' || a.obligationType === 'INITIAL_ONCE') ?? [],
     [insights]
   );
 
   const hasPeriodic = periodicStatuses.length > 0;
-  const allPaid     = hasPeriodic && periodicStatuses.every(a => a.depositedThisMonth);
-  const anyUnpaid   = hasPeriodic && periodicStatuses.some(a => !a.depositedThisMonth);
+  const allPaid     = hasPeriodic && periodicStatuses.every(a => a.isPaid);
+  const anyUnpaid   = hasPeriodic && periodicStatuses.some(a => !a.isPaid);
   const bulanIni    = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   const trendColor  = '#6366f1';
 
@@ -300,7 +305,7 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
             }`}>
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Iuran</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Iuran & Simpanan Pokok</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize">{bulanIni}</p>
                 </div>
                 {hasPeriodic && (
@@ -315,25 +320,34 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
               </div>
 
               {hasPeriodic ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {periodicStatuses?.map(acc => {
                     const catColor = acc.categoryColor || '#6366f1';
                     return (
-                      <div key={acc.savingId} className="flex items-center justify-between">
+                      <div key={acc.savingId} className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-2">
-                          {acc.depositedThisMonth
+                          {acc.isPaid
                             ? <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
                             : <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
                           }
-                          <span className="text-[11px] font-semibold" style={{ color: catColor }}>
-                            {acc.categoryName}
-                          </span>
+                          <div>
+                            <span className="text-[11px] font-semibold" style={{ color: catColor }}>
+                              {acc.categoryName}
+                            </span>
+                            {acc.isPokok && (
+                              <span className="ml-1.5 text-[9px] text-slate-400 dark:text-slate-500 font-normal">
+                                (Setoran Awal 1x)
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="text-right">
-                          {acc.depositedThisMonth ? (
-                            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                              +Rp {(acc.lastDepositAmount ?? acc.defaultAmount).toLocaleString('id-ID')}
-                            </span>
+                          {acc.isPaid ? (
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                                {acc.isPokok ? 'Lunas' : `+Rp ${(acc.lastDepositAmount ?? acc.defaultAmount).toLocaleString('id-ID')}`}
+                              </span>
+                            </div>
                           ) : (
                             <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                               Rp {acc.defaultAmount > 0 ? acc.defaultAmount.toLocaleString('id-ID') : '—'}
@@ -345,15 +359,15 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
                   })}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 leading-relaxed italic">
                     {allPaid
-                      ? '✓ Semua iuran wajib bulan ini telah tercatat.'
-                      : '⚠️ Iuran yang belum tercatat diproses oleh Bendahara Koperasi.'
+                      ? '✓ Semua kewajiban simpanan pokok dan iuran wajib bulan ini telah lunas tercatat.'
+                      : '⚠️ Simpanan yang belum tercatat dapat disetorkan langsung melalui Bendahara Koperasi.'
                     }
                   </p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-4 text-slate-300 dark:text-slate-600">
                   <CheckCircle2 size={28} className="mb-1.5 opacity-50" />
-                  <p className="text-xs font-medium">Tidak ada iuran periodik</p>
+                  <p className="text-xs font-medium">Tidak ada kewajiban iuran</p>
                 </div>
               )}
             </div>

@@ -34,7 +34,7 @@ export class SavingCategoryService {
                 description: 'Setoran awal saat pertama kali mendaftar sebagai anggota.',
                 color: '#4F46E5', // Indigo
                 order: 1,
-                isMandatory: true,
+                isMandatory: false, // Simpanan Pokok BUKAN iuran bulanan (hanya 1x saat daftar)
                 isWithdrawable: false,
                 withdrawRule: 'MEMBERSHIP_TERMINATION',
                 defaultAmount: 100000,
@@ -125,6 +125,8 @@ export class SavingCategoryService {
         });
         if (existing) throw new Error(`Kode simpanan '${data.code}' sudah ada di koperasi ini.`);
 
+        const isPokok = data.code.toUpperCase() === 'POKOK';
+
         return prisma.savingCategory.create({
             data: {
                 tenantId,
@@ -133,11 +135,11 @@ export class SavingCategoryService {
                 description: data.description,
                 color: data.color ?? '#6B7280',
                 order: data.order ?? 99,
-                isMandatory: data.isMandatory ?? false,
-                isWithdrawable: data.isWithdrawable ?? true,
-                withdrawRule: data.withdrawRule ?? 'ANYTIME',
+                isMandatory: isPokok ? false : (data.isMandatory ?? false),
+                isWithdrawable: isPokok ? false : (data.isWithdrawable ?? true),
+                withdrawRule: isPokok ? 'MEMBERSHIP_TERMINATION' : (data.withdrawRule ?? 'ANYTIME'),
                 defaultAmount: data.defaultAmount ?? null,
-                isIncludedInShu: data.isIncludedInShu ?? false,
+                isIncludedInShu: isPokok ? true : (data.isIncludedInShu ?? false),
                 accountCode: data.accountCode ?? '2010',
                 isActive: true,
             },
@@ -157,6 +159,9 @@ export class SavingCategoryService {
             if (conflict) throw new Error(`Kode simpanan '${data.code}' sudah digunakan.`);
         }
 
+        const isPokok = (data.code?.toUpperCase() || category.code) === 'POKOK';
+        const effectiveIsMandatory = isPokok ? false : data.isMandatory;
+
         return prisma.savingCategory.update({
             where: { id },
             data: {
@@ -164,11 +169,11 @@ export class SavingCategoryService {
                 ...(data.description !== undefined && { description: data.description }),
                 ...(data.color && { color: data.color }),
                 ...(data.order !== undefined && { order: data.order }),
-                ...(data.isMandatory !== undefined && { isMandatory: data.isMandatory }),
-                ...(data.isWithdrawable !== undefined && { isWithdrawable: data.isWithdrawable }),
-                ...(data.withdrawRule && { withdrawRule: data.withdrawRule }),
+                ...(effectiveIsMandatory !== undefined && { isMandatory: effectiveIsMandatory }),
+                ...(data.isWithdrawable !== undefined && { isWithdrawable: isPokok ? false : data.isWithdrawable }),
+                ...(data.withdrawRule && { withdrawRule: isPokok ? 'MEMBERSHIP_TERMINATION' : data.withdrawRule }),
                 ...(data.defaultAmount !== undefined && { defaultAmount: data.defaultAmount }),
-                ...(data.isIncludedInShu !== undefined && { isIncludedInShu: data.isIncludedInShu }),
+                ...(data.isIncludedInShu !== undefined && { isIncludedInShu: isPokok ? true : data.isIncludedInShu }),
                 ...(data.accountCode && { accountCode: data.accountCode }),
                 ...(data.code && { code: data.code.toUpperCase() }),
             },
