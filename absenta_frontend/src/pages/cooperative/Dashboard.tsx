@@ -95,6 +95,7 @@ const Dashboard: React.FC = React.memo(() => {
       const statsRes = await api.get('/cooperative/dashboard/stats');
       const raw = statsRes.data?.data || {};
       return {
+        ...raw,
         totalMembers: Number(raw.totalMembers) || 0,
         totalSavings: Number(raw.totalSavings) || 0,
         totalLoans: Number(raw.totalLoans) || 0,
@@ -278,7 +279,7 @@ const Dashboard: React.FC = React.memo(() => {
               <CoopManagementDashboard
                 stats={stats}
                 loadingStats={loadingStats}
-                chartData={chartData}
+                chartData={stats.monthlyTrend || chartData}
                 announcements={announcements}
                 criticalStock={criticalStock}
                 criticalStockLoading={criticalStockLoading}
