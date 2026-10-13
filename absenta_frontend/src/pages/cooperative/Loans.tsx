@@ -23,6 +23,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
+import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -585,8 +586,9 @@ const Loans: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="coop_loans"
         topSlot={
-          canApply && (
-            <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+            <CoopFiscalYearSelector />
+            {canApply && (
               <Button
                 variant="toolbarPrimary"
                 size="toolbar"
@@ -596,8 +598,8 @@ const Loans: React.FC = React.memo(() => {
                 <Plus className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{isOperatorMode ? 'Input Pinjaman Anggota' : 'Ajukan Pinjaman'}</span>
               </Button>
-            </div>
-          )
+            )}
+          </div>
         }
         instruction={{
           title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Pinjaman Anggota",

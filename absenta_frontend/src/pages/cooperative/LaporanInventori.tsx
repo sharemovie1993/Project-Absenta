@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
+import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 
 const SearchableSelect = lazy(() => import('../../components/ui/SearchableSelect').then(m => ({ default: m.SearchableSelect })));
 
@@ -263,6 +264,11 @@ const LaporanInventori: React.FC = React.memo(() => {
         description="Laporan stok barang, nilai persediaan, dan rekap transaksi barang masuk."
         hardeningModuleKey="coop_laporaninventori"
         breadcrumbs={breadcrumbs}
+        topSlot={
+          <div className="flex items-center justify-end w-full sm:w-auto">
+            <CoopFiscalYearSelector />
+          </div>
+        }
         instruction={{
           title: 'Panduan Laporan Persediaan',
           description: 'Gunakan laporan ini untuk memantau kondisi stok, nilai modal persediaan, dan riwayat pengadaan barang koperasi.',

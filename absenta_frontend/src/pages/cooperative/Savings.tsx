@@ -21,6 +21,7 @@ import {
   useSavingsState
 } from '../../components/cooperative/savings';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
+import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 
 // Lazy-loaded sub-components per hardening rule #3
 const SavingExportModal = lazy(() => import('../../components/cooperative/savings/SavingExportModal').then(module => ({ default: module.SavingExportModal })));
@@ -166,6 +167,11 @@ const Savings: React.FC = React.memo(() => {
         }
         hardeningModuleKey="coop_savings"
         breadcrumbs={breadcrumbs}
+        topSlot={
+          <div className="flex items-center justify-end w-full sm:w-auto">
+            <CoopFiscalYearSelector />
+          </div>
+        }
         instruction={{
           title: isPersonalMode ? 'Panduan Tabungan Saya' : 'Panduan Manajemen Simpanan',
           description: isPersonalMode
