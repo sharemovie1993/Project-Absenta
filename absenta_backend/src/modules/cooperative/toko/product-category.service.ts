@@ -18,45 +18,72 @@ export class ProductCategoryService {
    */
   static async ensureDefaultCategories(tenantId: string, tx?: any) {
     const client = tx || prisma;
-    const count = await client.productCategory.count({ where: { tenantId } });
-    if (count >= 6) return; // All default categories are already set up
-
     const defaults = [
       {
         code: 'MAKANAN',
         name: 'Makanan',
-        description: 'Kategori produk makanan ringan, instan, bumbu, camilan, dll.',
+        description: 'Makanan ringan, camilan, roti, dan makanan siap saji.',
         order: 1,
       },
       {
         code: 'MINUMAN',
         name: 'Minuman',
-        description: 'Kategori produk air mineral, teh, kopi, jus, soda, dll.',
+        description: 'Air mineral, teh, susu, jus, dan aneka minuman.',
         order: 2,
+      },
+      {
+        code: 'ALAT_TULIS',
+        name: 'Alat Tulis',
+        description: 'Buku tulis, pulpen, pensil, penggaris, map, dan ATK.',
+        order: 3,
+      },
+      {
+        code: 'SERAGAM',
+        name: 'Seragam',
+        description: 'Seragam sekolah, baju olahraga, pramuka, topi, dasi, dan atribut.',
+        order: 4,
+      },
+      {
+        code: 'KACAMATA',
+        name: 'Kacamata & Optik',
+        description: 'Frame kacamata, lensa, pembersih, dan kerja sama optik luar.',
+        order: 5,
+      },
+      {
+        code: 'ELEKTRONIK',
+        name: 'Elektronik',
+        description: 'Kalkulator, flashdisk, mouse, headset, kabel charger, dan baterai.',
+        order: 6,
+      },
+      {
+        code: 'BUKU',
+        name: 'Buku Pelajaran',
+        description: 'Buku paket kurikulum, modul ajar, LKS, dan kamus.',
+        order: 7,
       },
       {
         code: 'KEBUTUHAN_HARIAN',
         name: 'Kebutuhan Harian',
-        description: 'Kategori produk sabun, sampo, pasta gigi, detergen, dll.',
-        order: 3,
-      },
-      {
-        code: 'ALAT_TULIS',
-        name: 'Alat Tulis & Kantor',
-        description: 'Kategori produk buku tulis, pulpen, pensil, penghapus, map, dll.',
-        order: 4,
+        description: 'Sabun, sampo, pasta gigi, tisu, dan perlengkapan harian.',
+        order: 8,
       },
       {
         code: 'KESEHATAN',
         name: 'Kesehatan & Obat',
-        description: 'Kategori produk obat-obatan bebas, suplemen, plester, masker, dll.',
-        order: 5,
+        description: 'Minyak kayu putih, plester, masker, vitamin, dan obat P3K.',
+        order: 9,
+      },
+      {
+        code: 'KARYA_SISWA',
+        name: 'Karya Siswa',
+        description: 'Produk kreatif jurusan/teaching factory dan merchandise sekolah.',
+        order: 10,
       },
       {
         code: 'LAIN_LAIN',
         name: 'Lain-lain',
-        description: 'Kategori produk umum lainnya yang tidak masuk kelompok utama.',
-        order: 6,
+        description: 'Barang umum lainnya yang belum masuk kategori khusus.',
+        order: 11,
       }
     ];
 
