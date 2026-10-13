@@ -387,9 +387,14 @@ export const CoopManagementDashboard: React.FC<CoopManagementDashboardProps> = R
                     <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
                     <YAxis 
+                      width={65}
                       axisLine={false} 
                       tickLine={false} 
-                      tickFormatter={(val) => val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : `${val / 1000}K`}
+                      tickFormatter={(val) => {
+                        if (val === 0) return 'Rp 0';
+                        if (val >= 1000000) return `${(val / 1000000).toLocaleString('id-ID')} Jt`;
+                        return `${(val / 1000).toLocaleString('id-ID')} Rb`;
+                      }}
                       tick={{ fontSize: 11 }}
                     />
                     <Tooltip
