@@ -12,6 +12,7 @@ import {
   MobilePOSView,
   SalesHistoryTable
 } from '../../components/cooperative/pos';
+import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 
 // Lazy-loaded heavy components for bundle optimization
 const PaymentModal = lazy(() => import('../../components/cooperative/pos/PaymentModal').then(module => ({ default: module.PaymentModal })));
@@ -158,6 +159,7 @@ const POS: React.FC = React.memo(() => {
         description={pageDesc}
         hardeningModuleKey="coop_pos"
         breadcrumbs={breadcrumbs}
+        topSlot={<CoopFiscalYearSelector className="mb-2" />}
         instruction={instruction}
       >
         {isMobile && hasCashierAccess ? (

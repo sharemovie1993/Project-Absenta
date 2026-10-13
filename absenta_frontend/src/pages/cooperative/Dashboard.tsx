@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import type { CriticalStockItem, Announcement, Sale, SaleItem, CoopUserInfo } from '@/components/cooperative/types';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 
 const CoopTvMode = lazy(() => import('./components/CoopTvMode').then(m => ({ default: m.CoopTvMode })));
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
@@ -239,6 +240,7 @@ const Dashboard: React.FC = React.memo(() => {
         topSlot={
           <div className="space-y-3">
             <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />
+            <CoopFiscalYearSelector showSetDefaultButton />
             <div className="flex justify-end">
               <TvModeToggle />
             </div>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
 import { Button } from '../../ui';
-import { X, RefreshCw } from 'lucide-react';
+import { X, RefreshCw, Percent, Sliders } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 interface PeriodFormModalProps {
@@ -210,6 +210,17 @@ export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClo
                 </span>
               </div>
             )}
+
+            {/* Kebijakan RAT Tahun Buku (Auto-Snapshot) */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-300">
+                <Sliders size={13} className="text-indigo-600" />
+                <span>Aturan Kebijakan RAT Otomatis Terkunci</span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Periode ini akan otomatis membuat snapshot dari aturan RAT aktif (Jasa Modal, Jasa Transaksi, dan Komponen Belanja/Pinjaman). Aturan ini dapat disesuaikan pada detail periode selama berstatus DRAFT.
+              </p>
+            </div>
           </div>
 
           {/* Action Buttons */}

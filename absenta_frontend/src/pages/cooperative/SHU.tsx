@@ -699,7 +699,16 @@ const SHUPage: React.FC = React.memo(() => {
                     {periods?.map((p, idx) => (
                       <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20 transition-colors">
                         <td className="p-4 text-center font-bold text-slate-400">{idx + 1}</td>
-                        <td className="p-4 text-center font-extrabold text-slate-800 dark:text-slate-100">{p.year}</td>
+                        <td className="p-4 text-center">
+                          <span className="font-extrabold text-slate-800 dark:text-slate-100 text-sm block">
+                            {p.year}
+                          </span>
+                          {p.isActive && (
+                            <span className="inline-block mt-0.5 px-2 py-0.2 text-[8px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-500/20 rounded-md">
+                              TAHUN BUKU AKTIF
+                            </span>
+                          )}
+                        </td>
                         <td className="p-4 font-medium text-slate-600 dark:text-slate-400">
                           {formatDate(p.startDate, { day: '2-digit', month: 'short' })} s.d{' '}
                           {formatDate(p.endDate, { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -721,7 +730,7 @@ const SHUPage: React.FC = React.memo(() => {
                           </span>
                         </td>
                         <td className="p-4 text-center">
-                          <div className="flex justify-center items-center gap-2">
+                          <div className="flex justify-center items-center gap-1.5 flex-wrap">
                             <Button
                               onClick={() => setSelectedPeriodId(p.id)}
                               size="xs"
@@ -730,6 +739,26 @@ const SHUPage: React.FC = React.memo(() => {
                             >
                               <Eye size={10} /> Kelola SHU <ArrowUpRight size={10} />
                             </Button>
+
+                            {canManageShu && !p.isActive && (
+                              <Button
+                                onClick={async () => {
+                                  try {
+                                    await api.post(`/cooperative/shu/periods/${p.id}/set-active`);
+                                    toast.success(`Tahun Buku ${p.year} berhasil diset sebagai Tahun Aktif!`);
+                                    queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
+                                  } catch (err: any) {
+                                    toast.error(err?.response?.data?.message || 'Gagal mengubah tahun aktif');
+                                  }
+                                }}
+                                size="xs"
+                                variant="outline"
+                                className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-bold inline-flex items-center gap-1 text-[10px]"
+                              >
+                                Set Aktif
+                              </Button>
+                            )}
+
                             {canManageShu && (p.status === 'DRAFT' || p.status === 'CALCULATED') && (
                               <Button
                                 onClick={() => handleDeletePeriod(p.id, p.year)}
