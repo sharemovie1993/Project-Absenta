@@ -501,6 +501,28 @@ export class SavingService {
 
         const depositedThisMonth = new Set(currentMonthTxs.map(t => t.savingId));
 
+        // Ambil data Tahun Buku Aktif untuk agregat setoran tahunan
+        const { FiscalYearGuard } = await import('../fiscal-year.guard');
+        const activeFiscalYear = await FiscalYearGuard.getActiveFiscalYear(tenantId);
+        const currentYear = new Date().getFullYear();
+        const fyStartDate = activeFiscalYear?.startDate ? new Date(activeFiscalYear.startDate) : new Date(currentYear, 0, 1);
+        const fyEndDate   = activeFiscalYear?.endDate   ? new Date(activeFiscalYear.endDate)   : new Date(currentYear, 11, 31, 23, 59, 59);
+
+        const fiscalDeposits = await prisma.savingTransaction.groupBy({
+            by: ['savingId'],
+            where: {
+                savingId: { in: savingIds },
+                type: 'DEPOSIT',
+                date: { gte: fyStartDate, lte: fyEndDate },
+            },
+            _sum: { amount: true },
+        });
+
+        const fiscalDepositMap = new Map<string, number>();
+        fiscalDeposits.forEach(fd => {
+            fiscalDepositMap.set(fd.savingId, Number(fd._sum.amount || 0));
+        });
+
         const accountStatuses = savings.map(s => {
             const code = (s.category?.code || '').toUpperCase();
             const defaultAmt = Number(s.category?.defaultAmount || 0);
@@ -510,6 +532,9 @@ export class SavingService {
             const isPokok = code === 'POKOK';
             const isMandatoryMonthly = !isPokok && isMandatory;
             const isVoluntary = !isPokok && !isMandatoryMonthly;
+            const fyDeposit = fiscalDepositMap.get(s.id) || 0;
+            const targetAnnual = (defaultAmt > 0 ? defaultAmt : 20000) * 12;
+            const isFullYearPaid = isMandatoryMonthly && (fyDeposit >= targetAnnual || currentBalance >= targetAnnual);
 
             // Logika pelunasan:
             let isPaid = false;
@@ -523,9 +548,11 @@ export class SavingService {
                 statusText = isPaid ? 'Lunas (Setoran Awal)' : 'Belum Lunas (Setoran Awal)';
             } else if (isMandatoryMonthly) {
                 obligationType = 'MONTHLY_MANDATORY';
-                // Simpanan Wajib bulanan: lunas jika sudah ada DEPOSIT di bulan berjalan
-                isPaid = depositedThisMonth.has(s.id);
-                statusText = isPaid ? 'Lunas (Bulan Ini)' : 'Belum Disetor (Bulan Ini)';
+                // Simpanan Wajib bulanan: lunas jika sudah ada DEPOSIT di bulan berjalan ATAU lunas penuh 1 tahun
+                isPaid = isFullYearPaid || depositedThisMonth.has(s.id);
+                statusText = isFullYearPaid 
+                    ? 'Lunas Penuh (1 Tahun Buku)' 
+                    : (isPaid ? 'Lunas (Bulan Ini)' : 'Belum Disetor (Bulan Ini)');
             } else {
                 obligationType = 'VOLUNTARY';
                 isPaid = true; // Sukarela tidak ada tagihan / tunggakan
@@ -541,6 +568,8 @@ export class SavingService {
                 categoryColor:      s.category?.color || null,
                 defaultAmount:      defaultAmt,
                 currentBalance,
+                fiscalYearDepositAmount: fyDeposit,
+                isFullYearPaid,
                 obligationType,
                 isPeriodic:         isMandatoryMonthly || isPokok,
                 isMandatoryMonthly,

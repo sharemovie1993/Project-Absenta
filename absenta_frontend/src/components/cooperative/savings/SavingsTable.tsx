@@ -218,7 +218,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
           }
 
           return (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col items-start gap-0.5">
               <span className="font-extrabold text-blue-600 dark:text-blue-400">
                 Rp {numAmount.toLocaleString('id-ID')}
               </span>

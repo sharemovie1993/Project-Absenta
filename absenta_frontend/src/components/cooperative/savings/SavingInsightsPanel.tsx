@@ -18,6 +18,8 @@ interface AccountStatus {
   isMandatoryMonthly:  boolean;
   isPokok:             boolean;
   isPaid:              boolean;
+  isFullYearPaid?:     boolean;
+  fiscalYearDepositAmount?: number;
   statusText:          string;
   depositedThisMonth:  boolean;
   lastDepositAmount:   number | null;
@@ -343,10 +345,20 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
                         </div>
                         <div className="text-right">
                           {acc.isPaid ? (
-                            <div className="flex items-center gap-1 justify-end">
+                            <div className="flex flex-col items-end gap-0.5 justify-end">
                               <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                                {acc.isPokok ? 'Lunas' : `+Rp ${(acc.lastDepositAmount ?? acc.defaultAmount).toLocaleString('id-ID')}`}
+                                {acc.isPokok
+                                  ? 'Lunas'
+                                  : acc.isFullYearPaid
+                                  ? '🌟 Lunas 1 Tahun'
+                                  : `+Rp ${(acc.lastDepositAmount ?? acc.defaultAmount).toLocaleString('id-ID')}`
+                                }
                               </span>
+                              {!acc.isPokok && !acc.isFullYearPaid && (
+                                <span className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 font-normal">
+                                  ✓ Bulan Ini
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
@@ -359,7 +371,9 @@ export const SavingInsightsPanel: React.FC = React.memo(() => {
                   })}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 pt-1 leading-relaxed italic">
                     {allPaid
-                      ? '✓ Semua kewajiban simpanan pokok dan iuran wajib bulan ini telah lunas tercatat.'
+                      ? (periodicStatuses?.some(a => a.isFullYearPaid)
+                          ? '✓ Seluruh kewajiban simpanan pokok dan simpanan wajib tahun ini telah lunas tercatat.'
+                          : '✓ Semua kewajiban simpanan pokok dan iuran wajib bulan ini telah lunas tercatat.')
                       : '⚠️ Simpanan yang belum tercatat dapat disetorkan langsung melalui Bendahara Koperasi.'
                     }
                   </p>
