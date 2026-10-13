@@ -420,8 +420,9 @@ async function main() {
     // --- KOPERASI ---
     {
       label: 'KOPERASI', icon: 'ShoppingCart', path: null, required_features: ['KOPERASI'], order: 40, children: [
-        // Klaster 1: Layanan Anggota Pribadi
+        // Klaster 1: Layanan Anggota & Simpan Pinjam
         { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.members.view.list, cooperative.reports.view.financial, cooperative.store.orders.manage' },
+        { label: 'Data Anggota', icon: 'Users', path: '/cooperative/members', required_capability: 'cooperative.members.view.list' },
         { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.history, cooperative.savings.deposit' },
         { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.apply, cooperative.loans.approve' },
         { label: 'Laba SHU', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.savings.view.history, cooperative.shu.view.report' },
@@ -432,11 +433,14 @@ async function main() {
         // Klaster 2: Toko, Kantin & Kasir POS
         { label: 'Katalog Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
         { label: 'Kasir Toko', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage, cooperative.store.transactions.view' },
+        { label: 'Voucher & Promo', icon: 'Tag', path: '/cooperative/vouchers', required_capability: 'cooperative.points.view, cooperative.vouchers.view.list, cooperative.vouchers.manage' },
+        { label: 'Data Supplier', icon: 'Building2', path: '/cooperative/suppliers', required_capability: 'cooperative.store.products.view.list' },
         { label: 'PPOB & Pulsa', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products' },
         // Divider 2
         { label: 'divider', icon: null, path: null },
         // Klaster 3: Manajemen & Pengaturan
-        { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial, cooperative.settings.view' },
+        { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial' },
+        { label: 'Pengaturan', icon: 'Settings', path: '/cooperative/settings', required_capability: 'cooperative.settings.view' },
       ]
     },
 
