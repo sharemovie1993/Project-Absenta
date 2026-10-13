@@ -5,4 +5,7 @@ export { IncomeStatementReport } from './IncomeStatementReport';
 export { BalanceSheetReport } from './BalanceSheetReport';
 export { ExpenseVoucherSection } from './ExpenseVoucherSection';
 export { ExpenseFormModal } from './ExpenseFormModal';
+export { DepositFormModal } from './DepositFormModal';
+export { TransferFormModal } from './TransferFormModal';
+
 

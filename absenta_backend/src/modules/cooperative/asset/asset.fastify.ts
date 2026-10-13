@@ -164,4 +164,31 @@ export default async function assetRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // POST /cooperative/assets/depreciate (Eksekusi penyusutan aset bulanan)
+  fastify.post(
+    '/depreciate',
+    { preHandler: [requireCapability(['cooperative.assets.create', 'cooperative.dashboard.view.overview', 'cooperative.reports.view.financial'])] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const { year, month } = req.body || {};
+        const y = year ? Number(year) : new Date().getFullYear();
+        const m = month ? Number(month) : new Date().getMonth() + 1;
+
+        const result = await AssetService.runMonthlyDepreciation(tenantId, y, m);
+        return reply.status(200).send({
+          success: true,
+          message: `Penyusutan periode ${result.period} berhasil dibukukan (${result.assetCount} aset, Total Beban Susut: Rp ${result.totalDepreciation.toLocaleString('id-ID')})`,
+          data: result
+        });
+      } catch (error: any) {
+        appLogger.error({ err: error }, '[AssetRoutes] Gagal menjalankan penyusutan aset');
+        return reply.status(500).send({
+          success: false,
+          message: error.message || 'Gagal menjalankan penyusutan aset'
+        });
+      }
+    }
+  );
 }

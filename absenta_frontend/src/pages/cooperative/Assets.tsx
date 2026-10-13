@@ -11,7 +11,8 @@ import {
   Edit, 
   Trash2,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Calculator
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -173,6 +174,44 @@ const AssetsPage: React.FC = React.memo(() => {
       syncMutation.mutate();
     }
   }, [confirm, syncMutation]);
+
+  // Monthly Depreciation Run Mutation
+  const depreciationMutation = useMutation({
+    mutationFn: async () => {
+      const now = new Date();
+      const res = await api.post('/cooperative/assets/depreciate', {
+        year: now.getFullYear(),
+        month: now.getMonth() + 1,
+      });
+      return res.data;
+    },
+    onSuccess: (res: { message?: string }) => {
+      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-income-statement'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-journals'] });
+      toast.success(res?.message || 'Penyusutan aset periode ini berhasil dibukukan');
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err.response?.data?.message || 'Gagal memproses penyusutan aset');
+    }
+  });
+
+  const handleRunDepreciation = useCallback(async () => {
+    const now = new Date();
+    const periodName = `${now.toLocaleString('id-ID', { month: 'long' })} ${now.getFullYear()}`;
+    const isConfirmed = await confirm({
+      title: 'Hitung & Bukukan Penyusutan Aset',
+      message: `Apakah Anda ingin menghitung dan membukukan ayat jurnal penyesuaian beban penyusutan (Straight-Line) untuk seluruh aset aktif periode ${periodName}?`,
+      confirmText: 'Proses Penyusutan',
+      cancelText: 'Batal',
+      type: 'info',
+    });
+
+    if (isConfirmed) {
+      depreciationMutation.mutate();
+    }
+  }, [confirm, depreciationMutation]);
 
   const handleOpenEdit = useCallback((asset: CoopAssetItem) => {
     setSelectedAsset(asset);
@@ -434,6 +473,17 @@ const AssetsPage: React.FC = React.memo(() => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRunDepreciation}
+                      disabled={depreciationMutation.isPending}
+                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      title="Hitung dan posting beban penyusutan garis lurus bulan ini"
+                    >
+                      <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : ''} />
+                      <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan'}</span>
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

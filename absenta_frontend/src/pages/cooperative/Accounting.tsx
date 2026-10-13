@@ -85,7 +85,7 @@ const Accounting: React.FC = React.memo(() => {
     const tabOptions: TabOption[] = useMemo(() => [
         { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
         { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
-        { id: 'expenses', label: 'Kas Keluar & Beban (BKK)', icon: Receipt },
+        { id: 'expenses', label: 'Kas & Bank (BKK/BKM/TRF)', icon: Receipt },
         { id: 'journal', label: 'Jurnal Umum', icon: BookOpen },
         { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar }

@@ -179,15 +179,15 @@ export class ExpenseService {
       // 2. Double-Entry Journaling: Debit Beban, Kredit Kas/Bank
       const journalDescription = `[BKK] ${categoryName} - ${data.description}${data.payee ? ` (Penerima: ${data.payee})` : ''}`;
       const journal = await AccountingService.createJournalEntry(
-        tx,
         tenantId,
-        date,
         journalDescription,
         voucherNumber,
         [
           { accountCode: debitAccountCode, amount, type: 'DEBIT' },
           { accountCode: creditAccountCode, amount, type: 'CREDIT' },
-        ]
+        ],
+        tx,
+        date
       );
 
       // Hubungkan ID jurnal ke bukti kas keluar

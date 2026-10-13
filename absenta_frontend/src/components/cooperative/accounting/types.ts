@@ -99,3 +99,49 @@ export interface CoopExpenseFormData {
     description: string;
     receiptImageUrl?: string;
 }
+
+export interface CoopDepositItem {
+    id: string;
+    voucherNumber: string;
+    date: string;
+    amount: number;
+    accountCode: string;
+    accountName: string;
+    receivedVia: 'CASH' | 'BANK_TRANSFER';
+    payer: string | null;
+    description: string;
+    receiptImageUrl?: string | null;
+    journalId?: string | null;
+    createdAt?: string;
+}
+
+export interface CoopDepositFormData {
+    date: string;
+    amount: number;
+    accountCode: string;
+    accountName?: string;
+    receivedVia: 'CASH' | 'BANK_TRANSFER';
+    payer?: string;
+    description: string;
+    receiptImageUrl?: string;
+}
+
+export interface CoopTransferItem {
+    id: string;
+    voucherNumber: string;
+    date: string;
+    amount: number;
+    fromAccountCode: '1010' | '1011';
+    toAccountCode: '1010' | '1011';
+    description: string;
+    journalId?: string | null;
+    createdAt?: string;
+}
+
+export interface CoopTransferFormData {
+    date: string;
+    amount: number;
+    fromAccountCode: '1010' | '1011';
+    toAccountCode: '1010' | '1011';
+    description: string;
+}

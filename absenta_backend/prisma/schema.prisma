@@ -97,6 +97,8 @@ model Tenant {
   CoopPointTransaction CoopPointTransaction[]
   CoopAsset            CoopAsset[]
   CoopExpense          CoopExpense[]
+  CoopCashDeposit      CoopCashDeposit[]
+  CoopFundTransfer     CoopFundTransfer[]
 
   organizationalPositions   OrganizationalPosition[]
   organizationalAssignments OrganizationalAssignment[]
@@ -3245,6 +3247,50 @@ model CoopExpense {
   @@unique([tenantId, voucherNumber])
   @@index([tenantId, date])
   @@index([tenantId, categoryCode])
+}
+
+model CoopCashDeposit {
+  id              String   @id @default(uuid())
+  tenantId        String
+  voucherNumber   String   // Contoh: BKM-202610-0001
+  date            DateTime
+  amount          Decimal  @default(0) @db.Decimal(15, 2)
+  accountCode     String   // '4030', '4040', '4090', '3020'
+  accountName     String
+  receivedVia     String   @default("CASH") // CASH (1010) | BANK_TRANSFER (1011)
+  payer           String?  // Pihak penyetor / sumber dana
+  description     String
+  receiptImageUrl String?
+  journalId       String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  Tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, voucherNumber])
+  @@index([tenantId, date])
+  @@index([tenantId, accountCode])
+}
+
+model CoopFundTransfer {
+  id              String   @id @default(uuid())
+  tenantId        String
+  voucherNumber   String   // Contoh: TRF-202610-0001
+  date            DateTime
+  amount          Decimal  @default(0) @db.Decimal(15, 2)
+  fromAccountCode String   // '1010' | '1011'
+  toAccountCode   String   // '1010' | '1011'
+  description     String
+  journalId       String?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  Tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, voucherNumber])
+  @@index([tenantId, date])
 }
 
 enum ShuStatus {

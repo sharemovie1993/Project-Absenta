@@ -340,4 +340,104 @@ export class AssetService {
     appLogger.info({ tenantId, syncedCount, totalSyncedValue }, '[AssetService] Selesai sinkronisasi aset ke neraca');
     return { syncedCount, totalSyncedValue };
   }
+
+  /**
+   * Menghitung dan membukukan penyusutan bulanan seluruh aset aktif (Straight-Line Method)
+   */
+  static async runMonthlyDepreciation(tenantId: string, year: number, month: number) {
+    const y = Number(year);
+    const m = Number(month);
+    const periodStr = `${y}-${String(m).padStart(2, '0')}`;
+    const voucherNumber = `AJP-DEP-${periodStr.replace('-', '')}`;
+
+    await AccountingService.getOrCreateDefaultAccounts(tenantId);
+    await AccountingService.resolveAccountId(tenantId, '5030', 'Beban Penyusutan Aktiva Tetap');
+    await AccountingService.resolveAccountId(tenantId, '1520', 'Akumulasi Penyusutan Aktiva Tetap');
+
+    // Cek idempotensi
+    const existingJournal = await prisma.journal.findFirst({
+      where: { tenantId, reference: voucherNumber }
+    });
+
+    if (existingJournal) {
+      throw new Error(`Penyusutan aset periode ${periodStr} sudah pernah diposting (${voucherNumber}).`);
+    }
+
+    const assets = await prisma.coopAsset.findMany({
+      where: {
+        tenantId,
+        status: 'IN_USE',
+        purchasePrice: { gt: 0 }
+      }
+    });
+
+    if (assets.length === 0) {
+      return {
+        period: periodStr,
+        voucherNumber,
+        assetCount: 0,
+        totalDepreciation: 0,
+        message: 'Tidak ada aset aktif yang memerlukan penyusutan'
+      };
+    }
+
+    let totalMonthlyDepreciation = 0;
+    const details = [];
+
+    for (const asset of assets) {
+      const price = Number(asset.purchasePrice || 0);
+      const salvage = Number(asset.salvageValue || 0);
+      const usefulMonths = Number(asset.usefulLifeMonths || 48);
+
+      if (price <= salvage || usefulMonths <= 0) continue;
+
+      const monthlyDepr = Math.round((price - salvage) / usefulMonths);
+      if (monthlyDepr > 0) {
+        totalMonthlyDepreciation += monthlyDepr;
+        details.push({
+          code: asset.code,
+          name: asset.name,
+          monthlyDepreciation: monthlyDepr
+        });
+      }
+    }
+
+    if (totalMonthlyDepreciation <= 0) {
+      return {
+        period: periodStr,
+        voucherNumber,
+        assetCount: 0,
+        totalDepreciation: 0,
+        message: 'Nilai penyusutan aset periode ini adalah Rp 0'
+      };
+    }
+
+    const date = new Date(y, m - 1, 28);
+    const journalDescription = `[AJP] Penyusutan Aktiva Tetap Koperasi Periode ${periodStr} (${details.length} aset)`;
+
+    const journal = await prisma.$transaction(async (tx) => {
+      return AccountingService.createJournalEntry(
+        tenantId,
+        journalDescription,
+        voucherNumber,
+        [
+          { accountCode: '5030', amount: totalMonthlyDepreciation, type: 'DEBIT' },
+          { accountCode: '1520', amount: totalMonthlyDepreciation, type: 'CREDIT' },
+        ],
+        tx,
+        date
+      );
+    });
+
+    appLogger.info({ tenantId, periodStr, totalMonthlyDepreciation, assetCount: details.length }, '[AssetService] Berhasil membukukan depresiasi bulanan');
+
+    return {
+      period: periodStr,
+      voucherNumber,
+      assetCount: details.length,
+      totalDepreciation: totalMonthlyDepreciation,
+      journalId: journal?.id,
+      details
+    };
+  }
 }
