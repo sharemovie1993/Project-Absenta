@@ -191,4 +191,32 @@ export default async function assetRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  // GET /cooperative/assets/depreciation-status (Cek status penyusutan bulan berjalan)
+  fastify.get(
+    '/depreciation-status',
+    { preHandler: [requireCapability(['cooperative.assets.view.list', 'cooperative.dashboard.view.overview', 'cooperative.reports.view.financial'])] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const { year, month } = req.query as { year?: string; month?: string };
+        const result = await AssetService.getDepreciationStatus(
+          tenantId,
+          year ? Number(year) : undefined,
+          month ? Number(month) : undefined
+        );
+        return reply.status(200).send({
+          success: true,
+          message: 'Status penyusutan aset koperasi',
+          data: result
+        });
+      } catch (error: any) {
+        appLogger.error({ err: error }, '[AssetRoutes] Gagal memuat status penyusutan aset');
+        return reply.status(500).send({
+          success: false,
+          message: error.message || 'Gagal memuat status penyusutan aset'
+        });
+      }
+    }
+  );
 }

@@ -12,7 +12,8 @@ import {
   Trash2,
   Filter,
   RefreshCw,
-  Calculator
+  Calculator,
+  CheckCircle2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { z } from 'zod';
@@ -175,18 +176,50 @@ const AssetsPage: React.FC = React.memo(() => {
     }
   }, [confirm, syncMutation]);
 
+  // Current Period for Monthly Depreciation Guard
+  const currentPeriod = useMemo(() => {
+    const now = new Date();
+    return {
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      monthName: now.toLocaleString('id-ID', { month: 'long' }),
+    };
+  }, []);
+
+  // Depreciation Status Query (Monthly Idempotency Guard)
+  const deprStatusQuery = useQuery({
+    queryKey: ['cooperative-asset-depreciation-status', currentPeriod.year, currentPeriod.month],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/assets/depreciation-status', {
+        params: { year: currentPeriod.year, month: currentPeriod.month },
+      });
+      return res.data?.data as {
+        year: number;
+        month: number;
+        period: string;
+        isDepreciated: boolean;
+        voucherNumber: string;
+        postedAt: string | null;
+        totalDepreciation: number;
+      };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isAlreadyDepreciated = !!deprStatusQuery.data?.isDepreciated;
+
   // Monthly Depreciation Run Mutation
   const depreciationMutation = useMutation({
     mutationFn: async () => {
-      const now = new Date();
       const res = await api.post('/cooperative/assets/depreciate', {
-        year: now.getFullYear(),
-        month: now.getMonth() + 1,
+        year: currentPeriod.year,
+        month: currentPeriod.month,
       });
       return res.data;
     },
     onSuccess: (res: { message?: string }) => {
       queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-asset-depreciation-status'] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-income-statement'] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
       queryClient.invalidateQueries({ queryKey: ['cooperative-journals'] });
@@ -198,8 +231,12 @@ const AssetsPage: React.FC = React.memo(() => {
   });
 
   const handleRunDepreciation = useCallback(async () => {
-    const now = new Date();
-    const periodName = `${now.toLocaleString('id-ID', { month: 'long' })} ${now.getFullYear()}`;
+    if (isAlreadyDepreciated) {
+      toast.error(`Penyusutan periode ${deprStatusQuery.data?.period} sudah pernah dibukukan (${deprStatusQuery.data?.voucherNumber}).`);
+      return;
+    }
+
+    const periodName = `${currentPeriod.monthName} ${currentPeriod.year}`;
     const isConfirmed = await confirm({
       title: 'Hitung & Bukukan Penyusutan Aset',
       description: `Apakah Anda ingin menghitung dan membukukan ayat jurnal penyesuaian beban penyusutan (Straight-Line) untuk seluruh aset aktif periode ${periodName}?`,
@@ -211,7 +248,7 @@ const AssetsPage: React.FC = React.memo(() => {
     if (isConfirmed) {
       depreciationMutation.mutate();
     }
-  }, [confirm, depreciationMutation]);
+  }, [confirm, depreciationMutation, isAlreadyDepreciated, currentPeriod, deprStatusQuery.data]);
 
   const handleOpenEdit = useCallback((asset: CoopAssetItem) => {
     setSelectedAsset(asset);
@@ -473,17 +510,30 @@ const AssetsPage: React.FC = React.memo(() => {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleRunDepreciation}
-                      disabled={depreciationMutation.isPending}
-                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      title="Hitung dan posting beban penyusutan garis lurus bulan ini"
-                    >
-                      <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : ''} />
-                      <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan'}</span>
-                    </Button>
+                    {isAlreadyDepreciated ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled
+                        className="gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 cursor-default opacity-100 font-semibold text-xs"
+                        title={`Penyusutan periode ${deprStatusQuery.data?.period} telah dibukukan (${deprStatusQuery.data?.voucherNumber}) senilai Rp ${Math.round(deprStatusQuery.data?.totalDepreciation || 0).toLocaleString('id-ID')}`}
+                      >
+                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Penyusutan Bulan Ini Selesai</span>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRunDepreciation}
+                        disabled={depreciationMutation.isPending || deprStatusQuery.isLoading}
+                        className="gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-semibold"
+                        title="Hitung dan posting beban penyusutan garis lurus bulan ini"
+                      >
+                        <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : 'text-indigo-600 dark:text-indigo-400'} />
+                        <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan Akhir Bulan'}</span>
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"

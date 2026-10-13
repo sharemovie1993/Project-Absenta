@@ -440,4 +440,38 @@ export class AssetService {
       details
     };
   }
+
+  /**
+   * Cek status apakah penyusutan aset untuk periode tertentu sudah dibukukan
+   */
+  static async getDepreciationStatus(tenantId: string, year?: number, month?: number) {
+    const now = new Date();
+    const y = year ? Number(year) : now.getFullYear();
+    const m = month ? Number(month) : now.getMonth() + 1;
+    const periodStr = `${y}-${String(m).padStart(2, '0')}`;
+    const voucherNumber = `AJP-DEP-${periodStr.replace('-', '')}`;
+
+    const journal = await prisma.journal.findFirst({
+      where: { tenantId, reference: voucherNumber },
+      include: { items: true }
+    });
+
+    const isDepreciated = !!journal;
+    const totalDepreciation = journal
+      ? journal.items
+          .filter(i => i.type === 'DEBIT')
+          .reduce((acc, curr) => acc + Number(curr.amount || 0), 0)
+      : 0;
+
+    return {
+      year: y,
+      month: m,
+      period: periodStr,
+      isDepreciated,
+      voucherNumber,
+      postedAt: journal?.date || null,
+      totalDepreciation
+    };
+  }
 }
+
