@@ -180,6 +180,10 @@ export class SavingService {
         const tenantId = saving.member.tenantId;
         const savingsAccountCode = saving.category.accountCode;
 
+        // [GUARD: Period Lock & Fiscal Year Validation]
+        const { FiscalYearGuard } = await import('../fiscal-year.guard');
+        await FiscalYearGuard.validateNotClosed(tenantId, new Date(), `Transaksi Tabungan (${type})`);
+
         // Pre-warm Chart of Accounts SEBELUM masuk $transaction (mencegah deadlock & race condition)
         await AccountingService.getOrCreateDefaultAccounts(tenantId);
         await AccountingService.resolveAccountId(tenantId, savingsAccountCode, saving.category.name);

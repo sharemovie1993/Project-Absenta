@@ -121,8 +121,33 @@ const Accounting: React.FC = React.memo(() => {
     });
     const coopSettings = coopSettingsQuery.data || null;
 
+    // Fetch daftar Periode / Tahun Buku Koperasi untuk dropdown filter konteks
+    const periodsQuery = useQuery({
+        queryKey: ['koperasi-shu-periods'],
+        queryFn: async () => {
+            const res = await api.get('/cooperative/shu/periods');
+            return (res.data?.success ? res.data.data : []) as Array<{
+                id: string;
+                year: number;
+                status: string;
+                isActive?: boolean;
+            }>;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+    const fiscalYears = periodsQuery.data || [];
+    const activeFiscalYear = useMemo(() => fiscalYears.find(p => p.isActive) || fiscalYears[0] || null, [fiscalYears]);
+    const [selectedFiscalYearId, setSelectedFiscalYearId] = useState<string>('');
+
+    const currentFiscalYear = useMemo(() => {
+        if (selectedFiscalYearId) {
+            return fiscalYears.find(p => p.id === selectedFiscalYearId) || activeFiscalYear;
+        }
+        return activeFiscalYear;
+    }, [selectedFiscalYearId, fiscalYears, activeFiscalYear]);
+
     const journalsQuery = useQuery({
-        queryKey: ['koperasi-accounting-journals'],
+        queryKey: ['koperasi-accounting-journals', currentFiscalYear?.id],
         queryFn: async () => {
             const res = await api.get('/cooperative/reports/journals');
             return (res.data as JournalEntry[]) || [];
@@ -136,7 +161,7 @@ const Accounting: React.FC = React.memo(() => {
     }, [journalsQuery]);
 
     const balanceSheetQuery = useQuery({
-        queryKey: ['koperasi-accounting-balance-sheet'],
+        queryKey: ['koperasi-accounting-balance-sheet', currentFiscalYear?.id],
         queryFn: async () => {
             const res = await api.get('/cooperative/reports/balance-sheet');
             return (res.data as BalanceSheetItem[]) || [];
@@ -582,6 +607,49 @@ const Accounting: React.FC = React.memo(() => {
             >
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">
+                {/* Fiscal Year Context Bar */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                            <Calendar size={18} />
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Konteks Tahun Buku Pembukuan</span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                                {currentFiscalYear ? `Tahun Buku ${currentFiscalYear.year}` : 'Tahun Buku Berjalan'}
+                                {currentFiscalYear?.isActive && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-md border border-emerald-500/20">
+                                        AKTIF
+                                    </span>
+                                )}
+                                {currentFiscalYear && (currentFiscalYear.status === 'APPROVED' || currentFiscalYear.status === 'DISTRIBUTED') && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded-md">
+                                        CLOSED (LOCKED)
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                    </div>
+
+                    {fiscalYears.length > 0 && (
+                        <div className="flex items-center gap-2 self-end sm:self-center">
+                            <label htmlFor="select-fiscal-year-acc" className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Pilih Periode:</label>
+                            <select
+                                id="select-fiscal-year-acc"
+                                value={currentFiscalYear?.id || ''}
+                                onChange={(e) => setSelectedFiscalYearId(e.target.value)}
+                                className="h-8 px-2.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 font-bold text-slate-700 dark:text-slate-200 cursor-pointer shadow-sm"
+                            >
+                                {fiscalYears.map(fy => (
+                                    <option key={fy.id} value={fy.id}>
+                                        Tahun {fy.year} {fy.isActive ? '(Aktif)' : `(${fy.status})`}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+
                 <TabSwitcher
                     tabs={tabOptions}
                     activeTab={activeTab}
