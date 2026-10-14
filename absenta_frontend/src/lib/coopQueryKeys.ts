@@ -74,6 +74,10 @@ export const COOP_QUERY_KEYS = {
     ['coop-sales-report-top-products', startDate, endDate] as const,
   salesDaily: (startDate = '', endDate = '') =>
     ['coop-sales-report-daily', startDate, endDate] as const,
+
+  // ─── Pusat Aduan (Tickets & Support) ──────────────────────────────────────
+  ticketsList: (scope = 'all') => ['koperasi-tickets-list', scope] as const,
+  ticketDetail: (id: string) => ['koperasi-ticket-detail', id] as const,
 } as const;
 
 /**
@@ -158,6 +162,17 @@ export function invalidatePosCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberMe });
   queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
 }
+
+/**
+ * Invalidate all cooperative ticket and complaint center queries.
+ */
+export function invalidateTicketCaches(queryClient: QueryClient, ticketId?: string) {
+  queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+  if (ticketId) {
+    queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', ticketId] });
+  }
+}
+
 
 
 

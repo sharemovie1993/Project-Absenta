@@ -107,7 +107,7 @@ export default async function ticketRoutes(fastify: any) {
             }
         }
 
-        const ticket = await TicketService.createTicket(tenantId, data);
+        const ticket = await TicketService.createTicket(tenantId, data, userId);
         broadcastCoopTicket(req, 'TICKET_CREATED', { id: ticket.id, subject: ticket.subject, memberId: ticket.memberId });
         return reply.send({ message: 'Ticket created', data: ticket });
     });
@@ -134,7 +134,7 @@ export default async function ticketRoutes(fastify: any) {
                 }
             }
 
-            const message = await TicketService.replyTicket(id, content, isStaff);
+            const message = await TicketService.replyTicket(id, content, isStaff, userId);
             broadcastCoopTicket(req, 'TICKET_REPLIED', { ticketId: id, messageId: message.id, isStaff });
             return reply.send({ message: 'Reply added', data: message });
         } catch (error: any) {
@@ -147,7 +147,8 @@ export default async function ticketRoutes(fastify: any) {
     fastify.patch('/:id/status', { preHandler: [requireCapability('cooperative.tickets.update.status')] }, async (req: any, reply: any) => {
         const { id } = req.params as any;
         const { status } = req.body as any;
-        const ticket = await TicketService.updateStatus(id, status);
+        const userId = req.user?.id || req.user?.userId;
+        const ticket = await TicketService.updateStatus(id, status, userId);
         broadcastCoopTicket(req, 'TICKET_STATUS_UPDATED', { ticketId: id, status });
         return reply.send({ message: 'Status updated', data: ticket });
     });

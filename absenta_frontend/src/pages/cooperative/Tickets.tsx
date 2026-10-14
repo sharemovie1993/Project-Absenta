@@ -30,6 +30,7 @@ import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { getApiErrorMessage } from '../../utils/errorUtils';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { COOP_QUERY_KEYS, invalidateTicketCaches } from '../../lib/coopQueryKeys';
 
 const Modal = lazy(() => import('../../components/cooperative/ui/Modal').then(m => ({ default: m.Modal })));
 
@@ -101,12 +102,12 @@ export const Tickets: React.FC = React.memo(() => {
     { id: 'my', label: 'Aduan Saya', icon: MessageSquare },
   ], []);
 
-  // Realtime live sync via WebSockets
+  // Realtime live sync via WebSockets (Zero-Manual Reload)
   const { subscribe, unsubscribe } = useSocket();
 
   useEffect(() => {
     const handleUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+      invalidateTicketCaches(queryClient);
     };
     subscribe('coop_ticket_update', handleUpdate);
     return () => {
@@ -114,16 +115,17 @@ export const Tickets: React.FC = React.memo(() => {
     };
   }, [subscribe, unsubscribe, queryClient]);
 
-  // Fetch Tickets based on Active Context View
+  // Fetch Tickets based on Active Context View with Enterprise Caching
   const ticketsQuery = useQuery({
-    queryKey: ['koperasi-tickets-list', activeTab],
+    queryKey: COOP_QUERY_KEYS.ticketsList(activeTab),
     queryFn: async () => {
       const endpoint = activeTab === 'my' ? '/cooperative/tickets?scope=my' : '/cooperative/tickets';
       const response = await api.get(endpoint);
       return (response.data.data ?? []) as Ticket[];
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const tickets = ticketsQuery.data || [];
@@ -171,7 +173,7 @@ export const Tickets: React.FC = React.memo(() => {
       toast.success('Tiket bantuan berhasil dibuat');
       setShowModal(false);
       setFormData({ subject: '', priority: 'MEDIUM', message: '' });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+      invalidateTicketCaches(queryClient);
     },
     onError: (err) => {
       const msg = getApiErrorMessage(err, 'Gagal membuat tiket');

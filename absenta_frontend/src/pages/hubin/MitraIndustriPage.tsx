@@ -76,8 +76,15 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
   // Role & Capability Checks
   const { isHubin: isHubinRole, isAdmin, can } = useCapabilities();
   const isHubin = useMemo(() => {
-    return isAdmin || isHubinRole || can('hubin.partners.manage') || can('hubin.mou.manage');
-  }, [isAdmin, isHubinRole, can]);
+    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || (user as any)?.role_name;
+    const userEmail = String(user?.email || '').toLowerCase();
+    const isHubinByName = Boolean(
+      (roleName && (String(roleName).toUpperCase().includes('HUBIN') || String(roleName).toUpperCase().includes('HUMAS'))) ||
+      userEmail.startsWith('hubin') ||
+      userEmail.includes('hubinmas')
+    );
+    return isAdmin || isHubinRole || isHubinByName || can('hubin.partners.manage') || can('hubin.mou.manage') || can('dashboard.view.hubin');
+  }, [isAdmin, isHubinRole, can, user]);
 
   // Queries
   const { data: penempatanData } = useQuery({

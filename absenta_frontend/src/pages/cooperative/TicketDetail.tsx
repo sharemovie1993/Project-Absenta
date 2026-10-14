@@ -15,6 +15,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { formatDate } from '@/utils/layoutUtils';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { getApiErrorMessage } from '../../utils/errorUtils';
+import { COOP_QUERY_KEYS, invalidateTicketCaches } from '../../lib/coopQueryKeys';
 
 const replySchema = z.object({
   reply: z.string().min(1, 'Pesan balasan tidak boleh kosong'),
@@ -50,13 +51,14 @@ export const TicketDetail: React.FC = React.memo(() => {
   const [reply, setReply] = useState('');
 
   const ticketQuery = useQuery({
-    queryKey: ['koperasi-ticket-detail', id],
+    queryKey: COOP_QUERY_KEYS.ticketDetail(id || ''),
     queryFn: async () => {
       const response = await api.get(`/cooperative/tickets/${id}`);
       return (response.data.data ?? null) as TicketDetailData;
     },
     enabled: !!id,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const ticket = ticketQuery.data || null;
@@ -72,8 +74,7 @@ export const TicketDetail: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       setReply('');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+      invalidateTicketCaches(queryClient, id);
     },
     onError: () => {
       toast.error('Gagal mengirim balasan');
@@ -87,8 +88,7 @@ export const TicketDetail: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       toast.success('Status tiket diperbarui');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-tickets-list'] });
+      invalidateTicketCaches(queryClient, id);
     },
     onError: (err) => {
       const msg = getApiErrorMessage(err, 'Gagal memperbarui status');
@@ -96,13 +96,13 @@ export const TicketDetail: React.FC = React.memo(() => {
     }
   });
 
-  // Realtime live update on new replies or status changes
+  // Realtime live update on new replies or status changes (Zero-Manual Reload)
   const { subscribe, unsubscribe } = useSocket();
 
   useEffect(() => {
     const handleUpdate = (data?: { ticketId?: string }) => {
       if (!data?.ticketId || data.ticketId === id) {
-        queryClient.invalidateQueries({ queryKey: ['koperasi-ticket-detail', id] });
+        invalidateTicketCaches(queryClient, id);
       }
     };
     subscribe('coop_ticket_update', handleUpdate);

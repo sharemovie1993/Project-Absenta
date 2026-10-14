@@ -113,8 +113,20 @@ export function useCapabilities() {
     const isKesiswaan =
       userPositions.includes('KESISWAAN');
 
+    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
+    const userEmail = String(user?.email || '').toLowerCase();
+    const isRoleHubin = Boolean(
+      (roleName && (String(roleName).toUpperCase().includes('HUBIN') || String(roleName).toUpperCase().includes('HUMAS'))) ||
+      userEmail.startsWith('hubin') ||
+      userEmail.includes('hubinmas')
+    );
+
     const isHubin =
-      userPositions.includes('HUBIN');
+      userPositions.includes('HUBIN') ||
+      isRoleHubin ||
+      can('hubin.partners.manage') ||
+      can('hubin.mou.manage') ||
+      can('dashboard.view.hubin');
 
     const isBkk =
       userPositions.includes('BKK');
@@ -129,7 +141,6 @@ export function useCapabilities() {
     const isBillingAdmin =
       can('billing.subscriptions.view.active');
 
-    const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name;
     const isSiswa = roleName === 'SISWA' || !!user?.isStudent;
 
     return {

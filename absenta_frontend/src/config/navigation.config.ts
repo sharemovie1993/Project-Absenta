@@ -530,7 +530,7 @@ export const normalizePositionCode = (codeOrName: string): string => {
   if (s.includes('KURIKULUM')) return 'KURIKULUM';
   if (s.includes('WALIKELAS') || s.includes('WALI KELAS') || s.includes('WALI_KELAS')) return 'WALIKELAS';
   if (s.includes('KESISWAAN')) return 'KESISWAAN';
-  if (s.includes('HUBIN')) return 'HUBIN';
+  if (s.includes('HUBIN') || s.includes('HUMAS')) return 'HUBIN';
   if (s.includes('SARPRAS')) return 'SARPRAS';
   if (s.includes('KEPALA_SEKOLAH') || s.includes('KEPALA SEKOLAH')) return 'KEPALA_SEKOLAH';
   if (s.includes('BPBK') || s.includes('BP/BK') || s === 'BK') return 'BPBK';
@@ -554,6 +554,17 @@ export const normalizePositionCode = (codeOrName: string): string => {
 export const getUserPositions = (user: any): string[] => {
   if (!user) return [];
   const rawList: string[] = [];
+
+  const roleName = typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name;
+  if (roleName) {
+    rawList.push(String(roleName));
+  }
+  if (user?.tugas_tambahan) {
+    rawList.push(String(user.tugas_tambahan));
+  }
+  if (user?.guru_profile?.tugas_tambahan) {
+    rawList.push(String(user.guru_profile.tugas_tambahan));
+  }
 
   if (Array.isArray(user?.position_codes)) {
     user.position_codes.forEach((p: any) => { if (p) rawList.push(String(p)); });

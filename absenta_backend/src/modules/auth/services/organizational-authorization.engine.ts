@@ -136,6 +136,34 @@ export class OrganizationalAuthorizationEngine {
       });
     }
 
+    // 2b. Smart Otorisasi Persona: Auto-grant Hubin capabilities jika role/jabatan/email adalah Hubin/Hubinmas/Humas
+    try {
+      const userAccount = await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          email: true,
+          Role: { select: { name: true } },
+          Guru: { select: { jabatan: true } }
+        }
+      });
+
+      const userRoleName = userAccount?.Role?.name?.toUpperCase() || '';
+      const guruJabatan = userAccount?.Guru?.jabatan?.toUpperCase() || '';
+      const userEmail = (userAccount?.email || '').toLowerCase();
+
+      if (
+        userRoleName.includes('HUBIN') ||
+        userRoleName.includes('HUMAS') ||
+        guruJabatan.includes('HUBIN') ||
+        guruJabatan.includes('HUMAS') ||
+        userEmail.startsWith('hubin') ||
+        userEmail.includes('hubinmas')
+      ) {
+        const defaultHubinCaps = STRUKTUR_CAPABILITIES['HUBIN'] || [];
+        defaultHubinCaps.forEach(c => capSet.add(String(c)));
+      }
+    } catch {}
+
     // 3. Dynamic Piket Otorisasi: Auto-grant piket capabilities if teacher is assigned in JadwalPiketGuru today
     const guru = await prisma.guru.findFirst({
       where: { user_id: userId },
