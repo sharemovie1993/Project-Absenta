@@ -6,6 +6,7 @@ import { prisma } from '../../../utils/prisma';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { MemberService } from '../member/member.service';
+import { eventBus } from '@/utils/event-bus';
 
 const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
@@ -21,13 +22,36 @@ interface CachedStats {
 const statsCache = new Map<string, CachedStats>();
 const STATS_CACHE_TTL_MS = 45 * 1000; // 45 seconds
 
+// Anti-DDoS / Rate-limit on forced refresh per tenant
+const lastForceRefreshMap = new Map<string, number>();
+const FORCE_REFRESH_THROTTLE_MS = 5 * 1000; // Minimal interval 5 detik antar forced refresh
+
+// Automatic cache eviction with timer unref to prevent memory leak
+const statsCacheCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of statsCache.entries()) {
+        if (now - value.timestamp > STATS_CACHE_TTL_MS * 2) {
+            statsCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+statsCacheCleanupInterval.unref?.();
+
 export const invalidateDashboardCache = (tenantId?: string) => {
     if (tenantId) {
         statsCache.delete(tenantId);
+        lastForceRefreshMap.delete(tenantId);
     } else {
         statsCache.clear();
+        lastForceRefreshMap.clear();
     }
 };
+
+// ── Event-Driven Cache Invalidation Subscriptions ──
+eventBus.subscribe('coop:transaction:created', ({ tenantId }: { tenantId: string }) => invalidateDashboardCache(tenantId));
+eventBus.subscribe('coop:member:updated', ({ tenantId }: { tenantId: string }) => invalidateDashboardCache(tenantId));
+eventBus.subscribe('coop:loan:updated', ({ tenantId }: { tenantId: string }) => invalidateDashboardCache(tenantId));
+eventBus.subscribe('coop:sale:created', ({ tenantId }: { tenantId: string }) => invalidateDashboardCache(tenantId));
 
 export default async function dashboardRoutes(fastify: any) {
     // ──────────────────────────────────────────────────────────────────────────
@@ -37,7 +61,17 @@ export default async function dashboardRoutes(fastify: any) {
         const startTime = Date.now();
         try {
             const tenantId = getTenantId(req);
-            const forceRefresh = req.query?.refresh === 'true';
+            const rawRefresh = req.query?.refresh === 'true';
+            let forceRefresh = false;
+
+            // Anti-DDoS throttle: allow force refresh only once every 5 seconds per tenant
+            if (rawRefresh) {
+                const lastRefresh = lastForceRefreshMap.get(tenantId) || 0;
+                if (Date.now() - lastRefresh >= FORCE_REFRESH_THROTTLE_MS) {
+                    forceRefresh = true;
+                    lastForceRefreshMap.set(tenantId, Date.now());
+                }
+            }
 
             // Check In-Memory Cache
             const cached = statsCache.get(tenantId);
@@ -48,6 +82,15 @@ export default async function dashboardRoutes(fastify: any) {
                     cached: true,
                     cacheAgeSeconds: Math.floor((Date.now() - cached.timestamp) / 1000)
                 });
+            }
+
+            // Validasi & Sanitasi Parameter fiscalYear
+            let requestedYear: number | undefined;
+            if (req.query?.fiscalYear) {
+                const parsed = parseInt(String(req.query.fiscalYear), 10);
+                if (!isNaN(parsed) && parsed >= 2000 && parsed <= 2100) {
+                    requestedYear = parsed;
+                }
             }
 
             const now = new Date();
@@ -344,7 +387,7 @@ export default async function dashboardRoutes(fastify: any) {
             };
 
             // ── Estimasi SHU Berjalan YTD ──
-            const currentYear = activePeriod?.year || now.getFullYear();
+            const currentYear = requestedYear || activePeriod?.year || now.getFullYear();
             const startOfYear = new Date(currentYear, 0, 1);
             const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
 
@@ -494,7 +537,15 @@ export default async function dashboardRoutes(fastify: any) {
             });
         } catch (error: any) {
             appLogger.error({ err: error, durationMs: Date.now() - startTime }, '[Dashboard] Gagal memuat statistik koperasi');
-            return reply.status(500).send({ success: false, message: 'Gagal memuat ringkasan dashboard koperasi.', error: error.message });
+            return reply.status(500).send({
+                type: 'https://errors.absenta.id/cooperative/dashboard-stats-error',
+                title: 'Gagal Memuat Statistik Koperasi',
+                status: 500,
+                detail: error.message || 'Terjadi kesalahan sistem saat mengagregasikan metrik koperasi.',
+                code: 'COOP_DASHBOARD_STATS_FAILED',
+                instance: req.url,
+                timestamp: new Date().toISOString()
+            });
         }
     });
 

@@ -116,6 +116,7 @@ const Dashboard: React.FC = React.memo(() => {
       }
     },
     enabled: subscription !== undefined && (isGuruOrSiswa || activeTab === 'member'),
+    staleTime: 45000,
   });
   const memberSummary = memberSummaryRes?.data || null;
 
@@ -142,6 +143,7 @@ const Dashboard: React.FC = React.memo(() => {
     },
     enabled: subscription !== undefined && (isKoperasiStaff || isTvMode),
     refetchInterval: isTvMode ? 60000 : false,
+    staleTime: 30000,
   });
 
   // Pengumuman Koperasi
@@ -157,6 +159,7 @@ const Dashboard: React.FC = React.memo(() => {
       }
     },
     enabled: subscription !== undefined,
+    staleTime: 60000,
   });
 
   // Stok Kritis Minimarket Koperasi (Khusus Staf Pengelola)
@@ -169,6 +172,7 @@ const Dashboard: React.FC = React.memo(() => {
     },
     enabled: isKoperasiStaff && activeTab === 'management',
     refetchInterval: isTvMode ? 60000 : false,
+    staleTime: 30000,
   });
 
   // Tabungan Personal Anggota
@@ -179,6 +183,7 @@ const Dashboard: React.FC = React.memo(() => {
       return (savingsRes.data || []).reduce((sum: number, s: { amount?: number | string }) => sum + Number(s.amount || 0), 0);
     },
     enabled: memberStatus === 'member' || activeTab === 'member',
+    staleTime: 45000,
   });
 
   // SHU Personal Anggota
@@ -192,6 +197,7 @@ const Dashboard: React.FC = React.memo(() => {
       return 0;
     },
     enabled: memberStatus === 'member' || activeTab === 'member',
+    staleTime: 60000,
   });
 
   // Riwayat Belanja Kasir Toko Anggota
@@ -202,12 +208,14 @@ const Dashboard: React.FC = React.memo(() => {
       return Array.isArray(res.data) ? res.data : [];
     },
     enabled: memberStatus === 'member' || activeTab === 'member',
+    staleTime: 45000,
   });
 
   // Pengaturan Koperasi (untuk cetak struk)
   const { data: coopSettings = null } = useQuery<CoopSettingsData | null>({
     queryKey: ['cooperative-settings'],
     queryFn: fetchCoopSettings,
+    staleTime: 120000,
   });
 
   const lastRefresh = useMemo(() => new Date(dataUpdatedAt || Date.now()), [dataUpdatedAt]);
@@ -284,10 +292,10 @@ const Dashboard: React.FC = React.memo(() => {
                   type="button"
                   onClick={handleRefreshAll}
                   disabled={isRefreshing}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[44px] text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
                   title="Segarkan Data Realtime"
                 >
-                  <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-primary-600' : 'text-slate-500'} />
+                  <RefreshCw size={14} className={isRefreshing ? 'animate-spin text-primary-600' : 'text-slate-500'} />
                   <span className="hidden sm:inline">{isRefreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
                 </button>
                 <TvModeToggle />
