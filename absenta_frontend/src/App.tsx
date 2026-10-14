@@ -1072,7 +1072,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/cooperative/products" element={
-                      <ProtectedRoute requiredCapability="cooperative.store.products.view.list">
+                      <ProtectedRoute requiredCapability={['cooperative.store.products.view.list', 'cooperative.store.view.catalog']}>
                         <CoopProducts />
                       </ProtectedRoute>
                     } />
