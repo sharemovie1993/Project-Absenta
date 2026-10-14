@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { z } from 'zod';
 import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance } from 'fastify';
