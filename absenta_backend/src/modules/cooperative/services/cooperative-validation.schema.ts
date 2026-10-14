@@ -24,9 +24,9 @@ export const payInstallmentSchema = z.object({
 });
 
 export const updateLoanStatusSchema = z.object({
-  status: z.string({
-    required_error: 'status wajib diisi'
-  }).min(1, 'status tidak boleh kosong')
+  status: z.enum(['APPROVED', 'REJECTED'], {
+    errorMap: () => ({ message: 'status harus APPROVED atau REJECTED' })
+  })
 });
 
 // === 2. Simpanan (Savings) ===

@@ -584,6 +584,81 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         description: 'Mengunci array simpanan, callback hander ekspor, dan definisi kolom tabel menggunakan useMemo dan useCallback untuk kestabilan render.',
         status: 'VERIFIED',
         details: 'useMemo & useCallback terintegrasi pada data lists & columns.'
+      },
+      {
+        id: 'mobile_viewport_safety',
+        name: 'Multi-Device Layout Hardening (Pilar 30)',
+        description: 'Menyediakan mobile collapsible banner dan kartu ringkas dengan touch target touch-friendly di layar seluler 360px - 414px.',
+        status: 'VERIFIED',
+        details: 'SavingStatsBanner mendukung mode collapsible seluler & min-h 38px touch targets.'
+      }
+    ]
+  },
+  coop_loans: {
+    moduleName: 'coop_loans',
+    displayName: 'Manajemen Pinjaman Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat menampilkan pinjaman anggota.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Memoization)',
+        description: 'useMemo dan useCallback terpasang pada definisi kolom tabel pinjaman dan render kartu mobile.',
+        status: 'VERIFIED',
+        details: 'useMemo & useCallback terintegrasi pada data lists & kolom pinjaman.'
+      },
+      {
+        id: 'state_machine_guard',
+        name: 'State Machine & Validasi Integritas Pinjaman',
+        description: 'Penegakan aturan Single Active Loan, Single Pending, dan transisi status terikat (PENDING -> APPROVED/REJECTED).',
+        status: 'VERIFIED',
+        details: 'Validasi Zod enum dan aturan anti-duplikasi pengajuan aktif terpasang di backend.'
+      },
+      {
+        id: 'mobile_viewport_safety',
+        name: 'Multi-Device Layout Hardening (Pilar 30)',
+        description: 'LoanStatsBanner mendukung collapsible view dan kartu mobile khusus di viewport <= 414px.',
+        status: 'VERIFIED',
+        details: 'MobileAcademicList dan collapsible header bar terpasang untuk layar kecil.'
+      }
+    ]
+  },
+  coop_loandetail: {
+    moduleName: 'coop_loandetail',
+    displayName: 'Detail Angsuran & Pinjaman Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Memoization)',
+        description: 'useMemo terpasang pada perhitungan sisa saldo tagihan dan daftar jadwal angsuran.',
+        status: 'VERIFIED',
+        details: 'Memoized remainingBalance dan kolom angsuran bulanan.'
+      },
+      {
+        id: 'security_idempotency',
+        name: 'Proteksi Idempotency Pembayaran Angsuran',
+        description: 'Pengiriman Idempotency-Key UUID pada mutasi bayar angsuran mencegah pembayaran ganda (double-repayment).',
+        status: 'VERIFIED',
+        details: 'Header Idempotency-Key crypto.randomUUID() terpasang pada payInstallmentMutation.'
+      },
+      {
+        id: 'anti_race_condition',
+        name: 'Perlindungan Transaksi Paralel (Anti-Race Condition)',
+        description: 'Pencatatan pelunasan angsuran menerapkan query atomic updateMany(where: status=UNPAID) dan jurnal ganda akuntansi.',
+        status: 'VERIFIED',
+        details: 'Atomic update status di level database mencegah race condition saat pembayaran kasir serentak.'
       }
     ]
   },

@@ -356,21 +356,21 @@ const Savings: React.FC = React.memo(() => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 text-slate-600 border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1.5 h-8"
+                                  className="flex-1 text-slate-600 border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[36px] py-1.5"
                                   onClick={() => handleExportSingleSavingPdf(saving)}
                                   title="Cetak Mutasi Rekening"
                                 >
-                                  <Printer size={11} /> Cetak Mutasi
+                                  <Printer size={12} /> Cetak Mutasi
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="flex-1 font-bold text-[11px] flex items-center justify-center gap-1.5 h-8"
+                                  className="flex-1 font-bold text-[11px] flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[36px] py-1.5"
                                   style={{ color: catColor, borderColor: `${catColor}50`, backgroundColor: `${catColor}08` }}
                                   onClick={() => handleExportAllSavingsPdf(saving)}
                                   title="Cetak Rekap Buku Tabungan"
                                 >
-                                  <BookOpen size={11} /> Rekap Buku
+                                  <BookOpen size={12} /> Rekap Buku
                                 </Button>
                               </div>
                             </div>

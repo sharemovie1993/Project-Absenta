@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react';
-import { Wallet, TrendingUp, Clock } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Wallet, TrendingUp, Clock, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
 import type { Saving } from './types';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface SavingStatsBannerProps {
   savings: Saving[];
+  variant?: 'default' | 'compact-premium';
+  mobileCompact?: boolean;
 }
 
 const fmt = (n: number) =>
@@ -12,7 +15,15 @@ const fmt = (n: number) =>
     ? `Rp ${(n / 1_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} Jt`
     : `Rp ${Math.round(n).toLocaleString('id-ID')}`;
 
-export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({ savings }) => {
+export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
+  savings,
+  variant = 'compact-premium',
+  mobileCompact = true
+}) => {
+  const isMobile = useIsMobile();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCompact = variant === 'compact-premium' || (isMobile && mobileCompact);
+
   const stats = useMemo(() => {
     let totalBalance = 0;
     const categoryMap: Record<string, { name: string; color?: string; amount: number }> = {};
@@ -61,7 +72,25 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({ savings }
   }, [stats.latestTxDate]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
+    <div className="w-full max-w-full min-w-0 space-y-2 mb-2">
+      {/* Mobile Collapsible Header Bar */}
+      <div className="flex sm:hidden items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800/80 text-xs">
+        <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
+          <BarChart2 size={13} className="text-indigo-600 dark:text-indigo-400" />
+          <span>Statistik Simpanan</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+          aria-label={isCollapsed ? 'Tampilkan statistik' : 'Sembunyikan statistik'}
+        >
+          {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+        </button>
+      </div>
+
+      {!isCollapsed && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 animate-in fade-in duration-200">
       {/* Card 1: Total Simpanan */}
       <AnalyticsCard
         title="Total Simpanan"
@@ -124,6 +153,8 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({ savings }
         icon={<Clock />}
         gradient="from-amber-500 to-orange-600"
       />
+        </div>
+      )}
     </div>
   );
 });
