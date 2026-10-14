@@ -52,14 +52,14 @@ async function main() {
     // Klaster 0 & 1: Ikhtisar Eksekutif, Layanan Anggota & Simpan Pinjam
     { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.dashboard.view.overview' },
     { label: 'Data Anggota', icon: 'Users', path: '/cooperative/members', required_capability: 'cooperative.members.view.list' },
-    { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.list' },
+    { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.list, cooperative.savings.view.history' },
     { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.view.list' },
     // Divider 1
     { label: 'divider', icon: null, path: null },
     // Klaster 2: Perdagangan, Toko & Unit Usaha Komersial (Retail)
     { label: 'Data Pemasok', icon: 'Building2', path: '/cooperative/suppliers', required_capability: 'cooperative.suppliers.view.list' },
-    { label: 'Data Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
-    { label: 'Voucher & Promo', icon: 'Tag', path: '/cooperative/vouchers', required_capability: 'cooperative.vouchers.view.list' },
+    { label: 'Data Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list, cooperative.store.view.catalog' },
+    { label: 'Voucher & Promo', icon: 'Tag', path: '/cooperative/vouchers', required_capability: 'cooperative.vouchers.view.list, cooperative.points.view' },
     { label: 'Kasir Toko', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage' },
     { label: 'Pulsa & Tagihan', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products, cooperative.ppob.transact' },
     { label: 'Laporan Penjualan', icon: 'BarChart2', path: '/cooperative/sales-report', required_capability: 'cooperative.store.transactions.view' },
@@ -75,7 +75,7 @@ async function main() {
     { label: 'divider', icon: null, path: null },
     // Klaster 4: Komunikasi Anggota & Pengaturan Tata Kelola
     { label: 'Pengumuman', icon: 'Bell', path: '/cooperative/announcements', required_capability: 'cooperative.announcements.view.list' },
-    { label: 'Pusat Bantuan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.view.list' },
+    { label: 'Pusat Bantuan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.view.list, cooperative.tickets.create' },
     { label: 'Pengaturan', icon: 'Settings', path: '/cooperative/settings', required_capability: 'cooperative.settings.view' },
   ];
 

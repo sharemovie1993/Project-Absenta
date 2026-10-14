@@ -112,6 +112,7 @@ export class SidebarRenderingService {
       'cooperative.reports.view.financial',
       'cooperative.reports.view.daily',
       'cooperative.reports.view.monthly',
+      'cooperative.tickets.create',
     ]);
 
     const items = await prisma.menu.findMany({
