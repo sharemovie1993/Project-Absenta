@@ -35,6 +35,7 @@ import type {
   CoopTransferFormData
 } from './types';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { invalidateAccountingCaches } from '@/lib/coopQueryKeys';
 
 interface ExpenseVoucherSectionProps {
   initialSubTab?: 'EXPENSE' | 'DEPOSIT' | 'TRANSFER';
@@ -150,14 +151,9 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
     enabled: subTab === 'TRANSFER'
   });
 
-  // Invalidate queries helper
+  // Invalidate queries helper (Centralized TanStack Query Consistency)
   const invalidateAllAccounting = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
-    queryClient.invalidateQueries({ queryKey: ['koperasi-income-statement'] });
-    queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-journals'] });
+    invalidateAccountingCaches(queryClient);
   }, [queryClient]);
 
   // Mutations
@@ -471,17 +467,246 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
     return transferRes?.data?.pagination;
   }, [subTab, expenseRes, depositRes, transferRes]);
 
-  const isCurrentLoading = subTab === 'EXPENSE' ? expenseLoading : subTab === 'DEPOSIT' ? depositLoading : transferLoading;
+  // ─── ADAPTIVE MOBILE CARD DECKS (Pilar 30 Anti-Overlapping) ───────────────
+  const renderMobileExpenseDeck = () => {
+    if (expenseLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-2">
+          <div className="w-6 h-6 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500">Memuat transaksi kas keluar...</p>
+        </div>
+      );
+    }
+    const items = expenseRes?.data?.items || [];
+    if (items.length === 0) {
+      return (
+        <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+          Belum ada transaksi pengeluaran kas (BKK) yang tercatat.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5 transition-all"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-xs font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md border border-rose-200 dark:border-rose-900/60 shrink-0">
+                  {item.voucherNumber}
+                </span>
+                <span className="text-[11px] text-slate-500 shrink-0">
+                  {formatDate(item.date)}
+                </span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                item.paymentMethod === 'BANK_TRANSFER'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              }`}>
+                {item.paymentMethod === 'BANK_TRANSFER' ? 'Bank (1011)' : 'Tunai (1010)'}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                  {item.categoryName}
+                </span>
+                <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                  Akun: {item.categoryCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 break-words leading-relaxed">
+                {item.description}
+              </p>
+              {item.payee && (
+                <p className="text-[11px] text-slate-500">
+                  Penerima: <span className="font-medium text-slate-700 dark:text-slate-300">{item.payee}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+              <span className="font-mono text-sm font-bold text-rose-600 dark:text-rose-400">
+                - Rp {Math.round(item.amount).toLocaleString('id-ID')}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDeleteExpense(item)}
+                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                aria-label={`Hapus voucher ${item.voucherNumber}`}
+              >
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Mobile Card Deck View for Kas Masuk (BKM)
+  const renderMobileDepositDeck = () => {
+    if (depositLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-2">
+          <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500">Memuat transaksi kas masuk...</p>
+        </div>
+      );
+    }
+    const items = depositRes?.data?.items || [];
+    if (items.length === 0) {
+      return (
+        <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+          Belum ada transaksi penerimaan kas (BKM) yang tercatat.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5 transition-all"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-900/60 shrink-0">
+                  {item.voucherNumber}
+                </span>
+                <span className="text-[11px] text-slate-500 shrink-0">
+                  {formatDate(item.date)}
+                </span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                item.receivedVia === 'BANK_TRANSFER'
+                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+              }`}>
+                {item.receivedVia === 'BANK_TRANSFER' ? 'Bank (1011)' : 'Tunai (1010)'}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 line-clamp-1">
+                  {item.accountName}
+                </span>
+                <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                  Akun: {item.accountCode}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 break-words leading-relaxed">
+                {item.description}
+              </p>
+              {item.payer && (
+                <p className="text-[11px] text-slate-500">
+                  Dari: <span className="font-medium text-slate-700 dark:text-slate-300">{item.payer}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+              <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                + Rp {Math.round(item.amount).toLocaleString('id-ID')}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDeleteDeposit(item)}
+                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                aria-label={`Hapus voucher ${item.voucherNumber}`}
+              >
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Mobile Card Deck View for Transfer Kas & Bank (TRF)
+  const renderMobileTransferDeck = () => {
+    if (transferLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 space-y-2">
+          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-slate-500">Memuat transaksi transfer dana...</p>
+        </div>
+      );
+    }
+    const items = transferRes?.data?.items || [];
+    if (items.length === 0) {
+      return (
+        <div className="p-8 text-center text-xs text-slate-500 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+          Belum ada transaksi transfer kas & bank yang tercatat.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs space-y-2.5 transition-all"
+          >
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/60 pb-2">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200 dark:border-blue-900/60 shrink-0">
+                  {item.voucherNumber}
+                </span>
+                <span className="text-[11px] text-slate-500 shrink-0">
+                  {formatDate(item.date)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-300 shrink-0">
+                <span>{item.fromAccountCode === '1010' ? 'Kas Tunai' : 'Bank'}</span>
+                <ArrowRightLeft size={11} className="text-slate-400" />
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">{item.toAccountCode === '1010' ? 'Kas Tunai' : 'Bank'}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs text-slate-600 dark:text-slate-400 break-words leading-relaxed">
+                {item.description}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+              <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
+                Rp {Math.round(item.amount).toLocaleString('id-ID')}
+              </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleDeleteTransfer(item)}
+                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                aria-label={`Hapus voucher ${item.voucherNumber}`}
+              >
+                <Trash2 size={13} />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
       {/* Sub-Navigation Tabs Kas & Bank */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
-        <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-900 p-1 text-xs font-semibold">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center gap-1 rounded-xl bg-slate-100 dark:bg-slate-900 p-1 text-xs font-semibold overflow-x-auto no-scrollbar max-w-full">
           <button
             type="button"
             onClick={() => handleSubTabChange('EXPENSE')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 ${
               subTab === 'EXPENSE'
                 ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 font-bold shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -493,7 +718,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
           <button
             type="button"
             onClick={() => handleSubTabChange('DEPOSIT')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 ${
               subTab === 'DEPOSIT'
                 ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -505,7 +730,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
           <button
             type="button"
             onClick={() => handleSubTabChange('TRANSFER')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 ${
               subTab === 'TRANSFER'
                 ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-bold shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
@@ -516,14 +741,14 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
           </button>
         </div>
 
-        {/* Action Button */}
-        <div>
+        {/* Action Button Desktop */}
+        <div className="hidden sm:block">
           {subTab === 'EXPENSE' && (
             <Button
               size="sm"
               variant="primary"
               onClick={() => setIsExpenseOpen(true)}
-              className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white"
+              className="gap-1.5 bg-rose-600 hover:bg-rose-700 text-white shadow-xs"
             >
               <Plus size={14} />
               <span>Catat Kas Keluar (BKK)</span>
@@ -534,7 +759,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
               size="sm"
               variant="primary"
               onClick={() => setIsDepositOpen(true)}
-              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
             >
               <Plus size={14} />
               <span>Catat Kas Masuk (BKM)</span>
@@ -545,7 +770,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
               size="sm"
               variant="primary"
               onClick={() => setIsTransferOpen(true)}
-              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"
+              className="gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
             >
               <Plus size={14} />
               <span>Transfer Dana Kas/Bank</span>
@@ -580,8 +805,8 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 space-y-4 shadow-xs">
         {/* Search & Category Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
-            <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-2">
+            <div className="relative flex-1 min-w-0 sm:max-w-xs">
               <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
               <input
                 type="text"
@@ -597,7 +822,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
             </div>
 
             {subTab === 'EXPENSE' && (
-              <div className="w-56">
+              <div className="w-full sm:w-56">
                 <SearchableSelect
                   id="expense-cat-filter"
                   value={selectedCategory}
@@ -622,7 +847,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
             )}
 
             {subTab === 'DEPOSIT' && (
-              <div className="w-56">
+              <div className="w-full sm:w-56">
                 <SearchableSelect
                   id="deposit-cat-filter"
                   value={selectedCategory}
@@ -645,32 +870,38 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
           </div>
         </div>
 
-        {/* Table Render */}
+        {/* Table Render (Desktop Table vs Mobile Adaptive Deck) */}
         {subTab === 'EXPENSE' && (
-          <Table
-            data={currentData}
-            columns={expenseColumns}
-            loading={isCurrentLoading}
-            emptyMessage="Belum ada transaksi pengeluaran kas (BKK) yang tercatat."
-          />
+          isMobile ? renderMobileExpenseDeck() : (
+            <Table
+              data={currentData}
+              columns={expenseColumns}
+              loading={isCurrentLoading}
+              emptyMessage="Belum ada transaksi pengeluaran kas (BKK) yang tercatat."
+            />
+          )
         )}
 
         {subTab === 'DEPOSIT' && (
-          <Table
-            data={currentData}
-            columns={depositColumns}
-            loading={isCurrentLoading}
-            emptyMessage="Belum ada transaksi penerimaan kas (BKM) yang tercatat."
-          />
+          isMobile ? renderMobileDepositDeck() : (
+            <Table
+              data={currentData}
+              columns={depositColumns}
+              loading={isCurrentLoading}
+              emptyMessage="Belum ada transaksi penerimaan kas (BKM) yang tercatat."
+            />
+          )
         )}
 
         {subTab === 'TRANSFER' && (
-          <Table
-            data={currentData}
-            columns={transferColumns}
-            loading={isCurrentLoading}
-            emptyMessage="Belum ada transaksi transfer kas & bank yang tercatat."
-          />
+          isMobile ? renderMobileTransferDeck() : (
+            <Table
+              data={currentData}
+              columns={transferColumns}
+              loading={isCurrentLoading}
+              emptyMessage="Belum ada transaksi transfer kas & bank yang tercatat."
+            />
+          )
         )}
 
         {/* Pagination */}
@@ -700,6 +931,34 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
           </div>
         )}
       </div>
+
+      {/* Floating Action Button (FAB) on Mobile Devices (Pilar 30 Anti-Overlapping) */}
+      {isMobile && (
+        <button
+          type="button"
+          onClick={() => {
+            if (subTab === 'EXPENSE') setIsExpenseOpen(true);
+            else if (subTab === 'DEPOSIT') setIsDepositOpen(true);
+            else setIsTransferOpen(true);
+          }}
+          aria-label={
+            subTab === 'EXPENSE'
+              ? 'Catat Kas Keluar (BKK)'
+              : subTab === 'DEPOSIT'
+              ? 'Catat Kas Masuk (BKM)'
+              : 'Transfer Dana Kas/Bank'
+          }
+          className={`fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl text-white transition-all transform active:scale-95 focus:outline-hidden ${
+            subTab === 'EXPENSE'
+              ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/40'
+              : subTab === 'DEPOSIT'
+              ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/40'
+              : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/40'
+          }`}
+        >
+          <Plus size={24} className="stroke-[2.5]" />
+        </button>
+      )}
 
       {/* Modals Form */}
       <ExpenseFormModal

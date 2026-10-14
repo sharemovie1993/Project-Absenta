@@ -8,6 +8,7 @@ import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { useSocket } from '../../hooks/useSocket';
 import { useQueryClient } from '@tanstack/react-query';
+import { invalidateAccountingCaches } from '@/lib/coopQueryKeys';
 
 // Lazy Loaded Expense & Banking Section (Pilar 11 Hardening)
 const ExpenseVoucherSection = lazy(() => 
@@ -33,10 +34,7 @@ export const CashBankPage: React.FC = React.memo(() => {
   const { subscribe, unsubscribe, isConnected } = useSocket();
 
   const handleRealtimeUpdate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
-    queryClient.invalidateQueries({ queryKey: ['cooperative-bank-accounts'] });
+    invalidateAccountingCaches(queryClient);
   }, [queryClient]);
 
   useEffect(() => {
