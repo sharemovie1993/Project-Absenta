@@ -13,7 +13,7 @@ import { cacheInvalidationService } from '../../../utils/cache-invalidation.serv
 const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-setInterval(() => {
+const idempotencySweepTimer = setInterval(() => {
     const now = Date.now();
     for (const [key, value] of idempotencyCache.entries()) {
         if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
@@ -21,6 +21,10 @@ setInterval(() => {
         }
     }
 }, 60 * 1000);
+
+if (typeof idempotencySweepTimer?.unref === 'function') {
+    idempotencySweepTimer.unref();
+}
 
 // In-Flight Checkout Mutex Lock untuk mencegah race condition double-spend
 const checkoutLocks = new Set<string>();
