@@ -126,6 +126,54 @@ describe('Kas & Bank (Expense, Deposit, Transfer) - Unit & QA Audit Tests (Phase
         date: '2026-10-14',
       })).rejects.toThrow('Nominal pengeluaran operasional harus lebih besar dari 0');
     });
+
+    it('harus mengambil daftar pengeluaran operasional (BKK) dengan paginasi dan agregasi ringkasan', async () => {
+      (prisma.coopExpense.count as jest.Mock).mockResolvedValue(1);
+      (prisma.coopExpense.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'expense-1',
+          voucherNumber: 'BKK-202610-0001',
+          amount: 150000,
+          categoryCode: '5021',
+          categoryName: 'Beban Listrik, Air & Utilitas',
+          date: new Date('2026-10-14'),
+        }
+      ]);
+      (prisma.coopExpense.aggregate as jest.Mock).mockResolvedValue({
+        _sum: { amount: 150000 },
+        _count: { id: 1 }
+      });
+
+      const res = await ExpenseService.listExpenses(mockTenantId, { page: 1, limit: 10, categoryCode: '5021', search: 'listrik' });
+
+      expect(res.items).toHaveLength(1);
+      expect(res.summary.totalExpenseAmount).toBe(150000);
+      expect(res.summary.totalTransactions).toBe(1);
+      expect(res.pagination.totalPages).toBe(1);
+    });
+
+    it('harus menghapus data BKK dan membatalkan jurnal referensinya secara atomik', async () => {
+      (prisma.coopExpense.findFirst as jest.Mock).mockResolvedValue({
+        id: 'expense-1',
+        tenantId: mockTenantId,
+        voucherNumber: 'BKK-202610-0001',
+      });
+
+      const res = await ExpenseService.deleteExpense(mockTenantId, 'expense-1');
+
+      expect(res.success).toBe(true);
+      expect(prisma.journal.deleteMany).toHaveBeenCalledWith({
+        where: { tenantId: mockTenantId, reference: 'BKK-202610-0001' }
+      });
+      expect(prisma.coopExpense.delete).toHaveBeenCalledWith({ where: { id: 'expense-1' } });
+    });
+
+    it('harus mengembalikan daftar kategori beban operasional standar', () => {
+      const categories = ExpenseService.getExpenseCategories();
+      expect(categories.length).toBeGreaterThan(0);
+      expect(categories[0]).toHaveProperty('code');
+      expect(categories[0]).toHaveProperty('name');
+    });
   });
 
   describe('CashBankingService (BKM - Kas Masuk)', () => {
@@ -173,6 +221,31 @@ describe('Kas & Bank (Expense, Deposit, Transfer) - Unit & QA Audit Tests (Phase
       );
     });
 
+    it('harus mengambil daftar bukti kas masuk (BKM) dengan paginasi dan agregasi ringkasan', async () => {
+      (prisma.coopCashDeposit.count as jest.Mock).mockResolvedValue(1);
+      (prisma.coopCashDeposit.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'deposit-1',
+          voucherNumber: 'BKM-202610-0001',
+          amount: 500000,
+          accountCode: '4030',
+          accountName: 'Pendapatan Sewa & Kerjasama',
+          date: new Date('2026-10-14'),
+        }
+      ]);
+      (prisma.coopCashDeposit.aggregate as jest.Mock).mockResolvedValue({
+        _sum: { amount: 500000 },
+        _count: { id: 1 }
+      });
+
+      const res = await CashBankingService.listDeposits(mockTenantId, { page: 1, limit: 10, search: 'sewa' });
+
+      expect(res.items).toHaveLength(1);
+      expect(res.summary.totalDepositAmount).toBe(500000);
+      expect(res.summary.totalTransactions).toBe(1);
+      expect(res.pagination.totalPages).toBe(1);
+    });
+
     it('harus menghapus data BKM dan membatalkan jurnal referensinya secara atomik', async () => {
       (prisma.coopCashDeposit.findFirst as jest.Mock).mockResolvedValue({
         id: 'deposit-1',
@@ -187,6 +260,13 @@ describe('Kas & Bank (Expense, Deposit, Transfer) - Unit & QA Audit Tests (Phase
         where: { tenantId: mockTenantId, reference: 'BKM-202610-0001' }
       });
       expect(prisma.coopCashDeposit.delete).toHaveBeenCalledWith({ where: { id: 'deposit-1' } });
+    });
+
+    it('harus mengembalikan daftar kategori sumber kas masuk standar', () => {
+      const categories = CashBankingService.getDepositCategories();
+      expect(categories.length).toBeGreaterThan(0);
+      expect(categories[0]).toHaveProperty('code');
+      expect(categories[0]).toHaveProperty('name');
     });
   });
 
@@ -242,6 +322,48 @@ describe('Kas & Bank (Expense, Deposit, Transfer) - Unit & QA Audit Tests (Phase
         expect.anything(),
         expect.any(Date)
       );
+    });
+
+    it('harus mengambil daftar transfer kas & bank dengan paginasi dan agregasi ringkasan', async () => {
+      (prisma.coopFundTransfer.count as jest.Mock).mockResolvedValue(1);
+      (prisma.coopFundTransfer.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'transfer-1',
+          voucherNumber: 'TRF-202610-0001',
+          amount: 1000000,
+          fromAccountCode: '1010',
+          toAccountCode: '1011',
+          description: 'Setor kasir ke bank',
+          date: new Date('2026-10-14'),
+        }
+      ]);
+      (prisma.coopFundTransfer.aggregate as jest.Mock).mockResolvedValue({
+        _sum: { amount: 1000000 },
+        _count: { id: 1 }
+      });
+
+      const res = await CashBankingService.listTransfers(mockTenantId, { page: 1, limit: 10, search: 'setor' });
+
+      expect(res.items).toHaveLength(1);
+      expect(res.summary.totalTransferAmount).toBe(1000000);
+      expect(res.summary.totalTransactions).toBe(1);
+      expect(res.pagination.totalPages).toBe(1);
+    });
+
+    it('harus menghapus bukti transfer kas dan membatalkan jurnal referensinya secara atomik', async () => {
+      (prisma.coopFundTransfer.findFirst as jest.Mock).mockResolvedValue({
+        id: 'transfer-1',
+        tenantId: mockTenantId,
+        voucherNumber: 'TRF-202610-0001',
+      });
+
+      const res = await CashBankingService.deleteTransfer(mockTenantId, 'transfer-1');
+
+      expect(res.success).toBe(true);
+      expect(prisma.journal.deleteMany).toHaveBeenCalledWith({
+        where: { tenantId: mockTenantId, reference: 'TRF-202610-0001' }
+      });
+      expect(prisma.coopFundTransfer.delete).toHaveBeenCalledWith({ where: { id: 'transfer-1' } });
     });
   });
 });
