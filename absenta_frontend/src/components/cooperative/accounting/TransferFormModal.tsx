@@ -200,13 +200,14 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={onClose}
             disabled={isLoading}
+            className="w-full sm:w-auto justify-center"
           >
             Batal
           </Button>
@@ -215,7 +216,7 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
             variant="primary"
             size="sm"
             disabled={isLoading}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-700 text-white"
           >
             {isLoading ? 'Memproses...' : 'Proses Transfer Dana'}
           </Button>

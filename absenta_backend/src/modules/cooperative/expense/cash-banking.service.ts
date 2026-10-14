@@ -115,7 +115,7 @@ export class CashBankingService {
       ];
     }
 
-    const [total, items, allDeposits] = await Promise.all([
+    const [total, items, summaryAgg] = await Promise.all([
       prisma.coopCashDeposit.count({ where }),
       prisma.coopCashDeposit.findMany({
         where,
@@ -123,18 +123,20 @@ export class CashBankingService {
         skip,
         take: limit
       }),
-      prisma.coopCashDeposit.findMany({
+      prisma.coopCashDeposit.aggregate({
         where: { tenantId },
-        select: { amount: true }
+        _sum: { amount: true },
+        _count: { id: true }
       })
     ]);
 
-    const totalDepositAmount = allDeposits.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+    const totalDepositAmount = Number(summaryAgg._sum.amount || 0);
+    const totalTransactions = summaryAgg._count.id || 0;
 
     return {
       summary: {
         totalDepositAmount,
-        totalTransactions: allDeposits.length,
+        totalTransactions,
       },
       items: items.map(item => ({
         ...item,
@@ -255,7 +257,7 @@ export class CashBankingService {
       ];
     }
 
-    const [total, items, allTransfers] = await Promise.all([
+    const [total, items, summaryAgg] = await Promise.all([
       prisma.coopFundTransfer.count({ where }),
       prisma.coopFundTransfer.findMany({
         where,
@@ -263,18 +265,20 @@ export class CashBankingService {
         skip,
         take: limit
       }),
-      prisma.coopFundTransfer.findMany({
+      prisma.coopFundTransfer.aggregate({
         where: { tenantId },
-        select: { amount: true }
+        _sum: { amount: true },
+        _count: { id: true }
       })
     ]);
 
-    const totalTransferAmount = allTransfers.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalTransferAmount = Number(summaryAgg._sum.amount || 0);
+    const totalTransactions = summaryAgg._count.id || 0;
 
     return {
       summary: {
         totalTransferAmount,
-        totalTransactions: allTransfers.length,
+        totalTransactions,
       },
       items: items.map(item => ({
         ...item,

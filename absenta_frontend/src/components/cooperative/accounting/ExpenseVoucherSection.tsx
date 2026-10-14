@@ -101,7 +101,8 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
       });
       return res.data;
     },
-    enabled: subTab === 'EXPENSE'
+    enabled: subTab === 'EXPENSE',
+    staleTime: 60 * 1000,
   });
 
   // ─── QUERY KAS MASUK (DEPOSIT) ────────────────────────────────────────────
@@ -125,7 +126,8 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
       });
       return res.data;
     },
-    enabled: subTab === 'DEPOSIT'
+    enabled: subTab === 'DEPOSIT',
+    staleTime: 60 * 1000,
   });
 
   // ─── QUERY TRANSFER KAS & BANK ────────────────────────────────────────────
@@ -148,7 +150,8 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
       });
       return res.data;
     },
-    enabled: subTab === 'TRANSFER'
+    enabled: subTab === 'TRANSFER',
+    staleTime: 60 * 1000,
   });
 
   // Invalidate queries helper (Centralized TanStack Query Consistency)
@@ -539,7 +542,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
                 size="sm"
                 variant="outline"
                 onClick={() => handleDeleteExpense(item)}
-                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
                 aria-label={`Hapus voucher ${item.voucherNumber}`}
               >
                 <Trash2 size={13} />
@@ -621,7 +624,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
                 size="sm"
                 variant="outline"
                 onClick={() => handleDeleteDeposit(item)}
-                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
                 aria-label={`Hapus voucher ${item.voucherNumber}`}
               >
                 <Trash2 size={13} />
@@ -688,7 +691,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
                 size="sm"
                 variant="outline"
                 onClick={() => handleDeleteTransfer(item)}
-                className="p-1.5 text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
+                className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center text-rose-600 border-rose-200 hover:bg-rose-50 dark:border-rose-900/60"
                 aria-label={`Hapus voucher ${item.voucherNumber}`}
               >
                 <Trash2 size={13} />

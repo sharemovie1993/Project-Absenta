@@ -94,7 +94,7 @@ export class ExpenseService {
       ];
     }
 
-    const [total, items, allExpensesForSummary] = await Promise.all([
+    const [total, items, summaryAgg] = await Promise.all([
       prisma.coopExpense.count({ where }),
       prisma.coopExpense.findMany({
         where,
@@ -102,21 +102,20 @@ export class ExpenseService {
         skip,
         take: limit
       }),
-      prisma.coopExpense.findMany({
+      prisma.coopExpense.aggregate({
         where: { tenantId },
-        select: { amount: true, categoryCode: true }
+        _sum: { amount: true },
+        _count: { id: true }
       })
     ]);
 
-    const totalExpenseAmount = allExpensesForSummary.reduce(
-      (sum, e) => sum + Number(e.amount || 0), 
-      0
-    );
+    const totalExpenseAmount = Number(summaryAgg._sum.amount || 0);
+    const totalTransactions = summaryAgg._count.id || 0;
 
     return {
       summary: {
         totalExpenseAmount,
-        totalTransactions: allExpensesForSummary.length,
+        totalTransactions,
       },
       items: items.map(item => ({
         ...item,
