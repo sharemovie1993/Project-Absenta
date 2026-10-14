@@ -156,7 +156,7 @@ export const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({
                         className="h-8 px-4 rounded-xl gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 font-bold shadow-sm"
                     >
                         <Printer size={14} />
-                        Cetak Neraca (Accurate Format)
+                        Cetak Neraca<span className="hidden sm:inline"> (Accurate Format)</span>
                     </Button>
                 </div>
             </div>

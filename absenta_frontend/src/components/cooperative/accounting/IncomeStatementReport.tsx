@@ -145,7 +145,7 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
                             ))}
                         </select>
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                             <input
                                 type="date"
                                 value={customStartDate}
@@ -182,7 +182,7 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
                         className="h-8 px-4 rounded-xl gap-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 font-bold shadow-sm"
                     >
                         <Printer size={14} />
-                        Cetak Laporan (Accurate Format)
+                        Cetak Laporan<span className="hidden sm:inline"> (Accurate Format)</span>
                     </Button>
                 </div>
             </div>

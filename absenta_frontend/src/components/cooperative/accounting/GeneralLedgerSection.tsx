@@ -18,6 +18,7 @@ import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
 import { formatDate } from '@/utils/date.utils';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const POPULAR_COOP_ACCOUNTS = [
   { value: '1010', label: '1010 - Kas Koperasi (Kas Tunai)' },
@@ -45,6 +46,7 @@ const POPULAR_COOP_ACCOUNTS = [
 ];
 
 export const GeneralLedgerSection: React.FC = React.memo(() => {
+  const isMobile = useIsMobile();
   const [selectedAccountCode, setSelectedAccountCode] = useState('1010');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [periodPreset, setPeriodPreset] = useState<'year' | 'custom'>('year');
@@ -287,12 +289,64 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           </div>
         </div>
 
-        <Table
-          data={ledger.entries}
-          columns={columns}
-          loading={isLoading}
-          emptyMessage={`Belum ada mutasi pembukuan pada rekening ${ledger.account.code} untuk periode yang dipilih.`}
-        />
+        {isMobile ? (
+          <div className="space-y-3">
+            {ledger.entries.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs">
+                Belum ada mutasi pembukuan pada rekening {ledger.account.code}.
+              </div>
+            ) : (
+              ledger.entries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2 text-xs"
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase block">
+                        {formatDate(entry.date)}
+                      </span>
+                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">
+                        {entry.description}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono px-2 py-0.5 bg-slate-200/70 dark:bg-slate-700 rounded-md font-bold text-slate-600 dark:text-slate-300 shrink-0">
+                      {entry.reference}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="flex gap-2 font-mono font-bold text-[11px]">
+                      {entry.debit > 0 && (
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          D: Rp {Math.round(entry.debit).toLocaleString('id-ID')}
+                        </span>
+                      )}
+                      {entry.credit > 0 && (
+                        <span className="text-rose-600 dark:text-rose-400">
+                          K: Rp {Math.round(entry.credit).toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] text-slate-400 font-medium block">Saldo Berjalan</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-white">
+                        Rp {Math.round(entry.runningBalance).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <Table
+            data={ledger.entries}
+            columns={columns}
+            loading={isLoading}
+            emptyMessage={`Belum ada mutasi pembukuan pada rekening ${ledger.account.code} untuk periode yang dipilih.`}
+          />
+        )}
       </div>
     </div>
   );

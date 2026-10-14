@@ -137,7 +137,7 @@ export const CashFlowStatementReport: React.FC<CashFlowStatementReportProps> = (
               />
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
               <input
                 type="date"
                 aria-label="Tanggal Mulai"
