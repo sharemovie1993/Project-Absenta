@@ -249,39 +249,45 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'sarpras.repairs.manage',
   ],
 
-  // Manajer Toko Koperasi (Kasir POS Minimarket Koperasi)
+  // Manajer Toko Koperasi (Pengelola Usaha Toko, Kasir POS & Stok)
   [STRUKTUR_CODES.MANAJER_TOKO_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.savings.view.history',
-    'cooperative.members.view.list',
-    'cooperative.members.view.detail',
-    'cooperative.points.view',
-    'cooperative.loans.apply',
 
-    // Operasional POS Kasir & Stok Produk
+    // Pengadaan & Pemasok
+    'cooperative.suppliers.view.list',
+    'cooperative.suppliers.manage',
+
+    // Operasional Toko, Produk & Stok
     'cooperative.store.view.catalog',
-    'cooperative.store.orders.manage',
-    'cooperative.store.orders.view.list',
-    'cooperative.store.inventory.manage',
     'cooperative.store.products.view.list',
     'cooperative.store.products.view.detail',
     'cooperative.store.products.create',
     'cooperative.store.products.update',
     'cooperative.store.products.delete',
     'cooperative.store.categories.manage',
-    'cooperative.store.transactions.view',
+    'cooperative.store.inventory.manage',
 
-    // Promosi, PPOB, & Tiket Bantuan Kasir
+    // Promosi
     'cooperative.vouchers.manage',
     'cooperative.vouchers.view.list',
+
+    // Kasir POS & Transaksi
+    'cooperative.store.orders.manage',
+    'cooperative.store.orders.view.list',
+    'cooperative.store.transactions.view',
+
+    // PPOB & Pulsa
     'cooperative.ppob.transact',
     'cooperative.ppob.manage.products',
     'cooperative.ppob.view.products',
+
+    // Bantuan & Tiket
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
+    'cooperative.tickets.create',
     'cooperative.tickets.reply',
   ],
 
@@ -721,78 +727,212 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
   // KOPERASI SEKOLAH (PENGURUS & PENGAWAS)
   // ═══════════════════════════════════════════════════════════════════
 
+  // Bendahara Koperasi (Keuangan, Simpan Pinjam, Kas & Bank, SHU)
   [STRUKTUR_CODES.BENDAHARA_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
-    'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw', 'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.view.history',
-    'cooperative.points.view',
+
+    // Data Anggota (Read & Verifikasi Saldo)
+    'cooperative.members.view.list',
+    'cooperative.members.view.detail',
+
+    // Simpanan (Kelola Penuh)
+    'cooperative.savings.view.list',
+    'cooperative.savings.view.detail',
+    'cooperative.savings.view.history',
+    'cooperative.savings.create',
+    'cooperative.savings.deposit',
+    'cooperative.savings.withdraw',
+    'cooperative.savings.types.manage',
+    'cooperative.savings.manage',
+
+    // Pinjaman (Pencairan Dana & Rekap Cicilan)
+    'cooperative.loans.view.list',
+    'cooperative.loans.view.detail',
+    'cooperative.loans.apply',
+    'cooperative.loans.repay',
+    'cooperative.loans.types.manage',
+
+    // Pemasok, Toko & Persediaan (Monitoring Keuangan & Valuasi Stok)
+    'cooperative.suppliers.view.list',
     'cooperative.store.view.catalog',
-    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.repay',
-    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
-    'cooperative.savings.types.manage', 'cooperative.savings.manage',
-    'cooperative.loans.view.detail', 'cooperative.loans.types.manage',
-    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
-    'cooperative.ppob.manage.products', 'cooperative.ppob.transact', 'cooperative.ppob.view.products',
-    'cooperative.points.manage',
-    'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.view.report',
-    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
-    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
+    'cooperative.store.products.view.list',
+    'cooperative.store.products.view.detail',
+    'cooperative.vouchers.view.list',
+    'cooperative.ppob.transact',
+    'cooperative.ppob.view.products',
+    'cooperative.store.orders.view.list',
+    'cooperative.store.transactions.view',
+    'cooperative.store.inventory.manage',
+
+    // Kas & Bank, Laporan Keuangan, Aset & Dividen SHU (Wewenang Utama Bendahara)
+    'cooperative.reports.view.financial',
+    'cooperative.reports.view.daily',
+    'cooperative.reports.view.monthly',
+    'cooperative.assets.view.list',
+    'cooperative.assets.view.detail',
+    'cooperative.shu.manage',
+    'cooperative.shu.calculate',
+    'cooperative.shu.view.report',
+
+    // Pengaturan & Layanan
+    'cooperative.settings.view',
+    'cooperative.tickets.view.list',
+    'cooperative.tickets.view.detail',
   ],
 
+  // Ketua Koperasi (Pimpinan Pengurus - Kebijakan, Approval Pinjaman & Monitoring)
   [STRUKTUR_CODES.KETUA_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
-    'cooperative.announcements.view.list', 'cooperative.announcements.create', 'cooperative.announcements.delete',
-    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage', 'cooperative.members.activate', 'cooperative.members.deactivate', 'cooperative.members.view.status',
-    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.points.manage', 'cooperative.store.view.catalog',
-    'cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.loans.approve', 'cooperative.loans.repay', 'cooperative.loans.types.manage',
-    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
-    'cooperative.loans.view.detail', 'cooperative.loans.reject',
-    'cooperative.savings.view.list', 'cooperative.savings.view.detail', 'cooperative.savings.create', 'cooperative.savings.deposit', 'cooperative.savings.withdraw', 'cooperative.savings.types.manage', 'cooperative.savings.manage',
-    'cooperative.store.orders.view.list', 'cooperative.store.orders.manage', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.products.create', 'cooperative.store.products.update', 'cooperative.store.products.delete', 'cooperative.store.categories.manage', 'cooperative.store.inventory.manage',
-    'cooperative.ppob.manage.products', 'cooperative.ppob.transact', 'cooperative.ppob.view.products',
-    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail', 'cooperative.tickets.create', 'cooperative.tickets.reply', 'cooperative.tickets.update.status',
-    'cooperative.shu.manage', 'cooperative.shu.calculate', 'cooperative.shu.approve', 'cooperative.shu.view.report',
-    'cooperative.settings.view', 'cooperative.vouchers.view.list', 'cooperative.vouchers.manage',
-    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
+
+    // Pengumuman Resmi Pengurus
+    'cooperative.announcements.view.list',
+    'cooperative.announcements.create',
+    'cooperative.announcements.delete',
+
+    // Data Anggota (Persetujuan Keanggotaan UU 25/1992 Ps 31b)
+    'cooperative.members.view.list',
+    'cooperative.members.view.detail',
+    'cooperative.members.create',
+    'cooperative.members.update',
+    'cooperative.members.delete',
+    'cooperative.members.manage',
+    'cooperative.members.activate',
+    'cooperative.members.deactivate',
+    'cooperative.members.view.status',
+
+    // Simpanan (Monitoring Saldo)
+    'cooperative.savings.view.list',
+    'cooperative.savings.view.detail',
+    'cooperative.savings.view.history',
+
+    // Pinjaman (Persetujuan / Approval Pinjaman)
+    'cooperative.loans.view.list',
+    'cooperative.loans.view.detail',
+    'cooperative.loans.apply',
+    'cooperative.loans.approve',
+    'cooperative.loans.reject',
+    'cooperative.loans.repay',
+    'cooperative.loans.types.manage',
+
+    // Pengadaan & Toko (Monitoring Operasional & Valuasi)
+    'cooperative.suppliers.view.list',
+    'cooperative.store.view.catalog',
+    'cooperative.store.products.view.list',
+    'cooperative.store.products.view.detail',
+    'cooperative.vouchers.view.list',
+    'cooperative.vouchers.manage',
+    'cooperative.store.orders.view.list',
+    'cooperative.store.transactions.view',
+    'cooperative.store.inventory.manage',
+
+    // Keuangan, Aset & Dividen SHU
+    'cooperative.reports.view.financial',
+    'cooperative.reports.view.daily',
+    'cooperative.reports.view.monthly',
+    'cooperative.assets.view.list',
+    'cooperative.assets.view.detail',
+    'cooperative.assets.create',
+    'cooperative.assets.update',
+    'cooperative.assets.delete',
+    'cooperative.shu.manage',
+    'cooperative.shu.calculate',
+    'cooperative.shu.approve',
+    'cooperative.shu.view.report',
+
+    // Pengaturan & Layanan
+    'cooperative.tickets.view.list',
+    'cooperative.tickets.view.detail',
+    'cooperative.tickets.create',
+    'cooperative.tickets.reply',
+    'cooperative.tickets.update.status',
+    'cooperative.settings.view',
   ],
 
+  // Sekretaris Koperasi (Administrasi Anggota, Register Aset, Tiket & Pengumuman)
   [STRUKTUR_CODES.SEKRETARIS_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
-    'cooperative.announcements.view.list', 'cooperative.announcements.create', 'cooperative.announcements.delete',
-    'cooperative.members.view.list', 'cooperative.members.view.detail', 'cooperative.members.create', 'cooperative.members.update', 'cooperative.members.delete', 'cooperative.members.manage',
-    'cooperative.savings.view.history', 'cooperative.points.view', 'cooperative.store.view.catalog', 'cooperative.loans.apply',
-    'cooperative.vouchers.manage', 'cooperative.vouchers.view.list',
-    'cooperative.tickets.create', 'cooperative.tickets.reply', 'cooperative.tickets.update.status', 'cooperative.tickets.view.detail', 'cooperative.tickets.view.list',
-    'cooperative.members.activate', 'cooperative.members.deactivate', 'cooperative.members.view.status',
-    'cooperative.savings.view.list', 'cooperative.savings.view.detail',
-    'cooperative.loans.view.list', 'cooperative.loans.view.detail',
-    'cooperative.store.orders.view.list', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail',
-    'cooperative.shu.view.report', 'cooperative.settings.view',
-    'cooperative.assets.view.list', 'cooperative.assets.view.detail', 'cooperative.assets.create', 'cooperative.assets.update', 'cooperative.assets.delete'
+
+    // Komunikasi & Publikasi Pengurus
+    'cooperative.announcements.view.list',
+    'cooperative.announcements.create',
+    'cooperative.announcements.delete',
+
+    // Buku Daftar Anggota (Tugas Utama UU 25/1992 Ps 30:1f)
+    'cooperative.members.view.list',
+    'cooperative.members.view.detail',
+    'cooperative.members.create',
+    'cooperative.members.update',
+    'cooperative.members.delete',
+    'cooperative.members.manage',
+    'cooperative.members.activate',
+    'cooperative.members.deactivate',
+    'cooperative.members.view.status',
+
+    // Buku Register Aset & Inventaris Fisik (UU 25/1992 Ps 30:1e)
+    'cooperative.assets.view.list',
+    'cooperative.assets.view.detail',
+    'cooperative.assets.create',
+    'cooperative.assets.update',
+    'cooperative.assets.delete',
+
+    // Laporan Daftar Pembagian SHU
+    'cooperative.shu.view.report',
+
+    // Pusat Layanan & Tiket Bantuan Anggota
+    'cooperative.tickets.view.list',
+    'cooperative.tickets.view.detail',
+    'cooperative.tickets.create',
+    'cooperative.tickets.reply',
+    'cooperative.tickets.update.status',
   ],
 
+  // Pengawas Koperasi (Badan Pengawas Independen - Murni Audit / Read-Only)
   [STRUKTUR_CODES.PENGAWAS_KOPERASI]: [
     'organization.scope.tenant_wide',
     'academic.structures.view.tree',
     'cooperative.dashboard.view.overview',
     'cooperative.announcements.view.list',
-    'cooperative.members.view.list', 'cooperative.members.view.detail',
-    'cooperative.savings.view.list', 'cooperative.savings.view.history', 'cooperative.points.view',
+
+    // Audit Keanggotaan
+    'cooperative.members.view.list',
+    'cooperative.members.view.detail',
+
+    // Audit Simpanan
+    'cooperative.savings.view.list',
+    'cooperative.savings.view.detail',
+    'cooperative.savings.view.history',
+
+    // Audit Portofolio Pinjaman
+    'cooperative.loans.view.list',
+    'cooperative.loans.view.detail',
+
+    // Audit Pengadaan & Penjualan Toko
+    'cooperative.suppliers.view.list',
     'cooperative.store.view.catalog',
-    'cooperative.loans.view.list', 'cooperative.loans.apply',
-    'cooperative.reports.view.financial', 'cooperative.reports.view.daily', 'cooperative.reports.view.monthly',
-    'cooperative.savings.view.detail', 'cooperative.loans.view.detail',
-    'cooperative.store.orders.view.list', 'cooperative.store.transactions.view', 'cooperative.store.products.view.list', 'cooperative.store.products.view.detail', 'cooperative.store.inventory.manage',
-    'cooperative.tickets.view.list', 'cooperative.tickets.view.detail',
-    'cooperative.shu.view.report', 'cooperative.settings.view', 'cooperative.vouchers.view.list',
-    'cooperative.assets.view.list', 'cooperative.assets.view.detail'
+    'cooperative.store.products.view.list',
+    'cooperative.store.products.view.detail',
+    'cooperative.store.orders.view.list',
+    'cooperative.store.transactions.view',
+    'cooperative.store.inventory.manage',
+
+    // Audit Keuangan & Fisik Aset
+    'cooperative.reports.view.financial',
+    'cooperative.reports.view.daily',
+    'cooperative.reports.view.monthly',
+    'cooperative.assets.view.list',
+    'cooperative.assets.view.detail',
+    'cooperative.shu.view.report',
+
+    // Audit Layanan Aspirasi Anggota
+    'cooperative.tickets.view.list',
+    'cooperative.tickets.view.detail',
   ],
 
   // ═══════════════════════════════════════════════════════════════════
