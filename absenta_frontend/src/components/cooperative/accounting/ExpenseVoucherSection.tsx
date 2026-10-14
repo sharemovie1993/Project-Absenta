@@ -467,6 +467,8 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
     return transferRes?.data?.pagination;
   }, [subTab, expenseRes, depositRes, transferRes]);
 
+  const isCurrentLoading = subTab === 'EXPENSE' ? expenseLoading : subTab === 'DEPOSIT' ? depositLoading : transferLoading;
+
   // ─── ADAPTIVE MOBILE CARD DECKS (Pilar 30 Anti-Overlapping) ───────────────
   const renderMobileExpenseDeck = () => {
     if (expenseLoading) {
