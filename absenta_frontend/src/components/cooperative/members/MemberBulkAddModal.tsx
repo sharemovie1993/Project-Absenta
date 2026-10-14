@@ -8,6 +8,7 @@ import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { Table } from '../../ui/Table';
 import { useKelasOptions } from '../../../hooks/useKelasOptions';
+import { invalidateMembersCaches } from '../../../lib/coopQueryKeys';
 
 interface MemberBulkAddModalProps {
   isOpen: boolean;
@@ -114,7 +115,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
       if (data && data.success) {
         toast.success(`Berhasil mendaftarkan ${data.count} anggota baru!`);
         setCreatedCount(data.count);
-        queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+        invalidateMembersCaches(queryClient);
         onSuccess();
         setStep(4);
       }

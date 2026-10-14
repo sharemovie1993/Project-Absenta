@@ -29,6 +29,40 @@ export const updateLoanStatusSchema = z.object({
   })
 });
 
+// === 1.5. Anggota Koperasi (Members) ===
+export const createMemberSchema = z.object({
+  memberNo: z.string({
+    required_error: 'Nomor anggota (memberNo) wajib diisi'
+  }).min(1, 'Nomor anggota tidak boleh kosong'),
+  type: z.enum(['STUDENT', 'TEACHER', 'GENERAL']).optional().default('STUDENT'),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional().default('ACTIVE'),
+  siswaId: z.string().uuid().nullable().optional(),
+  guruId: z.string().uuid().nullable().optional(),
+  userId: z.string().uuid().nullable().optional(),
+  isExternal: z.boolean().optional(),
+  name: z.string().optional(),
+  email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  pin: z.string().regex(/^\d{6}$/, 'PIN harus berupa 6 digit angka').optional()
+});
+
+export const updateMemberSchema = z.object({
+  type: z.enum(['STUDENT', 'TEACHER', 'GENERAL']).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  siswaId: z.string().uuid().nullable().optional(),
+  guruId: z.string().uuid().nullable().optional(),
+  userId: z.string().uuid().nullable().optional(),
+  pin: z.string().regex(/^\d{6}$/, 'PIN harus berupa 6 digit angka').optional()
+});
+
+export const bulkCreateMembersSchema = z.object({
+  type: z.enum(['STUDENT', 'TEACHER'], {
+    required_error: 'type harus STUDENT atau TEACHER'
+  }),
+  ids: z.array(z.string().uuid('ID harus berupa UUID yang valid')).min(1, 'Daftar ID tidak boleh kosong')
+});
+
 // === 2. Simpanan (Savings) ===
 export const createSavingSchema = z.object({
   memberId: z.string({
@@ -241,3 +275,50 @@ export const createPpobTransactionSchema = z.object({
     invalid_type_error: 'amount harus berupa angka'
   }).min(0, 'Jumlah tidak boleh negatif')
 });
+
+// === 5. Member / Anggota Koperasi ===
+export const createMemberSchema = z.object({
+  type: z.enum(['STUDENT', 'TEACHER', 'EXTERNAL', 'GENERAL'], {
+    invalid_type_error: 'Tipe anggota harus STUDENT, TEACHER, atau EXTERNAL'
+  }).optional(),
+  memberNo: z.string().min(1, 'Nomor anggota tidak boleh kosong').optional(),
+  siswaId: z.string().uuid({ message: 'siswaId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  guruId: z.string().uuid({ message: 'guruId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  userId: z.string().uuid({ message: 'userId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  isExternal: z.boolean().optional(),
+  name: z.string().min(1, 'Nama anggota tidak boleh kosong').optional(),
+  phone: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  email: z.string().email('Format email tidak valid').nullable().optional().transform(v => v === null ? undefined : v),
+  address: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  pin: z.string().regex(/^\d{6}$/, 'PIN harus berupa 6 digit angka').optional(),
+  idempotencyKey: z.string().optional()
+});
+
+export const updateMemberSchema = z.object({
+  type: z.enum(['STUDENT', 'TEACHER', 'EXTERNAL', 'GENERAL'], {
+    invalid_type_error: 'Tipe anggota tidak valid'
+  }).optional(),
+  status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED'], {
+    invalid_type_error: 'Status anggota tidak valid'
+  }).optional(),
+  siswaId: z.string().uuid({ message: 'siswaId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  guruId: z.string().uuid({ message: 'guruId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  userId: z.string().uuid({ message: 'userId harus berupa UUID yang valid' }).nullable().optional().transform(v => v === null ? undefined : v),
+  name: z.string().optional(),
+  phone: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  email: z.string().email('Format email tidak valid').nullable().optional().transform(v => v === null ? undefined : v),
+  address: z.string().nullable().optional().transform(v => v === null ? undefined : v),
+  pin: z.string().regex(/^\d{6}$/, 'PIN harus berupa 6 digit angka').optional()
+});
+
+export const bulkCreateMembersSchema = z.object({
+  type: z.enum(['STUDENT', 'TEACHER'], {
+    required_error: 'Tipe harus STUDENT atau TEACHER',
+    invalid_type_error: 'Tipe harus STUDENT atau TEACHER'
+  }),
+  ids: z.array(z.string().min(1, 'ID tidak boleh kosong'), {
+    required_error: 'Daftar ID wajib diisi'
+  }).min(1, 'Payload ids harus berupa array yang tidak kosong'),
+  idempotencyKey: z.string().optional()
+});
+

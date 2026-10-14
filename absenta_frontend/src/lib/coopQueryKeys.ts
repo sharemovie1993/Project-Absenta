@@ -232,3 +232,20 @@ export function invalidateLoansCaches(queryClient: QueryClient, loanId?: string)
   }
 }
 
+/**
+ * Invalidate all cooperative member queries (member list, status, non-members, savings, stats).
+ */
+export function invalidateMembersCaches(queryClient: QueryClient, memberId?: string) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.membersList });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberMe });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberStatusMe });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-members'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-member-stats'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-non-members'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-members-active-list'] });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
+  if (memberId) {
+    queryClient.invalidateQueries({ queryKey: ['koperasi-member-detail', memberId] });
+  }
+}
+

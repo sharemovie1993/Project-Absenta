@@ -10,7 +10,7 @@ import { SavingCategoryService } from '../simpanan/saving-category.service';
 const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-setInterval(() => {
+const idempotencyInterval = setInterval(() => {
     const now = Date.now();
     for (const [key, value] of idempotencyCache.entries()) {
         if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
@@ -18,6 +18,7 @@ setInterval(() => {
         }
     }
 }, 60 * 1000);
+idempotencyInterval.unref?.();
 
 export class MemberService {
     

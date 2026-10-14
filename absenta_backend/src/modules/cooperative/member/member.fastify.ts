@@ -6,6 +6,11 @@ import { MemberService } from './member.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
+import {
+    createMemberSchema,
+    updateMemberSchema,
+    bulkCreateMembersSchema
+} from '../services/cooperative-validation.schema';
 
 export default async function memberRoutes(fastify: any) {
     
@@ -83,8 +88,9 @@ export default async function memberRoutes(fastify: any) {
     fastify.post('/', { preHandler: [requireCapability('cooperative.members.create')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
-            const member = await MemberService.createMember(tenantId, req.body, idempotencyKey);
+            const parsedBody = createMemberSchema.parse(req.body);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || parsedBody.idempotencyKey) as string | undefined;
+            const member = await MemberService.createMember(tenantId, parsedBody, idempotencyKey);
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
@@ -101,13 +107,21 @@ export default async function memberRoutes(fastify: any) {
 
             reply.code(201).send(member);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
+            if (error.name === 'ZodError') {
+                return reply.code(400).send({
+                    success: false,
+                    message: error.errors?.[0]?.message || 'Data member tidak valid',
+                    details: error.errors
+                });
+            }
             const msg = error.message || '';
             if (
                 msg.includes('already exists') ||
                 msg.includes('already a member') ||
                 msg.includes('is required') ||
-                msg.includes('registered')
+                msg.includes('registered') ||
+                msg.includes('PIN harus')
             ) {
                 reply.code(400).send({ message: msg });
             } else {
@@ -127,7 +141,7 @@ export default async function memberRoutes(fastify: any) {
             const results = await MemberService.importBulkMembers(tenantId, rows);
             return results;
         } catch (error) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             reply.status(500).send({ success: false, message: 'Failed to import bulk members'  });
         }
     });
@@ -145,7 +159,7 @@ export default async function memberRoutes(fastify: any) {
             const nonMembers = await MemberService.getNonMembers(tenantId, type, { search, kelasId });
             return nonMembers;
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             reply.status(500).send({ success: false, message: 'Failed to fetch non-members', details: error.message  });
         }
     });
@@ -154,26 +168,18 @@ export default async function memberRoutes(fastify: any) {
     fastify.post('/bulk-create', { preHandler: [requireCapability('cooperative.members.create')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
-            const { type, ids } = req.body as { type: 'STUDENT' | 'TEACHER'; ids: string[] };
-            
-            if (type !== 'STUDENT' && type !== 'TEACHER') {
-                return reply.code(400).send({ message: 'Tipe harus STUDENT atau TEACHER' });
-            }
+            const parsed = bulkCreateMembersSchema.parse(req.body);
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || parsed.idempotencyKey) as string | undefined;
 
-            if (!Array.isArray(ids) || ids.length === 0) {
-                return reply.code(400).send({ message: 'Payload ids harus berupa array yang tidak kosong' });
-            }
-
-            const results = await MemberService.createBulkMembers(tenantId, type, ids, idempotencyKey);
+            const results = await MemberService.createBulkMembers(tenantId, parsed.type, parsed.ids, idempotencyKey);
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
             if (io) {
                 const broadcastPayload = {
                     type: 'MEMBERS_BULK_CREATED',
-                    count: ids.length,
-                    memberType: type,
+                    count: parsed.ids.length,
+                    memberType: parsed.type,
                     timestamp: new Date().toISOString()
                 };
                 io.to(`tenant:${tenantId}`).emit('coop_member_update', broadcastPayload);
@@ -182,7 +188,14 @@ export default async function memberRoutes(fastify: any) {
 
             return results;
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
+            if (error.name === 'ZodError') {
+                return reply.code(400).send({
+                    success: false,
+                    message: error.errors?.[0]?.message || 'Data bulk create tidak valid',
+                    details: error.errors
+                });
+            }
             reply.code(400).send({ message: error.message || 'Failed to bulk create members' });
         }
     });
@@ -191,7 +204,8 @@ export default async function memberRoutes(fastify: any) {
     fastify.put('/:id', { preHandler: [requireCapability('cooperative.members.update')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const member = await MemberService.updateMember(req.params.id, tenantId, req.body);
+            const parsedBody = updateMemberSchema.parse(req.body);
+            const member = await MemberService.updateMember(req.params.id, tenantId, parsedBody);
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
@@ -207,7 +221,14 @@ export default async function memberRoutes(fastify: any) {
 
             return member;
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
+            if (error.name === 'ZodError') {
+                return reply.code(400).send({
+                    success: false,
+                    message: error.errors?.[0]?.message || 'Data update member tidak valid',
+                    details: error.errors
+                });
+            }
             const msg = error.message || '';
             if (msg === 'Member not found') {
                 reply.code(404).send({ message: 'Member not found' });
@@ -215,7 +236,8 @@ export default async function memberRoutes(fastify: any) {
                 msg.includes('already exists') ||
                 msg.includes('already a member') ||
                 msg.includes('is required') ||
-                msg.includes('registered')
+                msg.includes('registered') ||
+                msg.includes('PIN harus')
             ) {
                 reply.code(400).send({ message: msg });
             } else {

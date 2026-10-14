@@ -10,6 +10,7 @@ import { parseImportExcel } from '../../../utils/cooperative/memberDocUtils';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
 import { useKelasOptions } from '../../../hooks/useKelasOptions';
 import { useSocket } from '../../../hooks/useSocket';
+import { invalidateMembersCaches } from '../../../lib/coopQueryKeys';
 
 interface AxiosErrorLike {
   response?: {
@@ -166,11 +167,7 @@ export const useMembersState = (subscription: any) => {
   // Realtime Live Sync: Dengarkan event penambahan/pembaruan anggota koperasi via WebSocket (Pilar 4 Hardening)
   useEffect(() => {
     const handleMemberUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-members'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-member-stats'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-non-members'] });
+      invalidateMembersCaches(queryClient);
     };
 
     subscribe('coop_member_update', handleMemberUpdate);
@@ -345,7 +342,7 @@ export const useMembersState = (subscription: any) => {
           : 'Anggota berhasil ditambahkan!'
       );
       resetForm();
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      invalidateMembersCaches(queryClient);
     },
     onError: (err: unknown) => {
       console.error(err);
@@ -408,7 +405,7 @@ export const useMembersState = (subscription: any) => {
         `Anggota berhasil ${newStatus === 'ACTIVE' ? 'diaktifkan' : 'dinonaktifkan'}!`
       );
       setStatusLoadingId(null);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      invalidateMembersCaches(queryClient, variables.id);
     },
     onError: (err: unknown) => {
       console.error('Error toggling member status:', err);
@@ -459,7 +456,7 @@ export const useMembersState = (subscription: any) => {
         setIsPinModalOpen(false);
         setSelectedMember((prev) => (prev ? { ...prev, pin: variables.payload.pin } : null));
       }
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      invalidateMembersCaches(queryClient, variables.id);
     },
     onError: (err) => {
       console.error(err);
@@ -523,7 +520,7 @@ export const useMembersState = (subscription: any) => {
           toast.error(`Impor selesai dengan ${data.failCount} kegagalan.`);
         }
       }
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      invalidateMembersCaches(queryClient);
     },
     onError: (err) => {
       console.error(err);
@@ -569,7 +566,7 @@ export const useMembersState = (subscription: any) => {
       const res = await api.post(`/cooperative/members/${id}/terminate`);
       return res.data;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, id) => {
       toast.success(
         `Anggota berhasil diberhentikan! Total Payout: Rp ${data.total?.toLocaleString('id-ID') || 0}`
       );
@@ -578,7 +575,7 @@ export const useMembersState = (subscription: any) => {
         setIsDetailOpen(false);
         setTerminatingMember(null);
       }
-      queryClient.invalidateQueries({ queryKey: ['koperasi-members-list'] });
+      invalidateMembersCaches(queryClient, id);
     },
     onError: (err) => {
       console.error(err);
