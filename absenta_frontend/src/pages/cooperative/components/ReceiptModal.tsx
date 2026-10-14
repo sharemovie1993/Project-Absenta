@@ -37,7 +37,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = React.memo(({
         size="md"
       >
         {selectedSale && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-h-[85vh] overflow-y-auto pr-1">
             {/* Visual receipt layout */}
             <div 
               style={receiptStyles}
