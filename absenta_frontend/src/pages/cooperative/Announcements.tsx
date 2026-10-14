@@ -21,6 +21,7 @@ import { Table, type Column } from '../../components/ui/Table';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { getApiErrorMessage } from '../../utils/errorUtils';
 import { useSocket } from '../../hooks/useSocket';
+import { COOP_QUERY_KEYS, invalidateAnnouncementCaches } from '../../lib/coopQueryKeys';
 
 const announcementSchema = z.object({
   title: z.string().min(1, 'Judul wajib diisi').max(150, 'Judul maksimal 150 karakter'),
@@ -93,7 +94,7 @@ const Announcements: React.FC = React.memo(() => {
 
   useEffect(() => {
     const handleUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-announcements-list'] });
+      invalidateAnnouncementCaches(queryClient);
     };
     subscribe('coop_announcement_update', handleUpdate);
     return () => {
@@ -103,13 +104,14 @@ const Announcements: React.FC = React.memo(() => {
 
   // Query Announcements
   const announcementsQuery = useQuery({
-    queryKey: ['koperasi-announcements-list'],
+    queryKey: COOP_QUERY_KEYS.announcements,
     queryFn: async () => {
       const res = await api.get('/cooperative/announcements');
       return (res.data.data ?? []) as Announcement[];
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const announcements = announcementsQuery.data || [];
@@ -151,7 +153,7 @@ const Announcements: React.FC = React.memo(() => {
       setTitle('');
       setContent('');
       setIsCreateModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-announcements-list'] });
+      invalidateAnnouncementCaches(queryClient);
     },
     onError: (error) => {
       console.error(error);
@@ -179,7 +181,7 @@ const Announcements: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       toast.success('Pengumuman berhasil dihapus');
-      queryClient.invalidateQueries({ queryKey: ['koperasi-announcements-list'] });
+      invalidateAnnouncementCaches(queryClient);
     },
     onError: (error) => {
       console.error(error);

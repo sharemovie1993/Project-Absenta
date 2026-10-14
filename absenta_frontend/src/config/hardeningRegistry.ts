@@ -687,6 +687,40 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_announcements: {
+    moduleName: 'coop_announcements',
+    displayName: 'Papan & Manajemen Pengumuman Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat menyiarkan pengumuman koperasi.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'cache_invalidation',
+        name: 'Standarisasi Cache Invalidation & Sinkronisasi Mutasi Data',
+        description: 'Menggunakan COOP_QUERY_KEYS terpusat dan pembersihan query cache via invalidateAnnouncementCaches saat pengumuman dibuat atau dihapus.',
+        status: 'VERIFIED',
+        details: 'COOP_QUERY_KEYS.announcements & invalidateAnnouncementCaches terpasang pada mutasi.'
+      },
+      {
+        id: 'websocket_live_sync',
+        name: 'Sinkronisasi Realtime WebSockets (Live Broadcast Sync)',
+        description: 'Mendengarkan event coop_announcement_update melalui WebSocket hook untuk auto-refresh feed pengumuman instan ke seluruh klien.',
+        status: 'VERIFIED',
+        details: 'useSocket subscribe("coop_announcement_update") aktif dengan clean cleanup handler.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Definisi kolom tabel, filter pencarian, navigasi tab, dan kartu mobile dimemosisasi menggunakan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useMemo & useCallback terpasang pada filteredAnnouncements, columns, renderMobileCard, dan tabs.'
+      }
+    ]
+  },
   coop_settings: {
     moduleName: 'coop_settings',
     displayName: 'Pengaturan Koperasi',

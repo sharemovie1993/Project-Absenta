@@ -78,6 +78,9 @@ export const COOP_QUERY_KEYS = {
   // ─── Pusat Aduan (Tickets & Support) ──────────────────────────────────────
   ticketsList: (scope = 'all') => ['koperasi-tickets-list', scope] as const,
   ticketDetail: (id: string) => ['koperasi-ticket-detail', id] as const,
+
+  // ─── Pengumuman (Announcements) ───────────────────────────────────────────
+  announcements: ['koperasi-announcements-list'] as const,
 } as const;
 
 /**
@@ -173,6 +176,9 @@ export function invalidateTicketCaches(queryClient: QueryClient, ticketId?: stri
   }
 }
 
-
-
-
+/**
+ * Invalidate all cooperative announcement queries.
+ */
+export function invalidateAnnouncementCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.announcements });
+}
