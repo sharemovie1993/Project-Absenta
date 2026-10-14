@@ -110,7 +110,9 @@ const AssetsPage: React.FC = React.memo(() => {
         }
       });
       return res.data;
-    }
+    },
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const assetsList = useMemo(() => assetResponse?.data?.items || [], [assetResponse]);
@@ -437,6 +439,7 @@ const AssetsPage: React.FC = React.memo(() => {
                 icon={<Package size={24} />}
                 gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30"
                 subtitle={`${summary.inUseCount} Aset aktif digunakan`}
+                mobileCompact={isMobile}
               />
 
               <AnalyticsCard
@@ -445,6 +448,7 @@ const AssetsPage: React.FC = React.memo(() => {
                 icon={<DollarSign size={24} />}
                 gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30"
                 subtitle="Total nilai perolehan buku"
+                mobileCompact={isMobile}
               />
 
               <AnalyticsCard
@@ -453,6 +457,7 @@ const AssetsPage: React.FC = React.memo(() => {
                 icon={<ShieldCheck size={24} />}
                 gradient="from-blue-500 to-blue-700 text-white border-blue-400/30"
                 subtitle="Berfungsi normal di lapangan"
+                mobileCompact={isMobile}
               />
 
               <AnalyticsCard
@@ -461,6 +466,7 @@ const AssetsPage: React.FC = React.memo(() => {
                 icon={<AlertTriangle size={24} />}
                 gradient="from-amber-500 to-amber-700 text-white border-amber-400/30"
                 subtitle={summary.damagedCount > 0 ? 'Perlu tindakan perbaikan' : 'Semua aset prima'}
+                mobileCompact={isMobile}
               />
             </div>
 

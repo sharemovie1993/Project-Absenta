@@ -112,33 +112,36 @@ export const CoopAssetMobileDeck: React.FC<CoopAssetMobileDeckProps> = React.mem
               <span className="font-mono text-sm font-bold text-slate-900 dark:text-slate-100">
                 Rp {Math.round(Number(asset.purchasePrice || 0)).toLocaleString('id-ID')}
               </span>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-400"
+                  className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-400 active:scale-95 transition-transform"
                   onClick={() => onDetail(asset)}
                   aria-label={`Detail aset ${asset.name}`}
+                  title="Lihat Detail & Barcode Aset"
                 >
-                  <Eye size={14} />
+                  <Eye size={16} />
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center rounded-lg text-indigo-600 dark:text-indigo-400"
+                  className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center rounded-xl text-indigo-600 dark:text-indigo-400 active:scale-95 transition-transform"
                   onClick={() => onEdit(asset)}
                   aria-label={`Ubah aset ${asset.name}`}
+                  title="Ubah Data Aset"
                 >
-                  <Edit size={14} />
+                  <Edit size={16} />
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-w-[36px] min-h-[36px] p-2 flex items-center justify-center rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50"
+                  className="min-w-[44px] min-h-[44px] p-2.5 flex items-center justify-center rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 active:scale-95 transition-transform"
                   onClick={() => onDelete(asset.id, asset.name)}
                   aria-label={`Hapus aset ${asset.name}`}
+                  title="Hapus Aset"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={16} />
                 </Button>
               </div>
             </div>

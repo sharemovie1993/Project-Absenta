@@ -73,8 +73,13 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         data: payload,
         timestamp: new Date().toISOString()
       };
+      // Broadcast ke cooperative workspace room dan global listeners
       io.emit('cooperative_sync', broadcastPayload);
       io.to('cooperative_workspace').emit('cooperative_sync', broadcastPayload);
+      io.emit('coop_asset_update', broadcastPayload);
+      io.to('cooperative_workspace').emit('coop_asset_update', broadcastPayload);
+      io.emit('coop_accounting_update', broadcastPayload);
+      io.to('cooperative_workspace').emit('coop_accounting_update', broadcastPayload);
     }
   };
 
@@ -191,6 +196,8 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         }
 
         const newAsset = await AssetService.createAsset(tenantId, parseResult.data);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, assetId: newAsset.id, code: newAsset.code }, '[Audit] Aset koperasi berhasil didaftarkan');
         broadcastCoopUpdate(req, 'COOP_ASSET_CREATED', newAsset);
 
         return reply.status(201).send({
@@ -227,6 +234,8 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         }
 
         const updated = await AssetService.updateAsset(tenantId, id, parseResult.data);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, assetId: id, code: updated.code }, '[Audit] Data aset koperasi berhasil diperbarui');
         broadcastCoopUpdate(req, 'COOP_ASSET_UPDATED', updated);
 
         return reply.status(200).send({
@@ -253,6 +262,8 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         const tenantId = getTenantId(req);
         const { id } = req.params as { id: string };
         await AssetService.deleteAsset(tenantId, id);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, assetId: id }, '[Audit] Aset koperasi berhasil dihapus');
         broadcastCoopUpdate(req, 'COOP_ASSET_DELETED', { id });
 
         return reply.status(200).send({
@@ -277,6 +288,8 @@ export default async function assetRoutes(fastify: FastifyInstance) {
       try {
         const tenantId = getTenantId(req);
         const result = await AssetService.syncExistingAssetsToJournal(tenantId);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, syncedCount: result.syncedCount, totalSyncedValue: result.totalSyncedValue }, '[Audit] Selesai sinkronisasi aset eksisting ke Neraca Keuangan');
         broadcastCoopUpdate(req, 'COOP_ASSET_SYNCED', result);
 
         return reply.status(200).send({
@@ -315,6 +328,8 @@ export default async function assetRoutes(fastify: FastifyInstance) {
         const m = parseResult.data.month || now.getMonth() + 1;
 
         const result = await AssetService.runMonthlyDepreciation(tenantId, y, m);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, period: result.period, voucherNumber: result.voucherNumber, totalDepreciation: result.totalDepreciation }, '[Audit] Penyusutan bulanan aset koperasi berhasil dibukukan');
         broadcastCoopUpdate(req, 'COOP_ASSET_DEPRECIATED', result);
 
         return reply.status(200).send({
