@@ -37,7 +37,6 @@ import {
 import { createMitraColumns } from '../../components/hubin/mitra/MitraIndustriTableColumns';
 import { MitraIndustriCard } from '../../components/hubin/mitra/MitraIndustriCard';
 import { MitraMouFilterBar } from '../../components/hubin/mitra/MitraMouFilterBar';
-import { MitraBulkActionBar } from '../../components/hubin/mitra/MitraBulkActionBar';
 import { MitraTableToolbarRight } from '../../components/hubin/mitra/MitraTableToolbarRight';
 import { computeMitraStats, exportMitraToExcel, downloadMitraTemplate } from '../../components/hubin/mitra/mitraUtils';
 
@@ -200,9 +199,11 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     const ok = await confirm({
       title: 'Hapus Mitra Industri Terpilih',
       description: `Apakah Anda yakin ingin menghapus ${selectedRowKeys.size} mitra industri terpilih? Tindakan ini akan menghapus semua riwayat penempatan PKL terkait perusahaan ini.`,
-      confirmText: `Ya, Hapus (${selectedRowKeys.size})`,
+      confirmText: `Hapus (${selectedRowKeys.size})`,
       cancelText: 'Batal',
-      style: 'danger'
+      style: 'danger',
+      withProgress: true,
+      progressLabel: `Menghapus ${selectedRowKeys.size} mitra industri...`,
     });
 
     if (ok) {
@@ -555,16 +556,6 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
           )}
         </div>
       </SectionCard>
-
-      {/* Floating Bulk Action Bar */}
-      <MitraBulkActionBar
-        selectedCount={selectedRowKeys.size}
-        onClearSelection={() => setSelectedRowKeys(new Set())}
-        onBulkDelete={handleBulkDelete}
-        onBulkExport={handleBulkExport}
-        isDeleting={bulkDeleteMutation.isPending}
-        canManage={isHubin}
-      />
 
       {/* Modals with Suspense fallback */}
       <Suspense fallback={null}>
