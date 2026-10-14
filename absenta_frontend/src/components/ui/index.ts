@@ -25,6 +25,7 @@ export {
   CardLoader,
   loaderVariants 
 } from './Loader';
+export { default as Spinner, type SpinnerProps } from './Spinner';
 export { Skeleton } from './Skeleton';
 export { 
   default as Alert,
