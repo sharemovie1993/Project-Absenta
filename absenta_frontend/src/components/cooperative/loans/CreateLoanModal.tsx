@@ -53,8 +53,8 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
       role="dialog"
       aria-modal="true"
     >
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex justify-between items-center">
+      <div className="w-full max-w-md max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex justify-between items-center shrink-0">
           <div>
             <h3 id="create-loan-title" className="text-sm font-black uppercase tracking-wider text-slate-850 dark:text-slate-100">
               Formulir Pengajuan Pinjaman
@@ -71,8 +71,8 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
           </button>
         </div>
 
-        <form onSubmit={onSubmit}>
-          <div className="p-6 space-y-4">
+        <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Select Member (Operator mode only) */}
             {!isStudent && (
               <div className="space-y-1.5">
@@ -177,7 +177,7 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
           </div>
 
           {/* Footer Buttons */}
-          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end">
+          <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-850 bg-slate-50/50 dark:bg-slate-955/20 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 justify-end shrink-0">
             <Button
               type="button"
               variant="outline"
