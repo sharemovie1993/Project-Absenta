@@ -2898,6 +2898,8 @@ model CoopSupplier {
   updatedAt DateTime @updatedAt
 
   @@unique([tenantId, name])
+  @@index([tenantId, isActive])
+  @@index([tenantId, createdAt])
 }
 
 model CoopStockOpname {
