@@ -40,8 +40,13 @@ export default async function tokoRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             if (tenantId) {
                 io.to(`tenant:${tenantId}`).emit('coop_pos_update', broadcastPayload);
+                io.to(`tenant:${tenantId}`).emit('coop_sales_update', broadcastPayload);
             }
             io.emit('coop_pos_update', broadcastPayload);
+            io.emit('coop_sales_update', broadcastPayload);
+            io.to('cooperative_workspace').emit('cooperative_sync', broadcastPayload);
+            io.to('cooperative_workspace').emit('coop_sales_update', broadcastPayload);
+            io.emit('cooperative_sync', broadcastPayload);
         }
     };
 
@@ -137,6 +142,7 @@ export default async function tokoRoutes(fastify: any) {
 
             // Broadcast event POS
             broadcastCoopPos(req, 'SALE_COMPLETED', { saleId: sale.id, paymentMethod, total: sale.total });
+            appLogger.info({ tenantId, operatorId, saleId: sale.id, total: sale.total, paymentMethod }, '[Audit] Transaksi kasir POS toko koperasi berhasil diproses');
 
             // Jika pembayaran memotong simpanan sukarela, broadcast event simpanan realtime
             if (paymentMethod === 'SAVING') {

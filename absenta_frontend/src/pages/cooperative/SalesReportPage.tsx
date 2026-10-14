@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import {
   DollarSign, ShoppingCart, TrendingUp, Coins, Receipt, Award,
@@ -16,9 +16,14 @@ import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLa
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { exportDataToExcel } from '../../utils/export.utils';
 import { formatDate } from '../../utils/date.utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useSocket } from '@/hooks/useSocket';
+import { COOP_QUERY_KEYS, invalidateSalesReportCaches } from '../../lib/coopQueryKeys';
 
-// Lazy Loaded Receipt Modal (Pilar 11 Hardening)
+// Lazy Loaded Subcomponents (Pilar 11 & Pilar 21 Hardening)
 const ReceiptModal = lazy(() => import('./components/ReceiptModal').then(m => ({ default: m.ReceiptModal })));
+const CoopSalesReportMobileDeck = lazy(() => import('../../components/cooperative/sales/CoopSalesReportMobileDeck'));
+const SalesReportKpiCards = lazy(() => import('./components/SalesReportKpiCards'));
 
 // Zod Schema Guard (Pilar 25 Hardening)
 const filterSchema = z.object({
@@ -114,6 +119,8 @@ interface ReceiptSale {
 }
 
 const SalesReportPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>('transactions');
   const [preset, setPreset] = useState<PresetType>('THIS_MONTH');
   const [customStartDate, setCustomStartDate] = useState('');
@@ -127,6 +134,27 @@ const SalesReportPage: React.FC = React.memo(() => {
   // Modal State
   const [selectedSale, setSelectedSale] = useState<ReceiptSale | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+
+  const { subscribe, unsubscribe, isConnected } = useSocket();
+
+  // Realtime Live Sync via WebSocket (Phase 4 Hardening)
+  const handleRealtimeSalesUpdate = useCallback(() => {
+    invalidateSalesReportCaches(queryClient);
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    subscribe('coop_sales_update', handleRealtimeSalesUpdate);
+    subscribe('coop_pos_update', handleRealtimeSalesUpdate);
+    subscribe('cooperative_sync', handleRealtimeSalesUpdate);
+
+    return () => {
+      unsubscribe('coop_sales_update', handleRealtimeSalesUpdate);
+      unsubscribe('coop_pos_update', handleRealtimeSalesUpdate);
+      unsubscribe('cooperative_sync', handleRealtimeSalesUpdate);
+    };
+  }, [isConnected, subscribe, unsubscribe, handleRealtimeSalesUpdate]);
 
   // Tanggal Efektif
   const { startDate, endDate } = useMemo(() => {
@@ -155,9 +183,9 @@ const SalesReportPage: React.FC = React.memo(() => {
     return { startDate: customStartDate, endDate: customEndDate };
   }, [preset, customStartDate, customEndDate]);
 
-  // Query 1: Ringkasan KPI
+  // Query 1: Ringkasan KPI (Centralized Cache Phase 3 & 4)
   const summaryQuery = useQuery({
-    queryKey: ['coop-sales-report-summary', startDate, endDate, paymentMethod],
+    queryKey: COOP_QUERY_KEYS.salesSummary(startDate, endDate, paymentMethod),
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/sales-report/summary', {
         params: {
@@ -168,7 +196,8 @@ const SalesReportPage: React.FC = React.memo(() => {
       });
       return res.data?.data as SalesSummaryData;
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const summary = useMemo(() => summaryQuery.data || {
@@ -177,9 +206,9 @@ const SalesReportPage: React.FC = React.memo(() => {
     paymentBreakdown: { CASH: { total: 0, count: 0 }, SAVING: { total: 0, count: 0 }, OTHER: { total: 0, count: 0 } }
   }, [summaryQuery.data]);
 
-  // Query 2: Transaksi Berpaginasi
+  // Query 2: Transaksi Berpaginasi (Centralized Cache Phase 3 & 4)
   const transactionsQuery = useQuery({
-    queryKey: ['coop-sales-report-transactions', page, limit, startDate, endDate, paymentMethod, search],
+    queryKey: COOP_QUERY_KEYS.salesTransactions(page, limit, startDate, endDate, paymentMethod, search),
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/sales-report/transactions', {
         params: {
@@ -196,16 +225,17 @@ const SalesReportPage: React.FC = React.memo(() => {
       };
     },
     enabled: activeTab === 'transactions',
-    staleTime: 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const transactionList = useMemo(() => transactionsQuery.data?.items || [], [transactionsQuery.data]);
   const totalPages = transactionsQuery.data?.pagination?.totalPages || 1;
   const totalTransactionsCount = transactionsQuery.data?.pagination?.total || 0;
 
-  // Query 3: Produk Terlaris
+  // Query 3: Produk Terlaris (Centralized Cache Phase 3 & 4)
   const topProductsQuery = useQuery({
-    queryKey: ['coop-sales-report-top-products', startDate, endDate],
+    queryKey: COOP_QUERY_KEYS.salesTopProducts(startDate, endDate),
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/sales-report/top-products', {
         params: { startDate: startDate || undefined, endDate: endDate || undefined, limit: 15 }
@@ -213,14 +243,15 @@ const SalesReportPage: React.FC = React.memo(() => {
       return res.data?.data as TopProductItem[];
     },
     enabled: activeTab === 'top-products',
-    staleTime: 3 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const topProducts = useMemo(() => topProductsQuery.data || [], [topProductsQuery.data]);
 
-  // Query 4: Rekap Harian
+  // Query 4: Rekap Harian (Centralized Cache Phase 3 & 4)
   const dailyQuery = useQuery({
-    queryKey: ['coop-sales-report-daily', startDate, endDate],
+    queryKey: COOP_QUERY_KEYS.salesDaily(startDate, endDate),
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/sales-report/daily', {
         params: { startDate: startDate || undefined, endDate: endDate || undefined }
@@ -228,7 +259,8 @@ const SalesReportPage: React.FC = React.memo(() => {
       return res.data?.data as DailySalesItem[];
     },
     enabled: activeTab === 'daily',
-    staleTime: 3 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const dailyList = useMemo(() => dailyQuery.data || [], [dailyQuery.data]);
@@ -569,36 +601,9 @@ const SalesReportPage: React.FC = React.memo(() => {
             </div>
 
             {/* ── Analytics KPI Cards ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <AnalyticsCard
-                title="Total Omset Penjualan"
-                value={`Rp ${Math.round(summary.totalSales).toLocaleString('id-ID')}`}
-                icon={<DollarSign size={24} />}
-                gradient="from-indigo-600 to-indigo-800 text-white border-indigo-500/30"
-                subtitle={`${summary.totalItemsSold.toLocaleString('id-ID')} unit barang terjual`}
-              />
-              <AnalyticsCard
-                title="Total Transaksi Kasir"
-                value={`${summary.totalTransactions.toLocaleString('id-ID')} Struk`}
-                icon={<ShoppingCart size={24} />}
-                gradient="from-blue-600 to-blue-800 text-white border-blue-500/30"
-                subtitle={`Rata-rata: Rp ${Math.round(summary.avgBasketSize).toLocaleString('id-ID')} / struk`}
-              />
-              <AnalyticsCard
-                title="Estimasi Laba Kotor"
-                value={`Rp ${Math.round(summary.totalEstimatedGrossProfit).toLocaleString('id-ID')}`}
-                icon={<TrendingUp size={24} />}
-                gradient="from-emerald-600 to-emerald-800 text-white border-emerald-500/30"
-                subtitle={`Margin Laba: ${summary.grossProfitMarginPct}% dari omset`}
-              />
-              <AnalyticsCard
-                title="Kas Fisik Tunai (Kasir)"
-                value={`Rp ${Math.round(summary.paymentBreakdown?.CASH?.total || 0).toLocaleString('id-ID')}`}
-                icon={<Coins size={24} />}
-                gradient="from-amber-600 to-amber-800 text-white border-amber-500/30"
-                subtitle={`Cashless: Rp ${Math.round(summary.paymentBreakdown?.SAVING?.total || 0).toLocaleString('id-ID')}`}
-              />
-            </div>
+            <Suspense fallback={<div className="h-28 animate-pulse bg-slate-100 dark:bg-slate-800 rounded-2xl" />}>
+              <SalesReportKpiCards summary={summary} />
+            </Suspense>
 
             {/* ── Tab Content ── */}
             <SectionCard fullWidth noPadding>
@@ -634,44 +639,110 @@ const SalesReportPage: React.FC = React.memo(() => {
                       </span>
                     </div>
 
-                    <Table
-                      data={transactionList}
-                      columns={transactionColumns}
-                      loading={transactionsQuery.isLoading}
-                      emptyMessage="Belum ada transaksi penjualan pada rentang tanggal yang dipilih."
-                      actions={<div className="text-xs font-semibold text-slate-600">Total: {totalTransactionsCount} Transaksi</div>}
-                      pagination={{
-                        currentPage: page,
-                        totalPages,
-                        totalItems: totalTransactionsCount,
-                        onPageChange: (newPage) => setPage(newPage),
-                        onLimitChange: (newLimit) => setLimit(newLimit),
-                      }}
-                    />
+                    {isMobile ? (
+                      <div className="space-y-3 w-full max-w-full min-w-0">
+                        <CoopSalesReportMobileDeck
+                          activeTab="transactions"
+                          transactions={transactionList}
+                          topProducts={[]}
+                          dailySales={[]}
+                          loading={transactionsQuery.isLoading}
+                          onOpenReceipt={(saleId) => {
+                            const found = transactionList.find(t => t.id === saleId);
+                            if (found) handleOpenReceipt(found);
+                          }}
+                        />
+
+                        {totalPages > 1 && (
+                          <div className="flex items-center justify-between pt-2 px-1 text-xs w-full max-w-full min-w-0">
+                            <span className="text-slate-500 text-[11px] truncate">
+                              Hal. {page} / {totalPages} ({totalTransactionsCount} struk)
+                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={page <= 1}
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
+                              >
+                                Sebelumnya
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={page >= totalPages}
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
+                              >
+                                Selanjutnya
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Table
+                        data={transactionList}
+                        columns={transactionColumns}
+                        loading={transactionsQuery.isLoading}
+                        emptyMessage="Belum ada transaksi penjualan pada rentang tanggal yang dipilih."
+                        actions={<div className="text-xs font-semibold text-slate-600">Total: {totalTransactionsCount} Transaksi</div>}
+                        pagination={{
+                          currentPage: page,
+                          totalPages,
+                          totalItems: totalTransactionsCount,
+                          onPageChange: (newPage) => setPage(newPage),
+                          onLimitChange: (newLimit) => setLimit(newLimit),
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'top-products' && (
                   <div className="space-y-4">
-                    <Table
-                      data={topProducts}
-                      columns={topProductColumns}
-                      loading={topProductsQuery.isLoading}
-                      emptyMessage="Belum ada data produk terjual pada rentang tanggal ini."
-                      actions={<div className="text-xs font-semibold text-slate-600">Top 15 Produk Terlaris</div>}
-                    />
+                    {isMobile ? (
+                      <CoopSalesReportMobileDeck
+                        activeTab="top-products"
+                        transactions={[]}
+                        topProducts={topProducts}
+                        dailySales={[]}
+                        loading={topProductsQuery.isLoading}
+                        onOpenReceipt={() => {}}
+                      />
+                    ) : (
+                      <Table
+                        data={topProducts}
+                        columns={topProductColumns}
+                        loading={topProductsQuery.isLoading}
+                        emptyMessage="Belum ada data produk terjual pada rentang tanggal ini."
+                        actions={<div className="text-xs font-semibold text-slate-600">Top 15 Produk Terlaris</div>}
+                      />
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'daily' && (
                   <div className="space-y-4">
-                    <Table
-                      data={dailyList}
-                      columns={dailyColumns}
-                      loading={dailyQuery.isLoading}
-                      emptyMessage="Belum ada data rekap penjualan harian pada rentang tanggal ini."
-                      actions={<div className="text-xs font-semibold text-slate-600">Rekap Harian Kasir (Z-Report)</div>}
-                    />
+                    {isMobile ? (
+                      <CoopSalesReportMobileDeck
+                        activeTab="daily"
+                        transactions={[]}
+                        topProducts={[]}
+                        dailySales={dailyList}
+                        loading={dailyQuery.isLoading}
+                        onOpenReceipt={() => {}}
+                      />
+                    ) : (
+                      <Table
+                        data={dailyList}
+                        columns={dailyColumns}
+                        loading={dailyQuery.isLoading}
+                        emptyMessage="Belum ada data rekap penjualan harian pada rentang tanggal ini."
+                        actions={<div className="text-xs font-semibold text-slate-600">Rekap Harian Kasir (Z-Report)</div>}
+                      />
+                    )}
                   </div>
                 )}
               </div>

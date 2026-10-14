@@ -1,4 +1,4 @@
-import { TokoService } from '../toko.service';
+import { TokoService, clearSalesReportCache } from '../toko.service';
 import { prisma } from '@/utils/prisma';
 
 // Mock Prisma
@@ -21,6 +21,7 @@ describe('TokoService - Sales Report Unit & Isolation Tests (Phase 5 QA)', () =>
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearSalesReportCache();
   });
 
   describe('getSalesReportSummary', () => {
@@ -165,13 +166,71 @@ describe('TokoService - Sales Report Unit & Isolation Tests (Phase 5 QA)', () =>
 
       expect(daily.length).toBe(2);
       // Urutan tanggal descending
-      const dayToday = daily.find(d => d.date.includes('2026-10-14'));
+      const dayToday = daily.find((d: { date: string }) => d.date.includes('2026-10-14'));
       expect(dayToday).toBeDefined();
       expect(dayToday?.transactionCount).toBe(2);
       expect(dayToday?.cashTotal).toBe(25000);
       expect(dayToday?.savingTotal).toBe(15000);
       expect(dayToday?.grandTotal).toBe(40000);
       expect(dayToday?.totalItems).toBe(3);
+    });
+  });
+
+  describe('In-Memory Caching & Cache Invalidation (Phase 4 Hardening & Phase 5 QA)', () => {
+    it('harus melayani query ringkasan penjualan berikutnya dari in-memory cache tanpa memanggil Prisma findMany berulang', async () => {
+      const mockSales = [
+        {
+          id: 'sale-cache-1',
+          total: 100000,
+          paymentMethod: 'CASH',
+          items: [{ quantity: 1, product: { costPrice: 60000, price: 100000 } }]
+        }
+      ];
+      (prisma.sale.findMany as jest.Mock).mockResolvedValue(mockSales);
+
+      // Panggilan 1: Menghubungi database Prisma
+      const firstResult = await TokoService.getSalesReportSummary(mockTenantId, {
+        startDate: '2026-10-01',
+        endDate: '2026-10-14'
+      });
+      expect(firstResult.totalSales).toBe(100000);
+      expect(prisma.sale.findMany).toHaveBeenCalledTimes(1);
+
+      // Panggilan 2: Menggunakan in-memory cache
+      const secondResult = await TokoService.getSalesReportSummary(mockTenantId, {
+        startDate: '2026-10-01',
+        endDate: '2026-10-14'
+      });
+      expect(secondResult.totalSales).toBe(100000);
+      expect(prisma.sale.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('harus mengosongkan cache ketika clearSalesReportCache dipanggil', async () => {
+      const mockSales = [
+        {
+          id: 'sale-cache-1',
+          total: 100000,
+          paymentMethod: 'CASH',
+          items: [{ quantity: 1, product: { costPrice: 60000, price: 100000 } }]
+        }
+      ];
+      (prisma.sale.findMany as jest.Mock).mockResolvedValue(mockSales);
+
+      await TokoService.getSalesReportSummary(mockTenantId, {
+        startDate: '2026-10-01',
+        endDate: '2026-10-14'
+      });
+      expect(prisma.sale.findMany).toHaveBeenCalledTimes(1);
+
+      // Eviction via clearSalesReportCache
+      clearSalesReportCache(mockTenantId);
+
+      // Panggilan setelah eviction harus hit Prisma lagi
+      await TokoService.getSalesReportSummary(mockTenantId, {
+        startDate: '2026-10-01',
+        endDate: '2026-10-14'
+      });
+      expect(prisma.sale.findMany).toHaveBeenCalledTimes(2);
     });
   });
 });

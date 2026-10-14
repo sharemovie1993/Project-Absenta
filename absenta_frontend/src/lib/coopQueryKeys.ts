@@ -64,6 +64,16 @@ export const COOP_QUERY_KEYS = {
   vouchers: ['koperasi-vouchers-list'] as const,
   pointsHistory: ['koperasi-points-history'] as const,
   mySavingsSummary: ['koperasi-my-savings-summary'] as const,
+
+  // ─── Sales Report (Laporan Penjualan Toko) ────────────────────────────────
+  salesSummary: (startDate = '', endDate = '', paymentMethod = '') =>
+    ['coop-sales-report-summary', startDate, endDate, paymentMethod] as const,
+  salesTransactions: (page = 1, limit = 15, startDate = '', endDate = '', paymentMethod = '', search = '') =>
+    ['coop-sales-report-transactions', page, limit, startDate, endDate, paymentMethod, search] as const,
+  salesTopProducts: (startDate = '', endDate = '') =>
+    ['coop-sales-report-top-products', startDate, endDate] as const,
+  salesDaily: (startDate = '', endDate = '') =>
+    ['coop-sales-report-daily', startDate, endDate] as const,
 } as const;
 
 /**
@@ -125,4 +135,15 @@ export function invalidateAccountingCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['cooperative-asset-depreciation-status'] });
   queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
 }
+
+/**
+ * Invalidate all sales report queries (summary, transactions, top products, daily).
+ */
+export function invalidateSalesReportCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: ['coop-sales-report-summary'] });
+  queryClient.invalidateQueries({ queryKey: ['coop-sales-report-transactions'] });
+  queryClient.invalidateQueries({ queryKey: ['coop-sales-report-top-products'] });
+  queryClient.invalidateQueries({ queryKey: ['coop-sales-report-daily'] });
+}
+
 

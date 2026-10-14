@@ -29,6 +29,47 @@ if (typeof idempotencySweepTimer?.unref === 'function') {
 // In-Flight Checkout Mutex Lock untuk mencegah race condition double-spend
 const checkoutLocks = new Set<string>();
 
+// In-Memory Sales Report Cache (30s TTL) dengan Bounded Capacity (Phase 4 Hardening)
+interface SalesCacheEntry<T> {
+    data: T;
+    expiresAt: number;
+}
+const salesReportCache = new Map<string, SalesCacheEntry<any>>();
+const SALES_REPORT_CACHE_TTL_MS = 30_000;
+const MAX_SALES_REPORT_ENTRIES = 500;
+
+function pruneExpiredSalesReportCache() {
+    const now = Date.now();
+    for (const [key, entry] of salesReportCache.entries()) {
+        if (now >= entry.expiresAt) {
+            salesReportCache.delete(key);
+        }
+    }
+}
+
+export function clearSalesReportCache(tenantId?: string) {
+    if (tenantId) {
+        for (const key of salesReportCache.keys()) {
+            if (key.startsWith(`sales:${tenantId}:`)) {
+                salesReportCache.delete(key);
+            }
+        }
+    } else {
+        salesReportCache.clear();
+    }
+}
+
+function setSalesReportCache(key: string, data: any) {
+    if (salesReportCache.size >= MAX_SALES_REPORT_ENTRIES) {
+        pruneExpiredSalesReportCache();
+        if (salesReportCache.size >= MAX_SALES_REPORT_ENTRIES) {
+            const firstKey = salesReportCache.keys().next().value;
+            if (firstKey) salesReportCache.delete(firstKey);
+        }
+    }
+    salesReportCache.set(key, { data, expiresAt: Date.now() + SALES_REPORT_CACHE_TTL_MS });
+}
+
 export class TokoService {
 
     // Get Products (with stock check)
@@ -636,6 +677,7 @@ export class TokoService {
             idempotencyCache.set(idempotencyKey, { data: sale, timestamp: Date.now() });
         }
 
+        clearSalesReportCache(tenantId);
         return sale;
     } finally {
         if (lockKey) checkoutLocks.delete(lockKey);
@@ -1050,6 +1092,12 @@ export class TokoService {
      * Ringkasan KPI Penjualan Toko (Omset, Transaksi, Margin Kotor, Metode Bayar)
      */
     static async getSalesReportSummary(tenantId: string, options?: { startDate?: string; endDate?: string; paymentMethod?: string }) {
+        const cacheKey = `sales:${tenantId}:summary:${options?.startDate || 'all'}:${options?.endDate || 'all'}:${options?.paymentMethod || 'all'}`;
+        const cached = salesReportCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.data;
+        }
+
         const where: any = { tenantId };
 
         if (options?.paymentMethod && options.paymentMethod !== 'ALL') {
@@ -1112,7 +1160,7 @@ export class TokoService {
             ? Math.round((totalEstimatedGrossProfit / totalSales) * 1000) / 10 
             : 0;
 
-        return {
+        const result = {
             totalSales,
             totalTransactions,
             avgBasketSize,
@@ -1121,6 +1169,9 @@ export class TokoService {
             grossProfitMarginPct,
             paymentBreakdown
         };
+
+        setSalesReportCache(cacheKey, result);
+        return result;
     }
 
     /**
@@ -1271,6 +1322,12 @@ export class TokoService {
         options?: { startDate?: string; endDate?: string; limit?: number }
     ) {
         const limit = Math.max(1, Math.min(50, Number(options?.limit || 10)));
+        const cacheKey = `sales:${tenantId}:top:${options?.startDate || 'all'}:${options?.endDate || 'all'}:${limit}`;
+        const cached = salesReportCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.data;
+        }
+
         const where: any = {
             sale: {
                 tenantId
@@ -1359,13 +1416,21 @@ export class TokoService {
         // Urutkan berdasarkan volume terjual tertinggi
         results.sort((a, b) => b.qtySold - a.qtySold);
 
-        return results.slice(0, limit);
+        const finalResult = results.slice(0, limit);
+        setSalesReportCache(cacheKey, finalResult);
+        return finalResult;
     }
 
     /**
      * Rekap Penjualan Harian Kasir (Z-Report) untuk Pencocokan Kas
      */
     static async getDailySalesReport(tenantId: string, options?: { startDate?: string; endDate?: string }) {
+        const cacheKey = `sales:${tenantId}:daily:${options?.startDate || 'all'}:${options?.endDate || 'all'}`;
+        const cached = salesReportCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.data;
+        }
+
         const where: any = { tenantId };
 
         if (options?.startDate || options?.endDate) {
@@ -1429,6 +1494,7 @@ export class TokoService {
 
         const result = Array.from(dailyMap.values());
         result.sort((a, b) => b.date.localeCompare(a.date));
+        setSalesReportCache(cacheKey, result);
         return result;
     }
 }
