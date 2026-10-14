@@ -11,9 +11,45 @@ export interface CreateVoucherInput {
     memberId?: string | null;
 }
 
+// Dual-layer caching: In-Memory Cache with TTL & Bounded Capacity (Phase 4 Hardening)
+interface CacheEntry<T> {
+    data: T;
+    expiresAt: number;
+}
+const voucherCache = new Map<string, CacheEntry<any>>();
+const CACHE_TTL_MS = 30_000; // 30 seconds TTL
+const MAX_CACHE_ENTRIES = 500; // Bounded capacity to prevent memory leaks
+
+function pruneExpiredVoucherCache() {
+    const now = Date.now();
+    for (const [key, entry] of voucherCache.entries()) {
+        if (now >= entry.expiresAt) {
+            voucherCache.delete(key);
+        }
+    }
+}
+
+export function clearVoucherMemoryCache(tenantId?: string) {
+    if (tenantId) {
+        for (const key of voucherCache.keys()) {
+            if (key.startsWith(`vouchers:${tenantId}:`)) {
+                voucherCache.delete(key);
+            }
+        }
+    } else {
+        voucherCache.clear();
+    }
+}
+
 export class VoucherService {
     // Get all vouchers for a tenant (optionally filtered by memberId for personal vouchers)
     static async getVouchers(tenantId: string, memberId?: string | null) {
+        const cacheKey = `vouchers:${tenantId}:${memberId ?? 'all'}`;
+        const cached = voucherCache.get(cacheKey);
+        if (cached && Date.now() < cached.expiresAt) {
+            return cached.data;
+        }
+
         const where: any = { tenantId, isActive: true };
         if (memberId !== undefined) {
             where.OR = [
@@ -21,14 +57,26 @@ export class VoucherService {
                 { memberId: memberId }
             ];
         }
-        return await prisma.voucher.findMany({
+        const vouchers = await prisma.voucher.findMany({
             where,
             orderBy: { createdAt: 'desc' }
         });
+
+        if (voucherCache.size >= MAX_CACHE_ENTRIES) {
+            pruneExpiredVoucherCache();
+            if (voucherCache.size >= MAX_CACHE_ENTRIES) {
+                const firstKey = voucherCache.keys().next().value;
+                if (firstKey) voucherCache.delete(firstKey);
+            }
+        }
+
+        voucherCache.set(cacheKey, { data: vouchers, expiresAt: Date.now() + CACHE_TTL_MS });
+        return vouchers;
     }
 
     // Create a new voucher with clean data sanitization
     static async createVoucher(tenantId: string, data: CreateVoucherInput) {
+        clearVoucherMemoryCache(tenantId);
         const trimmedCode = String(data.code).toUpperCase().trim();
         return await prisma.voucher.create({
             data: {
@@ -52,6 +100,7 @@ export class VoucherService {
             throw new Error('Voucher tidak ditemukan');
         }
 
+        clearVoucherMemoryCache(tenantId);
         return await prisma.voucher.delete({
             where: { id }
         });

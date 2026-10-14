@@ -1,4 +1,4 @@
-import { VoucherService } from '../voucher.service';
+import { VoucherService, clearVoucherMemoryCache } from '../voucher.service';
 import { prisma } from '@/utils/prisma';
 
 // Mock Prisma
@@ -18,6 +18,7 @@ describe('Voucher & Promo Koperasi - Phase 3 Enterprise Unit Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearVoucherMemoryCache();
   });
 
   describe('1. Get Vouchers (getVouchers)', () => {
@@ -196,6 +197,76 @@ describe('Voucher & Promo Koperasi - Phase 3 Enterprise Unit Tests', () => {
 
       const voucher = await VoucherService.validateVoucher(mockTenantId, 'VIPANGGOTA', 'member-owner-abc');
       expect(voucher.id).toBe('v-member-exclusive');
+    });
+  });
+
+  describe('5. In-Memory Caching & Invalidation (Phase 4 Hardening)', () => {
+    it('harus melayani query berikutnya dari in-memory cache tanpa memanggil Prisma ulang', async () => {
+      const mockVouchers = [
+        { id: 'v-cache-1', code: 'HEMAT10', discount: 10000, isActive: true }
+      ];
+      (prisma.voucher.findMany as jest.Mock).mockResolvedValue(mockVouchers);
+
+      // Panggilan pertama: Hit Prisma
+      const firstCall = await VoucherService.getVouchers(mockTenantId);
+      expect(firstCall).toEqual(mockVouchers);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(1);
+
+      // Panggilan kedua: Dari In-Memory Cache (Prisma tidak boleh dipanggil lagi)
+      const secondCall = await VoucherService.getVouchers(mockTenantId);
+      expect(secondCall).toEqual(mockVouchers);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('harus menginvalida in-memory cache ketika voucher baru dibuat', async () => {
+      const mockVouchers = [
+        { id: 'v-cache-1', code: 'HEMAT10', discount: 10000, isActive: true }
+      ];
+      (prisma.voucher.findMany as jest.Mock).mockResolvedValue(mockVouchers);
+
+      await VoucherService.getVouchers(mockTenantId);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(1);
+
+      // Buat voucher baru -> cache harus otomatis terhapus
+      (prisma.voucher.create as jest.Mock).mockResolvedValue({
+        id: 'v-new-2',
+        tenantId: mockTenantId,
+        code: 'PROMO20',
+        discount: 20000,
+        isActive: true
+      });
+      await VoucherService.createVoucher(mockTenantId, {
+        code: 'PROMO20',
+        discount: 20000
+      });
+
+      // Panggilan berikutnya harus memanggil Prisma lagi
+      await VoucherService.getVouchers(mockTenantId);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('harus menginvalida in-memory cache ketika voucher dihapus', async () => {
+      const mockVouchers = [
+        { id: 'v-cache-1', code: 'HEMAT10', discount: 10000, isActive: true }
+      ];
+      (prisma.voucher.findMany as jest.Mock).mockResolvedValue(mockVouchers);
+
+      await VoucherService.getVouchers(mockTenantId);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(1);
+
+      // Hapus voucher -> cache harus otomatis terhapus
+      (prisma.voucher.findFirst as jest.Mock).mockResolvedValue({
+        id: 'v-cache-1',
+        tenantId: mockTenantId,
+        code: 'HEMAT10'
+      });
+      (prisma.voucher.delete as jest.Mock).mockResolvedValue({ id: 'v-cache-1' });
+
+      await VoucherService.deleteVoucher(mockTenantId, 'v-cache-1');
+
+      // Panggilan berikutnya harus memanggil Prisma lagi
+      await VoucherService.getVouchers(mockTenantId);
+      expect(prisma.voucher.findMany).toHaveBeenCalledTimes(2);
     });
   });
 });

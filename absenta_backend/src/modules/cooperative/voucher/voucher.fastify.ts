@@ -22,6 +22,21 @@ const createVoucherBodySchema = z.object({
 });
 
 export default async function voucherRoutes(fastify: any) {
+    const broadcastCoopUpdate = (req: any, type: string, payload: any = {}) => {
+        const io = req.server?.io || fastify.io;
+        if (io) {
+            const broadcastPayload = {
+                type,
+                data: payload,
+                timestamp: new Date().toISOString()
+            };
+            io.emit('cooperative_sync', broadcastPayload);
+            io.to('cooperative_workspace').emit('cooperative_sync', broadcastPayload);
+            io.emit('coop_voucher_update', broadcastPayload);
+            io.to('cooperative_workspace').emit('coop_voucher_update', broadcastPayload);
+        }
+    };
+
     // Get all vouchers
     fastify.get('/', { preHandler: [requireCapability(['cooperative.vouchers.view.list', 'cooperative.points.view'])] }, async (req: any, reply: any) => {
         try {
@@ -61,6 +76,10 @@ export default async function voucherRoutes(fastify: any) {
             }
 
             const voucher = await VoucherService.createVoucher(tenantId, parseResult.data);
+            const userId = req.user?.id || req.user?.userId || req.user?.sub || 'system';
+            appLogger.info({ tenantId, userId, voucherId: voucher.id, code: voucher.code }, '[Audit] Voucher promo koperasi berhasil dibuat');
+            broadcastCoopUpdate(req, 'COOP_VOUCHER_CREATED', voucher);
+
             return reply.code(201).send({ success: true, message: 'Voucher berhasil dibuat', data: voucher });
         } catch (error: any) {
             appLogger.error({ err: error }, '[VoucherRoutes] Gagal membuat voucher');
@@ -95,6 +114,10 @@ export default async function voucherRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const { id } = req.params as any;
             await VoucherService.deleteVoucher(tenantId, id);
+            const userId = req.user?.id || req.user?.userId || req.user?.sub || 'system';
+            appLogger.info({ tenantId, userId, voucherId: id }, '[Audit] Voucher promo koperasi berhasil dihapus');
+            broadcastCoopUpdate(req, 'COOP_VOUCHER_DELETED', { id });
+
             return reply.send({ success: true, message: 'Voucher berhasil dihapus' });
         } catch (error: any) {
             appLogger.error({ err: error }, '[VoucherRoutes] Gagal menghapus voucher');

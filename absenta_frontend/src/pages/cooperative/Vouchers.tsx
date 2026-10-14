@@ -15,6 +15,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useSocket } from '@/hooks/useSocket';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
@@ -153,7 +154,26 @@ const Vouchers: React.FC = React.memo(() => {
            user?.capabilities?.includes('cooperative.vouchers.manage') || false;
   }, [user]);
 
-  // Centralized React Query Hooks (Phase 3 Server State Standard)
+  const { subscribe, unsubscribe, isConnected } = useSocket();
+
+  // Realtime Live Sync via WebSocket (Phase 4 Hardening)
+  const handleRealtimeUpdate = useCallback(() => {
+    invalidateVoucherCaches(queryClient);
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    subscribe('coop_voucher_update', handleRealtimeUpdate);
+    subscribe('cooperative_sync', handleRealtimeUpdate);
+
+    return () => {
+      unsubscribe('coop_voucher_update', handleRealtimeUpdate);
+      unsubscribe('cooperative_sync', handleRealtimeUpdate);
+    };
+  }, [isConnected, subscribe, unsubscribe, handleRealtimeUpdate]);
+
+  // Centralized React Query Hooks (Phase 3 & Phase 4 Caching Standard)
   const vouchersQuery = useQuery({
     queryKey: COOP_QUERY_KEYS.vouchers,
     queryFn: async () => {
@@ -162,7 +182,8 @@ const Vouchers: React.FC = React.memo(() => {
       return (Array.isArray(raw) ? raw : (raw?.data || [])) as Voucher[];
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const vouchers = vouchersQuery.data || [];
@@ -178,7 +199,8 @@ const Vouchers: React.FC = React.memo(() => {
       };
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const myPoints = pointsQuery.data?.balance || 0;
@@ -196,7 +218,8 @@ const Vouchers: React.FC = React.memo(() => {
       }
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const mySavingsSum = savingsQuery.data || 0;
