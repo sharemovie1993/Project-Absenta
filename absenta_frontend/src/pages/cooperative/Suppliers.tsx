@@ -30,6 +30,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useSocket } from '@/hooks/useSocket';
 import { cn } from '@/lib/utils';
 
 const getInitials = (name: string): string => {
@@ -100,7 +101,26 @@ export const Suppliers: React.FC = React.memo(() => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [deletingSupplier, setDeletingSupplier] = useState<CoopSupplier | null>(null);
 
-  // Query: Fetch Suppliers (Pilar 31)
+  const { subscribe, unsubscribe, isConnected } = useSocket();
+
+  // Realtime Live Sync via WebSocket (Fase 4 Hardening)
+  const handleRealtimeUpdate = useCallback(() => {
+    invalidateSupplierCaches(queryClient);
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    subscribe('coop_supplier_update', handleRealtimeUpdate);
+    subscribe('cooperative_sync', handleRealtimeUpdate);
+
+    return () => {
+      unsubscribe('coop_supplier_update', handleRealtimeUpdate);
+      unsubscribe('cooperative_sync', handleRealtimeUpdate);
+    };
+  }, [isConnected, subscribe, unsubscribe, handleRealtimeUpdate]);
+
+  // Query: Fetch Suppliers (Pilar 31 & Fase 4 Caching)
   const { data: suppliers = [], isLoading } = useQuery<CoopSupplier[]>({
     queryKey: COOP_QUERY_KEYS.suppliers,
     queryFn: async () => {
@@ -108,7 +128,8 @@ export const Suppliers: React.FC = React.memo(() => {
       const raw = res?.data;
       return Array.isArray(raw) ? raw : (raw?.data || []);
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   // Reset pagination on filter change

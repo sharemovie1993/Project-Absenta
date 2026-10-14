@@ -1,4 +1,4 @@
-import { SupplierService } from '../supplier.service';
+import { SupplierService, clearSupplierMemoryCache } from '../supplier.service';
 import { prisma } from '@/utils/prisma';
 
 // Mock dependencies
@@ -21,6 +21,7 @@ describe('Data Supplier Koperasi - Phase 3, 4, 5 Enterprise Audit & Unit Tests',
 
   beforeEach(() => {
     jest.clearAllMocks();
+    clearSupplierMemoryCache();
   });
 
   describe('1. List Suppliers with Purchase Stats (findAll)', () => {
@@ -284,6 +285,37 @@ describe('Data Supplier Koperasi - Phase 3, 4, 5 Enterprise Audit & Unit Tests',
           isActive: true
         }
       });
+    });
+  });
+
+  describe('7. In-Memory Caching & Invalidation (Fase 4 Hardening)', () => {
+    it('harus menggunakan cache pada pemanggilan findAll berturut-turut tanpa query DB ulang', async () => {
+      (prisma.coopSupplier.findMany as jest.Mock).mockResolvedValue([
+        { id: 'sup-cache-1', name: 'Vendor Cepat', isActive: true, _count: { stockIns: 0 }, stockIns: [] }
+      ]);
+
+      const firstCall = await SupplierService.findAll(mockTenantId, false);
+      const secondCall = await SupplierService.findAll(mockTenantId, false);
+
+      expect(firstCall).toEqual(secondCall);
+      expect(prisma.coopSupplier.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('harus menginvalidasi cache saat terjadi mutasi (create/update/delete)', async () => {
+      (prisma.coopSupplier.findMany as jest.Mock).mockResolvedValue([
+        { id: 'sup-cache-1', name: 'Vendor Cepat', isActive: true, _count: { stockIns: 0 }, stockIns: [] }
+      ]);
+
+      await SupplierService.findAll(mockTenantId, false);
+      expect(prisma.coopSupplier.findMany).toHaveBeenCalledTimes(1);
+
+      // Trigger mutasi create
+      (prisma.coopSupplier.create as jest.Mock).mockResolvedValue({ id: 'sup-new', tenantId: mockTenantId, name: 'Vendor Baru' });
+      await SupplierService.create(mockTenantId, { name: 'Vendor Baru' });
+
+      // Call findAll lagi, harus memanggil DB ulang karena cache sudah dibersihkan
+      await SupplierService.findAll(mockTenantId, false);
+      expect(prisma.coopSupplier.findMany).toHaveBeenCalledTimes(2);
     });
   });
 });

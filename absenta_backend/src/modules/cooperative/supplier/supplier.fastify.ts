@@ -46,6 +46,8 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
       };
       io.emit('cooperative_sync', broadcastPayload);
       io.to('cooperative_workspace').emit('cooperative_sync', broadcastPayload);
+      io.emit('coop_supplier_update', broadcastPayload);
+      io.to('cooperative_workspace').emit('coop_supplier_update', broadcastPayload);
     }
   };
 
@@ -128,6 +130,8 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         }
 
         const supplier = await SupplierService.create(tenantId, parseResult.data);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, supplierId: supplier.id, name: supplier.name }, '[Audit] Supplier koperasi berhasil didaftarkan');
         broadcastCoopUpdate(req, 'COOP_SUPPLIER_CREATED', supplier);
 
         return reply.status(201).send({
@@ -170,6 +174,8 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         }
 
         const supplier = await SupplierService.update(id, tenantId, parseResult.data);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, supplierId: id, name: supplier.name }, '[Audit] Data supplier koperasi berhasil diperbarui');
         broadcastCoopUpdate(req, 'COOP_SUPPLIER_UPDATED', supplier);
 
         return reply.status(200).send({
@@ -205,6 +211,8 @@ export default async function supplierRoutes(fastify: FastifyInstance) {
         const tenantId = getTenantId(req);
         const { id } = req.params as { id: string };
         const deactivated = await SupplierService.delete(id, tenantId);
+        const userId = req.user?.id || req.user?.sub || 'system';
+        appLogger.info({ tenantId, userId, supplierId: id }, '[Audit] Supplier koperasi berhasil dinonaktifkan');
         broadcastCoopUpdate(req, 'COOP_SUPPLIER_DELETED', { id });
 
         return reply.status(200).send({

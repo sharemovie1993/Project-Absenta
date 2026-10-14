@@ -15,11 +15,37 @@ export interface UpdateSupplierInput extends Partial<CreateSupplierInput> {
   isActive?: boolean;
 }
 
+// Dual-layer caching: In-Memory Cache with TTL & timer unref protection (Fase 4 Hardening)
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+const supplierCache = new Map<string, CacheEntry<any>>();
+const CACHE_TTL_MS = 30_000; // 30 seconds cache TTL
+
+export function clearSupplierMemoryCache(tenantId?: string) {
+  if (tenantId) {
+    for (const key of supplierCache.keys()) {
+      if (key.startsWith(`supplier:${tenantId}:`)) {
+        supplierCache.delete(key);
+      }
+    }
+  } else {
+    supplierCache.clear();
+  }
+}
+
 export class SupplierService {
   /**
-   * Mengambil semua data supplier per tenant dengan agregat statistik pembelian (Optimized Single Query)
+   * Mengambil semua data supplier per tenant dengan agregat statistik pembelian (Optimized Single Query & In-Memory Caching)
    */
   static async findAll(tenantId: string, includeInactive = false) {
+    const cacheKey = `supplier:${tenantId}:${includeInactive}`;
+    const cached = supplierCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
+
     const suppliers = await prisma.coopSupplier.findMany({
       where: {
         tenantId,
@@ -44,7 +70,7 @@ export class SupplierService {
       orderBy: { name: 'asc' }
     });
 
-    return suppliers.map((sup: any) => {
+    const result = suppliers.map((sup: any) => {
       const totalPurchases = sup._count?.stockIns ?? (sup.stockIns ? sup.stockIns.length : 0);
       const totalValue = (sup.stockIns || []).reduce((sum: number, si: any) => {
         const siTotal = (si.items || []).reduce(
@@ -61,6 +87,9 @@ export class SupplierService {
         totalValue
       };
     });
+
+    supplierCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
   }
 
   /**
@@ -106,6 +135,7 @@ export class SupplierService {
    * Mendaftarkan supplier baru
    */
   static async create(tenantId: string, data: CreateSupplierInput) {
+    clearSupplierMemoryCache(tenantId);
     const name = data.name.trim();
     return prisma.coopSupplier.create({
       data: {
@@ -128,6 +158,7 @@ export class SupplierService {
     const supplier = await prisma.coopSupplier.findFirst({ where: { id, tenantId } });
     if (!supplier) throw new Error('Supplier tidak ditemukan');
 
+    clearSupplierMemoryCache(tenantId);
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.contact !== undefined) updateData.contact = data.contact?.trim() || null;
@@ -150,6 +181,7 @@ export class SupplierService {
     const supplier = await prisma.coopSupplier.findFirst({ where: { id, tenantId } });
     if (!supplier) throw new Error('Supplier tidak ditemukan');
 
+    clearSupplierMemoryCache(tenantId);
     return prisma.coopSupplier.update({
       where: { id },
       data: { isActive: false }
@@ -170,6 +202,7 @@ export class SupplierService {
 
     if (existing) return existing;
 
+    clearSupplierMemoryCache(tenantId);
     return prisma.coopSupplier.create({
       data: { tenantId, name: trimmed, isActive: true }
     });
