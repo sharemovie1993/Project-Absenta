@@ -1,5 +1,6 @@
 import { ShuService } from '../shu.service';
 import { prisma } from '@/utils/prisma';
+import { activityLogService } from '../../../activity/services/activity-log.service';
 
 jest.mock('@/utils/prisma', () => {
   const mockShuAllocation = {
@@ -55,6 +56,12 @@ jest.mock('@/utils/prisma', () => {
 jest.mock('../../laporan/accounting.service', () => ({
   AccountingService: {
     createJournalEntry: jest.fn().mockResolvedValue(true),
+  },
+}));
+
+jest.mock('../../../activity/services/activity-log.service', () => ({
+  activityLogService: {
+    logEvent: jest.fn(),
   },
 }));
 
@@ -141,10 +148,15 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
       };
       (prisma.shuConfig.upsert as jest.Mock).mockResolvedValue({ tenantId: mockTenantId, ...updateDto });
 
-      const result = await ShuService.updateConfig(mockTenantId, updateDto);
+      const result = await ShuService.updateConfig(mockTenantId, updateDto, 'operator-123');
 
       expect(prisma.shuConfig.upsert).toHaveBeenCalled();
       expect(result.porsiJasaModal).toBe(40);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_CONFIG_UPDATED',
+        tenant_id: mockTenantId,
+        user_id: 'operator-123',
+      }));
     });
 
     it('harus menolak update konfigurasi jika total persentase tidak sama dengan 100%', async () => {
@@ -225,7 +237,7 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
       };
       (prisma.shuPeriod.create as jest.Mock).mockResolvedValue(createdPeriod);
 
-      const result = await ShuService.createPeriod(mockTenantId, createDto);
+      const result = await ShuService.createPeriod(mockTenantId, createDto, 'operator-create-1');
 
       expect(prisma.shuPeriod.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -238,6 +250,11 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
         }),
       });
       expect(result.totalShu).toBe(30_000_000);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_PERIOD_CREATED',
+        tenant_id: mockTenantId,
+        user_id: 'operator-create-1',
+      }));
     });
 
     it('harus menolak pembuatan periode jika tahun buku sudah pernah dibuat', async () => {
@@ -400,6 +417,11 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
         }),
       });
       expect(result.status).toBe('APPROVED');
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_PERIOD_APPROVED',
+        tenant_id: mockTenantId,
+        user_id: mockUserId,
+      }));
     });
 
     it('harus menolak persetujuan jika periode belum berstatus CALCULATED (masih DRAFT)', async () => {
@@ -457,7 +479,7 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
       (prisma.saving.update as jest.Mock).mockResolvedValue({ id: 'sav-1', amount: 1_250_000 });
       (prisma.savingTransaction.create as jest.Mock).mockResolvedValue({ id: 'tx-1' });
 
-      const result = await ShuService.distributeShu('p-1', mockTenantId);
+      const result = await ShuService.distributeShu('p-1', mockTenantId, undefined, 'operator-distribute-1');
 
       expect(prisma.$transaction).toHaveBeenCalled();
       expect(prisma.saving.update).toHaveBeenCalledWith({
@@ -472,6 +494,11 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
         }),
       });
       expect(result.distributed).toBe(1);
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_PERIOD_DISTRIBUTED',
+        tenant_id: mockTenantId,
+        user_id: 'operator-distribute-1',
+      }));
     });
   });
 
@@ -512,6 +539,57 @@ describe('ShuService - SHU Koperasi Unit & Business Logic Tests (Phase 3 TDD & S
 
       expect(result).toEqual([]);
       expect(prisma.shuAllocation.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('8. Hardening & Security Audit Trail (Phase 4 Standards)', () => {
+    it('harus mencatat audit log COOP_SHU_PERIOD_DELETED saat periode dihapus', async () => {
+      (prisma.shuPeriod.findFirst as jest.Mock).mockResolvedValue({
+        id: 'p-draft',
+        year: 2026,
+        tenantId: mockTenantId,
+        status: 'DRAFT',
+      });
+      (prisma.shuPeriod.delete as jest.Mock).mockResolvedValue({ id: 'p-draft' });
+
+      await ShuService.deletePeriod('p-draft', mockTenantId, 'admin-delete-user');
+
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_PERIOD_DELETED',
+        tenant_id: mockTenantId,
+        user_id: 'admin-delete-user',
+        entity: 'ShuPeriod',
+      }));
+    });
+
+    it('harus mencatat audit log COOP_SHU_PERIOD_RULES_UPDATED saat aturan RAT periode diperbarui', async () => {
+      (prisma.shuPeriod.findFirst as jest.Mock).mockResolvedValue({
+        id: 'p-draft-rules',
+        year: 2026,
+        tenantId: mockTenantId,
+        status: 'DRAFT',
+        porsiJasaModal: 30,
+        porsiJasaTransaksi: 30,
+        porsiCadangan: 20,
+        porsiPengurus: 5,
+        porsiSosial: 5,
+        porsiPembangunan: 10,
+      });
+      (prisma.shuPeriod.update as jest.Mock).mockResolvedValue({ id: 'p-draft-rules', porsiJasaModal: 40 });
+
+      await ShuService.updatePeriodRules(
+        'p-draft-rules',
+        mockTenantId,
+        { porsiJasaModal: 40, porsiPembangunan: 0 },
+        'admin-rules-user'
+      );
+
+      expect(activityLogService.logEvent).toHaveBeenCalledWith(expect.objectContaining({
+        event_type: 'COOP_SHU_PERIOD_RULES_UPDATED',
+        tenant_id: mockTenantId,
+        user_id: 'admin-rules-user',
+        entity: 'ShuPeriod',
+      }));
     });
   });
 });

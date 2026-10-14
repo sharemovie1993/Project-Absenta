@@ -3,6 +3,7 @@ import { appLogger } from '@/utils/app-logger';
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '../../../utils/prisma';
 import { Decimal } from '@prisma/client/runtime/library';
+import { activityLogService } from '../../activity/services/activity-log.service';
 
 export interface UpdateShuConfigDto {
     porsiJasaModal?: number;
@@ -84,7 +85,7 @@ export class ShuService {
     }
 
     /** Update konfigurasi alokasi SHU */
-    static async updateConfig(tenantId: string, data: UpdateShuConfigDto) {
+    static async updateConfig(tenantId: string, data: UpdateShuConfigDto, operatorId?: string | null) {
         // Validasi total = 100
         const config = await this.getConfig(tenantId);
         const merged = {
@@ -104,11 +105,29 @@ export class ShuService {
             throw new Error(`Total persentase alokasi SHU harus 100%. Saat ini: ${total}%`);
         }
 
-        return prisma.shuConfig.upsert({
+        const updated = await prisma.shuConfig.upsert({
             where: { tenantId },
             update: merged,
             create: { tenantId, ...merged },
         });
+
+        try {
+            activityLogService.logEvent({
+                event_type: 'COOP_SHU_CONFIG_UPDATED',
+                tenant_id: tenantId,
+                user_id: operatorId || null,
+                entity: 'ShuConfig',
+                entity_id: tenantId,
+                metadata: {
+                    description: `Memperbarui konfigurasi alokasi SHU (Modal: ${merged.porsiJasaModal}%, Transaksi: ${merged.porsiJasaTransaksi}%, Cadangan: ${merged.porsiCadangan}%)`,
+                    rules: merged,
+                },
+            });
+        } catch (logErr) {
+            appLogger.warn({ err: logErr }, 'Gagal mencatat audit log konfigurasi SHU');
+        }
+
+        return updated;
     }
 
     // ─── PERIODE SHU ─────────────────────────────────────────────────────────
@@ -125,7 +144,7 @@ export class ShuService {
     }
 
     /** Buat periode SHU baru (mengambil snapshot default dari ShuConfig jika tidak ditentukan) */
-    static async createPeriod(tenantId: string, data: CreateShuPeriodDto) {
+    static async createPeriod(tenantId: string, data: CreateShuPeriodDto, operatorId?: string | null) {
         const existing = await prisma.shuPeriod.findFirst({
             where: { tenantId, year: data.year },
         });
@@ -136,7 +155,7 @@ export class ShuService {
 
         const revenue = data.totalRevenue ?? 0;
         const expense = data.totalExpense ?? 0;
-        return prisma.shuPeriod.create({
+        const period = await prisma.shuPeriod.create({
             data: {
                 tenantId,
                 year: data.year,
@@ -158,10 +177,29 @@ export class ShuService {
                 includeSavingsDeposit: data.includeSavingsDeposit !== undefined ? Boolean(data.includeSavingsDeposit) : (config.includeSavingsDeposit ?? false),
             },
         });
+
+        try {
+            activityLogService.logEvent({
+                event_type: 'COOP_SHU_PERIOD_CREATED',
+                tenant_id: tenantId,
+                user_id: operatorId || null,
+                entity: 'ShuPeriod',
+                entity_id: period.id,
+                metadata: {
+                    year: data.year,
+                    totalShu: revenue - expense,
+                    description: `Membuat periode SHU Tahun Buku ${data.year} (Total SHU: Rp ${(revenue - expense).toLocaleString('id-ID')})`,
+                },
+            });
+        } catch (logErr) {
+            appLogger.warn({ err: logErr }, 'Gagal mencatat audit log buat periode SHU');
+        }
+
+        return period;
     }
 
     /** Update aturan RAT khusus untuk periode tertentu (hanya jika DRAFT atau CALCULATED) */
-    static async updatePeriodRules(periodId: string, tenantId: string, data: Partial<CreateShuPeriodDto>) {
+    static async updatePeriodRules(periodId: string, tenantId: string, data: Partial<CreateShuPeriodDto>, operatorId?: string | null) {
         const period = await prisma.shuPeriod.findFirst({
             where: { id: periodId, tenantId },
         });
@@ -187,14 +225,33 @@ export class ShuService {
             throw new Error(`Total persentase alokasi SHU harus 100%. Saat ini: ${total}%`);
         }
 
-        return prisma.shuPeriod.update({
+        const updated = await prisma.shuPeriod.update({
             where: { id: periodId },
             data: merged,
         });
+
+        try {
+            activityLogService.logEvent({
+                event_type: 'COOP_SHU_PERIOD_RULES_UPDATED',
+                tenant_id: tenantId,
+                user_id: operatorId || null,
+                entity: 'ShuPeriod',
+                entity_id: periodId,
+                metadata: {
+                    year: period.year,
+                    description: `Memperbarui aturan RAT periode SHU Tahun Buku ${period.year}`,
+                    rules: merged,
+                },
+            });
+        } catch (logErr) {
+            appLogger.warn({ err: logErr }, 'Gagal mencatat audit log aturan periode SHU');
+        }
+
+        return updated;
     }
 
     /** Hapus periode SHU (hanya jika DRAFT atau CALCULATED) */
-    static async deletePeriod(periodId: string, tenantId: string) {
+    static async deletePeriod(periodId: string, tenantId: string, operatorId?: string | null) {
         const period = await prisma.shuPeriod.findFirst({
             where: { id: periodId, tenantId },
         });
@@ -203,9 +260,27 @@ export class ShuService {
             throw new Error('Periode SHU yang sudah disetujui atau didistribusikan tidak dapat dihapus.');
         }
 
-        return prisma.shuPeriod.delete({
+        const deleted = await prisma.shuPeriod.delete({
             where: { id: periodId },
         });
+
+        try {
+            activityLogService.logEvent({
+                event_type: 'COOP_SHU_PERIOD_DELETED',
+                tenant_id: tenantId,
+                user_id: operatorId || null,
+                entity: 'ShuPeriod',
+                entity_id: periodId,
+                metadata: {
+                    year: period.year,
+                    description: `Menghapus periode SHU Tahun Buku ${period.year}`,
+                },
+            });
+        } catch (logErr) {
+            appLogger.warn({ err: logErr }, 'Gagal mencatat audit log hapus periode SHU');
+        }
+
+        return deleted;
     }
 
     /** Detail periode SHU beserta alokasi per anggota */
@@ -264,7 +339,7 @@ export class ShuService {
      *     - jasaTransaksi  = (volumeGabungan_X / totalVolumeGabungan_semua) × (totalSHU × porsiJasaTransaksi%)
      *  6. Simpan ShuAllocation per anggota
      */
-    static async calculateShu(periodId: string, tenantId: string, idempotencyKey?: string) {
+    static async calculateShu(periodId: string, tenantId: string, idempotencyKey?: string, operatorId?: string | null) {
         if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
             appLogger.info({ idempotencyKey, periodId }, '[SHU] Returning cached calculation result');
             return idempotencyCache.get(idempotencyKey)!.data;
@@ -500,6 +575,24 @@ export class ShuService {
                 idempotencyCache.set(idempotencyKey, { data: result, timestamp: Date.now() });
             }
 
+            try {
+                activityLogService.logEvent({
+                    event_type: 'COOP_SHU_PERIOD_CALCULATED',
+                    tenant_id: tenantId,
+                    user_id: operatorId || null,
+                    entity: 'ShuPeriod',
+                    entity_id: periodId,
+                    metadata: {
+                        year: period.year,
+                        totalShu: updatedTotalShu,
+                        totalMembers: validAllocations.length,
+                        description: `Kalkulasi alokasi SHU Tahun Buku ${period.year} untuk ${validAllocations.length} anggota (Total SHU: Rp ${updatedTotalShu.toLocaleString('id-ID')})`,
+                    },
+                });
+            } catch (logErr) {
+                appLogger.warn({ err: logErr }, 'Gagal mencatat audit log kalkulasi SHU');
+            }
+
             return result;
         } finally {
             calculationLocks.delete(periodId);
@@ -541,14 +634,33 @@ export class ShuService {
             throw new Error('SHU harus dikalkulasi terlebih dahulu sebelum disetujui.');
         }
 
-        return prisma.shuPeriod.update({
+        const updated = await prisma.shuPeriod.update({
             where: { id: periodId },
             data: { status: 'APPROVED', approvedBy: userId, approvedAt: new Date() },
         });
+
+        try {
+            activityLogService.logEvent({
+                event_type: 'COOP_SHU_PERIOD_APPROVED',
+                tenant_id: tenantId,
+                user_id: userId || null,
+                entity: 'ShuPeriod',
+                entity_id: periodId,
+                metadata: {
+                    year: period.year,
+                    totalShu: Number(period.totalShu),
+                    description: `Ketua menyetujui pembagian SHU Tahun Buku ${period.year}`,
+                },
+            });
+        } catch (logErr) {
+            appLogger.warn({ err: logErr }, 'Gagal mencatat audit log persetujuan SHU');
+        }
+
+        return updated;
     }
 
     /** Bendahara mendistribusikan SHU ke rekening Sukarela masing-masing anggota */
-    static async distributeShu(periodId: string, tenantId: string, idempotencyKey?: string) {
+    static async distributeShu(periodId: string, tenantId: string, idempotencyKey?: string, operatorId?: string | null) {
         if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
             appLogger.info({ idempotencyKey, periodId }, '[SHU] Returning cached distribution result');
             return idempotencyCache.get(idempotencyKey)!.data;
@@ -699,6 +811,24 @@ export class ShuService {
                 where: { id: periodId },
                 data: { status: 'DISTRIBUTED' },
             });
+
+            try {
+                activityLogService.logEvent({
+                    event_type: 'COOP_SHU_PERIOD_DISTRIBUTED',
+                    tenant_id: tenantId,
+                    user_id: operatorId || null,
+                    entity: 'ShuPeriod',
+                    entity_id: periodId,
+                    metadata: {
+                        year: period.year,
+                        distributedCount: distributed,
+                        totalMembers: allocations.length,
+                        description: `Mendistribusikan SHU Tahun Buku ${period.year} ke rekening sukarela ${distributed} anggota`,
+                    },
+                });
+            } catch (logErr) {
+                appLogger.warn({ err: logErr }, 'Gagal mencatat audit log distribusi SHU');
+            }
 
             const result = { distributed, totalMembers: allocations.length };
             if (idempotencyKey) {

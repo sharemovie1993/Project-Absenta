@@ -34,7 +34,8 @@ export async function shuRoutes(fastify: any) {
     fastify.put('/shu/config', {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
-        const data = await ShuService.updateConfig(req.tenantId, req.body);
+        const operatorId = req.user?.id || req.user?.userId;
+        const data = await ShuService.updateConfig(req.tenantId, req.body, operatorId);
         broadcastCoopShu(req, 'CONFIG_UPDATED');
         return reply.send({ success: true, data });
     });
@@ -53,7 +54,8 @@ export async function shuRoutes(fastify: any) {
     fastify.post('/shu/periods', {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
-        const data = await ShuService.createPeriod(req.tenantId, req.body);
+        const operatorId = req.user?.id || req.user?.userId;
+        const data = await ShuService.createPeriod(req.tenantId, req.body, operatorId);
         broadcastCoopShu(req, 'PERIOD_CREATED', { periodId: data.id, year: data.year });
         return reply.code(201).send({ success: true, data });
     });
@@ -71,7 +73,8 @@ export async function shuRoutes(fastify: any) {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
         try {
-            const data = await ShuService.updatePeriodRules(req.params.id, req.tenantId, req.body);
+            const operatorId = req.user?.id || req.user?.userId;
+            const data = await ShuService.updatePeriodRules(req.params.id, req.tenantId, req.body, operatorId);
             broadcastCoopShu(req, 'PERIOD_RULES_UPDATED', { periodId: req.params.id });
             return reply.send({ success: true, data });
         } catch (error: any) {
@@ -100,7 +103,8 @@ export async function shuRoutes(fastify: any) {
         preHandler: requireCapability('cooperative.shu.manage'),
     }, async (req: any, reply: any) => {
         try {
-            await ShuService.deletePeriod(req.params.id, req.tenantId);
+            const operatorId = req.user?.id || req.user?.userId;
+            await ShuService.deletePeriod(req.params.id, req.tenantId, operatorId);
             broadcastCoopShu(req, 'PERIOD_DELETED', { periodId: req.params.id });
             return reply.send({ success: true, message: 'Periode SHU berhasil dihapus' });
         } catch (error: any) {
@@ -129,7 +133,8 @@ export async function shuRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
-            const data = await ShuService.calculateShu(req.params.id, req.tenantId, idempotencyKey);
+            const operatorId = req.user?.id || req.user?.userId;
+            const data = await ShuService.calculateShu(req.params.id, req.tenantId, idempotencyKey, operatorId);
             broadcastCoopShu(req, 'PERIOD_CALCULATED', { periodId: req.params.id });
             return reply.send({ success: true, data });
         } catch (error: any) {
@@ -159,7 +164,8 @@ export async function shuRoutes(fastify: any) {
     }, async (req: any, reply: any) => {
         try {
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
-            const data = await ShuService.distributeShu(req.params.id, req.tenantId, idempotencyKey);
+            const operatorId = req.user?.id || req.user?.userId;
+            const data = await ShuService.distributeShu(req.params.id, req.tenantId, idempotencyKey, operatorId);
             
             // Broadcast event SHU dan perubahan saldo Simpanan ke seluruh klien WebSocket
             broadcastCoopShu(req, 'SHU_DISTRIBUTED', { periodId: req.params.id, distributed: data.distributed });
