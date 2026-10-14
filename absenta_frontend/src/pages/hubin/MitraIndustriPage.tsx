@@ -307,43 +307,9 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     }
   }, [isExporting, jurusanList]);
 
-  const handleImportMitra = useCallback(async (data: Record<string, unknown>[]) => {
-    try {
-      const formattedData = data?.map(item => ({
-        nama: String(item['Nama Mitra'] || item['nama'] || ''),
-        logo_url: item['URL Logo Perusahaan'] || item['logo_url'] ? String(item['URL Logo Perusahaan'] || item['logo_url']) : undefined,
-        bidang: item['Bidang Industri'] || item['bidang'] ? String(item['Bidang Industri'] || item['bidang']) : undefined,
-        alamat: item['Alamat Perusahaan'] || item['alamat'] ? String(item['Alamat Perusahaan'] || item['alamat']) : undefined,
-        kontak: item['Kontak Perusahaan'] || item['kontak'] ? String(item['Kontak Perusahaan'] || item['kontak']) : undefined,
-        pic_nama: item['Nama PIC'] || item['pic_nama'] ? String(item['Nama PIC'] || item['pic_nama']) : undefined,
-        pic_jabatan: item['Jabatan PIC'] || item['pic_jabatan'] ? String(item['Jabatan PIC'] || item['pic_jabatan']) : undefined,
-        pic_telepon: item['No. HP PIC'] || item['pic_telepon'] ? String(item['No. HP PIC'] || item['pic_telepon']) : undefined,
-        pic_email: item['Email PIC'] || item['pic_email'] ? String(item['Email PIC'] || item['pic_email']) : undefined,
-        mou_nomor: item['Nomor MoU'] || item['mou_nomor'] ? String(item['Nomor MoU'] || item['mou_nomor']) : undefined,
-        mou_status: String(item['Status MoU'] || item['mou_status'] || 'AKTIF'),
-        mou_tanggal_mulai: item['Tanggal Mulai MoU'] || item['mou_tanggal_mulai'] ? new Date(String(item['Tanggal Mulai MoU'] || item['mou_tanggal_mulai'])).toISOString() : undefined,
-        mou_tanggal_berakhir: item['Tanggal Berakhir MoU'] || item['mou_tanggal_berakhir'] ? new Date(String(item['Tanggal Berakhir MoU'] || item['mou_tanggal_berakhir'])).toISOString() : undefined,
-        kuota_pkl: Number(item['Kuota PKL'] || item['kuota_pkl'] || 0),
-        kompetensi_keahlian: item['Kompetensi Keahlian'] || item['kompetensi_keahlian'] ? String(item['Kompetensi Keahlian'] || item['kompetensi_keahlian']) : undefined,
-        latitude: item['Latitude'] || item['latitude'] ? Number(item['Latitude'] || item['latitude']) : undefined,
-        longitude: item['Longitude'] || item['longitude'] ? Number(item['Longitude'] || item['longitude']) : undefined,
-        radius: item['Radius Presensi (Meter)'] || item['radius'] ? Number(item['Radius Presensi (Meter)'] || item['radius']) : 100,
-      }))?.filter(item => Boolean(item.nama)) || [];
-
-      if (formattedData.length === 0) {
-        throw new Error('Tidak ada data mitra yang valid untuk diimpor. Kolom Nama Mitra wajib diisi.');
-      }
-
-      const res = await hubinApi.importMitraBatch(formattedData);
-      toast.success(res?.message || `Berhasil mengimpor ${formattedData.length} mitra industri.`);
-      setIsImportModalOpen(false);
-      refetch();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Gagal mengimpor data mitra.';
-      toast.error(msg);
-      throw e;
-    }
-  }, [refetch]);
+  const handleImportMitra = useCallback(async (file: File, onProgress: (progress: number) => void, socketId?: string) => {
+    return hubinApi.importMitraFromExcel(file, onProgress, socketId);
+  }, []);
 
   const typedMitraResponse = mitraData as MitraListResponse | undefined;
   const rawList: MitraIndustri[] = useMemo(() => {
@@ -659,6 +625,7 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
             onSuccess={() => {
               refetch();
               queryClient.invalidateQueries({ queryKey: ['mitra-industri'] });
+              toast.success('Data mitra industri berhasil diimpor.');
             }}
           />
         )}
