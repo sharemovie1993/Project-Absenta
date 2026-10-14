@@ -1,10 +1,53 @@
 // @ts-nocheck
 import { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { ExpenseService } from './expense.service';
 import { CashBankingService } from './cash-banking.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { mockTenant } from '../../../utils/mocks';
 import { appLogger } from '@/utils/app-logger';
+
+// ─── ZOD SCHEMAS (Phase 4 Hardening: Anti-DoS, Strict Typing & Guard) ───────
+const listVoucherQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(15),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+  search: z.string().max(100).optional(),
+  categoryCode: z.string().max(20).optional(),
+  accountCode: z.string().max(20).optional(),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER']).optional(),
+  receivedVia: z.enum(['CASH', 'BANK_TRANSFER']).optional(),
+});
+
+const createExpenseSchema = z.object({
+  categoryCode: z.string().min(1, 'Kategori beban operasional wajib dipilih'),
+  amount: z.coerce.number().positive('Nominal pengeluaran harus lebih besar dari Rp 0'),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER']).optional().default('CASH'),
+  payee: z.string().max(100).optional().nullable(),
+  description: z.string().min(1, 'Keterangan pengeluaran operasional wajib diisi').max(255),
+  date: z.string().optional(),
+});
+
+const createDepositSchema = z.object({
+  accountCode: z.string().min(1, 'Kategori sumber penerimaan kas wajib dipilih'),
+  amount: z.coerce.number().positive('Nominal penerimaan harus lebih besar dari Rp 0'),
+  receivedVia: z.enum(['CASH', 'BANK_TRANSFER']).optional().default('CASH'),
+  payer: z.string().max(100).optional().nullable(),
+  description: z.string().min(1, 'Keterangan penerimaan kas wajib diisi').max(255),
+  date: z.string().optional(),
+});
+
+const createTransferSchema = z.object({
+  fromAccountCode: z.string().min(1, 'Rekening asal wajib dipilih'),
+  toAccountCode: z.string().min(1, 'Rekening tujuan wajib dipilih'),
+  amount: z.coerce.number().positive('Nominal transfer harus lebih besar dari Rp 0'),
+  description: z.string().min(1, 'Keterangan transfer wajib diisi').max(255),
+  date: z.string().optional(),
+}).refine(data => data.fromAccountCode !== data.toAccountCode, {
+  message: 'Rekening sumber dan rekening tujuan tidak boleh sama',
+  path: ['toAccountCode'],
+});
 
 export default async function expenseRoutes(fastify: FastifyInstance) {
   const getTenantId = (req: any) => {
@@ -48,7 +91,8 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
-        const result = await ExpenseService.listExpenses(tenantId, req.query || {});
+        const query = listVoucherQuerySchema.parse(req.query);
+        const result = await ExpenseService.listExpenses(tenantId, query);
         return reply.status(200).send({
           success: true,
           message: 'Daftar pengeluaran operasional koperasi',
@@ -56,9 +100,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[ExpenseRoutes] Gagal memuat daftar pengeluaran');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal memuat daftar pengeluaran operasional'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat daftar pengeluaran operasional')
         });
       }
     }
@@ -72,28 +117,7 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       try {
         const tenantId = getTenantId(req);
         const userId = req.user?.id;
-        const body = req.body || {};
-
-        if (!body.categoryCode) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Kategori beban operasional wajib dipilih'
-          });
-        }
-
-        if (!body.amount || Number(body.amount) <= 0) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Nominal pengeluaran harus lebih besar dari Rp 0'
-          });
-        }
-
-        if (!body.description || !body.description.trim()) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Keterangan pengeluaran operasional wajib diisi'
-          });
-        }
+        const body = createExpenseSchema.parse(req.body);
 
         const created = await ExpenseService.createExpense(tenantId, body, userId);
         broadcastCoopUpdate(req, 'EXPENSE_CREATED', { id: created.id, voucherNumber: created.voucherNumber, amount: created.amount });
@@ -105,9 +129,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[ExpenseRoutes] Gagal mencatat pengeluaran operasional');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal mencatat pengeluaran operasional'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal mencatat pengeluaran operasional')
         });
       }
     }
@@ -161,7 +186,8 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
-        const result = await CashBankingService.listDeposits(tenantId, req.query || {});
+        const query = listVoucherQuerySchema.parse(req.query);
+        const result = await CashBankingService.listDeposits(tenantId, query);
         return reply.status(200).send({
           success: true,
           message: 'Daftar bukti kas masuk (BKM)',
@@ -169,9 +195,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[CashBankingRoutes] Gagal memuat daftar BKM');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal memuat daftar penerimaan kas'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat daftar penerimaan kas')
         });
       }
     }
@@ -185,28 +212,7 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       try {
         const tenantId = getTenantId(req);
         const userId = req.user?.id;
-        const body = req.body || {};
-
-        if (!body.accountCode) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Kategori sumber penerimaan kas wajib dipilih'
-          });
-        }
-
-        if (!body.amount || Number(body.amount) <= 0) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Nominal penerimaan harus lebih besar dari Rp 0'
-          });
-        }
-
-        if (!body.description || !body.description.trim()) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Keterangan penerimaan kas wajib diisi'
-          });
-        }
+        const body = createDepositSchema.parse(req.body);
 
         const created = await CashBankingService.createDeposit(tenantId, body, userId);
         broadcastCoopUpdate(req, 'DEPOSIT_CREATED', { id: created.id, voucherNumber: created.voucherNumber, amount: created.amount });
@@ -218,9 +224,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[CashBankingRoutes] Gagal mencatat BKM');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal mencatat penerimaan kas'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal mencatat penerimaan kas')
         });
       }
     }
@@ -262,7 +269,8 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
-        const result = await CashBankingService.listTransfers(tenantId, req.query || {});
+        const query = listVoucherQuerySchema.parse(req.query);
+        const result = await CashBankingService.listTransfers(tenantId, query);
         return reply.status(200).send({
           success: true,
           message: 'Daftar transfer dana kas & bank',
@@ -270,9 +278,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[CashBankingRoutes] Gagal memuat daftar transfer');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal memuat daftar transfer kas'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal memuat daftar transfer kas')
         });
       }
     }
@@ -286,35 +295,7 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
       try {
         const tenantId = getTenantId(req);
         const userId = req.user?.id;
-        const body = req.body || {};
-
-        if (!body.fromAccountCode || !body.toAccountCode) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Rekening asal dan rekening tujuan wajib dipilih'
-          });
-        }
-
-        if (body.fromAccountCode === body.toAccountCode) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Rekening sumber dan rekening tujuan tidak boleh sama'
-          });
-        }
-
-        if (!body.amount || Number(body.amount) <= 0) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Nominal transfer harus lebih besar dari Rp 0'
-          });
-        }
-
-        if (!body.description || !body.description.trim()) {
-          return reply.status(400).send({
-            success: false,
-            message: 'Keterangan transfer wajib diisi'
-          });
-        }
+        const body = createTransferSchema.parse(req.body);
 
         const created = await CashBankingService.createTransfer(tenantId, body, userId);
         broadcastCoopUpdate(req, 'TRANSFER_CREATED', { id: created.id, voucherNumber: created.voucherNumber, amount: created.amount });
@@ -326,9 +307,10 @@ export default async function expenseRoutes(fastify: FastifyInstance) {
         });
       } catch (error: any) {
         appLogger.error({ err: error }, '[CashBankingRoutes] Gagal mencatat transfer dana');
-        return reply.status(500).send({
+        const statusCode = error instanceof z.ZodError ? 400 : 500;
+        return reply.status(statusCode).send({
           success: false,
-          message: error.message || 'Gagal melakukan transfer kas'
+          message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : (error.message || 'Gagal melakukan transfer kas')
         });
       }
     }

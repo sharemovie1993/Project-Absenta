@@ -1,12 +1,18 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { SectionCard } from '../../components/ui/SectionCard';
+import { Spinner } from '../../components/ui/Spinner';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { ExpenseVoucherSection } from '../../components/cooperative/accounting';
+import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import { useSocket } from '../../hooks/useSocket';
 import { useQueryClient } from '@tanstack/react-query';
+
+// Lazy Loaded Expense & Banking Section (Pilar 11 Hardening)
+const ExpenseVoucherSection = lazy(() => 
+  import('../../components/cooperative/accounting').then(m => ({ default: m.ExpenseVoucherSection }))
+);
 
 export const CashBankPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -23,18 +29,18 @@ export const CashBankPage: React.FC = React.memo(() => {
     return !!actionParam;
   }, [actionParam]);
 
-  // Realtime synchronization untuk Kas & Bank
+  // Realtime synchronization untuk Kas & Bank (Pilar 3 & Pilar 5 Memoized Handler & Cleanup)
   const { subscribe, unsubscribe, isConnected } = useSocket();
+
+  const handleRealtimeUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
+    queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
+    queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
+    queryClient.invalidateQueries({ queryKey: ['cooperative-bank-accounts'] });
+  }, [queryClient]);
 
   useEffect(() => {
     if (!isConnected) return;
-
-    const handleRealtimeUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-bank-accounts'] });
-    };
 
     subscribe('coop_accounting_update', handleRealtimeUpdate);
     subscribe('coop_pos_update', handleRealtimeUpdate);
@@ -43,7 +49,7 @@ export const CashBankPage: React.FC = React.memo(() => {
       unsubscribe('coop_accounting_update', handleRealtimeUpdate);
       unsubscribe('coop_pos_update', handleRealtimeUpdate);
     };
-  }, [isConnected, queryClient, subscribe, unsubscribe]);
+  }, [isConnected, handleRealtimeUpdate, subscribe, unsubscribe]);
 
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative/dashboard' },
@@ -71,15 +77,25 @@ export const CashBankPage: React.FC = React.memo(() => {
         description="Pencatatan kas masuk (BKM), kas keluar (BKK), dan transfer dana operasional koperasi"
         hardeningModuleKey="coop_cash_bank"
         breadcrumbs={breadcrumbs}
+        topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
         instruction={instruction}
       >
         <InfraErrorBoundary>
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="w-full min-w-0 max-w-full">
-              <ExpenseVoucherSection 
-                initialSubTab={initialSubTab}
-                autoOpenCreateModal={autoOpenModal}
-              />
+              <Suspense 
+                fallback={
+                  <div className="flex flex-col items-center justify-center p-12 space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <Spinner size="lg" />
+                    <p className="text-xs text-slate-500 font-medium">Memuat data kas & perbankan koperasi...</p>
+                  </div>
+                }
+              >
+                <ExpenseVoucherSection 
+                  initialSubTab={initialSubTab}
+                  autoOpenCreateModal={autoOpenModal}
+                />
+              </Suspense>
             </div>
           </SectionCard>
         </InfraErrorBoundary>
