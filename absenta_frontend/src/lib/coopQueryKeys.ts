@@ -83,6 +83,15 @@ export function invalidateStockInCaches(queryClient: QueryClient) {
 }
 
 /**
+ * Invalidate all supplier caches and related downstream stock-in / purchase queries.
+ */
+export function invalidateSupplierCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-reports-inventory-purchases'] });
+}
+
+/**
  * Invalidate all accounting, financial reports, and general ledger caches.
  */
 export function invalidateAccountingCaches(queryClient: QueryClient) {

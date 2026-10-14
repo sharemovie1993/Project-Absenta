@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../lib/axiosInstance';
 import toast from 'react-hot-toast';
-import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
+import { COOP_QUERY_KEYS, invalidateSupplierCaches } from '../../lib/coopQueryKeys';
+import CoopSupplierMobileDeck from '@/components/cooperative/suppliers/CoopSupplierMobileDeck';
 import {
   Plus,
   Search,
@@ -185,7 +186,7 @@ export const Suppliers: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       toast.success('Supplier berhasil ditambahkan');
-      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
+      invalidateSupplierCaches(queryClient);
       setIsFormOpen(false);
       setEditingSupplier(null);
     },
@@ -201,7 +202,7 @@ export const Suppliers: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       toast.success('Data supplier berhasil diperbarui');
-      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
+      invalidateSupplierCaches(queryClient);
       setIsFormOpen(false);
       setEditingSupplier(null);
     },
@@ -216,7 +217,7 @@ export const Suppliers: React.FC = React.memo(() => {
     },
     onSuccess: () => {
       toast.success('Supplier berhasil dinonaktifkan');
-      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
+      invalidateSupplierCaches(queryClient);
       setIsDeleteConfirmOpen(false);
       setDeletingSupplier(null);
     },
@@ -596,23 +597,32 @@ export const Suppliers: React.FC = React.memo(() => {
                   <p>Tidak ada data supplier yang ditemukan.</p>
                 </div>
               ) : isMobile ? (
-                /* Mobile Card Deck View */
-                <div className="space-y-3">
-                  {(paginatedSuppliers ?? [])?.map(renderSupplierCard)}
+                /* Mobile Card Deck View (Pilar 30 Anti-Overlapping & Touch Ergonomics) */
+                <div className="space-y-3 w-full max-w-full min-w-0">
+                  <CoopSupplierMobileDeck
+                    suppliers={paginatedSuppliers}
+                    isLoading={isLoading}
+                    onDetail={(s) => {
+                      setSelectedSupplier(s);
+                      setIsDetailOpen(true);
+                    }}
+                    onEdit={handleOpenEdit}
+                    onDelete={handleConfirmDelete}
+                  />
 
                   {/* Mobile Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-2 px-1 text-xs">
-                      <span className="text-slate-500 text-[11px]">
+                    <div className="flex items-center justify-between pt-2 px-1 text-xs w-full max-w-full min-w-0">
+                      <span className="text-slate-500 text-[11px] truncate">
                         Hal. {currentPage} / {totalPages} ({filteredSuppliers.length} supplier)
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={currentPage <= 1}
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                          className="h-7 px-2 text-xs"
+                          className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
                         >
                           Sebelumnya
                         </Button>
@@ -621,7 +631,7 @@ export const Suppliers: React.FC = React.memo(() => {
                           variant="outline"
                           disabled={currentPage >= totalPages}
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                          className="h-7 px-2 text-xs"
+                          className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
                         >
                           Selanjutnya
                         </Button>
@@ -699,7 +709,7 @@ export const Suppliers: React.FC = React.memo(() => {
             type="button"
             onClick={handleOpenCreate}
             aria-label="Tambah Supplier Baru"
-            className="fixed bottom-6 right-6 z-40 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white p-3.5 rounded-full shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-all cursor-pointer"
+            className="fixed bottom-6 right-6 z-40 min-w-[48px] min-h-[48px] bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white p-3.5 rounded-full shadow-xl shadow-indigo-600/30 flex items-center justify-center transition-all cursor-pointer"
           >
             <Plus size={22} className="text-white" />
           </button>
