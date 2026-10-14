@@ -22,6 +22,16 @@ interface CacheEntry<T> {
 }
 const supplierCache = new Map<string, CacheEntry<any>>();
 const CACHE_TTL_MS = 30_000; // 30 seconds cache TTL
+const MAX_CACHE_ENTRIES = 500; // Bounded capacity guard (Phase 5 Memory Leak Guard)
+
+function pruneExpiredCache() {
+  const now = Date.now();
+  for (const [key, entry] of supplierCache.entries()) {
+    if (now >= entry.expiresAt) {
+      supplierCache.delete(key);
+    }
+  }
+}
 
 export function clearSupplierMemoryCache(tenantId?: string) {
   if (tenantId) {
@@ -87,6 +97,14 @@ export class SupplierService {
         totalValue
       };
     });
+
+    if (supplierCache.size >= MAX_CACHE_ENTRIES) {
+      pruneExpiredCache();
+      if (supplierCache.size >= MAX_CACHE_ENTRIES) {
+        const firstKey = supplierCache.keys().next().value;
+        if (firstKey) supplierCache.delete(firstKey);
+      }
+    }
 
     supplierCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
     return result;

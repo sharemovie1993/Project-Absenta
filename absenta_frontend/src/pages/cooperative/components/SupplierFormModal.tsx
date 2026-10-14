@@ -93,7 +93,7 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = React.memo(({
       onClose={onClose}
       title={editingSupplier ? 'Edit Data Supplier' : 'Tambah Supplier Baru'}
     >
-      <form onSubmit={handleFormSubmit} className="space-y-4 py-2 text-xs">
+      <form onSubmit={handleFormSubmit} className="space-y-4 py-2 text-xs max-h-[85vh] overflow-y-auto pr-1">
         <div>
           <label htmlFor="sup-name" className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
             Nama Supplier / Badan Usaha <span className="text-rose-500">*</span>
@@ -169,8 +169,8 @@ export const SupplierFormModal: React.FC<SupplierFormModalProps> = React.memo(({
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-          <Button type="submit" variant="primary" disabled={isSubmitting}>
+          <Button type="button" variant="outline" onClick={onClose} className="min-h-[40px] px-4 rounded-xl">Batal</Button>
+          <Button type="submit" variant="primary" disabled={isSubmitting} className="min-h-[40px] px-4 rounded-xl">
             {isSubmitting ? 'Menyimpan...' : editingSupplier ? 'Simpan Perubahan' : 'Tambahkan'}
           </Button>
         </div>

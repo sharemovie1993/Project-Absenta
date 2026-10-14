@@ -24,7 +24,7 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = React.mem
       onClose={onClose}
       title={supplier.name}
     >
-      <div className="space-y-4 py-2 text-xs">
+      <div className="space-y-4 py-2 text-xs max-h-[85vh] overflow-y-auto pr-1">
         <div className="space-y-2">
           {supplier.contact && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
@@ -78,7 +78,7 @@ export const SupplierDetailModal: React.FC<SupplierDetailModalProps> = React.mem
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose}>Tutup</Button>
+          <Button type="button" variant="outline" onClick={onClose} className="min-h-[40px] px-4 rounded-xl">Tutup</Button>
         </div>
       </div>
     </Modal>
