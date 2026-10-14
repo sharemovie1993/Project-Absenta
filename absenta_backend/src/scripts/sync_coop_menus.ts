@@ -54,25 +54,25 @@ async function main() {
     // Divider 1
     { label: 'divider', icon: null, path: null },
     // Klaster 2: Perdagangan, Toko & Unit Usaha Komersial (Retail)
-    { label: 'Data Supplier', icon: 'Building2', path: '/cooperative/suppliers', required_capability: 'cooperative.store.products.view.list' },
-    { label: 'Katalog Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
+    { label: 'Data Pemasok', icon: 'Building2', path: '/cooperative/suppliers', required_capability: 'cooperative.store.products.view.list' },
+    { label: 'Data Barang', icon: 'Box', path: '/cooperative/products', required_capability: 'cooperative.store.products.view.list' },
     { label: 'Voucher & Promo', icon: 'Tag', path: '/cooperative/vouchers', required_capability: 'cooperative.points.view, cooperative.vouchers.view.list, cooperative.vouchers.manage' },
     { label: 'Kasir Toko', icon: 'ShoppingCart', path: '/cooperative/pos', required_capability: 'cooperative.store.orders.manage, cooperative.store.transactions.view' },
-    { label: 'PPOB & Pulsa', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products' },
+    { label: 'Pulsa & Tagihan', icon: 'Zap', path: '/cooperative/ppob', required_capability: 'cooperative.ppob.manage.products' },
     { label: 'Laporan Penjualan', icon: 'BarChart2', path: '/cooperative/sales-report', required_capability: 'cooperative.store.transactions.view' },
-    { label: 'Laporan Inventori', icon: 'ClipboardList', path: '/cooperative/inventory-report', required_capability: 'cooperative.store.inventory.manage, cooperative.store.products.view.list' },
+    { label: 'Laporan Stok', icon: 'ClipboardList', path: '/cooperative/inventory-report', required_capability: 'cooperative.store.inventory.manage, cooperative.store.products.view.list' },
     // Divider 2
     { label: 'divider', icon: null, path: null },
     // Klaster 3: Keuangan Terpadu, Aset & Pertanggungjawaban
     { label: 'Kas & Bank', icon: 'Landmark', path: '/cooperative/cash-bank', required_capability: 'cooperative.reports.view.financial, cooperative.savings.deposit' },
-    { label: 'Inventaris Aset', icon: 'Package', path: '/cooperative/assets', required_capability: 'cooperative.assets.view.list' },
+    { label: 'Aset Koperasi', icon: 'Package', path: '/cooperative/assets', required_capability: 'cooperative.assets.view.list' },
     { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial' },
-    { label: 'Laba SHU', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.savings.view.history, cooperative.shu.view.report' },
+    { label: 'Sisa Hasil Usaha', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.savings.view.history, cooperative.shu.view.report' },
     // Divider 3
     { label: 'divider', icon: null, path: null },
     // Klaster 4: Komunikasi Anggota & Pengaturan Tata Kelola
     { label: 'Pengumuman', icon: 'Bell', path: '/cooperative/announcements', required_capability: 'cooperative.announcements.view.list, cooperative.announcements.create' },
-    { label: 'Pusat Aduan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.create, cooperative.tickets.view.list' },
+    { label: 'Pusat Bantuan', icon: 'MessageSquare', path: '/cooperative/tickets', required_capability: 'cooperative.tickets.create, cooperative.tickets.view.list' },
     { label: 'Pengaturan', icon: 'Settings', path: '/cooperative/settings', required_capability: 'cooperative.settings.view' },
   ];
 
