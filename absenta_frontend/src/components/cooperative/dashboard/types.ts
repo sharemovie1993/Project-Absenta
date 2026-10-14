@@ -100,4 +100,50 @@ export interface CoopMemberSectionProps {
   salesHistory: Sale[];
   salesLoading: boolean;
   printReceipt: (sale: Sale) => void;
+  memberSummary?: MemberDashboardSummary | null;
 }
+
+export interface MemberDashboardSummary {
+  isMember: boolean;
+  memberInfo: MemberInfo | null;
+  mySavings: {
+    total: number;
+    pokok: number;
+    wajib: number;
+    sukarela: number;
+    unpaidWajibThisMonth: boolean;
+  };
+  myLoans: {
+    activeLoan: {
+      id: string;
+      amount: number;
+      interestRate: number;
+      duration: number;
+      nextInstallment: {
+        id: string;
+        amount: number;
+        dueDate: string;
+        isOverdue: boolean;
+      } | null;
+    } | null;
+    pendingLoansCount: number;
+  };
+  myShuEstimate: {
+    estimatedAmount: number;
+    periodYear: number;
+  };
+  recentPurchases: Array<{
+    id: string;
+    date: string;
+    total: number;
+    paymentMethod: string;
+  }>;
+}
+
+export interface QuickActionsData {
+  pendingMembers: number;
+  pendingLoans: number;
+  openTickets: number;
+  overdueInstallments: number;
+}
+

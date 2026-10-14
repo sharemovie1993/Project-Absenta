@@ -54,6 +54,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   salesHistory,
   salesLoading,
   printReceipt,
+  memberSummary,
 }) => {
   const [salesPage, setSalesPage] = useState(1);
   const salesPageLimit = 10;
@@ -76,6 +77,24 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
           <span className="hidden sm:inline-block text-[11px] font-bold uppercase tracking-wider bg-emerald-600 text-white px-2.5 py-0.5 rounded-full">
             No. Anggota: {memberInfo?.memberNo || '—'}
           </span>
+        </div>
+      )}
+
+      {/* ── Pengingat Setoran Simpanan Wajib Bulan Berjalan ── */}
+      {memberStatus === 'member' && memberSummary?.mySavings?.unpaidWajibThisMonth && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800/50 rounded-2xl text-amber-900 dark:text-amber-200 text-xs shadow-2xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-block w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+            <span className="truncate">
+              <strong>Pengingat Simpanan Wajib:</strong> Anda belum melakukan setoran simpanan wajib bulan ini.
+            </span>
+          </div>
+          <Link
+            to="/cooperative/savings"
+            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[11px] font-bold shrink-0 transition-colors"
+          >
+            Lihat Rekening
+          </Link>
         </div>
       )}
 

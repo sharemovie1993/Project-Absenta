@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, UserCheck } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { LayoutDashboard, UserCheck, RefreshCw } from 'lucide-react';
 import api from '../../lib/axiosInstance';
 import { SectionCard } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
@@ -16,7 +16,14 @@ import { TvModeToggle } from '../../components/ui/TvModeToggle';
 import type { CriticalStockItem, Announcement, Sale, CoopUserInfo } from '@/components/cooperative/types';
 import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 import { formatDate } from '../../utils/date.utils';
-import type { MemberInfo } from '@/components/cooperative/dashboard/types';
+import type { MemberInfo, MemberDashboardSummary } from '@/components/cooperative/dashboard/types';
+
+export const coopDashboardKeys = {
+  all: ['cooperative-dashboard'] as const,
+  stats: () => [...coopDashboardKeys.all, 'stats'] as const,
+  summaryMember: (userId?: string) => [...coopDashboardKeys.all, 'summary-member', userId] as const,
+  quickActions: () => [...coopDashboardKeys.all, 'quick-actions'] as const,
+};
 
 const CoopManagementSection = lazy(() => import('@/components/cooperative/dashboard/CoopManagementSection').then(m => ({ default: m.CoopManagementSection })));
 const CoopMemberSection = lazy(() => import('@/components/cooperative/dashboard/CoopMemberSection').then(m => ({ default: m.CoopMemberSection })));
@@ -34,6 +41,26 @@ const Dashboard: React.FC = React.memo(() => {
   const { isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiStore, isAdmin } = useCapabilities();
   const isKoperasiStaff = isAdmin || isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiStore;
   const isGuruOrSiswa = !isKoperasiStaff;
+
+  const queryClient = useQueryClient();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefreshAll = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: coopDashboardKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-announcements'] }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-critical-stock'] }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-member-me'] }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-my-savings'] }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-my-shu'] }),
+        queryClient.invalidateQueries({ queryKey: ['cooperative-sales-history'] }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient]);
 
   // Context View Switcher State
   const tabParam = searchParams.get('tab');
@@ -77,15 +104,31 @@ const Dashboard: React.FC = React.memo(() => {
     enabled: isGuruOrSiswa || activeTab === 'member',
   });
 
+  // Ringkasan Akun Personal Anggota (Dedicated Fast Endpoint)
+  const { data: memberSummaryRes } = useQuery<{ success: boolean; data: MemberDashboardSummary }>({
+    queryKey: coopDashboardKeys.summaryMember(user?.id),
+    queryFn: async () => {
+      try {
+        const res = await api.get('/cooperative/dashboard/summary-member');
+        return res.data;
+      } catch {
+        return { success: false, data: null as any };
+      }
+    },
+    enabled: subscription !== undefined && (isGuruOrSiswa || activeTab === 'member'),
+  });
+  const memberSummary = memberSummaryRes?.data || null;
+
   const memberStatus = useMemo<'loading' | 'member' | 'non-member'>(() => {
     if (!isGuruOrSiswa && activeTab === 'management') return 'member';
     if (loadingMemberInfo) return 'loading';
+    if (memberSummary?.isMember) return 'member';
     return memberInfo && memberInfo.status === 'ACTIVE' ? 'member' : 'non-member';
-  }, [isGuruOrSiswa, activeTab, loadingMemberInfo, memberInfo]);
+  }, [isGuruOrSiswa, activeTab, loadingMemberInfo, memberInfo, memberSummary]);
 
   // Statistik Agregat Koperasi (Hanya untuk pengelola atau mode TV)
   const { data: stats = { totalMembers: 0, totalSavings: 0, totalLoans: 0, dueInstallments: 0 }, isLoading: loadingStats, dataUpdatedAt } = useQuery({
-    queryKey: ['cooperative-dashboard-stats'],
+    queryKey: coopDashboardKeys.stats(),
     queryFn: async () => {
       const statsRes = await api.get('/cooperative/dashboard/stats');
       const raw = statsRes.data?.data || {};
@@ -190,6 +233,10 @@ const Dashboard: React.FC = React.memo(() => {
     { label: 'Dashboard', path: '/cooperative/dashboard' },
   ], []);
 
+  const effectiveSavingsSum = mySavingsSum || (memberSummary?.mySavings?.total ?? 0);
+  const effectiveShuSum = myShuSum || (memberSummary?.myShuEstimate?.estimatedAmount ?? 0);
+  const effectiveMemberInfo = memberInfo || memberSummary?.memberInfo || null;
+
   if (isTvMode) {
     return (
       <Suspense fallback={<div className="p-8 text-center text-white">Memuat TV Mode...</div>}>
@@ -198,9 +245,9 @@ const Dashboard: React.FC = React.memo(() => {
           currentScene={currentScene}
           setCurrentScene={setCurrentScene}
           lastRefresh={lastRefresh}
-          mySavingsSum={mySavingsSum}
-          myShuSum={myShuSum}
-          memberInfo={memberInfo}
+          mySavingsSum={effectiveSavingsSum}
+          myShuSum={effectiveShuSum}
+          memberInfo={effectiveMemberInfo}
           user={user as CoopUserInfo | null}
           announcements={announcements}
           salesHistory={salesHistory}
@@ -230,9 +277,21 @@ const Dashboard: React.FC = React.memo(() => {
         topSlot={
           <div className="space-y-3">
             <WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />
-            <CoopFiscalYearSelector showSetDefaultButton />
-            <div className="flex justify-end">
-              <TvModeToggle />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <CoopFiscalYearSelector showSetDefaultButton />
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleRefreshAll}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Segarkan Data Realtime"
+                >
+                  <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-primary-600' : 'text-slate-500'} />
+                  <span className="hidden sm:inline">{isRefreshing ? 'Memperbarui...' : 'Segarkan Data'}</span>
+                </button>
+                <TvModeToggle />
+              </div>
             </div>
           </div>
         }
@@ -285,14 +344,15 @@ const Dashboard: React.FC = React.memo(() => {
               <Suspense fallback={<div className="p-8 text-center text-slate-500 font-medium text-xs">Memuat Dashboard Anggota...</div>}>
                 <CoopMemberSection
                   memberStatus={memberStatus}
-                  memberInfo={memberInfo}
+                  memberInfo={effectiveMemberInfo}
                   user={user as CoopUserInfo | null}
-                  mySavingsSum={mySavingsSum}
-                  myShuSum={myShuSum}
+                  mySavingsSum={effectiveSavingsSum}
+                  myShuSum={effectiveShuSum}
                   announcements={announcements}
                   salesHistory={salesHistory}
                   salesLoading={salesLoading}
                   printReceipt={printReceipt}
+                  memberSummary={memberSummary}
                 />
               </Suspense>
             )}

@@ -2649,6 +2649,7 @@ model Member {
 
   @@unique([tenantId, memberNo])
   @@index([tenantId])
+  @@index([tenantId, status])
 }
 
 enum MemberType {
@@ -2720,6 +2721,10 @@ model SavingTransaction {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([savingId])
+  @@index([type, date])
+  @@index([savingId, type, date])
 }
 
 // --- PINJAMAN ---
@@ -2737,6 +2742,10 @@ model Loan {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([status])
+  @@index([memberId, status])
 }
 
 model Installment {
@@ -2751,6 +2760,10 @@ model Installment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([loanId])
+  @@index([status, dueDate])
+  @@index([loanId, status, dueDate])
 }
 
 // --- PEMBUKUAN (ACCOUNTING) ---

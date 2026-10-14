@@ -5,6 +5,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../../utils/prisma';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
+import { MemberService } from '../member/member.service';
 
 const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
@@ -12,37 +13,216 @@ const getTenantId = (req: any) => {
 
 const INDONESIAN_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
+// ── L1 In-Memory Cache for Management Dashboard Stats ──
+interface CachedStats {
+    data: any;
+    timestamp: number;
+}
+const statsCache = new Map<string, CachedStats>();
+const STATS_CACHE_TTL_MS = 45 * 1000; // 45 seconds
+
+export const invalidateDashboardCache = (tenantId?: string) => {
+    if (tenantId) {
+        statsCache.delete(tenantId);
+    } else {
+        statsCache.clear();
+    }
+};
+
 export default async function dashboardRoutes(fastify: any) {
-    // Get Dashboard Stats Komprehensif untuk Pengurus
+    // ──────────────────────────────────────────────────────────────────────────
+    // 1. GET /stats — Dashboard Stats Komprehensif untuk Pengurus & TV Mode
+    // ──────────────────────────────────────────────────────────────────────────
     fastify.get('/stats', { preHandler: [requireCapability('cooperative.dashboard.view.overview')] }, async (req: any, reply: any) => {
+        const startTime = Date.now();
         try {
             const tenantId = getTenantId(req);
+            const forceRefresh = req.query?.refresh === 'true';
+
+            // Check In-Memory Cache
+            const cached = statsCache.get(tenantId);
+            if (!forceRefresh && cached && (Date.now() - cached.timestamp < STATS_CACHE_TTL_MS)) {
+                return reply.send({
+                    success: true,
+                    data: cached.data,
+                    cached: true,
+                    cacheAgeSeconds: Math.floor((Date.now() - cached.timestamp) / 1000)
+                });
+            }
+
             const now = new Date();
-            
-            // ─── 1. ANGGOTA ─────────────────────────────────────────────────────────
-            const totalMembers = await prisma.member.count({ where: { tenantId } });
-            const activeMembers = await prisma.member.count({ where: { tenantId, status: 'ACTIVE' } });
+            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-            // ─── 2. SIMPANAN & BREAKDOWN ────────────────────────────────────────────
-            const savingsAgg = await prisma.saving.aggregate({
-                _sum: { amount: true },
-                where: { member: { tenantId } }
-            });
-            const totalSavings = Number(savingsAgg._sum.amount || 0);
+            // ── Parallel Batch 1: Anggota, Simpanan, Pinjaman, POS, Tiket, SHU Period ──
+            const [
+                totalMembers,
+                activeMembers,
+                savingsAgg,
+                categories,
+                savingsByCat,
+                loansAgg,
+                activeLoansCount,
+                pendingLoansList,
+                dueInstallmentsAgg,
+                todaySalesAgg,
+                monthSalesAgg,
+                activePeriod,
+                openTickets,
+                unpaidInstallments,
+                pendingMembersList,
+                pendingMembersCount,
+                recentSavings,
+                recentSales
+            ] = await Promise.all([
+                // 1. Anggota
+                prisma.member.count({ where: { tenantId } }),
+                prisma.member.count({ where: { tenantId, status: 'ACTIVE' } }),
 
-            // Breakdown Simpanan (Pokok, Wajib, Sukarela, dll)
-            const categories = await prisma.savingCategory.findMany({
-                where: { tenantId },
-                select: { id: true, code: true, name: true }
-            });
+                // 2. Simpanan
+                prisma.saving.aggregate({
+                    _sum: { amount: true },
+                    where: { member: { tenantId } }
+                }),
+                prisma.savingCategory.findMany({
+                    where: { tenantId },
+                    select: { id: true, code: true, name: true }
+                }),
+                prisma.saving.groupBy({
+                    by: ['categoryId'],
+                    where: { member: { tenantId } },
+                    _sum: { amount: true }
+                }),
+
+                // 3. Pinjaman
+                prisma.loan.aggregate({
+                    _sum: { amount: true },
+                    where: { member: { tenantId }, status: { in: ['APPROVED', 'PAID'] } }
+                }),
+                prisma.loan.count({
+                    where: { member: { tenantId }, status: 'APPROVED' }
+                }),
+                prisma.loan.findMany({
+                    where: { member: { tenantId }, status: 'PENDING' },
+                    take: 5,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        member: {
+                            include: {
+                                User: { select: { full_name: true } },
+                                Siswa: { select: { nama_siswa: true } },
+                                Guru: { select: { nama_guru: true } },
+                            }
+                        }
+                    }
+                }),
+                prisma.installment.aggregate({
+                    where: { 
+                        loan: { member: { tenantId } },
+                        status: 'UNPAID',
+                        dueDate: { lt: now }
+                    },
+                    _count: { id: true },
+                    _sum: { amount: true }
+                }),
+
+                // 4. Penjualan Toko POS
+                prisma.sale.aggregate({
+                    where: { tenantId, date: { gte: startOfToday } },
+                    _sum: { total: true },
+                    _count: { id: true }
+                }),
+                prisma.sale.aggregate({
+                    where: { tenantId, date: { gte: startOfMonth } },
+                    _sum: { total: true },
+                    _count: { id: true }
+                }),
+
+                // 5. SHU Tahun Buku
+                prisma.shuPeriod.findFirst({
+                    where: { tenantId, isActive: true },
+                    select: { id: true, year: true, totalShu: true, status: true }
+                }),
+
+                // 6. Tiket
+                prisma.ticket.count({
+                    where: { tenantId, status: { in: ['OPEN', 'IN_PROGRESS'] } }
+                }),
+
+                // 7. Cicilan Belum Lunas untuk Analisis NPL & Ageing
+                prisma.installment.findMany({
+                    where: {
+                        loan: { member: { tenantId }, status: 'APPROVED' },
+                        status: 'UNPAID'
+                    },
+                    include: {
+                        loan: {
+                            include: {
+                                member: {
+                                    include: {
+                                        User: { select: { full_name: true } },
+                                        Guru: { select: { nama_guru: true } },
+                                        Siswa: { select: { nama_siswa: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+
+                // 8. Antrean Anggota Baru
+                prisma.member.findMany({
+                    where: { tenantId, status: 'PENDING' },
+                    take: 5,
+                    orderBy: { createdAt: 'desc' },
+                    include: {
+                        User: { select: { full_name: true, email: true } },
+                        Guru: { select: { nama_guru: true, nip: true } },
+                        Siswa: { select: { nama_siswa: true, nis: true } }
+                    }
+                }),
+                prisma.member.count({
+                    where: { tenantId, status: 'PENDING' }
+                }),
+
+                // 9. Mutasi Aktivitas Terbaru
+                prisma.savingTransaction.findMany({
+                    where: { saving: { member: { tenantId } } },
+                    take: 4,
+                    orderBy: { date: 'desc' },
+                    include: {
+                        saving: {
+                            include: {
+                                category: { select: { name: true } },
+                                member: {
+                                    include: {
+                                        User: { select: { full_name: true } },
+                                        Siswa: { select: { nama_siswa: true } },
+                                        Guru: { select: { nama_guru: true } },
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+                prisma.sale.findMany({
+                    where: { tenantId },
+                    take: 4,
+                    orderBy: { date: 'desc' },
+                    include: {
+                        member: {
+                            include: {
+                                User: { select: { full_name: true } },
+                                Siswa: { select: { nama_siswa: true } },
+                                Guru: { select: { nama_guru: true } },
+                            }
+                        }
+                    }
+                })
+            ]);
+
+            // ── Breakdown Simpanan ──
             const catMap = new Map(categories.map(c => [c.id, c.code]));
-
-            const savingsByCat = await prisma.saving.groupBy({
-                by: ['categoryId'],
-                where: { member: { tenantId } },
-                _sum: { amount: true }
-            });
-
             let simpananPokok = 0;
             let simpananWajib = 0;
             let simpananSukarela = 0;
@@ -55,189 +235,18 @@ export default async function dashboardRoutes(fastify: any) {
                 else simpananSukarela += amt;
             }
 
-            // ─── 3. PINJAMAN & JATUH TEMPO ──────────────────────────────────────────
-            const loansAgg = await prisma.loan.aggregate({
-                _sum: { amount: true },
-                where: { member: { tenantId }, status: { in: ['APPROVED', 'PAID'] } }
-            });
+            const totalSavings = Number(savingsAgg._sum.amount || 0);
             const totalLoans = Number(loansAgg._sum.amount || 0);
-
-            const activeLoansCount = await prisma.loan.count({
-                where: { member: { tenantId }, status: 'APPROVED' }
-            });
-
-            const pendingLoansList = await prisma.loan.findMany({
-                where: { member: { tenantId }, status: 'PENDING' },
-                take: 5,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    member: {
-                        include: {
-                            User: { select: { full_name: true } },
-                            Siswa: { select: { nama_siswa: true } },
-                            Guru: { select: { nama_guru: true } },
-                        }
-                    }
-                }
-            });
-
-            const pendingLoans = pendingLoansList.map(l => ({
-                id: l.id,
-                amount: Number(l.amount),
-                duration: l.duration,
-                createdAt: l.createdAt,
-                memberName: l.member?.User?.full_name || l.member?.Guru?.nama_guru || l.member?.Siswa?.nama_siswa || 'Anggota Koperasi'
-            }));
-
-            // Cicilan Jatuh Tempo (Status UNPAID dan dueDate < now)
-            const dueInstallmentsAgg = await prisma.installment.aggregate({
-                where: { 
-                    loan: { member: { tenantId } },
-                    status: 'UNPAID',
-                    dueDate: { lt: now }
-                },
-                _count: { id: true },
-                _sum: { amount: true }
-            });
             const dueInstallments = Number(dueInstallmentsAgg._count.id || 0);
             const dueInstallmentsAmount = Number(dueInstallmentsAgg._sum.amount || 0);
-
-            // ─── 4. TOKO POS MINIMARKET ─────────────────────────────────────────────
-            const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-            const todaySalesAgg = await prisma.sale.aggregate({
-                where: { tenantId, date: { gte: startOfToday } },
-                _sum: { total: true },
-                _count: { id: true }
-            });
-            const monthSalesAgg = await prisma.sale.aggregate({
-                where: { tenantId, date: { gte: startOfMonth } },
-                _sum: { total: true },
-                _count: { id: true }
-            });
-
             const storeSalesToday = Number(todaySalesAgg._sum.total || 0);
             const storeSalesCountToday = Number(todaySalesAgg._count.id || 0);
             const storeSalesMonth = Number(monthSalesAgg._sum.total || 0);
             const storeSalesCountMonth = Number(monthSalesAgg._count.id || 0);
 
-            // ─── 5. SHU TAHUN BUKU AKTIF ────────────────────────────────────────────
-            const activePeriod = await prisma.shuPeriod.findFirst({
-                where: { tenantId, isActive: true },
-                select: { id: true, year: true, totalShu: true, status: true }
-            });
-
-            // ─── 6. TREN 6 BULAN TERAKHIR (REAL METRICS) ───────────────────────────
-            const monthlyTrend = [];
-            for (let i = 5; i >= 0; i--) {
-                const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                const mYear = targetDate.getFullYear();
-                const mMonth = targetDate.getMonth();
-                const mStart = new Date(mYear, mMonth, 1);
-                const mEnd = new Date(mYear, mMonth + 1, 0, 23, 59, 59, 999);
-                const monthName = `${INDONESIAN_MONTH_SHORT[mMonth]} ${mYear !== now.getFullYear() ? mYear : ''}`.trim();
-
-                // Simpanan masuk di bulan ini
-                const mSavings = await prisma.savingTransaction.aggregate({
-                    where: {
-                        saving: { member: { tenantId } },
-                        type: 'DEPOSIT',
-                        date: { gte: mStart, lte: mEnd }
-                    },
-                    _sum: { amount: true }
-                });
-
-                // Pinjaman cair di bulan ini
-                const mLoans = await prisma.loan.aggregate({
-                    where: {
-                        member: { tenantId },
-                        status: { in: ['APPROVED', 'PAID'] },
-                        createdAt: { gte: mStart, lte: mEnd }
-                    },
-                    _sum: { amount: true }
-                });
-
-                // Penjualan toko di bulan ini
-                const mSales = await prisma.sale.aggregate({
-                    where: {
-                        tenantId,
-                        date: { gte: mStart, lte: mEnd }
-                    },
-                    _sum: { total: true }
-                });
-
-                monthlyTrend.push({
-                    name: monthName,
-                    simpanan: Number(mSavings._sum.amount || 0),
-                    pinjaman: Number(mLoans._sum.amount || 0),
-                    penjualan: Number(mSales._sum.total || 0)
-                });
-            }
-
-            // ─── 7. TIKET & PENGADUAN ───────────────────────────────────────────────
-            const openTickets = await prisma.ticket.count({
-                where: { tenantId, status: { in: ['OPEN', 'IN_PROGRESS'] } }
-            });
-
-            // ─── 8. TRANSAKSI TERBARU (MUTASI REAL-TIME) ───────────────────────────
-            const recentSavings = await prisma.savingTransaction.findMany({
-                where: { saving: { member: { tenantId } } },
-                take: 4,
-                orderBy: { date: 'desc' },
-                include: {
-                    saving: {
-                        include: {
-                            category: { select: { name: true } },
-                            member: {
-                                include: {
-                                    User: { select: { full_name: true } },
-                                    Siswa: { select: { nama_siswa: true } },
-                                    Guru: { select: { nama_guru: true } },
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            const recentSales = await prisma.sale.findMany({
-                where: { tenantId },
-                take: 4,
-                orderBy: { date: 'desc' },
-                include: {
-                    member: {
-                        include: {
-                            User: { select: { full_name: true } },
-                            Siswa: { select: { nama_siswa: true } },
-                            Guru: { select: { nama_guru: true } },
-                        }
-                    }
-                }
-            });
-
-            const recentActivities = [
-                ...recentSavings.map(s => ({
-                    id: s.id,
-                    type: 'SAVING',
-                    title: `Setoran ${s.saving?.category?.name || 'Simpanan'}`,
-                    description: s.saving?.member?.User?.full_name || s.saving?.member?.Guru?.nama_guru || s.saving?.member?.Siswa?.nama_siswa || 'Anggota',
-                    amount: Number(s.amount),
-                    date: s.date
-                })),
-                ...recentSales.map(sl => ({
-                    id: sl.id,
-                    type: 'SALE',
-                    title: 'Penjualan Kasir POS',
-                    description: sl.member ? (sl.member?.User?.full_name || sl.member?.Guru?.nama_guru || sl.member?.Siswa?.nama_siswa) : 'Pembeli Umum',
-                    amount: Number(sl.total),
-                    date: sl.date
-                }))
-            ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
-
-            // ─── 9. KEPATUHAN SIMPANAN WAJIB BULAN INI ────────────────────────
+            // ── Kepatuhan Simpanan Wajib Bulan Ini ──
             const wajibCategory = categories.find(c => c.code === 'WAJIB');
-            const paidWajibMemberIds = new Set();
+            let wajibPaidCount = 0;
             if (wajibCategory && activeMembers > 0) {
                 const wajibDeposits = await prisma.savingTransaction.findMany({
                     where: {
@@ -250,14 +259,11 @@ export default async function dashboardRoutes(fastify: any) {
                     },
                     select: { saving: { select: { memberId: true } } }
                 });
-                for (const wd of wajibDeposits) {
-                    if (wd.saving?.memberId) paidWajibMemberIds.add(wd.saving.memberId);
-                }
+                const paidMemberIds = new Set(wajibDeposits.map(d => d.saving?.memberId).filter(Boolean));
+                wajibPaidCount = paidMemberIds.size;
             }
-            const wajibPaidCount = paidWajibMemberIds.size;
             const wajibUnpaidCount = Math.max(0, activeMembers - wajibPaidCount);
             const wajibCompliancePercent = activeMembers > 0 ? Math.round((wajibPaidCount / activeMembers) * 100) : 100;
-
             const wajibCompliance = {
                 totalActive: activeMembers,
                 paidCount: wajibPaidCount,
@@ -265,27 +271,7 @@ export default async function dashboardRoutes(fastify: any) {
                 compliancePercent: wajibCompliancePercent
             };
 
-            // ─── 10. PORTOFOLIO PINJAMAN & RISIKO NPL ─────────────────────────
-            const unpaidInstallments = await prisma.installment.findMany({
-                where: {
-                    loan: { member: { tenantId }, status: 'APPROVED' },
-                    status: 'UNPAID'
-                },
-                include: {
-                    loan: {
-                        include: {
-                            member: {
-                                include: {
-                                    User: { select: { full_name: true } },
-                                    Guru: { select: { nama_guru: true } },
-                                    Siswa: { select: { nama_siswa: true } }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
+            // ── Portofolio Pinjaman & NPL Ratio ──
             let currentAmount = 0;
             let overdue1to30Amount = 0;
             let overdueOver30Amount = 0;
@@ -338,20 +324,15 @@ export default async function dashboardRoutes(fastify: any) {
                 topOverdue
             };
 
-            // ─── 11. ANTREAN VERIFIKASI ANGGOTA BARU ──────────────────────────
-            const pendingMembersList = await prisma.member.findMany({
-                where: { tenantId, status: 'PENDING' },
-                take: 5,
-                orderBy: { createdAt: 'desc' },
-                include: {
-                    User: { select: { full_name: true, email: true } },
-                    Guru: { select: { nama_guru: true, nip: true } },
-                    Siswa: { select: { nama_siswa: true, nis: true } }
-                }
-            });
-            const pendingMembersCount = await prisma.member.count({
-                where: { tenantId, status: 'PENDING' }
-            });
+            // ── Antrean Pinjaman & Anggota Baru ──
+            const pendingLoans = pendingLoansList.map(l => ({
+                id: l.id,
+                amount: Number(l.amount),
+                duration: l.duration,
+                createdAt: l.createdAt,
+                memberName: l.member?.User?.full_name || l.member?.Guru?.nama_guru || l.member?.Siswa?.nama_siswa || 'Anggota Koperasi'
+            }));
+
             const pendingMembers = {
                 count: pendingMembersCount,
                 list: pendingMembersList.map(m => ({
@@ -362,36 +343,37 @@ export default async function dashboardRoutes(fastify: any) {
                 }))
             };
 
-            // ─── 12. ESTIMASI SHU BERJALAN YTD ───────────────────────────────
+            // ── Estimasi SHU Berjalan YTD ──
             const currentYear = activePeriod?.year || now.getFullYear();
             const startOfYear = new Date(currentYear, 0, 1);
             const endOfYear = new Date(currentYear, 11, 31, 23, 59, 59, 999);
 
-            const yearSalesAgg = await prisma.sale.aggregate({
-                where: { tenantId, date: { gte: startOfYear, lte: endOfYear } },
-                _sum: { total: true }
-            });
-            const totalYearSales = Number(yearSalesAgg._sum.total || 0);
-            const estimatedStoreProfit = Math.round(totalYearSales * 0.15); // Rata-rata margin toko 15%
+            const [yearSalesAgg, paidInstallmentsThisYear] = await Promise.all([
+                prisma.sale.aggregate({
+                    where: { tenantId, date: { gte: startOfYear, lte: endOfYear } },
+                    _sum: { total: true }
+                }),
+                prisma.installment.findMany({
+                    where: {
+                        loan: { member: { tenantId } },
+                        status: 'PAID',
+                        paidDate: { gte: startOfYear, lte: endOfYear }
+                    },
+                    include: {
+                        loan: { select: { amount: true, interestRate: true, duration: true } }
+                    }
+                })
+            ]);
 
-            const paidInstallmentsThisYear = await prisma.installment.findMany({
-                where: {
-                    loan: { member: { tenantId } },
-                    status: 'PAID',
-                    paidDate: { gte: startOfYear, lte: endOfYear }
-                },
-                include: {
-                    loan: { select: { amount: true, interestRate: true, duration: true } }
-                }
-            });
+            const totalYearSales = Number(yearSalesAgg._sum.total || 0);
+            const estimatedStoreProfit = Math.round(totalYearSales * 0.15); // Estimasi margin ritel 15%
 
             let interestIncome = 0;
             for (const inst of paidInstallmentsThisYear) {
                 const loanAmt = Number(inst.loan?.amount || 0);
                 const rate = Number(inst.loan?.interestRate || 0);
                 const dur = inst.loan?.duration || 1;
-                const monthlyInterest = (loanAmt * (rate / 100)) / dur;
-                interestIncome += monthlyInterest;
+                interestIncome += (loanAmt * (rate / 100)) / dur;
             }
             interestIncome = Math.round(interestIncome);
 
@@ -408,41 +390,318 @@ export default async function dashboardRoutes(fastify: any) {
                 status: activePeriod?.status || 'BERJALAN'
             };
 
+            // ── Parallelized 6-Month Trend (6 Bulan Terakhir) ──
+            const monthIndices = [5, 4, 3, 2, 1, 0];
+            const monthlyTrend = await Promise.all(monthIndices.map(async (i) => {
+                const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const mYear = targetDate.getFullYear();
+                const mMonth = targetDate.getMonth();
+                const mStart = new Date(mYear, mMonth, 1);
+                const mEnd = new Date(mYear, mMonth + 1, 0, 23, 59, 59, 999);
+                const monthName = `${INDONESIAN_MONTH_SHORT[mMonth]} ${mYear !== now.getFullYear() ? mYear : ''}`.trim();
+
+                const [mSavings, mLoans, mSales] = await Promise.all([
+                    prisma.savingTransaction.aggregate({
+                        where: {
+                            saving: { member: { tenantId } },
+                            type: 'DEPOSIT',
+                            date: { gte: mStart, lte: mEnd }
+                        },
+                        _sum: { amount: true }
+                    }),
+                    prisma.loan.aggregate({
+                        where: {
+                            member: { tenantId },
+                            status: { in: ['APPROVED', 'PAID'] },
+                            createdAt: { gte: mStart, lte: mEnd }
+                        },
+                        _sum: { amount: true }
+                    }),
+                    prisma.sale.aggregate({
+                        where: {
+                            tenantId,
+                            date: { gte: mStart, lte: mEnd }
+                        },
+                        _sum: { total: true }
+                    })
+                ]);
+
+                return {
+                    name: monthName,
+                    simpanan: Number(mSavings._sum.amount || 0),
+                    pinjaman: Number(mLoans._sum.amount || 0),
+                    penjualan: Number(mSales._sum.total || 0)
+                };
+            }));
+
+            // ── Recent Activities Merged ──
+            const recentActivities = [
+                ...recentSavings.map(s => ({
+                    id: s.id,
+                    type: 'SAVING',
+                    title: `Setoran ${s.saving?.category?.name || 'Simpanan'}`,
+                    description: s.saving?.member?.User?.full_name || s.saving?.member?.Guru?.nama_guru || s.saving?.member?.Siswa?.nama_siswa || 'Anggota',
+                    amount: Number(s.amount),
+                    date: s.date
+                })),
+                ...recentSales.map(sl => ({
+                    id: sl.id,
+                    type: 'SALE',
+                    title: 'Penjualan Kasir POS',
+                    description: sl.member ? (sl.member?.User?.full_name || sl.member?.Guru?.nama_guru || sl.member?.Siswa?.nama_siswa) : 'Pembeli Umum',
+                    amount: Number(sl.total),
+                    date: sl.date
+                }))
+            ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 6);
+
+            const resultData = {
+                // Core KPI
+                totalMembers,
+                activeMembers,
+                totalSavings,
+                simpananPokok,
+                simpananWajib,
+                simpananSukarela,
+                totalLoans,
+                activeLoansCount,
+                dueInstallments,
+                dueInstallmentsAmount,
+                storeSalesToday,
+                storeSalesCountToday,
+                storeSalesMonth,
+                storeSalesCountMonth,
+                activePeriod,
+                openTickets,
+                pendingLoans,
+                monthlyTrend,
+                recentActivities,
+
+                // 4 Executive Risk & Compliance Metrics
+                wajibCompliance,
+                loanPortfolio,
+                pendingMembers,
+                estimatedShuYtd
+            };
+
+            // Save to In-Memory Cache
+            statsCache.set(tenantId, { data: resultData, timestamp: Date.now() });
+
+            appLogger.info({ action: 'GET_DASHBOARD_STATS', tenantId, durationMs: Date.now() - startTime });
             return reply.send({
+                success: true,
+                data: resultData,
+                cached: false
+            });
+        } catch (error: any) {
+            appLogger.error({ err: error, durationMs: Date.now() - startTime }, '[Dashboard] Gagal memuat statistik koperasi');
+            return reply.status(500).send({ success: false, message: 'Gagal memuat ringkasan dashboard koperasi.', error: error.message });
+        }
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 2. GET /summary-member — Ringkasan Akun Personal Anggota (Self-Service Hub)
+    // ──────────────────────────────────────────────────────────────────────────
+    fastify.get('/summary-member', { preHandler: [requireCapability('cooperative.dashboard.view.overview', false)] }, async (req: any, reply: any) => {
+        const startTime = Date.now();
+        try {
+            const tenantId = getTenantId(req);
+            const userId = req.user?.id;
+            if (!userId) {
+                return reply.code(401).send({ success: false, message: 'Unauthorized' });
+            }
+
+            const member = await MemberService.getMemberByUserId(tenantId, userId);
+            if (!member) {
+                return reply.send({
+                    success: true,
+                    data: {
+                        isMember: false,
+                        memberInfo: null,
+                        mySavings: { total: 0, pokok: 0, wajib: 0, sukarela: 0, unpaidWajibThisMonth: false },
+                        myLoans: { activeLoan: null, pendingLoansCount: 0 },
+                        myShuEstimate: { estimatedAmount: 0, periodYear: new Date().getFullYear() },
+                        recentPurchases: []
+                    }
+                });
+            }
+
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+            // Simpanan & Breakdown
+            const savingsList = await prisma.saving.findMany({
+                where: { memberId: member.id },
+                include: { category: true }
+            });
+
+            let pokok = 0;
+            let wajib = 0;
+            let sukarela = 0;
+            let totalSavings = 0;
+            let wajibCategoryId: string | null = null;
+
+            for (const s of savingsList) {
+                const amt = Number(s.amount || 0);
+                totalSavings += amt;
+                const code = s.category?.code;
+                if (code === 'POKOK') pokok += amt;
+                else if (code === 'WAJIB') {
+                    wajib += amt;
+                    wajibCategoryId = s.categoryId;
+                } else {
+                    sukarela += amt;
+                }
+            }
+
+            // Kepatuhan Simpanan Wajib Bulan Berjalan Anggota
+            let paidWajibThisMonth = false;
+            if (wajibCategoryId) {
+                const wajibTrx = await prisma.savingTransaction.findFirst({
+                    where: {
+                        saving: { memberId: member.id, categoryId: wajibCategoryId },
+                        type: 'DEPOSIT',
+                        date: { gte: startOfMonth }
+                    }
+                });
+                if (wajibTrx) paidWajibThisMonth = true;
+            }
+
+            // Pinjaman Aktif & Cicilan Berikutnya
+            const [activeLoan, pendingLoansCount] = await Promise.all([
+                prisma.loan.findFirst({
+                    where: { memberId: member.id, status: 'APPROVED' },
+                    include: {
+                        installments: {
+                            where: { status: 'UNPAID' },
+                            orderBy: { dueDate: 'asc' },
+                            take: 1
+                        }
+                    }
+                }),
+                prisma.loan.count({
+                    where: { memberId: member.id, status: 'PENDING' }
+                })
+            ]);
+
+            // Riwayat Pembelian POS Terakhir
+            const recentSales = await prisma.sale.findMany({
+                where: { tenantId, memberId: member.id },
+                take: 5,
+                orderBy: { date: 'desc' },
+                select: {
+                    id: true,
+                    date: true,
+                    total: true,
+                    paymentMethod: true
+                }
+            });
+
+            // Estimasi Dividen SHU Personal Berjalan
+            const activePeriod = await prisma.shuPeriod.findFirst({
+                where: { tenantId, isActive: true },
+                select: { id: true, year: true, totalShu: true }
+            });
+
+            const currentYear = activePeriod?.year || now.getFullYear();
+            let estimatedShu = 0;
+
+            if (activePeriod && Number(activePeriod.totalShu) > 0) {
+                const totalMemberSavingsAll = await prisma.saving.aggregate({
+                    where: { member: { tenantId, status: 'ACTIVE' } },
+                    _sum: { amount: true }
+                });
+                const allSavingsSum = Number(totalMemberSavingsAll._sum.amount || 0);
+                if (allSavingsSum > 0 && totalSavings > 0) {
+                    const modalRatio = totalSavings / allSavingsSum;
+                    estimatedShu = Math.round(Number(activePeriod.totalShu) * 0.4 * modalRatio);
+                }
+            }
+
+            const data = {
+                isMember: true,
+                memberInfo: {
+                    id: member.id,
+                    memberNo: member.memberNo,
+                    name: member.name,
+                    type: member.type,
+                    status: member.status,
+                    joinDate: member.joinDate
+                },
+                mySavings: {
+                    total: totalSavings,
+                    pokok,
+                    wajib,
+                    sukarela,
+                    unpaidWajibThisMonth: member.status === 'ACTIVE' && !paidWajibThisMonth
+                },
+                myLoans: {
+                    activeLoan: activeLoan ? {
+                        id: activeLoan.id,
+                        amount: Number(activeLoan.amount),
+                        interestRate: Number(activeLoan.interestRate),
+                        duration: activeLoan.duration,
+                        nextInstallment: activeLoan.installments[0] ? {
+                            id: activeLoan.installments[0].id,
+                            amount: Number(activeLoan.installments[0].amount),
+                            dueDate: activeLoan.installments[0].dueDate,
+                            isOverdue: new Date(activeLoan.installments[0].dueDate) < now
+                        } : null
+                    } : null,
+                    pendingLoansCount
+                },
+                myShuEstimate: {
+                    estimatedAmount: estimatedShu,
+                    periodYear: currentYear
+                },
+                recentPurchases: recentSales.map(s => ({
+                    id: s.id,
+                    date: s.date,
+                    total: Number(s.total),
+                    paymentMethod: s.paymentMethod
+                }))
+            };
+
+            appLogger.info({ action: 'GET_DASHBOARD_SUMMARY_MEMBER', tenantId, memberId: member.id, durationMs: Date.now() - startTime });
+            return reply.send({ success: true, data });
+        } catch (error: any) {
+            appLogger.error({ err: error, durationMs: Date.now() - startTime }, '[Dashboard] Gagal memuat ringkasan member');
+            return reply.status(500).send({ success: false, message: 'Gagal memuat ringkasan anggota.', error: error.message });
+        }
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 3. GET /quick-actions — Indikator Cepat & Badge Notifikasi Pengurus
+    // ──────────────────────────────────────────────────────────────────────────
+    fastify.get('/quick-actions', { preHandler: [requireCapability('cooperative.dashboard.view.overview')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const now = new Date();
+
+            const [pendingMembers, pendingLoans, openTickets, overdueInstallments] = await Promise.all([
+                prisma.member.count({ where: { tenantId, status: 'PENDING' } }),
+                prisma.loan.count({ where: { member: { tenantId }, status: 'PENDING' } }),
+                prisma.ticket.count({ where: { tenantId, status: { in: ['OPEN', 'IN_PROGRESS'] } } }),
+                prisma.installment.count({
+                    where: {
+                        loan: { member: { tenantId } },
+                        status: 'UNPAID',
+                        dueDate: { lt: now }
+                    }
+                })
+            ]);
+
+            return reply.send({
+                success: true,
                 data: {
-                    // Backward-compatible properties
-                    totalMembers,
-                    totalSavings,
-                    totalLoans,
-                    dueInstallments,
-
-                    // Extended Executive Properties
-                    activeMembers,
-                    simpananPokok,
-                    simpananWajib,
-                    simpananSukarela,
-                    activeLoansCount,
-                    dueInstallmentsAmount,
-                    storeSalesToday,
-                    storeSalesCountToday,
-                    storeSalesMonth,
-                    storeSalesCountMonth,
-                    activePeriod,
-                    openTickets,
-                    pendingLoans,
-                    monthlyTrend,
-                    recentActivities,
-
-                    // 4 Executive Metrics
-                    wajibCompliance,
-                    loanPortfolio,
                     pendingMembers,
-                    estimatedShuYtd
+                    pendingLoans,
+                    openTickets,
+                    overdueInstallments
                 }
             });
         } catch (error: any) {
-            appLogger.error({ err: error }, '[Dashboard] Gagal memuat statistik koperasi');
-            return reply.status(500).send({ message: 'Gagal memuat ringkasan dashboard koperasi.', error: error.message });
+            appLogger.error({ err: error }, '[Dashboard] Gagal memuat quick-actions');
+            return reply.status(500).send({ success: false, message: 'Gagal memuat indikator pintas koperasi.', error: error.message });
         }
     });
 }
