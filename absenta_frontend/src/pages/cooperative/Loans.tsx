@@ -24,6 +24,7 @@ import { MobileAcademicList } from '../../components/academic/shared/MobileAcade
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
 import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
+import { invalidateLoansCaches } from '../../lib/coopQueryKeys';
 
 // Lazy-load heavy modals to optimize initial bundle splitting
 const CreateLoanModal = lazy(() => 
@@ -162,11 +163,7 @@ const Loans: React.FC = React.memo(() => {
   // Realtime Live Sync: Dengarkan event transaksi/status pinjaman via WebSocket (Pilar 4 Hardening)
   useEffect(() => {
     const handleLoanUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-student-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
+      invalidateLoansCaches(queryClient);
     };
 
     subscribe('coop_loan_update', handleLoanUpdate);
@@ -265,9 +262,7 @@ const Loans: React.FC = React.memo(() => {
         duration: '12',
         notes: ''
       });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-student-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
+      invalidateLoansCaches(queryClient);
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengajukan pinjaman';
@@ -284,8 +279,7 @@ const Loans: React.FC = React.memo(() => {
     onSuccess: (_, variables) => {
       const actionText = variables.status === 'APPROVED' ? 'disetujui' : 'ditolak';
       toast.success(`Pengajuan pinjaman berhasil ${actionText}`);
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
+      invalidateLoansCaches(queryClient, variables.loanId);
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengubah status pinjaman';

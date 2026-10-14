@@ -23,6 +23,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
+import { invalidateLoansCaches } from '../../lib/coopQueryKeys';
 
 const LoanDetail: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
@@ -75,10 +76,7 @@ const LoanDetail: React.FC = React.memo(() => {
   // Realtime Live Sync: Dengarkan event transaksi/status pinjaman via WebSocket (Pilar 4 Hardening)
   useEffect(() => {
     const handleLoanUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      invalidateLoansCaches(queryClient, id);
     };
 
     subscribe('coop_loan_update', handleLoanUpdate);
@@ -94,9 +92,7 @@ const LoanDetail: React.FC = React.memo(() => {
     },
     onSuccess: ({ status }) => {
       toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      invalidateLoansCaches(queryClient, id);
     },
     onError: (error) => {
       const err = error as { response?: { data?: { message?: string } } };
@@ -129,10 +125,7 @@ const LoanDetail: React.FC = React.memo(() => {
     },
     onSuccess: ({ installmentNo }) => {
       toast.success(`Pembayaran angsuran ke-${installmentNo} berhasil diproses!`);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', id] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-loans-list'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      invalidateLoansCaches(queryClient, id);
     },
     onError: (error) => {
       const err = error as { response?: { data?: { message?: string } } };

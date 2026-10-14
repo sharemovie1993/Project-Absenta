@@ -15,6 +15,7 @@ import {
 } from './savingsExportUtils';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
 import { useSocket } from '../../../hooks/useSocket';
+import { invalidateSavingsCaches } from '../../../lib/coopQueryKeys';
 
 interface SubscriptionWithFeatures {
   features?: string[];
@@ -133,9 +134,7 @@ export const useSavingsState = () => {
   // Realtime Live Sync: Dengarkan event transaksi simpanan via WebSocket (Pilar 4 Hardening: Observability & Resilience)
   useEffect(() => {
     const handleSavingsUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-saving-transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+      invalidateSavingsCaches(queryClient);
     };
 
     subscribe('coop_saving_update', handleSavingsUpdate);
@@ -354,7 +353,7 @@ export const useSavingsState = () => {
       setSelectedScannedSavingId('');
       setShowQuickTxConfirm(false);
       setConfirmTxData(null);
-      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      invalidateSavingsCaches(queryClient, confirmTxData?.savingId);
       setTimeout(() => scannerInputRef.current?.focus(), 500);
     },
     onError: (err) => {

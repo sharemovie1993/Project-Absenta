@@ -197,3 +197,38 @@ export function invalidateShuCaches(queryClient: QueryClient, periodId?: string)
     queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', periodId] });
   }
 }
+
+/**
+ * Invalidate all cooperative savings queries (accounts, categories, member transactions, insights).
+ */
+export function invalidateSavingsCaches(queryClient: QueryClient, savingId?: string) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingCategories });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.mySavingsSummary });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-saving-transactions'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-my-savings-detail'] });
+  queryClient.invalidateQueries({ queryKey: ['my-shu-live-estimate'] });
+  if (savingId) {
+    queryClient.invalidateQueries({ queryKey: ['koperasi-saving-detail', savingId] });
+  }
+}
+
+/**
+ * Invalidate all cooperative loan queries (loan list, loan installments, member metrics).
+ */
+export function invalidateLoansCaches(queryClient: QueryClient, loanId?: string) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.loansList });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-student-metrics'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-operator-metrics'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-loan-installments'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-loan-metrics'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
+  if (loanId) {
+    queryClient.invalidateQueries({ queryKey: ['koperasi-loan-detail', loanId] });
+    queryClient.invalidateQueries({ queryKey: ['cooperative-loan-detail', loanId] });
+  }
+}
+
