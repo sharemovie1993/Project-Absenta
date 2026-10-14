@@ -10,6 +10,7 @@ export async function hubinRoutes(fastify: any) {
   fastify.get('/mitra', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'hubin.mou.view.list']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.getMitra(req, reply));
   fastify.post('/mitra', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.createMitra(req, reply));
   fastify.post('/mitra/import', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.importMitra(req, reply));
+  fastify.post('/mitra/bulk-delete', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.bulkDeleteMitra(req, reply));
   fastify.put('/mitra/:id', { preHandler: [requireCapability(['hubin.partners.manage', 'hubin.guidance.manage']), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.updateMitra(req, reply));
   fastify.delete('/mitra/:id', { preHandler: [requireCapability('hubin.partners.manage'), organizationalScopeMiddleware, determineDataScope()] }, (req: any, reply: any) => controller.deleteMitra(req, reply));
 

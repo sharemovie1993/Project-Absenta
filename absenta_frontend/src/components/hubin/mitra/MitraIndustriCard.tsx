@@ -15,7 +15,7 @@ import {
   X, 
   MessageCircle 
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button, Checkbox } from '@/components/ui';
 import { resolveProfilePhotoUrl } from '@/lib/utils';
 import type { JurusanItem } from './types';
 import { getWhatsAppUrl, renderJurusanBadges } from './mitraUtils';
@@ -35,6 +35,8 @@ export interface MitraIndustriCardProps {
   onEdit: (mitra: MitraIndustri) => void;
   onSelectMoU: (mitra: MitraIndustri) => void;
   onDelete: (mitra: MitraIndustri) => void;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 export const MitraIndustriCard: React.FC<MitraIndustriCardProps> = ({
@@ -52,6 +54,8 @@ export const MitraIndustriCard: React.FC<MitraIndustriCardProps> = ({
   onEdit,
   onSelectMoU,
   onDelete,
+  isSelected = false,
+  onToggleSelect,
 }) => {
   const phone = row.kontak || row.pic_telepon;
   const waUrl = getWhatsAppUrl(phone);
@@ -59,10 +63,23 @@ export const MitraIndustriCard: React.FC<MitraIndustriCardProps> = ({
   return (
     <div
       key={row.id}
-      className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
+      className={`p-4 bg-white dark:bg-slate-900 rounded-2xl border transition-colors space-y-3 ${
+        isSelected
+          ? 'border-indigo-500/80 bg-indigo-50/20 dark:bg-indigo-950/20 shadow-xs'
+          : 'border-slate-200/80 dark:border-slate-800 shadow-xs'
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {onToggleSelect && (
+            <div className="shrink-0 flex items-center pr-1">
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={() => onToggleSelect(row.id)}
+                aria-label={`Pilih ${row.nama}`}
+              />
+            </div>
+          )}
           <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-base shrink-0 border border-indigo-100 dark:border-indigo-900/40 overflow-hidden">
             {row.logo_url ? (
               <img

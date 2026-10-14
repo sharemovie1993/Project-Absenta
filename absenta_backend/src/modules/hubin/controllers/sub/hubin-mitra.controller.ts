@@ -74,6 +74,23 @@ export class HubinMitraController {
     }
   }
 
+  async bulkDeleteMitra(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { ids } = (request.body as { ids?: string[] }) || {};
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return reply.status(400).send({ success: false, message: 'Daftar ID mitra tidak boleh kosong' });
+      }
+      const result = await this.hubinService.bulkDeleteMitra(request.tenantId!, ids, request.user?.id);
+      return reply.status(200).send({
+        success: true,
+        message: `${result.count} mitra industri berhasil dihapus`,
+        data: result,
+      });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async importMitra(request: any, reply: any) {
     try {
       const tenantId = request.tenantId;

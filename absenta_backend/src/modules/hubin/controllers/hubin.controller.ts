@@ -19,6 +19,7 @@ export class HubinController {
   async createMitra(...args: any[]) { return (this.mitra as any).createMitra(...args); }
   async updateMitra(...args: any[]) { return (this.mitra as any).updateMitra(...args); }
   async deleteMitra(...args: any[]) { return (this.mitra as any).deleteMitra(...args); }
+  async bulkDeleteMitra(...args: any[]) { return (this.mitra as any).bulkDeleteMitra(...args); }
   async importMitra(...args: any[]) { return (this.mitra as any).importMitra(...args); }
   async getMoUHistory(...args: any[]) { return (this.mitra as any).getMoUHistory(...args); }
   async createMoUHistory(...args: any[]) { return (this.mitra as any).createMoUHistory(...args); }

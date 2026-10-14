@@ -216,6 +216,7 @@ export const hubinApi = {
   createMitra: (data: Partial<MitraIndustri>) => requestWithFallback<any>('post', '/hubin/mitra', { data }),
   updateMitra: (id: string, data: Partial<MitraIndustri>) => requestWithFallback<any>('put', `/hubin/mitra/${id}`, { data }),
   deleteMitra: (id: string) => requestWithFallback<any>('delete', `/hubin/mitra/${id}`),
+  bulkDeleteMitra: (ids: string[]) => requestWithFallback<any>('post', '/hubin/mitra/bulk-delete', { data: { ids } }),
   importMitraFromExcel: (file: File, onProgress?: (percent: number) => void, socketId?: string) =>
     importDataFromExcel('/hubin/mitra/import', file, onProgress, socketId),
 

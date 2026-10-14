@@ -239,6 +239,19 @@ export class HubinMitraService extends HubinCommonHelper {
     return result;
   }
 
+  async bulkDeleteMitra(tenantId: string, ids: string[], actorUserId?: string | null) {
+    if (!ids || ids.length === 0) return { count: 0 };
+    const result = await prisma.mitraIndustri.deleteMany({
+      where: {
+        id: { in: ids },
+        tenant_id: tenantId,
+      },
+    });
+    this.log(tenantId, actorUserId || null, 'HUBIN_MITRA_BULK_DELETE', 'MitraIndustri', 'BULK', { count: result.count, ids });
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return result;
+  }
+
   async importMitraFromRows(
     tenantId: string,
     rows: any[],

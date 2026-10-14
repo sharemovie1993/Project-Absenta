@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **211 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **165 Halaman** | 78% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **43 Halaman** | 20% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **164 Halaman** | 78% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **44 Halaman** | 21% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
@@ -308,6 +308,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 841 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [HubinSettingsPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/HubinSettingsPage.tsx) (841 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+
+---
+
+### 📄 Halaman: `MitraIndustriPage.tsx`
+* **Lokasi File:** [MitraIndustriPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/MitraIndustriPage.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
 
 ---
 
@@ -1076,13 +1084,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `InputNilaiPklPage.tsx`
 * **Lokasi File:** [InputNilaiPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/InputNilaiPklPage.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `MitraIndustriPage.tsx`
-* **Lokasi File:** [MitraIndustriPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/MitraIndustriPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
