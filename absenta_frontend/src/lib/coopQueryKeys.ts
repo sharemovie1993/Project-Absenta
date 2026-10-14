@@ -146,4 +146,18 @@ export function invalidateSalesReportCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['coop-sales-report-daily'] });
 }
 
+/**
+ * Invalidate all POS, sales reports, catalog and inventory caches on sale or stock update.
+ */
+export function invalidatePosCaches(queryClient: QueryClient) {
+  invalidateAllProductCaches(queryClient);
+  invalidateSalesReportCaches(queryClient);
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posProducts });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-pos-products'] });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posHistory });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberMe });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
+}
+
+
 

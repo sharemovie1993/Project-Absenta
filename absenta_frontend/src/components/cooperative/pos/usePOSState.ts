@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { fetchCoopSettings, type CoopSettingsData, printCoopReceipt } from '../../../utils/cooperative/coopDocUtils';
-import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../../lib/coopQueryKeys';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches, invalidatePosCaches } from '../../../lib/coopQueryKeys';
 import type { Subscription } from '../../../types/subscription';
 import { useModuleAccess } from '../../../hooks/useModuleAccess';
 import { useSocket } from '../../../hooks/useSocket';
@@ -36,32 +36,37 @@ export interface Voucher {
   status: 'ACTIVE' | 'USED' | 'EXPIRED';
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+  code?: string;
+  description?: string | null;
+  isActive?: boolean;
+  order?: number;
+}
+
 export interface Product {
   id: string;
   code: string;
   name: string;
   price: string;
-  costPrice: string;
+  costPrice?: string | number;
   stock: number;
   minStock?: number;
-  category: string;
+  category?: string;
   imageUrl?: string | null;
-  unit?: string | null;
+  productType?: string | null;
+  showInTransaction?: boolean;
   useStock?: boolean;
+  barcode?: string | null;
+  unit?: string | null;
+  description?: string | null;
 }
 
 export interface CartItem extends Product {
-  quantity: number;
+  qty: number;
+  quantity?: number;
   cartItemId?: string;
-}
-
-export interface ProductCategory {
-  id: string;
-  code: string;
-  name: string;
-  description: string | null;
-  isActive: boolean;
-  order: number;
 }
 
 export interface SaleItem {
@@ -88,32 +93,6 @@ export interface SaleRecord {
   updatedAt?: string;
 }
 
-export interface ProductCategory {
-  id: string;
-  name: string;
-}
-
-export interface Product {
-  id: string;
-  code: string;
-  name: string;
-  price: string;
-  costPrice?: string | number;
-  stock: number;
-  category?: string;
-  imageUrl?: string | null;
-  productType?: string | null;
-  showInTransaction?: boolean;
-  useStock?: boolean;
-  barcode?: string | null;
-  unit?: string | null;
-  description?: string | null;
-}
-
-export interface CartItem extends Product {
-  qty: number;
-}
-
 export interface HeldCart {
   id: string;
   cart: CartItem[];
@@ -132,6 +111,7 @@ export interface NonMemberCandidate {
   nip?: string | null;
   className?: string;
 }
+
 
 export const usePOSState = () => {
   const queryClient = useQueryClient();
@@ -200,15 +180,16 @@ export const usePOSState = () => {
     ? "Transaksi penjualan koperasi" 
     : (canViewAllTx ? "Daftar dan audit seluruh riwayat transaksi penjualan retail" : "Daftar produk dan harga barang koperasi");
 
-  // React Query setup
+  // React Query setup with Centralized Keys and Enterprise Caching (Phase 3 & 4 Hardening)
   const productsQuery = useQuery({
-    queryKey: ['koperasi-pos-products'],
+    queryKey: COOP_QUERY_KEYS.posProducts,
     queryFn: async () => {
       const res = await api.get('/cooperative/toko');
       return (Array.isArray(res.data) ? res.data : []) as Product[];
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const products = productsQuery.data || [];
   const loading = productsQuery.isLoading;
@@ -217,13 +198,14 @@ export const usePOSState = () => {
   }, [productsQuery]);
 
   const categoriesQuery = useQuery({
-    queryKey: ['koperasi-pos-categories'],
+    queryKey: COOP_QUERY_KEYS.posCategories,
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/categories');
       return (Array.isArray(res.data) ? res.data : []) as ProductCategory[];
     },
     enabled: subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   });
   const categories = categoriesQuery.data || [];
   const fetchCategories = useCallback(async () => {
@@ -231,7 +213,7 @@ export const usePOSState = () => {
   }, [categoriesQuery]);
 
   const coopSettingsQuery = useQuery({
-    queryKey: ['koperasi-settings'],
+    queryKey: COOP_QUERY_KEYS.settings,
     queryFn: async () => {
       const data = await fetchCoopSettings();
       return data;
@@ -245,13 +227,14 @@ export const usePOSState = () => {
   }, [coopSettingsQuery]);
 
   const salesHistoryQuery = useQuery({
-    queryKey: ['koperasi-pos-history'],
+    queryKey: COOP_QUERY_KEYS.posHistory,
     queryFn: async () => {
       const res = await api.get('/cooperative/toko/history');
       return (Array.isArray(res.data) ? res.data : []) as SaleRecord[];
     },
     enabled: !hasCashierAccess,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const salesHistory = salesHistoryQuery.data || [];
   const salesLoading = salesHistoryQuery.isLoading;
@@ -260,13 +243,14 @@ export const usePOSState = () => {
   }, [salesHistoryQuery]);
 
   const memberInfoQuery = useQuery({
-    queryKey: ['koperasi-member-me'],
+    queryKey: COOP_QUERY_KEYS.memberMe,
     queryFn: async () => {
       const res = await api.get('/cooperative/members/me');
       return res.data?.success ? (res.data.data as CoopMember) : null;
     },
     enabled: !hasCashierAccess,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const memberInfo = memberInfoQuery.data || null;
   const fetchMemberInfo = useCallback(async () => {
@@ -275,24 +259,27 @@ export const usePOSState = () => {
 
   const { subscribe, unsubscribe } = useSocket();
 
-  // Realtime Live Sync: Sinkronisasi katalog stok, riwayat penjualan POS, dan saldo anggota
+  // Realtime Live Sync: Sinkronisasi katalog stok, riwayat penjualan POS, laporan penjualan, dan saldo anggota
   useEffect(() => {
     const handlePosUpdate = () => {
-      invalidateAllProductCaches(queryClient);
-      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posHistory });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-pos-products'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-member-me'] });
+      invalidatePosCaches(queryClient);
     };
 
     const handleSavingUpdate = () => {
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberMe });
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
       queryClient.invalidateQueries({ queryKey: ['koperasi-member-me'] });
       queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
     };
 
     subscribe('coop_pos_update', handlePosUpdate);
+    subscribe('coop_sales_update', handlePosUpdate);
+    subscribe('cooperative_sync', handlePosUpdate);
     subscribe('coop_saving_update', handleSavingUpdate);
     return () => {
       unsubscribe('coop_pos_update', handlePosUpdate);
+      unsubscribe('coop_sales_update', handlePosUpdate);
+      unsubscribe('cooperative_sync', handlePosUpdate);
       unsubscribe('coop_saving_update', handleSavingUpdate);
     };
   }, [subscribe, unsubscribe, queryClient]);
@@ -578,8 +565,7 @@ export const usePOSState = () => {
       setPin('');
       setVoucherCode('');
       setAppliedVoucher(null);
-      invalidateAllProductCaches(queryClient);
-      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.posHistory });
+      invalidatePosCaches(queryClient);
     },
     onError: (error: unknown) => {
       console.error(error);
