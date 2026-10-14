@@ -59,6 +59,11 @@ export const COOP_QUERY_KEYS = {
   loansList: ['koperasi-loans-list'] as const,
   shuPeriods: ['koperasi-shu-periods'] as const,
   shuMyHistory: ['koperasi-shu-my-history'] as const,
+
+  // ─── Vouchers & Points ────────────────────────────────────────────────────
+  vouchers: ['koperasi-vouchers-list'] as const,
+  pointsHistory: ['koperasi-points-history'] as const,
+  mySavingsSummary: ['koperasi-my-savings-summary'] as const,
 } as const;
 
 /**
@@ -89,6 +94,16 @@ export function invalidateSupplierCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
   queryClient.invalidateQueries({ queryKey: ['koperasi-stock-in-history'] });
   queryClient.invalidateQueries({ queryKey: ['koperasi-reports-inventory-purchases'] });
+}
+
+/**
+ * Invalidate all voucher and points related queries.
+ */
+export function invalidateVoucherCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.vouchers });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.pointsHistory });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.mySavingsSummary });
+  queryClient.invalidateQueries({ queryKey: ['coop-vouchers'] });
 }
 
 /**

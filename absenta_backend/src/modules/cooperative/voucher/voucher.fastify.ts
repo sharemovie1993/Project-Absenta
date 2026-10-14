@@ -1,4 +1,4 @@
-// @ts-nocheck
+import { z } from 'zod';
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
@@ -12,33 +12,60 @@ const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
 };
 
+// ─── ZOD SCHEMAS (Phase 3 Clean Code & Validation) ───────────────────────────
+const createVoucherBodySchema = z.object({
+    code: z.string().min(2, 'Kode voucher minimal 2 karakter').max(50, 'Kode voucher maksimal 50 karakter'),
+    discount: z.union([z.number(), z.string()]).transform((val) => Number(val)).refine((n) => !isNaN(n) && n > 0, 'Nominal diskon harus lebih besar dari 0'),
+    description: z.string().max(255).optional().nullable(),
+    validUntil: z.string().optional().nullable(),
+    memberId: z.string().optional().nullable(),
+});
+
 export default async function voucherRoutes(fastify: any) {
     // Get all vouchers
     fastify.get('/', { preHandler: [requireCapability(['cooperative.vouchers.view.list', 'cooperative.points.view'])] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const userId = req.user?.id || req.user?.userId;
-        
-        let memberId: string | undefined = undefined;
-        const authResult = await authorizationService.isUserAuthorized(String(userId), ['cooperative.vouchers.view.list', 'cooperative.vouchers.manage'], { user: req.user });
-        const hasListPermission = authResult.allowed;
-        
-        if (!hasListPermission && userId) {
-            const member = await MemberService.getMemberByUserId(tenantId, userId);
-            if (member) {
-                memberId = member.id;
+        try {
+            const tenantId = getTenantId(req);
+            const userId = req.user?.id || req.user?.userId;
+            
+            let memberId: string | undefined = undefined;
+            const authResult = await authorizationService.isUserAuthorized(String(userId), ['cooperative.vouchers.view.list', 'cooperative.vouchers.manage'], { user: req.user });
+            const hasListPermission = authResult.allowed;
+            
+            if (!hasListPermission && userId) {
+                const member = await MemberService.getMemberByUserId(tenantId, userId);
+                if (member) {
+                    memberId = member.id;
+                }
             }
+            
+            const vouchers = await VoucherService.getVouchers(tenantId, memberId);
+            return reply.send({ success: true, data: vouchers });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[VoucherRoutes] Gagal mengambil daftar voucher');
+            return reply.code(500).send({ success: false, message: error.message || 'Gagal memuat voucher' });
         }
-        
-        const vouchers = await VoucherService.getVouchers(tenantId, memberId);
-        return reply.send({ data: vouchers });
     });
 
     // Create voucher
     fastify.post('/', { preHandler: [requireCapability('cooperative.vouchers.manage')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const data = req.body as any;
-        const voucher = await VoucherService.createVoucher(tenantId, data);
-        return reply.send({ message: 'Voucher created', data: voucher });
+        try {
+            const tenantId = getTenantId(req);
+            const parseResult = createVoucherBodySchema.safeParse(req.body);
+            if (!parseResult.success) {
+                return reply.code(400).send({
+                    success: false,
+                    message: parseResult.error.issues[0]?.message || 'Data pembuatan voucher tidak valid',
+                    errors: parseResult.error.format()
+                });
+            }
+
+            const voucher = await VoucherService.createVoucher(tenantId, parseResult.data);
+            return reply.code(201).send({ success: true, message: 'Voucher berhasil dibuat', data: voucher });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[VoucherRoutes] Gagal membuat voucher');
+            return reply.code(500).send({ success: false, message: error.message || 'Gagal membuat voucher' });
+        }
     });
 
     // Validate / Check a voucher code
@@ -48,7 +75,7 @@ export default async function voucherRoutes(fastify: any) {
             const { code, memberId } = req.query as any;
             
             if (!code) {
-                return reply.code(400).send({ message: 'Kode voucher wajib diisi.' });
+                return reply.code(400).send({ success: false, message: 'Kode voucher wajib diisi.' });
             }
             
             const voucher = await VoucherService.validateVoucher(tenantId, code, memberId);
@@ -57,16 +84,25 @@ export default async function voucherRoutes(fastify: any) {
                 voucher
             };
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            reply.code(400).send({ message: error.message || 'Voucher tidak valid' });
+            appLogger.error({ err: error }, '[VoucherRoutes] Validasi voucher gagal');
+            return reply.code(400).send({ success: false, message: error.message || 'Voucher tidak valid' });
         }
     });
 
     // Delete voucher
     fastify.delete('/:id', { preHandler: [requireCapability('cooperative.vouchers.manage')] }, async (req: any, reply: any) => {
-        const { id } = req.params as any;
-        await VoucherService.deleteVoucher(id);
-        return reply.send({ message: 'Voucher deleted' });
+        try {
+            const tenantId = getTenantId(req);
+            const { id } = req.params as any;
+            await VoucherService.deleteVoucher(tenantId, id);
+            return reply.send({ success: true, message: 'Voucher berhasil dihapus' });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[VoucherRoutes] Gagal menghapus voucher');
+            if (error.message === 'Voucher tidak ditemukan') {
+                return reply.code(404).send({ success: false, message: error.message });
+            }
+            return reply.code(500).send({ success: false, message: error.message || 'Gagal menghapus voucher' });
+        }
     });
 }
 

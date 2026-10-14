@@ -14,10 +14,21 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { printCoopReceipt, fetchCoopSettings, type CoopSettingsData } from '../../utils/cooperative/coopDocUtils';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { COOP_QUERY_KEYS, invalidateVoucherCaches } from '../../lib/coopQueryKeys';
+import CoopVoucherMobileDeck from '../../components/cooperative/vouchers/CoopVoucherMobileDeck';
+
+// Zod Schema Validation Guard (Pilar 25)
+const voucherSchema = z.object({
+  code: z.string().min(2, 'Kode voucher minimal 2 karakter').max(50, 'Kode voucher maksimal 50 karakter'),
+  discount: z.string().min(1, 'Nominal diskon wajib diisi').refine((val) => Number(val) > 0, 'Nominal diskon harus lebih dari 0'),
+  description: z.string().max(255, 'Keterangan maksimal 255 karakter').optional().or(z.literal('')),
+  validUntil: z.string().optional().or(z.literal('')),
+});
 
 export interface Voucher {
   id: string;
@@ -105,6 +116,7 @@ const memberInstruction = {
 
 const Vouchers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const { user, subscription } = useAuthStore();
   const { isKoperasiHead, isKoperasiStore, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
@@ -128,7 +140,6 @@ const Vouchers: React.FC = React.memo(() => {
   const [memberInfo, setMemberInfo] = useState<Record<string, unknown>>(null);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
-  const [submitLoading, setSubmitLoading] = useState(false);
 
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
   const { isLocked } = useModuleAccess('KOPERASI');
@@ -142,12 +153,13 @@ const Vouchers: React.FC = React.memo(() => {
            user?.capabilities?.includes('cooperative.vouchers.manage') || false;
   }, [user]);
 
-  // React Query Hooks
+  // Centralized React Query Hooks (Phase 3 Server State Standard)
   const vouchersQuery = useQuery({
-    queryKey: ['koperasi-vouchers-list'],
+    queryKey: COOP_QUERY_KEYS.vouchers,
     queryFn: async () => {
       const res = await api.get('/cooperative/vouchers');
-      return (res.data.data || []) as Voucher[];
+      const raw = res?.data;
+      return (Array.isArray(raw) ? raw : (raw?.data || [])) as Voucher[];
     },
     enabled: subscription !== undefined,
     staleTime: 5 * 60 * 1000,
@@ -155,12 +167,9 @@ const Vouchers: React.FC = React.memo(() => {
 
   const vouchers = vouchersQuery.data || [];
   const loading = vouchersQuery.isLoading;
-  const fetchVouchers = useCallback(async () => {
-    await vouchersQuery.refetch();
-  }, [vouchersQuery]);
 
   const pointsQuery = useQuery({
-    queryKey: ['koperasi-points-history'],
+    queryKey: COOP_QUERY_KEYS.pointsHistory,
     queryFn: async () => {
       const res = await api.get('/cooperative/points/my-history');
       return {
@@ -177,7 +186,7 @@ const Vouchers: React.FC = React.memo(() => {
   const pointsLoading = pointsQuery.isLoading;
 
   const savingsQuery = useQuery({
-    queryKey: ['koperasi-my-savings-summary'],
+    queryKey: COOP_QUERY_KEYS.mySavingsSummary,
     queryFn: async () => {
       try {
         const res = await api.get('/cooperative/savings/my-summary');
@@ -192,6 +201,37 @@ const Vouchers: React.FC = React.memo(() => {
 
   const mySavingsSum = savingsQuery.data || 0;
 
+  // Mutations with Centralized Cache Invalidation
+  const createVoucherMutation = useMutation({
+    mutationFn: async (payload: typeof formData) => {
+      const res = await api.post('/cooperative/vouchers', { ...payload, code: payload.code.toUpperCase() });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Voucher berhasil dibuat');
+      setFormData({ code: '', description: '', discount: '', validUntil: '' });
+      invalidateVoucherCaches(queryClient);
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Gagal membuat voucher');
+    }
+  });
+
+  const deleteVoucherMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/cooperative/vouchers/${id}`);
+    },
+    onSuccess: () => {
+      toast.success('Voucher berhasil dihapus');
+      invalidateVoucherCaches(queryClient);
+    },
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Gagal menghapus voucher');
+    }
+  });
+
   const redeemPointsMutation = useMutation({
     mutationFn: async (pointsToRedeem: number) => {
       const res = await api.post('/cooperative/points/redeem', { points: pointsToRedeem });
@@ -200,8 +240,7 @@ const Vouchers: React.FC = React.memo(() => {
     onSuccess: (data) => {
       if (data && data.success) {
         toast.success(data.message || 'Penukaran poin berhasil!');
-        queryClient.invalidateQueries({ queryKey: ['koperasi-points-history'] });
-        queryClient.invalidateQueries({ queryKey: ['koperasi-vouchers-list'] });
+        invalidateVoucherCaches(queryClient);
       }
     },
     onError: (err: unknown) => {
@@ -212,6 +251,7 @@ const Vouchers: React.FC = React.memo(() => {
   });
 
   const redeemLoading = redeemPointsMutation.isPending;
+  const submitLoading = createVoucherMutation.isPending;
 
   const handleRedeemPoints = useCallback(async (pointsToRedeem: number) => {
     if (isLocked) return;
@@ -255,20 +295,19 @@ const Vouchers: React.FC = React.memo(() => {
 
   useEffect(() => {
     if (subscription === undefined) return;
-    fetchVouchers();
     if (!isManageRoute || !hasViewListAccess) {
       fetchSalesHistory();
       loadCoopSettings();
       fetchMemberInfo();
     }
-  }, [subscription, isLocked, isManageRoute, hasViewListAccess, fetchVouchers, fetchSalesHistory, loadCoopSettings, fetchMemberInfo]);
+  }, [subscription, isLocked, isManageRoute, hasViewListAccess, fetchSalesHistory, loadCoopSettings, fetchMemberInfo]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isLocked) return;
     const result = voucherSchema.safeParse(formData);
@@ -276,18 +315,7 @@ const Vouchers: React.FC = React.memo(() => {
       toast.error(result.error.errors[0]?.message || 'Validasi voucher gagal');
       return;
     }
-    setSubmitLoading(true);
-    try {
-      await api.post('/cooperative/vouchers', { ...formData, code: formData.code.toUpperCase() });
-      toast.success('Voucher berhasil dibuat');
-      setFormData({ code: '', description: '', discount: '', validUntil: '' });
-      fetchVouchers();
-      queryClient.invalidateQueries({ queryKey: ['coop-vouchers'] });
-    } catch {
-      toast.error('Gagal membuat voucher');
-    } finally {
-      setSubmitLoading(false);
-    }
+    createVoucherMutation.mutate(formData);
   };
 
   const handleDelete = useCallback(async (id: string) => {
@@ -298,14 +326,8 @@ const Vouchers: React.FC = React.memo(() => {
       style: 'danger'
     });
     if (!isConfirmed) return;
-    try {
-      await api.delete(`/cooperative/vouchers/${id}`);
-      toast.success('Voucher dihapus');
-      fetchVouchers();
-    } catch (error) {
-      toast.error('Gagal menghapus voucher');
-    }
-  }, [isLocked, confirm, fetchVouchers]);
+    deleteVoucherMutation.mutate(id);
+  }, [isLocked, confirm, deleteVoucherMutation]);
 
   // Admin Vouchers List sorting
   const handleSort = useCallback((key: string) => {
@@ -468,30 +490,73 @@ const Vouchers: React.FC = React.memo(() => {
               )}
 
               {/* List */}
-              <div className={hasManageAccess ? "md:col-span-2" : "md:col-span-3"}>
-                <Table 
-                  data={paginatedVouchers} 
-                  columns={columns} 
-                  loading={loading}
-                  emptyMessage="Belum ada voucher aktif."
-                  sortBy={sortKey}
-                  sortOrder={sortDirection}
-                  onSort={(key) => handleSort(key)}
-                  pagination={{
-                    currentPage: page,
-                    totalPages,
-                    onPageChange: setPage,
-                    totalItems: sortedVouchers.length,
-                    itemsPerPage: limit,
-                    onLimitChange: setLimit
-                  }}
-                  toolbarLeft={
-                    <div className="flex items-center gap-2">
-                      <Tag className="text-blue-500 w-5 h-5" />
-                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Daftar Voucher Koperasi</h3>
+              <div className={hasManageAccess ? "md:col-span-2 w-full max-w-full min-w-0" : "md:col-span-3 w-full max-w-full min-w-0"}>
+                {isMobile ? (
+                  <div className="space-y-3 w-full max-w-full min-w-0">
+                    <div className="flex items-center gap-2 pb-1">
+                      <Tag className="text-blue-500 w-5 h-5 shrink-0" />
+                      <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate">Daftar Voucher Koperasi</h3>
                     </div>
-                  }
-                />
+                    <CoopVoucherMobileDeck
+                      vouchers={paginatedVouchers}
+                      loading={loading}
+                      hasManageAccess={hasManageAccess}
+                      onDelete={handleDelete}
+                    />
+
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-2 px-1 text-xs w-full max-w-full min-w-0">
+                        <span className="text-slate-500 text-[11px] truncate">
+                          Hal. {page} / {totalPages} ({sortedVouchers.length} voucher)
+                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={page <= 1}
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
+                          >
+                            Sebelumnya
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            className="min-h-[36px] min-w-[36px] px-2.5 text-xs rounded-xl"
+                          >
+                            Selanjutnya
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Table 
+                    data={paginatedVouchers} 
+                    columns={columns} 
+                    loading={loading}
+                    emptyMessage="Belum ada voucher aktif."
+                    sortBy={sortKey}
+                    sortOrder={sortDirection}
+                    onSort={(key) => handleSort(key)}
+                    pagination={{
+                      currentPage: page,
+                      totalPages,
+                      onPageChange: setPage,
+                      totalItems: sortedVouchers.length,
+                      itemsPerPage: limit,
+                      onLimitChange: setLimit
+                    }}
+                    toolbarLeft={
+                      <div className="flex items-center gap-2">
+                        <Tag className="text-blue-500 w-5 h-5" />
+                        <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Daftar Voucher Koperasi</h3>
+                      </div>
+                    }
+                  />
+                )}
               </div>
             </div>
           </div>
