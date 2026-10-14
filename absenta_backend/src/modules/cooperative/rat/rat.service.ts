@@ -180,6 +180,11 @@ export class RatService {
 
     if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
 
+    const allowedStatuses = ['SCHEDULED', 'REGISTRATION_OPEN', 'QUORUM_REACHED', 'IN_SESSION'];
+    if (!allowedStatuses.includes(meeting.status)) {
+      throw new Error(`Presensi tidak dapat dilakukan karena sidang berstatus ${meeting.status}.`);
+    }
+
     // Cek apakah anggota aktif
     const member = await prisma.member.findFirst({
       where: { id: memberId, tenantId, status: 'ACTIVE' },
@@ -230,7 +235,25 @@ export class RatService {
         where: { id: meetingId },
         data: { status: 'QUORUM_REACHED' },
       });
+      appLogger.info({
+        event: 'RAT_QUORUM_ATTAINED',
+        meetingId,
+        tenantId,
+        currentAttendanceCount,
+        quorumTarget: meeting.quorumTarget,
+        timestamp: new Date().toISOString(),
+      });
     }
+
+    appLogger.info({
+      event: 'RAT_ATTENDANCE_VERIFIED',
+      meetingId,
+      tenantId,
+      memberId,
+      method,
+      totalAttended: currentAttendanceCount,
+      timestamp: new Date().toISOString(),
+    });
 
     return {
       success: true,
@@ -348,30 +371,46 @@ export class RatService {
       throw new Error('Hak suara Anda telah digunakan untuk sesi agenda ini.');
     }
 
-    // Transaksi atomik: Simpan surat suara dan increment vote counter opsi terpilih
-    const result = await prisma.$transaction(async (tx) => {
-      const ballot = await tx.coopVotingBallot.create({
-        data: {
-          sessionId,
-          voterHash,
-          optionId,
-        },
+    try {
+      // Transaksi atomik: Simpan surat suara dan increment vote counter opsi terpilih
+      const result = await prisma.$transaction(async (tx) => {
+        const ballot = await tx.coopVotingBallot.create({
+          data: {
+            sessionId,
+            voterHash,
+            optionId,
+          },
+        });
+
+        await tx.coopVotingOption.update({
+          where: { id: optionId },
+          data: { voteCount: { increment: 1 } },
+        });
+
+        return ballot;
       });
 
-      await tx.coopVotingOption.update({
-        where: { id: optionId },
-        data: { voteCount: { increment: 1 } },
+      appLogger.info({
+        event: 'RAT_VOTE_CAST_SUCCESS',
+        tenantId,
+        sessionId,
+        optionId,
+        auditProof: result.id,
+        timestamp: result.castAt,
       });
 
-      return ballot;
-    });
-
-    return {
-      success: true,
-      message: 'Suara Anda berhasil tercatat secara sah dan rahasia.',
-      auditProof: result.id,
-      castAt: result.castAt,
-    };
+      return {
+        success: true,
+        message: 'Suara Anda berhasil tercatat secara sah dan rahasia.',
+        auditProof: result.id,
+        castAt: result.castAt,
+      };
+    } catch (err: any) {
+      if (err?.code === 'P2002') {
+        throw new Error('Hak suara Anda telah digunakan untuk sesi agenda ini.');
+      }
+      throw err;
+    }
   }
 
   /**

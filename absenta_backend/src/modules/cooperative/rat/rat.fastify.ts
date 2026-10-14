@@ -1,10 +1,78 @@
 // @ts-nocheck
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { z } from 'zod';
 import { RatService } from './rat.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { appLogger } from '../../../utils/app-logger';
 import { mockTenant } from '../../../utils/mocks';
 import { prisma } from '../../../utils/prisma';
+
+// ─── ZOD VALIDATION SCHEMAS ────────────────────────────────────────────────
+const createMeetingSchema = z.object({
+  title: z.string().min(3, 'Judul rapat minimal 3 karakter').max(150, 'Judul rapat maksimal 150 karakter'),
+  date: z.string().min(1, 'Tanggal pelaksanaan rapat wajib diisi'),
+  meetingType: z.enum(['RAT', 'RAPAT_LUAR_BIASA', 'RAPAT_PENGURUS']).optional(),
+  fiscalYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional().nullable(),
+  location: z.string().optional(),
+  description: z.string().optional().nullable(),
+  lpjDocumentUrl: z.string().optional().nullable(),
+  auditDocumentUrl: z.string().optional().nullable(),
+  agendas: z.array(z.object({
+    order: z.number().int().optional(),
+    title: z.string().min(1, 'Judul agenda wajib diisi'),
+    presenter: z.string().optional().nullable(),
+    durationMin: z.number().int().optional(),
+  })).optional(),
+});
+
+const updateMeetingStatusSchema = z.object({
+  status: z.enum([
+    'DRAFT',
+    'SCHEDULED',
+    'REGISTRATION_OPEN',
+    'QUORUM_REACHED',
+    'IN_SESSION',
+    'ADJOURNED',
+    'RATIFIED',
+    'CLOSED',
+  ]),
+});
+
+const recordAttendanceSchema = z.object({
+  memberId: z.string().uuid().optional(),
+  method: z.enum(['ONLINE_SELF', 'RFID_SCAN', 'MANUAL_OPERATOR', 'ONLINE', 'RFID', 'MANUAL']).optional(),
+});
+
+const createVotingSessionSchema = z.object({
+  title: z.string().min(3, 'Judul pemungutan suara minimal 3 karakter').max(150),
+  description: z.string().optional().nullable(),
+  category: z.enum(['RESOLUTION', 'ELECTIONS', 'AMENDMENT']).optional(),
+  agendaId: z.string().uuid().optional().nullable(),
+  options: z.array(z.union([
+    z.string().min(1),
+    z.object({
+      label: z.string().optional(),
+      title: z.string().optional(),
+      description: z.string().optional().nullable(),
+    })
+  ])).min(2, 'Minimal harus terdapat 2 opsi pilihan pemungutan suara'),
+});
+
+const updateVotingSessionStatusSchema = z.object({
+  status: z.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'CLOSED', 'TALLIED']),
+});
+
+const castVoteSchema = z.object({
+  optionId: z.string().min(1, 'Opsi suara wajib dipilih'),
+});
+
+const createResolutionSchema = z.object({
+  title: z.string().min(3, 'Judul ketetapan minimal 3 karakter').max(150),
+  content: z.string().min(5, 'Ringkasan isi ketetapan minimal 5 karakter'),
+  number: z.string().optional(),
+});
 
 export default async function ratRoutes(fastify: any) {
   const getTenantId = (req: any) => {
@@ -80,15 +148,43 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 3. POST / - Buat Sidang RAT Baru
+  // 3. GET /:id/quorum - Kuorum Real-time
+  fastify.get(
+    '/:id/quorum',
+    {
+      preHandler: [
+        requireCapability(['cooperative.rat.manage', 'cooperative.rat.view', 'cooperative.rat.vote']),
+      ],
+    },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const meeting = await RatService.getMeetingById(req.params.id, tenantId);
+        return { success: true, data: meeting.quorumStats };
+      } catch (error: any) {
+        reply.status(404).send({ success: false, message: error.message || 'Data kuorum tidak ditemukan' });
+      }
+    }
+  );
+
+  // 4. POST / - Buat Sidang RAT Baru
   fastify.post(
     '/',
     { preHandler: [requireCapability('cooperative.rat.manage')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = createMeetingSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Validasi data sidang gagal',
+            errors: parseResult.error.issues,
+          });
+        }
+
         const tenantId = getTenantId(req);
         const operatorId = req.user?.id || req.user?.userId;
-        const meeting = await RatService.createMeeting(tenantId, req.body, operatorId);
+        const meeting = await RatService.createMeeting(tenantId, parseResult.data, operatorId);
         broadcastRatEvent(req, 'RAT_MEETING_CREATED', { meetingId: meeting.id, title: meeting.title });
         reply.code(201).send({ success: true, data: meeting });
       } catch (error: any) {
@@ -98,15 +194,22 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 4. PUT /:id/status - Update Status Sidang RAT
+  // 5. PUT /:id/status - Update Status Sidang RAT
   fastify.put(
     '/:id/status',
     { preHandler: [requireCapability('cooperative.rat.manage')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = updateMeetingStatusSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Status sidang tidak valid',
+          });
+        }
+
         const tenantId = getTenantId(req);
-        const { status } = req.body;
-        const meeting = await RatService.updateMeetingStatus(req.params.id, tenantId, status);
+        const meeting = await RatService.updateMeetingStatus(req.params.id, tenantId, parseResult.data.status);
         broadcastRatEvent(req, 'RAT_STATUS_UPDATED', { meetingId: meeting.id, status: meeting.status });
         return { success: true, data: meeting };
       } catch (error: any) {
@@ -116,7 +219,7 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 5. POST /:id/attendance - Catat Presensi Kehadiran Peserta
+  // 6. POST /:id/attendance - Catat Presensi Kehadiran Peserta
   fastify.post(
     '/:id/attendance',
     {
@@ -126,8 +229,16 @@ export default async function ratRoutes(fastify: any) {
     },
     async (req: any, reply: any) => {
       try {
+        const parseResult = recordAttendanceSchema.safeParse(req.body || {});
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data presensi tidak valid',
+          });
+        }
+
         const tenantId = getTenantId(req);
-        let memberId = req.body.memberId;
+        let memberId = parseResult.data.memberId;
 
         // Jika anggota mempresensikan dirinya sendiri
         if (!memberId) {
@@ -135,13 +246,13 @@ export default async function ratRoutes(fastify: any) {
         }
 
         if (!memberId) {
-          return reply.status(400).send({
+          return reply.status(403).send({
             success: false,
             message: 'Profil anggota aktif Anda tidak ditemukan.',
           });
         }
 
-        const method = req.body.method || 'ONLINE_SELF';
+        const method = parseResult.data.method || 'ONLINE_SELF';
         const verifiedBy = req.user?.id || req.user?.userId;
 
         const result = await RatService.recordAttendance(
@@ -166,14 +277,61 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 6. POST /:id/voting-sessions - Buat Sesi Pemungutan Suara (e-Voting)
+  // 7. GET /:id/attendance/me - Cek Status Presensi Saya
+  fastify.get(
+    '/:id/attendance/me',
+    {
+      preHandler: [
+        requireCapability(['cooperative.rat.manage', 'cooperative.rat.vote', 'cooperative.rat.view']),
+      ],
+    },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const memberId = await getMemberId(req, tenantId);
+        if (!memberId) {
+          return { success: true, data: { hasAttended: false, attendance: null } };
+        }
+
+        const attendance = await prisma.coopMeetingAttendance.findUnique({
+          where: {
+            meetingId_memberId: {
+              meetingId: req.params.id,
+              memberId,
+            },
+          },
+        });
+
+        return {
+          success: true,
+          data: {
+            hasAttended: Boolean(attendance),
+            attendance,
+          },
+        };
+      } catch (error: any) {
+        reply.status(500).send({ success: false, message: error.message });
+      }
+    }
+  );
+
+  // 8. POST /:id/voting-sessions - Buat Sesi Pemungutan Suara (e-Voting)
   fastify.post(
     '/:id/voting-sessions',
     { preHandler: [requireCapability('cooperative.rat.manage')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = createVotingSessionSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data sesi voting tidak valid',
+            errors: parseResult.error.issues,
+          });
+        }
+
         const tenantId = getTenantId(req);
-        const session = await RatService.createVotingSession(req.params.id, tenantId, req.body);
+        const session = await RatService.createVotingSession(req.params.id, tenantId, parseResult.data);
         broadcastRatEvent(req, 'RAT_VOTING_OPENED', { meetingId: req.params.id, sessionId: session.id });
         reply.code(201).send({ success: true, data: session });
       } catch (error: any) {
@@ -183,15 +341,22 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 7. PUT /voting-sessions/:sessionId/status - Buka / Kunci Sesi Voting
+  // 9. PUT /voting-sessions/:sessionId/status - Buka / Kunci Sesi Voting
   fastify.put(
     '/voting-sessions/:sessionId/status',
     { preHandler: [requireCapability('cooperative.rat.manage')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = updateVotingSessionStatusSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Status sesi voting tidak valid',
+          });
+        }
+
         const tenantId = getTenantId(req);
-        const { status } = req.body;
-        const session = await RatService.updateVotingSessionStatus(req.params.sessionId, tenantId, status);
+        const session = await RatService.updateVotingSessionStatus(req.params.sessionId, tenantId, parseResult.data.status);
         broadcastRatEvent(req, 'RAT_VOTING_STATUS_CHANGED', { sessionId: session.id, status: session.status });
         return { success: true, data: session };
       } catch (error: any) {
@@ -201,12 +366,20 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 8. POST /voting-sessions/:sessionId/vote - Kirim Suara Anggota (One Member One Vote)
+  // 10. POST /voting-sessions/:sessionId/vote - Kirim Suara Anggota (One Member One Vote)
   fastify.post(
     '/voting-sessions/:sessionId/vote',
     { preHandler: [requireCapability('cooperative.rat.vote')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = castVoteSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Opsi suara tidak valid',
+          });
+        }
+
         const tenantId = getTenantId(req);
         const memberId = await getMemberId(req, tenantId);
 
@@ -217,23 +390,27 @@ export default async function ratRoutes(fastify: any) {
           });
         }
 
-        const { optionId } = req.body;
-        if (!optionId) {
-          return reply.status(400).send({ success: false, message: 'Opsi pilihan suara wajib dipilih.' });
-        }
-
-        const result = await RatService.castVote(req.params.sessionId, tenantId, memberId, optionId);
+        const result = await RatService.castVote(
+          req.params.sessionId,
+          tenantId,
+          memberId,
+          parseResult.data.optionId
+        );
         broadcastRatEvent(req, 'RAT_BALLOT_CAST', { sessionId: req.params.sessionId });
 
         return reply.send(result);
       } catch (error: any) {
         appLogger.error({ err: error }, 'Failed to cast ballot');
-        reply.status(400).send({ success: false, message: error.message || 'Gagal mengirimkan suara' });
+        const isConflict = error.message?.includes('Hak suara Anda telah digunakan');
+        reply.status(isConflict ? 409 : 400).send({
+          success: false,
+          message: error.message || 'Gagal mengirimkan suara',
+        });
       }
     }
   );
 
-  // 9. GET /voting-sessions/:sessionId/my-vote - Cek Status Suara Pemilih Sendiri
+  // 11. GET /voting-sessions/:sessionId/my-vote - Cek Status Suara Pemilih Sendiri
   fastify.get(
     '/voting-sessions/:sessionId/my-vote',
     { preHandler: [requireCapability('cooperative.rat.vote')] },
@@ -253,7 +430,7 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 10. GET /voting-sessions/:sessionId/results - Rekapitulasi Hasil Suara
+  // 12. GET /voting-sessions/:sessionId/results - Rekapitulasi Hasil Suara
   fastify.get(
     '/voting-sessions/:sessionId/results',
     {
@@ -272,14 +449,22 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 11. POST /:id/resolutions - Pengesahan Risalah / Ketetapan RAT
+  // 13. POST /:id/resolutions - Pengesahan Risalah / Ketetapan RAT
   fastify.post(
     '/:id/resolutions',
     { preHandler: [requireCapability('cooperative.rat.manage')] },
     async (req: any, reply: any) => {
       try {
+        const parseResult = createResolutionSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data ketetapan tidak valid',
+          });
+        }
+
         const tenantId = getTenantId(req);
-        const resolution = await RatService.createResolution(req.params.id, tenantId, req.body);
+        const resolution = await RatService.createResolution(req.params.id, tenantId, parseResult.data);
         broadcastRatEvent(req, 'RAT_RESOLUTION_ADOPTED', { meetingId: req.params.id, resolutionId: resolution.id });
         reply.code(201).send({ success: true, data: resolution });
       } catch (error: any) {

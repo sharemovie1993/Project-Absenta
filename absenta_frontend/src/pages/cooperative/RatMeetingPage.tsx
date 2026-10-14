@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { Button, SectionCard, Badge, Input } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
 import { AnalyticsCardBase } from '../../components/ui/AnalyticsCard';
 import { Table, type Column } from '../../components/ui/Table';
 import { 
@@ -164,10 +165,14 @@ const RatMeetingPage: React.FC = React.memo(() => {
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Real-time socket sync
+  // Real-time socket sync with spike throttling (1500ms debounce)
+  const lastSyncRef = useRef<number>(0);
   const { subscribe, unsubscribe } = useSocket();
   useEffect(() => {
     const handleSyncUpdate = () => {
+      const now = Date.now();
+      if (now - lastSyncRef.current < 1500) return;
+      lastSyncRef.current = now;
       invalidateRatCaches(queryClient, selectedMeetingId);
     };
     subscribe('coop_rat_update', handleSyncUpdate);
@@ -175,6 +180,17 @@ const RatMeetingPage: React.FC = React.memo(() => {
       unsubscribe('coop_rat_update', handleSyncUpdate);
     };
   }, [subscribe, unsubscribe, queryClient, selectedMeetingId]);
+
+  // Member status check
+  const memberStatusQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.memberStatusMe,
+    queryFn: async () => {
+      const res = await api.get('/cooperative/members/status/me');
+      return res.data?.data as { isMember: boolean } | undefined;
+    },
+    staleTime: 60_000,
+  });
+  const isMember = memberStatusQuery.data?.isMember ?? true;
 
   // Query RAT Meetings
   const meetingsQuery = useQuery({
@@ -451,6 +467,14 @@ const RatMeetingPage: React.FC = React.memo(() => {
     >
       <PremiumFeatureGate featureName="RAT & e-Voting Koperasi">
         <div className="space-y-6 max-w-full min-w-0">
+          {/* Non-Member Statutory Notice */}
+          {!isMember && !canManage && (
+            <NonMemberBanner
+              title="Hak Suara Terbatas (Bukan Anggota Koperasi)"
+              description="Sesuai UU Perkoperasian No. 25/1992, hak bicara dan hak suara e-Voting (One Member One Vote) pada Sidang RAT hanya sah diberikan oleh Anggota Terdaftar."
+            />
+          )}
+
           {/* Header Controls & Meeting Selector */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
             <div className="flex flex-wrap items-center gap-3">
@@ -459,13 +483,13 @@ const RatMeetingPage: React.FC = React.memo(() => {
                 Pilih Sidang RAT:
               </label>
               {(meetings || []).length > 0 ? (
-                <div id="select-rat-meeting" className="flex items-center gap-2">
+                <div id="select-rat-meeting" className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
                   {(meetings || []).map(m => (
                     <button
                       key={m.id}
                       type="button"
                       onClick={() => setSelectedMeetingId(m.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
                         selectedMeetingId === m.id
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                           : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
@@ -503,6 +527,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   value={quorumData ? `${quorumData.totalEligibleMembers} Orang` : `${currentMeeting.totalEligibleMembers} Orang`}
                   icon={<Users className="w-5 h-5 text-blue-500" />}
                   subtitle="Basis penentu kuorum"
+                  variant="compact-premium"
+                  mobileCompact={true}
                   isLoading={isLoading}
                 />
                 <AnalyticsCardBase
@@ -510,6 +536,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   value={quorumData ? `${quorumData.quorumTarget} Orang` : `${currentMeeting.quorumTarget} Orang`}
                   icon={<ShieldCheck className="w-5 h-5 text-amber-500" />}
                   subtitle="Minimal 50% + 1 anggota"
+                  variant="compact-premium"
+                  mobileCompact={true}
                   isLoading={isLoading}
                 />
                 <AnalyticsCardBase
@@ -517,6 +545,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   value={quorumData ? `${quorumData.actualAttendance} Orang (${quorumData.percentage}%)` : `${currentMeeting.actualAttendance} Orang`}
                   icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
                   subtitle={quorumData?.isQuorumReached ? "Kuorum Terpenuhi (Sah)" : "Belum Memenuhi Kuorum"}
+                  variant="compact-premium"
+                  mobileCompact={true}
                   isLoading={isLoading}
                 />
                 <AnalyticsCardBase
@@ -528,6 +558,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   }
                   icon={<Clock className="w-5 h-5 text-purple-500" />}
                   subtitle={formatDate(currentMeeting.meetingDate, 'dd MMMM yyyy HH:mm')}
+                  variant="compact-premium"
+                  mobileCompact={true}
                   isLoading={isLoading}
                 />
               </div>

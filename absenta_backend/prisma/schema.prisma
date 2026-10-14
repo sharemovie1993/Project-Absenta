@@ -3498,6 +3498,7 @@ model CoopMeetingAttendance {
   @@unique([meetingId, memberId])
   @@index([meetingId])
   @@index([memberId])
+  @@index([meetingId, attendedAt])
 }
 
 model CoopVotingSession {
@@ -3543,6 +3544,7 @@ model CoopVotingBallot {
 
   @@unique([sessionId, voterHash])
   @@index([sessionId])
+  @@index([sessionId, optionId])
 }
 
 model CoopMeetingResolution {
