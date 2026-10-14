@@ -516,17 +516,24 @@ const SalesReportPage: React.FC = React.memo(() => {
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs font-bold text-slate-600 dark:text-slate-400 mr-1">Periode:</span>
-                  {presetButtons?.map(btn => (
-                    <Button
-                      key={btn.id}
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setPreset(btn.id)}
-                      className={`text-xs py-1 px-3 h-8 ${preset === btn.id ? 'bg-indigo-600 text-white font-bold' : ''}`}
-                    >
-                      {btn.label}
-                    </Button>
-                  ))}
+                  {presetButtons?.map(btn => {
+                    const isActive = preset === btn.id;
+                    return (
+                      <Button
+                        key={btn.id}
+                        size="sm"
+                        variant={isActive ? 'primary' : 'outline'}
+                        onClick={() => setPreset(btn.id)}
+                        className={`text-xs py-1 px-3.5 h-8 font-semibold transition-all shadow-2xs ${
+                          isActive
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600 shadow-sm'
+                            : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-300 dark:border-slate-700'
+                        }`}
+                      >
+                        {btn.label}
+                      </Button>
+                    );
+                  })}
 
                   {preset === 'CUSTOM' && (
                     <div className="flex items-center gap-2 mt-2 sm:mt-0">
