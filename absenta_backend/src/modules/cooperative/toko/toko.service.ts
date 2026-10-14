@@ -208,6 +208,8 @@ export class TokoService {
             }
         });
 
+        await cacheInvalidationService.invalidateKoperasiCache(product.tenantId);
+        clearSalesReportCache(product.tenantId);
         return updated;
     }
 
@@ -331,6 +333,8 @@ export class TokoService {
             }
         });
 
+        await cacheInvalidationService.invalidateKoperasiCache(product.tenantId);
+        clearSalesReportCache(product.tenantId);
         return deleted;
     }
 
@@ -400,6 +404,8 @@ export class TokoService {
             }
         });
 
+        await cacheInvalidationService.invalidateKoperasiCache(tenantId);
+        clearSalesReportCache(tenantId);
         return result;
     }
 

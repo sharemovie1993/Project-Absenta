@@ -11,7 +11,8 @@ import { SectionCard } from '../../components/ui/SectionCard';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { Package, Plus, History, Tag, BarChart2, Boxes } from 'lucide-react';
-import { COOP_QUERY_KEYS } from '../../lib/coopQueryKeys';
+import { COOP_QUERY_KEYS, invalidateAllProductCaches } from '../../lib/coopQueryKeys';
+import { useSocket } from '../../hooks/useSocket';
 
 // Lazy load modular tab subcomponents to reduce entry file bundle size
 const ProductCatalogTab = lazy(() => import('../../components/cooperative/products/ProductCatalogTab'));
@@ -68,14 +69,15 @@ const Products: React.FC = React.memo(() => {
     }
   }, [activeTab, canUpdateProducts, canManageCategories, canManageInventory]);
 
-  // React Query setup for shared central states
+  // React Query setup for shared central states with enterprise caching (Phase 4 Hardening)
   const productsQuery = useQuery({
     queryKey: COOP_QUERY_KEYS.productsCatalog,
     queryFn: async () => {
       const response = await api.get('/cooperative/toko');
       return (Array.isArray(response.data) ? response.data : []) as Product[];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const products = productsQuery.data || [];
   const loading = productsQuery.isLoading;
@@ -86,9 +88,28 @@ const Products: React.FC = React.memo(() => {
       const response = await api.get('/cooperative/toko/categories');
       return (Array.isArray(response.data) ? response.data : []) as ProductCategory[];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60_000,
+    gcTime: 10 * 60 * 1000,
   });
   const categories = categoriesQuery.data || [];
+
+  // Real-time live sync: multi-device automatic sync across POS, Inventory, and Catalog
+  const { subscribe, unsubscribe } = useSocket();
+  useEffect(() => {
+    const handleSync = () => {
+      invalidateAllProductCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.categories });
+    };
+
+    subscribe('coop_pos_update', handleSync);
+    subscribe('coop_sales_update', handleSync);
+    subscribe('cooperative_sync', handleSync);
+    return () => {
+      unsubscribe('coop_pos_update', handleSync);
+      unsubscribe('coop_sales_update', handleSync);
+      unsubscribe('cooperative_sync', handleSync);
+    };
+  }, [subscribe, unsubscribe, queryClient]);
 
   // Layout info structures
   const breadcrumbs = useMemo(() => [
