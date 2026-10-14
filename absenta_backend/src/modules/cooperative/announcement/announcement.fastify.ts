@@ -2,7 +2,6 @@
 import { FastifyInstance } from 'fastify';
 import { AnnouncementService } from './announcement.service';
 import { appLogger } from '@/utils/app-logger';
-import { getTenantTimezone } from '@/utils/timezone.utils';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 
@@ -41,24 +40,28 @@ export default async function announcementRoutes(fastify: FastifyInstance) {
     fastify.post('/', { preHandler: [requireCapability('cooperative.announcements.create')] }, async (req, reply) => {
         try {
             const tenantId = getTenantId(req);
-            const announcement = await AnnouncementService.createAnnouncement(tenantId, req.body);
+            const operatorId = req.user?.id || req.user?.userId;
+            const announcement = await AnnouncementService.createAnnouncement(tenantId, req.body, operatorId);
             broadcastCoopAnnouncement(req, 'ANNOUNCEMENT_CREATED', { id: announcement.id, title: announcement.title });
             return reply.status(201).send({ success: true, message: 'Pengumuman berhasil dibuat', data: announcement });
         } catch (error: any) {
             appLogger.error({ err: error }, 'Error creating announcement');
-            return reply.status(500).send({ success: false, message: error.message });
+            const statusCode = error.message.includes('wajib diisi') ? 400 : 500;
+            return reply.status(statusCode).send({ success: false, message: error.message });
         }
     });
 
     fastify.delete('/:id', { preHandler: [requireCapability('cooperative.announcements.delete')] }, async (req, reply) => {
         try {
             const tenantId = getTenantId(req);
-            await AnnouncementService.deleteAnnouncement(req.params.id, tenantId);
+            const operatorId = req.user?.id || req.user?.userId;
+            await AnnouncementService.deleteAnnouncement(req.params.id, tenantId, operatorId);
             broadcastCoopAnnouncement(req, 'ANNOUNCEMENT_DELETED', { id: req.params.id });
             return reply.status(200).send({ success: true, message: 'Pengumuman berhasil dihapus' });
         } catch (error: any) {
             appLogger.error({ err: error }, 'Error deleting announcement');
-            return reply.status(500).send({ success: false, message: error.message });
+            const statusCode = error.message.includes('tidak ditemukan') ? 404 : 500;
+            return reply.status(statusCode).send({ success: false, message: error.message });
         }
     });
 }

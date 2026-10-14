@@ -22,8 +22,8 @@ export const MitraBulkActionBar: React.FC<MitraBulkActionBarProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="sticky bottom-4 z-30 mx-auto w-full max-w-3xl px-4 animate-in fade-in slide-in-from-bottom-3 duration-200">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-900/95 dark:bg-slate-950/95 text-white backdrop-blur-md rounded-2xl shadow-xl border border-slate-700/60 dark:border-slate-800">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[95%] sm:w-full max-w-2xl px-4 animate-in fade-in slide-in-from-bottom-5 duration-300 pointer-events-auto">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-900/95 dark:bg-slate-950/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-slate-700/80 dark:border-slate-800 ring-1 ring-white/10">
         {/* Left: Info & Deselect */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-indigo-600/30 border border-indigo-500/40 px-3 py-1.5 rounded-xl text-indigo-300 font-bold text-xs">

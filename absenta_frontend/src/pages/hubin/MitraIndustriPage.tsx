@@ -13,7 +13,9 @@ import {
   FileSpreadsheet,
   CheckCircle2,
   Clock,
-  Navigation
+  Navigation,
+  Trash2,
+  X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -36,6 +38,7 @@ import { createMitraColumns } from '../../components/hubin/mitra/MitraIndustriTa
 import { MitraIndustriCard } from '../../components/hubin/mitra/MitraIndustriCard';
 import { MitraMouFilterBar } from '../../components/hubin/mitra/MitraMouFilterBar';
 import { MitraBulkActionBar } from '../../components/hubin/mitra/MitraBulkActionBar';
+import { MitraTableToolbarRight } from '../../components/hubin/mitra/MitraTableToolbarRight';
 import { computeMitraStats, exportMitraToExcel, downloadMitraTemplate } from '../../components/hubin/mitra/mitraUtils';
 
 // Lazy load heavy modal components (Refreshed import handler for ExcelImportModal)
@@ -454,46 +457,24 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     </div>
   ), [searchTerm]);
 
-  const tableToolbarRight = useMemo(() => (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="toolbarOutline"
-        size="toolbarIcon"
-        onClick={() => refetch()}
-        disabled={isLoading}
-        className="rounded-xl h-9 w-9"
-      >
-        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-      </Button>
-      {isHubin && (
-        <>
-          <Button
-            onClick={() => setIsImportModalOpen(true)}
-            variant="toolbarOutline"
-            size="toolbar"
-            disabled={isExporting}
-            className="h-9 px-3 rounded-xl flex items-center gap-1.5 font-bold text-xs text-emerald-700 bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/40 hover:bg-emerald-100/80"
-            title="Import Mitra Industri dari Excel"
-          >
-            <FileSpreadsheet size={15} className="text-emerald-600 dark:text-emerald-400" />
-            <span>Import Excel</span>
-          </Button>
-          <Button
-            onClick={() => {
-              setEditingMitra(null);
-              setIsModalOpen(true);
-            }}
-            variant="toolbarPrimary"
-            size="toolbar"
-            className="h-9 px-4 rounded-xl flex items-center gap-1.5"
-          >
-            <Plus size={16} />
-            Tambah Mitra
-          </Button>
-        </>
-      )}
-    </div>
-  ), [isLoading, isHubin, isExporting, refetch]);
+  const tableToolbarRight = (
+    <MitraTableToolbarRight
+      selectedCount={selectedRowKeys.size}
+      isHubin={isHubin}
+      isLoading={isLoading}
+      isExporting={isExporting}
+      isDeleting={bulkDeleteMutation.isPending}
+      onRefresh={() => refetch()}
+      onBulkExport={handleBulkExport}
+      onBulkDelete={handleBulkDelete}
+      onClearSelection={() => setSelectedRowKeys(new Set())}
+      onOpenImport={() => setIsImportModalOpen(true)}
+      onOpenCreate={() => {
+        setEditingMitra(null);
+        setIsModalOpen(true);
+      }}
+    />
+  );
 
   const renderMobileCardItem = useCallback((row: MitraIndustri) => (
     <MitraIndustriCard
