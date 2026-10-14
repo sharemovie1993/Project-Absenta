@@ -24,6 +24,7 @@ import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
 import type { CooperativeSettings } from '../../components/cooperative/loans/types';
 import Modal from '../../components/ui/Modal';
 import Button from '../../components/ui/Button';
+import { invalidateAccountingCaches } from '../../lib/coopQueryKeys';
 
 import { 
     JournalTable, 
@@ -250,9 +251,7 @@ const Accounting: React.FC = React.memo(() => {
         if (!isConnected) return;
 
         const handleRealtimeUpdate = () => {
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+            invalidateAccountingCaches(queryClient);
         };
 
         subscribe('coop_accounting_update', handleRealtimeUpdate);
@@ -282,9 +281,7 @@ const Accounting: React.FC = React.memo(() => {
         onSuccess: () => {
             toast.success('Potongan gaji massal berhasil diposting!');
             setShowPostConfirm(false);
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
+            invalidateAccountingCaches(queryClient);
         },
         onError: (e: unknown) => {
             console.error(e);
@@ -310,9 +307,7 @@ const Accounting: React.FC = React.memo(() => {
         onSuccess: () => {
             toast.success('Posting potongan gaji massal berhasil dibatalkan!');
             setShowCancelConfirm(false);
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-journals'] });
-            queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-balance-sheet'] });
+            invalidateAccountingCaches(queryClient);
         },
         onError: (e: unknown) => {
             console.error(e);

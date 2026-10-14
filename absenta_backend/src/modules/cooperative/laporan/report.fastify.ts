@@ -193,6 +193,8 @@ export default async function reportRoutes(fastify: any) {
             io.emit('coop_accounting_update', broadcastPayload);
             io.emit('coop_saving_update', broadcastPayload);
             io.emit('coop_loan_update', broadcastPayload);
+            io.emit('cooperative_sync', { type, data: broadcastPayload });
+            io.to('cooperative_workspace').emit('cooperative_sync', { type, data: broadcastPayload });
         }
     };
 

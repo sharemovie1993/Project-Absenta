@@ -43,6 +43,10 @@ export const COOP_QUERY_KEYS = {
   accountingBalanceSheet: ['koperasi-accounting-balance-sheet'] as const,
   accountingPayroll: (month = '', year = '') =>
     ['koperasi-accounting-payroll', month, year] as const,
+  accountingIncomeStatement: ['koperasi-income-statement'] as const,
+  accountingBalanceSheetReport: ['koperasi-balance-sheet-report'] as const,
+  accountingCashFlow: ['koperasi-cash-flow'] as const,
+  accountingGeneralLedger: ['cooperative-general-ledger'] as const,
 
   // ─── SHU & Savings & Loans ────────────────────────────────────────────────
   savingsList: ['koperasi-savings-list'] as const,
@@ -72,3 +76,22 @@ export function invalidateStockInCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['koperasi-reports-inventory-purchases'] });
   queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.suppliers });
 }
+
+/**
+ * Invalidate all accounting, financial reports, and general ledger caches.
+ */
+export function invalidateAccountingCaches(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingJournals });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingBalanceSheet });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-accounting-payroll'] });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingIncomeStatement });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingBalanceSheetReport });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingCashFlow });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingGeneralLedger });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-journals'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
+  queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
+}
+
