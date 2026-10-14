@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../../lib/axiosInstance';
+import { invalidateShuCaches } from '../../../lib/coopQueryKeys';
 import { Button } from '../../ui';
 import { X, RefreshCw, Percent, Sliders } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -65,7 +66,7 @@ export const PeriodFormModal = React.memo<PeriodFormModalProps>(({ isOpen, onClo
     onSuccess: (data) => {
       if (data?.success) {
         toast.success('Periode SHU berhasil dibuat!');
-        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
+        invalidateShuCaches(queryClient);
         onSuccess();
         onClose();
       }

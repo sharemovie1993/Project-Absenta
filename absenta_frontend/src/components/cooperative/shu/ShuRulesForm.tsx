@@ -92,7 +92,7 @@ export const ShuRulesForm = React.memo<ShuRulesFormProps>(({
                   value={config.porsiCadangan}
                   onChange={(e) => setConfig(prev => ({ ...prev, porsiCadangan: e.target.value }))}
                   min={0}
-                  max={105}
+                  max={100}
                   required
                   disabled={!canManageShu}
                   aria-label="Dana Cadangan Koperasi (%)"
