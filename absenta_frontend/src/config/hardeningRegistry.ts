@@ -647,6 +647,46 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_tickets: {
+    moduleName: 'coop_tickets',
+    displayName: 'Pusat Aduan & Tiket Bantuan Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat menampilkan daftar tiket aduan anggota.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Definisi kolom, filter badge, tab, dan breadcrumbs dimemosisasi menggunakan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada status filter, tab, dan paginated list.'
+      }
+    ]
+  },
+  coop_ticket_detail: {
+    moduleName: 'coop_ticket_detail',
+    displayName: 'Detail Tiket Bantuan Koperasi',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah visual crash halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat menampilkan diskusi dan percakapan tiket aduan.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Pesan percakapan, handler balasan, dan breadcrumbs dimemosisasi menggunakan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada message list dan submit handler.'
+      }
+    ]
+  },
   coop_settings: {
     moduleName: 'coop_settings',
     displayName: 'Pengaturan Koperasi',
