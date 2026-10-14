@@ -823,6 +823,40 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  coop_rat: {
+    moduleName: 'coop_rat',
+    displayName: 'Rapat Anggota Tahunan (RAT) & e-Voting',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan Layout & Error Boundary terisolasi saat sidang RAT.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'cache_invalidation',
+        name: 'Standarisasi Cache Invalidation & Sinkronisasi Mutasi Data',
+        description: 'Menggunakan COOP_QUERY_KEYS terpusat dan pembersihan query cache via invalidateRatCaches saat presensi atau pemungutan suara.',
+        status: 'VERIFIED',
+        details: 'COOP_QUERY_KEYS.ratMeetings & invalidateRatCaches terpasang pada mutasi.'
+      },
+      {
+        id: 'websocket_live_sync',
+        name: 'Sinkronisasi Realtime WebSockets (Live Broadcast Sync)',
+        description: 'Mendengarkan event coop_rat_update melalui WebSocket hook untuk auto-refresh kehadiran dan hasil voting tanpa reload.',
+        status: 'VERIFIED',
+        details: 'useSocket subscribe("coop_rat_update") aktif dengan clean cleanup handler.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Perhitungan kuorum, filter agenda, dan callback pemungutan suara dimemosisasi dengan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useMemo & useCallback terpasang pada perhitungan kuorum dan handlers.'
+      }
+    ]
+  },
   hubin_penempatan_pkl: {
     moduleName: 'hubin_penempatan_pkl',
     displayName: 'Penempatan PKL (Hubin)',

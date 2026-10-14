@@ -1,0 +1,737 @@
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
+import { z } from 'zod';
+import api from '../../lib/axiosInstance';
+import { Button, SectionCard, Badge, Input } from '../../components/ui';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
+import { formatDate } from '../../utils/layoutUtils';
+import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { AnalyticsCardBase } from '../../components/ui/AnalyticsCard';
+import { Table, type Column } from '../../components/ui/Table';
+import { 
+  Users, 
+  Vote, 
+  CheckCircle2, 
+  Clock, 
+  ShieldCheck, 
+  FileCheck2, 
+  Plus, 
+  Calendar, 
+  Lock, 
+  Play, 
+  Check
+} from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../hooks/useCapabilities';
+import useConfirm from '../../hooks/useConfirm';
+import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
+import { useSocket } from '../../hooks/useSocket';
+import { COOP_QUERY_KEYS, invalidateRatCaches } from '../../lib/coopQueryKeys';
+import { useIsMobile } from '../../hooks/useIsMobile';
+import { RatAgendaSection } from '../../components/cooperative/rat/RatAgendaSection';
+import { RatVotingSection } from '../../components/cooperative/rat/RatVotingSection';
+
+const hardeningModuleKey = 'coop_rat';
+
+const ratFilterSchema = z.object({
+  search: z.string().optional(),
+});
+
+// ─── LAZY LOADED HEAVY COMPONENTS ──────────────────────────────────────────
+const CreateMeetingModal = lazy(() =>
+  import('../../components/cooperative/rat/CreateMeetingModal').then(m => ({ default: m.CreateMeetingModal }))
+);
+
+const CastVoteModal = lazy(() =>
+  import('../../components/cooperative/rat/CastVoteModal').then(m => ({ default: m.CastVoteModal }))
+);
+
+const CreateVotingSessionModal = lazy(() =>
+  import('../../components/cooperative/rat/CreateVotingSessionModal').then(m => ({ default: m.CreateVotingSessionModal }))
+);
+
+const AddResolutionModal = lazy(() =>
+  import('../../components/cooperative/rat/AddResolutionModal').then(m => ({ default: m.AddResolutionModal }))
+);
+
+// ─── TYPES ─────────────────────────────────────────────────────────────────
+export interface CoopMeetingItem {
+  id: string;
+  title: string;
+  year: number;
+  meetingDate: string;
+  status: 'DRAFT' | 'REGISTRATION_OPEN' | 'IN_SESSION' | 'CLOSED';
+  quorumTarget: number;
+  totalEligibleMembers: number;
+  actualAttendance: number;
+  isQuorumReached: boolean;
+  description?: string;
+  agendas: CoopAgendaItem[];
+  resolutions: CoopResolutionItem[];
+  votingSessions: CoopVotingSessionItem[];
+  attendances: CoopAttendanceItem[];
+}
+
+export interface CoopAgendaItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  orderIndex: number;
+  durationMinutes?: number | null;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
+}
+
+export interface CoopResolutionItem {
+  id: string;
+  resolutionNo: string;
+  subject: string;
+  summary: string;
+  status: 'PASSED' | 'REJECTED' | 'AMENDED';
+  documentUrl?: string | null;
+}
+
+export interface CoopVotingOptionItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  voteCount: number;
+}
+
+export interface CoopVotingSessionItem {
+  id: string;
+  meetingId: string;
+  title: string;
+  description?: string | null;
+  votingType: string;
+  status: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'TALLIED';
+  options: CoopVotingOptionItem[];
+  ballotsCount?: number;
+}
+
+export interface CoopAttendanceItem {
+  id: string;
+  memberId: string;
+  checkInTime: string;
+  method: 'ONLINE' | 'RFID' | 'MANUAL';
+  isQuorumCounted: boolean;
+  Member?: {
+    name: string;
+    memberNo: string;
+  };
+}
+
+const RatMeetingPage: React.FC = React.memo(() => {
+  const queryClient = useQueryClient();
+  const { subscription } = useAuthStore();
+  const { confirm } = useConfirm();
+  const isMobile = useIsMobile();
+  const { can, isAdmin, isKoperasiHead, isKoperasiSecretary } = useCapabilities();
+
+  const canManage = useMemo(() => 
+    Boolean(isAdmin || isKoperasiHead || isKoperasiSecretary || can('cooperative.rat.manage')),
+    [isAdmin, isKoperasiHead, isKoperasiSecretary, can]
+  );
+  const canVote = useMemo(() => Boolean(can('cooperative.rat.vote') || canManage), [can, canManage]);
+
+  // URL state
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') || 'agenda';
+
+  const [activeTab, setActiveTab] = useState<string>(tabParam);
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
+  const [attendanceSearch, setAttendanceSearch] = useState<string>('');
+  const [attendancePage, setAttendancePage] = useState<number>(1);
+  const [attendanceLimit, setAttendanceLimit] = useState<number>(10);
+  const [attendanceSortKey, setAttendanceSortKey] = useState<string>('checkInTime');
+  const [attendanceSortDirection, setAttendanceSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Modal states
+  const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
+  const [isCastVoteOpen, setIsCastVoteOpen] = useState(false);
+  const [isCreateVotingSessionOpen, setIsCreateVotingSessionOpen] = useState(false);
+  const [isAddResolutionOpen, setIsAddResolutionOpen] = useState(false);
+  const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
+
+  // Sync tab with URL search params
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTab(tabId);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tabId);
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
+
+  // Real-time socket sync
+  const { subscribe, unsubscribe } = useSocket();
+  useEffect(() => {
+    const handleSyncUpdate = () => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+    };
+    subscribe('coop_rat_update', handleSyncUpdate);
+    return () => {
+      unsubscribe('coop_rat_update', handleSyncUpdate);
+    };
+  }, [subscribe, unsubscribe, queryClient, selectedMeetingId]);
+
+  // Query RAT Meetings
+  const meetingsQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.ratMeetings(),
+    queryFn: async () => {
+      const res = await api.get('/cooperative/rat');
+      return (res.data.data ?? []) as CoopMeetingItem[];
+    },
+    enabled: subscription !== undefined,
+    staleTime: 15_000,
+  });
+
+  const meetings = useMemo(() => meetingsQuery.data || [], [meetingsQuery.data]);
+
+  // Auto-select latest active meeting or first meeting
+  useEffect(() => {
+    if ((meetings || []).length > 0 && !selectedMeetingId) {
+      const active = (meetings || []).find(m => m.status === 'IN_SESSION' || m.status === 'REGISTRATION_OPEN') || meetings[0];
+      if (active) setSelectedMeetingId(active.id);
+    }
+  }, [meetings, selectedMeetingId]);
+
+  // Detail query for active meeting
+  const meetingDetailQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.ratMeetingDetail(selectedMeetingId),
+    queryFn: async () => {
+      if (!selectedMeetingId) return null;
+      const res = await api.get(`/cooperative/rat/${selectedMeetingId}`);
+      return (res.data.data ?? null) as CoopMeetingItem | null;
+    },
+    enabled: Boolean(selectedMeetingId),
+    staleTime: 10_000,
+  });
+
+  // Quorum query
+  const quorumQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.ratQuorum(selectedMeetingId),
+    queryFn: async () => {
+      if (!selectedMeetingId) return null;
+      const res = await api.get(`/cooperative/rat/${selectedMeetingId}/quorum`);
+      return res.data.data as {
+        meetingId: string;
+        title: string;
+        status: string;
+        totalEligibleMembers: number;
+        quorumTarget: number;
+        actualAttendance: number;
+        isQuorumReached: boolean;
+        percentage: number;
+      };
+    },
+    enabled: Boolean(selectedMeetingId),
+    staleTime: 5_000,
+  });
+
+  // Current user's attendance status
+  const myAttendanceQuery = useQuery({
+    queryKey: COOP_QUERY_KEYS.ratMyAttendance(selectedMeetingId),
+    queryFn: async () => {
+      if (!selectedMeetingId) return null;
+      const res = await api.get(`/cooperative/rat/${selectedMeetingId}/attendance/me`);
+      return res.data.data as { hasAttended: boolean; attendance: CoopAttendanceItem | null };
+    },
+    enabled: Boolean(selectedMeetingId),
+    staleTime: 10_000,
+  });
+
+  const currentMeeting = meetingDetailQuery.data || (meetings || []).find(m => m.id === selectedMeetingId);
+  const quorumData = quorumQuery.data;
+  const myAttendance = myAttendanceQuery.data;
+
+  // Mutation: Self check-in
+  const checkInMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedMeetingId) throw new Error('Pilih rapat terlebih dahulu');
+      const res = await api.post(`/cooperative/rat/${selectedMeetingId}/attendance`, {
+        method: 'ONLINE'
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+      toast.success('Presensi Anda pada Sidang RAT berhasil diverifikasi!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal melakukan presensi';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleSelfCheckIn = useCallback(() => {
+    checkInMutation.mutate();
+  }, [checkInMutation]);
+
+  // Mutation: Update Meeting Lifecycle
+  const lifecycleMutation = useMutation({
+    mutationFn: async (newStatus: 'REGISTRATION_OPEN' | 'IN_SESSION' | 'CLOSED') => {
+      if (!selectedMeetingId) throw new Error('Pilih rapat');
+      const res = await api.put(`/cooperative/rat/${selectedMeetingId}/status`, {
+        status: newStatus
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+      toast.success('Status pelaksanaan sidang RAT berhasil diperbarui!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengubah status sidang';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleLifecycleAdvance = useCallback(async (newStatus: 'REGISTRATION_OPEN' | 'IN_SESSION' | 'CLOSED', label: string) => {
+    const isConfirmed = await confirm({
+      title: `Konfirmasi Perubahan Status: ${label}`,
+      message: `Apakah Anda yakin ingin memajukan status sidang RAT ini menjadi "${label}"? Tindakan ini akan dicatat dalam risalah resmi persidangan.`,
+      confirmText: 'Lanjutkan',
+      cancelText: 'Batal',
+    });
+    if (isConfirmed) {
+      lifecycleMutation.mutate(newStatus);
+    }
+  }, [confirm, lifecycleMutation]);
+
+  // Mutation: Update Voting Session Status (e.g. TALLIED)
+  const votingStatusMutation = useMutation({
+    mutationFn: async ({ sessionId, status }: { sessionId: string; status: 'ACTIVE' | 'CLOSED' | 'TALLIED' }) => {
+      const res = await api.put(`/cooperative/rat/voting-sessions/${sessionId}/status`, { status });
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+      toast.success('Status sesi pemungutan suara berhasil diperbarui!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal memperbarui sesi voting';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleVotingStatusChange = useCallback((sessionId: string, status: 'ACTIVE' | 'CLOSED' | 'TALLIED') => {
+    votingStatusMutation.mutate({ sessionId, status });
+  }, [votingStatusMutation]);
+
+  // Tab definitions
+  const tabOptions: TabOption[] = useMemo(() => [
+    { id: 'agenda', label: 'Agenda & Ketetapan Sidang', icon: FileCheck2 },
+    { id: 'attendance', label: 'Daftar Presensi Peserta', icon: Users },
+    { id: 'voting', label: 'e-Voting (One Member One Vote)', icon: Vote },
+  ], []);
+
+  // Filtered & Paginated Attendance
+  const rawAttendances = useMemo(() => currentMeeting?.attendances || [], [currentMeeting?.attendances]);
+
+  const handleSearchChange = useCallback((val: string) => {
+    const parsed = ratFilterSchema.safeParse({ search: val });
+    setAttendanceSearch(parsed.success ? parsed.data.search || '' : '');
+    setAttendancePage(1);
+  }, []);
+
+  const filteredAttendances = useMemo(() => {
+    const searchLower = attendanceSearch.toLowerCase().trim();
+    const list = (rawAttendances || []).filter(att => {
+      const name = att.Member?.name?.toLowerCase() || '';
+      const no = att.Member?.memberNo?.toLowerCase() || '';
+      return name.includes(searchLower) || no.includes(searchLower);
+    });
+
+    list.sort((a, b) => {
+      let valA: string | number = a.checkInTime;
+      let valB: string | number = b.checkInTime;
+      if (attendanceSortKey === 'name') {
+        valA = a.Member?.name || '';
+        valB = b.Member?.name || '';
+      } else if (attendanceSortKey === 'memberNo') {
+        valA = a.Member?.memberNo || '';
+        valB = b.Member?.memberNo || '';
+      }
+      if (valA < valB) return attendanceSortDirection === 'asc' ? -1 : 1;
+      if (valA > valB) return attendanceSortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return list;
+  }, [rawAttendances, attendanceSearch, attendanceSortKey, attendanceSortDirection]);
+
+  const paginatedAttendances = useMemo(() => {
+    const start = (attendancePage - 1) * attendanceLimit;
+    return (filteredAttendances || []).slice(start, start + attendanceLimit);
+  }, [filteredAttendances, attendancePage, attendanceLimit]);
+
+  const attendanceTotalPages = useMemo(() => {
+    return Math.max(1, Math.ceil((filteredAttendances?.length || 0) / attendanceLimit));
+  }, [filteredAttendances?.length, attendanceLimit]);
+
+  // Attendance Columns
+  const attendanceColumns: Column<CoopAttendanceItem>[] = useMemo(() => [
+    {
+      header: 'No. Anggota',
+      accessor: (item) => item.Member?.memberNo || '-',
+      sortable: true,
+      sortKey: 'memberNo',
+    },
+    {
+      header: 'Nama Peserta Rapat',
+      accessor: (item) => (
+        <div>
+          <p className="font-semibold text-slate-800 dark:text-slate-100">{item.Member?.name || 'Anggota Koperasi'}</p>
+        </div>
+      ),
+      sortable: true,
+      sortKey: 'name',
+    },
+    {
+      header: 'Waktu Presensi',
+      accessor: (item) => formatDate(item.checkInTime, 'dd/MM/yyyy HH:mm'),
+      sortable: true,
+      sortKey: 'checkInTime',
+    },
+    {
+      header: 'Metode',
+      accessor: (item) => (
+        <Badge variant={item.method === 'RFID' ? 'primary' : item.method === 'ONLINE' ? 'success' : 'default'}>
+          {item.method}
+        </Badge>
+      ),
+    },
+    {
+      header: 'Status Kuorum',
+      accessor: (item) => (
+        <Badge variant={item.isQuorumCounted ? 'success' : 'warning'}>
+          {item.isQuorumCounted ? 'Sah Menghitung' : 'Tinjauan'}
+        </Badge>
+      ),
+    },
+  ], []);
+
+  const handleAttendanceSort = useCallback((key: string, direction: 'asc' | 'desc') => {
+    setAttendanceSortKey(key);
+    setAttendanceSortDirection(direction);
+  }, []);
+
+  const handleAttendancePageChange = useCallback((page: number) => {
+    setAttendancePage(page);
+  }, []);
+
+  const handleAttendanceLimitChange = useCallback((limit: number) => {
+    setAttendanceLimit(limit);
+    setAttendancePage(1);
+  }, []);
+
+  const handleSelectVoteSession = useCallback((session: CoopVotingSessionItem) => {
+    setActiveVotingSession(session);
+    setIsCastVoteOpen(true);
+  }, []);
+
+  const isLoading = meetingsQuery.isLoading || meetingDetailQuery.isLoading;
+
+  return (
+    <AcademicPageLayout
+      title="Rapat Anggota Tahunan (RAT) & e-Voting"
+      description="Pelaksanaan musyawarah kekuasaan tertinggi koperasi berlandaskan asas One Member One Vote dan pemantauan kuorum sah real-time."
+      hardeningModuleKey={hardeningModuleKey}
+      instruction={{
+        title: 'Panduan Sidang Rapat Anggota Tahunan (RAT)',
+        items: [
+          'Setiap Anggota Koperasi memiliki hak bicara dan 1 hak suara sah (One Member One Vote) yang dijamin oleh UU Perkoperasian.',
+          'Sidang dinyatakan SAH secara hukum jika jumlah kehadiran telah mencapai kuorum minimal (50% + 1 dari basis anggota aktif).',
+          'Presensi mandiri secara digital dapat dikonfirmasi oleh anggota aktif selama periode registrasi sidang dibuka.',
+          'Pemungutan suara e-Voting dilindungi enkripsi kriptografis satu arah (HMAC-SHA256) untuk menjamin kerahasiaan pilihan (Luber & Jurdil).'
+        ]
+      }}
+    >
+      <PremiumFeatureGate featureName="RAT & e-Voting Koperasi">
+        <div className="space-y-6 max-w-full min-w-0">
+          {/* Header Controls & Meeting Selector */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div className="flex flex-wrap items-center gap-3">
+              <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <label htmlFor="select-rat-meeting" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                Pilih Sidang RAT:
+              </label>
+              {(meetings || []).length > 0 ? (
+                <div id="select-rat-meeting" className="flex items-center gap-2">
+                  {(meetings || []).map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedMeetingId(m.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                        selectedMeetingId === m.id
+                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {m.title} ({m.year})
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400">Belum ada agenda rapat yang dibuat</span>
+              )}
+            </div>
+
+            {canManage && (
+              <Button
+                type="button"
+                size="toolbar"
+                variant="toolbarPrimary"
+                onClick={() => setIsCreateMeetingOpen(true)}
+                className="gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                Agendakan Sidang Baru
+              </Button>
+            )}
+          </div>
+
+          {/* QUORUM HUD & STATUS CARDS */}
+          {currentMeeting && (
+            <SectionCard title="Pemantauan Kuorum Sah Rapat Anggota" className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <AnalyticsCardBase
+                  title="Total Anggota Aktif"
+                  value={quorumData ? `${quorumData.totalEligibleMembers} Orang` : `${currentMeeting.totalEligibleMembers} Orang`}
+                  icon={<Users className="w-5 h-5 text-blue-500" />}
+                  subtitle="Basis penentu kuorum"
+                  isLoading={isLoading}
+                />
+                <AnalyticsCardBase
+                  title="Target Kuorum Sah"
+                  value={quorumData ? `${quorumData.quorumTarget} Orang` : `${currentMeeting.quorumTarget} Orang`}
+                  icon={<ShieldCheck className="w-5 h-5 text-amber-500" />}
+                  subtitle="Minimal 50% + 1 anggota"
+                  isLoading={isLoading}
+                />
+                <AnalyticsCardBase
+                  title="Kehadiran Saat Ini"
+                  value={quorumData ? `${quorumData.actualAttendance} Orang (${quorumData.percentage}%)` : `${currentMeeting.actualAttendance} Orang`}
+                  icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+                  subtitle={quorumData?.isQuorumReached ? "Kuorum Terpenuhi (Sah)" : "Belum Memenuhi Kuorum"}
+                  isLoading={isLoading}
+                />
+                <AnalyticsCardBase
+                  title="Status Pelaksanaan"
+                  value={
+                    currentMeeting.status === 'IN_SESSION' ? 'Sedang Bersidang' :
+                    currentMeeting.status === 'REGISTRATION_OPEN' ? 'Registrasi Dibuka' :
+                    currentMeeting.status === 'CLOSED' ? 'Sidang Selesai' : 'Draft Persiapan'
+                  }
+                  icon={<Clock className="w-5 h-5 text-purple-500" />}
+                  subtitle={formatDate(currentMeeting.meetingDate, 'dd MMMM yyyy HH:mm')}
+                  isLoading={isLoading}
+                />
+              </div>
+
+              {/* Progress Bar & Sah Indicator */}
+              <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Tingkat Kehadiran Sidang:</span>
+                    <Badge variant={quorumData?.isQuorumReached ? 'success' : 'warning'}>
+                      {quorumData?.isQuorumReached ? 'KUORUM TERCAPAI (KEPUTUSAN SAH HUKUM)' : 'MENUNGGU MEMENUHI KUORUM'}
+                    </Badge>
+                  </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {quorumData ? `${quorumData.actualAttendance} / ${quorumData.quorumTarget} target suara` : ''}
+                  </span>
+                </div>
+
+                <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      quorumData?.isQuorumReached ? 'bg-emerald-500' : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${Math.min(100, quorumData?.percentage || 0)}%` }}
+                  />
+                </div>
+
+                {/* Member Check-In CTA & Manager Progression Actions */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <div>
+                    {myAttendance?.hasAttended ? (
+                      <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Anda telah melakukan presensi resmi pada sidang ini.
+                      </div>
+                    ) : (
+                      currentMeeting.status === 'REGISTRATION_OPEN' || currentMeeting.status === 'IN_SESSION' ? (
+                        <Button
+                          type="button"
+                          size="toolbar"
+                          variant="toolbarPrimary"
+                          onClick={handleSelfCheckIn}
+                          isLoading={checkInMutation.isPending}
+                        >
+                          <Check className="w-4 h-4 mr-1.5" />
+                          Konfirmasi Kehadiran Saya di Sidang RAT
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-slate-400">
+                          Presensi hanya dapat dilakukan saat registrasi dibuka oleh pengurus.
+                        </span>
+                      )
+                    )}
+                  </div>
+
+                  {canManage && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {currentMeeting.status === 'DRAFT' && (
+                        <Button
+                          type="button"
+                          size="toolbar"
+                          variant="toolbarOutline"
+                          onClick={() => handleLifecycleAdvance('REGISTRATION_OPEN', 'Buka Registrasi Peserta')}
+                          isLoading={lifecycleMutation.isPending}
+                        >
+                          <Play className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                          Buka Registrasi (Kunci Snapshot Kuorum)
+                        </Button>
+                      )}
+                      {currentMeeting.status === 'REGISTRATION_OPEN' && (
+                        <Button
+                          type="button"
+                          size="toolbar"
+                          variant="toolbarPrimary"
+                          onClick={() => handleLifecycleAdvance('IN_SESSION', 'Mulai Sidang Paripurna')}
+                          isLoading={lifecycleMutation.isPending}
+                        >
+                          <Play className="w-3.5 h-3.5 mr-1" />
+                          Mulai Sidang Paripurna
+                        </Button>
+                      )}
+                      {currentMeeting.status === 'IN_SESSION' && (
+                        <Button
+                          type="button"
+                          size="toolbar"
+                          variant="toolbarDanger"
+                          onClick={() => handleLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')}
+                          isLoading={lifecycleMutation.isPending}
+                        >
+                          <Lock className="w-3.5 h-3.5 mr-1" />
+                          Tutup Sidang Resmi
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SectionCard>
+          )}
+
+          {/* TABS NAVIGATION */}
+          <TabSwitcher
+            options={tabOptions}
+            value={activeTab}
+            onChange={handleTabChange}
+          />
+
+          {/* TAB 1: AGENDA & RESOLUTIONS */}
+          {activeTab === 'agenda' && (
+            <RatAgendaSection
+              agendas={currentMeeting?.agendas || []}
+              resolutions={currentMeeting?.resolutions || []}
+              canManage={canManage}
+              onOpenAddResolution={() => setIsAddResolutionOpen(true)}
+            />
+          )}
+
+          {/* TAB 2: ATTENDANCE */}
+          {activeTab === 'attendance' && (
+            <SectionCard title="Daftar Hadir Resmi Peserta Sidang RAT">
+              <Table
+                columns={attendanceColumns}
+                data={paginatedAttendances}
+                toolbarLeft={
+                  <div className="flex items-center gap-2 w-full max-w-xs">
+                    <Input
+                      aria-label="Cari Peserta"
+                      placeholder="Cari nama atau no anggota..."
+                      value={attendanceSearch}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      className="w-full text-xs"
+                    />
+                  </div>
+                }
+                pagination={{
+                  currentPage: attendancePage,
+                  totalPages: attendanceTotalPages,
+                  totalItems: filteredAttendances?.length || 0,
+                  onPageChange: handleAttendancePageChange,
+                  onLimitChange: handleAttendanceLimitChange,
+                }}
+                onSort={handleAttendanceSort}
+                sortKey={attendanceSortKey}
+                sortDirection={attendanceSortDirection}
+                emptyMessage="Tidak ada data presensi yang ditemukan."
+              />
+            </SectionCard>
+          )}
+
+          {/* TAB 3: E-VOTING */}
+          {activeTab === 'voting' && (
+            <RatVotingSection
+              votingSessions={currentMeeting?.votingSessions || []}
+              canManage={canManage}
+              canVote={canVote}
+              onOpenCreateSession={() => setIsCreateVotingSessionOpen(true)}
+              onSelectVoteSession={handleSelectVoteSession}
+              onUpdateSessionStatus={handleVotingStatusChange}
+              isUpdatingStatus={votingStatusMutation.isPending}
+            />
+          )}
+        </div>
+
+        {/* MODAL SUSPENSE CONTAINERS */}
+        <Suspense fallback={null}>
+          {isCreateMeetingOpen && (
+            <CreateMeetingModal
+              isOpen={isCreateMeetingOpen}
+              onClose={() => setIsCreateMeetingOpen(false)}
+            />
+          )}
+
+          {isCastVoteOpen && activeVotingSession && (
+            <CastVoteModal
+              isOpen={isCastVoteOpen}
+              onClose={() => {
+                setIsCastVoteOpen(false);
+                setActiveVotingSession(null);
+              }}
+              session={activeVotingSession}
+            />
+          )}
+
+          {isCreateVotingSessionOpen && selectedMeetingId && (
+            <CreateVotingSessionModal
+              isOpen={isCreateVotingSessionOpen}
+              onClose={() => setIsCreateVotingSessionOpen(false)}
+              meetingId={selectedMeetingId}
+            />
+          )}
+
+          {isAddResolutionOpen && selectedMeetingId && (
+            <AddResolutionModal
+              isOpen={isAddResolutionOpen}
+              onClose={() => setIsAddResolutionOpen(false)}
+              meetingId={selectedMeetingId}
+            />
+          )}
+        </Suspense>
+      </PremiumFeatureGate>
+    </AcademicPageLayout>
+  );
+});
+
+RatMeetingPage.displayName = 'RatMeetingPage';
+
+export default RatMeetingPage;

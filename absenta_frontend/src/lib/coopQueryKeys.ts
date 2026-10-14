@@ -83,6 +83,13 @@ export const COOP_QUERY_KEYS = {
 
   // ─── Pengumuman (Announcements) ───────────────────────────────────────────
   announcements: ['koperasi-announcements-list'] as const,
+
+  // ─── Rapat Anggota Tahunan (RAT) & e-Voting ──────────────────────────────
+  ratMeetings: (status = '', year = '') => ['coop-rat-meetings', status, year] as const,
+  ratMeetingDetail: (id: string) => ['coop-rat-meeting-detail', id] as const,
+  ratQuorum: (id: string) => ['coop-rat-quorum', id] as const,
+  ratMyAttendance: (id: string) => ['coop-rat-my-attendance', id] as const,
+  ratVotingResults: (sessionId: string) => ['coop-rat-voting-results', sessionId] as const,
 } as const;
 
 /**
@@ -248,4 +255,20 @@ export function invalidateMembersCaches(queryClient: QueryClient, memberId?: str
     queryClient.invalidateQueries({ queryKey: ['koperasi-member-detail', memberId] });
   }
 }
+
+/**
+ * Invalidate all cooperative RAT & e-voting queries (meeting list, quorum, attendances, voting sessions).
+ */
+export function invalidateRatCaches(queryClient: QueryClient, meetingId?: string, sessionId?: string) {
+  queryClient.invalidateQueries({ queryKey: ['coop-rat-meetings'] });
+  if (meetingId) {
+    queryClient.invalidateQueries({ queryKey: ['coop-rat-meeting-detail', meetingId] });
+    queryClient.invalidateQueries({ queryKey: ['coop-rat-quorum', meetingId] });
+    queryClient.invalidateQueries({ queryKey: ['coop-rat-my-attendance', meetingId] });
+  }
+  if (sessionId) {
+    queryClient.invalidateQueries({ queryKey: ['coop-rat-voting-results', sessionId] });
+  }
+}
+
 

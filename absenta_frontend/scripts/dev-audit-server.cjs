@@ -20,7 +20,8 @@ const registryPaths = {
   myattendancepage: 'src/pages/attendance/MyAttendancePage.tsx',
   rekaphariansiswapage: 'src/pages/attendance/rekap/RekapHarianSiswaPage.tsx',
   rekapbulanansiswapage: 'src/pages/attendance/rekap/RekapBulananSiswaPage.tsx',
-  gate_security_audit: 'src/pages/attendance/LogAksesGerbangPage.tsx'
+  gate_security_audit: 'src/pages/attendance/LogAksesGerbangPage.tsx',
+  coop_rat: 'src/pages/cooperative/RatMeetingPage.tsx'
 };
 
 // Fungsi pencarian dinamis cerdas untuk mendeteksi lokasi file secara otomatis

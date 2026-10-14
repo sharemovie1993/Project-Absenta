@@ -99,6 +99,7 @@ model Tenant {
   CoopExpense          CoopExpense[]
   CoopCashDeposit      CoopCashDeposit[]
   CoopFundTransfer     CoopFundTransfer[]
+  coopMeetings         CoopMeeting[]
 
   organizationalPositions   OrganizationalPosition[]
   organizationalAssignments OrganizationalAssignment[]
@@ -2640,8 +2641,9 @@ model Member {
   sales             Sale[]
   tickets           Ticket[]
   shuAllocations    ShuAllocation[]
-  vouchers          Voucher[]
-  pointTransactions CoopPointTransaction[]
+  vouchers               Voucher[]
+  pointTransactions      CoopPointTransaction[]
+  coopMeetingAttendances CoopMeetingAttendance[]
 
   joinDate  DateTime @default(now())
   createdAt DateTime @default(now())
@@ -3396,6 +3398,164 @@ enum PPOBStatus {
   PENDING
   SUCCESS
   FAILED
+}
+
+// --- MODUL TATA KELOLA RAT & E-VOTING KOPERASI (UU 25/1992 Ps 22-27) ---
+
+enum CoopMeetingType {
+  RAT
+  RAPAT_LUAR_BIASA
+  RAPAT_RENCANA_KERJA
+}
+
+enum CoopMeetingStatus {
+  DRAFT
+  SCHEDULED
+  REGISTRATION_OPEN
+  QUORUM_REACHED
+  IN_SESSION
+  ADJOURNED
+  RATIFIED
+  CLOSED
+}
+
+enum AttendanceMethod {
+  RFID_CARD
+  QR_BARCODE
+  MANUAL_OPERATOR
+  ONLINE_SELF
+}
+
+enum VotingSessionStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+enum VotingCategory {
+  RESOLUTION
+  ELECTION
+}
+
+model CoopMeeting {
+  id                 String                  @id @default(uuid())
+  tenantId           String
+  title              String
+  meetingType        CoopMeetingType         @default(RAT)
+  fiscalYear         Int
+  date               DateTime
+  startTime          String
+  endTime            String?
+  location           String
+  description        String?                 @db.Text
+  totalActiveMembers Int                     @default(0)
+  quorumTarget       Int                     @default(0)
+  status             CoopMeetingStatus       @default(DRAFT)
+  lpjDocumentUrl     String?
+  auditDocumentUrl   String?
+  minutesUrl         String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  Tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agendas            CoopMeetingAgenda[]
+  attendances        CoopMeetingAttendance[]
+  votingSessions     CoopVotingSession[]
+  resolutions        CoopMeetingResolution[]
+
+  @@index([tenantId])
+  @@index([tenantId, fiscalYear])
+  @@index([tenantId, status])
+}
+
+model CoopMeetingAgenda {
+  id          String      @id @default(uuid())
+  meetingId   String
+  order       Int         @default(1)
+  title       String
+  presenter   String?
+  durationMin Int         @default(30)
+  isCompleted Boolean     @default(false)
+
+  Meeting     CoopMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId, order])
+}
+
+model CoopMeetingAttendance {
+  id             String           @id @default(uuid())
+  meetingId      String
+  memberId       String
+  method         AttendanceMethod @default(ONLINE_SELF)
+  attendedAt     DateTime         @default(now())
+  verifiedBy     String?
+  proxyForMember String?
+
+  Meeting        CoopMeeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  Member         Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([meetingId, memberId])
+  @@index([meetingId])
+  @@index([memberId])
+}
+
+model CoopVotingSession {
+  id        String              @id @default(uuid())
+  meetingId String
+  agendaId  String?
+  title     String
+  category  VotingCategory      @default(RESOLUTION)
+  status    VotingSessionStatus @default(PENDING)
+  openedAt  DateTime?
+  closedAt  DateTime?
+  minVotes  Int                 @default(1)
+
+  Meeting   CoopMeeting         @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  options   CoopVotingOption[]
+  ballots   CoopVotingBallot[]
+
+  @@index([meetingId])
+  @@index([status])
+}
+
+model CoopVotingOption {
+  id          String            @id @default(uuid())
+  sessionId   String
+  label       String
+  description String?
+  voteCount   Int               @default(0)
+  order       Int               @default(1)
+
+  Session     CoopVotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+model CoopVotingBallot {
+  id        String            @id @default(uuid())
+  sessionId String
+  voterHash String
+  optionId  String
+  castAt    DateTime          @default(now())
+
+  Session   CoopVotingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, voterHash])
+  @@index([sessionId])
+}
+
+model CoopMeetingResolution {
+  id         String      @id @default(uuid())
+  meetingId  String
+  number     String
+  title      String
+  content    String      @db.Text
+  approvedAt DateTime    @default(now())
+
+  Meeting    CoopMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
 }
 
 // --- MODUL HUBIN (PKL) ---
