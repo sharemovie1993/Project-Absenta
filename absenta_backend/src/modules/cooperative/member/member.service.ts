@@ -20,11 +20,45 @@ const idempotencyInterval = setInterval(() => {
 }, 60 * 1000);
 idempotencyInterval.unref?.();
 
+// In-Memory Members Short-Lived Cache (30 detik TTL) untuk mengoptimalkan performa read & throughput
+const membersCache = new Map<string, { data: any; timestamp: number }>();
+const MEMBERS_CACHE_TTL_MS = 30 * 1000;
+
+const membersCacheInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of membersCache.entries()) {
+        if (now - value.timestamp > MEMBERS_CACHE_TTL_MS) {
+            membersCache.delete(key);
+        }
+    }
+}, 60 * 1000);
+membersCacheInterval.unref?.();
+
 export class MemberService {
     
-    // Get all members with Core Data
+    // Invalidate cached members for a specific tenant or globally
+    static invalidateCache(tenantId?: string) {
+        if (!tenantId) {
+            membersCache.clear();
+            return;
+        }
+        for (const key of membersCache.keys()) {
+            if (key.startsWith(`members:${tenantId}:`)) {
+                membersCache.delete(key);
+            }
+        }
+    }
+
+    
+    // Get all members with Core Data (Optimized with In-Memory Short-Lived Cache)
     static async getMembers(scope: any) {
         const tenantId = scope?.tenantId || scope?.tenant_id;
+        const cacheKey = `members:${tenantId}:${JSON.stringify(scope || {})}`;
+
+        const cached = membersCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < MEMBERS_CACHE_TTL_MS) {
+            return cached.data;
+        }
         
         let where = { tenantId };
         
@@ -62,7 +96,7 @@ export class MemberService {
         });
 
         // Map to flat structure for Frontend compatibility
-        return members.map(m => ({
+        const result = members.map(m => ({
             ...m,
             name: m.Siswa?.nama_siswa || m.Guru?.nama_guru || m.User?.full_name || 'Unknown',
             email: m.User?.email || '-',
@@ -71,6 +105,9 @@ export class MemberService {
             identityNo: m.Siswa?.nis || m.Guru?.nip || '-',
             savings: m.savings
         }));
+
+        membersCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        return result;
     }
 
     // Get member by ID
@@ -386,6 +423,7 @@ export class MemberService {
             idempotencyCache.set(idempotencyKey, { data: createdMemberResult, timestamp: Date.now() });
         }
 
+        this.invalidateCache(tenantId);
         return createdMemberResult;
     }
 
@@ -414,10 +452,12 @@ export class MemberService {
             updateData.pin = await bcrypt.hash(data.pin, 10);
         }
         
-        return await prisma.member.update({
+        const updated = await prisma.member.update({
             where: { id },
             data: updateData
         });
+        this.invalidateCache(tenantId);
+        return updated;
     }
 
     // Delete member
@@ -425,9 +465,11 @@ export class MemberService {
         const member = await this.getMemberById(id, { tenantId });
         if (!member) throw new Error('Member not found');
 
-        return await prisma.member.delete({
+        const deleted = await prisma.member.delete({
             where: { id }
         });
+        this.invalidateCache(tenantId);
+        return deleted;
     }
 
     // Import bulk members from Excel data rows
@@ -508,6 +550,7 @@ export class MemberService {
             }
         }
 
+        this.invalidateCache(tenantId);
         return results;
     }
 
@@ -536,7 +579,7 @@ export class MemberService {
         };
 
         // Run in Prisma transaction to ensure atomicity
-        return await prisma.$transaction(async (tx: any) => {
+        const payout = await prisma.$transaction(async (tx: any) => {
             let totalOthers = 0;
             for (const saving of member.savings) {
                 const balance = Number(saving.amount);
@@ -594,6 +637,9 @@ export class MemberService {
 
             return payoutDetails;
         });
+
+        this.invalidateCache(tenantId);
+        return payout;
     }
 
     // Get students or teachers not in the Member table
@@ -781,6 +827,8 @@ export class MemberService {
             idempotencyCache.set(idempotencyKey, { data: bulkResult, timestamp: Date.now() });
         }
 
+        this.invalidateCache(tenantId);
         return bulkResult;
     }
 }
+

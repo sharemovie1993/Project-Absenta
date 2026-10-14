@@ -462,4 +462,68 @@ describe('MemberService (Phase-3 Comprehensive Suite)', () => {
       expect(result.errors).toHaveLength(1);
     });
   });
+
+  describe('Phase-4 Performance Caching & Invalidation', () => {
+    it('should return cached members on subsequent getMembers call and query DB only once', async () => {
+      MemberService.invalidateCache(tenantId);
+      (prisma.member.findMany as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 'mem-cache-1',
+          memberNo: '001',
+          type: 'STUDENT',
+          status: 'ACTIVE',
+          Siswa: { nama_siswa: 'Cached Student', no_hp: '-', alamat: '-', nis: '999' },
+          Guru: null,
+          User: null,
+          savings: []
+        }
+      ]);
+
+      const res1 = await MemberService.getMembers({ tenantId, tenantWide: true });
+      const res2 = await MemberService.getMembers({ tenantId, tenantWide: true });
+
+      expect(res1).toEqual(res2);
+      expect(prisma.member.findMany).toHaveBeenCalledTimes(1);
+    });
+
+    it('should refresh from DB after invalidateCache is called', async () => {
+      MemberService.invalidateCache(tenantId);
+      (prisma.member.findMany as jest.Mock)
+        .mockResolvedValueOnce([
+          {
+            id: 'mem-cache-1',
+            memberNo: '001',
+            type: 'STUDENT',
+            status: 'ACTIVE',
+            Siswa: { nama_siswa: 'Version 1', no_hp: '-', alamat: '-', nis: '999' },
+            Guru: null,
+            User: null,
+            savings: []
+          }
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'mem-cache-1',
+            memberNo: '001',
+            type: 'STUDENT',
+            status: 'ACTIVE',
+            Siswa: { nama_siswa: 'Version 2 (Refreshed)', no_hp: '-', alamat: '-', nis: '999' },
+            Guru: null,
+            User: null,
+            savings: []
+          }
+        ]);
+
+      const res1 = await MemberService.getMembers({ tenantId, tenantWide: true });
+      expect(res1[0].name).toBe('Version 1');
+
+      // Invalidate cache
+      MemberService.invalidateCache(tenantId);
+
+      const res2 = await MemberService.getMembers({ tenantId, tenantWide: true });
+      expect(res2[0].name).toBe('Version 2 (Refreshed)');
+      expect(prisma.member.findMany).toHaveBeenCalledTimes(2);
+    });
+  });
 });
+

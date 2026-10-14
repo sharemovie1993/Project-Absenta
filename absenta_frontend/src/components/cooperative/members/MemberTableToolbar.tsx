@@ -29,7 +29,7 @@ export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = Rea
 }) => {
   return (
     <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-      <div className="relative w-64">
+      <div className="relative w-full sm:w-64">
         <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
           <Search size={14} />
         </span>
@@ -47,21 +47,23 @@ export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = Rea
         />
       </div>
 
-      <SearchableSelect
-        id="member-type-select"
-        value={filterType}
-        onValueChange={(val) => {
-          setFilterType(val as 'ALL' | 'STUDENT' | 'TEACHER');
-          setFilterKelasId('ALL');
-          setPage(1);
-        }}
-        options={filterTypeOptions}
-        placeholder="Semua Tipe"
-        triggerClassName="min-w-[140px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
-      />
+      <div className="w-full sm:w-auto">
+        <SearchableSelect
+          id="member-type-select"
+          value={filterType}
+          onValueChange={(val) => {
+            setFilterType(val as 'ALL' | 'STUDENT' | 'TEACHER');
+            setFilterKelasId('ALL');
+            setPage(1);
+          }}
+          options={filterTypeOptions}
+          placeholder="Semua Tipe"
+          triggerClassName="w-full sm:w-auto sm:min-w-[140px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+        />
+      </div>
 
       {filterType === 'STUDENT' && (
-        <div className="animate-in fade-in slide-in-from-left-3 duration-200">
+        <div className="w-full sm:w-auto animate-in fade-in slide-in-from-left-3 duration-200">
           <SearchableSelect
             id="member-kelas-select"
             value={filterKelasId}
@@ -71,7 +73,7 @@ export const MemberTableToolbarLeft: React.FC<MemberTableToolbarLeftProps> = Rea
             }}
             options={filterKelasOptions}
             placeholder="Semua Kelas"
-            triggerClassName="min-w-[160px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+            triggerClassName="w-full sm:w-auto sm:min-w-[160px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
           />
         </div>
       )}
