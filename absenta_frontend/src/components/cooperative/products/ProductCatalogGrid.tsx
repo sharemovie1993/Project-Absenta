@@ -20,6 +20,7 @@ interface ProductCatalogGridProps {
   loading: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  canViewCostPrice?: boolean;
   onEdit: (product: any) => void;
   onDelete: (id: string) => void;
   emptyState: React.ReactNode;
@@ -35,6 +36,7 @@ export const ProductCatalogGrid: React.FC<ProductCatalogGridProps> = React.memo(
   loading,
   canUpdate,
   canDelete,
+  canViewCostPrice = false,
   onEdit,
   onDelete,
   emptyState,
@@ -123,12 +125,14 @@ export const ProductCatalogGrid: React.FC<ProductCatalogGridProps> = React.memo(
                   <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">
                     Rp {priceNum.toLocaleString('id-ID')}
                   </p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                    <span>Modal: Rp {costNum.toLocaleString('id-ID')}</span>
-                    <span className={marginPct >= 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
-                      {marginPct > 0 ? `+${marginPct.toFixed(0)}%` : `${marginPct.toFixed(0)}%`}
-                    </span>
-                  </div>
+                  {canViewCostPrice && (
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                      <span>Modal: Rp {costNum.toLocaleString('id-ID')}</span>
+                      <span className={marginPct >= 0 ? "text-emerald-600 font-bold" : "text-rose-500 font-bold"}>
+                        {marginPct > 0 ? `+${marginPct.toFixed(0)}%` : `${marginPct.toFixed(0)}%`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick Action Footer */}

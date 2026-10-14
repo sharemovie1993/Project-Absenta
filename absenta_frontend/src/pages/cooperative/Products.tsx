@@ -111,20 +111,47 @@ const Products: React.FC = React.memo(() => {
     };
   }, [subscribe, unsubscribe, queryClient]);
 
+  const isManagerial = canUpdateProducts || canManageInventory || canManageCategories;
+
   // Layout info structures
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative/dashboard' },
-    { label: 'Katalog & Barang Masuk' }
-  ], []);
+    { label: isManagerial ? 'Katalog & Barang Masuk' : 'Katalog Produk' }
+  ], [isManagerial]);
 
   const tabOptions = useMemo((): TabOption[] => [
     { id: 'catalog', label: 'Katalog Barang', icon: Package },
     ...(canManageInventory ? [{ id: 'inventory', label: 'Manajemen Stok', icon: Boxes }] : []),
     ...(canUpdateProducts ? [{ id: 'stock-in', label: 'Input Barang Masuk', icon: Plus }] : []),
-    { id: 'history', label: 'Riwayat Barang Masuk', icon: History },
+    ...(canUpdateProducts ? [{ id: 'history', label: 'Riwayat Barang Masuk', icon: History }] : []),
     ...(canManageCategories ? [{ id: 'categories', label: 'Kategori Barang', icon: Tag }] : []),
     ...(canManageInventory ? [{ id: 'opname', label: 'Stock Opname', icon: BarChart2 }] : [])
   ], [canManageInventory, canUpdateProducts, canManageCategories]);
+
+  const pageInstruction = useMemo(() => {
+    if (isManagerial) {
+      return {
+        title: "Panduan Fitur Inventori & Barang Masuk",
+        description: "Gunakan modul ini untuk mengelola stok, harga produk, penyesuaian fisik (opname), dan merekam transaksi barang masuk (stock-in) yang terintegrasi jurnal akuntansi otomatis.",
+        items: [
+          { text: "Pantau persediaan stok barang secara berkala di tab Katalog Barang." },
+          { text: "Lakukan penyesuaian stok jika terdapat selisih fisik melalui tombol Opname." },
+          { text: "Gunakan tab Input Barang Masuk untuk menambah pasokan dari supplier." },
+          { text: "Periksa transaksi pembelian historis di tab Riwayat Barang Masuk." }
+        ]
+      };
+    }
+    return {
+      title: "Panduan Belanja Toko Koperasi",
+      description: "Jelajahi katalog produk koperasi sekolah, cek ketersediaan stok fisik, dan estimasi harga barang sebelum berbelanja.",
+      items: [
+        { text: "Cari produk dengan mudah menggunakan nama atau kode barang pada kolom pencarian." },
+        { text: "Filter berdasarkan kategori untuk menemukan alat tulis, seragam, atau konsumsi." },
+        { text: "Ganti tampilan antara mode Etalase Visual dan Tabel sesuai kenyamanan Anda." },
+        { text: "Lakukan transaksi pembelian di kasir koperasi menggunakan pembayaran Tunai atau Saldo Simpanan." }
+      ]
+    };
+  }, [isManagerial]);
 
   return (
     <PremiumFeatureGate
@@ -132,45 +159,40 @@ const Products: React.FC = React.memo(() => {
       featureName="Manajemen Produk"
     >
       <AcademicPageLayout
-        title="Inventori & Barang Masuk Koperasi"
-        description="Kelola inventori, harga modal, harga jual, stock opname, dan riwayat barang masuk."
+        title={isManagerial ? "Inventori & Barang Masuk Koperasi" : "Katalog Toko Koperasi"}
+        description={isManagerial 
+          ? "Kelola inventori, harga modal, harga jual, stock opname, dan riwayat barang masuk."
+          : "Daftar produk, perlengkapan sekolah, alat tulis, dan kebutuhan yang tersedia di koperasi."}
         hardeningModuleKey="coop_products"
         breadcrumbs={breadcrumbs}
-        instruction={{
-          title: "Panduan Fitur Inventori & Barang Masuk",
-          description: "Gunakan modul ini untuk mengelola stok, harga produk, penyesuaian fisik (opname), dan merekam transaksi barang masuk (stock-in) yang terintegrasi jurnal akuntansi otomatis.",
-          items: [
-            { text: "Pantau persediaan stok barang secara berkala di tab Katalog Barang." },
-            { text: "Lakukan penyesuaian stok jika terdapat selisih fisik melalui tombol Opname." },
-            { text: "Gunakan tab Input Barang Masuk untuk menambah pasokan dari supplier." },
-            { text: "Periksa transaksi pembelian historis di tab Riwayat Barang Masuk." }
-          ]
-        }}
+        instruction={pageInstruction}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0">
           <div className="space-y-4">
             {/* Action buttons & Shortcuts */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-              <TabSwitcher
-                options={tabOptions}
-                activeTab={activeTab}
-                onChange={(id) => setActiveTab(id as 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname')}
-              />
+            {tabOptions.length > 1 && (
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <TabSwitcher
+                  options={tabOptions}
+                  activeTab={activeTab}
+                  onChange={(id) => setActiveTab(id as 'catalog' | 'inventory' | 'stock-in' | 'history' | 'categories' | 'opname')}
+                />
 
-              {canViewReports && (
-                <div className="flex justify-end items-center">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/cooperative/inventory-report')}
-                    className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
-                    title="Buka Laporan Persediaan"
-                  >
-                    <BarChart2 size={15} />
-                    <span>Laporan Persediaan</span>
-                  </button>
-                </div>
-              )}
-            </div>
+                {canViewReports && (
+                  <div className="flex justify-end items-center">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/cooperative/inventory-report')}
+                      className="flex items-center gap-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 bg-blue-50 dark:bg-blue-950/40 hover:bg-blue-100 border border-blue-200 dark:border-blue-800 px-3.5 py-1.5 rounded-xl transition-all shadow-2xs cursor-pointer"
+                      title="Buka Laporan Persediaan"
+                    >
+                      <BarChart2 size={15} />
+                      <span>Laporan Persediaan</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Empty state detection */}
             {products.length === 0 && !loading && (

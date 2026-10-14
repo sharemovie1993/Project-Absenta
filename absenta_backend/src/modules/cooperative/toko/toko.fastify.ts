@@ -7,6 +7,7 @@ import { EWalletService } from './ewallet.service';
 import { ProductCategoryService } from './product-category.service';
 import { OpnameService } from './opname.service';
 import { mockTenant } from '../../../utils/mocks';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { smartReadSheet } from '../../../utils/excel-import.utils';
 import * as XLSX from 'xlsx-js-style';
@@ -56,6 +57,24 @@ export default async function tokoRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const search = (req.query as any).search;
             const products = await TokoService.getProducts(tenantId, search);
+
+            const userId = req.user?.id || req.user?.userId || req.user?.user_id;
+            const roleName = req.user?.roleName || req.user?.Role?.name || req.user?.role?.name;
+            const isSystemAdmin = roleName === 'ADMIN' || roleName === 'SUPERADMIN';
+
+            let canViewCost = isSystemAdmin;
+            if (!canViewCost && userId) {
+                const authCheck = await authorizationService.isUserAuthorized(String(userId), ['cooperative.store.products.view.list'], { user: req.user });
+                canViewCost = authCheck.allowed;
+            }
+
+            if (!canViewCost) {
+                return products.map((p: any) => ({
+                    ...p,
+                    costPrice: 0,
+                }));
+            }
+
             return products;
         } catch (error) {
         appLogger.error({ err: error }, 'Cooperative route error');

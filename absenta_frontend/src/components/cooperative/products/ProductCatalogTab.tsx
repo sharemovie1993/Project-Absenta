@@ -13,6 +13,7 @@ import { importDataFromExcel } from '../../../utils/import.utils';
 import { downloadFileFromBlob } from '../../../utils/file-download.utils';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../../store/authStore';
+import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { cn } from '@/lib/utils';
 
@@ -70,13 +71,17 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const canCreate = user?.capabilities?.includes('cooperative.store.products.create') || false;
-  const canUpdate = user?.capabilities?.includes('cooperative.store.products.update') || false;
-  const canDelete = user?.capabilities?.includes('cooperative.store.products.delete') || false;
+  const { can, isAdmin, isKoperasiStore, isKoperasiHead } = useCapabilities();
+  const canCreate = isAdmin || isKoperasiStore || can('cooperative.store.products.create');
+  const canUpdate = isAdmin || isKoperasiStore || can('cooperative.store.products.update');
+  const canDelete = isAdmin || isKoperasiStore || can('cooperative.store.products.delete');
+  const canViewCostPrice = isAdmin || isKoperasiStore || isKoperasiHead || can('cooperative.store.products.view.list');
 
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get('view');
-  const viewMode: 'table' | 'grid' = viewParam === 'grid' ? 'grid' : 'table';
+  // For cooperative members / non-managers, default to visual 'grid' (Etalase); for managers default to 'table'
+  const defaultViewMode = canViewCostPrice ? 'table' : 'grid';
+  const viewMode: 'table' | 'grid' = viewParam ? (viewParam === 'grid' ? 'grid' : 'table') : defaultViewMode;
 
   const setViewMode = useCallback((mode: 'table' | 'grid') => {
     setSearchParams(prev => {
@@ -300,89 +305,104 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
   };
 
   // Table columns definition (Desktop)
-  const catalogColumns = useMemo<Column[]>(() => [
-    {
-      key: 'name',
-      label: 'Produk',
-      sortable: true,
-      render: (_val: unknown, p: Product) => (
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 dark:border-emerald-900">
-            {getInitials(p.name)}
+  const catalogColumns = useMemo<Column[]>(() => {
+    const cols: Column[] = [
+      {
+        key: 'name',
+        label: 'Produk',
+        sortable: true,
+        render: (_val: unknown, p: Product) => (
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 border border-emerald-100 dark:border-emerald-900">
+              {getInitials(p.name)}
+            </div>
+            <div>
+              <p className="font-bold text-gray-800 dark:text-slate-100 text-sm">{p.name}</p>
+              <p className="text-xs text-gray-400 font-mono">{p.code}</p>
+            </div>
           </div>
-          <div>
-            <p className="font-bold text-gray-800 dark:text-slate-100 text-sm">{p.name}</p>
-            <p className="text-xs text-gray-400 font-mono">{p.code}</p>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'category',
-      label: 'Kategori',
-      sortable: true,
-      render: (_val: unknown, p: Product) => (
-        <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-          {p.category || 'Umum'}
-        </span>
-      )
-    },
-    {
-      key: 'costPrice',
-      label: 'Harga Beli (Modal)',
-      sortable: true,
-      render: (_val: unknown, p: Product) => `Rp ${Number(p.costPrice || 0).toLocaleString('id-ID')}`
-    },
-    {
-      key: 'price',
-      label: 'Harga Jual',
-      sortable: true,
-      render: (_val: unknown, p: Product) => (
-        <span className="font-bold text-emerald-600 dark:text-emerald-400">
-          Rp ${Number(p.price || 0).toLocaleString('id-ID')}
-        </span>
-      )
-    },
-    {
-      key: 'stock',
-      label: 'Stok',
-      sortable: true,
-      render: (_val: unknown, p: Product) => {
-        const isLow = p.stock <= 5;
-        return (
-          <span className={cn(
-            "px-2.5 py-0.5 rounded-full text-xs font-bold",
-            isLow ? "bg-rose-50 text-rose-600 border border-rose-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"
-          )}>
-            {p.stock} pcs
+        )
+      },
+      {
+        key: 'category',
+        label: 'Kategori',
+        sortable: true,
+        render: (_val: unknown, p: Product) => (
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+            {p.category || 'Umum'}
           </span>
-        );
-      }
-    },
-    {
-      key: 'actions',
-      label: 'Aksi',
-      render: (_val: unknown, p: Product) => (
-        <div className="flex items-center space-x-2">
-          {canUpdate && (
-            <>
-              <Button size="sm" variant="outline" onClick={() => handleOpenOpnameModal(p)}>
-                Opname
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => handleOpenProductModal(p)} icon={<Edit size={14} />}>
-                Edit
-              </Button>
-            </>
-          )}
-          {canDelete && (
-            <Button size="sm" variant="danger" onClick={() => handleProductDeleteClick(p.id)} icon={<Trash size={14} />}>
-              Hapus
-            </Button>
-          )}
-        </div>
-      )
+        )
+      },
+    ];
+
+    if (canViewCostPrice) {
+      cols.push({
+        key: 'costPrice',
+        label: 'Harga Beli (Modal)',
+        sortable: true,
+        render: (_val: unknown, p: Product) => `Rp ${Number(p.costPrice || 0).toLocaleString('id-ID')}`
+      });
     }
-  ], [canUpdate, canDelete, handleOpenOpnameModal, handleOpenProductModal, handleProductDeleteClick]);
+
+    cols.push(
+      {
+        key: 'price',
+        label: 'Harga Jual',
+        sortable: true,
+        render: (_val: unknown, p: Product) => (
+          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+            Rp ${Number(p.price || 0).toLocaleString('id-ID')}
+          </span>
+        )
+      },
+      {
+        key: 'stock',
+        label: 'Stok',
+        sortable: true,
+        render: (_val: unknown, p: Product) => {
+          const isLow = p.stock <= 5 && p.stock > 0;
+          const isOut = p.stock <= 0;
+          return (
+            <span className={cn(
+              "px-2.5 py-0.5 rounded-full text-xs font-bold",
+              isOut ? "bg-rose-50 text-rose-600 border border-rose-200" :
+              isLow ? "bg-amber-50 text-amber-600 border border-amber-200" : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+            )}>
+              {isOut ? 'Habis' : `${p.stock} ${p.unit || 'pcs'}`}
+            </span>
+          );
+        }
+      }
+    );
+
+    if (canUpdate || canDelete) {
+      cols.push({
+        key: 'actions',
+        label: 'Aksi',
+        render: (_val: unknown, p: Product) => (
+          <div className="flex items-center space-x-2">
+            {canUpdate && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => handleOpenOpnameModal(p)}>
+                  Opname
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleOpenProductModal(p)} icon={<Edit size={14} />}>
+                  Edit
+                </Button>
+              </>
+            )}
+            {canDelete && (
+              <Button size="sm" variant="danger" onClick={() => handleProductDeleteClick(p.id)} icon={<Trash size={14} />}>
+                Hapus
+              </Button>
+            )}
+          </div>
+        )
+      });
+    }
+
+    return cols;
+  }, [canViewCostPrice, canUpdate, canDelete, handleOpenOpnameModal, handleOpenProductModal, handleProductDeleteClick]);
 
   // Clean Mobile Card (Persona Kasir Pintar)
   const renderProductMobileCard = useCallback((product: Product) => {
@@ -432,9 +452,11 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] text-slate-400">
-              Modal: Rp {Number(product.costPrice || 0).toLocaleString('id-ID')}
-            </span>
+            {canViewCostPrice && (
+              <span className="text-[10px] text-slate-400">
+                Modal: Rp {Number(product.costPrice || 0).toLocaleString('id-ID')}
+              </span>
+            )}
             {canUpdate && (
               <button
                 type="button"
@@ -452,7 +474,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
         </div>
       </div>
     );
-  }, [canUpdate, handleOpenProductModal]);
+  }, [canUpdate, canViewCostPrice, handleOpenProductModal]);
 
   // Clean 1-line Mobile Search & Filter Toolbar
   const mobileToolbar = useMemo(() => (
@@ -638,6 +660,7 @@ export const ProductCatalogTab = React.memo<ProductCatalogTabProps>(({
               loading={loading}
               canUpdate={canUpdate}
               canDelete={canDelete}
+              canViewCostPrice={canViewCostPrice}
               onEdit={handleOpenProductModal}
               onDelete={handleProductDeleteClick}
               emptyState={emptyStateContent}
