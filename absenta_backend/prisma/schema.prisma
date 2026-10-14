@@ -2766,6 +2766,9 @@ model Account {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, code])
 }
 
 model Journal {
@@ -2781,6 +2784,7 @@ model Journal {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId])
+  @@index([tenantId, date])
 }
 
 model JournalItem {
@@ -2793,6 +2797,9 @@ model JournalItem {
 
   accountId String
   account   Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([journalId])
+  @@index([accountId])
 }
 
 // --- TOKO / PERDAGANGAN ---

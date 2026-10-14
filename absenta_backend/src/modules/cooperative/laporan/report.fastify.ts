@@ -2,6 +2,7 @@
 import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import { ReportService } from './report.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
@@ -10,78 +11,169 @@ const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
 };
 
+// ─── ZOD SCHEMAS (Phase 4 Hardening: Financial Reports & Payroll Guards) ────
+const dateRangeQuerySchema = z.object({
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+    asOfDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+});
+
+const ledgerParamsSchema = z.object({
+    code: z.string().min(1, 'Kode akun wajib diisi').max(20),
+});
+
+const payrollQuerySchema = z.object({
+    month: z.coerce.number().int().min(1).max(12).optional(),
+    year: z.coerce.number().int().min(2020).max(2100).optional(),
+});
+
+const payrollActionBodySchema = z.object({
+    month: z.coerce.number().int().min(1).max(12, 'Bulan harus antara 1 sampai 12'),
+    year: z.coerce.number().int().min(2020).max(2100, 'Tahun tidak valid'),
+});
+
+const inventoryStockQuerySchema = z.object({
+    category: z.string().max(50).optional(),
+    lowStockOnly: z.union([z.boolean(), z.string()]).optional(),
+});
+
+const inventoryPurchaseQuerySchema = z.object({
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal harus YYYY-MM-DD').optional(),
+    supplier: z.string().max(100).optional(),
+});
+
 export default async function reportRoutes(fastify: any) {
     // Get Balance Sheet (Neraca)
     fastify.get('/neraca', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const { asOfDate } = req.query as any;
-        const asOf = asOfDate ? new Date(asOfDate) : undefined;
-        const report = await ReportService.getBalanceSheet(tenantId, asOf);
-        return reply.send({ data: report });
+        try {
+            const tenantId = getTenantId(req);
+            const query = dateRangeQuerySchema.parse(req.query);
+            const asOf = query.asOfDate ? new Date(query.asOfDate) : undefined;
+            const report = await ReportService.getBalanceSheet(tenantId, asOf);
+            return reply.send({ data: report });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan neraca');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
+        }
     });
 
     // Get Income Statement (Laba Rugi)
-    // Query params opsional: ?startDate=2026-01-01&endDate=2026-12-31
     fastify.get('/laba-rugi', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const { startDate, endDate } = req.query as any;
-        const start = startDate ? new Date(startDate) : undefined;
-        const end = endDate ? new Date(endDate) : undefined;
-        const report = await ReportService.getIncomeStatement(tenantId, start, end);
-        return reply.send({ data: report });
+        try {
+            const tenantId = getTenantId(req);
+            const query = dateRangeQuerySchema.parse(req.query);
+            const start = query.startDate ? new Date(query.startDate) : undefined;
+            const end = query.endDate ? new Date(query.endDate) : undefined;
+            const report = await ReportService.getIncomeStatement(tenantId, start, end);
+            return reply.send({ data: report });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan laba rugi');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
+        }
     });
 
     // Get Cash Flow Statement (Laporan Arus Kas)
     fastify.get('/arus-kas', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const { startDate, endDate } = req.query as any;
-        const start = startDate ? new Date(startDate) : undefined;
-        const end = endDate ? new Date(endDate) : undefined;
-        const report = await ReportService.getCashFlowStatement(tenantId, start, end);
-        return reply.send({ data: report });
+        try {
+            const tenantId = getTenantId(req);
+            const query = dateRangeQuerySchema.parse(req.query);
+            const start = query.startDate ? new Date(query.startDate) : undefined;
+            const end = query.endDate ? new Date(query.endDate) : undefined;
+            const report = await ReportService.getCashFlowStatement(tenantId, start, end);
+            return reply.send({ data: report });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan arus kas');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
+        }
     });
 
     // Get General Ledger Detail by Account Code (Buku Besar Per Akun)
     fastify.get('/ledger/:code', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const { code } = req.params as { code: string };
-        const { startDate, endDate } = req.query as any;
-        const start = startDate ? new Date(startDate) : undefined;
-        const end = endDate ? new Date(endDate) : undefined;
-        const report = await ReportService.getGeneralLedgerByAccount(tenantId, code, start, end);
-        return reply.send({ data: report });
+        try {
+            const tenantId = getTenantId(req);
+            const { code } = ledgerParamsSchema.parse(req.params);
+            const query = dateRangeQuerySchema.parse(req.query);
+            const start = query.startDate ? new Date(query.startDate) : undefined;
+            const end = query.endDate ? new Date(query.endDate) : undefined;
+            const report = await ReportService.getGeneralLedgerByAccount(tenantId, code, start, end);
+            return reply.send({ data: report });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil buku besar per akun');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
+        }
     });
 
-    // Get Balance Sheet (Neraca - Flattened for Accounting.tsx)
+    // Get Balance Sheet (Neraca - Flattened for Accounting.tsx Trial Balance)
     fastify.get('/balance-sheet', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const report = await ReportService.getBalanceSheet(tenantId);
-        const flattened = [...report.assets, ...report.liabilities, ...report.equity];
-        return reply.send(flattened);
+        try {
+            const tenantId = getTenantId(req);
+            const report = await ReportService.getBalanceSheet(tenantId);
+            const flattened = [...report.assets, ...report.liabilities, ...report.equity];
+            return reply.send(flattened);
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil neraca saldo trial balance');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 
     // Get Journals list (for Jurnal Umum in Accounting.tsx)
     fastify.get('/journals', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const journals = await ReportService.getJournals(tenantId);
-        return reply.send(journals);
+        try {
+            const tenantId = getTenantId(req);
+            const journals = await ReportService.getJournals(tenantId);
+            return reply.send(journals);
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil daftar jurnal umum');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 
     // Get Member Savings Report
     fastify.get('/member-savings', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const report = await ReportService.getMemberSavingsReport(tenantId);
-        return reply.send(report);
+        try {
+            const tenantId = getTenantId(req);
+            const report = await ReportService.getMemberSavingsReport(tenantId);
+            return reply.send(report);
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan simpanan anggota');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
     });
 
     // Get Payroll Deductions Report
     fastify.get('/payroll-deductions', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
-        const tenantId = getTenantId(req);
-        const { month, year } = req.query as any;
-        const m = month ? parseInt(month) : new Date().getMonth() + 1;
-        const y = year ? parseInt(year) : new Date().getFullYear();
-        const report = await ReportService.getPayrollDeductionsReport(tenantId, m, y);
-        return reply.send(report);
+        try {
+            const tenantId = getTenantId(req);
+            const query = payrollQuerySchema.parse(req.query);
+            const m = query.month || new Date().getMonth() + 1;
+            const y = query.year || new Date().getFullYear();
+            const report = await ReportService.getPayrollDeductionsReport(tenantId, m, y);
+            return reply.send(report);
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal memuat rekapitulasi potongan gaji');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
+        }
     });
 
     const broadcastCoopAccounting = (req: any, type: string, payload: any = {}) => {
@@ -108,18 +200,18 @@ export default async function reportRoutes(fastify: any) {
     fastify.post('/payroll-deductions/post', { preHandler: [requireCapability('cooperative.savings.deposit')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { month, year } = req.body as any;
-            if (!month || !year) {
-                return reply.code(400).send({ message: 'Bulan dan tahun wajib diisi.' });
-            }
+            const body = payrollActionBodySchema.parse(req.body);
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
-            const result = await ReportService.postPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id, idempotencyKey);
-            broadcastCoopAccounting(req, 'PAYROLL_POSTED', { month: parseInt(month), year: parseInt(year), grandTotal: (result as any)?.grandTotal });
+            const result = await ReportService.postPayrollDeductions(tenantId, body.month, body.year, req.user?.id, idempotencyKey);
+            broadcastCoopAccounting(req, 'PAYROLL_POSTED', { month: body.month, year: body.year, grandTotal: (result as any)?.grandTotal });
             return reply.send(result);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            fastify.log.error({ err: error }, 'Error processing bulk payroll posting');
-            return reply.code(500).send({ message: error.message || 'Gagal memproses posting potongan gaji massal.' });
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal memproses posting potongan gaji massal');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
         }
     });
 
@@ -127,38 +219,42 @@ export default async function reportRoutes(fastify: any) {
     fastify.post('/payroll-deductions/cancel', { preHandler: [requireCapability('cooperative.savings.deposit')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { month, year } = req.body as any;
-            if (!month || !year) {
-                return reply.code(400).send({ message: 'Bulan dan tahun wajib diisi.' });
-            }
+            const body = payrollActionBodySchema.parse(req.body);
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key']) as string | undefined;
-            const result = await ReportService.cancelPayrollDeductions(tenantId, parseInt(month), parseInt(year), req.user?.id, idempotencyKey);
-            broadcastCoopAccounting(req, 'PAYROLL_CANCELLED', { month: parseInt(month), year: parseInt(year) });
+            const result = await ReportService.cancelPayrollDeductions(tenantId, body.month, body.year, req.user?.id, idempotencyKey);
+            broadcastCoopAccounting(req, 'PAYROLL_CANCELLED', { month: body.month, year: body.year });
             return reply.send(result);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            fastify.log.error({ err: error }, 'Error cancelling bulk payroll posting');
-            return reply.code(500).send({ message: error.message || 'Gagal membatalkan posting potongan gaji massal.' });
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal membatalkan posting potongan gaji massal');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
         }
     });
+
     // =========================================================================
-    // LAPORAN INVENTORI — Fase 1
+    // LAPORAN INVENTORI — Hardened
     // =========================================================================
 
     // GET /inventory/stock  →  Snapshot stok semua produk
     fastify.get('/inventory/stock', { preHandler: [requireCapability('cooperative.store.products.view.list')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { category, lowStockOnly } = req.query as any;
+            const query = inventoryStockQuerySchema.parse(req.query);
             const report = await ReportService.getInventoryStockReport(tenantId, {
-                category,
-                lowStockOnly: lowStockOnly === 'true' || lowStockOnly === '1',
+                category: query.category,
+                lowStockOnly: query.lowStockOnly === true || query.lowStockOnly === 'true' || query.lowStockOnly === '1',
             });
             return reply.send(report);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            fastify.log.error({ err: error }, 'Error generating inventory stock report');
-            return reply.code(500).send({ message: error.message || 'Gagal mengambil laporan stok.' });
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan stok produk');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
         }
     });
 
@@ -169,9 +265,8 @@ export default async function reportRoutes(fastify: any) {
             const report = await ReportService.getInventoryValuationReport(tenantId);
             return reply.send(report);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            fastify.log.error({ err: error }, 'Error generating inventory valuation report');
-            return reply.code(500).send({ message: error.message || 'Gagal mengambil laporan nilai persediaan.' });
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil laporan nilai persediaan');
+            return reply.status(500).send({ success: false, message: error.message });
         }
     });
 
@@ -179,16 +274,16 @@ export default async function reportRoutes(fastify: any) {
     fastify.get('/inventory/purchases', { preHandler: [requireCapability('cooperative.store.products.view.list')] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { startDate, endDate, supplier } = req.query as any;
-            const report = await ReportService.getPurchaseSummaryReport(tenantId, { startDate, endDate, supplier });
+            const query = inventoryPurchaseQuerySchema.parse(req.query);
+            const report = await ReportService.getPurchaseSummaryReport(tenantId, query);
             return reply.send(report);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
-            fastify.log.error({ err: error }, 'Error generating purchase summary report');
-            return reply.code(500).send({ message: error.message || 'Gagal mengambil rekap barang masuk.' });
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil rekap barang masuk');
+            const statusCode = error instanceof z.ZodError ? 400 : 500;
+            return reply.status(statusCode).send({ 
+                success: false, 
+                message: error instanceof z.ZodError ? error.errors.map(e => e.message).join(', ') : error.message 
+            });
         }
     });
 }
-
-
-

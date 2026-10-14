@@ -2742,7 +2742,7 @@
     "tableToolbar": true,
     "breadcrumbNavigation": true,
     "premiumFeatureGate": true,
-    "godFileGuard": false,
+    "godFileGuard": true,
     "hardcodedConfig": true,
     "analyticsCardGuard": true,
     "importExportGuard": true,
