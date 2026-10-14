@@ -12,7 +12,6 @@ import { Card } from '../../components/cooperative/ui/Card';
 import { Plus, Trash, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
-import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSocket } from '@/hooks/useSocket';
@@ -119,7 +118,6 @@ const Vouchers: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const { user, subscription } = useAuthStore();
-  const { isKoperasiHead, isKoperasiStore, isAdmin, can } = useCapabilities();
   const confirm = useConfirm();
   const location = useLocation();
   const isManageRoute = location.pathname.endsWith('/manage');
@@ -138,7 +136,7 @@ const Vouchers: React.FC = React.memo(() => {
   const [selectedSale, setSelectedSale] = useState<SaleRecord | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [coopSettings, setCoopSettings] = useState<CoopSettingsData | null>(null);
-  const [memberInfo, setMemberInfo] = useState<Record<string, unknown>>(null);
+  const [memberInfo, setMemberInfo] = useState<MemberInfo | null>(null);
   const [salesHistory, setSalesHistory] = useState<SaleRecord[]>([]);
   const [salesLoading, setSalesLoading] = useState(false);
 

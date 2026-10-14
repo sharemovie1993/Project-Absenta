@@ -186,6 +186,20 @@ describe('Voucher & Promo Koperasi - Phase 3 Enterprise Unit Tests', () => {
       ).rejects.toThrow('Voucher ini hanya dapat digunakan oleh anggota pemiliknya.');
     });
 
+    it('harus melempar error jika voucher eksklusif anggota dicoba oleh akun tanpa memberId (anonim/tamu)', async () => {
+      (prisma.voucher.findFirst as jest.Mock).mockResolvedValue({
+        id: 'v-member-exclusive',
+        tenantId: mockTenantId,
+        code: 'VIPANGGOTA',
+        memberId: 'member-owner-abc',
+        isActive: true
+      });
+
+      await expect(
+        VoucherService.validateVoucher(mockTenantId, 'VIPANGGOTA', null)
+      ).rejects.toThrow('Voucher ini hanya dapat digunakan oleh anggota pemiliknya.');
+    });
+
     it('harus berhasil jika voucher personal digunakan oleh pemilik aslinya', async () => {
       (prisma.voucher.findFirst as jest.Mock).mockResolvedValue({
         id: 'v-member-exclusive',

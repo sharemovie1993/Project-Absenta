@@ -1,6 +1,3 @@
-// @ts-nocheck
-import { appLogger } from '@/utils/app-logger';
-import { getTenantTimezone } from '@/utils/timezone.utils';
 import { prisma } from '../../../utils/prisma';
 
 export interface CreateVoucherInput {
@@ -122,7 +119,7 @@ export class VoucherService {
             throw new Error('Masa berlaku voucher ini sudah habis.');
         }
         
-        if (voucher.memberId && memberId && voucher.memberId !== memberId) {
+        if (voucher.memberId && (!memberId || voucher.memberId !== memberId)) {
             throw new Error('Voucher ini hanya dapat digunakan oleh anggota pemiliknya.');
         }
         

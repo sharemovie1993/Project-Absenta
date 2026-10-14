@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
-import { FastifyInstance, FastifyRequest } from 'fastify';
+import { FastifyInstance } from 'fastify';
 import { VoucherService } from './voucher.service';
 import { MemberService } from '../member/member.service';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
@@ -12,7 +11,7 @@ const getTenantId = (req: any) => {
     return ((req.user as any)?.tenant_id || (req.user as any)?.tenantId) || mockTenant.id;
 };
 
-// ─── ZOD SCHEMAS (Phase 3 Clean Code & Validation) ───────────────────────────
+// ─── ZOD SCHEMAS (Phase 3 Clean Code & Phase 5 Security Audit) ─────────────
 const createVoucherBodySchema = z.object({
     code: z.string().min(2, 'Kode voucher minimal 2 karakter').max(50, 'Kode voucher maksimal 50 karakter'),
     discount: z.union([z.number(), z.string()]).transform((val) => Number(val)).refine((n) => !isNaN(n) && n > 0, 'Nominal diskon harus lebih besar dari 0'),
@@ -21,7 +20,12 @@ const createVoucherBodySchema = z.object({
     memberId: z.string().optional().nullable(),
 });
 
-export default async function voucherRoutes(fastify: any) {
+const checkVoucherQuerySchema = z.object({
+    code: z.string().min(1, 'Kode voucher wajib diisi.').max(50, 'Kode voucher maksimal 50 karakter'),
+    memberId: z.string().max(100).optional().nullable(),
+});
+
+export default async function voucherRoutes(fastify: FastifyInstance | any) {
     const broadcastCoopUpdate = (req: any, type: string, payload: any = {}) => {
         const io = req.server?.io || fastify.io;
         if (io) {
@@ -91,12 +95,15 @@ export default async function voucherRoutes(fastify: any) {
     fastify.get('/check', { preHandler: [requireCapability(['cooperative.store.orders.manage', 'cooperative.points.view'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const { code, memberId } = req.query as any;
-            
-            if (!code) {
-                return reply.code(400).send({ success: false, message: 'Kode voucher wajib diisi.' });
+            const parseResult = checkVoucherQuerySchema.safeParse(req.query);
+            if (!parseResult.success) {
+                return reply.code(400).send({
+                    success: false,
+                    message: parseResult.error.issues[0]?.message || 'Parameter validasi voucher tidak valid'
+                });
             }
-            
+
+            const { code, memberId } = parseResult.data;
             const voucher = await VoucherService.validateVoucher(tenantId, code, memberId);
             return {
                 success: true,
