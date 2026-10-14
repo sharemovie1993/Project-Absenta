@@ -443,6 +443,7 @@ async function main() {
         { label: 'Aset Koperasi', icon: 'Package', path: '/cooperative/assets', required_capability: 'cooperative.assets.view.list' },
         { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial' },
         { label: 'Sisa Hasil Usaha', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.shu.view.report' },
+        { label: 'Rapat Anggota (RAT)', icon: 'Vote', path: '/cooperative/rat', required_capability: 'cooperative.rat.manage, cooperative.rat.view, cooperative.rat.vote' },
         // Divider 3
         { label: 'divider', icon: null, path: null },
         // Klaster 4: Komunikasi Anggota & Pengaturan Tata Kelola

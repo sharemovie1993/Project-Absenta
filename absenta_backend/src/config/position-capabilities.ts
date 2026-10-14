@@ -289,6 +289,9 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.view.detail',
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
+
+    // Hak Suara Rapat Anggota
+    'cooperative.rat.vote',
   ],
 
   // ═══════════════════════════════════════════════════════════════════
@@ -781,6 +784,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.settings.view',
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
+
+    // Rapat Anggota Tahunan (RAT)
+    'cooperative.rat.manage',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
   ],
 
   // Ketua Koperasi (Pimpinan Pengurus - Kebijakan, Approval Pinjaman & Monitoring)
@@ -851,6 +859,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.reply',
     'cooperative.tickets.update.status',
     'cooperative.settings.view',
+
+    // Rapat Anggota Tahunan (RAT)
+    'cooperative.rat.manage',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
   ],
 
   // Sekretaris Koperasi (Administrasi Anggota, Register Aset, Tiket & Pengumuman)
@@ -891,6 +904,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.update.status',
+
+    // Rapat Anggota Tahunan (RAT)
+    'cooperative.rat.manage',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
   ],
 
   // Pengawas Koperasi (Badan Pengawas Independen - Murni Audit / Read-Only)
@@ -933,6 +951,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Audit Layanan Aspirasi Anggota
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
+
+    // Rapat Anggota Tahunan (RAT - Audit & Verifikasi)
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
   ],
 
   // ═══════════════════════════════════════════════════════════════════
