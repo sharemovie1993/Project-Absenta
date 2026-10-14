@@ -174,11 +174,9 @@ const SHUPage: React.FC = React.memo(() => {
 
   // Config State
   const [localConfig, setLocalConfig] = useState<ShuConfig | null>(null);
-  const [savingConfig, setSavingConfig] = useState(false);
 
   // New Period Modal State
   const [showPeriodModal, setShowPeriodModal] = useState(false);
-  const [loadingSync, setLoadingSync] = useState(false);
   const [guideExpanded, setGuideExpanded] = useState(() => {
     return localStorage.getItem('shu_workflow_guide_expanded') !== 'false';
   });
