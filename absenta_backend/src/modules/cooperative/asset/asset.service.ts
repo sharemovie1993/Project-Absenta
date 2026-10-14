@@ -7,7 +7,7 @@ export interface CreateAssetInput {
   name: string;
   category: string;
   location: string;
-  purchaseDate: string | Date;
+  purchaseDate?: string | Date;
   purchasePrice: number;
   condition?: string;
   status?: string;

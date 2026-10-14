@@ -3238,6 +3238,7 @@ model CoopAsset {
   @@index([tenantId, category])
   @@index([tenantId, condition])
   @@index([tenantId, status])
+  @@index([tenantId, createdAt])
 }
 
 model CoopExpense {
