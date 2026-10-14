@@ -192,6 +192,9 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
       setSelectedRowKeys(new Set());
     },
     onError: (error: Error) => toast.error(error.message || 'Gagal menghapus mitra terpilih'),
+    onSettled: () => {
+      confirm.setLoading(false);
+    },
   });
 
   const handleBulkDelete = useCallback(async () => {

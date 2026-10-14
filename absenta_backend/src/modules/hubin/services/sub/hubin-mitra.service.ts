@@ -241,6 +241,49 @@ export class HubinMitraService extends HubinCommonHelper {
 
   async bulkDeleteMitra(tenantId: string, ids: string[], actorUserId?: string | null) {
     if (!ids || ids.length === 0) return { count: 0 };
+
+    // 1. Guard against deleting Mitras that currently have active PKL students
+    const activePlacements = await prisma.siswaPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        mitra_id: { in: ids },
+        status: 'AKTIF',
+      },
+      include: {
+        Mitra: { select: { nama: true } },
+      },
+      take: 5,
+    });
+
+    if (activePlacements.length > 0) {
+      const companyNames = Array.from(new Set(activePlacements.map(p => p.Mitra?.nama).filter(Boolean)));
+      const err: any = new Error(
+        `Tidak dapat menghapus mitra industri (${companyNames.join(', ')}) karena masih memiliki siswa PKL yang berstatus AKTIF. Pindahkan atau selesaikan penempatan PKL siswa terlebih dahulu.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 2. Guard against foreign key violation in SertifikatUkk
+    const existingUkk = await prisma.sertifikatUkk.findFirst({
+      where: {
+        tenant_id: tenantId,
+        mitra_industri_id: { in: ids },
+      },
+      include: {
+        MitraIndustri: { select: { nama: true } },
+      },
+    });
+
+    if (existingUkk) {
+      const err: any = new Error(
+        `Mitra industri "${existingUkk.MitraIndustri?.nama || 'terpilih'}" tidak dapat dihapus karena telah terikat dengan data Sertifikat UKK.`
+      );
+      err.statusCode = 400;
+      throw err;
+    }
+
+    // 3. Execute bulk deletion within tenant boundary
     const result = await prisma.mitraIndustri.deleteMany({
       where: {
         id: { in: ids },

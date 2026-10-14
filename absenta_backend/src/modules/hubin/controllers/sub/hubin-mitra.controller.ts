@@ -6,7 +6,7 @@ import { prisma } from '@/utils/prisma';
 import * as XLSX from 'xlsx-js-style';
 import { smartReadSheet } from '@/utils/excel-import.utils';
 import { z } from 'zod';
-import { createMitraSchema, updateMitraSchema } from '../../services/hubin.schema';
+import { createMitraSchema, updateMitraSchema, bulkDeleteMitraSchema } from '../../services/hubin.schema';
 
 export class HubinMitraController {
   private hubinService = new HubinService();
@@ -76,18 +76,23 @@ export class HubinMitraController {
 
   async bulkDeleteMitra(request: AuthenticatedRequest, reply: any) {
     try {
-      const { ids } = (request.body as { ids?: string[] }) || {};
-      if (!Array.isArray(ids) || ids.length === 0) {
-        return reply.status(400).send({ success: false, message: 'Daftar ID mitra tidak boleh kosong' });
-      }
-      const result = await this.hubinService.bulkDeleteMitra(request.tenantId!, ids, request.user?.id);
+      const parsedBody = bulkDeleteMitraSchema.parse(request.body);
+      const result = await this.hubinService.bulkDeleteMitra(request.tenantId!, parsedBody.ids, request.user?.id);
       return reply.status(200).send({
         success: true,
         message: `${result.count} mitra industri berhasil dihapus`,
         data: result,
       });
     } catch (error: any) {
-      return reply.status(500).send({ success: false, message: error.message });
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors,
+        });
+      }
+      const statusCode = error.statusCode || 500;
+      return reply.status(statusCode).send({ success: false, message: error.message });
     }
   }
 

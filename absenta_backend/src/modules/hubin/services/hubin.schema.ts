@@ -24,6 +24,12 @@ export const createMitraSchema = z.object({
 
 export const updateMitraSchema = createMitraSchema.partial();
 
+export const bulkDeleteMitraSchema = z.object({
+  ids: z.array(z.string().min(1, 'ID mitra tidak boleh kosong'))
+    .min(1, 'Daftar ID mitra tidak boleh kosong')
+    .max(100, 'Maksimal 100 mitra industri dapat dihapus dalam satu kali transaksi'),
+});
+
 export const createPenempatanSchema = z.object({
   siswa_id: z.string().min(1, 'Siswa wajib dipilih'),
   mitra_id: z.string().min(1, 'Mitra industri wajib dipilih'),
