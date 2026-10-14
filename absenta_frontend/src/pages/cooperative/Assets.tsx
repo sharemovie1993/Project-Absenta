@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   Package, 
@@ -27,6 +27,10 @@ import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLa
 import useConfirm from '../../hooks/useConfirm';
 import { formatDate } from '../../utils/date.utils';
 import type { CoopAssetItem, CoopAssetSummary, CoopAssetFormData } from '@/components/cooperative/assets/types';
+import { CoopAssetMobileDeck } from '@/components/cooperative/assets/CoopAssetMobileDeck';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useSocket } from '@/hooks/useSocket';
+import { invalidateAccountingCaches, COOP_QUERY_KEYS } from '@/lib/coopQueryKeys';
 
 // Zod Schema Guard for Filter & Query
 const assetFilterSchema = z.object({
@@ -42,12 +46,35 @@ const AssetDetailModal = lazy(() => import('@/components/cooperative/assets/Asse
 const AssetsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
+  const isMobile = useIsMobile();
+  const { subscribe, unsubscribe, isConnected } = useSocket();
 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedCondition, setSelectedCondition] = useState('ALL');
+
+  // Realtime synchronization untuk Aset Koperasi & Neraca (Pilar 3 & Pilar 5)
+  const handleRealtimeUpdate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.assets });
+    queryClient.invalidateQueries({ queryKey: ['cooperative-asset-depreciation-status'] });
+    queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.accountingBalanceSheetReport });
+  }, [queryClient]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    subscribe('coop_asset_update', handleRealtimeUpdate);
+    subscribe('coop_accounting_update', handleRealtimeUpdate);
+    subscribe('cooperative_sync', handleRealtimeUpdate);
+
+    return () => {
+      unsubscribe('coop_asset_update', handleRealtimeUpdate);
+      unsubscribe('coop_accounting_update', handleRealtimeUpdate);
+      unsubscribe('cooperative_sync', handleRealtimeUpdate);
+    };
+  }, [isConnected, handleRealtimeUpdate, subscribe, unsubscribe]);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -107,7 +134,7 @@ const AssetsPage: React.FC = React.memo(() => {
       return api.post('/cooperative/assets', payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
+      invalidateAccountingCaches(queryClient);
       toast.success(selectedAsset ? 'Data aset berhasil diperbarui' : 'Aset baru berhasil didaftarkan');
       setIsFormOpen(false);
       setSelectedAsset(null);
@@ -123,7 +150,7 @@ const AssetsPage: React.FC = React.memo(() => {
       return api.delete(`/cooperative/assets/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
+      invalidateAccountingCaches(queryClient);
       toast.success('Aset berhasil dihapus');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
@@ -152,8 +179,7 @@ const AssetsPage: React.FC = React.memo(() => {
       return res.data;
     },
     onSuccess: (res: { message?: string; data?: { syncedCount: number } }) => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
+      invalidateAccountingCaches(queryClient);
       const count = res?.data?.syncedCount ?? 0;
       toast.success(res?.message || `Sinkronisasi selesai. ${count} aset dibukukan ke Neraca.`);
     },
@@ -218,11 +244,7 @@ const AssetsPage: React.FC = React.memo(() => {
       return res.data;
     },
     onSuccess: (res: { message?: string }) => {
-      queryClient.invalidateQueries({ queryKey: ['cooperative-assets'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-asset-depreciation-status'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-income-statement'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-balance-sheet-report'] });
-      queryClient.invalidateQueries({ queryKey: ['cooperative-journals'] });
+      invalidateAccountingCaches(queryClient);
       toast.success(res?.message || 'Penyusutan aset periode ini berhasil dibukukan');
     },
     onError: (err: { response?: { data?: { message?: string } } }) => {
@@ -444,12 +466,12 @@ const AssetsPage: React.FC = React.memo(() => {
 
             {/* ── SECTION 2: Filter Toolbar & Tabel Aset ───────────────────────────── */}
             <SectionCard title="Daftar Inventaris Aset Tetap" fullWidth noPadding>
-              <div className="p-6 space-y-4">
+              <div className="p-4 sm:p-6 space-y-4">
                 
                 {/* Search & Filter Bar */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                  <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
-                    <div className="relative flex-1 min-w-[200px] max-w-xs">
+                  <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-2">
+                    <div className="relative flex-1 min-w-0 sm:max-w-xs">
                       <Search className="absolute left-3 top-2.5 text-slate-400" size={14} />
                       <input
                         type="text"
@@ -464,8 +486,8 @@ const AssetsPage: React.FC = React.memo(() => {
                       />
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <div className="w-44">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+                      <div className="w-full sm:w-44">
                         <SearchableSelect
                           id="asset-category-filter"
                           value={selectedCategory}
@@ -487,7 +509,7 @@ const AssetsPage: React.FC = React.memo(() => {
                         />
                       </div>
 
-                      <div className="w-36">
+                      <div className="w-full sm:w-36">
                         <SearchableSelect
                           id="asset-condition-filter"
                           value={selectedCondition}
@@ -509,13 +531,13 @@ const AssetsPage: React.FC = React.memo(() => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
                     {isAlreadyDepreciated ? (
                       <Button
                         size="sm"
                         variant="outline"
                         disabled
-                        className="gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 cursor-default opacity-100 font-semibold text-xs"
+                        className="gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 cursor-default opacity-100 font-semibold text-xs flex-1 sm:flex-initial justify-center"
                         title={`Penyusutan periode ${deprStatusQuery.data?.period} telah dibukukan (${deprStatusQuery.data?.voucherNumber}) senilai Rp ${Math.round(deprStatusQuery.data?.totalDepreciation || 0).toLocaleString('id-ID')}`}
                       >
                         <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
@@ -527,11 +549,11 @@ const AssetsPage: React.FC = React.memo(() => {
                         variant="outline"
                         onClick={handleRunDepreciation}
                         disabled={depreciationMutation.isPending || deprStatusQuery.isLoading}
-                        className="gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-semibold"
+                        className="gap-1.5 border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 font-semibold flex-1 sm:flex-initial justify-center"
                         title="Hitung dan posting beban penyusutan garis lurus bulan ini"
                       >
                         <Calculator size={14} className={depreciationMutation.isPending ? 'animate-spin' : 'text-indigo-600 dark:text-indigo-400'} />
-                        <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan Akhir Bulan'}</span>
+                        <span>{depreciationMutation.isPending ? 'Menghitung...' : 'Hitung Penyusutan'}</span>
                       </Button>
                     )}
                     <Button
@@ -539,7 +561,7 @@ const AssetsPage: React.FC = React.memo(() => {
                       variant="outline"
                       onClick={handleSyncToLedger}
                       disabled={syncMutation.isPending}
-                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="gap-1.5 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex-1 sm:flex-initial justify-center"
                     >
                       <RefreshCw size={14} className={syncMutation.isPending ? 'animate-spin' : ''} />
                       <span>{syncMutation.isPending ? 'Menyinkronkan...' : 'Sinkron ke Neraca'}</span>
@@ -551,7 +573,7 @@ const AssetsPage: React.FC = React.memo(() => {
                         setSelectedAsset(null);
                         setIsFormOpen(true);
                       }}
-                      className="gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+                      className="hidden sm:inline-flex gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
                     >
                       <Plus size={14} />
                       <span>Tambah Aset</span>
@@ -559,26 +581,78 @@ const AssetsPage: React.FC = React.memo(() => {
                   </div>
                 </div>
 
-                {/* Table Data Master */}
-                <Table
-                  data={assetsList}
-                  columns={columns}
-                  loading={isLoading}
-                  emptyMessage="Belum ada data inventaris aset tetap koperasi yang tercatat."
-                  pagination={{
-                    currentPage: page,
-                    totalPages,
-                    totalItems,
-                    itemsPerPage: limit,
-                    onPageChange: (p) => setPage(p),
-                    onLimitChange: () => {},
-                  }}
-                />
+                {/* Table Data Master vs Adaptive Mobile Deck */}
+                {isMobile ? (
+                  <>
+                    <CoopAssetMobileDeck
+                      assets={assetsList}
+                      isLoading={isLoading}
+                      onDetail={handleOpenDetail}
+                      onEdit={handleOpenEdit}
+                      onDelete={handleDelete}
+                    />
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+                        <span>
+                          Halaman {page} dari {totalPages} ({totalItems} aset)
+                        </span>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={page <= 1}
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                          >
+                            Sebelumnya
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={page >= totalPages}
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                          >
+                            Berikutnya
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <Table
+                    data={assetsList}
+                    columns={columns}
+                    loading={isLoading}
+                    emptyMessage="Belum ada data inventaris aset tetap koperasi yang tercatat."
+                    pagination={{
+                      currentPage: page,
+                      totalPages,
+                      totalItems,
+                      itemsPerPage: limit,
+                      onPageChange: (p) => setPage(p),
+                      onLimitChange: () => {},
+                    }}
+                  />
+                )}
               </div>
             </SectionCard>
 
           </div>
         </SectionCard>
+
+        {/* Floating Action Button (FAB) on Mobile Devices (Pilar 30 Anti-Overlapping) */}
+        {isMobile && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedAsset(null);
+              setIsFormOpen(true);
+            }}
+            aria-label="Tambah Aset Koperasi"
+            className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 rounded-full shadow-2xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/40 transition-all transform active:scale-95 focus:outline-hidden"
+          >
+            <Plus size={24} className="stroke-[2.5]" />
+          </button>
+        )}
 
         {/* Modal Form Tambah/Ubah */}
         {isFormOpen && (

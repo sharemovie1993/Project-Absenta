@@ -48,6 +48,11 @@ export const COOP_QUERY_KEYS = {
   accountingCashFlow: ['koperasi-cash-flow'] as const,
   accountingGeneralLedger: ['cooperative-general-ledger'] as const,
 
+  // ─── Assets & Depreciation ────────────────────────────────────────────────
+  assets: ['cooperative-assets'] as const,
+  assetDepreciationStatus: (year?: number, month?: number) =>
+    ['cooperative-asset-depreciation-status', year ?? '', month ?? ''] as const,
+
   // ─── SHU & Savings & Loans ────────────────────────────────────────────────
   savingsList: ['koperasi-savings-list'] as const,
   savingCategories: ['koperasi-saving-categories'] as const,
@@ -92,6 +97,8 @@ export function invalidateAccountingCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['cooperative-expenses'] });
   queryClient.invalidateQueries({ queryKey: ['cooperative-deposits'] });
   queryClient.invalidateQueries({ queryKey: ['cooperative-transfers'] });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.assets });
+  queryClient.invalidateQueries({ queryKey: ['cooperative-asset-depreciation-status'] });
   queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
 }
 
