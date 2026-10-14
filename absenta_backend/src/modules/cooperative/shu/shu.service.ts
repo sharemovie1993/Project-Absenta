@@ -39,7 +39,7 @@ export interface CreateShuPeriodDto {
 const idempotencyCache = new Map<string, { data: any; timestamp: number }>();
 const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
-setInterval(() => {
+const idempotencyCleaner = setInterval(() => {
     const now = Date.now();
     for (const [key, value] of idempotencyCache.entries()) {
         if (now - value.timestamp > IDEMPOTENCY_TTL_MS) {
@@ -47,6 +47,10 @@ setInterval(() => {
         }
     }
 }, 60 * 1000);
+
+if (typeof idempotencyCleaner?.unref === 'function') {
+    idempotencyCleaner.unref();
+}
 
 // In-Flight Mutex Locks per periodId
 const distributionLocks = new Set<string>();

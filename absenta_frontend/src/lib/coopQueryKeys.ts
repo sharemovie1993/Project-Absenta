@@ -58,6 +58,8 @@ export const COOP_QUERY_KEYS = {
   savingCategories: ['koperasi-saving-categories'] as const,
   loansList: ['koperasi-loans-list'] as const,
   shuPeriods: ['koperasi-shu-periods'] as const,
+  shuConfig: ['koperasi-shu-config'] as const,
+  shuPeriodDetail: (id: string) => ['koperasi-shu-period-detail', id] as const,
   shuMyHistory: ['koperasi-shu-my-history'] as const,
 
   // ─── Vouchers & Points ────────────────────────────────────────────────────
@@ -181,4 +183,17 @@ export function invalidateTicketCaches(queryClient: QueryClient, ticketId?: stri
  */
 export function invalidateAnnouncementCaches(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.announcements });
+}
+
+/**
+ * Invalidate all cooperative SHU queries (periods, config, personal history, and optional period detail).
+ */
+export function invalidateShuCaches(queryClient: QueryClient, periodId?: string) {
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuPeriods });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuConfig });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuMyHistory });
+  queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.memberStatusMe });
+  if (periodId) {
+    queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', periodId] });
+  }
 }

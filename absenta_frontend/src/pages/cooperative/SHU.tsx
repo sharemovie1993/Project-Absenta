@@ -14,6 +14,7 @@ import { useCapabilities } from '../../hooks/useCapabilities';
 import useConfirm from '../../hooks/useConfirm';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useSocket } from '../../hooks/useSocket';
+import { COOP_QUERY_KEYS, invalidateShuCaches } from '../../lib/coopQueryKeys';
 
 const hardeningModuleKey = 'coop_shu';
 
@@ -192,7 +193,7 @@ const SHUPage: React.FC = React.memo(() => {
 
   // Member status
   const memberStatusQuery = useQuery({
-    queryKey: ['koperasi-member-status-me'],
+    queryKey: COOP_QUERY_KEYS.memberStatusMe,
     queryFn: async () => {
       try {
         const res = await api.get('/cooperative/members/me');
@@ -203,29 +204,31 @@ const SHUPage: React.FC = React.memo(() => {
       }
     },
     enabled: activeTab === 'personal',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const memberStatus = memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member');
 
   // Fetch all periods
   const periodsQuery = useQuery({
-    queryKey: ['koperasi-shu-periods'],
+    queryKey: COOP_QUERY_KEYS.shuPeriods,
     queryFn: async () => {
       const res = await api.get('/cooperative/shu/periods');
       return (res.data?.success ? res.data.data : []) as ShuPeriod[];
     },
     enabled: isCoopStaff && activeTab === 'periods',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const periods = periodsQuery.data || [];
   const loadingPeriods = periodsQuery.isLoading;
   const fetchPeriods = useCallback(async () => {
-    await periodsQuery.refetch();
-  }, [periodsQuery]);
+    invalidateShuCaches(queryClient);
+  }, [queryClient]);
 
   // Fetch configuration
   const configQuery = useQuery({
-    queryKey: ['koperasi-shu-config'],
+    queryKey: COOP_QUERY_KEYS.shuConfig,
     queryFn: async () => {
       const res = await api.get('/cooperative/shu/config');
       if (res.data?.success && res.data.data) {
@@ -245,7 +248,8 @@ const SHUPage: React.FC = React.memo(() => {
       return null;
     },
     enabled: isCoopStaff && (activeTab === 'config' || activeTab === 'periods'),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const defaultConfig: ShuConfig = useMemo(() => ({
@@ -281,35 +285,37 @@ const SHUPage: React.FC = React.memo(() => {
   }, [configQuery.data, defaultConfig]);
 
   const fetchConfig = useCallback(async () => {
-    await configQuery.refetch();
-  }, [configQuery]);
+    queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuConfig });
+  }, [queryClient]);
 
   // Fetch member personal history
   const myHistoryQuery = useQuery({
-    queryKey: ['koperasi-shu-my-history'],
+    queryKey: COOP_QUERY_KEYS.shuMyHistory,
     queryFn: async () => {
       const res = await api.get('/cooperative/shu/my-history');
       return (res.data?.success ? res.data.data : []) as MyShuHistory[];
     },
     enabled: activeTab === 'personal' && memberStatus === 'member',
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const myHistory = myHistoryQuery.data || [];
   const loadingHistory = myHistoryQuery.isLoading;
   const fetchMyHistory = useCallback(async () => {
-    await myHistoryQuery.refetch();
-  }, [myHistoryQuery]);
+    queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuMyHistory });
+  }, [queryClient]);
 
   // Fetch single period details
   const periodDetailQuery = useQuery({
-    queryKey: ['koperasi-shu-period-detail', selectedPeriodId],
+    queryKey: COOP_QUERY_KEYS.shuPeriodDetail(selectedPeriodId || ''),
     queryFn: async () => {
       if (!selectedPeriodId) return null;
       const res = await api.get(`/cooperative/shu/periods/${selectedPeriodId}`);
       return res.data?.success ? res.data.data : null;
     },
     enabled: !!selectedPeriodId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
   });
   const periodDetail = periodDetailQuery.data?.period || null;
   const allocations: ShuAllocation[] = useMemo(() => periodDetailQuery.data?.allocations || [], [periodDetailQuery.data]);
@@ -317,7 +323,7 @@ const SHUPage: React.FC = React.memo(() => {
 
   const fetchPeriodDetail = useCallback(async (id: string) => {
     setSelectedPeriodId(id);
-    await queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', id] });
+    await queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.shuPeriodDetail(id) });
   }, [queryClient]);
 
   useEffect(() => {
@@ -331,13 +337,8 @@ const SHUPage: React.FC = React.memo(() => {
   // Realtime Live Sync: Sinkronisasi pembaruan kalkulasi/distribusi SHU & saldo simpanan secara realtime
   useEffect(() => {
     const handleShuUpdate = () => {
-      queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
-      if (selectedPeriodId) {
-        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-period-detail', selectedPeriodId] });
-      }
-      queryClient.invalidateQueries({ queryKey: ['koperasi-shu-my-history'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
-      queryClient.invalidateQueries({ queryKey: ['koperasi-member-status-me'] });
+      invalidateShuCaches(queryClient, selectedPeriodId || undefined);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
     };
 
     subscribe('coop_shu_update', handleShuUpdate);
@@ -348,7 +349,22 @@ const SHUPage: React.FC = React.memo(() => {
     };
   }, [subscribe, unsubscribe, queryClient, selectedPeriodId]);
 
-  // Config Form Submit
+  // Config Mutation
+  const updateConfigMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const res = await api.put('/cooperative/shu/config', payload);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Konfigurasi persentase alokasi SHU berhasil disimpan!');
+      invalidateShuCaches(queryClient);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Gagal menyimpan konfigurasi');
+    }
+  });
+
   const handleConfigSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const sum = 
@@ -364,114 +380,136 @@ const SHUPage: React.FC = React.memo(() => {
       return;
     }
 
-    setSavingConfig(true);
-    try {
-      const payload = {
-        porsiJasaModal: Number(config.porsiJasaModal),
-        porsiJasaTransaksi: Number(config.porsiJasaTransaksi),
-        porsiCadangan: Number(config.porsiCadangan),
-        porsiPengurus: Number(config.porsiPengurus),
-        porsiSosial: Number(config.porsiSosial),
-        porsiPembangunan: Number(config.porsiPembangunan),
-        includeStorePurchases: config.includeStorePurchases ?? true,
-        includeLoans: config.includeLoans ?? true,
-        includeSavingsDeposit: config.includeSavingsDeposit ?? false,
-        enableLiveEstimation: config.enableLiveEstimation ?? false,
-      };
-      const res = await api.put('/cooperative/shu/config', payload);
-      if (res.data?.success) {
-        toast.success('Konfigurasi persentase alokasi SHU berhasil disimpan!');
-        queryClient.invalidateQueries({ queryKey: ['koperasi-shu-config'] });
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error('Gagal menyimpan konfigurasi');
-    } finally {
-      setSavingConfig(false);
-    }
+    const payload = {
+      porsiJasaModal: Number(config.porsiJasaModal),
+      porsiJasaTransaksi: Number(config.porsiJasaTransaksi),
+      porsiCadangan: Number(config.porsiCadangan),
+      porsiPengurus: Number(config.porsiPengurus),
+      porsiSosial: Number(config.porsiSosial),
+      porsiPembangunan: Number(config.porsiPembangunan),
+      includeStorePurchases: config.includeStorePurchases ?? true,
+      includeLoans: config.includeLoans ?? true,
+      includeSavingsDeposit: config.includeSavingsDeposit ?? false,
+      enableLiveEstimation: config.enableLiveEstimation ?? false,
+    };
+    await updateConfigMutation.mutateAsync(payload);
   };
 
-  // Run calculation
+  const savingConfig = updateConfigMutation.isPending;
+
+  // Run calculation mutation
+  const calculateShuMutation = useMutation({
+    mutationFn: async (periodId: string) => {
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post(`/cooperative/shu/periods/${periodId}/calculate`, {}, {
+        headers: { 'Idempotency-Key': idempotencyKey }
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Kalkulasi SHU selesai!', { id: 'calc-shu' });
+      invalidateShuCaches(queryClient, selectedPeriodId || undefined);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Gagal melakukan kalkulasi SHU', { id: 'calc-shu' });
+    }
+  });
+
   const handleCalculateShu = async () => {
     if (!selectedPeriodId) return;
-    try {
-      toast.loading('Mengkalkulasi alokasi SHU anggota...', { id: 'calc-shu' });
-      const idempotencyKey = crypto.randomUUID();
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/calculate`, {}, {
-        headers: { 'Idempotency-Key': idempotencyKey }
-      });
-      if (res.data?.success) {
-        toast.success('Kalkulasi SHU selesai!', { id: 'calc-shu' });
-        fetchPeriodDetail(selectedPeriodId);
-        fetchPeriods();
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal melakukan kalkulasi SHU', { id: 'calc-shu' });
-    }
+    toast.loading('Mengkalkulasi alokasi SHU anggota...', { id: 'calc-shu' });
+    await calculateShuMutation.mutateAsync(selectedPeriodId);
   };
 
-  // Sync financial data manually
+  // Sync financial data mutation
+  const syncFinancialsMutation = useMutation({
+    mutationFn: async (periodId: string) => {
+      const res = await api.post(`/cooperative/shu/periods/${periodId}/sync`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Sinkronisasi data keuangan berhasil!', { id: 'sync-fin' });
+      invalidateShuCaches(queryClient, selectedPeriodId || undefined);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Gagal melakukan sinkronisasi keuangan', { id: 'sync-fin' });
+    }
+  });
+
   const handleSyncFinancials = async () => {
     if (!selectedPeriodId) return;
-    try {
-      setLoadingSync(true);
-      toast.loading('Menyinkronkan data keuangan Laba-Rugi...', { id: 'sync-fin' });
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/sync`);
-      if (res.data?.success) {
-        toast.success('Sinkronisasi data keuangan berhasil!', { id: 'sync-fin' });
-        fetchPeriodDetail(selectedPeriodId);
-        fetchPeriods();
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal melakukan sinkronisasi keuangan', { id: 'sync-fin' });
-    } finally {
-      setLoadingSync(false);
-    }
+    toast.loading('Menyinkronkan data keuangan Laba-Rugi...', { id: 'sync-fin' });
+    await syncFinancialsMutation.mutateAsync(selectedPeriodId);
   };
 
-  // Chairman approval
+  const loadingSync = syncFinancialsMutation.isPending;
+
+  // Chairman approval mutation
+  const approveShuMutation = useMutation({
+    mutationFn: async (periodId: string) => {
+      const res = await api.post(`/cooperative/shu/periods/${periodId}/approve`);
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('Pembagian SHU disetujui Ketua!', { id: 'app-shu' });
+      invalidateShuCaches(queryClient, selectedPeriodId || undefined);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Gagal menyetujui SHU', { id: 'app-shu' });
+    }
+  });
+
   const handleApproveShu = async () => {
     if (!selectedPeriodId) return;
-    try {
-      toast.loading('Meyetujui pembagian SHU...', { id: 'app-shu' });
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/approve`);
-      if (res.data?.success) {
-        toast.success('Pembagian SHU disetujui Ketua!', { id: 'app-shu' });
-        fetchPeriodDetail(selectedPeriodId);
-        fetchPeriods();
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      toast.error('Gagal menyetujui SHU', { id: 'app-shu' });
-    }
+    toast.loading('Meyetujui pembagian SHU...', { id: 'app-shu' });
+    await approveShuMutation.mutateAsync(selectedPeriodId);
   };
 
-  // Bendahara distribution
-  const handleDistributeShu = async () => {
-    if (!selectedPeriodId) return;
-    try {
-      toast.loading('Mendistribusikan SHU ke simpanan sukarela...', { id: 'dist-shu' });
+  // Bendahara distribution mutation
+  const distributeShuMutation = useMutation({
+    mutationFn: async (periodId: string) => {
       const idempotencyKey = crypto.randomUUID();
-      const res = await api.post(`/cooperative/shu/periods/${selectedPeriodId}/distribute`, {}, {
+      const res = await api.post(`/cooperative/shu/periods/${periodId}/distribute`, {}, {
         headers: { 'Idempotency-Key': idempotencyKey }
       });
-      if (res.data?.success) {
-        toast.success('SHU sukses didistribusikan ke tabungan anggota!', { id: 'dist-shu' });
-        fetchPeriodDetail(selectedPeriodId);
-        fetchPeriods();
-      }
-    } catch (err: unknown) {
+      return res.data;
+    },
+    onSuccess: () => {
+      toast.success('SHU sukses didistribusikan ke tabungan anggota!', { id: 'dist-shu' });
+      invalidateShuCaches(queryClient, selectedPeriodId || undefined);
+      queryClient.invalidateQueries({ queryKey: COOP_QUERY_KEYS.savingsList });
+    },
+    onError: (err: any) => {
       console.error(err);
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal mendistribusikan SHU', { id: 'dist-shu' });
+      toast.error(err?.response?.data?.message || 'Gagal mendistribusikan SHU', { id: 'dist-shu' });
     }
+  });
+
+  const handleDistributeShu = async () => {
+    if (!selectedPeriodId) return;
+    toast.loading('Mendistribusikan SHU ke simpanan sukarela...', { id: 'dist-shu' });
+    await distributeShuMutation.mutateAsync(selectedPeriodId);
   };
 
-  // Delete SHU period
+  // Delete SHU period mutation
+  const deletePeriodMutation = useMutation({
+    mutationFn: async ({ id, year }: { id: string; year: number }) => {
+      const res = await api.delete(`/cooperative/shu/periods/${id}`);
+      return { data: res.data, year };
+    },
+    onSuccess: ({ year }) => {
+      toast.success(`Periode SHU tahun ${year} berhasil dihapus!`, { id: 'delete-shu' });
+      invalidateShuCaches(queryClient);
+    },
+    onError: (err: any) => {
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Gagal menghapus periode SHU', { id: 'delete-shu' });
+    }
+  });
+
   const handleDeletePeriod = async (id: string, year: number) => {
     const isConfirmed = await confirm({
       title: 'Hapus Periode SHU',
@@ -479,19 +517,24 @@ const SHUPage: React.FC = React.memo(() => {
       style: 'danger'
     });
     if (!isConfirmed) return;
-    try {
-      toast.loading('Menghapus periode SHU...', { id: 'delete-shu' });
-      const res = await api.delete(`/cooperative/shu/periods/${id}`);
-      if (res.data?.success) {
-        toast.success(`Periode SHU tahun ${year} berhasil dihapus!`, { id: 'delete-shu' });
-        fetchPeriods();
-      }
-    } catch (err: unknown) {
-      console.error(err);
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Gagal menghapus periode SHU', { id: 'delete-shu' });
-    }
+    toast.loading('Menghapus periode SHU...', { id: 'delete-shu' });
+    await deletePeriodMutation.mutateAsync({ id, year });
   };
+
+  // Set active fiscal year mutation
+  const setActiveFiscalYearMutation = useMutation({
+    mutationFn: async ({ id, year }: { id: string; year: number }) => {
+      const res = await api.post(`/cooperative/shu/periods/${id}/set-active`);
+      return { data: res.data, year };
+    },
+    onSuccess: ({ year }) => {
+      toast.success(`Tahun Buku ${year} berhasil diset sebagai Tahun Aktif!`);
+      invalidateShuCaches(queryClient);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Gagal mengubah tahun aktif');
+    }
+  });
 
   // Config validation check
   const sumConfig = useMemo(() => {
@@ -809,15 +852,8 @@ const SHUPage: React.FC = React.memo(() => {
 
                             {canManageShu && !p.isActive && (
                               <Button
-                                onClick={async () => {
-                                  try {
-                                    await api.post(`/cooperative/shu/periods/${p.id}/set-active`);
-                                    toast.success(`Tahun Buku ${p.year} berhasil diset sebagai Tahun Aktif!`);
-                                    queryClient.invalidateQueries({ queryKey: ['koperasi-shu-periods'] });
-                                  } catch (err: any) {
-                                    toast.error(err?.response?.data?.message || 'Gagal mengubah tahun aktif');
-                                  }
-                                }}
+                                onClick={() => setActiveFiscalYearMutation.mutate({ id: p.id, year: p.year })}
+                                disabled={setActiveFiscalYearMutation.isPending}
                                 size="xs"
                                 variant="outline"
                                 className="text-emerald-700 border-emerald-200 hover:bg-emerald-50 font-bold inline-flex items-center gap-1 text-[10px]"
