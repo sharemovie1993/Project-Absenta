@@ -92,6 +92,7 @@ export const COOP_QUERY_KEYS = {
   ratVotingResults: (sessionId: string) => ['coop-rat-voting-results', sessionId] as const,
   ratClosureReadiness: (id: string) => ['coop-rat-closure-readiness', id] as const,
   ratOfficialDossier: (id: string) => ['coop-rat-official-dossier', id] as const,
+  ratAttendanceRoster: (id: string) => ['coop-rat-attendance-roster', id] as const,
   rat: {
     meetings: (status = '', year = '') => ['coop-rat-meetings', status, year] as const,
     detail: (id: string) => ['coop-rat-meeting-detail', id] as const,
@@ -100,6 +101,7 @@ export const COOP_QUERY_KEYS = {
     votingResults: (sessionId: string) => ['coop-rat-voting-results', sessionId] as const,
     closureReadiness: (id: string) => ['coop-rat-closure-readiness', id] as const,
     officialDossier: (id: string) => ['coop-rat-official-dossier', id] as const,
+    attendanceRoster: (id: string) => ['coop-rat-attendance-roster', id] as const,
   },
 } as const;
 
@@ -276,6 +278,7 @@ export function invalidateRatCaches(queryClient: QueryClient, meetingId?: string
     queryClient.invalidateQueries({ queryKey: ['coop-rat-meeting-detail', meetingId] });
     queryClient.invalidateQueries({ queryKey: ['coop-rat-quorum', meetingId] });
     queryClient.invalidateQueries({ queryKey: ['coop-rat-my-attendance', meetingId] });
+    queryClient.invalidateQueries({ queryKey: ['coop-rat-attendance-roster', meetingId] });
   }
   if (sessionId) {
     queryClient.invalidateQueries({ queryKey: ['coop-rat-voting-results', sessionId] });

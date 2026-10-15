@@ -501,6 +501,62 @@ export class RatService {
   }
 
   /**
+   * Ambil daftar seluruh anggota aktif beserta status kehadiran pada sidang RAT
+   */
+  static async getMeetingAttendanceRoster(meetingId: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+      select: { id: true, status: true },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const members = await prisma.member.findMany({
+      where: { tenantId, status: 'ACTIVE' },
+      select: {
+        id: true,
+        memberNo: true,
+        type: true,
+        status: true,
+        User: { select: { full_name: true, email: true } },
+        Siswa: { select: { nama_siswa: true, nis: true } },
+        Guru: { select: { nama_guru: true, nip: true } },
+      },
+      orderBy: { memberNo: 'asc' },
+    });
+
+    const attendances = await prisma.coopMeetingAttendance.findMany({
+      where: { meetingId },
+      select: {
+        id: true,
+        memberId: true,
+        attendedAt: true,
+        method: true,
+      },
+    });
+
+    const attendedMap = new Map(attendances.map((a) => [a.memberId, a]));
+
+    return members.map((m) => {
+      const att = attendedMap.get(m.id);
+      const displayName =
+        m.User?.full_name ||
+        m.Guru?.nama_guru ||
+        m.Siswa?.nama_siswa ||
+        'Anggota Koperasi';
+
+      return {
+        id: m.id,
+        memberNo: m.memberNo,
+        name: displayName,
+        type: m.type,
+        isAttended: Boolean(att),
+        attendedAt: att?.attendedAt ? att.attendedAt.toISOString() : null,
+        method: att?.method ? (att.method === 'ONLINE_SELF' ? 'ONLINE' : att.method) : null,
+      };
+    });
+  }
+
+  /**
    * Catat presensi kehadiran peserta RAT
    */
   static async recordAttendance(

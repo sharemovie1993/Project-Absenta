@@ -370,6 +370,26 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
+  // 6c. GET /:id/attendance/roster - Daftar seluruh anggota aktif & status kehadiran sidang RAT
+  fastify.get(
+    '/:id/attendance/roster',
+    {
+      preHandler: [
+        requireCapability(['cooperative.rat.manage', 'cooperative.rat.view']),
+      ],
+    },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const roster = await RatService.getMeetingAttendanceRoster(req.params.id, tenantId);
+        return { success: true, data: roster };
+      } catch (error: any) {
+        appLogger.error({ err: error }, 'Failed to fetch RAT attendance roster');
+        reply.status(500).send({ success: false, message: error.message || 'Gagal memuat daftar anggota sidang' });
+      }
+    }
+  );
+
   // 7. GET /:id/attendance/me - Cek Status Presensi Saya
   fastify.get(
     '/:id/attendance/me',
