@@ -63,6 +63,7 @@ export const SectionCard = React.memo(({
       {children}
     </div>
   </div>
-));
+  );
+});
 
 export default SectionCard;
