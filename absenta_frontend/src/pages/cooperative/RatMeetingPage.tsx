@@ -16,7 +16,8 @@ import {
   Clock, 
   FileCheck2, 
   Plus, 
-  Calendar 
+  Calendar,
+  Tv 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -52,6 +53,10 @@ const CreateVotingSessionModal = lazy(() =>
 
 const AddResolutionModal = lazy(() =>
   import('../../components/cooperative/rat/AddResolutionModal').then(m => ({ default: m.AddResolutionModal }))
+);
+
+const RatTvDisplayModal = lazy(() =>
+  import('../../components/cooperative/rat/RatTvDisplayModal').then(m => ({ default: m.RatTvDisplayModal }))
 );
 
 // ─── TYPES ─────────────────────────────────────────────────────────────────
@@ -150,6 +155,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [isCastVoteOpen, setIsCastVoteOpen] = useState(false);
   const [isCreateVotingSessionOpen, setIsCreateVotingSessionOpen] = useState(false);
   const [isAddResolutionOpen, setIsAddResolutionOpen] = useState(false);
+  const [isTvDisplayOpen, setIsTvDisplayOpen] = useState(false);
   const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
 
   // Sync tab with URL search params
@@ -520,18 +526,33 @@ const RatMeetingPage: React.FC = React.memo(() => {
               )}
             </div>
 
-            {canManage && (
-              <Button
-                type="button"
-                size="toolbar"
-                variant="toolbarPrimary"
-                onClick={() => setIsCreateMeetingOpen(true)}
-                className="gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                Agendakan Sidang Baru
-              </Button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {currentMeeting && (
+                <Button
+                  type="button"
+                  size="toolbar"
+                  variant="toolbarOutline"
+                  onClick={() => setIsTvDisplayOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Tv className="w-4 h-4 text-indigo-500" />
+                  Layar Proyektor Aula
+                </Button>
+              )}
+
+              {canManage && (
+                <Button
+                  type="button"
+                  size="toolbar"
+                  variant="toolbarPrimary"
+                  onClick={() => setIsCreateMeetingOpen(true)}
+                  className="gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  Agendakan Sidang Baru
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* QUORUM HUD & STATUS CARDS */}
@@ -658,6 +679,15 @@ const RatMeetingPage: React.FC = React.memo(() => {
               isOpen={isAddResolutionOpen}
               onClose={() => setIsAddResolutionOpen(false)}
               meetingId={selectedMeetingId}
+            />
+          )}
+
+          {isTvDisplayOpen && currentMeeting && (
+            <RatTvDisplayModal
+              isOpen={isTvDisplayOpen}
+              onClose={() => setIsTvDisplayOpen(false)}
+              meeting={currentMeeting}
+              quorumStats={quorumData}
             />
           )}
         </Suspense>
