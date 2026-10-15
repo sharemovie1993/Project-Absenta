@@ -579,7 +579,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
               {/* TABS NAVIGATION */}
               <TabSwitcher
-                options={tabOptions}
+                tabs={tabOptions}
+                activeTab={activeTab}
                 value={activeTab}
                 onChange={handleTabChange}
               />

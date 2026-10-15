@@ -8,11 +8,12 @@ export interface TabOption {
   colorClass?: string; // e.g., 'text-blue-600 dark:text-blue-400'
 }
 
-interface TabSwitcherProps {
+export interface TabSwitcherProps {
   options?: TabOption[];
   tabs?: TabOption[];
   items?: TabOption[];
-  activeTab: string;
+  activeTab?: string;
+  value?: string;
   onChange: (id: string) => void;
   className?: string;
 }
@@ -22,9 +23,11 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
   tabs,
   items,
   activeTab,
+  value,
   onChange,
   className,
 }) => {
+  const currentTab = activeTab || value || '';
   const tabOptions = options || tabs || items || [];
   return (
     <div 
@@ -32,7 +35,7 @@ export const TabSwitcher: React.FC<TabSwitcherProps> = ({
       role="tablist"
     >
       {tabOptions.map((opt) => {
-        const isActive = activeTab === opt.id;
+        const isActive = currentTab === opt.id;
         const Icon = opt.icon;
         return (
           <button
