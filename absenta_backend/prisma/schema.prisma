@@ -3463,6 +3463,7 @@ model CoopMeeting {
   attendances        CoopMeetingAttendance[]
   votingSessions     CoopVotingSession[]
   resolutions        CoopMeetingResolution[]
+  minutes            CoopMeetingMinute[]
 
   @@index([tenantId])
   @@index([tenantId, fiscalYear])
@@ -3480,8 +3481,34 @@ model CoopMeetingAgenda {
   status      String      @default("PENDING")
 
   Meeting     CoopMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  minutes     CoopMeetingMinute[]
 
   @@index([meetingId, order])
+}
+
+model CoopMeetingMinute {
+  id          String             @id @default(uuid())
+  meetingId   String
+  agendaId    String?
+  authorId    String?
+  timeRecord  String?
+  speakerName String?
+  speakerRole String?
+  category    String             @default("DISCUSSION")
+  topic       String
+  content     String             @db.Text
+  actionItem  String?            @db.Text
+  isPublic    Boolean            @default(true)
+  orderIndex  Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  Meeting     CoopMeeting        @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  Agenda      CoopMeetingAgenda? @relation(fields: [agendaId], references: [id], onDelete: SetNull)
+
+  @@index([meetingId])
+  @@index([agendaId])
+  @@index([meetingId, orderIndex])
 }
 
 model CoopMeetingAttendance {

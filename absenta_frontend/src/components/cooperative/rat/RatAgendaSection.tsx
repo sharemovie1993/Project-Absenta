@@ -110,6 +110,7 @@ interface RatAgendaSectionProps {
   onOpenEditRules?: () => void;
   onOpenCreateVoting?: (agenda: CoopAgendaItem) => void;
   onOpenCastVote?: (session: CoopVotingSessionItem) => void;
+  onOpenAddMinute?: (agendaId: string) => void;
   meetingLocation?: string | null;
   meetingDate?: string | null;
 }
@@ -128,6 +129,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
   onOpenEditRules,
   onOpenCreateVoting,
   onOpenCastVote,
+  onOpenAddMinute,
   meetingLocation,
   meetingDate,
 }) => {
@@ -561,6 +563,21 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                                 <span className="hidden sm:inline">Voting</span> Bila Deadlock
                               </Button>
                             ) : null
+                          )}
+
+                          {/* Add Minute Shortcut */}
+                          {onOpenAddMinute && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="toolbarOutline"
+                              onClick={() => onOpenAddMinute(agenda.id)}
+                              title="Catat tanya jawab, masukan, atau notulensi butir acara ini"
+                              className="text-xs gap-1 py-1 text-slate-700 dark:text-slate-300 hover:text-sky-600"
+                            >
+                              <BookOpen className="w-3 h-3 text-sky-500" />
+                              <span className="hidden sm:inline">Catat</span> Notulensi
+                            </Button>
                           )}
 
                           {/* Status Toggle Button */}

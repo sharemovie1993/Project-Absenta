@@ -14,7 +14,8 @@ import {
   Calendar,
   Tv,
   Eye,
-  Settings
+  Settings,
+  BookOpen
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -26,6 +27,7 @@ import { COOP_QUERY_KEYS, invalidateRatCaches } from '../../lib/coopQueryKeys';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { RatAgendaSection } from '../../components/cooperative/rat/RatAgendaSection';
 import { RatVotingSection } from '../../components/cooperative/rat/RatVotingSection';
+import { RatMinuteTimeline } from '../../components/cooperative/rat/RatMinuteTimeline';
 import { RatQuorumHud } from '../../components/cooperative/rat/RatQuorumHud';
 import { RatAttendanceSection } from '../../components/cooperative/rat/RatAttendanceSection';
 import { RatLiveVotingBanner } from '../../components/cooperative/rat/RatLiveVotingBanner';
@@ -62,7 +64,36 @@ const EditRulesModal = lazy(() =>
   import('../../components/cooperative/rat/EditRulesModal').then(m => ({ default: m.EditRulesModal }))
 );
 
+const MinuteFormModal = lazy(() =>
+  import('../../components/cooperative/rat/MinuteFormModal').then(m => ({ default: m.MinuteFormModal }))
+);
+
+const RatProceedingsPrintModal = lazy(() =>
+  import('../../components/cooperative/rat/RatProceedingsPrintModal').then(m => ({ default: m.RatProceedingsPrintModal }))
+);
+
 // ─── TYPES ─────────────────────────────────────────────────────────────────
+export interface CoopMeetingMinuteItem {
+  id: string;
+  meetingId: string;
+  agendaId?: string | null;
+  authorId?: string | null;
+  timeRecord?: string | null;
+  speakerName?: string | null;
+  speakerRole?: string | null;
+  category: 'OPENING' | 'DISCUSSION' | 'SUGGESTION' | 'OBJECTION' | 'CONCLUSION' | 'ANNOUNCEMENT';
+  topic: string;
+  content: string;
+  actionItem?: string | null;
+  isPublic: boolean;
+  orderIndex: number;
+  createdAt: string;
+  agenda?: {
+    id: string;
+    title: string;
+    order: number;
+  } | null;
+}
 export interface CoopMeetingItem {
   id: string;
   title: string;
@@ -164,6 +195,10 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [isEditRulesOpen, setIsEditRulesOpen] = useState(false);
   const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
   const [votingAgendaContext, setVotingAgendaContext] = useState<CoopAgendaItem | null>(null);
+  const [isAddMinuteOpen, setIsAddMinuteOpen] = useState(false);
+  const [editingMinute, setEditingMinute] = useState<CoopMeetingMinuteItem | null>(null);
+  const [minuteAgendaContext, setMinuteAgendaContext] = useState<string | null>(null);
+  const [isPrintProceedingsOpen, setIsPrintProceedingsOpen] = useState(false);
 
   // Sync tab with URL search params
   const handleTabChange = useCallback((tabId: string) => {
@@ -377,6 +412,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
     { id: 'agenda', label: 'Agenda & Ketetapan Sidang', icon: FileCheck2 },
     { id: 'attendance', label: 'Daftar Presensi Peserta', icon: Users },
     { id: 'voting', label: 'e-Voting (One Member One Vote)', icon: Vote },
+    { id: 'minutes', label: 'Risalah & Notulensi Sidang', icon: BookOpen },
   ], []);
 
   const handleSelectVoteSession = useCallback((session: CoopVotingSessionItem) => {
@@ -557,6 +593,11 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   onOpenEditRules={() => setIsEditRulesOpen(true)}
                   onOpenCreateVoting={(agenda) => { setVotingAgendaContext(agenda); setIsCreateVotingSessionOpen(true); }}
                   onOpenCastVote={(session) => { setActiveVotingSession(session); setIsCastVoteOpen(true); }}
+                  onOpenAddMinute={(agendaId) => {
+                    setEditingMinute(null);
+                    setMinuteAgendaContext(agendaId || null);
+                    setIsAddMinuteOpen(true);
+                  }}
                   meetingLocation={(currentMeeting as any)?.location}
                   meetingDate={(currentMeeting as any)?.meetingDate || (currentMeeting as any)?.date}
                 />
@@ -589,6 +630,26 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   onUpdateSessionStatus={handleVotingStatusChange}
                   onOpenTvDisplay={() => setIsTvDisplayOpen(true)}
                   isUpdatingStatus={votingStatusMutation.isPending}
+                />
+              )}
+
+              {/* TAB 4: RISALAH & NOTULENSI SIDANG */}
+              {activeTab === 'minutes' && (
+                <RatMinuteTimeline
+                  meetingId={selectedMeetingId}
+                  agendas={currentMeeting?.agendas || []}
+                  canManage={canManage}
+                  onOpenAddMinute={(agendaId) => {
+                    setEditingMinute(null);
+                    setMinuteAgendaContext(agendaId || null);
+                    setIsAddMinuteOpen(true);
+                  }}
+                  onEditMinute={(minute) => {
+                    setEditingMinute(minute);
+                    setMinuteAgendaContext(minute.agendaId || null);
+                    setIsAddMinuteOpen(true);
+                  }}
+                  onOpenPrintProceedings={() => setIsPrintProceedingsOpen(true)}
                 />
               )}
             </>
@@ -668,6 +729,32 @@ const RatMeetingPage: React.FC = React.memo(() => {
               onClose={() => setIsEditRulesOpen(false)}
               meetingId={selectedMeetingId}
               initialRules={currentMeeting?.description}
+            />
+          )}
+
+          {isAddMinuteOpen && selectedMeetingId && (
+            <MinuteFormModal
+              isOpen={isAddMinuteOpen}
+              onClose={() => {
+                setIsAddMinuteOpen(false);
+                setEditingMinute(null);
+                setMinuteAgendaContext(null);
+              }}
+              meetingId={selectedMeetingId}
+              agendas={currentMeeting?.agendas || []}
+              initialAgendaId={minuteAgendaContext}
+              editingMinute={editingMinute}
+            />
+          )}
+
+          {isPrintProceedingsOpen && selectedMeetingId && (
+            <RatProceedingsPrintModal
+              isOpen={isPrintProceedingsOpen}
+              onClose={() => setIsPrintProceedingsOpen(false)}
+              meetingId={selectedMeetingId}
+              coopName={currentMeeting?.title}
+              meetingLocation={(currentMeeting as any)?.location}
+              meetingDate={currentMeeting?.meetingDate}
             />
           )}
         </Suspense>
