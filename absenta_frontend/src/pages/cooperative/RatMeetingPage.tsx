@@ -32,6 +32,7 @@ import { RatAgendaSection } from '../../components/cooperative/rat/RatAgendaSect
 import { RatVotingSection } from '../../components/cooperative/rat/RatVotingSection';
 import { RatQuorumHud } from '../../components/cooperative/rat/RatQuorumHud';
 import { RatAttendanceTerminal } from '../../components/cooperative/rat/RatAttendanceTerminal';
+import { RatLiveVotingBanner } from '../../components/cooperative/rat/RatLiveVotingBanner';
 
 const hardeningModuleKey = 'coop_rat';
 
@@ -170,6 +171,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [isTvDisplayOpen, setIsTvDisplayOpen] = useState(false);
   const [isEditRulesOpen, setIsEditRulesOpen] = useState(false);
   const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
+  const [votingAgendaContext, setVotingAgendaContext] = useState<CoopAgendaItem | null>(null);
 
   // Sync tab with URL search params
   const handleTabChange = useCallback((tabId: string) => {
@@ -223,17 +225,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
   const meetingOptions = useMemo(() => {
     return (meetings || []).map(m => {
-      const statusLabel = m.status === 'IN_SESSION'
-        ? '🔴 Sedang Berlangsung'
-        : m.status === 'REGISTRATION_OPEN'
-        ? '🟢 Registrasi Dibuka'
-        : m.status === 'CLOSED'
-        ? '⚪ Ditutup'
-        : '🟡 Draft';
-      return {
-        value: m.id,
-        label: `${m.title} (${m.year}) — ${statusLabel}`,
-      };
+      const statusLabel = m.status === 'IN_SESSION' ? '🔴 Sedang Berlangsung' : m.status === 'REGISTRATION_OPEN' ? '🟢 Registrasi Dibuka' : m.status === 'CLOSED' ? '⚪ Ditutup' : '🟡 Draft';
+      return { value: m.id, label: `${m.title} (${m.year}) — ${statusLabel}` };
     });
   }, [meetings]);
 
@@ -343,15 +336,15 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
     if (newStatus === 'REGISTRATION_OPEN') {
       confirmTitle = 'Buka Registrasi Peserta RAT';
-      confirmMessage = 'Dengan membuka registrasi, sistem akan secara otomatis mengunci (freeze) snapshot seluruh anggota aktif koperasi sebagai basis penentuan kuorum sah rapat (50% + 1). Lanjutkan?';
+      confirmMessage = 'Buka registrasi? Snapshot anggota aktif akan dikunci sebagai basis penentuan kuorum sah rapat (50% + 1). Lanjutkan?';
       confirmStyle = 'info';
     } else if (newStatus === 'IN_SESSION') {
       confirmTitle = 'Mulai Sidang Paripurna RAT';
-      confirmMessage = 'Apakah Anda yakin ingin memulai sidang paripurna? Anggota yang hadir dapat mulai mengikuti pembahasan agenda dan pemungutan suara.';
+      confirmMessage = 'Mulai sidang paripurna? Anggota yang hadir dapat mengikuti pembahasan agenda dan pemungutan suara.';
       confirmStyle = 'primary';
     } else if (newStatus === 'CLOSED') {
       confirmTitle = 'Tutup & Akhiri Sidang RAT';
-      confirmMessage = 'Apakah Anda yakin ingin menutup dan mengakhiri sidang RAT ini? Setelah ditutup, presensi dan pemungutan suara e-Voting tidak dapat diubah kembali.';
+      confirmMessage = 'Tutup dan akhiri sidang RAT? Presensi dan pemungutan suara e-Voting tidak dapat diubah kembali.';
       confirmStyle = 'warning';
     }
 
@@ -597,6 +590,19 @@ const RatMeetingPage: React.FC = React.memo(() => {
             />
           )}
 
+          {/* LIVE VOTING BANNER FOR MEMBERS */}
+          {currentMeeting?.votingSessions?.some(s => s.status === 'ACTIVE') && (
+            <RatLiveVotingBanner
+              session={currentMeeting.votingSessions.find(s => s.status === 'ACTIVE') || null}
+              canVote={canVote}
+              onCastVote={(session) => {
+                setActiveVotingSession(session);
+                setIsCastVoteOpen(true);
+              }}
+              onViewVotingTab={() => handleTabChange('voting')}
+            />
+          )}
+
           {/* TABS NAVIGATION */}
           <TabSwitcher
             options={tabOptions}
@@ -610,27 +616,18 @@ const RatMeetingPage: React.FC = React.memo(() => {
               meetingId={selectedMeetingId}
               agendas={currentMeeting?.agendas || []}
               resolutions={currentMeeting?.resolutions || []}
+              votingSessions={currentMeeting?.votingSessions || []}
               canManage={canManage}
               meetingDescription={currentMeeting?.description}
-              onOpenAddAgenda={() => {
-                setEditingAgenda(null);
-                setIsAddAgendaOpen(true);
-              }}
-              onEditAgenda={(agenda) => {
-                setEditingAgenda(agenda);
-                setIsAddAgendaOpen(true);
-              }}
-              onOpenAddResolution={() => {
-                setEditingResolution(null);
-                setIsAddResolutionOpen(true);
-              }}
-              onEditResolution={(res) => {
-                setEditingResolution(res);
-                setIsAddResolutionOpen(true);
-              }}
+              onOpenAddAgenda={() => { setEditingAgenda(null); setIsAddAgendaOpen(true); }}
+              onEditAgenda={(agenda) => { setEditingAgenda(agenda); setIsAddAgendaOpen(true); }}
+              onOpenAddResolution={() => { setEditingResolution(null); setIsAddResolutionOpen(true); }}
+              onEditResolution={(res) => { setEditingResolution(res); setIsAddResolutionOpen(true); }}
               onOpenEditRules={() => setIsEditRulesOpen(true)}
-              meetingLocation={currentMeeting?.location}
-              meetingDate={currentMeeting?.date}
+              onOpenCreateVoting={(agenda) => { setVotingAgendaContext(agenda); setIsCreateVotingSessionOpen(true); }}
+              onOpenCastVote={(session) => { setActiveVotingSession(session); setIsCastVoteOpen(true); }}
+              meetingLocation={(currentMeeting as any)?.location}
+              meetingDate={(currentMeeting as any)?.meetingDate || (currentMeeting as any)?.date}
             />
           )}
 
@@ -716,8 +713,13 @@ const RatMeetingPage: React.FC = React.memo(() => {
           {isCreateVotingSessionOpen && selectedMeetingId && (
             <CreateVotingSessionModal
               isOpen={isCreateVotingSessionOpen}
-              onClose={() => setIsCreateVotingSessionOpen(false)}
+              onClose={() => {
+                setIsCreateVotingSessionOpen(false);
+                setVotingAgendaContext(null);
+              }}
               meetingId={selectedMeetingId}
+              initialAgendaId={votingAgendaContext?.id}
+              initialTitle={votingAgendaContext ? `Pengesahan: ${votingAgendaContext.title}` : undefined}
             />
           )}
 

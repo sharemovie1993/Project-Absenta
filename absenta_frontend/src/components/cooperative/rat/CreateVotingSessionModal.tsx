@@ -22,22 +22,49 @@ interface CreateVotingSessionModalProps {
   onClose: () => void;
   meetingId: string;
   onSuccess?: () => void;
+  initialAgendaId?: string | null;
+  initialTitle?: string;
+  initialCategory?: 'RESOLUTION' | 'ELECTION';
 }
 
 export const CreateVotingSessionModal: React.FC<CreateVotingSessionModalProps> = React.memo(({
   isOpen,
   onClose,
   meetingId,
-  onSuccess
+  onSuccess,
+  initialAgendaId,
+  initialTitle,
+  initialCategory = 'RESOLUTION',
 }) => {
   const queryClient = useQueryClient();
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(initialTitle || '');
   const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<'RESOLUTION' | 'ELECTION'>(initialCategory);
   const [options, setOptions] = useState<{ title: string; description: string }[]>([
-    { title: 'Setuju / Diterima', description: 'Menyetujui dan mengesahkan' },
-    { title: 'Menolak / Perlu Revisi', description: 'Menolak pengesahan agenda' }
+    { title: 'Setuju / Diterima', description: 'Menyetujui dan mengesahkan agenda' },
+    { title: 'Menolak / Revisi', description: 'Menolak atau meminta perbaikan' }
   ]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialTitle) setTitle(initialTitle);
+      if (initialCategory) {
+        setCategory(initialCategory);
+        if (initialCategory === 'ELECTION') {
+          setOptions([
+            { title: 'Kandidat 01: [Nama Calon]', description: 'Visi: Penguatan Permodalan' },
+            { title: 'Kandidat 02: [Nama Calon]', description: 'Visi: Digitalisasi Usaha' }
+          ]);
+        } else {
+          setOptions([
+            { title: 'Setuju / Diterima', description: 'Menyetujui dan mengesahkan agenda' },
+            { title: 'Menolak / Revisi', description: 'Menolak atau meminta perbaikan' }
+          ]);
+        }
+      }
+    }
+  }, [isOpen, initialTitle, initialCategory]);
 
   const handleAddOption = useCallback(() => {
     setOptions(prev => [...prev, { title: '', description: '' }]);
@@ -104,11 +131,13 @@ export const CreateVotingSessionModal: React.FC<CreateVotingSessionModalProps> =
     }
 
     createMutation.mutate({
+      agendaId: initialAgendaId || undefined,
+      category,
       title: parseResult.data.title,
       description: parseResult.data.description,
       options: parseResult.data.options,
     });
-  }, [title, description, options, createMutation]);
+  }, [title, description, options, category, initialAgendaId, createMutation]);
 
   const isPending = createMutation.isPending;
 
