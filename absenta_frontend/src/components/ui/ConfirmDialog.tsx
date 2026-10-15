@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Trash2, XCircle, CheckCircle, Info } from 'lucide-react';
+import { AlertTriangle, Trash2, XCircle, CheckCircle, Info, Sparkles } from 'lucide-react';
 import Modal, { ModalFooter } from './Modal';
 import Button from './Button';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,7 @@ const iconByStyle: Record<ConfirmStyle, React.ReactNode> = {
   warning: <AlertTriangle className="w-6 h-6 text-yellow-600" />,
   info: <Info className="w-6 h-6 text-blue-600" />,
   success: <CheckCircle className="w-6 h-6 text-green-600" />,
-  primary: <Info className="w-6 h-6 text-blue-600" />,
+  primary: <Sparkles className="w-6 h-6 text-indigo-600" />,
 };
 
 const headerClassByStyle: Record<ConfirmStyle, string> = {
@@ -35,7 +35,7 @@ const headerClassByStyle: Record<ConfirmStyle, string> = {
   warning: 'bg-yellow-50 dark:bg-yellow-900/20',
   info: 'bg-blue-50 dark:bg-blue-900/20',
   success: 'bg-green-50 dark:bg-green-900/20',
-  primary: 'bg-blue-50 dark:bg-blue-900/20',
+  primary: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800',
 };
 
 const progressColorByStyle: Record<ConfirmStyle, string> = {
@@ -43,7 +43,7 @@ const progressColorByStyle: Record<ConfirmStyle, string> = {
   warning: 'from-yellow-500 via-amber-500 to-orange-500',
   info: 'from-blue-500 via-indigo-500 to-blue-600',
   success: 'from-green-500 via-emerald-500 to-green-600',
-  primary: 'from-blue-500 via-indigo-500 to-blue-600',
+  primary: 'from-indigo-500 via-purple-500 to-indigo-600',
 };
 
 export default function ConfirmDialog({
@@ -141,7 +141,7 @@ export default function ConfirmDialog({
             style === 'warning' && 'bg-amber-500 hover:bg-amber-600',
             style === 'info' && 'bg-blue-600 hover:bg-blue-700',
             style === 'success' && 'bg-green-600 hover:bg-green-700',
-            style === 'primary' && 'bg-blue-600 hover:bg-blue-700',
+            style === 'primary' && 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20',
             loading ? 'opacity-70 pointer-events-none' : ''
           )}
         >

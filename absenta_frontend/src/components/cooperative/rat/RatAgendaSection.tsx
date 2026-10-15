@@ -102,6 +102,8 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       message: 'Apakah Anda ingin memuat 9 butir acara resmi sidang RAT berstandar UU No. 25/1992? Susunan acara lengkap mulai dari registrasi, pembukaan, LPJ, pandangan umum, hingga pengesahan ketetapan akan diisikan secara otomatis.',
       confirmText: 'Ya, Muat Preset Standar',
       cancelText: 'Batal',
+      style: 'primary',
+      type: 'primary',
       variant: 'primary',
     });
     if (isConfirmed) {

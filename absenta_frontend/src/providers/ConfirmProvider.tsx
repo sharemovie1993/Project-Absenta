@@ -9,6 +9,7 @@ interface ConfirmOptions {
   cancelText?: string;
   style?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
   type?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
+  variant?: 'danger' | 'warning' | 'info' | 'success' | 'primary';
   /** If true, after user clicks Confirm the dialog stays open with a progress bar until you call setLoading(false) */
   withProgress?: boolean;
   progressLabel?: string;
@@ -33,7 +34,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     const normalizedOptions: ConfirmOptions = {
       ...opts,
       description: opts.description ?? opts.message,
-      style: opts.style ?? opts.type ?? 'danger'
+      style: opts.style ?? opts.type ?? opts.variant ?? 'danger'
     };
     setOptions(normalizedOptions);
     setOpen(true);
