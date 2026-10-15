@@ -38,16 +38,17 @@ interface MemberSearchResult {
   memberNo: string;
   type: string;
   status: string;
-  User?: { name: string; email: string } | null;
+  displayName?: string;
+  identityCode?: string;
+  isMember?: boolean;
+  User?: { full_name?: string; email?: string } | null;
   Siswa?: {
-    nama_lengkap: string;
     nama_siswa: string;
     nis: string;
     nisn: string;
     no_rfid: string | null;
   } | null;
   Guru?: {
-    nama_lengkap: string;
     nama_guru: string;
     nip: string;
     no_rfid: string | null;
@@ -167,11 +168,10 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
 
       const member = data.member;
       const memberName =
-        member?.Siswa?.nama_lengkap ||
+        member?.displayName ||
         member?.Siswa?.nama_siswa ||
-        member?.Guru?.nama_lengkap ||
         member?.Guru?.nama_guru ||
-        member?.User?.name ||
+        member?.User?.full_name ||
         'Anggota Terdaftar';
 
       const memberNo = member?.memberNo || params.rfid || params.identifier || '-';
@@ -282,16 +282,16 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
 
   const getMemberDisplayName = (m: MemberSearchResult) => {
     return (
-      m.Siswa?.nama_lengkap ||
+      m.displayName ||
       m.Siswa?.nama_siswa ||
-      m.Guru?.nama_lengkap ||
       m.Guru?.nama_guru ||
-      m.User?.name ||
+      m.User?.full_name ||
       'Tanpa Nama'
     );
   };
 
   const getMemberIdentityCode = (m: MemberSearchResult) => {
+    if (m.identityCode) return m.identityCode;
     if (m.Siswa?.nis) return `NIS: ${m.Siswa.nis}`;
     if (m.Guru?.nip) return `NIP: ${m.Guru.nip}`;
     return m.User?.email || '-';
@@ -500,20 +500,35 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
                             <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate">
                               {name}
                             </span>
-                            <Badge variant="outline">{m.type}</Badge>
+                            {m.isMember === false ? (
+                              <Badge variant="warning">Non-Anggota Koperasi</Badge>
+                            ) : (
+                              <Badge variant="outline">{m.type}</Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
-                              {m.memberNo}
-                            </span>
-                            <span>•</span>
+                            {m.isMember !== false && (
+                              <>
+                                <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
+                                  {m.memberNo}
+                                </span>
+                                <span>•</span>
+                              </>
+                            )}
                             <span>{identity}</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="shrink-0">
-                        {m.isAttended ? (
+                        {m.isMember === false ? (
+                          <div
+                            className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 text-[11px] font-semibold px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-lg"
+                            title="Hanya anggota koperasi aktif yang memiliki hak kuorum dan suara RAT"
+                          >
+                            <span>Belum Menjadi Anggota</span>
+                          </div>
+                        ) : m.isAttended ? (
                           <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-xs font-semibold px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Sudah Hadir</span>

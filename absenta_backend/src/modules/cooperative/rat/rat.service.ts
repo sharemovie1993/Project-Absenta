@@ -196,9 +196,9 @@ export class RatService {
       memberNo: true,
       type: true,
       status: true,
-      User: { select: { name: true, email: true } },
-      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
-      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true, no_rfid: true } },
+      User: { select: { full_name: true, email: true } },
+      Siswa: { select: { nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
+      Guru: { select: { nama_guru: true, nip: true, no_rfid: true } },
     };
 
     // 1. Direct memberId
@@ -240,7 +240,7 @@ export class RatService {
       if (member) return member;
     }
 
-    // 4. By NIS / NISN or NIP
+    // 4. By NIS / NISN or NIP or Name
     member = await prisma.member.findFirst({
       where: {
         tenantId,
@@ -248,10 +248,10 @@ export class RatService {
         OR: [
           { Siswa: { nis: clean } },
           { Siswa: { nisn: clean } },
-          { Siswa: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+          { Siswa: { nama_siswa: { contains: clean, mode: 'insensitive' } } },
           { Guru: { nip: clean } },
-          { Guru: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
-          { User: { name: { contains: clean, mode: 'insensitive' } } },
+          { Guru: { nama_guru: { contains: clean, mode: 'insensitive' } } },
+          { User: { full_name: { contains: clean, mode: 'insensitive' } } },
         ],
       },
       select: memberSelect,
@@ -271,9 +271,9 @@ export class RatService {
       memberNo: true,
       type: true,
       status: true,
-      User: { select: { name: true, email: true } },
-      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
-      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true, no_rfid: true } },
+      User: { select: { full_name: true, email: true } },
+      Siswa: { select: { nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
+      Guru: { select: { nama_guru: true, nip: true, no_rfid: true } },
     };
 
     const whereClause: any = {
@@ -284,13 +284,14 @@ export class RatService {
     if (clean) {
       whereClause.OR = [
         { memberNo: { contains: clean, mode: 'insensitive' } },
-        { Siswa: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+        { Siswa: { nama_siswa: { contains: clean, mode: 'insensitive' } } },
         { Siswa: { nis: { contains: clean } } },
+        { Siswa: { nisn: { contains: clean } } },
         { Siswa: { no_rfid: { equals: clean } } },
-        { Guru: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+        { Guru: { nama_guru: { contains: clean, mode: 'insensitive' } } },
         { Guru: { nip: { contains: clean } } },
         { Guru: { no_rfid: { equals: clean } } },
-        { User: { name: { contains: clean, mode: 'insensitive' } } },
+        { User: { full_name: { contains: clean, mode: 'insensitive' } } },
       ];
     }
 
@@ -315,11 +316,82 @@ export class RatService {
 
     const attendedMap = new Map(attendances.map((a) => [a.memberId, a]));
 
-    return members.map((m) => ({
+    const memberResults = members.map((m) => ({
       ...m,
+      isMember: true,
+      displayName: m.Siswa?.nama_siswa || m.Guru?.nama_guru || m.User?.full_name || 'Anggota Koperasi',
+      identityCode: m.Siswa?.nis ? `NIS: ${m.Siswa.nis}` : m.Guru?.nip ? `NIP: ${m.Guru.nip}` : m.User?.email || '-',
       isAttended: attendedMap.has(m.id),
       attendanceDetail: attendedMap.get(m.id) || null,
     }));
+
+    // Cek juga direktori sekolah jika pencarian nama belum terdaftar sebagai anggota koperasi
+    if (clean.length >= 2 && memberResults.length < 15) {
+      const nonMemberStudents = await prisma.siswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          Member: null,
+          OR: [
+            { nama_siswa: { contains: clean, mode: 'insensitive' } },
+            { nis: { contains: clean } },
+            { nisn: { contains: clean } },
+          ],
+        },
+        select: {
+          id: true,
+          nama_siswa: true,
+          nis: true,
+          nisn: true,
+        },
+        take: 5,
+      });
+
+      const nonMemberTeachers = await prisma.guru.findMany({
+        where: {
+          tenant_id: tenantId,
+          Member: null,
+          OR: [
+            { nama_guru: { contains: clean, mode: 'insensitive' } },
+            { nip: { contains: clean } },
+          ],
+        },
+        select: {
+          id: true,
+          nama_guru: true,
+          nip: true,
+        },
+        take: 5,
+      });
+
+      const nonMembers = [
+        ...nonMemberStudents.map((s) => ({
+          id: `non-member-${s.id}`,
+          memberNo: '-',
+          type: 'STUDENT',
+          status: 'NON_MEMBER',
+          displayName: s.nama_siswa,
+          identityCode: `NIS: ${s.nis || '-'}${s.nisn ? ` / NISN: ${s.nisn}` : ''}`,
+          isMember: false,
+          isAttended: false,
+          attendanceDetail: null,
+        })),
+        ...nonMemberTeachers.map((g) => ({
+          id: `non-member-${g.id}`,
+          memberNo: '-',
+          type: 'TEACHER',
+          status: 'NON_MEMBER',
+          displayName: g.nama_guru,
+          identityCode: `NIP: ${g.nip || '-'}`,
+          isMember: false,
+          isAttended: false,
+          attendanceDetail: null,
+        })),
+      ];
+
+      return [...memberResults, ...nonMembers];
+    }
+
+    return memberResults;
   }
 
   /**
@@ -348,9 +420,9 @@ export class RatService {
       memberNo: true,
       type: true,
       status: true,
-      User: { select: { name: true, email: true } },
-      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true } },
-      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true } },
+      User: { select: { full_name: true, email: true } },
+      Siswa: { select: { nama_siswa: true, nis: true, nisn: true } },
+      Guru: { select: { nama_guru: true, nip: true } },
     };
 
     // Cek apakah anggota aktif
