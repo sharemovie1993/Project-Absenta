@@ -677,9 +677,10 @@ export default async function ratRoutes(fastify: any) {
     async (req: any, reply: any) => {
       try {
         const tenantId = getTenantId(req);
-        const agendas = await RatService.loadPresetAgendas(req.params.id, tenantId);
+        const forceReset = Boolean(req.body?.forceReset);
+        const agendas = await RatService.loadPresetAgendas(req.params.id, tenantId, { forceReset });
         broadcastRatEvent(req, 'RAT_AGENDA_UPDATED', { meetingId: req.params.id });
-        reply.code(201).send({ success: true, data: agendas });
+        reply.code(200).send({ success: true, data: agendas });
       } catch (error: any) {
         reply.status(400).send({ success: false, message: error.message || 'Gagal memuat preset agenda' });
       }

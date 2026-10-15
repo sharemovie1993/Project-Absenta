@@ -920,8 +920,9 @@ export class RatService {
 
   /**
    * Muat susunan butir acara standar RAT Koperasi (UU No. 25/1992 & Permenkop UKM)
+   * Dilengkapi proteksi keamanan statuter dan idempotensi (zero duplication)
    */
-  static async loadPresetAgendas(meetingId: string, tenantId: string) {
+  static async loadPresetAgendas(meetingId: string, tenantId: string, options?: { forceReset?: boolean }) {
     const meeting = await prisma.coopMeeting.findFirst({
       where: { id: meetingId, tenantId },
     });
@@ -939,12 +940,50 @@ export class RatService {
       { order: 9, title: 'Pembacaan Surat Ketetapan Resmi (TAP RAT) & Penutupan Sidang', presenter: 'Sekretaris Sidang', durationMin: 15 },
     ];
 
-    const existingCount = await prisma.coopMeetingAgenda.count({ where: { meetingId } });
+    const existingAgendas = await prisma.coopMeetingAgenda.findMany({
+      where: { meetingId },
+      orderBy: { order: 'asc' },
+    });
+
+    // 1. STATUTORY SAFETY LOCK: Jangan pernah ubah susunan jika ada agenda yang sedang / sudah berjalan
+    const hasActiveOrCompleted = existingAgendas.some(
+      (a: any) => a.status === 'IN_PROGRESS' || a.status === 'COMPLETED' || a.isCompleted === true
+    );
+    if (hasActiveOrCompleted) {
+      throw new Error(
+        'Sidang memiliki tahapan agenda yang sedang berlangsung atau telah diselesaikan. Susunan acara terkunci demi kepastian hukum persidangan.'
+      );
+    }
+
+    // 2. IDEMPOTENCY GUARD: Jika sudah ada dan tidak meminta forceReset
+    if (existingAgendas.length > 0 && !options?.forceReset) {
+      const existingTitles = new Set(existingAgendas.map((a: any) => a.title.trim().toLowerCase()));
+      const isStandardFullyPresent = standardPresets.every((p) =>
+        existingTitles.has(p.title.trim().toLowerCase())
+      );
+
+      // Jika 9 preset standar sudah terpasang lengkap, return existing secara idempotent tanpa menduplikasi
+      if (isStandardFullyPresent && existingAgendas.length === standardPresets.length) {
+        return existingAgendas;
+      }
+
+      // Jika ada duplikasi sebelumnya atau susunan custom, tolak dan minta opsi forceReset
+      throw new Error(
+        `Sidang ini sudah memiliki ${existingAgendas.length} butir acara. Gunakan konfirmasi reset untuk mengembalikan ke susunan 9 agenda standar resmi.`
+      );
+    }
+
+    // 3. CLEAN RESET / SEED: Jika forceReset diminta atau belum ada agenda sama sekali
+    if (existingAgendas.length > 0 && options?.forceReset) {
+      await prisma.coopMeetingAgenda.deleteMany({
+        where: { meetingId },
+      });
+    }
 
     await prisma.coopMeetingAgenda.createMany({
-      data: standardPresets.map((p, idx) => ({
+      data: standardPresets.map((p) => ({
         meetingId,
-        order: existingCount + idx + 1,
+        order: p.order,
         title: p.title,
         presenter: p.presenter,
         durationMin: p.durationMin,

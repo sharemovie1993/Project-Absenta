@@ -104,15 +104,15 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     }
   });
 
-  // Mutation: Load Preset Agendas
+  // Mutation: Load Preset Agendas (Idempotent & Safe)
   const loadPresetMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.post(`/cooperative/rat/${meetingId}/agendas/preset`);
+    mutationFn: async ({ forceReset }: { forceReset?: boolean } = {}) => {
+      const res = await api.post(`/cooperative/rat/${meetingId}/agendas/preset`, { forceReset });
       return res.data;
     },
     onSuccess: () => {
       invalidateRatCaches(queryClient, meetingId);
-      toast.success('9 Butir Agenda Standar RAT Koperasi berhasil dimuat!');
+      toast.success('Susunan 9 Agenda Standar RAT Koperasi berhasil disinkronkan!');
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal memuat preset agenda';
@@ -120,18 +120,41 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     }
   });
 
+  const hasLiveOrCompletedAgenda = React.useMemo(() => {
+    return (agendas || []).some(a => a.status === 'IN_PROGRESS' || a.status === 'COMPLETED' || a.isCompleted);
+  }, [agendas]);
+
   const handleLoadPreset = async () => {
+    if (hasLiveOrCompletedAgenda) {
+      toast.error('Sidang sedang/sudah berjalan. Susunan acara terkunci demi kepastian hukum persidangan.');
+      return;
+    }
+
+    if ((agendas || []).length > 0) {
+      const isConfirmed = await confirm({
+        title: 'Reset Susunan Agenda RAT?',
+        message: `Sidang ini telah memiliki ${(agendas || []).length} butir acara. Apakah Anda ingin me-reset ulang dan mengembalikan ke susunan 9 butir agenda standar resmi? Tindakan ini akan menghapus butir acara lama yang belum berjalan.`,
+        confirmText: 'Ya, Reset Susunan Acara',
+        cancelText: 'Batal',
+        variant: 'warning',
+        style: 'warning',
+      });
+      if (isConfirmed) {
+        loadPresetMutation.mutate({ forceReset: true });
+      }
+      return;
+    }
+
     const isConfirmed = await confirm({
       title: 'Muat Preset Agenda Standar RAT Koperasi',
       message: 'Apakah Anda ingin memuat 9 butir acara resmi sidang RAT berstandar UU No. 25/1992? Susunan acara lengkap mulai dari registrasi, pembukaan, LPJ, pandangan umum, hingga pengesahan ketetapan akan diisikan secara otomatis.',
       confirmText: 'Ya, Muat Preset Standar',
       cancelText: 'Batal',
       style: 'primary',
-      type: 'primary',
       variant: 'primary',
     });
     if (isConfirmed) {
-      loadPresetMutation.mutate();
+      loadPresetMutation.mutate({ forceReset: false });
     }
   };
 
@@ -215,11 +238,16 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                   size="toolbar"
                   variant="outline"
                   onClick={handleLoadPreset}
-                  disabled={loadPresetMutation.isPending}
-                  className="gap-1 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+                  disabled={loadPresetMutation.isPending || hasLiveOrCompletedAgenda}
+                  title={hasLiveOrCompletedAgenda ? 'Preset terkunci karena sidang sedang/sudah berjalan' : undefined}
+                  className="gap-1 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 disabled:opacity-50"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {loadPresetMutation.isPending ? 'Memuat Preset...' : 'Muat Preset Standar RAT'}
+                  {loadPresetMutation.isPending
+                    ? 'Menyinkronkan...'
+                    : (agendas || []).length > 0
+                    ? 'Reset ke 9 Agenda Standar'
+                    : 'Muat Preset Standar RAT'}
                 </Button>
                 <Button
                   type="button"
