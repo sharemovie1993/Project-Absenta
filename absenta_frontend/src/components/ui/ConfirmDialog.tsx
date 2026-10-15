@@ -23,19 +23,19 @@ interface ConfirmDialogProps {
 }
 
 const iconByStyle: Record<ConfirmStyle, React.ReactNode> = {
-  danger: <Trash2 className="w-6 h-6 text-red-600" />,
-  warning: <AlertTriangle className="w-6 h-6 text-yellow-600" />,
-  info: <Info className="w-6 h-6 text-blue-600" />,
-  success: <CheckCircle className="w-6 h-6 text-green-600" />,
-  primary: <Sparkles className="w-6 h-6 text-indigo-600" />,
+  danger: <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />,
+  warning: <AlertTriangle className="w-6 h-6 text-amber-500 dark:text-amber-400" />,
+  info: <Info className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
+  success: <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />,
+  primary: <Sparkles className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
 };
 
 const headerClassByStyle: Record<ConfirmStyle, string> = {
-  danger: 'bg-red-50 dark:bg-red-900/20',
-  warning: 'bg-yellow-50 dark:bg-yellow-900/20',
-  info: 'bg-blue-50 dark:bg-blue-900/20',
-  success: 'bg-green-50 dark:bg-green-900/20',
-  primary: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800',
+  danger: 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50',
+  warning: 'bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50',
+  info: 'bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50',
+  success: 'bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50',
+  primary: 'bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60',
 };
 
 const progressColorByStyle: Record<ConfirmStyle, string> = {

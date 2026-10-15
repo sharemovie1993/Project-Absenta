@@ -74,7 +74,9 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
         message: `Sidang ini telah memiliki ${resolutions.length} surat ketetapan. Memuat ulang preset akan mengganti seluruh draf menjadi 5 draf standar yuridis koperasi (Jadwal/Tatib, LPJ, LHP, SHU, dan RK/RAPBK). Lanjutkan?`,
         confirmText: 'Ya, Pasang Ulang Preset',
         cancelText: 'Batal',
+        style: 'warning',
         type: 'warning',
+        variant: 'warning',
       });
       if (proceed) {
         loadPresetResolutionsMutation.mutate({ forceReset: true });
@@ -87,6 +89,9 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
       message: 'Sistem akan otomatis menerbitkan 5 Draf Surat Ketetapan (TAP RAT) resmi berstandar UU Perkoperasian No. 25/1992 yang siap dibahas dan disahkan oleh Presidium Sidang.',
       confirmText: 'Muat 5 Draf TAP RAT',
       cancelText: 'Batal',
+      style: 'primary',
+      type: 'primary',
+      variant: 'primary',
     });
     if (proceed) {
       loadPresetResolutionsMutation.mutate({ forceReset: false });
@@ -99,7 +104,9 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
       message: `Apakah Anda yakin ingin menghapus "${res.resolutionNo} - ${res.subject}"? Tindakan ini tidak dapat dibatalkan.`,
       confirmText: 'Hapus Ketetapan',
       cancelText: 'Batal',
+      style: 'danger',
       type: 'danger',
+      variant: 'danger',
     });
     if (isConfirmed) {
       deleteResolutionMutation.mutate(res.id);

@@ -163,6 +163,9 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       message: `Agenda "${agenda.title}" telah diselesaikan. Apakah Anda ingin sistem langsung menerbitkan Draf Surat Ketetapan Resmi (TAP RAT) yang menginjeksi kuorum kehadiran sah dan hasil voting sidang?`,
       confirmText: 'Ya, Terbitkan Draf TAP RAT',
       cancelText: 'Hanya Selesaikan Agenda',
+      style: 'primary',
+      type: 'primary',
+      variant: 'primary',
     });
 
     if (shouldDraft) {
@@ -176,6 +179,8 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       message: `Apakah Anda yakin ingin menghapus butir agenda "${agenda.title}"? Tindakan ini tidak dapat dibatalkan.`,
       confirmText: 'Ya, Hapus',
       cancelText: 'Batal',
+      style: 'danger',
+      type: 'danger',
       variant: 'danger',
     });
     if (isConfirmed) {
