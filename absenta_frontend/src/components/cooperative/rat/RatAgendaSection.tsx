@@ -206,6 +206,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {subTab === 'rundown' && (
         <SectionCard
           title="Jadwal Acara & Rundown Sidang RAT"
+          fullWidth
           actions={
             canManage && (
               <div className="flex items-center gap-2">
@@ -428,6 +429,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {subTab === 'rules' && (
         <SectionCard
           title="Pedoman & Tata Tertib Sidang Paripurna RAT"
+          fullWidth
           actions={
             <div className="flex items-center gap-2">
               <Button
@@ -642,6 +644,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {/* SECTION 3: DAFTAR SURAT KETETAPAN (TAP RAT) SELALU TERSEDIA */}
       <SectionCard
         title="Daftar Surat Ketetapan Resmi Sidang (TAP RAT)"
+        fullWidth
         className="space-y-4"
         actions={
           canManage && (
