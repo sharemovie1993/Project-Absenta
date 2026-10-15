@@ -3,8 +3,8 @@ import Card from '../../ui/Card';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 import Badge from '../../ui/Badge';
-import { api } from '../../../api/api';
-import { toast } from '../../../utils/toast';
+import api from '../../../lib/axiosInstance';
+import toast from 'react-hot-toast';
 import {
   Scan,
   Search,
@@ -154,7 +154,9 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
     method?: string;
   }) => {
     if (!isRegistrationAllowed) {
-      toast.warning('Presensi sidang belum dibuka oleh pimpinan atau telah selesai.');
+      toast('Presensi sidang belum dibuka oleh pimpinan atau telah selesai.', {
+        icon: '⚠️',
+      });
       return;
     }
 
@@ -186,7 +188,7 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
           method: params.rfid ? 'RFID Scanner' : 'Ketik Manual',
           message: 'Anggota sudah terpresensi sebelumnya. Kuorum tidak bertambah.',
         });
-        toast.info(`Sudah Hadir: ${memberName} (${memberNo})`);
+        toast(`Sudah Hadir: ${memberName} (${memberNo})`, { icon: 'ℹ️' });
       } else {
         playAudioFeedback('success');
         setLastScan({

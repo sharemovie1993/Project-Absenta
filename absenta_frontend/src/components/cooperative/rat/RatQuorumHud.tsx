@@ -2,8 +2,8 @@ import React from 'react';
 import SectionCard from '../../ui/SectionCard';
 import Badge from '../../ui/Badge';
 import Button from '../../ui/Button';
-import AnalyticsCardBase from '../../ui/analytics/AnalyticsCardBase';
-import { formatDate } from '../../../utils/dateUtils';
+import { AnalyticsCardBase } from '../../ui/AnalyticsCard';
+import { formatDate } from '../../../utils/layoutUtils';
 import {
   Users,
   ShieldCheck,
