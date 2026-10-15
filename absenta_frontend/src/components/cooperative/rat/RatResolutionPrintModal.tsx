@@ -104,14 +104,14 @@ ${resolution.summary}
       isOpen={isOpen}
       onClose={onClose}
       title="Salinan Surat Ketetapan Resmi (TAP RAT)"
-      size="xl"
+      size="5xl"
     >
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-4xl mx-auto w-full">
         {/* ACTION TOOLBAR (HIDDEN ON PRINT) */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 print:hidden">
           <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            <span>Dokumen Otentik Hasil Sidang Pleno RAT</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span className="font-semibold">Dokumen Otentik Hasil Sidang Pleno RAT</span>
             <Badge variant="success" className="text-[10px]">Sah & Mengikat</Badge>
           </div>
           <div className="flex items-center gap-2">
@@ -236,7 +236,7 @@ ${resolution.summary}
             <div className="text-center font-bold text-xs uppercase tracking-wider mb-8">
               PRESIDIUM SIDANG RAPAT ANGGOTA TAHUNAN
             </div>
-            <div className="grid grid-cols-3 gap-6 text-center text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 print:grid-cols-3 gap-6 text-center text-xs">
               {/* Ketua Sidang */}
               <div className="flex flex-col justify-between h-28">
                 <span className="font-semibold text-slate-700 uppercase tracking-wide">Ketua Sidang</span>

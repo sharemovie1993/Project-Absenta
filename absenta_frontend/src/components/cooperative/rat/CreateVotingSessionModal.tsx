@@ -215,7 +215,7 @@ export const CreateVotingSessionModal: React.FC<CreateVotingSessionModalProps> =
       isOpen={isOpen}
       onClose={onClose}
       title="Buka Sesi e-Voting Sidang RAT"
-      size="lg"
+      size="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* KATEGORI VOTING SEGMENTED SELECTOR */}

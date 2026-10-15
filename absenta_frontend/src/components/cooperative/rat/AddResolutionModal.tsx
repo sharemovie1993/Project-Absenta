@@ -120,7 +120,7 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
       isOpen={isOpen}
       onClose={onClose}
       title={isEditing ? 'Ubah Surat Ketetapan Resmi RAT' : 'Catat Surat Ketetapan Resmi RAT'}
-      size="md"
+      size="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

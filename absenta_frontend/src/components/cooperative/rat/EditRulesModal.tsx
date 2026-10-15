@@ -62,7 +62,7 @@ export const EditRulesModal: React.FC<EditRulesModalProps> = React.memo(({
       isOpen={isOpen}
       onClose={onClose}
       title="Ubah Klausul & Catatan Khusus Tata Tertib Sidang"
-      size="md"
+      size="2xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

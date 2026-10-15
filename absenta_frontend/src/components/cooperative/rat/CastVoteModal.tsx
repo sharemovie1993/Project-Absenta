@@ -132,7 +132,7 @@ export const CastVoteModal: React.FC<CastVoteModalProps> = React.memo(({
       isOpen={isOpen}
       onClose={auditReceipt ? handleFinishAndClose : onClose}
       title={auditReceipt ? 'Tanda Terima Audit e-Voting' : 'Surat Suara Digital (e-Voting Rahasia)'}
-      size="md"
+      size="xl"
     >
       {auditReceipt ? (
         <div className="space-y-5 py-2">
