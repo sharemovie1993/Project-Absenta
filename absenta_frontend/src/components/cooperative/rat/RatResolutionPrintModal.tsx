@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, Button, Badge } from '../../ui';
-import { Printer, Copy, Check, FileCheck, ShieldCheck } from 'lucide-react';
+import { Printer, Copy, Check, FileCheck, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -9,6 +9,9 @@ interface RatResolutionPrintModalProps {
   onClose: () => void;
   resolution: CoopResolutionItem | null;
   coopName?: string;
+  meetingId?: string;
+  meetingLocation?: string | null;
+  meetingDate?: string | null;
 }
 
 export const RatResolutionPrintModal: React.FC<RatResolutionPrintModalProps> = React.memo(({
@@ -16,8 +19,61 @@ export const RatResolutionPrintModal: React.FC<RatResolutionPrintModalProps> = R
   onClose,
   resolution,
   coopName = 'KOPERASI KONSUMEN / SIMPAN PINJAM',
+  meetingId,
+  meetingLocation,
+  meetingDate,
 }) => {
   const [copied, setCopied] = React.useState(false);
+  const [presidium, setPresidium] = React.useState({
+    chairperson: '',
+    secretary: '',
+    member: '',
+  });
+
+  React.useEffect(() => {
+    if (meetingId && isOpen) {
+      try {
+        const saved = localStorage.getItem(`absenta_rat_presidium_${meetingId}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setPresidium({
+            chairperson: parsed.chairperson || '',
+            secretary: parsed.secretary || '',
+            member: parsed.member || '',
+          });
+        }
+      } catch {
+        // ignore localStorage error
+      }
+    }
+  }, [meetingId, isOpen]);
+
+  const handlePresidiumChange = (field: 'chairperson' | 'secretary' | 'member', value: string) => {
+    setPresidium((prev) => {
+      const next = { ...prev, [field]: value };
+      if (meetingId) {
+        try {
+          localStorage.setItem(`absenta_rat_presidium_${meetingId}`, JSON.stringify(next));
+        } catch {
+          // ignore
+        }
+      }
+      return next;
+    });
+  };
+
+  const formattedMeetingDate = React.useMemo(() => {
+    if (!meetingDate) return 'Hari ini';
+    try {
+      return new Date(meetingDate).toLocaleDateString('id-ID', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      });
+    } catch {
+      return meetingDate;
+    }
+  }, [meetingDate]);
 
   if (!isOpen || !resolution) return null;
 
@@ -82,6 +138,57 @@ ${resolution.summary}
           </div>
         </div>
 
+        {/* PRESIDIUM INTEGRATION BAR (HIDDEN ON PRINT) */}
+        <div className="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5 print:hidden">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                Nama Presidium Sidang Terpilih (Tersimpan Otomatis untuk Semua Dokumen TAP):
+              </span>
+            </div>
+            <Badge variant="indigo" className="text-[10px]">Tercetak di Dokumen</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                Ketua Presidium
+              </label>
+              <input
+                type="text"
+                value={presidium.chairperson}
+                onChange={(e) => handlePresidiumChange('chairperson', e.target.value)}
+                placeholder="Contoh: Drs. H. Ahmad Fauzi"
+                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                Sekretaris Presidium
+              </label>
+              <input
+                type="text"
+                value={presidium.secretary}
+                onChange={(e) => handlePresidiumChange('secretary', e.target.value)}
+                placeholder="Contoh: Dra. Siti Rahmawati"
+                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 block mb-1">
+                Anggota Presidium
+              </label>
+              <input
+                type="text"
+                value={presidium.member}
+                onChange={(e) => handlePresidiumChange('member', e.target.value)}
+                placeholder="Contoh: Budi Santoso, S.Kom."
+                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* PRINTABLE LEGAL DOCUMENT CONTAINER */}
         <div className="p-8 md:p-12 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-sm font-serif space-y-6 print:shadow-none print:border-none print:p-0">
           {/* HEADER */}
@@ -122,29 +229,44 @@ ${resolution.summary}
 
           {/* SIGNATURE SECTION */}
           <div className="pt-8 border-t border-slate-200 mt-8 font-sans">
-            <div className="text-right text-xs text-slate-700 mb-6">
-              Ditetapkan dalam Sidang Pleno RAT
+            <div className="text-right text-xs text-slate-700 mb-6 space-y-0.5">
+              <div>Ditetapkan di: {meetingLocation || 'Tempat Sidang Pleno RAT'}</div>
+              <div>Pada tanggal: {formattedMeetingDate}</div>
             </div>
-            <div className="text-center font-bold text-xs uppercase mb-8">
+            <div className="text-center font-bold text-xs uppercase tracking-wider mb-8">
               PRESIDIUM SIDANG RAPAT ANGGOTA TAHUNAN
             </div>
-            <div className="grid grid-cols-3 gap-4 text-center text-xs">
-              <div className="space-y-12">
-                <span className="font-semibold text-slate-600">Ketua Sidang</span>
-                <div className="border-t border-slate-400 pt-1 font-bold">
-                  ( .................................... )
+            <div className="grid grid-cols-3 gap-6 text-center text-xs">
+              {/* Ketua Sidang */}
+              <div className="flex flex-col justify-between h-28">
+                <span className="font-semibold text-slate-700 uppercase tracking-wide">Ketua Sidang</span>
+                <div className="space-y-1">
+                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
+                    {presidium.chairperson.trim() ? `( ${presidium.chairperson.trim()} )` : '( .................................... )'}
+                  </div>
+                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
                 </div>
               </div>
-              <div className="space-y-12">
-                <span className="font-semibold text-slate-600">Sekretaris Sidang</span>
-                <div className="border-t border-slate-400 pt-1 font-bold">
-                  ( .................................... )
+
+              {/* Sekretaris Sidang */}
+              <div className="flex flex-col justify-between h-28">
+                <span className="font-semibold text-slate-700 uppercase tracking-wide">Sekretaris Sidang</span>
+                <div className="space-y-1">
+                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
+                    {presidium.secretary.trim() ? `( ${presidium.secretary.trim()} )` : '( .................................... )'}
+                  </div>
+                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
                 </div>
               </div>
-              <div className="space-y-12">
-                <span className="font-semibold text-slate-600">Anggota Presidium</span>
-                <div className="border-t border-slate-400 pt-1 font-bold">
-                  ( .................................... )
+
+              {/* Anggota Presidium */}
+              <div className="flex flex-col justify-between h-28">
+                <span className="font-semibold text-slate-700 uppercase tracking-wide">Anggota Presidium</span>
+                <div className="space-y-1">
+                  <div className="border-b border-slate-900 pb-1 font-bold text-slate-900 text-xs sm:text-sm truncate">
+                    {presidium.member.trim() ? `( ${presidium.member.trim()} )` : '( .................................... )'}
+                  </div>
+                  <span className="text-[10px] text-slate-500">Tanda Tangan & Nama Terang</span>
                 </div>
               </div>
             </div>

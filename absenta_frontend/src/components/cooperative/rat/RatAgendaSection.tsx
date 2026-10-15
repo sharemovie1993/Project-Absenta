@@ -69,6 +69,8 @@ interface RatAgendaSectionProps {
   onOpenAddResolution: () => void;
   onEditResolution: (resolution: CoopResolutionItem) => void;
   onOpenEditRules?: () => void;
+  meetingLocation?: string | null;
+  meetingDate?: string | null;
 }
 
 export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
@@ -82,6 +84,8 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
   onOpenAddResolution,
   onEditResolution,
   onOpenEditRules,
+  meetingLocation,
+  meetingDate,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -604,6 +608,8 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
         canManage={canManage}
         onOpenAddResolution={onOpenAddResolution}
         onEditResolution={onEditResolution}
+        meetingLocation={meetingLocation}
+        meetingDate={meetingDate}
       />
     </div>
   );

@@ -629,6 +629,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                 setIsAddResolutionOpen(true);
               }}
               onOpenEditRules={() => setIsEditRulesOpen(true)}
+              meetingLocation={currentMeeting?.location}
+              meetingDate={currentMeeting?.date}
             />
           )}
 

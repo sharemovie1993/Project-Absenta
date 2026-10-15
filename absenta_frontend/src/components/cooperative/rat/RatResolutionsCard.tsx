@@ -22,6 +22,8 @@ interface RatResolutionsCardProps {
   canManage: boolean;
   onOpenAddResolution: () => void;
   onEditResolution: (resolution: CoopResolutionItem) => void;
+  meetingLocation?: string | null;
+  meetingDate?: string | null;
 }
 
 export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(({
@@ -30,6 +32,8 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
   canManage,
   onOpenAddResolution,
   onEditResolution,
+  meetingLocation,
+  meetingDate,
 }) => {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
@@ -268,6 +272,9 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
         isOpen={Boolean(selectedForPrint)}
         onClose={() => setSelectedForPrint(null)}
         resolution={selectedForPrint}
+        meetingId={meetingId}
+        meetingLocation={meetingLocation}
+        meetingDate={meetingDate}
       />
     </>
   );
