@@ -63,6 +63,39 @@ export function isStatutoryTapAgenda(title: string): boolean {
   return tapKeywords.some((kw) => lower.includes(kw));
 }
 
+export type AgendaVotingRecommendation = 'RECOMMENDED' | 'OPTIONAL_DEADLOCK' | 'NOT_APPLICABLE';
+
+/**
+ * Menentukan tingkat urgensi / kebutuhan e-Voting pada butir acara RAT:
+ * - RECOMMENDED: Pemilihan pengurus/pengawas, formatur (asas Luber Jurdil).
+ * - OPTIONAL_DEADLOCK: LPJ, SHU, RAPBK, Tatib (utamakan musyawarah mufakat, voting bila deadlock).
+ * - NOT_APPLICABLE: Protokoler, doa, lagu kebangsaan, sambutan dinas (tidak ada voting).
+ */
+export function getAgendaVotingRecommendation(title: string): AgendaVotingRecommendation {
+  if (!title) return 'NOT_APPLICABLE';
+  const lower = title.toLowerCase();
+
+  const protocolKeywords = [
+    'pembukaan', 'doa', 'indonesia raya', 'menyanyikan lagu',
+    'mars koperasi', 'hymne', 'sambutan', 'ramah tamah',
+    'istirahat', 'ishoma', 'coffee break', 'penutupan', 'hiburan'
+  ];
+  if (protocolKeywords.some((kw) => lower.includes(kw))) {
+    return 'NOT_APPLICABLE';
+  }
+
+  const votingRecommendedKeywords = [
+    'pemilihan', 'formatur', 'pemungutan suara', 'suksesi',
+    'penetapan pengurus', 'penetapan pengawas', 'calon pengurus',
+    'calon pengawas', 'anggaran dasar', 'ad/art'
+  ];
+  if (votingRecommendedKeywords.some((kw) => lower.includes(kw))) {
+    return 'RECOMMENDED';
+  }
+
+  return 'OPTIONAL_DEADLOCK';
+}
+
 interface RatAgendaSectionProps {
   meetingId: string;
   agendas: CoopAgendaItem[];
@@ -372,6 +405,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                 const linkedSession = (votingSessions || []).find(
                   (s) => (s as any).agendaId === agenda.id || s.title.toLowerCase().includes(agenda.title.toLowerCase())
                 );
+                const votingRec = getAgendaVotingRecommendation(agenda.title);
 
                 return (
                   <div
@@ -441,6 +475,16 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                             </span>
                           )}
 
+                          {votingRec === 'RECOMMENDED' && !linkedSession && (
+                            <span
+                              className="inline-flex items-center gap-1 font-semibold text-[10px] text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-md border border-purple-200 dark:border-purple-800/60"
+                              title="Agenda pemilihan kepengurusan lazim diselenggarakan lewat e-Voting rahasia"
+                            >
+                              <Vote className="w-3 h-3 text-purple-500" />
+                              Disarankan e-Voting
+                            </span>
+                          )}
+
                           {linkedSession && (
                             <span
                               className={`inline-flex items-center gap-1 font-semibold text-[10px] px-2 py-0.5 rounded-md border ${
@@ -490,19 +534,33 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                       {/* Management Actions */}
                       {canManage && (
                         <>
-                          {/* Create Voting Shortcut if no session exists yet */}
-                          {!linkedSession && onOpenCreateVoting && (isLive || currentStatus === 'PENDING') && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="toolbarOutline"
-                              onClick={() => onOpenCreateVoting(agenda)}
-                              title="Buka pemungutan suara e-Voting untuk butir acara ini"
-                              className="text-xs gap-1 py-1 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                            >
-                              <Vote className="w-3 h-3 text-indigo-500" />
-                              <span className="hidden sm:inline">Buka</span> e-Voting
-                            </Button>
+                          {/* Create Voting Shortcut - Selective Awareness */}
+                          {!linkedSession && onOpenCreateVoting && (isLive || currentStatus === 'PENDING') && votingRec !== 'NOT_APPLICABLE' && (
+                            votingRec === 'RECOMMENDED' ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="primary"
+                                onClick={() => onOpenCreateVoting(agenda)}
+                                title="Buka pemungutan suara digital rahasia untuk pemilihan pengurus/pengawas"
+                                className="text-xs gap-1 py-1 bg-purple-600 hover:bg-purple-700 text-white shadow-sm ring-1 ring-purple-400"
+                              >
+                                <Vote className="w-3 h-3 animate-pulse" />
+                                <span>Buka e-Voting Pemilihan</span>
+                              </Button>
+                            ) : isLive ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="toolbarOutline"
+                                onClick={() => onOpenCreateVoting(agenda)}
+                                title="Utamakan musyawarah mufakat. Buka voting hanya jika terjadi kebuntuan (deadlock) suara."
+                                className="text-xs gap-1 py-1 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:text-indigo-600 hover:border-indigo-300 dark:hover:border-indigo-700"
+                              >
+                                <Vote className="w-3 h-3 text-slate-400" />
+                                <span className="hidden sm:inline">Voting</span> Bila Deadlock
+                              </Button>
+                            ) : null
                           )}
 
                           {/* Status Toggle Button */}
