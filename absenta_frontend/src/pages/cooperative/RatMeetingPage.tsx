@@ -582,9 +582,12 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   votingSessions={currentMeeting?.votingSessions || []}
                   canManage={canManage}
                   canVote={canVote}
+                  totalPresentMembers={quorumData?.attended ?? (currentMeeting?.attendances?.length || 0)}
+                  totalEligibleMembers={quorumData?.total ?? (currentMeeting?.totalActiveMembers || 0)}
                   onOpenCreateSession={() => setIsCreateVotingSessionOpen(true)}
                   onSelectVoteSession={handleSelectVoteSession}
                   onUpdateSessionStatus={handleVotingStatusChange}
+                  onOpenTvDisplay={() => setIsTvDisplayOpen(true)}
                   isUpdatingStatus={votingStatusMutation.isPending}
                 />
               )}
