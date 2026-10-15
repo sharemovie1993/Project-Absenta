@@ -305,11 +305,30 @@ const RatMeetingPage: React.FC = React.memo(() => {
   });
 
   const handleLifecycleAdvance = useCallback(async (newStatus: 'REGISTRATION_OPEN' | 'IN_SESSION' | 'CLOSED', label: string) => {
+    let confirmTitle = `Konfirmasi: ${label}`;
+    let confirmMessage = `Apakah Anda yakin ingin memajukan status sidang RAT ini menjadi "${label}"? Tindakan ini akan dicatat dalam risalah resmi persidangan.`;
+    let confirmStyle: 'primary' | 'warning' | 'info' = 'primary';
+
+    if (newStatus === 'REGISTRATION_OPEN') {
+      confirmTitle = 'Buka Registrasi Peserta RAT';
+      confirmMessage = 'Dengan membuka registrasi, sistem akan secara otomatis mengunci (freeze) snapshot seluruh anggota aktif koperasi sebagai basis penentuan kuorum sah rapat (50% + 1). Lanjutkan?';
+      confirmStyle = 'info';
+    } else if (newStatus === 'IN_SESSION') {
+      confirmTitle = 'Mulai Sidang Paripurna RAT';
+      confirmMessage = 'Apakah Anda yakin ingin memulai sidang paripurna? Anggota yang hadir dapat mulai mengikuti pembahasan agenda dan pemungutan suara.';
+      confirmStyle = 'primary';
+    } else if (newStatus === 'CLOSED') {
+      confirmTitle = 'Tutup & Akhiri Sidang RAT';
+      confirmMessage = 'Apakah Anda yakin ingin menutup dan mengakhiri sidang RAT ini? Setelah ditutup, presensi dan pemungutan suara e-Voting tidak dapat diubah kembali.';
+      confirmStyle = 'warning';
+    }
+
     const isConfirmed = await confirm({
-      title: `Konfirmasi Perubahan Status: ${label}`,
-      message: `Apakah Anda yakin ingin memajukan status sidang RAT ini menjadi "${label}"? Tindakan ini akan dicatat dalam risalah resmi persidangan.`,
+      title: confirmTitle,
+      message: confirmMessage,
       confirmText: 'Lanjutkan',
       cancelText: 'Batal',
+      style: confirmStyle,
     });
     if (isConfirmed) {
       lifecycleMutation.mutate(newStatus);
