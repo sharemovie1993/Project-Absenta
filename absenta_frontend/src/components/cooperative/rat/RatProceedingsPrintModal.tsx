@@ -286,8 +286,9 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
 
           {/* PENGESAHAN PRESIDIUM & PENGURUS */}
           <div className="pt-6 space-y-6">
