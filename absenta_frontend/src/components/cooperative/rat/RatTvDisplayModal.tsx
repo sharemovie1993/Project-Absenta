@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Badge from '../../ui/Badge';
 import Button from '../../ui/Button';
 import { ThemeToggle } from '../../ui/ThemeToggle';
@@ -16,9 +16,13 @@ import {
   TrendingUp,
   UserCheck,
   Radio,
-  FileText,
   CreditCard,
   ScanLine,
+  ListOrdered,
+  ChevronRight,
+  Gavel,
+  BookOpen,
+  Vote,
 } from 'lucide-react';
 import type { CoopMeetingItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -208,41 +212,54 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const isQuorumReached = quorumStats?.isQuorumReached ?? actualAttended >= quorumTarget;
   const remainingNeeded = Math.max(0, quorumTarget - actualAttended);
 
-  // SVG Gauge calculations (radius = 56, circumference = 2 * pi * 56 = 351.858)
-  const radius = 56;
+  // SVG Gauge calculations (radius = 58, circumference = 2 * pi * 58 = 364.42)
+  const radius = 58;
   const circumference = 2 * Math.PI * radius;
   const clampedPercentage = Math.min(100, Math.max(0, percentage));
   const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/50 text-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
-      {/* AMBIENT BACKGROUND GLOW EFFECTS */}
-      <div className="absolute -top-24 left-1/4 w-[38rem] h-[38rem] bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 right-1/4 w-[38rem] h-[38rem] bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+  // Statutory Agenda Tracker items
+  const agendas = (meeting.agendas && meeting.agendas.length > 0)
+    ? meeting.agendas
+    : [
+        { id: '1', title: 'Registrasi & Presensi Fisik Anggota', status: isQuorumReached ? 'COMPLETED' : 'IN_PROGRESS', duration: '30m' },
+        { id: '2', title: 'Pembukaan Sidang & Pengesahan Tata Tertib', status: isQuorumReached ? 'IN_PROGRESS' : 'PENDING', duration: '20m' },
+        { id: '3', title: 'Laporan Pertanggungjawaban (LPJ) Pengurus & Pengawas', status: 'PENDING', duration: '45m' },
+        { id: '4', title: 'Pandangan Umum & Tanggapan Anggota', status: 'PENDING', duration: '30m' },
+        { id: '5', title: 'Pengesahan Rencana Kerja & RAPBK Tahun Depan', status: 'PENDING', duration: '25m' },
+        { id: '6', title: 'Pemungutan Suara / Keputusan Formatur & Penutup', status: 'PENDING', duration: '20m' },
+      ];
 
-      {/* TOP BROADCAST HEADER BAR */}
-      <header className="px-6 py-3.5 flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md z-20 shrink-0 shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/20">
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
+      {/* AMBIENT BACKGROUND GLOW EFFECTS */}
+      <div className="absolute -top-24 left-1/4 w-[40rem] h-[40rem] bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 right-1/4 w-[40rem] h-[40rem] bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* TOP BROADCAST HEADER BAR (NO TRUNCATION) */}
+      <header className="px-6 py-3.5 flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900/90 backdrop-blur-md z-20 shrink-0 shadow-sm">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="p-2.5 bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-xl shadow-md shadow-indigo-600/20 shrink-0">
             <Sparkles className="w-5 h-5 animate-pulse" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-black tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">
                 Sidang Paripurna Rapat Anggota Tahunan (RAT)
               </span>
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600/40">
+              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600/40">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                LIVE BROADCAST
+                SIARAN LANGSUNG AULA
               </span>
             </div>
-            <h1 className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-xl">
-              {meeting.title} ({meeting.year})
+            {/* FULL TITLE WITHOUT TRUNCATION */}
+            <h1 className="text-base sm:text-xl lg:text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase leading-tight">
+              {meeting.title} <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">(Tahun Buku {meeting.year})</span>
             </h1>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           {/* Realtime Clock & Date */}
           <div className="text-right hidden sm:block border-r border-slate-200 dark:border-slate-800 pr-4">
             <div className="text-base font-black font-mono tracking-wider text-slate-900 dark:text-slate-100 flex items-center justify-end gap-1.5">
@@ -318,57 +335,57 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
         </div>
       )}
 
-      {/* MAIN BROADCAST CONTENT (SPLIT SCREEN LAYOUT) */}
+      {/* MAIN BROADCAST CONTENT (BALANCED GRID, NO EMPTY VOID) */}
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden z-10">
-        {/* LEFT STAGE COLUMN (HERO QUORUM & KPIS) - 8 COLS */}
-        <div className="lg:col-span-8 flex flex-col justify-between gap-5 overflow-y-auto pr-1">
+        {/* LEFT COLUMN: HERO QUORUM & 4 EXECUTIVE METRICS (7 COLS) */}
+        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1">
           {/* HERO QUORUM RADAR CARD */}
-          <div className="relative overflow-hidden rounded-3xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-black/40 p-5 sm:p-7 backdrop-blur-md">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 p-5 sm:p-6 relative overflow-hidden">
             {/* Top Badge & Legal Citations */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800/80">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Status Keabsahan Kuorum:
                 </span>
                 <Badge
                   variant={isQuorumReached ? 'success' : 'warning'}
-                  className="text-xs px-3 py-1 font-black uppercase tracking-wider"
+                  className="text-xs px-3 py-1 font-black uppercase tracking-wider shadow-sm"
                 >
                   {isQuorumReached ? 'KUORUM SAH TERCAPAI' : 'MENUNGGU KUORUM'}
                 </Badge>
               </div>
-              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-lg">
-                Landasan Hukum: UU Perkoperasian No. 25/1992 Pasal 26
+              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+                Landasan Hukum: UU No. 25/1992 Pasal 26
               </span>
             </div>
 
             {/* Split Gauge & Explanation */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
               {/* CIRCULAR RADIAL METER (5 cols) */}
-              <div className="md:col-span-5 flex flex-col items-center justify-center p-3">
+              <div className="md:col-span-5 flex flex-col items-center justify-center p-2">
                 <div className="relative w-44 h-44 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 140 140">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 148 148">
                     {/* Background Track */}
                     <circle
-                      cx="70"
-                      cy="70"
+                      cx="74"
+                      cy="74"
                       r={radius}
-                      className="text-slate-200 dark:text-slate-800"
-                      strokeWidth="12"
+                      className="text-slate-100 dark:text-slate-800"
+                      strokeWidth="14"
                       stroke="currentColor"
                       fill="transparent"
                     />
                     {/* Animated Progress Ring */}
                     <circle
-                      cx="70"
-                      cy="70"
+                      cx="74"
+                      cy="74"
                       r={radius}
                       className={
                         isQuorumReached
                           ? 'text-emerald-500 transition-all duration-1000'
                           : 'text-indigo-600 transition-all duration-1000'
                       }
-                      strokeWidth="12"
+                      strokeWidth="14"
                       strokeDasharray={circumference}
                       strokeDashoffset={strokeDashoffset}
                       strokeLinecap="round"
@@ -376,32 +393,38 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                       fill="transparent"
                     />
                   </svg>
-                  {/* Center percentage readout */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                  {/* Center percentage & status pill */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
+                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
                       {percentage}%
                     </span>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
-                      {isQuorumReached ? 'Memenuhi Syarat' : 'Kehadiran Anggota'}
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mt-2 ${
+                        isQuorumReached
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700'
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-700'
+                      }`}
+                    >
+                      {isQuorumReached ? 'MEMENUHI SYARAT' : 'BELUM KUORUM'}
                     </span>
                   </div>
                 </div>
               </div>
 
               {/* HEADLINE & STATUS DETAILS (7 cols) */}
-              <div className="md:col-span-7 flex flex-col justify-center space-y-4 text-left">
+              <div className="md:col-span-7 flex flex-col justify-center space-y-3.5 text-left">
                 <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     {isQuorumReached ? (
-                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30">
                         <CheckCircle2 className="w-5 h-5" />
                       </div>
                     ) : (
-                      <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
                         <ShieldCheck className="w-5 h-5" />
                       </div>
                     )}
-                    <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-tight">
                       {isQuorumReached
                         ? 'KEPUTUSAN SIDANG SAH MENGIKAT'
                         : `MENUNGGU ${remainingNeeded} ANGGOTA LAGI`}
@@ -415,10 +438,10 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                 </div>
 
                 {/* Progress Bar with Milestone Markers */}
-                <div className="space-y-2 pt-2">
+                <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                     <span>Kemajuan Kehadiran:</span>
-                    <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">
                       {actualAttended} dari {quorumTarget} Suara Diperlukan
                     </span>
                   </div>
@@ -435,7 +458,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                   <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                     <span>0 Anggota</span>
                     <span className="text-amber-600 dark:text-amber-400 font-bold">
-                      Target Sah (50% + 1): {quorumTarget} Orang
+                      Target Sah (50% + 1) = {quorumTarget} Orang
                     </span>
                     <span>Total: {totalEligible}</span>
                   </div>
@@ -444,13 +467,13 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             </div>
           </div>
 
-          {/* 4 HIGH-IMPACT EXECUTIVE STAT METRICS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 4 HIGH-IMPACT EXECUTIVE STAT METRICS (2X2 COMPACT GRID) */}
+          <div className="grid grid-cols-2 gap-4">
             {/* CARD 1: TOTAL ANGGOTA */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Total Anggota
+                  Total Anggota Berhak
                 </span>
                 <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
                   <Users className="w-4 h-4" />
@@ -459,17 +482,17 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
                 {totalEligible}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>Pemilik Hak Suara</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">100%</span>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span>Pemilik Hak Suara Sah</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">100% Terdaftar</span>
               </div>
             </div>
 
             {/* CARD 2: TARGET KUORUM */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Target Kuorum
+                  Target Kuorum Sah
                 </span>
                 <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
                   <ShieldCheck className="w-4 h-4" />
@@ -478,17 +501,17 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
                 {quorumTarget}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>Aturan 50% + 1</span>
-                <span className="font-bold text-amber-600 dark:text-amber-400">Minimal Sah</span>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span>Aturan 50% + 1 UU</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400">Syarat Minimal</span>
               </div>
             </div>
 
             {/* CARD 3: HADIR TERVERIFIKASI */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Hadir Verifikasi
+                  Hadir Terverifikasi
                 </span>
                 <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle2 className="w-4 h-4" />
@@ -497,17 +520,17 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
                 {actualAttended}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>Tercatat di Pintu</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">{percentage}%</span>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span>Presensi Pintu Masuk</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{percentage}% Tercapai</span>
               </div>
             </div>
 
-            {/* CARD 4: KEKURANGAN / STATUS */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+            {/* CARD 4: STATUS SIDANG / KEKURANGAN */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Kekurangan
+                  Status Sidang
                 </span>
                 <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
                   <TrendingUp className="w-4 h-4" />
@@ -516,40 +539,101 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono truncate">
                 {remainingNeeded === 0 ? 'TERPENUHI' : `${remainingNeeded} Orang`}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-                <span>{remainingNeeded === 0 ? 'Sidang Kuorum' : 'Pintu Masuk Terbuka'}</span>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                <span>{remainingNeeded === 0 ? 'Kuorum Pleno' : 'Menunggu Peserta'}</span>
                 <span className="font-bold text-purple-600 dark:text-purple-400">
-                  {remainingNeeded === 0 ? 'SAH' : 'PROSES'}
+                  {remainingNeeded === 0 ? 'SAH HUKUM' : 'REGISTRASI'}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* RIGHT STAGE COLUMN: LIVE ATTENDEE STREAM & MEETING INFO - 4 COLS */}
-        <div className="lg:col-span-4 flex flex-col justify-between gap-4 overflow-hidden">
-          {/* LIVE ATTENDANCE ROSTER PANEL */}
-          <div className="flex-1 flex flex-col bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xl shadow-slate-200/40 dark:shadow-black/40 backdrop-blur-md overflow-hidden">
+        {/* RIGHT COLUMN: AGENDA SIDANG REAL-TIME & LIVE PRESENSI (5 COLS) */}
+        <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
+          {/* MODUL 1: AGENDA SIDANG REAL-TIME (SOLVES THE EMPTY RELEVANCE VOID) */}
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
+                  <ListOrdered className="w-4 h-4" />
+                </div>
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                  Tahapan Agenda Sidang RAT
+                </h3>
+              </div>
+              <Badge variant="outline" className="text-[10px] font-bold">
+                {isQuorumReached ? 'Sidang Siap Dimulai' : 'Tahap Registrasi'}
+              </Badge>
+            </div>
+
+            <div className="space-y-2 pt-3">
+              {agendas.slice(0, 4).map((ag, idx) => (
+                <div
+                  key={ag.id || idx}
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
+                    ag.status === 'IN_PROGRESS'
+                      ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm'
+                      : ag.status === 'COMPLETED'
+                      ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/50 text-slate-700 dark:text-slate-300'
+                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                        ag.status === 'COMPLETED'
+                          ? 'bg-emerald-500 text-white'
+                          : ag.status === 'IN_PROGRESS'
+                          ? 'bg-indigo-600 text-white animate-pulse'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {ag.status === 'COMPLETED' ? '✓' : idx + 1}
+                    </span>
+                    <span className="font-bold truncate text-slate-900 dark:text-white">
+                      {ag.title}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shrink-0 ${
+                      ag.status === 'IN_PROGRESS'
+                        ? 'bg-indigo-600 text-white'
+                        : ag.status === 'COMPLETED'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {ag.status === 'IN_PROGRESS' ? 'AKTIF' : ag.status === 'COMPLETED' ? 'SELESAI' : 'NANTI'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* MODUL 2: LIVE STREAM PRESENSI PINTU MASUK (BALANCED HEIGHT) */}
+          <div className="flex-1 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Presensi Pintu Masuk
+                  Presensi Masuk Aula
                 </h3>
               </div>
               <Badge variant="outline" className="text-[10px] font-mono font-bold">
-                {attendeesList.length} Hadir
+                {attendeesList.length} Hadir Terverifikasi
               </Badge>
             </div>
 
             {/* Attendees Stream List */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 py-3 pr-1 text-left">
+            <div className="flex-1 overflow-y-auto space-y-2 py-2.5 pr-1 text-left">
               {attendeesList.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
-                    <ScanLine className="w-7 h-7 animate-pulse" />
+                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+                    <ScanLine className="w-6 h-6 animate-pulse" />
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -564,17 +648,17 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                 attendeesList.map((att, idx) => (
                   <div
                     key={att.id || `${att.memberNo}-${idx}`}
-                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                    className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                       idx === 0
-                        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-600/50 shadow-sm'
-                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/60'
+                        ? 'bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600/50 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
                           idx === 0
-                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            ? 'bg-indigo-600 text-white shadow-sm'
                             : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                         }`}
                       >
@@ -595,7 +679,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                       <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
                         {att.time}
                       </span>
-                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
+                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
                         {att.method}
                       </span>
                     </div>
@@ -605,45 +689,22 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             </div>
 
             {/* Terminal status ticker */}
-            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-              <span className="flex items-center gap-1">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+              <span className="flex items-center gap-1.5">
                 <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                Terminal Pintu Kiosk Aktif
+                Terminal Kiosk Pintu Masuk Aktif
               </span>
-              <span className="font-mono">Auto-Sync</span>
-            </div>
-          </div>
-
-          {/* MEETING SPECIFICATIONS & PROTOCOL PANEL */}
-          <div className="p-4 rounded-3xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 backdrop-blur-md space-y-2.5 shrink-0 text-left">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                Protokol Sidang Pleno
-              </span>
-              <Badge variant="outline" className="text-[10px]">
-                {meeting.status}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-[11px]">
-              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Hak Suara:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">1 Orang, 1 Suara</span>
-              </div>
-              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
-                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Keterwakilan:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">Anggota Hadir Fisik</span>
-              </div>
+              <span className="font-mono">Auto-Sync WebSocket</span>
             </div>
           </div>
         </div>
       </main>
 
       {/* FOOTER TICKER */}
-      <footer className="px-6 py-2.5 bg-white/90 dark:bg-slate-900/90 border-t border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between z-20 shrink-0">
+      <footer className="px-6 py-2.5 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-2">
-          <Clock className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Sistem Pemantauan Kuorum & Sidang RAT Real-Time Berstandar Undang-Undang Perkoperasian</span>
+          <Gavel className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span>Sistem Sidang RAT & Pemantauan Kuorum Real-Time Berstandar UU Perkoperasian No. 25/1992</span>
         </div>
         <div className="font-bold text-slate-700 dark:text-slate-300">
           Absenta Cooperative Enterprise System · Sidang Paripurna
