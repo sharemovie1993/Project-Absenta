@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Badge from '../../ui/Badge';
 import Button from '../../ui/Button';
 import { ThemeToggle } from '../../ui/ThemeToggle';
@@ -15,6 +15,10 @@ import {
   Sparkles,
   TrendingUp,
   UserCheck,
+  Radio,
+  FileText,
+  CreditCard,
+  ScanLine,
 } from 'lucide-react';
 import type { CoopMeetingItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -38,6 +42,16 @@ interface NewArrivalEvent {
   time: string;
 }
 
+interface LocalAttendee {
+  id: string;
+  name: string;
+  memberNo: string;
+  type: string;
+  time: string;
+  method: string;
+  isNew?: boolean;
+}
+
 export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   isOpen,
   onClose,
@@ -48,9 +62,64 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [newArrival, setNewArrival] = useState<NewArrivalEvent | null>(null);
 
+  // Helper to extract attendee name from various schema shapes
+  const extractName = (att: any): string => {
+    if (att.name) return att.name;
+    if (att.Member?.name) return att.Member.name;
+    if (att.Member?.Siswa?.nama_siswa) return att.Member.Siswa.nama_siswa;
+    if (att.Member?.Guru?.nama_guru) return att.Member.Guru.nama_guru;
+    if (att.Member?.User?.full_name) return att.Member.User.full_name;
+    if (att.displayName) return att.displayName;
+    return 'Anggota Terverifikasi';
+  };
+
+  const extractMemberNo = (att: any): string => {
+    return att.memberNo || att.Member?.memberNo || 'ANG';
+  };
+
+  const extractTime = (att: any): string => {
+    if (att.time) return att.time;
+    const raw = att.attendedAt || att.checkInTime || att.createdAt;
+    if (!raw) return '--:--';
+    try {
+      return new Date(raw).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '--:--';
+    }
+  };
+
+  // Live attendees list state
+  const [attendeesList, setAttendeesList] = useState<LocalAttendee[]>(() => {
+    if (!meeting.attendances) return [];
+    return meeting.attendances.map((att: any) => ({
+      id: att.id || Math.random().toString(),
+      name: extractName(att),
+      memberNo: extractMemberNo(att),
+      type: att.Member?.type || 'ANGGOTA',
+      time: extractTime(att),
+      method: att.method || 'RFID',
+    }));
+  });
+
+  // Sync when meeting.attendances changes
+  useEffect(() => {
+    if (meeting.attendances && meeting.attendances.length > 0) {
+      setAttendeesList(
+        meeting.attendances.map((att: any) => ({
+          id: att.id || Math.random().toString(),
+          name: extractName(att),
+          memberNo: extractMemberNo(att),
+          type: att.Member?.type || 'ANGGOTA',
+          time: extractTime(att),
+          method: att.method || 'RFID',
+        }))
+      );
+    }
+  }, [meeting.attendances]);
+
   const { subscribe, unsubscribe } = useSocket();
 
-  // Clock ticker
+  // Clock ticker (1s)
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -75,18 +144,31 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
 
         const memberNo = member?.memberNo || 'ANG';
         const type = member?.type || 'ANGGOTA';
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+
+        const newAttendeeItem: LocalAttendee = {
+          id: payload?.attendanceId || `temp-${Date.now()}`,
+          name: displayName,
+          memberNo,
+          type,
+          time: timeStr,
+          method: payload?.method || 'RFID',
+          isNew: true,
+        };
+
+        setAttendeesList((prev) => [newAttendeeItem, ...prev.filter((p) => p.memberNo !== memberNo)]);
 
         setNewArrival({
           name: displayName,
           memberNo,
           type,
-          time: new Date().toLocaleTimeString('id-ID'),
+          time: timeStr,
         });
 
-        // Auto dismiss arrival toast after 6s
+        // Auto dismiss arrival toast after 7s
         setTimeout(() => {
           setNewArrival((prev) => (prev?.name === displayName ? null : prev));
-        }, 6000);
+        }, 7000);
       }
     };
 
@@ -126,41 +208,48 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const isQuorumReached = quorumStats?.isQuorumReached ?? actualAttended >= quorumTarget;
   const remainingNeeded = Math.max(0, quorumTarget - actualAttended);
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
-      {/* AMBIENT BACKGROUND GLOW */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+  // SVG Gauge calculations (radius = 56, circumference = 2 * pi * 56 = 351.858)
+  const radius = 56;
+  const circumference = 2 * Math.PI * radius;
+  const clampedPercentage = Math.min(100, Math.max(0, percentage));
+  const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
 
-      {/* TOP HEADER BAR */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md z-10 shrink-0 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-100 dark:bg-indigo-600/20 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-200 dark:border-indigo-500/30">
-            <Sparkles className="w-6 h-6 animate-pulse" />
+  return (
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-slate-100 via-slate-50 to-indigo-50/50 text-slate-800 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
+      {/* AMBIENT BACKGROUND GLOW EFFECTS */}
+      <div className="absolute -top-24 left-1/4 w-[38rem] h-[38rem] bg-indigo-500/10 dark:bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 right-1/4 w-[38rem] h-[38rem] bg-emerald-500/10 dark:bg-emerald-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* TOP BROADCAST HEADER BAR */}
+      <header className="px-6 py-3.5 flex items-center justify-between border-b border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md z-20 shrink-0 shadow-sm">
+        <div className="flex items-center gap-3.5">
+          <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/20">
+            <Sparkles className="w-5 h-5 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-black tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">
-                Sidang Paripurna Rapat Anggota Tahunan
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">
+                Sidang Paripurna Rapat Anggota Tahunan (RAT)
               </span>
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600/40">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                LIVE BROADCAST
               </span>
             </div>
-            <h1 className="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase">
+            <h1 className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase truncate max-w-xl">
               {meeting.title} ({meeting.year})
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
-          {/* Realtime Clock */}
-          <div className="text-right hidden sm:block">
-            <div className="text-sm font-black font-mono tracking-wider text-slate-800 dark:text-slate-200">
-              {currentTime.toLocaleTimeString('id-ID')}
+          {/* Realtime Clock & Date */}
+          <div className="text-right hidden sm:block border-r border-slate-200 dark:border-slate-800 pr-4">
+            <div className="text-base font-black font-mono tracking-wider text-slate-900 dark:text-slate-100 flex items-center justify-end gap-1.5">
+              <Clock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>{currentTime.toLocaleTimeString('id-ID')}</span>
             </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
+            <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {formatDate(currentTime.toISOString(), 'EEEE, dd MMMM yyyy')}
             </div>
           </div>
@@ -177,7 +266,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             variant="toolbarOutline"
             onClick={toggleFullscreen}
             aria-label="Toggle Fullscreen"
-            className="text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            className="text-xs border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-sm"
           >
             {isFullscreen ? (
               <Minimize2 className="w-4 h-4 mr-1 text-indigo-600 dark:text-indigo-400" />
@@ -192,176 +281,374 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Tutup Mode Layar TV"
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
       </header>
 
-      {/* MAIN AUDITORIUM DISPLAY AREA */}
-      <main className="flex-1 p-6 md:p-8 flex flex-col justify-between gap-6 overflow-y-auto z-10">
-        {/* LEGAL QUORUM STATUS BANNER */}
-        <div
-          className={`p-4 md:p-5 rounded-2xl border transition-all text-center flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl ${
-            isQuorumReached
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-500/50 text-emerald-950 dark:text-white shadow-emerald-500/10'
-              : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-500/50 text-amber-950 dark:text-white shadow-amber-500/10'
-          }`}
-        >
-          <div className="flex items-center gap-3.5">
-            <div
-              className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                isQuorumReached ? 'bg-emerald-600 text-white' : 'bg-amber-600 text-white'
-              }`}
-            >
-              {isQuorumReached ? (
-                <CheckCircle2 className="w-7 h-7" />
-              ) : (
-                <ShieldCheck className="w-7 h-7" />
-              )}
-            </div>
-            <div className="text-left">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Status Legalitas Sidang
-                </span>
-                <Badge variant={isQuorumReached ? 'success' : 'warning'}>
-                  {isQuorumReached ? 'MEMENUHI KUORUM RESMI' : 'BELUM KUORUM'}
-                </Badge>
-              </div>
-              <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white">
-                {isQuorumReached
-                  ? 'KUORUM SAH TERCAPAI — KEPUTUSAN SIDANG SAH SECARA HUKUM (UU NO. 25/1992)'
-                  : `MENUNGGU MEMENUHI KUORUM SAH (DIBUTUHKAN MINIMAL ${remainingNeeded} ANGGOTA LAGI)`}
-              </h2>
-            </div>
-          </div>
-
-          <div className="text-right shrink-0">
-            <span className="text-2xl sm:text-4xl font-black font-mono text-slate-900 dark:text-white">
-              {percentage}%
-            </span>
-            <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400">
-              dari Total Anggota Berhak
-            </span>
-          </div>
-        </div>
-
-        {/* CENTERPIECE: HUGE PROGRESS METER */}
-        <div className="bg-white/80 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 space-y-4 shadow-sm backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-sm md:text-base font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-              Perkembangan Kehadiran Fisik & Kuorum:
-            </span>
-            <span className="text-sm md:text-base font-black font-mono text-indigo-600 dark:text-indigo-400">
-              {actualAttended} / {quorumTarget} Suara Diperlukan
-            </span>
-          </div>
-
-          <div className="w-full bg-slate-100 dark:bg-slate-800/80 h-6 md:h-8 rounded-full overflow-hidden p-1 border border-slate-200 dark:border-slate-700/60 shadow-inner">
-            <div
-              className={`h-full rounded-full transition-all duration-700 shadow-md ${
-                isQuorumReached
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-emerald-500/50'
-                  : 'bg-gradient-to-r from-amber-500 to-indigo-500 shadow-amber-500/50'
-              }`}
-              style={{ width: `${Math.min(100, percentage)}%` }}
-            />
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-semibold pt-1">
-            <span>0% Mulai</span>
-            <span className="text-amber-600 dark:text-amber-400 font-bold">
-              Ambang Batas Kuorum (50% + 1) = {quorumTarget} Orang
-            </span>
-            <span>100% Sempurna ({totalEligible} Orang)</span>
-          </div>
-        </div>
-
-        {/* 4 BIG METRIC DISPLAY CARDS */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Total Anggota</span>
-              <Users className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-            </div>
-            <div className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-mono">
-              {totalEligible}
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">Anggota aktif berhak suara</div>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Target Kuorum</span>
-              <ShieldCheck className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-            </div>
-            <div className="text-2xl sm:text-4xl font-black text-amber-600 dark:text-amber-400 font-mono">
-              {quorumTarget}
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">Syarat minimal pengambilan putusan</div>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Hadir Terverifikasi</span>
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
-            </div>
-            <div className="text-2xl sm:text-4xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-              {actualAttended}
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">Peserta tercatat di pintu masuk</div>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800/80 space-y-2 shadow-sm">
-            <div className="flex items-center justify-between text-slate-500 dark:text-slate-400">
-              <span className="text-xs font-bold uppercase tracking-wider">Kekurangan Kuorum</span>
-              <TrendingUp className="w-5 h-5 text-purple-500 dark:text-purple-400" />
-            </div>
-            <div className="text-2xl sm:text-4xl font-black text-slate-900 dark:text-white font-mono">
-              {remainingNeeded === 0 ? 'TERPENUHI' : `${remainingNeeded} Orang`}
-            </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400">
-              {remainingNeeded === 0 ? 'Putusan sah mengikat' : 'Menunggu kedatangan peserta'}
-            </div>
-          </div>
-        </div>
-
-        {/* LIVE CELEBRATORY ARRIVAL TOAST BANNER */}
-        {newArrival && (
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/90 dark:to-purple-900/90 border border-indigo-300 dark:border-indigo-400/50 shadow-2xl flex items-center justify-between gap-4 animate-bounce">
+      {/* NEW ARRIVAL FLOATING TOAST ALERT */}
+      {newArrival && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white shadow-2xl shadow-indigo-500/30 border border-indigo-400/40 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md text-white flex items-center justify-center font-black shrink-0">
                 <UserCheck className="w-6 h-6" />
               </div>
-              <div>
-                <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-widest">
-                  Peserta Baru Saja Melakukan Presensi di Pintu Masuk:
+              <div className="truncate">
+                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200 block">
+                  Anggota Baru Saja Masuk Aula Sidang:
                 </span>
-                <div className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>{newArrival.name}</span>
-                  <Badge variant="success">{newArrival.memberNo}</Badge>
-                  <span className="text-xs font-normal text-slate-600 dark:text-indigo-200">({newArrival.type})</span>
+                <div className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
+                  <span className="truncate">{newArrival.name}</span>
+                  <Badge variant="outline" className="bg-white/20 text-white border-white/40 text-[10px]">
+                    {newArrival.memberNo}
+                  </Badge>
+                  <span className="text-xs text-indigo-200 font-normal">({newArrival.type})</span>
                 </div>
               </div>
             </div>
-            <span className="text-xs font-mono text-indigo-700 dark:text-indigo-300">{newArrival.time}</span>
+            <div className="text-right shrink-0">
+              <span className="text-xs font-mono font-bold bg-white/20 px-2.5 py-1 rounded-lg">
+                {newArrival.time}
+              </span>
+            </div>
           </div>
-        )}
+        </div>
+      )}
+
+      {/* MAIN BROADCAST CONTENT (SPLIT SCREEN LAYOUT) */}
+      <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden z-10">
+        {/* LEFT STAGE COLUMN (HERO QUORUM & KPIS) - 8 COLS */}
+        <div className="lg:col-span-8 flex flex-col justify-between gap-5 overflow-y-auto pr-1">
+          {/* HERO QUORUM RADAR CARD */}
+          <div className="relative overflow-hidden rounded-3xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-xl shadow-slate-200/40 dark:shadow-black/40 p-5 sm:p-7 backdrop-blur-md">
+            {/* Top Badge & Legal Citations */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800/80">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Status Keabsahan Kuorum:
+                </span>
+                <Badge
+                  variant={isQuorumReached ? 'success' : 'warning'}
+                  className="text-xs px-3 py-1 font-black uppercase tracking-wider"
+                >
+                  {isQuorumReached ? 'KUORUM SAH TERCAPAI' : 'MENUNGGU KUORUM'}
+                </Badge>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-lg">
+                Landasan Hukum: UU Perkoperasian No. 25/1992 Pasal 26
+              </span>
+            </div>
+
+            {/* Split Gauge & Explanation */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {/* CIRCULAR RADIAL METER (5 cols) */}
+              <div className="md:col-span-5 flex flex-col items-center justify-center p-3">
+                <div className="relative w-44 h-44 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 140 140">
+                    {/* Background Track */}
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={radius}
+                      className="text-slate-200 dark:text-slate-800"
+                      strokeWidth="12"
+                      stroke="currentColor"
+                      fill="transparent"
+                    />
+                    {/* Animated Progress Ring */}
+                    <circle
+                      cx="70"
+                      cy="70"
+                      r={radius}
+                      className={
+                        isQuorumReached
+                          ? 'text-emerald-500 transition-all duration-1000'
+                          : 'text-indigo-600 transition-all duration-1000'
+                      }
+                      strokeWidth="12"
+                      strokeDasharray={circumference}
+                      strokeDashoffset={strokeDashoffset}
+                      strokeLinecap="round"
+                      stroke="currentColor"
+                      fill="transparent"
+                    />
+                  </svg>
+                  {/* Center percentage readout */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                      {percentage}%
+                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-0.5">
+                      {isQuorumReached ? 'Memenuhi Syarat' : 'Kehadiran Anggota'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* HEADLINE & STATUS DETAILS (7 cols) */}
+              <div className="md:col-span-7 flex flex-col justify-center space-y-4 text-left">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    {isQuorumReached ? (
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                    )}
+                    <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                      {isQuorumReached
+                        ? 'KEPUTUSAN SIDANG SAH MENGIKAT'
+                        : `MENUNGGU ${remainingNeeded} ANGGOTA LAGI`}
+                    </h2>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-10">
+                    {isQuorumReached
+                      ? 'Syarat kehadiran minimal 50% + 1 anggota telah terpenuhi. Seluruh ketetapan dan hasil pemungutan suara sah mengikat bagi seluruh anggota koperasi.'
+                      : `Sesuai aturan AD/ART, sidang memerlukan kehadiran fisik minimal ${quorumTarget} anggota untuk sah mengambil keputusan rapat anggota tahunan.`}
+                  </p>
+                </div>
+
+                {/* Progress Bar with Milestone Markers */}
+                <div className="space-y-2 pt-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <span>Kemajuan Kehadiran:</span>
+                    <span className="font-mono text-indigo-600 dark:text-indigo-400">
+                      {actualAttended} dari {quorumTarget} Suara Diperlukan
+                    </span>
+                  </div>
+                  <div className="relative w-full bg-slate-100 dark:bg-slate-800 h-5 rounded-full overflow-hidden p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${
+                        isQuorumReached
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/50'
+                          : 'bg-gradient-to-r from-amber-500 to-indigo-600 shadow-md shadow-indigo-500/50'
+                      }`}
+                      style={{ width: `${clampedPercentage}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    <span>0 Anggota</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">
+                      Target Sah (50% + 1): {quorumTarget} Orang
+                    </span>
+                    <span>Total: {totalEligible}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 HIGH-IMPACT EXECUTIVE STAT METRICS */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* CARD 1: TOTAL ANGGOTA */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Total Anggota
+                </span>
+                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
+                {totalEligible}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>Pemilik Hak Suara</span>
+                <span className="font-bold text-blue-600 dark:text-blue-400">100%</span>
+              </div>
+            </div>
+
+            {/* CARD 2: TARGET KUORUM */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Target Kuorum
+                </span>
+                <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
+                {quorumTarget}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>Aturan 50% + 1</span>
+                <span className="font-bold text-amber-600 dark:text-amber-400">Minimal Sah</span>
+              </div>
+            </div>
+
+            {/* CARD 3: HADIR TERVERIFIKASI */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Hadir Verifikasi
+                </span>
+                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                {actualAttended}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>Tercatat di Pintu</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">{percentage}%</span>
+              </div>
+            </div>
+
+            {/* CARD 4: KEKURANGAN / STATUS */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 space-y-2 backdrop-blur-md">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Kekurangan
+                </span>
+                <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono truncate">
+                {remainingNeeded === 0 ? 'TERPENUHI' : `${remainingNeeded} Orang`}
+              </div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
+                <span>{remainingNeeded === 0 ? 'Sidang Kuorum' : 'Pintu Masuk Terbuka'}</span>
+                <span className="font-bold text-purple-600 dark:text-purple-400">
+                  {remainingNeeded === 0 ? 'SAH' : 'PROSES'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT STAGE COLUMN: LIVE ATTENDEE STREAM & MEETING INFO - 4 COLS */}
+        <div className="lg:col-span-4 flex flex-col justify-between gap-4 overflow-hidden">
+          {/* LIVE ATTENDANCE ROSTER PANEL */}
+          <div className="flex-1 flex flex-col bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-5 shadow-xl shadow-slate-200/40 dark:shadow-black/40 backdrop-blur-md overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  Presensi Pintu Masuk
+                </h3>
+              </div>
+              <Badge variant="outline" className="text-[10px] font-mono font-bold">
+                {attendeesList.length} Hadir
+              </Badge>
+            </div>
+
+            {/* Attendees Stream List */}
+            <div className="flex-1 overflow-y-auto space-y-2.5 py-3 pr-1 text-left">
+              {attendeesList.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+                    <ScanLine className="w-7 h-7 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Menunggu Presensi di Pintu Masuk
+                    </p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Peserta yang melakukan tap RFID atau presensi manual akan muncul otomatis di layar ini.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                attendeesList.map((att, idx) => (
+                  <div
+                    key={att.id || `${att.memberNo}-${idx}`}
+                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                      idx === 0
+                        ? 'bg-indigo-50/80 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-600/50 shadow-sm'
+                        : 'bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/70 dark:border-slate-700/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                          idx === 0
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        {att.name.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {att.name}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                          <span className="font-mono">{att.memberNo}</span>
+                          <span>•</span>
+                          <span className="uppercase">{att.type}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
+                        {att.time}
+                      </span>
+                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
+                        {att.method}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Terminal status ticker */}
+            <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+              <span className="flex items-center gap-1">
+                <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                Terminal Pintu Kiosk Aktif
+              </span>
+              <span className="font-mono">Auto-Sync</span>
+            </div>
+          </div>
+
+          {/* MEETING SPECIFICATIONS & PROTOCOL PANEL */}
+          <div className="p-4 rounded-3xl bg-white/90 dark:bg-slate-900/85 border border-slate-200/90 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-black/30 backdrop-blur-md space-y-2.5 shrink-0 text-left">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                Protokol Sidang Pleno
+              </span>
+              <Badge variant="outline" className="text-[10px]">
+                {meeting.status}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Hak Suara:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">1 Orang, 1 Suara</span>
+              </div>
+              <div className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+                <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Keterwakilan:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">Anggota Hadir Fisik</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </main>
 
       {/* FOOTER TICKER */}
-      <footer className="px-6 py-2.5 bg-white/90 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between z-10 shrink-0">
+      <footer className="px-6 py-2.5 bg-white/90 dark:bg-slate-900/90 border-t border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-2">
           <Clock className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Sistem Pemantauan Kuorum Real-Time Berstandar Undang-Undang Perkoperasian</span>
+          <span>Sistem Pemantauan Kuorum & Sidang RAT Real-Time Berstandar Undang-Undang Perkoperasian</span>
         </div>
-        <div className="font-semibold text-slate-700 dark:text-slate-300">
-          Absenta Cooperative Enterprise System
+        <div className="font-bold text-slate-700 dark:text-slate-300">
+          Absenta Cooperative Enterprise System · Sidang Paripurna
         </div>
       </footer>
     </div>
   );
 };
-export default RatTvDisplayModal;
