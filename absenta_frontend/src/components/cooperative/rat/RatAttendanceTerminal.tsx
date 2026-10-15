@@ -325,9 +325,6 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Tap kartu RFID atau ketik nama / no. anggota
-              </p>
             </div>
           </div>
         </div>
