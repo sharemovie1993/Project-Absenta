@@ -555,6 +555,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         // perlu di-whitelist di sini agar seed tidak gagal.
         id === 'cooperative.savings.view.list' ||
         id === 'cooperative.rat.view' ||
+        id === 'cooperative.rat.vote' ||
+        id === 'academic.activities.types.view' ||
         id === 'cooperative.reports.view.daily' ||
         id === 'cooperative.reports.view.monthly' ||
         id === 'attendance.recap.view.global' ||

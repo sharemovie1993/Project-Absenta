@@ -79,6 +79,8 @@ Object.values(STRUKTUR_CAPABILITIES).forEach(caps => {
 });
 
 const ORGANIZATIONAL_ALLOWLIST_NON_ORG_DOMAIN = new Set<string>([
+  'cooperative.rat.vote',
+  'academic.activities.types.view',
   'attendance.recap.view.daily',
   'attendance.recap.view.monthly',
   'attendance.reports.view',

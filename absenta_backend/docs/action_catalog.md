@@ -256,11 +256,13 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.members.view.detail
 - cooperative.members.view.list
 - cooperative.members.view.status
-- cooperative.points.manage
 - cooperative.points.view
 - cooperative.ppob.manage.products
 - cooperative.ppob.transact
 - cooperative.ppob.view.products
+- cooperative.rat.manage
+- cooperative.rat.view
+- cooperative.rat.vote
 - cooperative.reports.view.daily
 - cooperative.reports.view.financial
 - cooperative.reports.view.monthly
@@ -288,6 +290,8 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.store.products.view.list
 - cooperative.store.transactions.view
 - cooperative.store.view.catalog
+- cooperative.suppliers.manage
+- cooperative.suppliers.view.list
 - cooperative.tickets.
 - cooperative.tickets.create
 - cooperative.tickets.reply
