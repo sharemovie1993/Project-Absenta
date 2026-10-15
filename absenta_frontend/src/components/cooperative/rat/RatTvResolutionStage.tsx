@@ -3,6 +3,7 @@ import Badge from '../../ui/Badge';
 import { FileText, CheckCircle2, ChevronLeft, ChevronRight, Stamp, Users } from 'lucide-react';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
+import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 
 interface RatTvResolutionStageProps {
   resolutions: CoopResolutionItem[];
@@ -97,18 +98,13 @@ export const RatTvResolutionStage: React.FC<RatTvResolutionStageProps> = React.m
           </div>
         </div>
 
-        {/* HEADER */}
-        <div className="text-center border-b-2 border-slate-900 pb-5 space-y-1">
-          <h2 className="text-base sm:text-xl font-black uppercase tracking-wider">
-            {coopName}
-          </h2>
-          <h3 className="text-sm font-bold uppercase tracking-wide text-slate-700">
-            RAPAT ANGGOTA TAHUNAN (RAT)
-          </h3>
-          <p className="text-xs font-sans text-slate-500">
-            Ketetapan Resmi Berdasarkan UU No. 25 Tahun 1992 tentang Perkoperasian
-          </p>
-        </div>
+        {/* HEADER: KOP SURAT RESMI KOPERASI */}
+        <CoopDocumentKop
+          coopNameFallback={coopName}
+          subtitle="RAPAT ANGGOTA TAHUNAN (RAT)"
+          subtext="Ketetapan Resmi Berdasarkan UU No. 25 Tahun 1992 tentang Perkoperasian"
+          showDoubleBorder={true}
+        />
 
         {/* METADATA */}
         <div className="text-center space-y-1 pt-2">

@@ -4,6 +4,7 @@ import { Printer, Copy, Check, FileCheck, ShieldCheck, Users } from 'lucide-reac
 import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
+import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 
 interface RatResolutionPrintModalProps {
   isOpen: boolean;
@@ -192,23 +193,13 @@ ${resolution.summary}
 
         {/* PRINTABLE LEGAL DOCUMENT CONTAINER */}
         <div className="p-8 md:p-12 rounded-xl bg-white text-slate-900 border border-slate-200 shadow-sm font-serif space-y-6 print:shadow-none print:border-none print:p-0">
-          {/* HEADER */}
-          <div className="text-center border-b-2 border-slate-900 pb-5 space-y-1">
-            <div className="flex justify-center mb-2">
-              <div className="w-12 h-12 rounded-full border-2 border-slate-900 flex items-center justify-center font-bold text-slate-900">
-                <FileCheck className="w-6 h-6" />
-              </div>
-            </div>
-            <h2 className="text-base md:text-lg font-black tracking-wider uppercase">
-              {coopName}
-            </h2>
-            <h3 className="text-sm font-bold uppercase tracking-wide">
-              RAPAT ANGGOTA TAHUNAN (RAT)
-            </h3>
-            <p className="text-xs font-sans text-slate-600">
-              Berdasarkan Undang-Undang Nomor 25 Tahun 1992 tentang Perkoperasian
-            </p>
-          </div>
+          {/* HEADER: KOP SURAT RESMI KOPERASI (TERINTEGRASI PENGATURAN KOPERASI) */}
+          <CoopDocumentKop
+            coopNameFallback={coopName}
+            subtitle="RAPAT ANGGOTA TAHUNAN (RAT)"
+            subtext="Berdasarkan Undang-Undang Nomor 25 Tahun 1992 tentang Perkoperasian"
+            showDoubleBorder={true}
+          />
 
           {/* TAP METADATA */}
           <div className="text-center space-y-1.5 pt-2">
