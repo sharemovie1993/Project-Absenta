@@ -41,18 +41,25 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
 
   const filteredAttendances = useMemo(() => {
     const searchLower = attendanceSearch.toLowerCase().trim();
-    const list = (attendances || []).filter((att) => {
-      const name = att.Member?.name?.toLowerCase() || '';
-      const no = att.Member?.memberNo?.toLowerCase() || '';
-      return name.includes(searchLower) || no.includes(searchLower);
+    const list = (attendances || []).filter((att: any) => {
+      const name =
+        att.Member?.name ||
+        att.Member?.User?.full_name ||
+        att.Member?.Guru?.nama_guru ||
+        att.Member?.Siswa?.nama_siswa ||
+        '';
+      const no = att.Member?.memberNo || '';
+      return name.toLowerCase().includes(searchLower) || no.toLowerCase().includes(searchLower);
     });
 
-    list.sort((a, b) => {
-      let valA: string | number = a.checkInTime;
-      let valB: string | number = b.checkInTime;
+    list.sort((a: any, b: any) => {
+      const timeA = new Date(a.checkInTime || a.attendedAt || 0).getTime();
+      const timeB = new Date(b.checkInTime || b.attendedAt || 0).getTime();
+      let valA: string | number = timeA;
+      let valB: string | number = timeB;
       if (attendanceSortKey === 'name') {
-        valA = a.Member?.name || '';
-        valB = b.Member?.name || '';
+        valA = a.Member?.name || a.Member?.User?.full_name || '';
+        valB = b.Member?.name || b.Member?.User?.full_name || '';
       } else if (attendanceSortKey === 'memberNo') {
         valA = a.Member?.memberNo || '';
         valB = b.Member?.memberNo || '';
@@ -74,44 +81,86 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
     return Math.max(1, Math.ceil((filteredAttendances?.length || 0) / attendanceLimit));
   }, [filteredAttendances?.length, attendanceLimit]);
 
-  const attendanceColumns: Column<CoopAttendanceItem>[] = useMemo(() => [
+  const attendanceColumns: Column[] = useMemo(() => [
     {
-      header: 'No. Anggota',
-      accessor: (item) => item.Member?.memberNo || '-',
+      key: 'memberNo',
+      label: 'No. Anggota',
       sortable: true,
-      sortKey: 'memberNo',
-    },
-    {
-      header: 'Nama Peserta Rapat',
-      accessor: (item) => (
-        <div>
-          <p className="font-semibold text-slate-800 dark:text-slate-100">
-            {item.Member?.name || 'Anggota Koperasi'}
-          </p>
-        </div>
-      ),
-      sortable: true,
-      sortKey: 'name',
-    },
-    {
-      header: 'Waktu Presensi',
-      accessor: (item) => formatDate(item.checkInTime, 'dd/MM/yyyy HH:mm'),
-      sortable: true,
-      sortKey: 'checkInTime',
-    },
-    {
-      header: 'Metode',
-      accessor: (item) => (
-        <Badge variant={item.method === 'RFID' ? 'primary' : item.method === 'ONLINE' ? 'success' : 'default'}>
-          {item.method}
-        </Badge>
+      render: (_val: unknown, item: any) => (
+        <span className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+          {item.Member?.memberNo || '-'}
+        </span>
       ),
     },
     {
-      header: 'Status Kuorum',
-      accessor: (item) => (
-        <Badge variant={item.isQuorumCounted ? 'success' : 'warning'}>
-          {item.isQuorumCounted ? 'Sah Menghitung' : 'Tinjauan'}
+      key: 'name',
+      label: 'Nama Peserta Rapat',
+      sortable: true,
+      render: (_val: unknown, item: any) => {
+        const name =
+          item.Member?.name ||
+          item.Member?.User?.full_name ||
+          item.Member?.Guru?.nama_guru ||
+          item.Member?.Siswa?.nama_siswa ||
+          'Anggota Koperasi';
+        return (
+          <div>
+            <p className="font-semibold text-xs text-slate-900 dark:text-slate-100">
+              {name}
+            </p>
+            {item.Member?.type && (
+              <span className="text-[10px] text-slate-400 font-medium">
+                {item.Member.type === 'STUDENT'
+                  ? 'Siswa'
+                  : item.Member.type === 'TEACHER'
+                  ? 'Guru / Karyawan'
+                  : item.Member.type}
+              </span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'checkInTime',
+      label: 'Waktu Presensi',
+      sortable: true,
+      render: (_val: unknown, item: any) => {
+        const time = item.checkInTime || item.attendedAt;
+        return (
+          <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+            {time ? formatDate(time, 'dd/MM/yyyy HH:mm:ss') : '-'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'method',
+      label: 'Metode',
+      render: (_val: unknown, item: any) => {
+        const rawMethod = item.method || 'MANUAL';
+        const method = rawMethod === 'ONLINE_SELF' ? 'ONLINE' : rawMethod;
+        return (
+          <Badge
+            variant={
+              method === 'RFID'
+                ? 'primary'
+                : method === 'ONLINE'
+                ? 'success'
+                : 'default'
+            }
+          >
+            {method}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: 'isQuorumCounted',
+      label: 'Status Kuorum',
+      render: (_val: unknown, item: any) => (
+        <Badge variant={item.isQuorumCounted !== false ? 'success' : 'warning'}>
+          {item.isQuorumCounted !== false ? 'Sah Menghitung' : 'Tinjauan'}
         </Badge>
       ),
     },
@@ -161,13 +210,14 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
             currentPage: attendancePage,
             totalPages: attendanceTotalPages,
             totalItems: filteredAttendances?.length || 0,
+            itemsPerPage: attendanceLimit,
             onPageChange: handleAttendancePageChange,
             onLimitChange: handleAttendanceLimitChange,
           }}
           onSort={handleAttendanceSort}
-          sortKey={attendanceSortKey}
-          sortDirection={attendanceSortDirection}
-          emptyMessage="Tidak ada data presensi yang ditemukan."
+          sortBy={attendanceSortKey}
+          sortOrder={attendanceSortDirection}
+          emptyMessage="Belum ada data presensi peserta pada sidang ini."
         />
       </SectionCard>
     </div>

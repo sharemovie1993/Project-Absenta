@@ -161,6 +161,33 @@ export class RatService {
       ? Math.round((completedAgendasCount / totalAgendasCount) * 100)
       : 0;
 
+    const mappedAttendances = (meeting.attendances || []).map((att: any) => {
+      const memberName =
+        att.Member?.User?.full_name ||
+        att.Member?.Guru?.nama_guru ||
+        att.Member?.Siswa?.nama_siswa ||
+        'Anggota Koperasi';
+
+      return {
+        id: att.id,
+        meetingId: att.meetingId,
+        memberId: att.memberId,
+        checkInTime: att.attendedAt ? att.attendedAt.toISOString() : new Date().toISOString(),
+        attendedAt: att.attendedAt ? att.attendedAt.toISOString() : new Date().toISOString(),
+        method: att.method === 'ONLINE_SELF' ? 'ONLINE' : (att.method || 'MANUAL'),
+        isQuorumCounted: true,
+        verifiedBy: att.verifiedBy,
+        proxyForMember: att.proxyForMember,
+        Member: {
+          id: att.Member?.id,
+          memberNo: att.Member?.memberNo || '-',
+          name: memberName,
+          type: att.Member?.type,
+          status: att.Member?.status,
+        },
+      };
+    });
+
     return {
       ...meeting,
       year: meeting.fiscalYear,
@@ -171,6 +198,7 @@ export class RatService {
       agendas: mappedAgendas,
       resolutions: mappedResolutions,
       votingSessions: mappedVotingSessions,
+      attendances: mappedAttendances,
       quorumStats: {
         totalActiveMembers: meeting.totalActiveMembers,
         totalEligibleMembers: meeting.totalActiveMembers,
