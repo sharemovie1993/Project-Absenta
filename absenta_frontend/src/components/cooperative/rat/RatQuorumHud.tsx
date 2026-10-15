@@ -171,11 +171,11 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
 
           {canManage && (
             <div className="flex flex-wrap items-center gap-2">
-              {currentMeeting.status === 'DRAFT' && (
+              {(currentMeeting.status === 'DRAFT' || currentMeeting.status === 'SCHEDULED' || !currentMeeting.status) && (
                 <Button
                   type="button"
                   size="toolbar"
-                  variant="toolbarOutline"
+                  variant="toolbarPrimary"
                   onClick={() =>
                     onLifecycleAdvance(
                       'REGISTRATION_OPEN',
@@ -183,12 +183,13 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
                     )
                   }
                   isLoading={isAdvancingLifecycle}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
                 >
-                  <Play className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                  Buka Registrasi (Kunci Snapshot Kuorum)
+                  <Play className="w-3.5 h-3.5 mr-1" />
+                  Buka Registrasi Peserta (Kunci Kuorum)
                 </Button>
               )}
-              {currentMeeting.status === 'REGISTRATION_OPEN' && (
+              {(currentMeeting.status === 'REGISTRATION_OPEN' || currentMeeting.status === 'QUORUM_REACHED') && (
                 <Button
                   type="button"
                   size="toolbar"
@@ -197,9 +198,10 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
                     onLifecycleAdvance('IN_SESSION', 'Mulai Sidang Paripurna')
                   }
                   isLoading={isAdvancingLifecycle}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
                 >
                   <Play className="w-3.5 h-3.5 mr-1" />
-                  Mulai Sidang Paripurna
+                  Mulai Sidang Paripurna (Buka Palu)
                 </Button>
               )}
               {currentMeeting.status === 'IN_SESSION' && (

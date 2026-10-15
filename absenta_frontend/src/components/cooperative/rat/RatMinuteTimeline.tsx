@@ -279,15 +279,29 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
 
       {/* ── 2.5 STATUTORY COMPLIANCE NOTICE ─────────────────────────────── */}
       {uncoveredMandatoryAgendas.length > 0 && canManage && (
-        <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
-          <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div className="space-y-0.5">
-            <span className="font-bold">
-              Selective Awareness: Terdapat {uncoveredMandatoryAgendas.length} Butir Acara Wajib Notulensi Belum Memiliki Catatan
-            </span>
-            <p className="leading-relaxed opacity-90 text-[11px]">
-              Butir acara statuter ({uncoveredMandatoryAgendas.slice(0, 3).map((ag) => ag.title).join(', ')}{uncoveredMandatoryAgendas.length > 3 ? ', dsb.' : ''}) wajib mendokumentasikan tanya jawab anggota dan konsensus sidang sebagai bukti otentik Berita Acara & legalitas TAP RAT.
-            </p>
+        <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5">
+            <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-bold">
+                Selective Awareness: Terdapat {uncoveredMandatoryAgendas.length} Butir Acara Wajib Notulensi Belum Memiliki Catatan
+              </span>
+              <p className="leading-relaxed opacity-90 text-[11px]">
+                Butir acara statuter ({uncoveredMandatoryAgendas.slice(0, 3).map((ag) => ag.title).join(', ')}{uncoveredMandatoryAgendas.length > 3 ? ', dsb.' : ''}) wajib mendokumentasikan tanya jawab anggota dan konsensus sidang sebagai bukti otentik Berita Acara & legalitas TAP RAT.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <Button
+              type="button"
+              size="toolbar"
+              variant="toolbarOutline"
+              onClick={() => onOpenAddMinute(uncoveredMandatoryAgendas[0]?.id)}
+              className="bg-white/90 dark:bg-slate-900/90 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-xs font-bold gap-1.5 whitespace-nowrap shadow-xs"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Catat Acara Berikutnya</span>
+            </Button>
           </div>
         </div>
       )}

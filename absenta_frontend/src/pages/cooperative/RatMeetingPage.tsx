@@ -258,7 +258,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const meetingOptions = useMemo(() => {
     return (meetings || []).map(m => {
       const statusLabel = m.status === 'IN_SESSION' ? '🔴 Sedang Berlangsung' : m.status === 'REGISTRATION_OPEN' ? '🟢 Registrasi Dibuka' : m.status === 'CLOSED' ? '⚪ Ditutup' : '🟡 Draft';
-      return { value: m.id, label: `${m.title} (${m.year}) — ${statusLabel}` };
+      const hasYear = m.title && m.title.includes(String(m.year));
+      return { value: m.id, label: `${hasYear ? m.title : `${m.title} (${m.year})`} — ${statusLabel}` };
     });
   }, [meetings]);
 
@@ -463,7 +464,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
               </div>
 
               {(meetings || []).length > 0 ? (
-                <div className="w-[300px] sm:w-[400px] max-w-full">
+                <div className="w-[320px] sm:w-[480px] max-w-full">
                   <SearchableSelect
                     id="select-rat-meeting"
                     value={selectedMeetingId || ''}
