@@ -198,7 +198,7 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
             </div>
 
             {/* Search Box */}
-            <div className="w-full sm:w-72">
+            <div className="w-full sm:w-72 sm:ml-auto">
               <Input
                 aria-label="Cari nama atau nomor anggota"
                 placeholder="Cari nomor atau nama anggota..."
@@ -209,7 +209,7 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
             </div>
           </div>
 
-          {/* Multi-Column Flowing Name List */}
+          {/* Multi-Column Flowing Name List with Adaptive Auto-Fill Columns */}
           {filteredMembers.length === 0 ? (
             <div className="py-10 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
               <p className="text-xs font-semibold">
@@ -223,22 +223,22 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 max-h-[580px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-2.5 max-h-[580px] overflow-y-auto pr-1">
               {filteredMembers.map((member) => {
                 const isAttended = member.isAttended;
                 return (
                   <div
                     key={member.id}
-                    className={`group relative flex items-center justify-between gap-2 p-2 rounded-lg border transition-all ${
+                    className={`group relative flex items-center justify-between gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${
                       isAttended
-                        ? 'bg-emerald-50/50 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30 border-emerald-200/70 dark:border-emerald-900/50'
-                        : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/60 border-slate-200/80 dark:border-slate-800'
+                        ? 'bg-emerald-50/60 hover:bg-emerald-50 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-900/60 shadow-2xs'
+                        : 'bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800/60 border-slate-200/80 dark:border-slate-800 shadow-2xs'
                     }`}
                   >
                     {/* Format: 002 Dadan Hamdan */}
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <span
-                        className={`font-mono text-[11px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                        className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md shrink-0 ${
                           isAttended
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/70 dark:text-emerald-300'
                             : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
@@ -248,9 +248,9 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
                       </span>
                       <span
                         title={member.name}
-                        className={`text-xs truncate font-medium ${
+                        className={`text-xs truncate font-semibold ${
                           isAttended
-                            ? 'text-slate-900 dark:text-white font-semibold'
+                            ? 'text-slate-900 dark:text-white'
                             : 'text-slate-700 dark:text-slate-300'
                         }`}
                       >
