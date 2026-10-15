@@ -197,10 +197,23 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     if (isTapRequired) {
       // Agenda yuridis yang menghasilkan ketetapan sidang
       const shouldDraft = await confirm({
-        title: 'Terbitkan Ketetapan Resmi (TAP RAT)?',
-        message: `Agenda "${agenda.title}" merupakan butir acara yuridis statuter (UU No. 25/1992). Sistem dapat langsung menerbitkan naskah SK TAP RAT resmi lengkap dengan kuorum kehadiran dan hasil voting.`,
-        confirmText: 'Ya, Terbitkan Draf TAP RAT',
-        cancelText: 'Hanya Selesaikan Agenda',
+        title: 'Agenda Selesai! Terbitkan Draf TAP RAT?',
+        message: (
+          <div className="space-y-2.5 text-xs leading-relaxed">
+            <p className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              <span>Status tahapan agenda telah tersimpan selesai.</span>
+            </p>
+            <p className="text-slate-600 dark:text-slate-300">
+              Agenda <strong className="text-indigo-600 dark:text-indigo-400">"{agenda.title}"</strong> berbobot yuridis statuter (UU No. 25/1992). Ingin sistem langsung menyusun draf naskah resmi berpenomoran <strong>TAP/RAT</strong> lengkap dengan data kuorum dan rekapan voting?
+            </p>
+            <div className="p-2.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/40 text-[11px] text-indigo-700 dark:text-indigo-300">
+              💡 <em>Naskah draf otomatis masuk ke daftar TAP di bawah dan tetap dapat disunting atau disesuaikan kembali sebelum dicetak.</em>
+            </div>
+          </div>
+        ),
+        confirmText: '✨ Ya, Buatkan Draf TAP RAT',
+        cancelText: 'Cukup Selesaikan (Tanpa TAP)',
         style: 'primary',
         type: 'primary',
         variant: 'primary',
@@ -212,8 +225,21 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     } else {
       // Agenda protokoler/diskusi (umumnya cukup notulensi)
       const shouldDraft = await confirm({
-        title: 'Butir Acara Selesai',
-        message: `Agenda "${agenda.title}" adalah tahapan protokoler/dinamika forum yang umumnya dicatat dalam Berita Acara & Notulensi Sidang (tanpa SK mandiri). Apakah ada ketetapan khusus yang ingin diterbitkan?`,
+        title: 'Butir Acara Telah Selesai',
+        message: (
+          <div className="space-y-2 text-xs leading-relaxed">
+            <p className="font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+              <span>Status tahapan agenda telah tersimpan selesai.</span>
+            </p>
+            <p className="text-slate-600 dark:text-slate-300">
+              Agenda <strong className="text-slate-800 dark:text-slate-200">"{agenda.title}"</strong> merupakan tahapan protokoler/dinamika forum yang umumnya dicatat dalam Berita Acara & Notulensi Sidang (tanpa SK mandiri).
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Apakah forum menghasilkan keputusan khusus yang memerlukan penerbitan Surat Ketetapan (TAP RAT)?
+            </p>
+          </div>
+        ),
         confirmText: 'Terbitkan TAP Khusus',
         cancelText: 'Selesai (Cukup Notulensi)',
         style: 'info',

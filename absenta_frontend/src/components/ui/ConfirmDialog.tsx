@@ -66,7 +66,7 @@ export default function ConfirmDialog({
     <Modal isOpen={isOpen} onClose={onCancel} title={title} size="md">
       <div className={cn('rounded-lg p-4 mb-4 flex items-start gap-3', headerClassByStyle[style])}>
         <div className="shrink-0">{iconByStyle[style]}</div>
-        <p className="text-sm text-gray-700 dark:text-gray-300">{description}</p>
+        <div className="text-sm text-gray-700 dark:text-gray-300 flex-1">{description}</div>
       </div>
 
       {/* Progress Bar — muncul saat loading */}
