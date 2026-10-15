@@ -597,7 +597,6 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               </div>
             </div>
           </div>
-        </div>
 
         {/* RIGHT COLUMN: LIVE STREAM PRESENSI PINTU MASUK (5 COLS, FULL HEIGHT) */}
         <div className="lg:col-span-5 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
