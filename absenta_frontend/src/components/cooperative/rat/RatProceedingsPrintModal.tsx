@@ -98,26 +98,26 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
       isOpen={isOpen}
       onClose={onClose}
       title="Salinan Berita Acara & Risalah Resmi Sidang RAT"
-      size="xl"
+      size="4xl"
     >
       <div className="space-y-6">
         {/* ACTION TOOLBAR (HIDDEN ON PRINT) */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 print:hidden">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+            <BookOpen className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
             <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
               Dokumen Otentik Risalah Pleno RAT
             </span>
-            <Badge variant="success" className="text-[10px]">Lengkap & Otentik</Badge>
+            <Badge variant="success" className="text-[10px] whitespace-nowrap">Lengkap & Otentik</Badge>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               type="button"
               size="toolbar"
               variant="toolbarOutline"
               onClick={handleCopy}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Tersalin' : 'Salin Naskah'}</span>
@@ -127,7 +127,7 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
               size="toolbar"
               variant="toolbarPrimary"
               onClick={handlePrint}
-              className="gap-1.5 text-xs font-semibold"
+              className="gap-1.5 text-xs font-semibold whitespace-nowrap shrink-0"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Cetak Risalah (PDF)</span>
