@@ -10,9 +10,11 @@ import { prisma } from '../../../utils/prisma';
 // ─── ZOD VALIDATION SCHEMAS ────────────────────────────────────────────────
 const createMeetingSchema = z.object({
   title: z.string().min(3, 'Judul rapat minimal 3 karakter').max(150, 'Judul rapat maksimal 150 karakter'),
-  date: z.string().min(1, 'Tanggal pelaksanaan rapat wajib diisi'),
+  date: z.string().optional(),
+  meetingDate: z.string().optional(),
   meetingType: z.enum(['RAT', 'RAPAT_LUAR_BIASA', 'RAPAT_PENGURUS']).optional(),
   fiscalYear: z.coerce.number().int().min(2000).max(2100).optional(),
+  year: z.coerce.number().int().min(2000).max(2100).optional(),
   startTime: z.string().optional(),
   endTime: z.string().optional().nullable(),
   location: z.string().optional(),
@@ -25,6 +27,9 @@ const createMeetingSchema = z.object({
     presenter: z.string().optional().nullable(),
     durationMin: z.number().int().optional(),
   })).optional(),
+}).refine(data => Boolean(data.date || data.meetingDate), {
+  message: 'Jadwal pelaksanaan rapat wajib diisi',
+  path: ['date'],
 });
 
 const updateMeetingStatusSchema = z.object({
@@ -184,7 +189,13 @@ export default async function ratRoutes(fastify: any) {
 
         const tenantId = getTenantId(req);
         const operatorId = req.user?.id || req.user?.userId;
-        const meeting = await RatService.createMeeting(tenantId, parseResult.data, operatorId);
+        const normalizedData = {
+          ...parseResult.data,
+          date: parseResult.data.date || parseResult.data.meetingDate,
+          fiscalYear: parseResult.data.fiscalYear || parseResult.data.year || new Date().getFullYear(),
+          location: parseResult.data.location || parseResult.data.description || 'Aula Sekolah & Daring Web Absenta',
+        };
+        const meeting = await RatService.createMeeting(tenantId, normalizedData, operatorId);
         broadcastRatEvent(req, 'RAT_MEETING_CREATED', { meetingId: meeting.id, title: meeting.title });
         reply.code(201).send({ success: true, data: meeting });
       } catch (error: any) {

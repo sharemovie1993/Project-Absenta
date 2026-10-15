@@ -35,7 +35,15 @@ export const CreateMeetingModal: React.FC<CreateMeetingModalProps> = React.memo(
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const createMutation = useMutation({
-    mutationFn: async (payload: { title: string; year: number; meetingDate: string; description?: string }) => {
+    mutationFn: async (payload: {
+      title: string;
+      year: number;
+      fiscalYear: number;
+      date: string;
+      meetingDate: string;
+      location?: string;
+      description?: string;
+    }) => {
       const res = await api.post('/cooperative/rat', payload);
       return res.data;
     },
@@ -46,7 +54,8 @@ export const CreateMeetingModal: React.FC<CreateMeetingModalProps> = React.memo(
       onSuccess?.();
     },
     onError: (err: unknown) => {
-      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal membuat agenda RAT';
+      const resData = (err as { response?: { data?: { message?: string; errors?: Array<{ message: string }> } } })?.response?.data;
+      const errorMsg = resData?.errors?.[0]?.message || resData?.message || 'Gagal membuat agenda RAT';
       toast.error(errorMsg);
     }
   });
@@ -77,7 +86,10 @@ export const CreateMeetingModal: React.FC<CreateMeetingModalProps> = React.memo(
     createMutation.mutate({
       title: parseResult.data.title,
       year: parseResult.data.year,
+      fiscalYear: parseResult.data.year,
+      date: parseResult.data.meetingDate,
       meetingDate: parseResult.data.meetingDate,
+      location: parseResult.data.description || 'Aula Sekolah',
       description: parseResult.data.description,
     });
   }, [title, year, meetingDate, description, createMutation]);

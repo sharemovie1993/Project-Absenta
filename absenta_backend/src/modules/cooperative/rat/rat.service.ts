@@ -20,7 +20,7 @@ export class RatService {
    * Ambil daftar sidang RAT untuk tenant
    */
   static async getMeetings(tenantId: string) {
-    return prisma.coopMeeting.findMany({
+    const meetings = await prisma.coopMeeting.findMany({
       where: { tenantId },
       include: {
         agendas: { orderBy: { order: 'asc' } },
@@ -33,6 +33,19 @@ export class RatService {
         },
       },
       orderBy: { date: 'desc' },
+    });
+
+    return meetings.map((m) => {
+      const actualAttendance = m._count?.attendances ?? 0;
+      const isQuorumReached = m.quorumTarget > 0 ? actualAttendance >= m.quorumTarget : false;
+      return {
+        ...m,
+        year: m.fiscalYear,
+        meetingDate: m.date ? m.date.toISOString() : '',
+        totalEligibleMembers: m.totalActiveMembers,
+        actualAttendance,
+        isQuorumReached,
+      };
     });
   }
 
@@ -83,10 +96,17 @@ export class RatService {
 
     return {
       ...meeting,
+      year: meeting.fiscalYear,
+      meetingDate: meeting.date ? meeting.date.toISOString() : '',
+      totalEligibleMembers: meeting.totalActiveMembers,
+      actualAttendance: totalAttended,
+      isQuorumReached,
       quorumStats: {
         totalActiveMembers: meeting.totalActiveMembers,
+        totalEligibleMembers: meeting.totalActiveMembers,
         quorumTarget: meeting.quorumTarget,
         totalAttended,
+        actualAttendance: totalAttended,
         percentage,
         isQuorumReached,
       },
