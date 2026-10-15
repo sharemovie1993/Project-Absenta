@@ -94,6 +94,23 @@ export class RatService {
       ? Number(((totalAttended / meeting.totalActiveMembers) * 100).toFixed(1))
       : 0;
 
+    // Format agendas dan resolutions agar konsisten dengan frontend
+    const mappedAgendas = (meeting.agendas || []).map((ag: any) => ({
+      ...ag,
+      orderIndex: ag.order,
+      durationMinutes: ag.durationMin,
+      description: ag.presenter ? `Penyaji / Narasumber: ${ag.presenter}` : undefined,
+      status: ag.isCompleted ? 'COMPLETED' : 'PENDING',
+    }));
+
+    const mappedResolutions = (meeting.resolutions || []).map((res: any) => ({
+      ...res,
+      resolutionNo: res.number,
+      subject: res.title,
+      summary: res.content,
+      status: 'PASSED' as const,
+    }));
+
     return {
       ...meeting,
       year: meeting.fiscalYear,
@@ -101,6 +118,8 @@ export class RatService {
       totalEligibleMembers: meeting.totalActiveMembers,
       actualAttendance: totalAttended,
       isQuorumReached,
+      agendas: mappedAgendas,
+      resolutions: mappedResolutions,
       quorumStats: {
         totalActiveMembers: meeting.totalActiveMembers,
         totalEligibleMembers: meeting.totalActiveMembers,
@@ -724,19 +743,142 @@ export class RatService {
     });
 
     if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
-    if (!data.title) throw new Error('Judul ketetapan keputusan wajib diisi.');
-    if (!data.content) throw new Error('Naskah isi ketetapan wajib diisi.');
+    const title = data.title || data.subject;
+    const content = data.content || data.summary;
+    if (!title) throw new Error('Judul/perihal ketetapan keputusan wajib diisi.');
+    if (!content) throw new Error('Naskah/ringkasan isi ketetapan wajib diisi.');
 
     const count = await prisma.coopMeetingResolution.count({ where: { meetingId } });
-    const number = data.number || `TAP/RAT-${String(count + 1).padStart(2, '0')}/${meeting.fiscalYear}`;
+    const number = data.number || data.resolutionNo || `TAP/RAT-${String(count + 1).padStart(2, '0')}/${meeting.fiscalYear}`;
 
     return prisma.coopMeetingResolution.create({
       data: {
         meetingId,
         number,
-        title: data.title,
-        content: data.content,
+        title,
+        content,
       },
+    });
+  }
+
+  /**
+   * Perbarui surat ketetapan putusan (Resolution)
+   */
+  static async updateResolution(meetingId: string, resolutionId: string, tenantId: string, data: any) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const res = await prisma.coopMeetingResolution.findFirst({
+      where: { id: resolutionId, meetingId },
+    });
+    if (!res) throw new Error('Ketetapan keputusan tidak ditemukan.');
+
+    return prisma.coopMeetingResolution.update({
+      where: { id: resolutionId },
+      data: {
+        number: data.number || data.resolutionNo || res.number,
+        title: data.title || data.subject || res.title,
+        content: data.content || data.summary || res.content,
+      },
+    });
+  }
+
+  /**
+   * Hapus surat ketetapan putusan
+   */
+  static async deleteResolution(meetingId: string, resolutionId: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const res = await prisma.coopMeetingResolution.findFirst({
+      where: { id: resolutionId, meetingId },
+    });
+    if (!res) throw new Error('Ketetapan keputusan tidak ditemukan.');
+
+    return prisma.coopMeetingResolution.delete({
+      where: { id: resolutionId },
+    });
+  }
+
+  /**
+   * Tambah butir acara sidang (Agenda)
+   */
+  static async addAgenda(meetingId: string, tenantId: string, data: any) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const count = await prisma.coopMeetingAgenda.count({ where: { meetingId } });
+    const order = data.order ?? count + 1;
+
+    return prisma.coopMeetingAgenda.create({
+      data: {
+        meetingId,
+        order,
+        title: data.title,
+        presenter: data.presenter || null,
+        durationMin: Number(data.durationMin || data.durationMinutes || 30),
+        isCompleted: false,
+      },
+    });
+  }
+
+  /**
+   * Perbarui butir acara sidang
+   */
+  static async updateAgenda(meetingId: string, agendaId: string, tenantId: string, data: any) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const agenda = await prisma.coopMeetingAgenda.findFirst({
+      where: { id: agendaId, meetingId },
+    });
+    if (!agenda) throw new Error('Butir acara agenda tidak ditemukan.');
+
+    let isCompleted = agenda.isCompleted;
+    if (data.isCompleted !== undefined) {
+      isCompleted = Boolean(data.isCompleted);
+    } else if (data.status === 'COMPLETED') {
+      isCompleted = true;
+    } else if (data.status === 'PENDING' || data.status === 'IN_PROGRESS') {
+      isCompleted = false;
+    }
+
+    return prisma.coopMeetingAgenda.update({
+      where: { id: agendaId },
+      data: {
+        title: data.title !== undefined ? data.title : agenda.title,
+        presenter: data.presenter !== undefined ? data.presenter : agenda.presenter,
+        durationMin: data.durationMin !== undefined ? Number(data.durationMin) : (data.durationMinutes !== undefined ? Number(data.durationMinutes) : agenda.durationMin),
+        order: data.order !== undefined ? Number(data.order) : agenda.order,
+        isCompleted,
+      },
+    });
+  }
+
+  /**
+   * Hapus butir acara sidang
+   */
+  static async deleteAgenda(meetingId: string, agendaId: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const agenda = await prisma.coopMeetingAgenda.findFirst({
+      where: { id: agendaId, meetingId },
+    });
+    if (!agenda) throw new Error('Butir acara agenda tidak ditemukan.');
+
+    return prisma.coopMeetingAgenda.delete({
+      where: { id: agendaId },
     });
   }
 }

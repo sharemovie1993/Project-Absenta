@@ -55,6 +55,10 @@ const AddResolutionModal = lazy(() =>
   import('../../components/cooperative/rat/AddResolutionModal').then(m => ({ default: m.AddResolutionModal }))
 );
 
+const AgendaFormModal = lazy(() =>
+  import('../../components/cooperative/rat/AgendaFormModal').then(m => ({ default: m.AgendaFormModal }))
+);
+
 const RatTvDisplayModal = lazy(() =>
   import('../../components/cooperative/rat/RatTvDisplayModal').then(m => ({ default: m.RatTvDisplayModal }))
 );
@@ -155,6 +159,9 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [isCastVoteOpen, setIsCastVoteOpen] = useState(false);
   const [isCreateVotingSessionOpen, setIsCreateVotingSessionOpen] = useState(false);
   const [isAddResolutionOpen, setIsAddResolutionOpen] = useState(false);
+  const [isAddAgendaOpen, setIsAddAgendaOpen] = useState(false);
+  const [editingAgenda, setEditingAgenda] = useState<CoopAgendaItem | null>(null);
+  const [editingResolution, setEditingResolution] = useState<CoopResolutionItem | null>(null);
   const [isTvDisplayOpen, setIsTvDisplayOpen] = useState(false);
   const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
 
@@ -580,10 +587,26 @@ const RatMeetingPage: React.FC = React.memo(() => {
           {/* TAB 1: AGENDA & RESOLUTIONS */}
           {activeTab === 'agenda' && (
             <RatAgendaSection
+              meetingId={selectedMeetingId}
               agendas={currentMeeting?.agendas || []}
               resolutions={currentMeeting?.resolutions || []}
               canManage={canManage}
-              onOpenAddResolution={() => setIsAddResolutionOpen(true)}
+              onOpenAddAgenda={() => {
+                setEditingAgenda(null);
+                setIsAddAgendaOpen(true);
+              }}
+              onEditAgenda={(agenda) => {
+                setEditingAgenda(agenda);
+                setIsAddAgendaOpen(true);
+              }}
+              onOpenAddResolution={() => {
+                setEditingResolution(null);
+                setIsAddResolutionOpen(true);
+              }}
+              onEditResolution={(res) => {
+                setEditingResolution(res);
+                setIsAddResolutionOpen(true);
+              }}
             />
           )}
 
@@ -674,11 +697,27 @@ const RatMeetingPage: React.FC = React.memo(() => {
             />
           )}
 
+          {isAddAgendaOpen && selectedMeetingId && (
+            <AgendaFormModal
+              isOpen={isAddAgendaOpen}
+              onClose={() => {
+                setIsAddAgendaOpen(false);
+                setEditingAgenda(null);
+              }}
+              meetingId={selectedMeetingId}
+              initialData={editingAgenda}
+            />
+          )}
+
           {isAddResolutionOpen && selectedMeetingId && (
             <AddResolutionModal
               isOpen={isAddResolutionOpen}
-              onClose={() => setIsAddResolutionOpen(false)}
+              onClose={() => {
+                setIsAddResolutionOpen(false);
+                setEditingResolution(null);
+              }}
               meetingId={selectedMeetingId}
+              initialData={editingResolution}
             />
           )}
 

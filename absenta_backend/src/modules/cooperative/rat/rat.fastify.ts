@@ -76,9 +76,43 @@ const castVoteSchema = z.object({
 });
 
 const createResolutionSchema = z.object({
-  title: z.string().min(3, 'Judul ketetapan minimal 3 karakter').max(150),
-  content: z.string().min(5, 'Ringkasan isi ketetapan minimal 5 karakter'),
+  title: z.string().optional(),
+  subject: z.string().optional(),
+  content: z.string().optional(),
+  summary: z.string().optional(),
   number: z.string().optional(),
+  resolutionNo: z.string().optional(),
+  status: z.string().optional(),
+  documentUrl: z.string().optional(),
+});
+
+const updateResolutionSchema = z.object({
+  title: z.string().optional(),
+  subject: z.string().optional(),
+  content: z.string().optional(),
+  summary: z.string().optional(),
+  number: z.string().optional(),
+  resolutionNo: z.string().optional(),
+  status: z.string().optional(),
+  documentUrl: z.string().optional(),
+});
+
+const createAgendaSchema = z.object({
+  title: z.string().min(2, 'Judul butir acara minimal 2 karakter'),
+  presenter: z.string().optional().nullable(),
+  durationMin: z.number().int().min(1).optional(),
+  durationMinutes: z.number().int().min(1).optional(),
+  order: z.number().int().optional(),
+});
+
+const updateAgendaSchema = z.object({
+  title: z.string().min(2).optional(),
+  presenter: z.string().optional().nullable(),
+  durationMin: z.number().int().min(1).optional(),
+  durationMinutes: z.number().int().min(1).optional(),
+  order: z.number().int().optional(),
+  isCompleted: z.boolean().optional(),
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED']).optional(),
 });
 
 export default async function ratRoutes(fastify: any) {
@@ -528,6 +562,110 @@ export default async function ratRoutes(fastify: any) {
         reply.code(201).send({ success: true, data: resolution });
       } catch (error: any) {
         reply.status(400).send({ success: false, message: error.message || 'Gagal membuat ketetapan putusan' });
+      }
+    }
+  );
+
+  // 14. PUT /:id/resolutions/:resolutionId - Perbarui Risalah / Ketetapan RAT
+  fastify.put(
+    '/:id/resolutions/:resolutionId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const parseResult = updateResolutionSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data ketetapan tidak valid',
+          });
+        }
+
+        const tenantId = getTenantId(req);
+        const resolution = await RatService.updateResolution(req.params.id, req.params.resolutionId, tenantId, parseResult.data);
+        broadcastRatEvent(req, 'RAT_RESOLUTION_UPDATED', { meetingId: req.params.id, resolutionId: resolution.id });
+        reply.send({ success: true, data: resolution });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal memperbarui ketetapan putusan' });
+      }
+    }
+  );
+
+  // 15. DELETE /:id/resolutions/:resolutionId - Hapus Risalah / Ketetapan RAT
+  fastify.delete(
+    '/:id/resolutions/:resolutionId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        await RatService.deleteResolution(req.params.id, req.params.resolutionId, tenantId);
+        broadcastRatEvent(req, 'RAT_RESOLUTION_UPDATED', { meetingId: req.params.id, resolutionId: req.params.resolutionId });
+        reply.send({ success: true, message: 'Ketetapan putusan berhasil dihapus' });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menghapus ketetapan putusan' });
+      }
+    }
+  );
+
+  // 16. POST /:id/agendas - Tambah Butir Acara Sidang (Agenda)
+  fastify.post(
+    '/:id/agendas',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const parseResult = createAgendaSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data butir agenda tidak valid',
+          });
+        }
+
+        const tenantId = getTenantId(req);
+        const agenda = await RatService.addAgenda(req.params.id, tenantId, parseResult.data);
+        broadcastRatEvent(req, 'RAT_AGENDA_UPDATED', { meetingId: req.params.id, agendaId: agenda.id });
+        reply.code(201).send({ success: true, data: agenda });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menambah butir agenda' });
+      }
+    }
+  );
+
+  // 17. PUT /:id/agendas/:agendaId - Perbarui Butir Acara Sidang
+  fastify.put(
+    '/:id/agendas/:agendaId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const parseResult = updateAgendaSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          return reply.status(400).send({
+            success: false,
+            message: parseResult.error.issues[0]?.message || 'Data butir agenda tidak valid',
+          });
+        }
+
+        const tenantId = getTenantId(req);
+        const agenda = await RatService.updateAgenda(req.params.id, req.params.agendaId, tenantId, parseResult.data);
+        broadcastRatEvent(req, 'RAT_AGENDA_UPDATED', { meetingId: req.params.id, agendaId: agenda.id });
+        reply.send({ success: true, data: agenda });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal memperbarui butir agenda' });
+      }
+    }
+  );
+
+  // 18. DELETE /:id/agendas/:agendaId - Hapus Butir Acara Sidang
+  fastify.delete(
+    '/:id/agendas/:agendaId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        await RatService.deleteAgenda(req.params.id, req.params.agendaId, tenantId);
+        broadcastRatEvent(req, 'RAT_AGENDA_UPDATED', { meetingId: req.params.id, agendaId: req.params.agendaId });
+        reply.send({ success: true, message: 'Butir acara agenda berhasil dihapus' });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menghapus butir agenda' });
       }
     }
   );

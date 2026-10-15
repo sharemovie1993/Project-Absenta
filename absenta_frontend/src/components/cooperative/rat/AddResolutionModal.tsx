@@ -1,11 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Modal } from '../../ui/Modal';
-import { Button, Input, Textarea } from '../../ui';
+import { Button, Input, Textarea, Select } from '../../ui';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateRatCaches } from '../../../lib/coopQueryKeys';
+import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 
 const resolutionSchema = z.object({
   resolutionNo: z.string().min(1, 'Nomor surat ketetapan wajib diisi'),
@@ -15,10 +16,11 @@ const resolutionSchema = z.object({
   documentUrl: z.string().optional(),
 });
 
-interface AddResolutionModalProps {
+export interface AddResolutionModalProps {
   isOpen: boolean;
   onClose: () => void;
   meetingId: string;
+  initialData?: CoopResolutionItem | null;
   onSuccess?: () => void;
 }
 
@@ -26,9 +28,12 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
   isOpen,
   onClose,
   meetingId,
+  initialData,
   onSuccess
 }) => {
   const queryClient = useQueryClient();
+  const isEditing = Boolean(initialData);
+
   const [resolutionNo, setResolutionNo] = useState('');
   const [subject, setSubject] = useState('');
   const [summary, setSummary] = useState('');
@@ -36,18 +41,36 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
   const [documentUrl, setDocumentUrl] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const createMutation = useMutation({
-    mutationFn: async (payload: { resolutionNo: string; subject: string; summary: string; status: 'PASSED' | 'REJECTED' | 'AMENDED'; documentUrl?: string }) => {
-      const res = await api.post(`/cooperative/rat/${meetingId}/resolutions`, payload);
-      return res.data;
-    },
-    onSuccess: () => {
-      invalidateRatCaches(queryClient, meetingId);
-      toast.success('Ketetapan resmi RAT berhasil didokumentasikan!');
+  useEffect(() => {
+    if (initialData) {
+      setResolutionNo(initialData.resolutionNo || '');
+      setSubject(initialData.subject || '');
+      setSummary(initialData.summary || '');
+      setStatus(initialData.status || 'PASSED');
+      setDocumentUrl(initialData.documentUrl || '');
+    } else {
       setResolutionNo('');
       setSubject('');
       setSummary('');
+      setStatus('PASSED');
       setDocumentUrl('');
+    }
+    setErrors({});
+  }, [initialData, isOpen]);
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: { resolutionNo: string; subject: string; summary: string; status: 'PASSED' | 'REJECTED' | 'AMENDED'; documentUrl?: string }) => {
+      if (isEditing && initialData?.id) {
+        const res = await api.put(`/cooperative/rat/${meetingId}/resolutions/${initialData.id}`, payload);
+        return res.data;
+      } else {
+        const res = await api.post(`/cooperative/rat/${meetingId}/resolutions`, payload);
+        return res.data;
+      }
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, meetingId);
+      toast.success(isEditing ? 'Ketetapan resmi RAT berhasil diperbarui!' : 'Ketetapan resmi RAT berhasil didokumentasikan!');
       onClose();
       onSuccess?.();
     },
@@ -81,22 +104,22 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
       return;
     }
 
-    createMutation.mutate({
+    saveMutation.mutate({
       resolutionNo: parseResult.data.resolutionNo,
       subject: parseResult.data.subject,
       summary: parseResult.data.summary,
       status: parseResult.data.status,
       documentUrl: parseResult.data.documentUrl,
     });
-  }, [resolutionNo, subject, summary, status, documentUrl, createMutation]);
+  }, [resolutionNo, subject, summary, status, documentUrl, saveMutation]);
 
-  const isPending = createMutation.isPending;
+  const isPending = saveMutation.isPending;
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Catat Surat Ketetapan Resmi RAT"
+      title={isEditing ? 'Ubah Surat Ketetapan Resmi RAT' : 'Catat Surat Ketetapan Resmi RAT'}
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -134,15 +157,15 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
 
         <div>
           <label htmlFor="res-summary" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">
-            Ringkasan Amar Putusan Sidang <span className="text-red-500">*</span>
+            Ringkasan Putusan / Amar Ketetapan <span className="text-red-500">*</span>
           </label>
           <Textarea
             id="res-summary"
             aria-label="Ringkasan Putusan"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            placeholder="Tuliskan secara ringkas amar keputusan yang telah disepakati oleh seluruh peserta sidang..."
-            rows={3}
+            placeholder="Tuliskan poin-poin keputusan resmi yang telah disepakati oleh anggota..."
+            rows={4}
             disabled={isPending}
             className="w-full"
           />
@@ -152,54 +175,42 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="res-status" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">
-              Hasil Putusan Sidang
+              Status Putusan
             </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setStatus('PASSED')}
-                className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
-                  status === 'PASSED'
-                    ? 'bg-emerald-600 text-white border-emerald-600'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                }`}
-              >
-                Disahkan
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatus('AMENDED')}
-                className={`flex-1 py-2 px-3 text-xs font-semibold rounded-lg border transition-all ${
-                  status === 'AMENDED'
-                    ? 'bg-amber-600 text-white border-amber-600'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
-                }`}
-              >
-                Dengan Catatan
-              </button>
-            </div>
+            <Select
+              id="res-status"
+              aria-label="Status Putusan"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as any)}
+              disabled={isPending}
+              className="w-full"
+            >
+              <option value="PASSED">Disahkan (Passed)</option>
+              <option value="AMENDED">Disahkan Dengan Catatan (Amended)</option>
+              <option value="REJECTED">Ditolak (Rejected)</option>
+            </Select>
           </div>
 
           <div>
             <label htmlFor="res-doc" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">
-              Tautan Dokumen Risalah / PDF
+              URL Dokumen SK (Opsional)
             </label>
             <Input
               id="res-doc"
-              aria-label="Tautan Dokumen Risalah"
+              aria-label="URL Dokumen SK"
               value={documentUrl}
               onChange={(e) => setDocumentUrl(e.target.value)}
-              placeholder="https://... atau /uploads/..."
+              placeholder="https://..."
               disabled={isPending}
               className="w-full"
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-800">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={onClose}
             disabled={isPending}
           >
@@ -207,10 +218,10 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
           </Button>
           <Button
             type="submit"
-            isLoading={isPending}
+            variant="primary"
             disabled={isPending}
           >
-            Simpan Ketetapan Resmi
+            {isPending ? 'Menyimpan...' : isEditing ? 'Simpan Perubahan' : 'Dokumentasikan Ketetapan'}
           </Button>
         </div>
       </form>
