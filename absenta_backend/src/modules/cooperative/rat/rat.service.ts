@@ -133,16 +133,26 @@ export class RatService {
       status: 'PASSED' as const,
     }));
 
-    const mappedVotingSessions = (meeting.votingSessions || []).map((sess: any) => ({
-      ...sess,
-      votingType: sess.category,
-      ballotsCount: sess.options?.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0) || 0,
-      options: (sess.options || []).map((opt: any) => ({
-        ...opt,
-        title: opt.label,
-        label: opt.label,
-      })),
-    }));
+    const mappedVotingSessions = (meeting.votingSessions || []).map((sess: any) => {
+      const hasResolution = (meeting.resolutions || []).some((res: any) =>
+        (sess.agendaId && res.title && res.title.toLowerCase().includes(sess.title.toLowerCase())) ||
+        (res.content && res.content.includes(sess.title)) ||
+        (res.content && res.content.includes(sess.id))
+      );
+      const effectiveStatus = (sess.status === 'CLOSED' && hasResolution) ? 'TALLIED' : sess.status;
+
+      return {
+        ...sess,
+        status: effectiveStatus,
+        votingType: sess.category,
+        ballotsCount: sess.options?.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0) || 0,
+        options: (sess.options || []).map((opt: any) => ({
+          ...opt,
+          title: opt.label,
+          label: opt.label,
+        })),
+      };
+    });
 
     const activeAgenda = mappedAgendas.find((ag: any) => ag.status === 'IN_PROGRESS') || null;
     const completedAgendasCount = mappedAgendas.filter((ag: any) => ag.status === 'COMPLETED').length;
@@ -644,23 +654,51 @@ export class RatService {
   static async updateVotingSessionStatus(sessionId: string, tenantId: string, status: string) {
     const session = await prisma.coopVotingSession.findFirst({
       where: { id: sessionId, Meeting: { tenantId } },
+      include: {
+        Meeting: {
+          include: {
+            agendas: true,
+          },
+        },
+      },
     });
 
     if (!session) throw new Error('Sesi pemungutan suara tidak ditemukan.');
 
+    // Petakan TALLIED ke CLOSED pada database enum Prisma (PENDING | ACTIVE | PAUSED | CLOSED)
+    const targetStatus = status === 'TALLIED' ? 'CLOSED' : status;
+    const isClosing = targetStatus === 'CLOSED';
+
     const updated = await prisma.coopVotingSession.update({
       where: { id: sessionId },
       data: {
-        status: status as any,
-        closedAt: status === 'CLOSED' || status === 'TALLIED' ? new Date() : undefined,
+        status: targetStatus as any,
+        closedAt: isClosing ? (session.closedAt || new Date()) : undefined,
       },
       include: {
         options: { orderBy: { order: 'asc' } },
       },
     });
 
+    // Otomasi TAP RAT: Bila pimpinan sidang mengesahkan hasil (TALLIED), buatkan draf TAP RAT bila ada agenda terkait
+    if (status === 'TALLIED') {
+      const agendaId = session.agendaId || session.Meeting?.agendas?.find((a: any) =>
+        session.title.toLowerCase().includes(a.title.toLowerCase()) ||
+        a.title.toLowerCase().includes(session.title.toLowerCase())
+      )?.id;
+
+      if (agendaId) {
+        try {
+          await this.generateResolutionFromAgenda(session.meetingId, agendaId, tenantId);
+        } catch (err) {
+          console.warn('Otomasi TAP RAT pada sesi voting notice:', err);
+        }
+      }
+    }
+
     return {
       ...updated,
+      status: (status === 'TALLIED' ? 'TALLIED' : updated.status) as any,
       votingType: updated.category,
       ballotsCount: updated.options.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0),
       options: (updated.options || []).map((o: any) => ({
