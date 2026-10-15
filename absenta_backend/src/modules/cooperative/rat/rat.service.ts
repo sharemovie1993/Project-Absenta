@@ -185,6 +185,144 @@ export class RatService {
   }
 
   /**
+   * Cari / Deteksi Anggota berdasarkan RFID atau No Anggota / NISN / NIP / Nama
+   */
+  static async resolveMember(tenantId: string, identifier: string) {
+    if (!identifier) return null;
+    const clean = identifier.trim();
+
+    const memberSelect = {
+      id: true,
+      memberNo: true,
+      type: true,
+      status: true,
+      User: { select: { name: true, email: true } },
+      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
+      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true, no_rfid: true } },
+    };
+
+    // 1. Direct memberId
+    let member = await prisma.member.findFirst({
+      where: { id: clean, tenantId, status: 'ACTIVE' },
+      select: memberSelect,
+    });
+    if (member) return member;
+
+    // 2. By memberNo (e.g. ANG-001)
+    member = await prisma.member.findFirst({
+      where: { tenantId, memberNo: { equals: clean, mode: 'insensitive' }, status: 'ACTIVE' },
+      select: memberSelect,
+    });
+    if (member) return member;
+
+    // 3. By RFID on Siswa or Guru
+    const studentByRfid = await prisma.siswa.findFirst({
+      where: { tenant_id: tenantId, no_rfid: clean },
+      select: { id: true },
+    });
+    if (studentByRfid) {
+      member = await prisma.member.findFirst({
+        where: { tenantId, siswaId: studentByRfid.id, status: 'ACTIVE' },
+        select: memberSelect,
+      });
+      if (member) return member;
+    }
+
+    const teacherByRfid = await prisma.guru.findFirst({
+      where: { tenant_id: tenantId, no_rfid: clean },
+      select: { id: true },
+    });
+    if (teacherByRfid) {
+      member = await prisma.member.findFirst({
+        where: { tenantId, guruId: teacherByRfid.id, status: 'ACTIVE' },
+        select: memberSelect,
+      });
+      if (member) return member;
+    }
+
+    // 4. By NIS / NISN or NIP
+    member = await prisma.member.findFirst({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        OR: [
+          { Siswa: { nis: clean } },
+          { Siswa: { nisn: clean } },
+          { Siswa: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+          { Guru: { nip: clean } },
+          { Guru: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+          { User: { name: { contains: clean, mode: 'insensitive' } } },
+        ],
+      },
+      select: memberSelect,
+    });
+
+    return member;
+  }
+
+  /**
+   * Cari daftar anggota aktif untuk kebutuhan presensi RAT manual / terminal
+   */
+  static async searchMembersForAttendance(meetingId: string, tenantId: string, query?: string) {
+    const clean = query?.trim() || '';
+
+    const memberSelect = {
+      id: true,
+      memberNo: true,
+      type: true,
+      status: true,
+      User: { select: { name: true, email: true } },
+      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
+      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true, no_rfid: true } },
+    };
+
+    const whereClause: any = {
+      tenantId,
+      status: 'ACTIVE',
+    };
+
+    if (clean) {
+      whereClause.OR = [
+        { memberNo: { contains: clean, mode: 'insensitive' } },
+        { Siswa: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+        { Siswa: { nis: { contains: clean } } },
+        { Siswa: { no_rfid: { equals: clean } } },
+        { Guru: { nama_lengkap: { contains: clean, mode: 'insensitive' } } },
+        { Guru: { nip: { contains: clean } } },
+        { Guru: { no_rfid: { equals: clean } } },
+        { User: { name: { contains: clean, mode: 'insensitive' } } },
+      ];
+    }
+
+    const members = await prisma.member.findMany({
+      where: whereClause,
+      select: memberSelect,
+      take: 20,
+      orderBy: { memberNo: 'asc' },
+    });
+
+    const attendances = await prisma.coopMeetingAttendance.findMany({
+      where: {
+        meetingId,
+        memberId: { in: members.map((m) => m.id) },
+      },
+      select: {
+        memberId: true,
+        attendedAt: true,
+        method: true,
+      },
+    });
+
+    const attendedMap = new Map(attendances.map((a) => [a.memberId, a]));
+
+    return members.map((m) => ({
+      ...m,
+      isAttended: attendedMap.has(m.id),
+      attendanceDetail: attendedMap.get(m.id) || null,
+    }));
+  }
+
+  /**
    * Catat presensi kehadiran peserta RAT
    */
   static async recordAttendance(
@@ -205,9 +343,20 @@ export class RatService {
       throw new Error(`Presensi tidak dapat dilakukan karena sidang berstatus ${meeting.status}.`);
     }
 
+    const memberSelect = {
+      id: true,
+      memberNo: true,
+      type: true,
+      status: true,
+      User: { select: { name: true, email: true } },
+      Siswa: { select: { nama_lengkap: true, nama_siswa: true, nis: true, nisn: true } },
+      Guru: { select: { nama_lengkap: true, nama_guru: true, nip: true } },
+    };
+
     // Cek apakah anggota aktif
     const member = await prisma.member.findFirst({
       where: { id: memberId, tenantId, status: 'ACTIVE' },
+      select: memberSelect,
     });
 
     if (!member) throw new Error('Anggota tidak terdaftar atau non-aktif.');
@@ -220,6 +369,9 @@ export class RatService {
           memberId,
         },
       },
+      include: {
+        Member: { select: memberSelect },
+      },
     });
 
     if (existing) {
@@ -227,6 +379,7 @@ export class RatService {
         success: true,
         alreadyAttended: true,
         attendance: existing,
+        member,
         message: 'Kehadiran telah tercatat sebelumnya.',
       };
     }
@@ -237,6 +390,9 @@ export class RatService {
         memberId,
         method: (method as any) || 'ONLINE_SELF',
         verifiedBy: verifiedBy || null,
+      },
+      include: {
+        Member: { select: memberSelect },
       },
     });
 
@@ -279,6 +435,7 @@ export class RatService {
       success: true,
       alreadyAttended: false,
       attendance,
+      member,
       totalAttended: currentAttendanceCount,
       quorumTarget: meeting.quorumTarget,
       isQuorumReached: currentAttendanceCount >= meeting.quorumTarget,

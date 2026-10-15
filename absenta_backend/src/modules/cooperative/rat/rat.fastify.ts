@@ -47,6 +47,8 @@ const updateMeetingStatusSchema = z.object({
 
 const recordAttendanceSchema = z.object({
   memberId: z.string().uuid().optional(),
+  identifier: z.string().optional(),
+  rfid: z.string().optional(),
   method: z.enum(['ONLINE_SELF', 'RFID_SCAN', 'MANUAL_OPERATOR', 'ONLINE', 'RFID', 'MANUAL']).optional(),
 });
 
@@ -230,7 +232,7 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
-  // 6. POST /:id/attendance - Catat Presensi Kehadiran Peserta
+  // 6. POST /:id/attendance - Catat Presensi Kehadiran Peserta (Tap RFID / Ketik Manual / Online)
   fastify.post(
     '/:id/attendance',
     {
@@ -250,8 +252,21 @@ export default async function ratRoutes(fastify: any) {
 
         const tenantId = getTenantId(req);
         let memberId = parseResult.data.memberId;
+        const queryTerm = parseResult.data.rfid || parseResult.data.identifier;
 
-        // Jika anggota mempresensikan dirinya sendiri
+        // Jika lookup via RFID atau nomor anggota / identitas
+        if (!memberId && queryTerm) {
+          const resolved = await RatService.resolveMember(tenantId, queryTerm);
+          if (!resolved) {
+            return reply.status(404).send({
+              success: false,
+              message: `Anggota dengan kartu / identitas "${queryTerm}" tidak ditemukan atau berstatus non-aktif.`,
+            });
+          }
+          memberId = resolved.id;
+        }
+
+        // Jika anggota mempresensikan dirinya sendiri (portal mandiri)
         if (!memberId) {
           memberId = await getMemberId(req, tenantId);
         }
@@ -259,11 +274,21 @@ export default async function ratRoutes(fastify: any) {
         if (!memberId) {
           return reply.status(403).send({
             success: false,
-            message: 'Profil anggota aktif Anda tidak ditemukan.',
+            message: 'Profil anggota aktif tidak ditemukan.',
           });
         }
 
-        const method = parseResult.data.method || 'ONLINE_SELF';
+        let method = parseResult.data.method;
+        if (!method) {
+          if (parseResult.data.rfid) {
+            method = 'RFID_SCAN';
+          } else if (parseResult.data.identifier) {
+            method = 'MANUAL_OPERATOR';
+          } else {
+            method = 'ONLINE_SELF';
+          }
+        }
+
         const verifiedBy = req.user?.id || req.user?.userId;
 
         const result = await RatService.recordAttendance(
@@ -278,12 +303,35 @@ export default async function ratRoutes(fastify: any) {
           meetingId: req.params.id,
           totalAttended: result.totalAttended,
           isQuorumReached: result.isQuorumReached,
+          attendance: result.attendance,
+          member: result.member,
         });
 
         return reply.send(result);
       } catch (error: any) {
         appLogger.error({ err: error }, 'Failed to record attendance');
         reply.status(400).send({ success: false, message: error.message || 'Gagal mencatat kehadiran' });
+      }
+    }
+  );
+
+  // 6b. GET /:id/attendance/search-members - Cari anggota aktif untuk terminal presensi
+  fastify.get(
+    '/:id/attendance/search-members',
+    {
+      preHandler: [
+        requireCapability(['cooperative.rat.manage', 'cooperative.rat.view']),
+      ],
+    },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const query = (req.query?.q || req.query?.query || '') as string;
+        const members = await RatService.searchMembersForAttendance(req.params.id, tenantId, query);
+        return { success: true, data: members };
+      } catch (error: any) {
+        appLogger.error({ err: error }, 'Failed to search members for RAT attendance');
+        reply.status(500).send({ success: false, message: error.message || 'Gagal mencari data anggota' });
       }
     }
   );
