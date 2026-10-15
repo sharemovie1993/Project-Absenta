@@ -3,7 +3,6 @@ import { SectionCard, Badge, Button } from '../../ui';
 import {
   Clock,
   Plus,
-  ExternalLink,
   Play,
   CheckCircle2,
   RotateCcw,
@@ -13,12 +12,7 @@ import {
   BookOpen,
   ListOrdered,
   Printer,
-  Shield,
-  FileText,
-  Scale,
-  Users,
-  Gavel,
-  AlertCircle,
+  Calendar,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
@@ -26,6 +20,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { invalidateRatCaches } from '../../../lib/coopQueryKeys';
 import useConfirm from '../../../hooks/useConfirm';
 import type { CoopAgendaItem, CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
+import { RatRulesTabContent } from './RatRulesTabContent';
+import { RatResolutionsCard } from './RatResolutionsCard';
 
 interface RatAgendaSectionProps {
   meetingId: string;
@@ -72,6 +68,22 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     }
   });
 
+  // Mutation: Generate Resolution Automatically from Agenda
+  const generateResolutionMutation = useMutation({
+    mutationFn: async (agendaId: string) => {
+      const res = await api.post(`/cooperative/rat/${meetingId}/agendas/${agendaId}/generate-resolution`);
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, meetingId);
+      toast.success('Draf Surat Ketetapan Resmi (TAP RAT) otomatis berhasil diterbitkan!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menerbitkan TAP RAT otomatis';
+      toast.error(errorMsg);
+    }
+  });
+
   // Mutation: Delete Agenda
   const deleteAgendaMutation = useMutation({
     mutationFn: async (agendaId: string) => {
@@ -84,22 +96,6 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menghapus butir agenda';
-      toast.error(errorMsg);
-    }
-  });
-
-  // Mutation: Delete Resolution
-  const deleteResolutionMutation = useMutation({
-    mutationFn: async (resolutionId: string) => {
-      const res = await api.delete(`/cooperative/rat/${meetingId}/resolutions/${resolutionId}`);
-      return res.data;
-    },
-    onSuccess: () => {
-      invalidateRatCaches(queryClient, meetingId);
-      toast.success('Surat ketetapan keputusan berhasil dihapus.');
-    },
-    onError: (err: unknown) => {
-      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menghapus ketetapan';
       toast.error(errorMsg);
     }
   });
@@ -158,6 +154,22 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     }
   };
 
+  const handleCompleteAgenda = async (agenda: CoopAgendaItem) => {
+    await updateAgendaStatusMutation.mutateAsync({ agendaId: agenda.id, status: 'COMPLETED' });
+
+    // Tanya operator apakah ingin langsung membuatkan draf TAP RAT otomatis
+    const shouldDraft = await confirm({
+      title: 'Terbitkan Draf TAP RAT Otomatis?',
+      message: `Agenda "${agenda.title}" telah diselesaikan. Apakah Anda ingin sistem langsung menerbitkan Draf Surat Ketetapan Resmi (TAP RAT) yang menginjeksi kuorum kehadiran sah dan hasil voting sidang?`,
+      confirmText: 'Ya, Terbitkan Draf TAP RAT',
+      cancelText: 'Hanya Selesaikan Agenda',
+    });
+
+    if (shouldDraft) {
+      generateResolutionMutation.mutate(agenda.id);
+    }
+  };
+
   const handleDeleteAgenda = async (agenda: CoopAgendaItem) => {
     const isConfirmed = await confirm({
       title: 'Hapus Butir Acara Sidang',
@@ -168,19 +180,6 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     });
     if (isConfirmed) {
       deleteAgendaMutation.mutate(agenda.id);
-    }
-  };
-
-  const handleDeleteResolution = async (res: CoopResolutionItem) => {
-    const isConfirmed = await confirm({
-      title: 'Hapus Surat Ketetapan (TAP RAT)',
-      message: `Apakah Anda yakin ingin menghapus ketetapan resmi "${res.resolutionNo}" (${res.subject})?`,
-      confirmText: 'Ya, Hapus Ketetapan',
-      cancelText: 'Batal',
-      variant: 'danger',
-    });
-    if (isConfirmed) {
-      deleteResolutionMutation.mutate(res.id);
     }
   };
 
@@ -257,75 +256,81 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                   className="gap-1 text-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Tambah Butir Acara
+                  Tambah Manual
                 </Button>
               </div>
             )
           }
         >
           {(agendas || []).length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              {(agendas || []).map((agenda, idx) => {
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+              {(agendas || []).map((agenda, index) => {
                 const currentStatus = agenda.status || (agenda.isCompleted ? 'COMPLETED' : 'PENDING');
+                const isLive = currentStatus === 'IN_PROGRESS';
+                const isDone = currentStatus === 'COMPLETED';
+
                 return (
                   <div
                     key={agenda.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
-                      currentStatus === 'IN_PROGRESS'
-                        ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/40 shadow-sm ring-1 ring-indigo-400/40'
-                        : currentStatus === 'COMPLETED'
-                        ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20'
-                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60'
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-all gap-3 ${
+                      isLive
+                        ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-sm ring-1 ring-indigo-500/30'
+                        : isDone
+                        ? 'border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 opacity-75'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
-                    <div className="flex items-start gap-3.5 min-w-0">
+                    <div className="flex items-start gap-3 min-w-0">
                       <div
-                        className={`flex-shrink-0 w-8 h-8 rounded-xl font-black text-sm flex items-center justify-center ${
-                          currentStatus === 'COMPLETED'
-                            ? 'bg-emerald-500 text-white'
-                            : currentStatus === 'IN_PROGRESS'
-                            ? 'bg-indigo-600 text-white animate-pulse'
-                            : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 transition-colors ${
+                          isLive
+                            ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-300 dark:ring-indigo-800 animate-pulse'
+                            : isDone
+                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
                         }`}
                       >
-                        {currentStatus === 'COMPLETED' ? '✓' : idx + 1}
+                        {index + 1}
                       </div>
 
-                      <div className="min-w-0 space-y-1">
+                      <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                          <h4
+                            className={`font-semibold text-sm truncate ${
+                              isDone
+                                ? 'line-through text-slate-500 dark:text-slate-400'
+                                : 'text-slate-900 dark:text-white'
+                            }`}
+                            title={agenda.title}
+                          >
                             {agenda.title}
                           </h4>
-                          <Badge
-                            variant={
-                              currentStatus === 'COMPLETED'
-                                ? 'success'
-                                : currentStatus === 'IN_PROGRESS'
-                                ? 'primary'
-                                : 'default'
-                            }
-                            className="text-[10px] font-bold"
-                          >
-                            {currentStatus === 'IN_PROGRESS'
-                              ? 'SEDANG BERLANGSUNG'
-                              : currentStatus === 'COMPLETED'
-                              ? 'SELESAI'
-                              : 'MENUNGGU'}
-                          </Badge>
+
+                          {isLive && (
+                            <Badge variant="indigo" className="text-[10px] py-0 px-1.5 animate-pulse">
+                              Sedang Berlangsung
+                            </Badge>
+                          )}
+                          {isDone && (
+                            <Badge variant="success" className="text-[10px] py-0 px-1.5">
+                              Selesai
+                            </Badge>
+                          )}
                         </div>
 
-                        {agenda.description && (
-                          <p className="text-xs text-slate-600 dark:text-slate-400">
-                            {agenda.description}
-                          </p>
-                        )}
-
-                        {(agenda.durationMinutes || agenda.durationMin) && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
-                            <Clock className="w-3 h-3 text-indigo-500" />
-                            <span>Alokasi waktu: {agenda.durationMinutes || agenda.durationMin} menit</span>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                          {agenda.presenter && (
+                            <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
+                              <span className="text-[11px] font-medium text-slate-400">Pembicara:</span> {agenda.presenter}
+                            </span>
+                          )}
+                          {agenda.durationMinutes && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-slate-400" />
+                              {agenda.durationMinutes} Menit
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -352,8 +357,8 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                             type="button"
                             size="sm"
                             variant="success"
-                            onClick={() => updateAgendaStatusMutation.mutate({ agendaId: agenda.id, status: 'COMPLETED' })}
-                            disabled={updateAgendaStatusMutation.isPending}
+                            onClick={() => handleCompleteAgenda(agenda)}
+                            disabled={updateAgendaStatusMutation.isPending || generateResolutionMutation.isPending}
                             className="text-xs gap-1 py-1"
                           >
                             <CheckCircle2 className="w-3 h-3" />
@@ -453,7 +458,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
         </SectionCard>
       )}
 
-      {/* VIEW 2: NASKAH TATA TERTIB SIDANG RAT (END-TO-END STATUTORY DOCUMENT) */}
+      {/* VIEW 2: NASKAH TATA TERTIB SIDANG RAT */}
       {subTab === 'rules' && (
         <SectionCard
           title="Pedoman & Tata Tertib Sidang Paripurna RAT"
@@ -468,7 +473,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                 className="gap-1 text-xs"
               >
                 <Printer className="w-3.5 h-3.5" />
-                Cetak Tata Tertib
+                Cetak Tatib
               </Button>
               {canManage && onOpenEditRules && (
                 <Button
@@ -479,307 +484,27 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                   className="gap-1 text-xs"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  Ubah Klausul Khusus
+                  Kustomisasi Klausul
                 </Button>
               )}
             </div>
           }
         >
-          <div className="space-y-6">
-            {/* STATUTORY HIGHLIGHT CARDS (4 PILLARS) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/60 space-y-1">
-                <div className="flex items-center gap-1.5 text-indigo-700 dark:text-indigo-400 font-bold text-xs uppercase">
-                  <Scale className="w-3.5 h-3.5" />
-                  <span>Asas Hak Suara</span>
-                </div>
-                <div className="text-sm font-black text-slate-900 dark:text-white">
-                  One Man, One Vote
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Satu anggota memiliki tepat satu hak suara sah tanpa perwakilan bertingkat.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-400 font-bold text-xs uppercase">
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>Ambang Kuorum</span>
-                </div>
-                <div className="text-sm font-black text-slate-900 dark:text-white">
-                  Minimal 50% + 1
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Syarat legalitas yuridis pengambilan keputusan rapat anggota menurut UU.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 space-y-1">
-                <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-400 font-bold text-xs uppercase">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Hak Bicara & Interupsi</span>
-                </div>
-                <div className="text-sm font-black text-slate-900 dark:text-white">
-                  Maksimal 3 Menit
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Melalui izin pimpinan sidang dengan menyebutkan jenis interupsi resmi.
-                </p>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 space-y-1">
-                <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-xs uppercase">
-                  <Gavel className="w-3.5 h-3.5" />
-                  <span>Ketetapan Sidang</span>
-                </div>
-                <div className="text-sm font-black text-slate-900 dark:text-white">
-                  Sah & Mengikat (TAP RAT)
-                </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Seluruh keputusan dituangkan dalam surat ketetapan yang mengikat kepengurusan.
-                </p>
-              </div>
-            </div>
-
-            {/* CUSTOM RULES BOX (IF SAVED IN DATABASE) */}
-            {meetingDescription && (
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800/70 space-y-1.5">
-                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-xs uppercase">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Klausul Khusus & Ketentuan Tambahan Sidang Tahun Buku Ini:</span>
-                </div>
-                <p className="text-xs text-slate-800 dark:text-slate-200 whitespace-pre-line leading-relaxed pl-6">
-                  {meetingDescription}
-                </p>
-              </div>
-            )}
-
-            {/* OFFICIAL 7 ARTICLES (PASAL-PASAL RESMI TATA TERTIB SIDANG RAT) */}
-            <div className="space-y-4 pt-2">
-              {/* PASAL 1 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">1</span>
-                    Pasal 1: Nama, Kedudukan, dan Dasar Hukum
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Landasan Yuridis</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Rapat Anggota Tahunan (RAT) merupakan pemegang kekuasaan tertinggi dalam tata kehidupan koperasi.<br />
-                  2. RAT ini diselenggarakan berdasarkan Undang-Undang Republik Indonesia Nomor 25 Tahun 1992 tentang Perkoperasian (Pasal 22 s/d Pasal 27), Peraturan Menteri Koperasi dan UKM, serta Anggaran Dasar dan Anggaran Rumah Tangga (AD/ART) Koperasi.
-                </p>
-              </div>
-
-              {/* PASAL 2 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">2</span>
-                    Pasal 2: Peserta Sidang, Hak Suara, dan Hak Bicara
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Hak Anggota</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Peserta RAT adalah seluruh anggota aktif koperasi yang telah terdaftar resmi pada buku daftar anggota dan melakukan presensi kehadiran.<br />
-                  2. Dalam pengambilan keputusan, berlaku prinsip perkoperasian <strong>Satu Anggota Satu Suara (One Man, One Vote)</strong> tanpa memandang besaran simpanan pokok maupun simpanan wajib.<br />
-                  3. Setiap peserta berhak mengajukan usul, saran, dan pertanyaan dengan seizin Pimpinan Sidang secara tertib dan konstruktif.
-                </p>
-              </div>
-
-              {/* PASAL 3 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">3</span>
-                    Pasal 3: Kuorum dan Keabsahan Sidang
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Syarat Sah Pleno</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Sidang RAT dinyatakan sah dan berhak mengambil keputusan yang mengikat apabila dihadiri oleh lebih dari separuh jumlah anggota aktif berhak suara (50% + 1).<br />
-                  2. Apabila kuorum belum tercapai pada waktu yang ditentukan, sidang dapat diskors selama 1 x 15 menit. Apabila setelah skors kuorum tetap belum terpenuhi, sidang dilanjutkan dan keputusannya sah mengikat sesuai kesepakatan anggota yang hadir.
-                </p>
-              </div>
-
-              {/* PASAL 4 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">4</span>
-                    Pasal 4: Pimpinan Sidang (Presidium Sidang)
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Wewenang Pimpinan</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Sidang RAT dibuka oleh Pengurus/Pimpinan Sidang Sementara hingga disahkannya Tata Tertib dan terpilihnya Presidium Sidang Pleno definitif.<br />
-                  2. Presidium Sidang beranggotakan Ketua, Sekretaris, dan Anggota yang dipilih dari dan oleh peserta rapat anggota.<br />
-                  3. Pimpinan Sidang berwenang memimpin jalannya pleno, menjaga ketertiban, mengalokasikan waktu bicara, dan mengetuk palu pengesahan ketetapan sidang.
-                </p>
-              </div>
-
-              {/* PASAL 5 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">5</span>
-                    Pasal 5: Tata Cara Interupsi dan Waktu Berbicara
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Ketertiban Pleno</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Peserta yang ingin menyampaikan pandangan atau interupsi wajib mengangkat tangan dan menunggu persetujuan Pimpinan Sidang.<br />
-                  2. Interupsi hanya diperkenankan untuk: (a) <em>Point of Order</em> (penegakan tata tertib), (b) <em>Point of Information</em> (memberikan data faktual), atau (c) <em>Point of Clarification</em> (meluruskan kekeliruan).<br />
-                  3. Setiap peserta diberikan alokasi waktu berbicara maksimal 3 (tiga) menit untuk menjaga kelancaran durasi persidangan.
-                </p>
-              </div>
-
-              {/* PASAL 6 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">6</span>
-                    Pasal 6: Mekanisme Pengambilan Keputusan & e-Voting
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Putusan Sidang</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Keputusan sidang diutamakan melalui asas musyawarah untuk mencapai mufakat.<br />
-                  2. Apabila musyawarah mufakat tidak tercapai setelah diupayakan sungguh-sungguh, maka keputusan diambil berdasarkan suara terbanyak (voting).<br />
-                  3. Pemungutan suara dapat diselenggarakan secara digital melalui sistem <strong>e-Voting Absenta Cooperative</strong> atau pemungutan suara terbuka/tertutup secara langsung.
-                </p>
-              </div>
-
-              {/* PASAL 7 */}
-              <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 space-y-2">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/60 pb-2">
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-mono text-xs">7</span>
-                    Pasal 7: Risalah Sidang dan Surat Ketetapan (TAP RAT)
-                  </h4>
-                  <Badge variant="outline" className="text-[10px]">Kepastian Hukum</Badge>
-                </div>
-                <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
-                  1. Seluruh jalannya persidangan dan dinamika rapat wajib dicatat oleh Sekretaris Sidang dalam Berita Acara Rapat.<br />
-                  2. Seluruh hasil keputusan yang disetujui dituangkan dalam <strong>Surat Ketetapan Resmi Rapat Anggota Tahunan (TAP RAT)</strong> yang ditandatangani oleh Presidium Sidang dan sah mengikat seluruh Pengurus, Pengawas, dan Anggota Koperasi.
-                </p>
-              </div>
-            </div>
-          </div>
+          <RatRulesTabContent meetingDescription={meetingDescription} />
         </SectionCard>
       )}
 
-      {/* SECTION 3: DAFTAR SURAT KETETAPAN (TAP RAT) SELALU TERSEDIA */}
-      <SectionCard
-        title="Daftar Surat Ketetapan Resmi Sidang (TAP RAT)"
-        fullWidth
-        className="space-y-4"
-        actions={
-          canManage && (
-            <Button
-              type="button"
-              size="toolbar"
-              variant="toolbarOutline"
-              onClick={onOpenAddResolution}
-              className="gap-1 text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Tambah Ketetapan
-            </Button>
-          )
-        }
-      >
-        <p className="text-xs text-slate-500">
-          Seluruh ketetapan yang telah disepakati oleh anggota berstatus hukum sah dan mengikat kepengurusan koperasi.
-        </p>
-
-        {(resolutions || []).length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(resolutions || []).map((res) => (
-              <div
-                key={res.id}
-                className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 space-y-2.5 flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800/60">
-                      {res.resolutionNo}
-                    </span>
-                    <Badge variant={res.status === 'PASSED' ? 'success' : res.status === 'AMENDED' ? 'warning' : 'danger'}>
-                      {res.status === 'PASSED' ? 'Disahkan' : res.status === 'AMENDED' ? 'Dengan Catatan' : 'Ditolak'}
-                    </Badge>
-                  </div>
-
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                    {res.subject}
-                  </h4>
-
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
-                    {res.summary}
-                  </p>
-
-                  {res.documentUrl && (
-                    <a
-                      href={res.documentUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline pt-1"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Unduh Salinan Dokumen SK
-                    </a>
-                  )}
-                </div>
-
-                {/* Actions for Managers */}
-                {canManage && (
-                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => onEditResolution(res)}
-                      className="text-xs gap-1 py-1 text-slate-600 dark:text-slate-400 hover:text-indigo-600"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      Ubah
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteResolution(res)}
-                      disabled={deleteResolutionMutation.isPending}
-                      className="text-xs gap-1 py-1 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Hapus
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8 text-slate-400 text-sm space-y-2">
-            <p>Belum ada ketetapan resmi yang dicatatkan pada sidang ini.</p>
-            {canManage && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onOpenAddResolution}
-                className="gap-1.5 text-xs mx-auto"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Catat Ketetapan Pertama
-              </Button>
-            )}
-          </div>
-        )}
-      </SectionCard>
+      {/* SECTION 3: DAFTAR SURAT KETETAPAN (TAP RAT) */}
+      <RatResolutionsCard
+        meetingId={meetingId}
+        resolutions={resolutions}
+        canManage={canManage}
+        onOpenAddResolution={onOpenAddResolution}
+        onEditResolution={onEditResolution}
+      />
     </div>
   );
 });
 
 RatAgendaSection.displayName = 'RatAgendaSection';
+export default RatAgendaSection;

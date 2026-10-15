@@ -707,4 +707,37 @@ export default async function ratRoutes(fastify: any) {
       }
     }
   );
+
+  // 21. POST /:id/resolutions/preset - Muat Preset Draf Surat Ketetapan Standar (TAP RAT)
+  fastify.post(
+    '/:id/resolutions/preset',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const forceReset = Boolean(req.body?.forceReset);
+        const resolutions = await RatService.loadPresetResolutions(req.params.id, tenantId, { forceReset });
+        broadcastRatEvent(req, 'RAT_RESOLUTION_ADOPTED', { meetingId: req.params.id });
+        reply.code(200).send({ success: true, data: resolutions });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal memuat preset ketetapan sidang' });
+      }
+    }
+  );
+
+  // 22. POST /:id/agendas/:agendaId/generate-resolution - Otomasi Draf TAP RAT dari Butir Acara Sidang
+  fastify.post(
+    '/:id/agendas/:agendaId/generate-resolution',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const resolution = await RatService.generateResolutionFromAgenda(req.params.id, req.params.agendaId, tenantId);
+        broadcastRatEvent(req, 'RAT_RESOLUTION_ADOPTED', { meetingId: req.params.id, resolutionId: resolution.id });
+        reply.code(201).send({ success: true, data: resolution });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menerbitkan draf surat ketetapan otomatis' });
+      }
+    }
+  );
 }

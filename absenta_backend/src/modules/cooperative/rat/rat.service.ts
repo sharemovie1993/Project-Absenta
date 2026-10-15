@@ -1012,4 +1012,210 @@ export class RatService {
       data: { description },
     });
   }
+
+  /**
+   * Muat 5 Draf Surat Ketetapan Resmi (TAP RAT) Standar Statuter Perkoperasian (UU No. 25/1992)
+   * Dilengkapi proteksi keamanan idempotensi (zero duplication) dan opsi forceReset
+   */
+  static async loadPresetResolutions(meetingId: string, tenantId: string, options?: { forceReset?: boolean }) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const year = meeting.fiscalYear || new Date().getFullYear();
+    const nextYear = Number(year) + 1;
+
+    const standardPresets = [
+      {
+        number: `TAP/RAT-01/${year}`,
+        title: `Pengesahan Jadwal Acara dan Tata Tertib Sidang RAT Tahun Buku ${year}`,
+        content: `MEMUTUSKAN:\nPERTAMA: Mengesahkan Jadwal Acara dan Peraturan Tata Tertib Sidang Rapat Anggota Tahunan (RAT) Tahun Buku ${year} sebagai pedoman persidangan yang sah dan mengikat.\nKEDUA: Seluruh peserta, peninjau, dan pimpinan sidang berkewajiban mentaati tata tertib ini demi kelancaran dan ketertiban musyawarah.\nKETIGA: Ketetapan ini berlaku sejak tanggal ditetapkan dalam Sidang Pleno RAT.`,
+      },
+      {
+        number: `TAP/RAT-02/${year}`,
+        title: `Pengesahan Laporan Pertanggungjawaban (LPJ) Pengurus Tahun Buku ${year}`,
+        content: `MEMUTUSKAN:\nPERTAMA: Menerima dan mengesahkan secara paripurna Laporan Pertanggungjawaban (LPJ) Pengurus Koperasi Tahun Buku ${year} serta memberikan pelunasan dan pembebasan tanggung jawab sepenuhnya (acquit et decharge) kepada seluruh jajaran Pengurus.\nKEDUA: Memberikan apresiasi setinggi-tingginya atas dedikasi dan kinerja Pengurus dalam mengelola usaha koperasi.\nKETIGA: Ketetapan ini berlaku sejak tanggal ditetapkan dalam Sidang Pleno RAT.`,
+      },
+      {
+        number: `TAP/RAT-03/${year}`,
+        title: `Pengesahan Laporan Hasil Pengawasan (LHP) Pengawas Tahun Buku ${year}`,
+        content: `MEMUTUSKAN:\nPERTAMA: Menerima dan menyetujui Laporan Hasil Pengawasan (LHP) Badan Pengawas Koperasi Tahun Buku ${year}.\nKEDUA: Menugaskan Pengurus dan Pengawas untuk menindaklanjuti rekomendasi serta catatan perbaikan dalam LHP demi peningkatan tata kelola koperasi yang sehat dan akuntabel.\nKETIGA: Ketetapan ini berlaku sejak tanggal ditetapkan dalam Sidang Pleno RAT.`,
+      },
+      {
+        number: `TAP/RAT-04/${year}`,
+        title: `Penetapan Pembagian dan Alokasi Sisa Hasil Usaha (SHU) Tahun Buku ${year}`,
+        content: `MEMUTUSKAN:\nPERTAMA: Menetapkan pembagian dan alokasi Sisa Hasil Usaha (SHU) Tahun Buku ${year} sesuai porsi anggaran dasar (Dana Cadangan, Jasa Modal, Jasa Usaha/Anggota, Dana Pendidikan, dan Dana Pengurus/Karyawan).\nKEDUA: Memberikan mandat kepada Pengurus untuk mendistribusikan hak SHU kepada seluruh anggota secara transparan dan tertib administrasi.\nKETIGA: Ketetapan ini berlaku sejak tanggal ditetapkan dalam Sidang Pleno RAT.`,
+      },
+      {
+        number: `TAP/RAT-05/${year}`,
+        title: `Pengesahan Rencana Kerja (RK) dan RAPBK Tahun Anggaran ${nextYear}`,
+        content: `MEMUTUSKAN:\nPERTAMA: Mengesahkan Rencana Kerja (RK) dan Rencana Anggaran Pendapatan dan Belanja Koperasi (RAPBK) Tahun Anggaran ${nextYear} sebagai arah operasional dan batas plafon belanja koperasi.\nKEDUA: Menugaskan Pengurus untuk merealisasikan rencana kerja dengan prinsip kehati-hatian, efisiensi, dan keadilan usaha bagi kemakmuran anggota.\nKETIGA: Ketetapan ini berlaku sejak tanggal ditetapkan dalam Sidang Pleno RAT.`,
+      },
+    ];
+
+    const existingResolutions = await prisma.coopMeetingResolution.findMany({
+      where: { meetingId },
+      orderBy: { number: 'asc' },
+    });
+
+    // 1. IDEMPOTENCY GUARD: Jika sudah ada dan tidak meminta forceReset
+    if (existingResolutions.length > 0 && !options?.forceReset) {
+      const existingTitles = new Set(existingResolutions.map((r: any) => r.title.trim().toLowerCase()));
+      const isStandardFullyPresent = standardPresets.every((p) =>
+        existingTitles.has(p.title.trim().toLowerCase())
+      );
+
+      // Jika 5 preset standar sudah terpasang lengkap, kembalikan data existing tanpa duplikasi
+      if (isStandardFullyPresent && existingResolutions.length === standardPresets.length) {
+        return existingResolutions;
+      }
+
+      throw new Error(
+        `Sidang ini sudah memiliki ${existingResolutions.length} surat ketetapan (TAP RAT). Gunakan konfirmasi reset untuk menimpa dengan 5 draf standar resmi.`
+      );
+    }
+
+    // 2. CLEAN RESET / SEED
+    if (existingResolutions.length > 0 && options?.forceReset) {
+      await prisma.coopMeetingResolution.deleteMany({
+        where: { meetingId },
+      });
+    }
+
+    await prisma.coopMeetingResolution.createMany({
+      data: standardPresets.map((p) => ({
+        meetingId,
+        number: p.number,
+        title: p.title,
+        content: p.content,
+      })),
+    });
+
+    return prisma.coopMeetingResolution.findMany({
+      where: { meetingId },
+      orderBy: { number: 'asc' },
+    });
+  }
+
+  /**
+   * Otomasi Pembuatan Draf Surat Ketetapan (TAP RAT) dari Butir Acara Sidang yang Diselesaikan
+   * Menginjeksi data musyawarah dan hasil e-Voting bila terdapat pemungutan suara resmi
+   */
+  static async generateResolutionFromAgenda(meetingId: string, agendaId: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+      include: {
+        _count: {
+          select: {
+            attendances: true,
+          },
+        },
+      },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const agenda = await prisma.coopMeetingAgenda.findFirst({
+      where: { id: agendaId, meetingId },
+    });
+    if (!agenda) throw new Error('Butir acara agenda tidak ditemukan.');
+
+    // 1. Cek apakah sudah pernah dibuatkan TAP RAT untuk agenda ini
+    const existing = await prisma.coopMeetingResolution.findFirst({
+      where: {
+        meetingId,
+        title: { contains: agenda.title },
+      },
+    });
+    if (existing) {
+      return existing; // Idempotent: return yang sudah ada
+    }
+
+    // 2. Cek apakah ada sesi e-Voting terkait agenda ini
+    const votingSession = await prisma.coopVotingSession.findFirst({
+      where: {
+        meetingId,
+        OR: [
+          { agendaId },
+          { title: { contains: agenda.title } },
+        ],
+      },
+      include: {
+        options: { orderBy: { order: 'asc' } },
+      },
+    });
+
+    const year = meeting.fiscalYear || new Date().getFullYear();
+    const count = await prisma.coopMeetingResolution.count({ where: { meetingId } });
+    const tapNumber = `TAP/RAT-${String(count + 1).padStart(2, '0')}/${year}`;
+
+    const actualAttendance = meeting._count?.attendances ?? 0;
+    const totalMembers = meeting.totalActiveMembers || 1;
+    const attendancePct = ((actualAttendance / totalMembers) * 100).toFixed(1);
+
+    let votingText = 'Disetujui secara aklamasi/musyawarah mufakat oleh seluruh anggota peserta sidang yang hadir.';
+    if (votingSession) {
+      const totalVotes = votingSession.options.reduce((acc: number, curr: any) => acc + curr.voteCount, 0);
+      const optionsBreakdown = votingSession.options
+        .map((opt: any) => {
+          const pct = totalVotes > 0 ? ((opt.voteCount / totalVotes) * 100).toFixed(1) : '0';
+          return `   - ${opt.label}: ${opt.voteCount} suara (${pct}%)`;
+        })
+        .join('\n');
+
+      votingText = `Disahkan melalui pemungutan suara digital (e-Voting) resmi "${votingSession.title}":\n` +
+        `Total Suara Masuk: ${totalVotes} suara\n` +
+        optionsBreakdown;
+    }
+
+    const meetingDate = meeting.date ? new Date(meeting.date).toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }) : 'Hari ini';
+
+    const resolutionTitle = `Pengesahan Ketetapan Sidang Mengenai ${agenda.title}`;
+    const resolutionContent = 
+`SURAT KETETAPAN RAPAT ANGGOTA TAHUNAN (RAT)
+Nomor: ${tapNumber}
+Tentang: ${agenda.title.toUpperCase()}
+
+DENGAN RAHMAT TUHAN YANG MAHA ESA
+RAPAT ANGGOTA TAHUNAN KOPERASI TAHUN BUKU ${year}
+
+MENIMBANG:
+a. Bahwa Rapat Anggota Tahunan merupakan pemegang kekuasaan tertinggi dalam tata kehidupan perkoperasian sesuai Pasal 22 UU No. 25 Tahun 1992 tentang Perkoperasian.
+b. Bahwa agenda "${agenda.title}" telah dipresentasikan, dibahas, dan dimusyawarahkan dalam Sidang Pleno RAT Tahun Buku ${year}.
+
+MENGINGAT:
+1. Undang-Undang Republik Indonesia Nomor 25 Tahun 1992 tentang Perkoperasian.
+2. Peraturan Menteri Koperasi dan UKM Republik Indonesia.
+3. Anggaran Dasar dan Anggaran Rumah Tangga (AD/ART) Koperasi.
+4. Peraturan Tata Tertib Sidang Rapat Anggota Tahunan Tahun Buku ${year}.
+
+MEMPERHATIKAN:
+1. Kuorum kehadiran sah peserta rapat pleno sebanyak ${actualAttendance} anggota (${attendancePct}% dari total ${meeting.totalActiveMembers} anggota terdaftar).
+2. ${votingText}
+
+MEMUTUSKAN:
+MENETAPKAN:
+PERTAMA: Menerima, menyetujui, dan mengesahkan secara paripurna: "${agenda.title}".
+KEDUA: Menginstruksikan kepada Pengurus dan Pengawas Koperasi untuk melaksanakan amanat ketetapan ini dengan itikad baik dan penuh tanggung jawab.
+KETIGA: Ketetapan ini memiliki kekuatan hukum sah yang mengikat seluruh jajaran koperasi dan berlaku sejak tanggal ditetapkan.
+
+Ditetapkan di: ${meeting.location || 'Ruang Sidang Pleno'}
+Pada tanggal: ${meetingDate}
+
+PIMPINAN / PRESIDIUM SIDANG RAT`;
+
+    return prisma.coopMeetingResolution.create({
+      data: {
+        meetingId,
+        number: tapNumber,
+        title: resolutionTitle,
+        content: resolutionContent,
+      },
+    });
+  }
 }
