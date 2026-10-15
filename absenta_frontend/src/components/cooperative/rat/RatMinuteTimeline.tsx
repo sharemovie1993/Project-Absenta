@@ -322,6 +322,7 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
                   Acara {ag.orderIndex}: {ag.title.slice(0, 24)}... [{req.shortLabel}]
                 </option>
               );
+            })}
           </select>
 
           {/* Category Filter Dropdown */}
