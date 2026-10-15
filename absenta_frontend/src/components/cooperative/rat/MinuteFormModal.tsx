@@ -126,12 +126,12 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
   };
 
   const categories = [
-    { id: 'DISCUSSION', label: 'Tanya Jawab / Diskusi', icon: MessageSquare, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60' },
-    { id: 'SUGGESTION', label: 'Usulan / Saran', icon: Lightbulb, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/60' },
-    { id: 'OBJECTION', label: 'Interupsi / Keberatan', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/60' },
-    { id: 'CONCLUSION', label: 'Kesimpulan / Mufakat', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60' },
+    { id: 'DISCUSSION', label: 'Tanya Jawab & Diskusi', icon: MessageSquare, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60' },
+    { id: 'SUGGESTION', label: 'Usulan & Saran', icon: Lightbulb, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/60' },
+    { id: 'OBJECTION', label: 'Interupsi & Sanggahan', icon: AlertTriangle, color: 'text-rose-600 bg-rose-50 dark:bg-rose-950/60' },
+    { id: 'CONCLUSION', label: 'Kesepakatan / Mufakat', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60' },
     { id: 'ANNOUNCEMENT', label: 'Pengumuman Presidium', icon: Megaphone, color: 'text-purple-600 bg-purple-50 dark:bg-purple-950/60' },
-    { id: 'OPENING', label: 'Protokoler / Pembukaan', icon: Scroll, color: 'text-slate-600 bg-slate-100 dark:bg-slate-800' },
+    { id: 'OPENING', label: 'Protokoler / Seremonial', icon: Scroll, color: 'text-slate-600 bg-slate-100 dark:bg-slate-800' },
   ];
 
   const roles = ['Anggota', 'Pengurus', 'Pengawas', 'Presidium', 'Dinas Koperasi', 'Narasumber'];
@@ -141,7 +141,7 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
       isOpen={isOpen}
       onClose={onClose}
       title={editingMinute ? 'Sunting Butir Notulensi Sidang' : 'Catat Notulensi / Dinamika Sidang RAT'}
-      size="lg"
+      size="xl"
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Agenda Selector */}
@@ -224,14 +224,14 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
                   key={cat.id}
                   type="button"
                   onClick={() => setCategory(cat.id)}
-                  className={`flex items-center gap-1.5 p-2 rounded-xl border text-left transition-all ${
+                  className={`flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border text-left transition-all ${
                     isSelected
                       ? 'border-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/60 ring-2 ring-indigo-500/20 font-bold text-indigo-700 dark:text-indigo-300'
                       : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
-                  <span className="truncate text-[11px]">{cat.label}</span>
+                  <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`} />
+                  <span className="text-[11px] leading-tight break-words font-medium">{cat.label}</span>
                 </button>
               );
             })}
@@ -276,17 +276,17 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
         </div>
 
         {/* Peran Pembicara Quick Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          <span className="text-[11px] text-slate-400 shrink-0">Peran:</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11px] font-semibold text-slate-500 shrink-0">Peran:</span>
           {roles.map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => setSpeakerRole(r)}
-              className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all shrink-0 ${
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
                 speakerRole === r
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
               {r}
@@ -318,7 +318,7 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="Dokumentasikan pernyataan pembicara, respons pengurus, suasana forum, atau rincian dinamika musyawarah..."
-            rows={4}
+            rows={3}
             className="text-xs leading-relaxed"
             required
           />
