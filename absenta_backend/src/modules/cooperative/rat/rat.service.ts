@@ -87,12 +87,16 @@ export class RatService {
       throw new Error('Sidang RAT tidak ditemukan.');
     }
 
-    // Hitung status kuorum terkini
+    // Hitung status kuorum terkini di backend
     const totalAttended = meeting.attendances.length;
     const isQuorumReached = meeting.quorumTarget > 0 ? totalAttended >= meeting.quorumTarget : false;
     const percentage = meeting.totalActiveMembers > 0
-      ? Number(((totalAttended / meeting.totalActiveMembers) * 100).toFixed(1))
+      ? Math.round((totalAttended / meeting.totalActiveMembers) * 100)
       : 0;
+    const quorumPercentage = meeting.quorumTarget > 0
+      ? Math.min(100, Math.round((totalAttended / meeting.quorumTarget) * 100))
+      : 0;
+    const remainingNeeded = Math.max(0, meeting.quorumTarget - totalAttended);
 
     // Format agendas dan resolutions agar konsisten dengan frontend
     const mappedAgendas = (meeting.agendas || []).map((ag: any) => ({
@@ -111,6 +115,13 @@ export class RatService {
       status: 'PASSED' as const,
     }));
 
+    const activeAgenda = mappedAgendas.find((ag: any) => ag.status === 'IN_PROGRESS') || null;
+    const completedAgendasCount = mappedAgendas.filter((ag: any) => ag.status === 'COMPLETED').length;
+    const totalAgendasCount = mappedAgendas.length;
+    const agendaProgressPercentage = totalAgendasCount > 0
+      ? Math.round((completedAgendasCount / totalAgendasCount) * 100)
+      : 0;
+
     return {
       ...meeting,
       year: meeting.fiscalYear,
@@ -127,7 +138,15 @@ export class RatService {
         totalAttended,
         actualAttendance: totalAttended,
         percentage,
+        quorumPercentage,
+        remainingNeeded,
         isQuorumReached,
+        statusText: isQuorumReached ? 'MEMENUHI SYARAT' : 'BELUM KUORUM',
+        statusHeadline: isQuorumReached ? 'Kuorum Sidang Sah Terpenuhi' : 'Menunggu Kuorum Kehadiran Peserta',
+        activeAgenda,
+        completedAgendasCount,
+        totalAgendasCount,
+        agendaProgressPercentage,
       },
     };
   }

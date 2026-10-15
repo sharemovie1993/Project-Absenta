@@ -106,6 +106,10 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
     }));
   });
 
+  // Live agendas & quorum state for projector screen (strictly isolated to current meeting)
+  const [tvAgendas, setTvAgendas] = useState<any[]>(meeting.agendas || []);
+  const [liveQuorum, setLiveQuorum] = useState<any>(quorumStats || null);
+
   // Sync when meeting changes
   useEffect(() => {
     setAttendeesList(
@@ -119,8 +123,9 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
       }))
     );
     setTvAgendas(meeting.agendas || []);
+    setLiveQuorum(quorumStats || null);
     setNewArrival(null);
-  }, [meeting.id, meeting.attendances, meeting.agendas]);
+  }, [meeting.id, meeting.attendances, meeting.agendas, quorumStats]);
 
   const { subscribe, unsubscribe } = useSocket();
 
@@ -137,8 +142,11 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
     // Initial fetch of freshest meeting data when modal opens
     api.get(`/cooperative/rat/${meeting.id}`)
       .then((res) => {
-        if (res.data?.data?.agendas) {
-          setTvAgendas(res.data.data.agendas);
+        if (res.data?.data) {
+          setTvAgendas(res.data.data.agendas || []);
+          if (res.data.data.quorumStats) {
+            setLiveQuorum(res.data.data.quorumStats);
+          }
         }
       })
       .catch(() => {});
@@ -184,6 +192,15 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
         setTimeout(() => {
           setNewArrival((prev) => (prev?.name === displayName ? null : prev));
         }, 7000);
+
+        // Fetch pre-calculated live quorum metrics from backend
+        api.get(`/cooperative/rat/${meeting.id}/quorum`)
+          .then((res) => {
+            if (res.data?.data) {
+              setLiveQuorum(res.data.data);
+            }
+          })
+          .catch(() => {});
       }
 
       // 2. Live Agenda Status Update
@@ -193,8 +210,11 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
       ) {
         api.get(`/cooperative/rat/${meeting.id}`)
           .then((res) => {
-            if (res.data?.data?.agendas) {
-              setTvAgendas(res.data.data.agendas);
+            if (res.data?.data) {
+              setTvAgendas(res.data.data.agendas || []);
+              if (res.data.data.quorumStats) {
+                setLiveQuorum(res.data.data.quorumStats);
+              }
             }
           })
           .catch(() => {});
@@ -230,14 +250,18 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
 
   if (!isOpen) return null;
 
-  const totalEligible = quorumStats?.totalEligibleMembers ?? meeting.totalEligibleMembers;
-  const quorumTarget = quorumStats?.quorumTarget ?? meeting.quorumTarget;
-  const actualAttended = quorumStats?.actualAttendance ?? meeting.actualAttendance;
-  const percentage = quorumStats?.percentage ?? (totalEligible > 0 ? Math.round((actualAttended / totalEligible) * 100) : 0);
-  const isQuorumReached = quorumStats?.isQuorumReached ?? actualAttended >= quorumTarget;
-  const remainingNeeded = Math.max(0, quorumTarget - actualAttended);
+  // Pre-calculated backend metrics (all calculation is delegated to backend)
+  const activeStats = liveQuorum || quorumStats || (meeting as any).quorumStats;
+  const totalEligible = activeStats?.totalEligibleMembers ?? meeting.totalEligibleMembers;
+  const quorumTarget = activeStats?.quorumTarget ?? meeting.quorumTarget;
+  const actualAttended = activeStats?.actualAttendance ?? meeting.actualAttendance;
+  const percentage = activeStats?.percentage ?? 0;
+  const isQuorumReached = activeStats?.isQuorumReached ?? false;
+  const remainingNeeded = activeStats?.remainingNeeded ?? Math.max(0, quorumTarget - actualAttended);
+  const statusHeadline = activeStats?.statusHeadline ?? (isQuorumReached ? 'Kuorum Sidang Sah Terpenuhi' : 'Menunggu Kuorum Kehadiran Peserta');
+  const statusText = activeStats?.statusText ?? (isQuorumReached ? 'MEMENUHI SYARAT' : 'BELUM KUORUM');
 
-  // SVG Gauge calculations (radius = 58, circumference = 2 * pi * 58 = 364.42)
+  // SVG Gauge calculations
   const radius = 58;
   const circumference = 2 * Math.PI * radius;
   const clampedPercentage = Math.min(100, Math.max(0, percentage));
@@ -246,7 +270,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   // Real statutory agendas strictly isolated to this specific meeting
   const agendas = tvAgendas || [];
 
-  const activeAgenda = agendas.find((ag: any) => ag.status === 'IN_PROGRESS');
+  const activeAgenda = activeStats?.activeAgenda || agendas.find((ag: any) => ag.status === 'IN_PROGRESS') || null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
@@ -423,7 +447,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                           : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-700'
                       }`}
                     >
-                      {isQuorumReached ? 'MEMENUHI SYARAT' : 'BELUM KUORUM'}
+                      {statusText}
                     </span>
                   </div>
                 </div>
