@@ -147,7 +147,7 @@ export const RatAttendanceSection: React.FC<RatAttendanceSectionProps> = React.m
       )}
 
       <SectionCard
-        title="Daftar Hadir Resmi Peserta Sidang RAT"
+        title="Daftar Hadir"
         actions={
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
             <Users className="w-4 h-4 text-indigo-500" />
