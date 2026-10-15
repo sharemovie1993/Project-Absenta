@@ -30,71 +30,18 @@ import type {
 import { RatRulesTabContent } from './RatRulesTabContent';
 import { RatResolutionsCard } from './RatResolutionsCard';
 
-/**
- * Memeriksa apakah butir agenda merupakan agenda statuter yuridis
- * yang wajib menghasilkan Surat Ketetapan (TAP RAT) menurut UU No. 25/1992
- */
-export function isStatutoryTapAgenda(title: string): boolean {
-  if (!title) return false;
-  const lower = title.toLowerCase();
-  const tapKeywords = [
-    'tata tertib',
-    'tatib',
-    'lpj',
-    'pertanggungjawaban',
-    'lhp',
-    'pengawas',
-    'pengawasan',
-    'shu',
-    'sisa hasil usaha',
-    'rencana kerja',
-    'rapbk',
-    'rk & rapbk',
-    'rk dan rapbk',
-    'pemilihan',
-    'formatur',
-    'penetapan pengurus',
-    'penetapan pengawas',
-    'anggaran dasar',
-    'ad/art',
-    'ad-art',
-    'ketetapan',
-  ];
-  return tapKeywords.some((kw) => lower.includes(kw));
-}
+export {
+  isStatutoryTapAgenda,
+  getAgendaVotingRecommendation,
+  getAgendaMinuteRequirement,
+} from './ratAgendaClassifier';
+export type { AgendaVotingRecommendation, AgendaMinuteObligation, AgendaMinuteClassification } from './ratAgendaClassifier';
+import {
+  isStatutoryTapAgenda,
+  getAgendaVotingRecommendation,
+  getAgendaMinuteRequirement,
+} from './ratAgendaClassifier';
 
-export type AgendaVotingRecommendation = 'RECOMMENDED' | 'OPTIONAL_DEADLOCK' | 'NOT_APPLICABLE';
-
-/**
- * Menentukan tingkat urgensi / kebutuhan e-Voting pada butir acara RAT:
- * - RECOMMENDED: Pemilihan pengurus/pengawas, formatur (asas Luber Jurdil).
- * - OPTIONAL_DEADLOCK: LPJ, SHU, RAPBK, Tatib (utamakan musyawarah mufakat, voting bila deadlock).
- * - NOT_APPLICABLE: Protokoler, doa, lagu kebangsaan, sambutan dinas (tidak ada voting).
- */
-export function getAgendaVotingRecommendation(title: string): AgendaVotingRecommendation {
-  if (!title) return 'NOT_APPLICABLE';
-  const lower = title.toLowerCase();
-
-  const protocolKeywords = [
-    'pembukaan', 'doa', 'indonesia raya', 'menyanyikan lagu',
-    'mars koperasi', 'hymne', 'sambutan', 'ramah tamah',
-    'istirahat', 'ishoma', 'coffee break', 'penutupan', 'hiburan'
-  ];
-  if (protocolKeywords.some((kw) => lower.includes(kw))) {
-    return 'NOT_APPLICABLE';
-  }
-
-  const votingRecommendedKeywords = [
-    'pemilihan', 'formatur', 'pemungutan suara', 'suksesi',
-    'penetapan pengurus', 'penetapan pengawas', 'calon pengurus',
-    'calon pengawas', 'anggaran dasar', 'ad/art'
-  ];
-  if (votingRecommendedKeywords.some((kw) => lower.includes(kw))) {
-    return 'RECOMMENDED';
-  }
-
-  return 'OPTIONAL_DEADLOCK';
-}
 
 interface RatAgendaSectionProps {
   meetingId: string;
@@ -408,6 +355,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                   (s) => (s as any).agendaId === agenda.id || s.title.toLowerCase().includes(agenda.title.toLowerCase())
                 );
                 const votingRec = getAgendaVotingRecommendation(agenda.title);
+                const minuteReq = getAgendaMinuteRequirement(agenda.title);
 
                 return (
                   <div
@@ -459,7 +407,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                         </div>
 
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
-                          {isStatutoryTapAgenda(agenda.title) ? (
+                          {isStatutoryTapAgenda(agenda.title) && (
                             <span
                               className="inline-flex items-center gap-1 font-semibold text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60"
                               title="Agenda yuridis yang menghasilkan Surat Ketetapan Resmi (TAP RAT)"
@@ -467,15 +415,16 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                               <Scale className="w-3 h-3 text-indigo-500" />
                               Wajib TAP RAT
                             </span>
-                          ) : (
-                            <span
-                              className="inline-flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700/60"
-                              title="Agenda protokoler/diskusi dicatat dalam Berita Acara & Notulensi"
-                            >
-                              <FileText className="w-3 h-3 text-slate-400" />
-                              Notulensi Sidang
-                            </span>
                           )}
+
+                          {/* Selective Notulensi Requirement Badge */}
+                          <span
+                            className={`inline-flex items-center gap-1 font-medium text-[10px] px-2 py-0.5 rounded-md border ${minuteReq.badgeClass}`}
+                            title={minuteReq.helperText}
+                          >
+                            <BookOpen className="w-3 h-3" />
+                            {minuteReq.shortLabel}
+                          </span>
 
                           {votingRec === 'RECOMMENDED' && !linkedSession && (
                             <span
@@ -565,18 +514,36 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                             ) : null
                           )}
 
-                          {/* Add Minute Shortcut */}
+                          {/* Add Minute Shortcut - Selective Awareness */}
                           {onOpenAddMinute && (
                             <Button
                               type="button"
                               size="sm"
-                              variant="toolbarOutline"
+                              variant={minuteReq.isMandatory ? 'primary' : 'toolbarOutline'}
                               onClick={() => onOpenAddMinute(agenda.id)}
-                              title="Catat tanya jawab, masukan, atau notulensi butir acara ini"
-                              className="text-xs gap-1 py-1 text-slate-700 dark:text-slate-300 hover:text-sky-600"
+                              title={minuteReq.helperText}
+                              className={`text-xs gap-1 py-1 ${
+                                minuteReq.isMandatory
+                                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+                                  : minuteReq.obligation === 'ADVISORY'
+                                  ? 'text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40'
+                                  : 'text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-700'
+                              }`}
                             >
-                              <BookOpen className="w-3 h-3 text-sky-500" />
-                              <span className="hidden sm:inline">Catat</span> Notulensi
+                              <BookOpen className="w-3 h-3" />
+                              {minuteReq.isMandatory ? (
+                                <>
+                                  <span className="hidden sm:inline">Catat</span> Notulensi Wajib
+                                </>
+                              ) : minuteReq.obligation === 'ADVISORY' ? (
+                                <>
+                                  <span className="hidden sm:inline">Catat</span> Arahan
+                                </>
+                              ) : (
+                                <>
+                                  <span className="hidden sm:inline">Catat</span> Opsional
+                                </>
+                              )}
                             </Button>
                           )}
 

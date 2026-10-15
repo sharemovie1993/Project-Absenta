@@ -6,6 +6,7 @@ import api from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
+import { getAgendaMinuteRequirement } from './ratAgendaClassifier';
 
 interface RatProceedingsPrintModalProps {
   isOpen: boolean;
@@ -227,42 +228,53 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
 
             {isLoading ? (
               <div className="py-8 text-center text-slate-400">Memuat risalah lengkap...</div>
-            ) : (docData?.minutesByAgenda || []).map((item: any, idx: number) => (
-              <div key={item.agenda.id} className="space-y-2.5 pb-4 border-b border-dashed border-slate-200">
-                <div className="flex items-baseline justify-between gap-2">
-                  <h5 className="font-bold text-xs sm:text-sm uppercase text-slate-900">
-                    Acara {idx + 1}: {item.agenda.title}
-                  </h5>
-                  <span className="text-[10px] font-sans font-semibold text-slate-500 uppercase">
-                    Status: {item.agenda.status || 'COMPLETED'}
-                  </span>
-                </div>
-
-                {/* Notulensi Dinamika */}
-                {(item.minutes || []).length > 0 ? (
-                  <div className="space-y-2 pl-4 border-l-2 border-slate-300">
-                    {item.minutes.map((m: any, mIdx: number) => (
-                      <div key={m.id || mIdx} className="text-xs space-y-0.5">
-                        <div className="font-semibold text-slate-800">
-                          • [{m.timeRecord || 'Waktu Sidang'}] {m.speakerName ? `${m.speakerName} (${m.speakerRole || 'Peserta'}): ` : ''}
-                          <span className="font-bold underline">{m.topic}</span>
-                        </div>
-                        <p className="text-slate-700 pl-3 leading-relaxed whitespace-pre-wrap">
-                          {m.content}
-                        </p>
-                        {m.actionItem && (
-                          <p className="text-slate-600 pl-3 italic text-[11px]">
-                            ↳ Tindak Lanjut: {m.actionItem}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+            ) : (docData?.minutesByAgenda || []).map((item: any, idx: number) => {
+              const req = getAgendaMinuteRequirement(item.agenda?.title || '');
+              return (
+                <div key={item.agenda.id} className="space-y-2.5 pb-4 border-b border-dashed border-slate-200">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <h5 className="font-bold text-xs sm:text-sm uppercase text-slate-900">
+                        Acara {idx + 1}: {item.agenda.title}
+                      </h5>
+                      <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border text-slate-600 border-slate-300">
+                        {req.label}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-sans font-semibold text-slate-500 uppercase">
+                      Status: {item.agenda.status || 'COMPLETED'}
+                    </span>
                   </div>
-                ) : (
-                  <p className="text-[11px] text-slate-400 italic pl-4">
-                    (Butir acara berlangsung tertib dan disepakati secara aklamasi tanpa keberatan forum).
-                  </p>
-                )}
+
+                  {/* Notulensi Dinamika */}
+                  {(item.minutes || []).length > 0 ? (
+                    <div className="space-y-2 pl-4 border-l-2 border-slate-300">
+                      {item.minutes.map((m: any, mIdx: number) => (
+                        <div key={m.id || mIdx} className="text-xs space-y-0.5">
+                          <div className="font-semibold text-slate-800">
+                            • [{m.timeRecord || 'Waktu Sidang'}] {m.speakerName ? `${m.speakerName} (${m.speakerRole || 'Peserta'}): ` : ''}
+                            <span className="font-bold underline">{m.topic}</span>
+                          </div>
+                          <p className="text-slate-700 pl-3 leading-relaxed whitespace-pre-wrap">
+                            {m.content}
+                          </p>
+                          {m.actionItem && (
+                            <p className="text-slate-600 pl-3 italic text-[11px]">
+                              ↳ Tindak Lanjut: {m.actionItem}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 italic pl-4">
+                      {req.obligation === 'CEREMONIAL'
+                        ? '(Diselenggarakan secara khidmat dan tertib sesuai tata tertib protokoler sidang RAT).'
+                        : req.obligation === 'ADVISORY'
+                        ? '(Penyampaian arahan dan amanat pembinaan koperasi telah disampaikan dan disimak oleh seluruh peserta sidang).'
+                        : '(Materi acara substantif telah dibahas dan disahkan secara bulat/aklamasi oleh peserta sidang pleno).'}
+                    </p>
+                  )}
 
                 {/* TAP RAT Terkait */}
                 {item.resolution && (

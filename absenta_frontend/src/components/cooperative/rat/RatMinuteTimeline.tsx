@@ -20,9 +20,11 @@ import {
   Filter,
   Trash2,
   Edit2,
-  CheckSquare
+  CheckSquare,
+  Scale
 } from 'lucide-react';
 import type { CoopAgendaItem, CoopMeetingMinuteItem } from '../../../pages/cooperative/RatMeetingPage';
+import { getAgendaMinuteRequirement } from './ratAgendaClassifier';
 
 interface RatMinuteTimelineProps {
   meetingId: string;
@@ -116,20 +118,52 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
         (m.speakerName && m.speakerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (m.actionItem && m.actionItem.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchAgenda =
-        selectedAgendaFilter === 'ALL' ||
-        (selectedAgendaFilter === 'GENERAL' ? !m.agendaId : m.agendaId === selectedAgendaFilter);
+      let matchAgenda = false;
+      if (selectedAgendaFilter === 'ALL') {
+        matchAgenda = true;
+      } else if (selectedAgendaFilter === 'MANDATORY_ONLY') {
+        if (!m.agendaId) {
+          matchAgenda = false;
+        } else {
+          const targetAgenda = agendas.find((ag) => ag.id === m.agendaId);
+          matchAgenda = targetAgenda ? getAgendaMinuteRequirement(targetAgenda.title).isMandatory : false;
+        }
+      } else if (selectedAgendaFilter === 'GENERAL') {
+        matchAgenda = !m.agendaId;
+      } else {
+        matchAgenda = m.agendaId === selectedAgendaFilter;
+      }
 
       const matchCategory =
         selectedCategoryFilter === 'ALL' || m.category === selectedCategoryFilter;
 
       return matchSearch && matchAgenda && matchCategory;
     });
-  }, [minutes, searchQuery, selectedAgendaFilter, selectedCategoryFilter]);
+  }, [minutes, searchQuery, selectedAgendaFilter, selectedCategoryFilter, agendas]);
 
-  // Counts
+  // Counts & Selective Rundown Compliance
   const suggestionCount = useMemo(() => minutes.filter(m => m.category === 'SUGGESTION').length, [minutes]);
   const conclusionCount = useMemo(() => minutes.filter(m => m.category === 'CONCLUSION').length, [minutes]);
+
+  // Statutory / Mandatory Agenda Tracking (Selective Rundown Awareness)
+  const mandatoryAgendas = useMemo(() => {
+    return (agendas || []).filter((ag) => getAgendaMinuteRequirement(ag.title).isMandatory);
+  }, [agendas]);
+
+  const coveredMandatoryCount = useMemo(() => {
+    const coveredAgendaIds = new Set((minutes || []).map((m) => m.agendaId).filter(Boolean));
+    return mandatoryAgendas.filter((ag) => coveredAgendaIds.has(ag.id)).length;
+  }, [mandatoryAgendas, minutes]);
+
+  const mandatoryComplianceRate = useMemo(() => {
+    if (mandatoryAgendas.length === 0) return 100;
+    return Math.round((coveredMandatoryCount / mandatoryAgendas.length) * 100);
+  }, [mandatoryAgendas.length, coveredMandatoryCount]);
+
+  const uncoveredMandatoryAgendas = useMemo(() => {
+    const coveredAgendaIds = new Set((minutes || []).map((m) => m.agendaId).filter(Boolean));
+    return mandatoryAgendas.filter((ag) => !coveredAgendaIds.has(ag.id));
+  }, [mandatoryAgendas, minutes]);
 
   return (
     <div className="space-y-6">
@@ -177,49 +211,86 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
       </div>
 
       {/* ── 2. METRIC SUMMARY CARDS ─────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Total Butir Notulensi
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Total Notulensi
             </span>
-            <div className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+            <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
               {minutes.length}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-            <BookOpen className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <BookOpen className="w-4 h-4" />
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-between" title="Kepatuhan pencatatan notulensi pada butir acara statuter yuridis (Tatib, LPJ, LHP, SHU, RAPBK, Pemilihan) menurut Permenkop No. 19/2015">
+          <div>
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Acara Wajib Tercatat
+            </span>
+            <div className={`text-xl sm:text-2xl font-black font-mono mt-0.5 ${
+              mandatoryComplianceRate === 100
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-amber-600 dark:text-amber-400'
+            }`}>
+              {coveredMandatoryCount}/{mandatoryAgendas.length} <span className="text-xs font-semibold">({mandatoryComplianceRate}%)</span>
+            </div>
+          </div>
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+            mandatoryComplianceRate === 100
+              ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+              : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'
+          }`}>
+            <Scale className="w-4 h-4" />
           </div>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Usulan / Pandangan Anggota
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Usulan / Pandangan
             </span>
-            <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">
+            <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">
               {suggestionCount}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <Lightbulb className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <Lightbulb className="w-4 h-4" />
           </div>
         </div>
 
         <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Kesimpulan / Mufakat
             </span>
-            <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+            <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
               {conclusionCount}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
       </div>
+
+      {/* ── 2.5 STATUTORY COMPLIANCE NOTICE ─────────────────────────────── */}
+      {uncoveredMandatoryAgendas.length > 0 && canManage && (
+        <div className="p-3 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
+          <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <span className="font-bold">
+              Selective Awareness: Terdapat {uncoveredMandatoryAgendas.length} Butir Acara Wajib Notulensi Belum Memiliki Catatan
+            </span>
+            <p className="leading-relaxed opacity-90 text-[11px]">
+              Butir acara statuter ({uncoveredMandatoryAgendas.slice(0, 3).map((ag) => ag.title).join(', ')}{uncoveredMandatoryAgendas.length > 3 ? ', dsb.' : ''}) wajib mendokumentasikan tanya jawab anggota dan konsensus sidang sebagai bukti otentik Berita Acara & legalitas TAP RAT.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── 3. SEARCH & FILTERS BAR ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm">
@@ -242,12 +313,15 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
             className="text-xs px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="ALL">Semua Butir Acara</option>
+            <option value="MANDATORY_ONLY">⭐ Hanya Acara Wajib Notulensi</option>
             <option value="GENERAL">Pleno Umum (Tanpa Butir)</option>
-            {agendas.map((ag) => (
-              <option key={ag.id} value={ag.id}>
-                Acara {ag.orderIndex}: {ag.title.slice(0, 30)}...
-              </option>
-            ))}
+            {agendas.map((ag) => {
+              const req = getAgendaMinuteRequirement(ag.title);
+              return (
+                <option key={ag.id} value={ag.id}>
+                  Acara {ag.orderIndex}: {ag.title.slice(0, 24)}... [{req.shortLabel}]
+                </option>
+              );
           </select>
 
           {/* Category Filter Dropdown */}
@@ -296,8 +370,16 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
                     </span>
 
                     {minute.agenda ? (
-                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg truncate max-w-xs">
-                        Acara {minute.agenda.order}: {minute.agenda.title}
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg truncate max-w-xs inline-flex items-center gap-1.5">
+                        <span className="truncate">Acara {minute.agenda.order}: {minute.agenda.title}</span>
+                        {(() => {
+                          const req = getAgendaMinuteRequirement(minute.agenda.title);
+                          return (
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-medium border shrink-0 ${req.badgeClass}`}>
+                              {req.shortLabel}
+                            </span>
+                          );
+                        })()}
                       </span>
                     ) : (
                       <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg">

@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal, Button, Input, Label, Textarea } from '../../ui';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
-import { Clock, MessageSquare, User, Lightbulb, AlertTriangle, CheckCircle2, Megaphone, Scroll } from 'lucide-react';
+import { Clock, MessageSquare, User, Lightbulb, AlertTriangle, CheckCircle2, Megaphone, Scroll, Scale } from 'lucide-react';
 import type { CoopAgendaItem, CoopMeetingMinuteItem } from '../../../pages/cooperative/RatMeetingPage';
+import { getAgendaMinuteRequirement } from './ratAgendaClassifier';
 
 interface MinuteFormModalProps {
   isOpen: boolean;
@@ -37,6 +38,15 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
   const [actionItem, setActionItem] = useState<string>('');
   const [isPublic, setIsPublic] = useState<boolean>(true);
 
+  // Selected Agenda Requirement
+  const selectedAgenda = useMemo(() => {
+    return agendas.find((ag) => ag.id === agendaId);
+  }, [agendas, agendaId]);
+
+  const selectedAgendaReq = useMemo(() => {
+    return selectedAgenda ? getAgendaMinuteRequirement(selectedAgenda.title) : null;
+  }, [selectedAgenda]);
+
   // Initialize or reset form on open
   useEffect(() => {
     if (editingMinute) {
@@ -50,8 +60,11 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
       setActionItem(editingMinute.actionItem || '');
       setIsPublic(editingMinute.isPublic !== undefined ? editingMinute.isPublic : true);
     } else {
-      setAgendaId(initialAgendaId || '');
-      setCategory('DISCUSSION');
+      const targetAgendaId = initialAgendaId || '';
+      setAgendaId(targetAgendaId);
+      const matched = agendas.find((ag) => ag.id === targetAgendaId);
+      const req = matched ? getAgendaMinuteRequirement(matched.title) : null;
+      setCategory(req ? req.defaultCategory : 'DISCUSSION');
       const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
       setTimeRecord(nowStr);
       setSpeakerName('');
@@ -61,7 +74,7 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
       setActionItem('');
       setIsPublic(true);
     }
-  }, [editingMinute, initialAgendaId, isOpen]);
+  }, [editingMinute, initialAgendaId, isOpen, agendas]);
 
   // Mutation Save Minute
   const saveMinuteMutation = useMutation({
@@ -138,17 +151,64 @@ export const MinuteFormModal: React.FC<MinuteFormModalProps> = React.memo(({
           </Label>
           <select
             value={agendaId}
-            onChange={(e) => setAgendaId(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setAgendaId(val);
+              if (val && !editingMinute) {
+                const matched = agendas.find((ag) => ag.id === val);
+                if (matched) {
+                  const req = getAgendaMinuteRequirement(matched.title);
+                  setCategory(req.defaultCategory);
+                }
+              }
+            }}
             className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
             <option value="">-- Notulensi Umum / Dinamika Pleno Terbuka --</option>
-            {agendas.map((ag) => (
-              <option key={ag.id} value={ag.id}>
-                Acara {ag.orderIndex || 0}: {ag.title}
-              </option>
-            ))}
+            {agendas.map((ag) => {
+              const req = getAgendaMinuteRequirement(ag.title);
+              return (
+                <option key={ag.id} value={ag.id}>
+                  Acara {ag.orderIndex || 0}: {ag.title} [{req.shortLabel}]
+                </option>
+              );
+            })}
           </select>
         </div>
+
+        {/* Selective Rundown Awareness Banner */}
+        {selectedAgendaReq && (
+          <div
+            className={`p-2.5 rounded-xl border flex items-start gap-2.5 transition-all ${
+              selectedAgendaReq.isMandatory
+                ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800/60 text-amber-900 dark:text-amber-200'
+                : selectedAgendaReq.obligation === 'ADVISORY'
+                ? 'bg-cyan-50/80 dark:bg-cyan-950/40 border-cyan-300 dark:border-cyan-800/60 text-cyan-900 dark:text-cyan-200'
+                : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+            }`}
+          >
+            {selectedAgendaReq.isMandatory ? (
+              <Scale className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            ) : selectedAgendaReq.obligation === 'ADVISORY' ? (
+              <Lightbulb className="w-4 h-4 text-cyan-600 dark:text-cyan-400 shrink-0 mt-0.5" />
+            ) : (
+              <Scroll className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+            )}
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[11px] uppercase tracking-wide">
+                  {selectedAgendaReq.label}
+                </span>
+                <span className="text-[10px] opacity-75 font-normal">
+                  ({selectedAgendaReq.isMandatory ? 'Kewajiban Yuridis RAT' : 'Panduan Notulis'})
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed opacity-90">
+                {selectedAgendaReq.helperText}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Kategori Dinamika */}
         <div className="space-y-1.5">
