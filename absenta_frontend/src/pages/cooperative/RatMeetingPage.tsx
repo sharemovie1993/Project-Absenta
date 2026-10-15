@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import api from '../../lib/axiosInstance';
-import { Button, SectionCard, Badge, Input } from '../../components/ui';
+import { Button, SectionCard, Badge, Input, SearchableSelect } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
@@ -17,7 +17,8 @@ import {
   FileCheck2, 
   Plus, 
   Calendar,
-  Tv 
+  Tv,
+  ChevronDown 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -219,6 +220,22 @@ const RatMeetingPage: React.FC = React.memo(() => {
   });
 
   const meetings = useMemo(() => meetingsQuery.data || [], [meetingsQuery.data]);
+
+  const meetingOptions = useMemo(() => {
+    return (meetings || []).map(m => {
+      const statusLabel = m.status === 'IN_SESSION'
+        ? '🔴 Sedang Berlangsung'
+        : m.status === 'REGISTRATION_OPEN'
+        ? '🟢 Registrasi Dibuka'
+        : m.status === 'CLOSED'
+        ? '⚪ Ditutup'
+        : '🟡 Draft';
+      return {
+        value: m.id,
+        label: `${m.title} (${m.year}) — ${statusLabel}`,
+      };
+    });
+  }, [meetings]);
 
   // Auto-select latest active meeting or first meeting
   useEffect(() => {
@@ -511,27 +528,25 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
           {/* Header Controls & Meeting Selector */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-            <div className="flex flex-wrap items-center gap-3">
-              <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <label htmlFor="select-rat-meeting" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Pilih Sidang RAT:
-              </label>
+            <div className="flex flex-wrap items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2 shrink-0">
+                <Calendar className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <label htmlFor="select-rat-meeting" className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                  Pilih Sidang RAT:
+                </label>
+              </div>
+
               {(meetings || []).length > 0 ? (
-                <div id="select-rat-meeting" className="flex items-center gap-2 overflow-x-auto max-w-full pb-1">
-                  {(meetings || []).map(m => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setSelectedMeetingId(m.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
-                        selectedMeetingId === m.id
-                          ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      {m.title} ({m.year})
-                    </button>
-                  ))}
+                <div className="w-[300px] sm:w-[400px] max-w-full">
+                  <SearchableSelect
+                    id="select-rat-meeting"
+                    value={selectedMeetingId || ''}
+                    onValueChange={(val) => setSelectedMeetingId(val)}
+                    options={meetingOptions}
+                    placeholder="Pilih Sidang RAT..."
+                    searchPlaceholder="Cari agenda sidang..."
+                    emptyMessage="Tidak ada agenda sidang ditemukan"
+                  />
                 </div>
               ) : (
                 <span className="text-xs text-slate-400">Belum ada agenda rapat yang dibuat</span>
