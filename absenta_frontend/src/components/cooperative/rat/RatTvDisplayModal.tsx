@@ -357,26 +357,39 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
 
       {/* MAIN BROADCAST CONTENT (STAGE SPOTLIGHT ON TOP, BALANCED GRID BELOW) */}
       <main className="flex-1 p-4 md:p-6 flex flex-col gap-4 overflow-hidden z-10">
-        {/* HERO STAGE SPOTLIGHT & ZERO-SCROLL HORIZONTAL STEPPER */}
-        <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-black/50 shrink-0">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0">
+        {/* HERO STAGE SPOTLIGHT (CALM, BROADCAST-GRADE, ZERO-NOISE) */}
+        <section className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-sm shadow-slate-200/40 dark:shadow-black/40 shrink-0">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            {/* Active Stage Topic */}
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0">
                 <Gavel className="w-5 h-5 animate-pulse" />
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700/60 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                    {activeAgenda ? 'Sedang Berlangsung di Panggung Sidang' : 'Tahap Registrasi & Persiapan Sidang'}
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    {activeAgenda ? 'Sedang Berlangsung di Panggung' : 'Tahap Registrasi & Persiapan'}
                   </span>
                   {activeAgenda && (
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      Agenda Ke-{activeIdx + 1} dari {agendas.length}
+                      Agenda {activeIdx + 1} dari {agendas.length}
+                    </span>
+                  )}
+                  {(activeAgenda?.durationMinutes || activeAgenda?.durationMin) && (
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                      <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                      {activeAgenda.durationMinutes || activeAgenda.durationMin} Menit
+                    </span>
+                  )}
+                  {activeAgenda?.presenter && (
+                    <span className="inline-flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+                      <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                      {activeAgenda.presenter}
                     </span>
                   )}
                 </div>
-                <h2 className="text-base sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 truncate">
+                <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 truncate">
                   {activeAgenda
                     ? `${activeIdx + 1}. ${activeAgenda.title}`
                     : 'Pengesahan Kuorum & Verifikasi Kehadiran Peserta Sidang'}
@@ -384,97 +397,55 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               </div>
             </div>
 
-            {/* Presenter & Duration Pills */}
-            <div className="flex items-center gap-2 flex-wrap shrink-0">
-              {(activeAgenda?.durationMinutes || activeAgenda?.durationMin) && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Alokasi: {activeAgenda.durationMinutes || activeAgenda.durationMin} Menit</span>
+            {/* Next Agenda Indicator & Clean Segmented Timeline */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 lg:pl-5 lg:border-l border-slate-100 dark:border-slate-800">
+              {nextAgenda && (
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 max-w-xs truncate">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">Berikutnya:</span>
+                  <span className="truncate font-medium text-slate-600 dark:text-slate-300">
+                    {activeIdx + 2}. {nextAgenda.title}
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                    ({nextAgenda.durationMinutes || nextAgenda.durationMin || 30}m)
+                  </span>
                 </div>
               )}
-              {activeAgenda?.presenter && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 text-xs font-semibold">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Penyaji: {activeAgenda.presenter}</span>
+              {agendas.length > 0 && (
+                <div className="flex items-center gap-1.5 w-full sm:w-44 shrink-0" title={`Progres Sidang: ${activeIdx + 1} dari ${agendas.length}`}>
+                  {agendas.map((ag: any, idx: number) => {
+                    const isCompleted = ag.status === 'COMPLETED';
+                    const isCurrent = ag.status === 'IN_PROGRESS';
+                    return (
+                      <div
+                        key={ag.id || idx}
+                        className={`h-2 flex-1 rounded-full transition-all duration-300 ${
+                          isCompleted
+                            ? 'bg-emerald-500'
+                            : isCurrent
+                            ? 'bg-indigo-600 ring-2 ring-indigo-400/60 dark:ring-indigo-500/80 animate-pulse'
+                            : 'bg-slate-200 dark:bg-slate-700'
+                        }`}
+                        title={`${idx + 1}. ${ag.title} (${isCompleted ? 'Selesai' : isCurrent ? 'Sedang Berlangsung' : 'Belum Mulai'})`}
+                      />
+                    );
+                  })}
+                  <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 ml-1 shrink-0">
+                    {activeIdx + 1}/{agendas.length}
+                  </span>
                 </div>
               )}
             </div>
           </div>
-
-          {/* NEXT AGENDA PREVIEW BAR */}
-          {nextAgenda && (
-            <div className="py-2 px-3 my-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-200 shrink-0">
-                  Agenda Selanjutnya
-                </span>
-                <span className="font-bold truncate text-slate-900 dark:text-white">
-                  {activeIdx + 2}. {nextAgenda.title}
-                </span>
-              </div>
-              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
-                {nextAgenda.durationMinutes || nextAgenda.durationMin || 30} menit
-              </span>
-            </div>
-          )}
-
-          {/* HORIZONTAL ZERO-SCROLL RUNDOWN STEPPER */}
-          {agendas.length > 0 ? (
-            <div className="pt-2 overflow-x-auto pb-0.5">
-              <div className="flex items-center gap-2 min-w-max">
-                {agendas.map((ag: any, idx: number) => {
-                  const isCompleted = ag.status === 'COMPLETED';
-                  const isCurrent = ag.status === 'IN_PROGRESS';
-                  return (
-                    <div
-                      key={ag.id || idx}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all ${
-                        isCurrent
-                          ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30 border-indigo-500 ring-2 ring-indigo-400'
-                          : isCompleted
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 font-semibold'
-                          : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/60'
-                      }`}
-                    >
-                      <span
-                        className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
-                          isCurrent
-                            ? 'bg-white text-indigo-700 animate-pulse'
-                            : isCompleted
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        {isCompleted ? '✓' : idx + 1}
-                      </span>
-                      <span className="truncate max-w-[150px] sm:max-w-[200px]">
-                        {ag.title}
-                      </span>
-                      {idx < agendas.length - 1 && (
-                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 opacity-60 ml-0.5" />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-2.5 text-xs text-slate-500">
-              Belum ada susunan acara untuk sidang ini. Silakan muat preset dari panel operator.
-            </div>
-          )}
         </section>
 
         {/* BOTTOM BALANCED GRID: QUORUM (7 COLS) & LIVE PRESENSI (5 COLS) */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden">
-          {/* LEFT COLUMN: HERO QUORUM & 4 EXECUTIVE METRICS (7 COLS) */}
-          <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1">
-          {/* HERO QUORUM RADAR CARD */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 p-5 sm:p-6 relative overflow-hidden">
+          {/* LEFT COLUMN: HERO QUORUM WITH INTEGRATED STATS (7 COLS) */}
+          <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md shadow-slate-200/40 dark:shadow-black/40 p-5 sm:p-6 overflow-hidden">
             {/* Top Badge & Legal Citations */}
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-5 pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
               <div className="flex items-center gap-2.5">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Status Keabsahan Kuorum:
                 </span>
                 <Badge
@@ -484,16 +455,16 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                   {isQuorumReached ? 'KUORUM SAH TERCAPAI' : 'MENUNGGU KUORUM'}
                 </Badge>
               </div>
-              <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg border border-slate-200 dark:border-slate-700">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-md">
                 Landasan Hukum: UU No. 25/1992 Pasal 26
               </span>
             </div>
 
             {/* Split Gauge & Explanation */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center my-auto py-2">
               {/* CIRCULAR RADIAL METER (5 cols) */}
               <div className="md:col-span-5 flex flex-col items-center justify-center p-2">
-                <div className="relative w-44 h-44 flex items-center justify-center">
+                <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 148 148">
                     {/* Background Track */}
                     <circle
@@ -572,108 +543,57 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                     <span>Kemajuan Kehadiran:</span>
                     <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">
-                      {actualAttended} dari {quorumTarget} Suara Diperlukan
+                      {actualAttended} dari {quorumTarget} Kuorum Diperlukan
                     </span>
                   </div>
-                  <div className="relative w-full bg-slate-100 dark:bg-slate-800 h-5 rounded-full overflow-hidden p-1 border border-slate-200 dark:border-slate-700 shadow-inner">
+                  <div className="relative w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${
                         isQuorumReached
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/50'
-                          : 'bg-gradient-to-r from-amber-500 to-indigo-600 shadow-md shadow-indigo-500/50'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                          : 'bg-gradient-to-r from-amber-500 to-indigo-600'
                       }`}
                       style={{ width: `${clampedPercentage}%` }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
-                    <span>0 Anggota</span>
-                    <span className="text-amber-600 dark:text-amber-400 font-bold">
-                      Target Sah (50% + 1) = {quorumTarget} Orang
-                    </span>
-                    <span>Total: {totalEligible}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* INTEGRATED EXECUTIVE METRIC STRIP (4 METRICS IN A CLEAN ROW) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Total Berhak</div>
+                  <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">{totalEligible}</div>
+                </div>
+                <Users className="w-5 h-5 text-blue-500 opacity-80" />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Target Kuorum</div>
+                  <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{quorumTarget}</div>
+                </div>
+                <ShieldCheck className="w-5 h-5 text-amber-500 opacity-80" />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Hadir Fisik</div>
+                  <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{actualAttended}</div>
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-80" />
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Status Sidang</div>
+                  <div className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 mt-1 uppercase">
+                    {remainingNeeded === 0 ? 'Sah Pleno' : `Kurang ${remainingNeeded}`}
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 4 HIGH-IMPACT EXECUTIVE STAT METRICS (2X2 COMPACT GRID) */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* CARD 1: TOTAL ANGGOTA */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Total Anggota Berhak
-                </span>
-                <div className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                  <Users className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono">
-                {totalEligible}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span>Pemilik Hak Suara Sah</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400">100% Terdaftar</span>
-              </div>
-            </div>
-
-            {/* CARD 2: TARGET KUORUM */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Target Kuorum Sah
-                </span>
-                <div className="p-2 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                {quorumTarget}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span>Aturan 50% + 1 UU</span>
-                <span className="font-bold text-amber-600 dark:text-amber-400">Syarat Minimal</span>
-              </div>
-            </div>
-
-            {/* CARD 3: HADIR TERVERIFIKASI */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Hadir Terverifikasi
-                </span>
-                <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {actualAttended}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span>Presensi Pintu Masuk</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">{percentage}% Tercapai</span>
-              </div>
-            </div>
-
-            {/* CARD 4: STATUS SIDANG / KEKURANGAN */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Status Sidang
-                </span>
-                <div className="p-2 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono truncate">
-                {remainingNeeded === 0 ? 'TERPENUHI' : `${remainingNeeded} Orang`}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
-                <span>{remainingNeeded === 0 ? 'Kuorum Pleno' : 'Menunggu Peserta'}</span>
-                <span className="font-bold text-purple-600 dark:text-purple-400">
-                  {remainingNeeded === 0 ? 'SAH HUKUM' : 'REGISTRASI'}
-                </span>
+                <TrendingUp className="w-5 h-5 text-indigo-500 opacity-80" />
               </div>
             </div>
           </div>
