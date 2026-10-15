@@ -720,6 +720,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
               meetingId={selectedMeetingId}
               initialAgendaId={votingAgendaContext?.id}
               initialTitle={votingAgendaContext ? `Pengesahan: ${votingAgendaContext.title}` : undefined}
+              initialCategory={votingAgendaContext?.title && /pemilihan|pengurus|pengawas|formatur|suksesi/i.test(votingAgendaContext.title) ? 'ELECTION' : 'RESOLUTION'}
             />
           )}
 
