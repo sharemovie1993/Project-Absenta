@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Modal } from '../../ui/Modal';
-import { Button, Input, Textarea, Select } from '../../ui';
+import { Button, Input, Textarea } from '../../ui';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -185,16 +185,16 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
               Status Acara
             </label>
-            <Select
+            <select
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
-              className="w-full text-sm"
+              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               disabled={saveMutation.isPending}
             >
               <option value="PENDING">Menunggu (Belum Dimulai)</option>
               <option value="IN_PROGRESS">Sedang Berlangsung (Aktif di TV)</option>
               <option value="COMPLETED">Selesai Dibahas</option>
-            </Select>
+            </select>
           </div>
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Modal } from '../../ui/Modal';
-import { Button, Input, Textarea, Select } from '../../ui';
+import { Button, Input, Textarea } from '../../ui';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -177,18 +177,18 @@ export const AddResolutionModal: React.FC<AddResolutionModalProps> = React.memo(
             <label htmlFor="res-status" className="block text-sm font-semibold text-slate-700 dark:text-slate-200 mb-1">
               Status Putusan
             </label>
-            <Select
+            <select
               id="res-status"
               aria-label="Status Putusan"
               value={status}
               onChange={(e) => setStatus(e.target.value as any)}
               disabled={isPending}
-              className="w-full"
+              className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="PASSED">Disahkan (Passed)</option>
               <option value="AMENDED">Disahkan Dengan Catatan (Amended)</option>
               <option value="REJECTED">Ditolak (Rejected)</option>
-            </Select>
+            </select>
           </div>
 
           <div>

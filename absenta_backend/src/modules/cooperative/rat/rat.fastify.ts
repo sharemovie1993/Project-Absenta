@@ -669,4 +669,20 @@ export default async function ratRoutes(fastify: any) {
       }
     }
   );
+
+  // 19. POST /:id/agendas/preset - Muat Preset Butir Acara Standar RAT
+  fastify.post(
+    '/:id/agendas/preset',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const agendas = await RatService.loadPresetAgendas(req.params.id, tenantId);
+        broadcastRatEvent(req, 'RAT_AGENDA_UPDATED', { meetingId: req.params.id });
+        reply.code(201).send({ success: true, data: agendas });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal memuat preset agenda' });
+      }
+    }
+  );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { SectionCard, Badge, Button } from '../../ui';
-import { Clock, Plus, ExternalLink, Play, CheckCircle2, RotateCcw, Edit2, Trash2 } from 'lucide-react';
+import { Clock, Plus, ExternalLink, Play, CheckCircle2, RotateCcw, Edit2, Trash2, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -80,6 +80,35 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
     }
   });
 
+  // Mutation: Load Preset Agendas
+  const loadPresetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post(`/cooperative/rat/${meetingId}/agendas/preset`);
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, meetingId);
+      toast.success('9 Butir Agenda Standar RAT Koperasi berhasil dimuat!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal memuat preset agenda';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleLoadPreset = async () => {
+    const isConfirmed = await confirm({
+      title: 'Muat Preset Agenda Standar RAT Koperasi',
+      message: 'Apakah Anda ingin memuat 9 butir acara resmi sidang RAT berstandar UU No. 25/1992? Susunan acara lengkap mulai dari registrasi, pembukaan, LPJ, pandangan umum, hingga pengesahan ketetapan akan diisikan secara otomatis.',
+      confirmText: 'Ya, Muat Preset Standar',
+      cancelText: 'Batal',
+      variant: 'primary',
+    });
+    if (isConfirmed) {
+      loadPresetMutation.mutate();
+    }
+  };
+
   const handleDeleteAgenda = async (agenda: CoopAgendaItem) => {
     const isConfirmed = await confirm({
       title: 'Hapus Butir Acara Sidang',
@@ -113,16 +142,29 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
         title="Jadwal Acara & Tata Tertib Sidang"
         rightElement={
           canManage && (
-            <Button
-              type="button"
-              size="toolbar"
-              variant="toolbarOutline"
-              onClick={onOpenAddAgenda}
-              className="gap-1 text-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Tambah Butir Acara
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="toolbar"
+                variant="outline"
+                onClick={handleLoadPreset}
+                disabled={loadPresetMutation.isPending}
+                className="gap-1 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {loadPresetMutation.isPending ? 'Memuat Preset...' : 'Muat Preset Standar RAT'}
+              </Button>
+              <Button
+                type="button"
+                size="toolbar"
+                variant="toolbarOutline"
+                onClick={onOpenAddAgenda}
+                className="gap-1 text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Tambah Butir Acara
+              </Button>
+            </div>
           )
         }
       >
@@ -265,19 +307,37 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
             })}
           </div>
         ) : (
-          <div className="text-center py-8 text-slate-400 text-sm space-y-2">
-            <p>Belum ada butir acara yang diagendakan pada sidang ini.</p>
+          <div className="text-center py-10 text-slate-400 text-sm space-y-4 max-w-md mx-auto">
+            <div className="space-y-1">
+              <p className="font-semibold text-slate-700 dark:text-slate-300">Belum ada butir acara yang diagendakan.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Gunakan preset 9 butir acara resmi sidang RAT berstandar UU No. 25/1992 atau susun butir acara secara manual.
+              </p>
+            </div>
             {canManage && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={onOpenAddAgenda}
-                className="gap-1.5 text-xs mx-auto"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah Butir Acara Pertama
-              </Button>
+              <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={handleLoadPreset}
+                  disabled={loadPresetMutation.isPending}
+                  className="gap-1.5 text-xs shadow-md shadow-indigo-500/20"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {loadPresetMutation.isPending ? 'Memuat Preset...' : 'Muat 9 Agenda Standar RAT'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onOpenAddAgenda}
+                  className="gap-1.5 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Manual
+                </Button>
+              </div>
             )}
           </div>
         )}

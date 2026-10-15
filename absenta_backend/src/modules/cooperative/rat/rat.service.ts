@@ -881,4 +881,44 @@ export class RatService {
       where: { id: agendaId },
     });
   }
+
+  /**
+   * Muat susunan butir acara standar RAT Koperasi (UU No. 25/1992 & Permenkop UKM)
+   */
+  static async loadPresetAgendas(meetingId: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    const standardPresets = [
+      { order: 1, title: 'Registrasi, Verifikasi Kehadiran, & Pengesahan Kuorum Sidang', presenter: 'Panitia & Sekretaris', durationMin: 30 },
+      { order: 2, title: 'Pembukaan Sidang Pleno & Pengesahan Tata Tertib RAT', presenter: 'Pimpinan Sidang Sementara', durationMin: 20 },
+      { order: 3, title: 'Laporan Pertanggungjawaban (LPJ) Pengurus Tahun Buku Berjalan', presenter: 'Ketua & Pengurus Koperasi', durationMin: 45 },
+      { order: 4, title: 'Laporan Hasil Pengawasan (LHP) Badan Pengawas Koperasi', presenter: 'Ketua Badan Pengawas', durationMin: 30 },
+      { order: 5, title: 'Pandangan Umum, Tanya Jawab, & Tanggapan Anggota', presenter: 'Peserta Sidang Pleno', durationMin: 40 },
+      { order: 6, title: 'Pengesahan LPJ Pengurus & Hasil Pengawasan Menjadi Ketetapan', presenter: 'Pimpinan Sidang Pleno', durationMin: 15 },
+      { order: 7, title: 'Pembahasan & Pengesahan Rencana Kerja (RK) dan RAPBK', presenter: 'Pengurus Koperasi', durationMin: 35 },
+      { order: 8, title: 'Pemilihan & Penetapan Pengurus/Pengawas (Bila Ada Formatur)', presenter: 'Tim Formatur / Presidium', durationMin: 30 },
+      { order: 9, title: 'Pembacaan Surat Ketetapan Resmi (TAP RAT) & Penutupan Sidang', presenter: 'Sekretaris Sidang', durationMin: 15 },
+    ];
+
+    const existingCount = await prisma.coopMeetingAgenda.count({ where: { meetingId } });
+
+    await prisma.coopMeetingAgenda.createMany({
+      data: standardPresets.map((p, idx) => ({
+        meetingId,
+        order: existingCount + idx + 1,
+        title: p.title,
+        presenter: p.presenter,
+        durationMin: p.durationMin,
+        isCompleted: false,
+      })),
+    });
+
+    return prisma.coopMeetingAgenda.findMany({
+      where: { meetingId },
+      orderBy: { order: 'asc' },
+    });
+  }
 }
