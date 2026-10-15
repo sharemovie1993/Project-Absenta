@@ -236,15 +236,15 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
           }
         >
           {(agendas || []).length > 0 ? (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               {(agendas || []).map((agenda, idx) => {
                 const currentStatus = agenda.status || (agenda.isCompleted ? 'COMPLETED' : 'PENDING');
                 return (
                   <div
                     key={agenda.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border transition-all ${
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border transition-all ${
                       currentStatus === 'IN_PROGRESS'
-                        ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-sm'
+                        ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50/80 dark:bg-indigo-950/40 shadow-sm ring-1 ring-indigo-400/40'
                         : currentStatus === 'COMPLETED'
                         ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/40 dark:bg-emerald-950/20'
                         : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60'
@@ -375,16 +375,16 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
 
               {/* Bottom Quick Action to Add Agenda Item */}
               {canManage && (
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={onOpenAddAgenda}
-                    className="w-full py-3 px-4 border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 flex items-center justify-center gap-2 transition-all bg-slate-50/50 hover:bg-indigo-50/40 dark:bg-slate-900/30 dark:hover:bg-indigo-950/20"
-                  >
-                    <Plus className="w-4 h-4 text-indigo-500" />
-                    <span>+ Tambah Butir Acara Baru (Manual)</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onOpenAddAgenda}
+                  className={`py-3.5 px-4 border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 flex items-center justify-center gap-2 transition-all bg-slate-50/50 hover:bg-indigo-50/40 dark:bg-slate-900/30 dark:hover:bg-indigo-950/20 min-h-[64px] ${
+                    agendas.length % 2 === 1 ? 'col-span-1' : 'col-span-1 lg:col-span-2'
+                  }`}
+                >
+                  <Plus className="w-4 h-4 text-indigo-500" />
+                  <span>+ Tambah Butir Acara Baru</span>
+                </button>
               )}
             </div>
           ) : (
