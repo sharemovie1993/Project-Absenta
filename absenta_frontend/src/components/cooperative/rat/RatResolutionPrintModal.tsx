@@ -3,6 +3,7 @@ import { Modal, Button, Badge } from '../../ui';
 import { Printer, Copy, Check, FileCheck, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
+import { ResolutionTextRenderer } from './ResolutionTextRenderer';
 
 interface RatResolutionPrintModalProps {
   isOpen: boolean;
@@ -223,8 +224,8 @@ ${resolution.summary}
           </div>
 
           {/* DOCUMENT BODY */}
-          <div className="text-xs md:text-sm leading-relaxed text-justify whitespace-pre-line text-slate-800 pt-3">
-            {resolution.summary}
+          <div className="text-xs md:text-sm leading-relaxed text-justify text-slate-800 pt-3">
+            <ResolutionTextRenderer text={resolution.summary} />
           </div>
 
           {/* SIGNATURE SECTION */}

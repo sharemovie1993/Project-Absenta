@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Badge from '../../ui/Badge';
 import { FileText, CheckCircle2, ChevronLeft, ChevronRight, Stamp, Users } from 'lucide-react';
 import type { CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
+import { ResolutionTextRenderer } from './ResolutionTextRenderer';
 
 interface RatTvResolutionStageProps {
   resolutions: CoopResolutionItem[];
@@ -123,8 +124,8 @@ export const RatTvResolutionStage: React.FC<RatTvResolutionStageProps> = React.m
         </div>
 
         {/* DOCUMENT BODY (LARGE TELEPROMPTER TEXT) */}
-        <div className="text-sm sm:text-base leading-relaxed text-justify whitespace-pre-line text-slate-800 pt-3">
-          {currentRes.summary}
+        <div className="text-sm sm:text-base leading-relaxed text-justify text-slate-800 pt-3">
+          <ResolutionTextRenderer text={currentRes.summary} isTeleprompter={true} />
         </div>
 
         {/* SIGNATURE SECTION */}

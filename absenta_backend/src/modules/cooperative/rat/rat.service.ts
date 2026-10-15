@@ -1212,18 +1212,18 @@ export class RatService {
     const totalMembers = meeting.totalActiveMembers || 1;
     const attendancePct = ((actualAttendance / totalMembers) * 100).toFixed(1);
 
-    let votingText = 'Disetujui secara aklamasi/musyawarah mufakat oleh seluruh anggota peserta sidang yang hadir.';
+    let votingText = 'Disetujui secara **aklamasi / musyawarah mufakat** oleh seluruh anggota peserta sidang yang hadir.';
     if (votingSession) {
       const totalVotes = votingSession.options.reduce((acc: number, curr: any) => acc + curr.voteCount, 0);
       const optionsBreakdown = votingSession.options
         .map((opt: any) => {
           const pct = totalVotes > 0 ? ((opt.voteCount / totalVotes) * 100).toFixed(1) : '0';
-          return `   - ${opt.label}: ${opt.voteCount} suara (${pct}%)`;
+          return `   - **${opt.label}**: **${opt.voteCount} suara** (**${pct}%**)`;
         })
         .join('\n');
 
-      votingText = `Disahkan melalui pemungutan suara digital (e-Voting) resmi "${votingSession.title}":\n` +
-        `Total Suara Masuk: ${totalVotes} suara\n` +
+      votingText = `Disahkan melalui pemungutan suara digital (e-Voting) resmi **"${votingSession.title}"**:\n` +
+        `   Total Suara Masuk: **${totalVotes} suara**\n` +
         optionsBreakdown;
     }
 
@@ -1254,12 +1254,12 @@ MENGINGAT:
 4. Peraturan Tata Tertib Sidang Rapat Anggota Tahunan Tahun Buku ${year}.
 
 MEMPERHATIKAN:
-1. Kuorum kehadiran sah peserta rapat pleno sebanyak ${actualAttendance} anggota (${attendancePct}% dari total ${meeting.totalActiveMembers} anggota terdaftar).
+1. Kuorum kehadiran sah peserta rapat pleno sebanyak **${actualAttendance} anggota** (**${attendancePct}%** dari total **${meeting.totalActiveMembers} anggota terdaftar**).
 2. ${votingText}
 
 MEMUTUSKAN:
 MENETAPKAN:
-PERTAMA: Menerima, menyetujui, dan mengesahkan secara paripurna: "${agenda.title}".
+PERTAMA: Menerima, menyetujui, dan mengesahkan secara paripurna: **"${agenda.title}"**.
 KEDUA: Menginstruksikan kepada Pengurus dan Pengawas Koperasi untuk melaksanakan amanat ketetapan ini dengan itikad baik dan penuh tanggung jawab.
 KETIGA: Ketetapan ini memiliki kekuatan hukum sah yang mengikat seluruh jajaran koperasi dan berlaku sejak tanggal ditetapkan.
 
