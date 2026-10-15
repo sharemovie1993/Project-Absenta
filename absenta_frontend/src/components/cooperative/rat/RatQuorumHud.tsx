@@ -162,11 +162,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
                 <Check className="w-4 h-4 mr-1.5" />
                 Konfirmasi Kehadiran Saya di Sidang RAT
               </Button>
-            ) : (
-              <span className="text-xs text-slate-400">
-                Presensi hanya dapat dilakukan saat registrasi dibuka oleh pengurus.
-              </span>
-            )}
+            ) : null}
           </div>
 
           {canManage && (
