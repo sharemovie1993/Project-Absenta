@@ -333,3 +333,5 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
 });
 
 RatProceedingsPrintModal.displayName = 'RatProceedingsPrintModal';
+
+export default RatProceedingsPrintModal;
