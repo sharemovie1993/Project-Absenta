@@ -921,4 +921,19 @@ export class RatService {
       orderBy: { order: 'asc' },
     });
   }
+
+  /**
+   * Perbarui naskah tata tertib / catatan khusus sidang RAT
+   */
+  static async updateMeetingRules(meetingId: string, tenantId: string, description: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id: meetingId, tenantId },
+    });
+    if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
+
+    return prisma.coopMeeting.update({
+      where: { id: meetingId },
+      data: { description },
+    });
+  }
 }

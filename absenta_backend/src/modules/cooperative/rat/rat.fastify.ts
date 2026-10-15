@@ -685,4 +685,25 @@ export default async function ratRoutes(fastify: any) {
       }
     }
   );
+
+  // 20. PUT /:id/rules - Perbarui Naskah Tata Tertib Sidang RAT
+  fastify.put(
+    '/:id/rules',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const description = req.body?.description || req.body?.rules || '';
+        if (!description || description.trim().length < 5) {
+          return reply.status(400).send({ success: false, message: 'Naskah tata tertib minimal 5 karakter' });
+        }
+
+        const tenantId = getTenantId(req);
+        const meeting = await RatService.updateMeetingRules(req.params.id, tenantId, description);
+        broadcastRatEvent(req, 'RAT_RULES_UPDATED', { meetingId: req.params.id });
+        reply.send({ success: true, data: meeting });
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal memperbarui tata tertib sidang' });
+      }
+    }
+  );
 }

@@ -63,6 +63,10 @@ const RatTvDisplayModal = lazy(() =>
   import('../../components/cooperative/rat/RatTvDisplayModal').then(m => ({ default: m.RatTvDisplayModal }))
 );
 
+const EditRulesModal = lazy(() =>
+  import('../../components/cooperative/rat/EditRulesModal').then(m => ({ default: m.EditRulesModal }))
+);
+
 // ─── TYPES ─────────────────────────────────────────────────────────────────
 export interface CoopMeetingItem {
   id: string;
@@ -163,6 +167,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [editingAgenda, setEditingAgenda] = useState<CoopAgendaItem | null>(null);
   const [editingResolution, setEditingResolution] = useState<CoopResolutionItem | null>(null);
   const [isTvDisplayOpen, setIsTvDisplayOpen] = useState(false);
+  const [isEditRulesOpen, setIsEditRulesOpen] = useState(false);
   const [activeVotingSession, setActiveVotingSession] = useState<CoopVotingSessionItem | null>(null);
 
   // Sync tab with URL search params
@@ -591,6 +596,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
               agendas={currentMeeting?.agendas || []}
               resolutions={currentMeeting?.resolutions || []}
               canManage={canManage}
+              meetingDescription={currentMeeting?.description}
               onOpenAddAgenda={() => {
                 setEditingAgenda(null);
                 setIsAddAgendaOpen(true);
@@ -607,6 +613,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
                 setEditingResolution(res);
                 setIsAddResolutionOpen(true);
               }}
+              onOpenEditRules={() => setIsEditRulesOpen(true)}
             />
           )}
 
@@ -727,6 +734,15 @@ const RatMeetingPage: React.FC = React.memo(() => {
               onClose={() => setIsTvDisplayOpen(false)}
               meeting={currentMeeting}
               quorumStats={quorumData}
+            />
+          )}
+
+          {isEditRulesOpen && selectedMeetingId && (
+            <EditRulesModal
+              isOpen={isEditRulesOpen}
+              onClose={() => setIsEditRulesOpen(false)}
+              meetingId={selectedMeetingId}
+              initialRules={currentMeeting?.description}
             />
           )}
         </Suspense>

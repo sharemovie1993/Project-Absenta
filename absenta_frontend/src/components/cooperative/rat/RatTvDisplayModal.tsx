@@ -4,6 +4,7 @@ import Button from '../../ui/Button';
 import { ThemeToggle } from '../../ui/ThemeToggle';
 import { formatDate } from '../../../utils/layoutUtils';
 import { useSocket } from '../../../hooks/useSocket';
+import api from '../../../lib/axiosInstance';
 import {
   Users,
   ShieldCheck,
@@ -121,6 +122,15 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
     }
   }, [meeting.attendances]);
 
+  // Live agendas state for projector screen
+  const [tvAgendas, setTvAgendas] = useState<any[]>(meeting.agendas || []);
+
+  useEffect(() => {
+    if (meeting.agendas) {
+      setTvAgendas(meeting.agendas);
+    }
+  }, [meeting.agendas]);
+
   const { subscribe, unsubscribe } = useSocket();
 
   // Clock ticker (1s)
@@ -129,11 +139,12 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Listen to WebSocket for live attendee arrivals on TV screen
+  // Listen to WebSocket for live attendee arrivals & live agenda updates on TV screen
   useEffect(() => {
     if (!isOpen) return;
 
     const handleRatUpdate = (payload: any) => {
+      // 1. Live Attendee Check-In
       if (
         payload?.type === 'RAT_ATTENDANCE_RECORDED' &&
         payload?.meetingId === meeting.id
@@ -173,6 +184,20 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
         setTimeout(() => {
           setNewArrival((prev) => (prev?.name === displayName ? null : prev));
         }, 7000);
+      }
+
+      // 2. Live Agenda Status Update
+      if (
+        payload?.type === 'RAT_AGENDA_UPDATED' &&
+        payload?.meetingId === meeting.id
+      ) {
+        api.get(`/cooperative/rat/${meeting.id}`)
+          .then((res) => {
+            if (res.data?.data?.agendas) {
+              setTvAgendas(res.data.data.agendas);
+            }
+          })
+          .catch(() => {});
       }
     };
 
@@ -219,8 +244,8 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
 
   // Statutory Agenda Tracker items
-  const agendas = (meeting.agendas && meeting.agendas.length > 0)
-    ? meeting.agendas
+  const agendas = (tvAgendas && tvAgendas.length > 0)
+    ? tvAgendas
     : [
         { id: '1', title: 'Registrasi & Presensi Fisik Anggota', status: isQuorumReached ? 'COMPLETED' : 'IN_PROGRESS', duration: '30m' },
         { id: '2', title: 'Pembukaan Sidang & Pengesahan Tata Tertib', status: isQuorumReached ? 'IN_PROGRESS' : 'PENDING', duration: '20m' },
