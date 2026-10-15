@@ -6,24 +6,9 @@ import { formatDate } from '../../../utils/layoutUtils';
 import { useSocket } from '../../../hooks/useSocket';
 import api from '../../../lib/axiosInstance';
 import {
-  Users,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  Maximize2,
-  Minimize2,
-  X,
-  Sparkles,
-  TrendingUp,
-  UserCheck,
-  Radio,
-  CreditCard,
-  ScanLine,
-  ListOrdered,
-  ChevronRight,
-  Gavel,
-  BookOpen,
-  Vote,
+  Users, ShieldCheck, CheckCircle2, Clock, Maximize2, Minimize2,
+  X, Sparkles, TrendingUp, UserCheck, Radio, CreditCard,
+  ScanLine, ListOrdered, ChevronRight, Gavel, BookOpen
 } from 'lucide-react';
 import type { CoopMeetingItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -68,19 +53,10 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const [newArrival, setNewArrival] = useState<NewArrivalEvent | null>(null);
 
   // Helper to extract attendee name from various schema shapes
-  const extractName = (att: any): string => {
-    if (att.name) return att.name;
-    if (att.Member?.name) return att.Member.name;
-    if (att.Member?.Siswa?.nama_siswa) return att.Member.Siswa.nama_siswa;
-    if (att.Member?.Guru?.nama_guru) return att.Member.Guru.nama_guru;
-    if (att.Member?.User?.full_name) return att.Member.User.full_name;
-    if (att.displayName) return att.displayName;
-    return 'Anggota Terverifikasi';
-  };
+  const extractName = (att: any): string =>
+    att.name || att.Member?.name || att.Member?.Siswa?.nama_siswa || att.Member?.Guru?.nama_guru || att.Member?.User?.full_name || att.displayName || 'Anggota Terverifikasi';
 
-  const extractMemberNo = (att: any): string => {
-    return att.memberNo || att.Member?.memberNo || 'ANG';
-  };
+  const extractMemberNo = (att: any): string => att.memberNo || att.Member?.memberNo || 'ANG';
 
   const extractTime = (att: any): string => {
     if (att.time) return att.time;
@@ -271,6 +247,8 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const agendas = tvAgendas || [];
 
   const activeAgenda = activeStats?.activeAgenda || agendas.find((ag: any) => ag.status === 'IN_PROGRESS') || null;
+  const activeIdx = activeAgenda ? agendas.findIndex((a: any) => a.id === activeAgenda.id) : -1;
+  const nextAgenda = activeIdx >= 0 && activeIdx < agendas.length - 1 ? agendas[activeIdx + 1] : null;
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
@@ -377,10 +355,120 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
         </div>
       )}
 
-      {/* MAIN BROADCAST CONTENT (BALANCED GRID, NO EMPTY VOID) */}
-      <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden z-10">
-        {/* LEFT COLUMN: HERO QUORUM & 4 EXECUTIVE METRICS (7 COLS) */}
-        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1">
+      {/* MAIN BROADCAST CONTENT (STAGE SPOTLIGHT ON TOP, BALANCED GRID BELOW) */}
+      <main className="flex-1 p-4 md:p-6 flex flex-col gap-4 overflow-hidden z-10">
+        {/* HERO STAGE SPOTLIGHT & ZERO-SCROLL HORIZONTAL STEPPER */}
+        <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-lg shadow-slate-200/50 dark:shadow-black/50 shrink-0">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/30 shrink-0">
+                <Gavel className="w-5 h-5 animate-pulse" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-400 border border-indigo-300 dark:border-indigo-700/60 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                    {activeAgenda ? 'Sedang Berlangsung di Panggung Sidang' : 'Tahap Registrasi & Persiapan Sidang'}
+                  </span>
+                  {activeAgenda && (
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      Agenda Ke-{activeIdx + 1} dari {agendas.length}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-base sm:text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 truncate">
+                  {activeAgenda
+                    ? `${activeIdx + 1}. ${activeAgenda.title}`
+                    : 'Pengesahan Kuorum & Verifikasi Kehadiran Peserta Sidang'}
+                </h2>
+              </div>
+            </div>
+
+            {/* Presenter & Duration Pills */}
+            <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {(activeAgenda?.durationMinutes || activeAgenda?.durationMin) && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
+                  <Clock className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Alokasi: {activeAgenda.durationMinutes || activeAgenda.durationMin} Menit</span>
+                </div>
+              )}
+              {activeAgenda?.presenter && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 text-xs font-semibold">
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Penyaji: {activeAgenda.presenter}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* NEXT AGENDA PREVIEW BAR */}
+          {nextAgenda && (
+            <div className="py-2 px-3 my-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-200 shrink-0">
+                  Agenda Selanjutnya
+                </span>
+                <span className="font-bold truncate text-slate-900 dark:text-white">
+                  {activeIdx + 2}. {nextAgenda.title}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400 shrink-0">
+                {nextAgenda.durationMinutes || nextAgenda.durationMin || 30} menit
+              </span>
+            </div>
+          )}
+
+          {/* HORIZONTAL ZERO-SCROLL RUNDOWN STEPPER */}
+          {agendas.length > 0 ? (
+            <div className="pt-2 overflow-x-auto pb-0.5">
+              <div className="flex items-center gap-2 min-w-max">
+                {agendas.map((ag: any, idx: number) => {
+                  const isCompleted = ag.status === 'COMPLETED';
+                  const isCurrent = ag.status === 'IN_PROGRESS';
+                  return (
+                    <div
+                      key={ag.id || idx}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs transition-all ${
+                        isCurrent
+                          ? 'bg-indigo-600 text-white font-black shadow-md shadow-indigo-600/30 border-indigo-500 ring-2 ring-indigo-400'
+                          : isCompleted
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 font-semibold'
+                          : 'bg-slate-50 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/60'
+                      }`}
+                    >
+                      <span
+                        className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                          isCurrent
+                            ? 'bg-white text-indigo-700 animate-pulse'
+                            : isCompleted
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {isCompleted ? '✓' : idx + 1}
+                      </span>
+                      <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                        {ag.title}
+                      </span>
+                      {idx < agendas.length - 1 && (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600 opacity-60 ml-0.5" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-2.5 text-xs text-slate-500">
+              Belum ada susunan acara untuk sidang ini. Silakan muat preset dari panel operator.
+            </div>
+          )}
+        </section>
+
+        {/* BOTTOM BALANCED GRID: QUORUM (7 COLS) & LIVE PRESENSI (5 COLS) */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden">
+          {/* LEFT COLUMN: HERO QUORUM & 4 EXECUTIVE METRICS (7 COLS) */}
+          <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1">
           {/* HERO QUORUM RADAR CARD */}
           <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 shadow-md shadow-slate-200/50 dark:shadow-black/50 p-5 sm:p-6 relative overflow-hidden">
             {/* Top Badge & Legal Citations */}
@@ -591,194 +679,93 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: AGENDA SIDANG REAL-TIME & LIVE PRESENSI (5 COLS) */}
-        <div className="lg:col-span-5 flex flex-col gap-4 overflow-hidden">
-          {/* MODUL 1: AGENDA SIDANG REAL-TIME (SOLVES THE EMPTY RELEVANCE VOID) */}
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 shrink-0">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400">
-                  <ListOrdered className="w-4 h-4" />
-                </div>
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                  Tahapan Agenda Sidang RAT
-                </h3>
-              </div>
-              <Badge variant={activeAgenda ? 'primary' : 'outline'} className="text-[10px] font-bold">
-                {activeAgenda ? 'Sedang Berlangsung' : isQuorumReached ? 'Sidang Siap Dimulai' : 'Tahap Registrasi'}
-              </Badge>
+        {/* RIGHT COLUMN: LIVE STREAM PRESENSI PINTU MASUK (5 COLS, FULL HEIGHT) */}
+        <div className="lg:col-span-5 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                Presensi Masuk Aula
+              </h3>
             </div>
+            <Badge variant="outline" className="text-[10px] font-mono font-bold">
+              {attendeesList.length} Hadir Terverifikasi
+            </Badge>
+          </div>
 
-            {/* LIVE ACTIVE AGENDA HIGHLIGHT BANNER */}
-            {activeAgenda && (
-              <div className="mt-3 p-3.5 rounded-2xl bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400">
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-[10px] font-black tracking-wider uppercase bg-white/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    Sedang Berlangsung di Panggung
-                  </span>
-                  <span className="text-[10px] font-bold text-indigo-100">
-                    Acara Ke-{(agendas.findIndex((a: any) => a.id === activeAgenda.id) + 1)}
-                  </span>
+          {/* Attendees Stream List */}
+          <div className="flex-1 overflow-y-auto space-y-2 py-2.5 pr-1 text-left">
+            {attendeesList.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
+                  <ScanLine className="w-6 h-6 animate-pulse" />
                 </div>
-                <h4 className="font-black text-sm sm:text-base leading-snug">
-                  {activeAgenda.title}
-                </h4>
-                {(activeAgenda.durationMinutes || activeAgenda.durationMin) && (
-                  <div className="text-[11px] text-indigo-200 mt-1 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>Alokasi Waktu: {activeAgenda.durationMinutes || activeAgenda.durationMin} menit</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {agendas.length === 0 ? (
-              <div className="py-7 px-4 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 mt-3">
-                <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
-                  <ListOrdered className="w-5 h-5" />
+                <div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Menunggu Presensi di Pintu Masuk
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    Peserta yang melakukan tap RFID atau presensi manual akan muncul otomatis di layar ini.
+                  </p>
                 </div>
-                <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
-                  Belum Ada Susunan Acara
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                  Susunan acara untuk sidang {meeting.title} ({meeting.year}) belum diatur atau belum dimuat preset oleh panitia.
-                </p>
               </div>
             ) : (
-              <div className="space-y-2 pt-3 max-h-48 overflow-y-auto pr-1">
-                {agendas.map((ag: any, idx: number) => (
-                  <div
-                    key={ag.id || idx}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
-                      ag.status === 'IN_PROGRESS'
-                        ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm ring-1 ring-indigo-400'
-                        : ag.status === 'COMPLETED'
-                        ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/50 text-slate-700 dark:text-slate-300'
-                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                          ag.status === 'COMPLETED'
-                            ? 'bg-emerald-500 text-white'
-                            : ag.status === 'IN_PROGRESS'
-                            ? 'bg-indigo-600 text-white animate-pulse'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        {ag.status === 'COMPLETED' ? '✓' : idx + 1}
-                      </span>
-                      <span className="font-bold truncate text-slate-900 dark:text-white">
-                        {ag.title}
-                      </span>
-                    </div>
-
-                    <span
-                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shrink-0 ${
-                        ag.status === 'IN_PROGRESS'
-                          ? 'bg-indigo-600 text-white'
-                          : ag.status === 'COMPLETED'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+              attendeesList.map((att, idx) => (
+                <div
+                  key={att.id || `${att.memberNo}-${idx}`}
+                  className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                    idx === 0
+                      ? 'bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600/50 shadow-sm'
+                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        idx === 0
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
                       }`}
                     >
-                      {ag.status === 'IN_PROGRESS' ? 'AKTIF' : ag.status === 'COMPLETED' ? 'SELESAI' : 'NANTI'}
+                      {att.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {att.name}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                        <span className="font-mono">{att.memberNo}</span>
+                        <span>•</span>
+                        <span className="uppercase">{att.type}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
+                      {att.time}
+                    </span>
+                    <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
+                      {att.method}
                     </span>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))
             )}
           </div>
 
-          {/* MODUL 2: LIVE STREAM PRESENSI PINTU MASUK (BALANCED HEIGHT) */}
-          <div className="flex-1 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Presensi Masuk Aula
-                </h3>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono font-bold">
-                {attendeesList.length} Hadir Terverifikasi
-              </Badge>
-            </div>
-
-            {/* Attendees Stream List */}
-            <div className="flex-1 overflow-y-auto space-y-2 py-2.5 pr-1 text-left">
-              {attendeesList.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3 text-slate-400">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500">
-                    <ScanLine className="w-6 h-6 animate-pulse" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Menunggu Presensi di Pintu Masuk
-                    </p>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Peserta yang melakukan tap RFID atau presensi manual akan muncul otomatis di layar ini.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                attendeesList.map((att, idx) => (
-                  <div
-                    key={att.id || `${att.memberNo}-${idx}`}
-                    className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                      idx === 0
-                        ? 'bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600/50 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                          idx === 0
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      >
-                        {att.name.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                          {att.name}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                          <span className="font-mono">{att.memberNo}</span>
-                          <span>•</span>
-                          <span className="uppercase">{att.type}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
-                        {att.time}
-                      </span>
-                      <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
-                        {att.method}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Terminal status ticker */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-              <span className="flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                Terminal Kiosk Pintu Masuk Aktif
-              </span>
-              <span className="font-mono">Auto-Sync WebSocket</span>
-            </div>
+          {/* Terminal status ticker */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
+            <span className="flex items-center gap-1.5">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+              Terminal Kiosk Pintu Masuk Aktif
+            </span>
+            <span className="font-mono">Auto-Sync WebSocket</span>
           </div>
         </div>
-      </main>
+      </div>
+    </main>
 
       {/* FOOTER TICKER */}
       <footer className="px-6 py-2.5 bg-white dark:bg-slate-900 border-t border-slate-200/90 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between z-20 shrink-0">
