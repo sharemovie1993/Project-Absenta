@@ -206,7 +206,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {subTab === 'rundown' && (
         <SectionCard
           title="Jadwal Acara & Rundown Sidang RAT"
-          rightElement={
+          actions={
             canManage && (
               <div className="flex items-center gap-2">
                 <Button
@@ -371,6 +371,20 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                   </div>
                 );
               })}
+
+              {/* Bottom Quick Action to Add Agenda Item */}
+              {canManage && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={onOpenAddAgenda}
+                    className="w-full py-3 px-4 border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500 rounded-xl text-xs font-bold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-300 flex items-center justify-center gap-2 transition-all bg-slate-50/50 hover:bg-indigo-50/40 dark:bg-slate-900/30 dark:hover:bg-indigo-950/20"
+                  >
+                    <Plus className="w-4 h-4 text-indigo-500" />
+                    <span>+ Tambah Butir Acara Baru (Manual)</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-10 text-slate-400 text-sm space-y-4 max-w-md mx-auto">
@@ -414,7 +428,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {subTab === 'rules' && (
         <SectionCard
           title="Pedoman & Tata Tertib Sidang Paripurna RAT"
-          rightElement={
+          actions={
             <div className="flex items-center gap-2">
               <Button
                 type="button"
@@ -629,7 +643,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       <SectionCard
         title="Daftar Surat Ketetapan Resmi Sidang (TAP RAT)"
         className="space-y-4"
-        rightElement={
+        actions={
           canManage && (
             <Button
               type="button"

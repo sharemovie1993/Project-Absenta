@@ -10,6 +10,7 @@ interface SectionCardProps {
   className?: string;
   noPadding?: boolean;
   actions?: React.ReactNode;
+  rightElement?: React.ReactNode;
 }
 
 export const SectionCard = React.memo(({ 
@@ -20,8 +21,11 @@ export const SectionCard = React.memo(({
   fullWidth = false,
   className = '',
   noPadding = false,
-  actions
-}: SectionCardProps) => (
+  actions,
+  rightElement,
+}: SectionCardProps) => {
+  const headerActions = actions || rightElement;
+  return (
   <div className={cn(
     "bg-white dark:bg-slate-950 rounded-xl border transition-all duration-300",
     isActive ? "border-blue-500 shadow-lg ring-1 ring-blue-500/20" : "border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md",
@@ -44,9 +48,9 @@ export const SectionCard = React.memo(({
           )}
           <h3 className="text-[11px] font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider">{title}</h3>
         </div>
-        {actions && (
+        {headerActions && (
           <div className="flex items-center gap-2">
-            {actions}
+            {headerActions}
           </div>
         )}
       </div>
