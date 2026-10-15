@@ -11,18 +11,13 @@ import {
   Scale,
   ShieldCheck,
   CheckCircle2,
-  Clock,
-  Sparkles,
   Radio,
   Eye,
   Settings,
-  AlertCircle,
-  QrCode
 } from 'lucide-react';
 import type {
   CoopMeetingItem,
   CoopVotingSessionItem,
-  CoopResolutionItem,
   CoopAttendanceItem
 } from '../../../pages/cooperative/RatMeetingPage';
 import { RatTvQuorumStage, type LocalAttendee } from './RatTvQuorumStage';
