@@ -237,8 +237,8 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const statusHeadline = activeStats?.statusHeadline ?? (isQuorumReached ? 'Kuorum Sidang Sah Terpenuhi' : 'Menunggu Kuorum Kehadiran Peserta');
   const statusText = activeStats?.statusText ?? (isQuorumReached ? 'MEMENUHI SYARAT' : 'BELUM KUORUM');
 
-  // SVG Gauge calculations
-  const radius = 58;
+  // SVG Gauge calculations (high-definition 200x200 viewBox for generous breathing room)
+  const radius = 78;
   const circumference = 2 * Math.PI * radius;
   const clampedPercentage = Math.min(100, Math.max(0, percentage));
   const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
@@ -464,48 +464,67 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center my-auto py-2">
               {/* CIRCULAR RADIAL METER (5 cols) */}
               <div className="md:col-span-5 flex flex-col items-center justify-center p-2">
-                <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex items-center justify-center">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 148 148">
+                <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center">
+                  <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 200 200">
+                    <defs>
+                      <linearGradient id="quorumGradEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#059669" />
+                      </linearGradient>
+                      <linearGradient id="quorumGradAmber" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#f59e0b" />
+                        <stop offset="100%" stopColor="#6366f1" />
+                      </linearGradient>
+                    </defs>
                     {/* Background Track */}
                     <circle
-                      cx="74"
-                      cy="74"
+                      cx="100"
+                      cy="100"
                       r={radius}
                       className="text-slate-100 dark:text-slate-800"
-                      strokeWidth="14"
+                      strokeWidth="13"
                       stroke="currentColor"
                       fill="transparent"
                     />
                     {/* Animated Progress Ring */}
                     <circle
-                      cx="74"
-                      cy="74"
+                      cx="100"
+                      cy="100"
                       r={radius}
-                      className={
-                        isQuorumReached
-                          ? 'text-emerald-500 transition-all duration-1000'
-                          : 'text-indigo-600 transition-all duration-1000'
-                      }
-                      strokeWidth="14"
+                      stroke={isQuorumReached ? 'url(#quorumGradEmerald)' : 'url(#quorumGradAmber)'}
+                      strokeWidth="13"
                       strokeDasharray={circumference}
                       strokeDashoffset={strokeDashoffset}
                       strokeLinecap="round"
-                      stroke="currentColor"
                       fill="transparent"
+                      className="transition-all duration-1000 ease-out"
                     />
                   </svg>
-                  {/* Center percentage & status pill */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-2">
-                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
-                      {percentage}%
+                  {/* Center percentage & status pill with generous breathing room */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                      Capaian
                     </span>
+                    <div className="flex items-baseline justify-center">
+                      <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
+                        {percentage}
+                      </span>
+                      <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-slate-500 ml-0.5">
+                        %
+                      </span>
+                    </div>
                     <span
-                      className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full mt-2 ${
+                      className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-2 shadow-sm ${
                         isQuorumReached
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-700'
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700'
+                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700'
                       }`}
                     >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isQuorumReached ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                        }`}
+                      />
                       {statusText}
                     </span>
                   </div>
