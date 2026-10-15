@@ -317,8 +317,8 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                  Terminal Presensi Meja Registrasi RAT
+                <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                  Terminal Presensi
                 </span>
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -326,7 +326,7 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Universal Terminal: Langsung Tap Scanner RFID atau ketik Nama / No Anggota / NISN
+                Tap kartu RFID atau ketik nama / no. anggota
               </p>
             </div>
           </div>
@@ -373,28 +373,20 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
       <div className="space-y-4">
         {/* Registration Availability Warning */}
         {!isRegistrationAllowed && (
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
-            <AlertCircle className="w-5 h-5 shrink-0 text-amber-600" />
-            <div>
-              <span className="font-bold">Sesi Registrasi Belum Aktif:</span> Presensi terminal hanya dapat memproses kartu saat status sidang berada pada tahap <strong>REGISTRATION_OPEN</strong> atau <strong>IN_SESSION</strong>.
-            </div>
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-300">
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>Presensi dapat dilakukan saat registrasi atau sidang telah dibuka.</span>
           </div>
         )}
 
         {/* 1 UNIVERSAL OMNI-INPUT FIELD */}
         <div className="p-4 bg-gradient-to-br from-indigo-50/60 via-white to-slate-50 dark:from-indigo-950/25 dark:via-slate-900 dark:to-slate-900 rounded-2xl border-2 border-indigo-200 dark:border-indigo-800/60 shadow-sm">
-          <form onSubmit={handleOmniSubmit} className="space-y-3">
+          <form onSubmit={handleOmniSubmit} className="space-y-2">
             <div className="flex flex-col sm:flex-row items-center gap-3.5">
               <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
                 <Zap className="w-6 h-6 animate-pulse" />
               </div>
               <div className="flex-1 w-full">
-                <label
-                  htmlFor="rat-omni-input"
-                  className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1"
-                >
-                  Tempelkan Kartu RFID atau Ketik Identitas Peserta:
-                </label>
                 <div className="relative">
                   <CreditCard className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -404,7 +396,7 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
                     disabled={!isRegistrationAllowed || isSubmitting}
                     value={inputValue}
                     onChange={(e) => handleInputChange(e.target.value)}
-                    placeholder="Tempelkan kartu RFID, atau ketik Nama / No Anggota / NISN / NIP..."
+                    placeholder="Tap kartu RFID atau ketik nama / no. anggota..."
                     className="w-full pl-9 pr-24 text-sm font-medium tracking-wide"
                     autoComplete="off"
                     autoFocus
@@ -431,18 +423,15 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
                       disabled={!inputValue.trim() || !isRegistrationAllowed}
                       isLoading={isSubmitting}
                     >
-                      Submit
+                      Presensi
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 pl-1">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-              <span>
-                <strong>Mode Cerdas:</strong> Scanner USB otomatis mengirimkan <kbd className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded text-[10px] font-mono">Enter</kbd> untuk presensi langsung, atau ketik nama untuk memilih dari rekomendasi di bawah.
-              </span>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 pl-1">
+              Tempel kartu pada scanner atau ketik identitas lalu tekan Enter.
             </p>
           </form>
 
