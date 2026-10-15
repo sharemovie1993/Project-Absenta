@@ -47,7 +47,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [newArrival, setNewArrival] = useState<NewArrivalEvent | null>(null);
 
-  const socket = useSocket();
+  const { subscribe, unsubscribe } = useSocket();
 
   // Clock ticker
   useEffect(() => {
@@ -57,7 +57,7 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
 
   // Listen to WebSocket for live attendee arrivals on TV screen
   useEffect(() => {
-    if (!socket || !isOpen) return;
+    if (!isOpen) return;
 
     const handleRatUpdate = (payload: any) => {
       if (
@@ -89,11 +89,11 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
       }
     };
 
-    socket.on('coop_rat_update', handleRatUpdate);
+    subscribe('coop_rat_update', handleRatUpdate);
     return () => {
-      socket.off('coop_rat_update', handleRatUpdate);
+      unsubscribe('coop_rat_update', handleRatUpdate);
     };
-  }, [socket, isOpen, meeting.id]);
+  }, [subscribe, unsubscribe, isOpen, meeting.id]);
 
   // Fullscreen toggle handler
   const toggleFullscreen = () => {
