@@ -3477,6 +3477,7 @@ model CoopMeetingAgenda {
   presenter   String?
   durationMin Int         @default(30)
   isCompleted Boolean     @default(false)
+  status      String      @default("PENDING")
 
   Meeting     CoopMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
 

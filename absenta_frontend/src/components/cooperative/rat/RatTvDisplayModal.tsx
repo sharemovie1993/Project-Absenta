@@ -141,7 +141,16 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
 
   // Listen to WebSocket for live attendee arrivals & live agenda updates on TV screen
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !meeting.id) return;
+
+    // Initial fetch of freshest meeting data when modal opens
+    api.get(`/cooperative/rat/${meeting.id}`)
+      .then((res) => {
+        if (res.data?.data?.agendas) {
+          setTvAgendas(res.data.data.agendas);
+        }
+      })
+      .catch(() => {});
 
     const handleRatUpdate = (payload: any) => {
       // 1. Live Attendee Check-In
@@ -254,6 +263,8 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
         { id: '5', title: 'Pengesahan Rencana Kerja & RAPBK Tahun Depan', status: 'PENDING', duration: '25m' },
         { id: '6', title: 'Pemungutan Suara / Keputusan Formatur & Penutup', status: 'PENDING', duration: '20m' },
       ];
+
+  const activeAgenda = agendas.find((ag: any) => ag.status === 'IN_PROGRESS');
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col overflow-hidden font-sans select-none transition-colors duration-300">
@@ -587,18 +598,42 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
                   Tahapan Agenda Sidang RAT
                 </h3>
               </div>
-              <Badge variant="outline" className="text-[10px] font-bold">
-                {isQuorumReached ? 'Sidang Siap Dimulai' : 'Tahap Registrasi'}
+              <Badge variant={activeAgenda ? 'primary' : 'outline'} className="text-[10px] font-bold">
+                {activeAgenda ? 'Sedang Berlangsung' : isQuorumReached ? 'Sidang Siap Dimulai' : 'Tahap Registrasi'}
               </Badge>
             </div>
 
-            <div className="space-y-2 pt-3">
-              {agendas.slice(0, 4).map((ag, idx) => (
+            {/* LIVE ACTIVE AGENDA HIGHLIGHT BANNER */}
+            {activeAgenda && (
+              <div className="mt-3 p-3.5 rounded-2xl bg-indigo-600 dark:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 border border-indigo-400">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-[10px] font-black tracking-wider uppercase bg-white/20 px-2.5 py-0.5 rounded-full flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    Sedang Berlangsung di Panggung
+                  </span>
+                  <span className="text-[10px] font-bold text-indigo-100">
+                    Acara Ke-{(agendas.findIndex((a: any) => a.id === activeAgenda.id) + 1)}
+                  </span>
+                </div>
+                <h4 className="font-black text-sm sm:text-base leading-snug">
+                  {activeAgenda.title}
+                </h4>
+                {(activeAgenda.durationMinutes || activeAgenda.durationMin) && (
+                  <div className="text-[11px] text-indigo-200 mt-1 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>Alokasi Waktu: {activeAgenda.durationMinutes || activeAgenda.durationMin} menit</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2 pt-3 max-h-48 overflow-y-auto pr-1">
+              {agendas.map((ag: any, idx: number) => (
                 <div
                   key={ag.id || idx}
                   className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
                     ag.status === 'IN_PROGRESS'
-                      ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm'
+                      ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm ring-1 ring-indigo-400'
                       : ag.status === 'COMPLETED'
                       ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/50 text-slate-700 dark:text-slate-300'
                       : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400'

@@ -100,7 +100,7 @@ export class RatService {
       orderIndex: ag.order,
       durationMinutes: ag.durationMin,
       description: ag.presenter ? `Penyaji / Narasumber: ${ag.presenter}` : undefined,
-      status: ag.isCompleted ? 'COMPLETED' : 'PENDING',
+      status: ag.status || (ag.isCompleted ? 'COMPLETED' : 'PENDING'),
     }));
 
     const mappedResolutions = (meeting.resolutions || []).map((res: any) => ({
@@ -824,6 +824,7 @@ export class RatService {
         presenter: data.presenter || null,
         durationMin: Number(data.durationMin || data.durationMinutes || 30),
         isCompleted: false,
+        status: data.status || 'PENDING',
       },
     });
   }
@@ -843,11 +844,26 @@ export class RatService {
     if (!agenda) throw new Error('Butir acara agenda tidak ditemukan.');
 
     let isCompleted = agenda.isCompleted;
-    if (data.isCompleted !== undefined) {
-      isCompleted = Boolean(data.isCompleted);
-    } else if (data.status === 'COMPLETED') {
+    let newStatus = (agenda as any).status || (agenda.isCompleted ? 'COMPLETED' : 'PENDING');
+
+    if (data.status === 'IN_PROGRESS') {
+      newStatus = 'IN_PROGRESS';
+      isCompleted = false;
+
+      // Alihkan butir agenda lain dalam sidang ini yang tadinya IN_PROGRESS kembali ke PENDING
+      await prisma.coopMeetingAgenda.updateMany({
+        where: {
+          meetingId,
+          id: { not: agendaId },
+          status: 'IN_PROGRESS',
+        },
+        data: { status: 'PENDING' },
+      });
+    } else if (data.status === 'COMPLETED' || data.isCompleted === true) {
+      newStatus = 'COMPLETED';
       isCompleted = true;
-    } else if (data.status === 'PENDING' || data.status === 'IN_PROGRESS') {
+    } else if (data.status === 'PENDING' || data.isCompleted === false) {
+      newStatus = 'PENDING';
       isCompleted = false;
     }
 
@@ -859,6 +875,7 @@ export class RatService {
         durationMin: data.durationMin !== undefined ? Number(data.durationMin) : (data.durationMinutes !== undefined ? Number(data.durationMinutes) : agenda.durationMin),
         order: data.order !== undefined ? Number(data.order) : agenda.order,
         isCompleted,
+        status: newStatus,
       },
     });
   }
@@ -913,6 +930,7 @@ export class RatService {
         presenter: p.presenter,
         durationMin: p.durationMin,
         isCompleted: false,
+        status: 'PENDING',
       })),
     });
 
