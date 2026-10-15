@@ -159,6 +159,9 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
   const hasAttended = Boolean(myAttendance?.hasAttended);
   const isMeetingOpenForCheckIn = meeting.status === 'REGISTRATION_OPEN' || meeting.status === 'IN_SESSION';
 
+  const displayName = user?.name || user?.full_name || 'Anggota Koperasi';
+  const roleName = typeof user?.role === 'object' && user?.role !== null ? user.role.name : (typeof user?.role === 'string' ? user.role : 'Peserta RAT');
+
   return (
     <div className="space-y-5 max-w-full min-w-0">
       {/* 1. OPERATOR PREVIEW BAR (IF LOGGED IN AS OPERATOR/ADMIN) */}
@@ -196,15 +199,15 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
       <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800 flex items-center justify-center font-black text-lg shrink-0 shadow-inner">
-            {user?.name?.charAt(0) || 'A'}
+            {displayName.charAt(0) || 'A'}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-base sm:text-lg font-black text-slate-900 dark:text-white truncate">
-                {user?.name || 'Anggota Koperasi'}
+                {displayName}
               </h2>
               <Badge variant="primary" className="text-[10px] uppercase font-bold">
-                {user?.role || 'Peserta RAT'}
+                {roleName}
               </Badge>
               {hasAttended && (
                 <Badge variant="success" className="text-[10px] gap-1 font-bold">
