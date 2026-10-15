@@ -126,7 +126,7 @@ export interface CoopAttendanceItem {
 const RatMeetingPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const { subscription } = useAuthStore();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
   const isMobile = useIsMobile();
   const { can, isAdmin, isKoperasiHead, isKoperasiSecretary } = useCapabilities();
 
