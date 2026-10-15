@@ -1,24 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { z } from 'zod';
 import api from '../../lib/axiosInstance';
-import { Button, SectionCard, Badge, Input, SearchableSelect } from '../../components/ui';
+import { Button, SearchableSelect } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
-import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { NonMemberBanner } from '../../components/cooperative/shared/NonMemberBanner';
-import { Table, type Column } from '../../components/ui/Table';
 import { 
   Users, 
   Vote, 
-  CheckCircle2, 
-  Clock, 
   FileCheck2, 
   Plus, 
   Calendar,
   Tv,
-  ChevronDown 
+  Eye,
+  Settings
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -31,14 +27,11 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { RatAgendaSection } from '../../components/cooperative/rat/RatAgendaSection';
 import { RatVotingSection } from '../../components/cooperative/rat/RatVotingSection';
 import { RatQuorumHud } from '../../components/cooperative/rat/RatQuorumHud';
-import { RatAttendanceTerminal } from '../../components/cooperative/rat/RatAttendanceTerminal';
+import { RatAttendanceSection } from '../../components/cooperative/rat/RatAttendanceSection';
 import { RatLiveVotingBanner } from '../../components/cooperative/rat/RatLiveVotingBanner';
+import { RatMemberPortal } from '../../components/cooperative/rat/RatMemberPortal';
 
 const hardeningModuleKey = 'coop_rat';
-
-const ratFilterSchema = z.object({
-  search: z.string().optional(),
-});
 
 // ─── LAZY LOADED HEAVY COMPONENTS ──────────────────────────────────────────
 const CreateMeetingModal = lazy(() =>
@@ -154,11 +147,10 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
   const [activeTab, setActiveTab] = useState<string>(tabParam);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
-  const [attendanceSearch, setAttendanceSearch] = useState<string>('');
-  const [attendancePage, setAttendancePage] = useState<number>(1);
-  const [attendanceLimit, setAttendanceLimit] = useState<number>(10);
-  const [attendanceSortKey, setAttendanceSortKey] = useState<string>('checkInTime');
-  const [attendanceSortDirection, setAttendanceSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // View mode switcher: allow operators to toggle between administrative console and member live stage portal
+  const [operatorViewOverride, setOperatorViewOverride] = useState<'OPERATOR' | 'MEMBER' | null>(null);
+  const effectiveViewMode = operatorViewOverride ?? (canManage ? 'OPERATOR' : 'MEMBER');
 
   // Modal states
   const [isCreateMeetingOpen, setIsCreateMeetingOpen] = useState(false);
@@ -387,106 +379,6 @@ const RatMeetingPage: React.FC = React.memo(() => {
     { id: 'voting', label: 'e-Voting (One Member One Vote)', icon: Vote },
   ], []);
 
-  // Filtered & Paginated Attendance
-  const rawAttendances = useMemo(() => currentMeeting?.attendances || [], [currentMeeting?.attendances]);
-
-  const handleSearchChange = useCallback((val: string) => {
-    const parsed = ratFilterSchema.safeParse({ search: val });
-    setAttendanceSearch(parsed.success ? parsed.data.search || '' : '');
-    setAttendancePage(1);
-  }, []);
-
-  const filteredAttendances = useMemo(() => {
-    const searchLower = attendanceSearch.toLowerCase().trim();
-    const list = (rawAttendances || []).filter(att => {
-      const name = att.Member?.name?.toLowerCase() || '';
-      const no = att.Member?.memberNo?.toLowerCase() || '';
-      return name.includes(searchLower) || no.includes(searchLower);
-    });
-
-    list.sort((a, b) => {
-      let valA: string | number = a.checkInTime;
-      let valB: string | number = b.checkInTime;
-      if (attendanceSortKey === 'name') {
-        valA = a.Member?.name || '';
-        valB = b.Member?.name || '';
-      } else if (attendanceSortKey === 'memberNo') {
-        valA = a.Member?.memberNo || '';
-        valB = b.Member?.memberNo || '';
-      }
-      if (valA < valB) return attendanceSortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return attendanceSortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
-    return list;
-  }, [rawAttendances, attendanceSearch, attendanceSortKey, attendanceSortDirection]);
-
-  const paginatedAttendances = useMemo(() => {
-    const start = (attendancePage - 1) * attendanceLimit;
-    return (filteredAttendances || []).slice(start, start + attendanceLimit);
-  }, [filteredAttendances, attendancePage, attendanceLimit]);
-
-  const attendanceTotalPages = useMemo(() => {
-    return Math.max(1, Math.ceil((filteredAttendances?.length || 0) / attendanceLimit));
-  }, [filteredAttendances?.length, attendanceLimit]);
-
-  // Attendance Columns
-  const attendanceColumns: Column<CoopAttendanceItem>[] = useMemo(() => [
-    {
-      header: 'No. Anggota',
-      accessor: (item) => item.Member?.memberNo || '-',
-      sortable: true,
-      sortKey: 'memberNo',
-    },
-    {
-      header: 'Nama Peserta Rapat',
-      accessor: (item) => (
-        <div>
-          <p className="font-semibold text-slate-800 dark:text-slate-100">{item.Member?.name || 'Anggota Koperasi'}</p>
-        </div>
-      ),
-      sortable: true,
-      sortKey: 'name',
-    },
-    {
-      header: 'Waktu Presensi',
-      accessor: (item) => formatDate(item.checkInTime, 'dd/MM/yyyy HH:mm'),
-      sortable: true,
-      sortKey: 'checkInTime',
-    },
-    {
-      header: 'Metode',
-      accessor: (item) => (
-        <Badge variant={item.method === 'RFID' ? 'primary' : item.method === 'ONLINE' ? 'success' : 'default'}>
-          {item.method}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Status Kuorum',
-      accessor: (item) => (
-        <Badge variant={item.isQuorumCounted ? 'success' : 'warning'}>
-          {item.isQuorumCounted ? 'Sah Menghitung' : 'Tinjauan'}
-        </Badge>
-      ),
-    },
-  ], []);
-
-  const handleAttendanceSort = useCallback((key: string, direction: 'asc' | 'desc') => {
-    setAttendanceSortKey(key);
-    setAttendanceSortDirection(direction);
-  }, []);
-
-  const handleAttendancePageChange = useCallback((page: number) => {
-    setAttendancePage(page);
-  }, []);
-
-  const handleAttendanceLimitChange = useCallback((limit: number) => {
-    setAttendanceLimit(limit);
-    setAttendancePage(1);
-  }, []);
-
   const handleSelectVoteSession = useCallback((session: CoopVotingSessionItem) => {
     setActiveVotingSession(session);
     setIsCastVoteOpen(true);
@@ -547,6 +439,28 @@ const RatMeetingPage: React.FC = React.memo(() => {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {canManage && (
+                <Button
+                  type="button"
+                  size="toolbar"
+                  variant={effectiveViewMode === 'MEMBER' ? 'toolbarPrimary' : 'toolbarOutline'}
+                  onClick={() => setOperatorViewOverride(effectiveViewMode === 'MEMBER' ? 'OPERATOR' : 'MEMBER')}
+                  className="gap-1.5"
+                >
+                  {effectiveViewMode === 'MEMBER' ? (
+                    <>
+                      <Settings className="w-4 h-4" />
+                      <span>Konsol Pengurus</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4 text-amber-500" />
+                      <span>Pratinjau Anggota</span>
+                    </>
+                  )}
+                </Button>
+              )}
+
               {currentMeeting && (
                 <Button
                   type="button"
@@ -575,118 +489,106 @@ const RatMeetingPage: React.FC = React.memo(() => {
             </div>
           </div>
 
-          {/* QUORUM HUD & STATUS CARDS */}
-          {currentMeeting && (
-            <RatQuorumHud
-              currentMeeting={currentMeeting}
-              quorumData={quorumData}
-              isLoading={isLoading}
-              myAttendance={myAttendance}
-              canManage={canManage}
-              onSelfCheckIn={handleSelfCheckIn}
-              isCheckingIn={checkInMutation.isPending}
-              onLifecycleAdvance={handleLifecycleAdvance}
-              isAdvancingLifecycle={lifecycleMutation.isPending}
-            />
-          )}
+          {/* CONDITIONAL CONTEXT VIEW: MEMBER LIVE STAGE vs OPERATOR MANAGEMENT CONSOLE */}
+          {effectiveViewMode === 'MEMBER' ? (
+            currentMeeting && (
+              <RatMemberPortal
+                meeting={currentMeeting}
+                quorumStats={quorumData}
+                myAttendance={myAttendance}
+                onSelfCheckIn={handleSelfCheckIn}
+                isCheckingIn={checkInMutation.isPending}
+                onOpenCastVote={handleSelectVoteSession}
+                isMember={isMember}
+                canManage={canManage}
+                onSwitchToOperatorView={() => setOperatorViewOverride('OPERATOR')}
+              />
+            )
+          ) : (
+            <>
+              {/* QUORUM HUD & STATUS CARDS */}
+              {currentMeeting && (
+                <RatQuorumHud
+                  currentMeeting={currentMeeting}
+                  quorumData={quorumData}
+                  isLoading={isLoading}
+                  myAttendance={myAttendance}
+                  canManage={canManage}
+                  onSelfCheckIn={handleSelfCheckIn}
+                  isCheckingIn={checkInMutation.isPending}
+                  onLifecycleAdvance={handleLifecycleAdvance}
+                  isAdvancingLifecycle={lifecycleMutation.isPending}
+                />
+              )}
 
-          {/* LIVE VOTING BANNER FOR MEMBERS */}
-          {currentMeeting?.votingSessions?.some(s => s.status === 'ACTIVE') && (
-            <RatLiveVotingBanner
-              session={currentMeeting.votingSessions.find(s => s.status === 'ACTIVE') || null}
-              canVote={canVote}
-              onCastVote={(session) => {
-                setActiveVotingSession(session);
-                setIsCastVoteOpen(true);
-              }}
-              onViewVotingTab={() => handleTabChange('voting')}
-            />
-          )}
+              {/* LIVE VOTING BANNER FOR MEMBERS */}
+              {currentMeeting?.votingSessions?.some(s => s.status === 'ACTIVE') && (
+                <RatLiveVotingBanner
+                  session={currentMeeting.votingSessions.find(s => s.status === 'ACTIVE') || null}
+                  canVote={canVote}
+                  onCastVote={(session) => {
+                    setActiveVotingSession(session);
+                    setIsCastVoteOpen(true);
+                  }}
+                  onViewVotingTab={() => handleTabChange('voting')}
+                />
+              )}
 
-          {/* TABS NAVIGATION */}
-          <TabSwitcher
-            options={tabOptions}
-            value={activeTab}
-            onChange={handleTabChange}
-          />
+              {/* TABS NAVIGATION */}
+              <TabSwitcher
+                options={tabOptions}
+                value={activeTab}
+                onChange={handleTabChange}
+              />
 
-          {/* TAB 1: AGENDA & RESOLUTIONS */}
-          {activeTab === 'agenda' && (
-            <RatAgendaSection
-              meetingId={selectedMeetingId}
-              agendas={currentMeeting?.agendas || []}
-              resolutions={currentMeeting?.resolutions || []}
-              votingSessions={currentMeeting?.votingSessions || []}
-              canManage={canManage}
-              meetingDescription={currentMeeting?.description}
-              onOpenAddAgenda={() => { setEditingAgenda(null); setIsAddAgendaOpen(true); }}
-              onEditAgenda={(agenda) => { setEditingAgenda(agenda); setIsAddAgendaOpen(true); }}
-              onOpenAddResolution={() => { setEditingResolution(null); setIsAddResolutionOpen(true); }}
-              onEditResolution={(res) => { setEditingResolution(res); setIsAddResolutionOpen(true); }}
-              onOpenEditRules={() => setIsEditRulesOpen(true)}
-              onOpenCreateVoting={(agenda) => { setVotingAgendaContext(agenda); setIsCreateVotingSessionOpen(true); }}
-              onOpenCastVote={(session) => { setActiveVotingSession(session); setIsCastVoteOpen(true); }}
-              meetingLocation={(currentMeeting as any)?.location}
-              meetingDate={(currentMeeting as any)?.meetingDate || (currentMeeting as any)?.date}
-            />
-          )}
-
-          {/* TAB 2: ATTENDANCE */}
-          {activeTab === 'attendance' && (
-            <div className="space-y-4">
-              {canManage && selectedMeetingId && currentMeeting && (
-                <RatAttendanceTerminal
+              {/* TAB 1: AGENDA & RESOLUTIONS */}
+              {activeTab === 'agenda' && (
+                <RatAgendaSection
                   meetingId={selectedMeetingId}
-                  meetingStatus={currentMeeting.status}
+                  agendas={currentMeeting?.agendas || []}
+                  resolutions={currentMeeting?.resolutions || []}
+                  votingSessions={currentMeeting?.votingSessions || []}
+                  canManage={canManage}
+                  meetingDescription={currentMeeting?.description}
+                  onOpenAddAgenda={() => { setEditingAgenda(null); setIsAddAgendaOpen(true); }}
+                  onEditAgenda={(agenda) => { setEditingAgenda(agenda); setIsAddAgendaOpen(true); }}
+                  onOpenAddResolution={() => { setEditingResolution(null); setIsAddResolutionOpen(true); }}
+                  onEditResolution={(res) => { setEditingResolution(res); setIsAddResolutionOpen(true); }}
+                  onOpenEditRules={() => setIsEditRulesOpen(true)}
+                  onOpenCreateVoting={(agenda) => { setVotingAgendaContext(agenda); setIsCreateVotingSessionOpen(true); }}
+                  onOpenCastVote={(session) => { setActiveVotingSession(session); setIsCastVoteOpen(true); }}
+                  meetingLocation={(currentMeeting as any)?.location}
+                  meetingDate={(currentMeeting as any)?.meetingDate || (currentMeeting as any)?.date}
+                />
+              )}
+
+              {/* TAB 2: ATTENDANCE */}
+              {activeTab === 'attendance' && (
+                <RatAttendanceSection
+                  meetingId={selectedMeetingId}
+                  meetingStatus={currentMeeting?.status || 'DRAFT'}
+                  attendances={currentMeeting?.attendances || []}
                   quorumStats={quorumData}
+                  canManage={canManage}
                   onAttendanceRecorded={() => {
                     invalidateRatCaches(queryClient, selectedMeetingId);
                   }}
                 />
               )}
 
-              <SectionCard title="Daftar Hadir Resmi Peserta Sidang RAT">
-                <Table
-                  columns={attendanceColumns}
-                  data={paginatedAttendances}
-                  toolbarLeft={
-                    <div className="flex items-center gap-2 w-full max-w-xs">
-                      <Input
-                        aria-label="Cari Peserta"
-                        placeholder="Cari nama atau no anggota..."
-                        value={attendanceSearch}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        className="w-full text-xs"
-                      />
-                    </div>
-                  }
-                  pagination={{
-                    currentPage: attendancePage,
-                    totalPages: attendanceTotalPages,
-                    totalItems: filteredAttendances?.length || 0,
-                    onPageChange: handleAttendancePageChange,
-                    onLimitChange: handleAttendanceLimitChange,
-                  }}
-                  onSort={handleAttendanceSort}
-                  sortKey={attendanceSortKey}
-                  sortDirection={attendanceSortDirection}
-                  emptyMessage="Tidak ada data presensi yang ditemukan."
+              {/* TAB 3: E-VOTING */}
+              {activeTab === 'voting' && (
+                <RatVotingSection
+                  votingSessions={currentMeeting?.votingSessions || []}
+                  canManage={canManage}
+                  canVote={canVote}
+                  onOpenCreateSession={() => setIsCreateVotingSessionOpen(true)}
+                  onSelectVoteSession={handleSelectVoteSession}
+                  onUpdateSessionStatus={handleVotingStatusChange}
+                  isUpdatingStatus={votingStatusMutation.isPending}
                 />
-              </SectionCard>
-            </div>
-          )}
-
-          {/* TAB 3: E-VOTING */}
-          {activeTab === 'voting' && (
-            <RatVotingSection
-              votingSessions={currentMeeting?.votingSessions || []}
-              canManage={canManage}
-              canVote={canVote}
-              onOpenCreateSession={() => setIsCreateVotingSessionOpen(true)}
-              onSelectVoteSession={handleSelectVoteSession}
-              onUpdateSessionStatus={handleVotingStatusChange}
-              isUpdatingStatus={votingStatusMutation.isPending}
-            />
+              )}
+            </>
           )}
         </div>
 
