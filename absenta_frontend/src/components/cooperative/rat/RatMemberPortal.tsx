@@ -21,7 +21,7 @@ import type {
   CoopAttendanceItem
 } from '../../../pages/cooperative/RatMeetingPage';
 import { RatTvQuorumStage, type LocalAttendee } from './RatTvQuorumStage';
-import { RatTvVotingStage } from './RatTvVotingStage';
+import { RatMemberVotingPanel } from './RatMemberVotingPanel';
 import { RatTvResolutionStage } from './RatTvResolutionStage';
 import { RatRulesTabContent } from './RatRulesTabContent';
 
@@ -390,9 +390,15 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
         )}
 
         {activeStage === 'voting' && (
-          <RatTvVotingStage
-            session={activeVotingSession as any}
+          <RatMemberVotingPanel
+            session={activeVotingSession as any || (meeting.votingSessions?.find(s => s.status === 'CLOSED' || s.status === 'TALLIED') as any || null)}
+            hasVoted={hasVoted}
+            hasAttended={hasAttended}
             totalPresentMembers={actualAttended}
+            meetingId={meeting.id}
+            onVoteSuccess={() => {
+              // invalidation handled inside panel's mutationFn
+            }}
           />
         )}
 
