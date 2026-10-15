@@ -13,6 +13,8 @@ import {
   ListOrdered,
   Printer,
   Calendar,
+  Scale,
+  FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
@@ -22,6 +24,39 @@ import useConfirm from '../../../hooks/useConfirm';
 import type { CoopAgendaItem, CoopResolutionItem } from '../../../pages/cooperative/RatMeetingPage';
 import { RatRulesTabContent } from './RatRulesTabContent';
 import { RatResolutionsCard } from './RatResolutionsCard';
+
+/**
+ * Memeriksa apakah butir agenda merupakan agenda statuter yuridis
+ * yang wajib menghasilkan Surat Ketetapan (TAP RAT) menurut UU No. 25/1992
+ */
+export function isStatutoryTapAgenda(title: string): boolean {
+  if (!title) return false;
+  const lower = title.toLowerCase();
+  const tapKeywords = [
+    'tata tertib',
+    'tatib',
+    'lpj',
+    'pertanggungjawaban',
+    'lhp',
+    'pengawas',
+    'pengawasan',
+    'shu',
+    'sisa hasil usaha',
+    'rencana kerja',
+    'rapbk',
+    'rk & rapbk',
+    'rk dan rapbk',
+    'pemilihan',
+    'formatur',
+    'penetapan pengurus',
+    'penetapan pengawas',
+    'anggaran dasar',
+    'ad/art',
+    'ad-art',
+    'ketetapan',
+  ];
+  return tapKeywords.some((kw) => lower.includes(kw));
+}
 
 interface RatAgendaSectionProps {
   meetingId: string;
@@ -157,19 +192,38 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
   const handleCompleteAgenda = async (agenda: CoopAgendaItem) => {
     await updateAgendaStatusMutation.mutateAsync({ agendaId: agenda.id, status: 'COMPLETED' });
 
-    // Tanya operator apakah ingin langsung membuatkan draf TAP RAT otomatis
-    const shouldDraft = await confirm({
-      title: 'Terbitkan Draf TAP RAT Otomatis?',
-      message: `Agenda "${agenda.title}" telah diselesaikan. Apakah Anda ingin sistem langsung menerbitkan Draf Surat Ketetapan Resmi (TAP RAT) yang menginjeksi kuorum kehadiran sah dan hasil voting sidang?`,
-      confirmText: 'Ya, Terbitkan Draf TAP RAT',
-      cancelText: 'Hanya Selesaikan Agenda',
-      style: 'primary',
-      type: 'primary',
-      variant: 'primary',
-    });
+    const isTapRequired = isStatutoryTapAgenda(agenda.title);
 
-    if (shouldDraft) {
-      generateResolutionMutation.mutate(agenda.id);
+    if (isTapRequired) {
+      // Agenda yuridis yang menghasilkan ketetapan sidang
+      const shouldDraft = await confirm({
+        title: 'Terbitkan Ketetapan Resmi (TAP RAT)?',
+        message: `Agenda "${agenda.title}" merupakan butir acara yuridis statuter (UU No. 25/1992). Sistem dapat langsung menerbitkan naskah SK TAP RAT resmi lengkap dengan kuorum kehadiran dan hasil voting.`,
+        confirmText: 'Ya, Terbitkan Draf TAP RAT',
+        cancelText: 'Hanya Selesaikan Agenda',
+        style: 'primary',
+        type: 'primary',
+        variant: 'primary',
+      });
+
+      if (shouldDraft) {
+        generateResolutionMutation.mutate(agenda.id);
+      }
+    } else {
+      // Agenda protokoler/diskusi (umumnya cukup notulensi)
+      const shouldDraft = await confirm({
+        title: 'Butir Acara Selesai',
+        message: `Agenda "${agenda.title}" adalah tahapan protokoler/dinamika forum yang umumnya dicatat dalam Berita Acara & Notulensi Sidang (tanpa SK mandiri). Apakah ada ketetapan khusus yang ingin diterbitkan?`,
+        confirmText: 'Terbitkan TAP Khusus',
+        cancelText: 'Selesai (Cukup Notulensi)',
+        style: 'info',
+        type: 'info',
+        variant: 'info',
+      });
+
+      if (shouldDraft) {
+        generateResolutionMutation.mutate(agenda.id);
+      }
     }
   };
 
@@ -323,7 +377,25 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                        <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                          {isStatutoryTapAgenda(agenda.title) ? (
+                            <span
+                              className="inline-flex items-center gap-1 font-semibold text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60"
+                              title="Agenda yuridis yang menghasilkan Surat Ketetapan Resmi (TAP RAT)"
+                            >
+                              <Scale className="w-3 h-3 text-indigo-500" />
+                              Wajib TAP RAT
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700/60"
+                              title="Agenda protokoler/diskusi dicatat dalam Berita Acara & Notulensi"
+                            >
+                              <FileText className="w-3 h-3 text-slate-400" />
+                              Notulensi Sidang
+                            </span>
+                          )}
+
                           {agenda.presenter && (
                             <span className="flex items-center gap-1 text-slate-600 dark:text-slate-300">
                               <span className="text-[11px] font-medium text-slate-400">Pembicara:</span> {agenda.presenter}
