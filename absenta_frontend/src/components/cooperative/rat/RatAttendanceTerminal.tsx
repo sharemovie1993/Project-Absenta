@@ -330,42 +330,6 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
               </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-auto">
-            {/* Audio Toggle */}
-            <Button
-              type="button"
-              size="toolbar"
-              variant={soundEnabled ? 'toolbarPrimary' : 'toolbarOutline'}
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              title={soundEnabled ? 'Suara scanner aktif' : 'Suara scanner bisu'}
-              className="text-xs"
-            >
-              {soundEnabled ? (
-                <>
-                  <Volume2 className="w-3.5 h-3.5 mr-1 text-emerald-400" />
-                  Audio ON
-                </>
-              ) : (
-                <>
-                  <VolumeX className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                  Audio Mute
-                </>
-              )}
-            </Button>
-
-            {/* Quorum Counter Pill */}
-            {quorumStats && (
-              <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300">
-                Tercatat:{' '}
-                <span className="text-indigo-600 dark:text-indigo-400">
-                  {quorumStats.actualAttendance}
-                </span>{' '}
-                /{' '}
-                <span>{quorumStats.quorumTarget}</span>
-              </div>
-            )}
-          </div>
         </div>
       }
       className="border-indigo-200 dark:border-indigo-900/50 shadow-sm"
