@@ -106,30 +106,21 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
     }));
   });
 
-  // Sync when meeting.attendances changes
+  // Sync when meeting changes
   useEffect(() => {
-    if (meeting.attendances && meeting.attendances.length > 0) {
-      setAttendeesList(
-        meeting.attendances.map((att: any) => ({
-          id: att.id || Math.random().toString(),
-          name: extractName(att),
-          memberNo: extractMemberNo(att),
-          type: att.Member?.type || 'ANGGOTA',
-          time: extractTime(att),
-          method: att.method || 'RFID',
-        }))
-      );
-    }
-  }, [meeting.attendances]);
-
-  // Live agendas state for projector screen
-  const [tvAgendas, setTvAgendas] = useState<any[]>(meeting.agendas || []);
-
-  useEffect(() => {
-    if (meeting.agendas) {
-      setTvAgendas(meeting.agendas);
-    }
-  }, [meeting.agendas]);
+    setAttendeesList(
+      (meeting.attendances || []).map((att: any) => ({
+        id: att.id || Math.random().toString(),
+        name: extractName(att),
+        memberNo: extractMemberNo(att),
+        type: att.Member?.type || 'ANGGOTA',
+        time: extractTime(att),
+        method: att.method || 'RFID',
+      }))
+    );
+    setTvAgendas(meeting.agendas || []);
+    setNewArrival(null);
+  }, [meeting.id, meeting.attendances, meeting.agendas]);
 
   const { subscribe, unsubscribe } = useSocket();
 
@@ -252,17 +243,8 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
   const clampedPercentage = Math.min(100, Math.max(0, percentage));
   const strokeDashoffset = circumference - (clampedPercentage / 100) * circumference;
 
-  // Statutory Agenda Tracker items
-  const agendas = (tvAgendas && tvAgendas.length > 0)
-    ? tvAgendas
-    : [
-        { id: '1', title: 'Registrasi & Presensi Fisik Anggota', status: isQuorumReached ? 'COMPLETED' : 'IN_PROGRESS', duration: '30m' },
-        { id: '2', title: 'Pembukaan Sidang & Pengesahan Tata Tertib', status: isQuorumReached ? 'IN_PROGRESS' : 'PENDING', duration: '20m' },
-        { id: '3', title: 'Laporan Pertanggungjawaban (LPJ) Pengurus & Pengawas', status: 'PENDING', duration: '45m' },
-        { id: '4', title: 'Pandangan Umum & Tanggapan Anggota', status: 'PENDING', duration: '30m' },
-        { id: '5', title: 'Pengesahan Rencana Kerja & RAPBK Tahun Depan', status: 'PENDING', duration: '25m' },
-        { id: '6', title: 'Pemungutan Suara / Keputusan Formatur & Penutup', status: 'PENDING', duration: '20m' },
-      ];
+  // Real statutory agendas strictly isolated to this specific meeting
+  const agendas = tvAgendas || [];
 
   const activeAgenda = agendas.find((ag: any) => ag.status === 'IN_PROGRESS');
 
@@ -627,49 +609,63 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
               </div>
             )}
 
-            <div className="space-y-2 pt-3 max-h-48 overflow-y-auto pr-1">
-              {agendas.map((ag: any, idx: number) => (
-                <div
-                  key={ag.id || idx}
-                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
-                    ag.status === 'IN_PROGRESS'
-                      ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm ring-1 ring-indigo-400'
-                      : ag.status === 'COMPLETED'
-                      ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/50 text-slate-700 dark:text-slate-300'
-                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                        ag.status === 'COMPLETED'
-                          ? 'bg-emerald-500 text-white'
-                          : ag.status === 'IN_PROGRESS'
-                          ? 'bg-indigo-600 text-white animate-pulse'
-                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      {ag.status === 'COMPLETED' ? '✓' : idx + 1}
-                    </span>
-                    <span className="font-bold truncate text-slate-900 dark:text-white">
-                      {ag.title}
-                    </span>
-                  </div>
-
-                  <span
-                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shrink-0 ${
+            {agendas.length === 0 ? (
+              <div className="py-7 px-4 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 mt-3">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center">
+                  <ListOrdered className="w-5 h-5" />
+                </div>
+                <p className="font-bold text-xs text-slate-700 dark:text-slate-300">
+                  Belum Ada Susunan Acara
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                  Susunan acara untuk sidang {meeting.title} ({meeting.year}) belum diatur atau belum dimuat preset oleh panitia.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-3 max-h-48 overflow-y-auto pr-1">
+                {agendas.map((ag: any, idx: number) => (
+                  <div
+                    key={ag.id || idx}
+                    className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs transition-colors ${
                       ag.status === 'IN_PROGRESS'
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-indigo-50/90 dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-600/60 shadow-sm ring-1 ring-indigo-400'
                         : ag.status === 'COMPLETED'
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                        ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700/50 text-slate-700 dark:text-slate-300'
+                        : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/50 text-slate-500 dark:text-slate-400'
                     }`}
                   >
-                    {ag.status === 'IN_PROGRESS' ? 'AKTIF' : ag.status === 'COMPLETED' ? 'SELESAI' : 'NANTI'}
-                  </span>
-                </div>
-              ))}
-            </div>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                          ag.status === 'COMPLETED'
+                            ? 'bg-emerald-500 text-white'
+                            : ag.status === 'IN_PROGRESS'
+                            ? 'bg-indigo-600 text-white animate-pulse'
+                            : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {ag.status === 'COMPLETED' ? '✓' : idx + 1}
+                      </span>
+                      <span className="font-bold truncate text-slate-900 dark:text-white">
+                        {ag.title}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded shrink-0 ${
+                        ag.status === 'IN_PROGRESS'
+                          ? 'bg-indigo-600 text-white'
+                          : ag.status === 'COMPLETED'
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300'
+                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      {ag.status === 'IN_PROGRESS' ? 'AKTIF' : ag.status === 'COMPLETED' ? 'SELESAI' : 'NANTI'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* MODUL 2: LIVE STREAM PRESENSI PINTU MASUK (BALANCED HEIGHT) */}
