@@ -203,7 +203,11 @@ export const RatAttendanceTerminal: React.FC<RatAttendanceTerminalProps> = ({
         toast.success(`Berhasil Hadir: ${memberName} (${memberNo})`);
       }
 
-      onAttendanceRecorded?.();
+      try {
+        onAttendanceRecorded?.();
+      } catch (cbErr) {
+        console.error('Failed to trigger onAttendanceRecorded callback', cbErr);
+      }
 
       // Refresh search results if manual mode
       if (mode === 'MANUAL' && searchQuery.trim()) {

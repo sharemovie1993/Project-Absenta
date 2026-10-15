@@ -575,12 +575,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   meetingStatus={currentMeeting.status}
                   quorumStats={quorumData}
                   onAttendanceRecorded={() => {
-                    queryClient.invalidateQueries({
-                      queryKey: COOP_QUERY_KEYS.rat.detail(selectedMeetingId),
-                    });
-                    queryClient.invalidateQueries({
-                      queryKey: COOP_QUERY_KEYS.rat.quorum(selectedMeetingId),
-                    });
+                    invalidateRatCaches(queryClient, selectedMeetingId);
                   }}
                 />
               )}

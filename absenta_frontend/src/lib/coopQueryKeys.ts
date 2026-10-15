@@ -90,6 +90,13 @@ export const COOP_QUERY_KEYS = {
   ratQuorum: (id: string) => ['coop-rat-quorum', id] as const,
   ratMyAttendance: (id: string) => ['coop-rat-my-attendance', id] as const,
   ratVotingResults: (sessionId: string) => ['coop-rat-voting-results', sessionId] as const,
+  rat: {
+    meetings: (status = '', year = '') => ['coop-rat-meetings', status, year] as const,
+    detail: (id: string) => ['coop-rat-meeting-detail', id] as const,
+    quorum: (id: string) => ['coop-rat-quorum', id] as const,
+    myAttendance: (id: string) => ['coop-rat-my-attendance', id] as const,
+    votingResults: (sessionId: string) => ['coop-rat-voting-results', sessionId] as const,
+  },
 } as const;
 
 /**
