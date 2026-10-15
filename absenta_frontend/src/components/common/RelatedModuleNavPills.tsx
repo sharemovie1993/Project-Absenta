@@ -36,7 +36,8 @@ import {
   ShoppingCart,
   Zap,
   Bell,
-  MessageSquare
+  MessageSquare,
+  Vote
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -267,7 +268,8 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       (p.startsWith('/cooperative/shu') && !p.includes('/manage')) ||
       (p.startsWith('/cooperative/vouchers') && !p.includes('/manage')) ||
       (p.startsWith('/cooperative/announcements') && !p.includes('/manage')) ||
-      (p.startsWith('/cooperative/tickets') && !p.includes('/manage'))
+      (p.startsWith('/cooperative/tickets') && !p.includes('/manage')) ||
+      p.startsWith('/cooperative/rat')
     ),
     items: [
       { label: 'Tabungan Saya', shortLabel: 'Tabungan', path: '/cooperative/savings', icon: Wallet },
@@ -275,6 +277,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Katalog Belanja', shortLabel: 'Katalog', path: '/cooperative/pos?mode=catalog', icon: Package },
       { label: 'SHU Saya', shortLabel: 'SHU', path: '/cooperative/shu', icon: Award },
       { label: 'Poin & Benefit', shortLabel: 'Voucher', path: '/cooperative/vouchers', icon: Sparkles },
+      { label: 'Sidang RAT', shortLabel: 'RAT', path: '/cooperative/rat', icon: Vote },
       { label: 'Pengumuman', shortLabel: 'Pengumuman', path: '/cooperative/announcements', icon: Bell },
       { label: 'Aduan & Keluhan', shortLabel: 'Aduan', path: '/cooperative/tickets', icon: MessageSquare },
     ]
@@ -314,6 +317,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Kelola Anggota', shortLabel: 'Anggota', path: '/cooperative/members', icon: Users },
       { label: 'Input Simpanan', shortLabel: 'Simpanan', path: '/cooperative/savings/manage', icon: Wallet },
       { label: 'Approval Pinjam', shortLabel: 'Pinjaman', path: '/cooperative/loans/manage', icon: CheckCircle2 },
+      { label: 'Sidang RAT', shortLabel: 'RAT', path: '/cooperative/rat', icon: Vote },
       { label: 'PPOB Admin', shortLabel: 'PPOB', path: '/cooperative/ppob', icon: Zap },
       { label: 'Laporan Keuangan', shortLabel: 'Keuangan', path: '/cooperative/reports', icon: Activity },
       { label: 'Bagi Hasil SHU', shortLabel: 'SHU', path: '/cooperative/shu/manage', icon: Award },

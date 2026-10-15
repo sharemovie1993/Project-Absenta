@@ -180,6 +180,7 @@ const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
   { id: 'lon', title: 'Pinjaman Saya', path: '/cooperative/loans', icon: 'ArrowUpCircle' },
   { id: 'pos_cat', title: 'Katalog Belanja', path: '/cooperative/pos?mode=catalog', icon: 'Package' },
   { id: 'shu', title: 'SHU Saya', path: '/cooperative/shu', icon: 'Award' },
+  { id: 'rat_mbr', title: 'Sidang RAT & e-Voting', path: '/cooperative/rat', icon: 'Vote' },
   { id: 'vch', title: 'Poin & Benefit', path: '/cooperative/vouchers', icon: 'Sparkles' },
   { id: 'anc', title: 'Pengumuman', path: '/cooperative/announcements', icon: 'Bell' },
   { id: 'tck', title: 'Aduan & Keluhan', path: '/cooperative/tickets', icon: 'MessageSquare' },
@@ -189,8 +190,9 @@ const DEFAULT_COOPERATIVE_PRIMARY: FlatMenuItem[] = [
   { id: 'vch_mng', title: 'Voucher & Promo', path: '/cooperative/vouchers/manage', icon: 'Sparkles' },
   { id: 'inv_rep', title: 'Laporan Stok', path: '/cooperative/inventory-report', icon: 'Printer' },
   { id: 'sup', title: 'Supplier', path: '/cooperative/suppliers', icon: 'Building2' },
-  // 💼 Manajemen Pengurus (8 menu)
+  // 💼 Manajemen Pengurus (9 menu)
   { id: 'mbr', title: 'Kelola Anggota', path: '/cooperative/members', icon: 'Users' },
+  { id: 'rat_mng', title: 'Kelola Sidang RAT', path: '/cooperative/rat', icon: 'Vote' },
   { id: 'svg_mng', title: 'Input Simpanan', path: '/cooperative/savings/manage', icon: 'Wallet' },
   { id: 'lon_mng', title: 'Approval Pinjam', path: '/cooperative/loans/manage', icon: 'CheckCircle2' },
   { id: 'ppb', title: 'PPOB Admin', path: '/cooperative/ppob', icon: 'Zap' },

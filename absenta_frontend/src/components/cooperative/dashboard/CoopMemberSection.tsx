@@ -10,7 +10,9 @@ import {
   Copy, 
   Clock, 
   ShoppingBag,
-  ExternalLink 
+  ExternalLink,
+  Vote,
+  ArrowRight
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -137,6 +139,14 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                   <span>Detail SHU Saya</span>
                   <ExternalLink size={12} />
                 </Link>
+                <Link 
+                  to="/cooperative/rat" 
+                  className="text-xs font-bold text-purple-600 hover:text-purple-700 bg-purple-50 dark:bg-purple-950/30 px-3 py-1.5 rounded-xl transition-colors inline-flex items-center gap-1"
+                >
+                  <Vote size={12} className="text-purple-500" />
+                  <span>Sidang RAT & e-Voting</span>
+                  <ExternalLink size={12} />
+                </Link>
               </div>
             </div>
           </div>
@@ -160,6 +170,36 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
               <span className="text-[10px] text-slate-400 uppercase font-black tracking-wider block">Keanggotaan Absenta</span>
               <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Terverifikasi</span>
             </div>
+          </div>
+
+          {/* ── BANNER KEDAULATAN RAT & E-VOTING ANGGOTA ── */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-800 via-indigo-800 to-indigo-900 text-white shadow-md border border-purple-400/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
+                <Vote className="w-6 h-6 text-purple-200" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-500/40 text-purple-200 border border-purple-400/30">
+                    Kedaulatan Anggota
+                  </span>
+                  <span className="text-[11px] text-purple-200 font-medium">Asas One Member One Vote</span>
+                </div>
+                <h4 className="font-bold text-sm sm:text-base text-white">
+                  Rapat Anggota Tahunan (RAT) & Bilik Suara Digital
+                </h4>
+                <p className="text-xs text-purple-200/90 max-w-xl">
+                  Gunakan hak bicara, pantau kuorum sidang sah, dan salurkan hak suara e-Voting Anda dalam musyawarah tertinggi koperasi.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/cooperative/rat"
+              className="px-4 py-2.5 rounded-xl bg-white text-indigo-950 hover:bg-purple-50 font-bold text-xs shadow-sm inline-flex items-center justify-center gap-2 shrink-0 transition-all hover:scale-[1.02] active:scale-95"
+            >
+              <span>Masuk Sidang RAT</span>
+              <ArrowRight className="w-4 h-4 text-indigo-600" />
+            </Link>
           </div>
         </div>
       )}

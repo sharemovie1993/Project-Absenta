@@ -209,6 +209,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/profile',
       '/cooperative/store',
       '/cooperative/savings',
+      '/cooperative/rat',
       '/sarpras/loans',
       '/hubin/absensi'
     ]
@@ -227,6 +228,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
     crossModulePaths: [
       '/kesiswaan/pelanggaran',
       '/cooperative/savings',
+      '/cooperative/rat',
       '/sarpras/loans',
       '/bpbk/rujukan',
       '/kesiswaan/jadwal-kegiatan',

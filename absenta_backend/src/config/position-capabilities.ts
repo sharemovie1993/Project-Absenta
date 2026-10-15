@@ -290,7 +290,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
 
-    // Hak Suara Rapat Anggota
+    // Hak Suara & Akses Sidang Rapat Anggota
+    'cooperative.rat.view',
     'cooperative.rat.vote',
   ],
 

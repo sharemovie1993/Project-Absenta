@@ -75,6 +75,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.view.detail',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
     'affairs.violations.report',
     'affairs.violations.view.list',
     'affairs.violations.view.detail',
@@ -140,6 +142,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.view.detail',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
     'sarpras.loans.view.list',
     'sarpras.loans.request',
   ]);
@@ -157,6 +161,8 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.view.detail',
+    'cooperative.rat.view',
+    'cooperative.rat.vote',
     'notify.view.my',
     'notify.view.preferences',
     'notify.update.preferences',
@@ -548,6 +554,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         // ke fitur ini namun capabilities-nya berdomain ORGANIZATIONAL sehingga
         // perlu di-whitelist di sini agar seed tidak gagal.
         id === 'cooperative.savings.view.list' ||
+        id === 'cooperative.rat.view' ||
         id === 'cooperative.reports.view.daily' ||
         id === 'cooperative.reports.view.monthly' ||
         id === 'attendance.recap.view.global' ||
