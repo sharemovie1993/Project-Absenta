@@ -72,6 +72,10 @@ const RatProceedingsPrintModal = lazy(() =>
   import('../../components/cooperative/rat/RatProceedingsPrintModal').then(m => ({ default: m.RatProceedingsPrintModal }))
 );
 
+const RatClosureWizardModal = lazy(() =>
+  import('../../components/cooperative/rat/RatClosureWizardModal').then(m => ({ default: m.RatClosureWizardModal }))
+);
+
 // ─── TYPES ─────────────────────────────────────────────────────────────────
 export interface CoopMeetingMinuteItem {
   id: string;
@@ -199,6 +203,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const [editingMinute, setEditingMinute] = useState<CoopMeetingMinuteItem | null>(null);
   const [minuteAgendaContext, setMinuteAgendaContext] = useState<string | null>(null);
   const [isPrintProceedingsOpen, setIsPrintProceedingsOpen] = useState(false);
+  const [isClosureWizardOpen, setIsClosureWizardOpen] = useState(false);
 
   // Sync tab with URL search params
   const handleTabChange = useCallback((tabId: string) => {
@@ -554,6 +559,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   isCheckingIn={checkInMutation.isPending}
                   onLifecycleAdvance={handleLifecycleAdvance}
                   isAdvancingLifecycle={lifecycleMutation.isPending}
+                  onOpenClosureWizard={() => setIsClosureWizardOpen(true)}
                 />
               )}
 
@@ -755,6 +761,16 @@ const RatMeetingPage: React.FC = React.memo(() => {
               coopName={currentMeeting?.title}
               meetingLocation={(currentMeeting as any)?.location}
               meetingDate={currentMeeting?.meetingDate}
+            />
+          )}
+
+          {isClosureWizardOpen && currentMeeting && (
+            <RatClosureWizardModal
+              isOpen={isClosureWizardOpen}
+              onClose={() => setIsClosureWizardOpen(false)}
+              meeting={currentMeeting}
+              canManage={canManage}
+              onOpenPrintModal={() => setIsPrintProceedingsOpen(true)}
             />
           )}
         </Suspense>

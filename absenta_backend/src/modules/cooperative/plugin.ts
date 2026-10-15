@@ -22,6 +22,7 @@ import assetRoutes from './asset/asset.fastify';
 import expenseRoutes from './expense/expense.fastify';
 import ratRoutes from './rat/rat.fastify';
 import ratMinuteRoutes from './rat/rat.minute.fastify';
+import ratClosureRoutes from './rat/rat.closure.fastify';
 
 export interface CooperativePluginOptions {
     prefix?: string;
@@ -60,6 +61,7 @@ const cooperativePlugin: FastifyPluginAsync<CooperativePluginOptions> = async (f
     fastify.register(expenseRoutes, { prefix: '/expenses' }); // Operating expenses & cash disbursement
     fastify.register(ratRoutes, { prefix: '/rat' }); // Rapat Anggota Tahunan (RAT) & e-Voting
     fastify.register(ratMinuteRoutes, { prefix: '/rat' }); // Notulensi & Risalah Sidang RAT
+    fastify.register(ratClosureRoutes, { prefix: '/rat' }); // Penutupan Sidang Resmi & Distribusi SHU
     fastify.register(require('./settings/settings.fastify').default, { prefix: '/settings' });
 
     // Upload Product Image

@@ -12,6 +12,8 @@ import {
   Check,
   Play,
   Lock,
+  Coins,
+  Gavel,
 } from 'lucide-react';
 import type { CoopMeetingItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -31,6 +33,7 @@ export interface RatQuorumHudProps {
   isCheckingIn: boolean;
   onLifecycleAdvance: (newStatus: string, actionLabel: string) => void;
   isAdvancingLifecycle: boolean;
+  onOpenClosureWizard?: () => void;
 }
 
 export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
@@ -43,6 +46,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
   isCheckingIn,
   onLifecycleAdvance,
   isAdvancingLifecycle,
+  onOpenClosureWizard,
 }) => {
   return (
     <SectionCard title="Pemantauan Kuorum Sah Rapat Anggota" fullWidth={true} className="space-y-4">
@@ -204,12 +208,25 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
                   size="toolbar"
                   variant="toolbarDanger"
                   onClick={() =>
-                    onLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')
+                    onOpenClosureWizard
+                      ? onOpenClosureWizard()
+                      : onLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')
                   }
                   isLoading={isAdvancingLifecycle}
                 >
-                  <Lock className="w-3.5 h-3.5 mr-1" />
-                  Tutup Sidang Resmi
+                  <Gavel className="w-3.5 h-3.5 mr-1" />
+                  Wizard Penutupan Sidang
+                </Button>
+              )}
+              {currentMeeting.status === 'CLOSED' && onOpenClosureWizard && (
+                <Button
+                  type="button"
+                  size="toolbar"
+                  variant="toolbarPrimary"
+                  onClick={onOpenClosureWizard}
+                >
+                  <Coins className="w-3.5 h-3.5 mr-1" />
+                  Distribusi SHU & Berkas Dinas
                 </Button>
               )}
             </div>

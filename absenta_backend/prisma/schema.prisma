@@ -3454,7 +3454,13 @@ model CoopMeeting {
   status             CoopMeetingStatus       @default(DRAFT)
   lpjDocumentUrl     String?
   auditDocumentUrl   String?
-  minutesUrl         String?
+  closedAt           DateTime?
+  closedBy           String?
+  isShuDistributed   Boolean                 @default(false)
+  proceedingsDocNo   String?
+  closingNotes       String?                 @db.Text
+  shuPeriodId        String?
+
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
 
