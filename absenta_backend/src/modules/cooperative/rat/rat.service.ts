@@ -24,6 +24,12 @@ export class RatService {
       where: { tenantId },
       include: {
         agendas: { orderBy: { order: 'asc' } },
+        votingSessions: {
+          include: {
+            options: { orderBy: { order: 'asc' } },
+          },
+          orderBy: { openedAt: 'asc' },
+        },
         _count: {
           select: {
             attendances: true,
@@ -38,6 +44,17 @@ export class RatService {
     return meetings.map((m) => {
       const actualAttendance = m._count?.attendances ?? 0;
       const isQuorumReached = m.quorumTarget > 0 ? actualAttendance >= m.quorumTarget : false;
+      const mappedVotingSessions = (m.votingSessions || []).map((sess: any) => ({
+        ...sess,
+        votingType: sess.category,
+        ballotsCount: sess.options?.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0) || 0,
+        options: (sess.options || []).map((opt: any) => ({
+          ...opt,
+          title: opt.label,
+          label: opt.label,
+        })),
+      }));
+
       return {
         ...m,
         year: m.fiscalYear,
@@ -45,6 +62,7 @@ export class RatService {
         totalEligibleMembers: m.totalActiveMembers,
         actualAttendance,
         isQuorumReached,
+        votingSessions: mappedVotingSessions,
       };
     });
   }
@@ -115,6 +133,17 @@ export class RatService {
       status: 'PASSED' as const,
     }));
 
+    const mappedVotingSessions = (meeting.votingSessions || []).map((sess: any) => ({
+      ...sess,
+      votingType: sess.category,
+      ballotsCount: sess.options?.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0) || 0,
+      options: (sess.options || []).map((opt: any) => ({
+        ...opt,
+        title: opt.label,
+        label: opt.label,
+      })),
+    }));
+
     const activeAgenda = mappedAgendas.find((ag: any) => ag.status === 'IN_PROGRESS') || null;
     const completedAgendasCount = mappedAgendas.filter((ag: any) => ag.status === 'COMPLETED').length;
     const totalAgendasCount = mappedAgendas.length;
@@ -131,6 +160,7 @@ export class RatService {
       isQuorumReached,
       agendas: mappedAgendas,
       resolutions: mappedResolutions,
+      votingSessions: mappedVotingSessions,
       quorumStats: {
         totalActiveMembers: meeting.totalActiveMembers,
         totalEligibleMembers: meeting.totalActiveMembers,
@@ -568,31 +598,48 @@ export class RatService {
       ? data.options
       : ['SETUJU', 'MENOLAK', 'ABSTAIN'];
 
-    return prisma.coopVotingSession.create({
+    const validCategory = (data.category === 'ELECTION' || data.category === 'ELECTIONS') ? 'ELECTION' : 'RESOLUTION';
+
+    const created = await prisma.coopVotingSession.create({
       data: {
         meetingId,
         agendaId: data.agendaId || null,
         title: data.title,
-        category: data.category || 'RESOLUTION',
+        category: validCategory as any,
         status: 'ACTIVE',
         openedAt: new Date(),
         options: {
-          create: options.map((opt: any, idx: number) => ({
-            label: typeof opt === 'string' ? opt : opt.label,
-            description: typeof opt === 'object' ? opt.description : null,
-            order: idx + 1,
-            voteCount: 0,
-          })),
+          create: options.map((opt: any, idx: number) => {
+            const raw = typeof opt === 'string' ? opt : (opt.label || opt.title || opt.name);
+            const labelStr = raw && String(raw).trim() ? String(raw).trim() : `Opsi ${idx + 1}`;
+            return {
+              label: labelStr,
+              description: typeof opt === 'object' ? (opt.description || null) : null,
+              order: idx + 1,
+              voteCount: 0,
+            };
+          }),
         },
       },
       include: {
         options: { orderBy: { order: 'asc' } },
       },
     });
+
+    return {
+      ...created,
+      votingType: created.category,
+      ballotsCount: 0,
+      options: (created.options || []).map((o: any) => ({
+        ...o,
+        title: o.label,
+        label: o.label,
+      })),
+    };
   }
 
   /**
-   * Ubah status sesi e-Voting (ACTIVE, PAUSED, CLOSED)
+   * Ubah status sesi e-Voting (ACTIVE, PAUSED, CLOSED, TALLIED)
    */
   static async updateVotingSessionStatus(sessionId: string, tenantId: string, status: string) {
     const session = await prisma.coopVotingSession.findFirst({
@@ -601,16 +648,27 @@ export class RatService {
 
     if (!session) throw new Error('Sesi pemungutan suara tidak ditemukan.');
 
-    return prisma.coopVotingSession.update({
+    const updated = await prisma.coopVotingSession.update({
       where: { id: sessionId },
       data: {
         status: status as any,
-        closedAt: status === 'CLOSED' ? new Date() : undefined,
+        closedAt: status === 'CLOSED' || status === 'TALLIED' ? new Date() : undefined,
       },
       include: {
         options: { orderBy: { order: 'asc' } },
       },
     });
+
+    return {
+      ...updated,
+      votingType: updated.category,
+      ballotsCount: updated.options.reduce((sum: number, o: any) => sum + (o.voteCount || 0), 0),
+      options: (updated.options || []).map((o: any) => ({
+        ...o,
+        title: o.label,
+        label: o.label,
+      })),
+    };
   }
 
   /**
@@ -738,6 +796,7 @@ export class RatService {
     const formattedOptions = session.options.map((opt) => ({
       id: opt.id,
       label: opt.label,
+      title: opt.label,
       description: opt.description,
       voteCount: opt.voteCount,
       percentage: totalVotes > 0 ? Number(((opt.voteCount / totalVotes) * 100).toFixed(1)) : 0,

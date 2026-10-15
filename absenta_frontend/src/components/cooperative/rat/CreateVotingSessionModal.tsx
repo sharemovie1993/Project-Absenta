@@ -89,7 +89,13 @@ export const CreateVotingSessionModal: React.FC<CreateVotingSessionModalProps> =
   }, []);
 
   const createMutation = useMutation({
-    mutationFn: async (payload: { title: string; description?: string; options: { title: string; description?: string }[] }) => {
+    mutationFn: async (payload: {
+      title: string;
+      description?: string;
+      category?: string;
+      agendaId?: string;
+      options: { label: string; title: string; description?: string }[];
+    }) => {
       const res = await api.post(`/cooperative/rat/${meetingId}/voting-sessions`, payload);
       return res.data;
     },
@@ -135,7 +141,11 @@ export const CreateVotingSessionModal: React.FC<CreateVotingSessionModalProps> =
       category,
       title: parseResult.data.title,
       description: parseResult.data.description,
-      options: parseResult.data.options,
+      options: parseResult.data.options.map(o => ({
+        label: o.title,
+        title: o.title,
+        description: o.description,
+      })),
     });
   }, [title, description, options, category, initialAgendaId, createMutation]);
 

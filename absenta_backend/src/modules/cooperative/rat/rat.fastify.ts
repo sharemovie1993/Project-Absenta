@@ -55,7 +55,7 @@ const recordAttendanceSchema = z.object({
 const createVotingSessionSchema = z.object({
   title: z.string().min(3, 'Judul pemungutan suara minimal 3 karakter').max(150),
   description: z.string().optional().nullable(),
-  category: z.enum(['RESOLUTION', 'ELECTIONS', 'AMENDMENT']).optional(),
+  category: z.enum(['RESOLUTION', 'ELECTION', 'ELECTIONS', 'AMENDMENT']).optional(),
   agendaId: z.string().uuid().optional().nullable(),
   options: z.array(z.union([
     z.string().min(1),
