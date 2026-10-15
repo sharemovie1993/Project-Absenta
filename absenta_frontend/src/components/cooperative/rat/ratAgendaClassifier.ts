@@ -20,9 +20,11 @@ export interface AgendaMinuteClassification {
 export type AgendaVotingRecommendation = 'RECOMMENDED' | 'OPTIONAL_DEADLOCK' | 'NOT_APPLICABLE';
 
 /**
- * Kata kunci butir acara seremonial / protokoler (tidak wajib notulensi substantif)
+ * Kata kunci butir acara seremonial, protokoler, atau administrasi registrasi
+ * (Bukan materi sidang substantif dan tidak wajib notulensi formal).
  */
-const CEREMONIAL_KEYWORDS = [
+const CEREMONIAL_OR_ADMIN_KEYWORDS = [
+  'registrasi', 'presensi', 'verifikasi kehadiran', 'kehadiran', 'kuorum', 'absensi',
   'pembukaan', 'doa', 'indonesia raya', 'menyanyikan lagu',
   'mars koperasi', 'hymne', 'ramah tamah', 'istirahat', 'ishoma',
   'coffee break', 'snack', 'makan siang', 'hiburan', 'doorprize',
@@ -39,16 +41,24 @@ const ADVISORY_KEYWORDS = [
 ];
 
 /**
- * Kata kunci agenda statuter yuridis yang wajib menghasilkan Surat Ketetapan (TAP RAT)
+ * Kata kunci agenda statuter yuridis yang menghasilkan Surat Ketetapan (TAP RAT).
+ * Diambil dari objek persidangan resmi UU 25/1992:
+ * 1. Tata Tertib Sidang (TAP 1)
+ * 2. LPJ Pengurus & Laporan Pengawas (TAP 2)
+ * 3. Pembagian Sisa Hasil Usaha (SHU) (TAP 3)
+ * 4. Rencana Kerja (RK) dan RAPBK (TAP 4)
+ * 5. Pemilihan / Penetapan Pengurus & Pengawas (TAP 5)
+ * 6. Perubahan AD/ART (TAP 6 bila ada)
  */
 const STATUTORY_TAP_KEYWORDS = [
-  'tata tertib', 'tatib', 'lpj', 'pertanggungjawaban', 'laporan pengurus',
-  'lhp', 'pengawas', 'laporan pengawas', 'pengawasan', 'shu',
-  'sisa hasil usaha', 'rencana kerja', 'rapbk', 'rk & rapbk', 'rk dan rapbk',
-  'anggaran pendapatan', 'anggaran belanja', 'pemilihan', 'formatur',
-  'penetapan pengurus', 'penetapan pengawas', 'suksesi', 'pandangan umum',
-  'tanggapan pengurus', 'anggaran dasar', 'ad/art', 'ad-art', 'perubahan ad',
-  'ketetapan', 'pengesahan'
+  'tata tertib', 'tatib',
+  'lpj', 'pertanggungjawaban', 'laporan pengurus',
+  'lhp', 'pengawas', 'laporan pengawas', 'pengawasan', 'hasil pemeriksaan',
+  'shu', 'sisa hasil usaha',
+  'rencana kerja', 'rapbk', 'rk & rapbk', 'rk dan rapbk', 'anggaran pendapatan', 'anggaran belanja',
+  'pemilihan', 'formatur', 'penetapan pengurus', 'penetapan pengawas', 'suksesi',
+  'anggaran dasar', 'ad/art', 'ad-art', 'perubahan ad',
+  'surat ketetapan', 'tap rat'
 ];
 
 /**
@@ -67,6 +77,28 @@ const VOTING_RECOMMENDED_KEYWORDS = [
 export function isStatutoryTapAgenda(title: string): boolean {
   if (!title) return false;
   const lower = title.toLowerCase();
+
+  // Pengecualian mutlak: Registrasi, presensi, atau sekadar penetapan kuorum kehadiran
+  // adalah tahapan administratif presensi, bukan Surat Ketetapan (TAP RAT) mandiri
+  if (
+    (lower.includes('registrasi') || lower.includes('kehadiran') || lower.includes('kuorum')) &&
+    !lower.includes('tata tertib') &&
+    !lower.includes('tatib') &&
+    !lower.includes('lpj')
+  ) {
+    return false;
+  }
+
+  // Pengecualian pembukaan seremonial murni
+  if (
+    (lower.includes('pembukaan') || lower.includes('doa') || lower.includes('ramah tamah')) &&
+    !lower.includes('tata tertib') &&
+    !lower.includes('tatib') &&
+    !lower.includes('pengesahan')
+  ) {
+    return false;
+  }
+
   return STATUTORY_TAP_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
@@ -77,7 +109,7 @@ export function getAgendaVotingRecommendation(title: string): AgendaVotingRecomm
   if (!title) return 'NOT_APPLICABLE';
   const lower = title.toLowerCase();
 
-  if (CEREMONIAL_KEYWORDS.some((kw) => lower.includes(kw))) {
+  if (CEREMONIAL_OR_ADMIN_KEYWORDS.some((kw) => lower.includes(kw)) && !lower.includes('pemilihan')) {
     return 'NOT_APPLICABLE';
   }
 
@@ -108,9 +140,27 @@ export function getAgendaMinuteRequirement(title: string): AgendaMinuteClassific
 
   const lower = title.toLowerCase();
 
-  // 1. Cek Seremonial / Protokoler
-  // Kecualikan jika judul juga memuat unsur pengesahan/pemilihan (misal: "Pembukaan & Pengesahan Tatib")
-  const isCeremonial = CEREMONIAL_KEYWORDS.some((kw) => lower.includes(kw));
+  // 1. Kasus Registrasi & Kuorum: Administrasi Otomatis (Opsional Notulensi)
+  if (
+    (lower.includes('registrasi') || lower.includes('kehadiran') || lower.includes('kuorum')) &&
+    !lower.includes('tatib') &&
+    !lower.includes('lpj')
+  ) {
+    return {
+      obligation: 'CEREMONIAL',
+      label: 'Administrasi & Presensi',
+      shortLabel: 'Opsional',
+      badgeClass: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+      borderClass: 'border-slate-300 dark:border-slate-700',
+      helperText: 'Kehadiran dan kuorum tercatat otomatis oleh modul presensi digital. Notulensi bersifat opsional bila terdapat catatan khusus.',
+      defaultCategory: 'OPENING',
+      isMandatory: false,
+      priorityScore: 1,
+    };
+  }
+
+  // 2. Cek Seremonial / Protokoler Murni
+  const isCeremonial = CEREMONIAL_OR_ADMIN_KEYWORDS.some((kw) => lower.includes(kw));
   const hasStatutory = STATUTORY_TAP_KEYWORDS.some((kw) => lower.includes(kw));
 
   if (isCeremonial && !hasStatutory) {
@@ -127,7 +177,7 @@ export function getAgendaMinuteRequirement(title: string): AgendaMinuteClassific
     };
   }
 
-  // 2. Cek Arahan / Sambutan Pembina / Dinas
+  // 3. Cek Arahan / Sambutan Pembina / Dinas
   const isAdvisory = ADVISORY_KEYWORDS.some((kw) => lower.includes(kw));
   if (isAdvisory && !hasStatutory) {
     return {
@@ -143,7 +193,7 @@ export function getAgendaMinuteRequirement(title: string): AgendaMinuteClassific
     };
   }
 
-  // 3. Substantif / Statuter (Wajib Notulensi)
+  // 4. Substantif / Statuter (Wajib Notulensi)
   return {
     obligation: 'MANDATORY',
     label: 'Wajib Notulensi Substantif',

@@ -45,7 +45,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
   isAdvancingLifecycle,
 }) => {
   return (
-    <SectionCard title="Pemantauan Kuorum Sah Rapat Anggota" className="space-y-4">
+    <SectionCard title="Pemantauan Kuorum Sah Rapat Anggota" fullWidth={true} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <AnalyticsCardBase
           title="Total Anggota Aktif"
@@ -54,10 +54,10 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               ? `${quorumData.totalEligibleMembers} Orang`
               : `${currentMeeting.totalEligibleMembers} Orang`
           }
-          icon={<Users className="w-5 h-5 text-blue-500" />}
+          icon={<Users className="w-5 h-5 text-white/90" />}
           subtitle="Basis penentu kuorum"
+          gradient="from-blue-600 to-indigo-700"
           variant="compact-premium"
-          mobileCompact={true}
           isLoading={isLoading}
         />
         <AnalyticsCardBase
@@ -67,10 +67,10 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               ? `${quorumData.quorumTarget} Orang`
               : `${currentMeeting.quorumTarget} Orang`
           }
-          icon={<ShieldCheck className="w-5 h-5 text-amber-500" />}
+          icon={<ShieldCheck className="w-5 h-5 text-white/90" />}
           subtitle="Minimal 50% + 1 anggota"
+          gradient="from-amber-500 to-orange-600"
           variant="compact-premium"
-          mobileCompact={true}
           isLoading={isLoading}
         />
         <AnalyticsCardBase
@@ -80,14 +80,14 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               ? `${quorumData.actualAttendance} Orang (${quorumData.percentage}%)`
               : `${currentMeeting.actualAttendance} Orang`
           }
-          icon={<CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+          icon={<CheckCircle2 className="w-5 h-5 text-white/90" />}
           subtitle={
             quorumData?.isQuorumReached
               ? 'Kuorum Terpenuhi (Sah)'
               : 'Belum Memenuhi Kuorum'
           }
+          gradient="from-emerald-600 to-teal-700"
           variant="compact-premium"
-          mobileCompact={true}
           isLoading={isLoading}
         />
         <AnalyticsCardBase
@@ -101,10 +101,10 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               ? 'Sidang Selesai'
               : 'Draft Persiapan'
           }
-          icon={<Clock className="w-5 h-5 text-purple-500" />}
+          icon={<Clock className="w-5 h-5 text-white/90" />}
           subtitle={formatDate(currentMeeting.meetingDate, 'dd MMMM yyyy HH:mm')}
+          gradient="from-purple-600 to-violet-800"
           variant="compact-premium"
-          mobileCompact={true}
           isLoading={isLoading}
         />
       </div>

@@ -360,11 +360,11 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                 return (
                   <div
                     key={agenda.id}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border transition-all gap-3 ${
+                    className={`flex flex-col justify-between p-4 rounded-xl border transition-all gap-3.5 ${
                       isLive
                         ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-950/40 shadow-sm ring-1 ring-indigo-500/30'
                         : isDone
-                        ? 'border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 opacity-75'
+                        ? 'border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 opacity-80'
                         : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
@@ -381,32 +381,33 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                         {index + 1}
                       </div>
 
-                      <div className="space-y-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
                           <h4
-                            className={`font-semibold text-sm truncate ${
+                            className={`font-semibold text-sm leading-snug break-words ${
                               isDone
                                 ? 'line-through text-slate-500 dark:text-slate-400'
                                 : 'text-slate-900 dark:text-white'
                             }`}
-                            title={agenda.title}
                           >
                             {agenda.title}
                           </h4>
 
-                          {isLive && (
-                            <Badge variant="indigo" className="text-[10px] py-0 px-1.5 animate-pulse">
-                              Sedang Berlangsung
-                            </Badge>
-                          )}
-                          {isDone && (
-                            <Badge variant="success" className="text-[10px] py-0 px-1.5">
-                              Selesai
-                            </Badge>
-                          )}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {isLive && (
+                              <Badge variant="indigo" className="text-[10px] py-0.5 px-2 animate-pulse">
+                                Sedang Berlangsung
+                              </Badge>
+                            )}
+                            {isDone && (
+                              <Badge variant="success" className="text-[10px] py-0.5 px-2">
+                                Selesai
+                              </Badge>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-wrap">
                           {isStatutoryTapAgenda(agenda.title) && (
                             <span
                               className="inline-flex items-center gap-1 font-semibold text-[10px] text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-md border border-indigo-200 dark:border-indigo-800/60"
@@ -467,7 +468,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
                     </div>
 
                     {/* Actions container: for both voters and managers */}
-                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100 dark:border-slate-800 flex-wrap">
+                    <div className="flex items-center justify-end gap-2 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex-wrap">
                       {/* Active Voting Ballot Shortcut for all eligible participants */}
                       {linkedSession && linkedSession.status === 'ACTIVE' && onOpenCastVote && (
                         <Button
