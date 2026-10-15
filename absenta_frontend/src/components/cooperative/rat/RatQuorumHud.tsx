@@ -48,8 +48,78 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
   isAdvancingLifecycle,
   onOpenClosureWizard,
 }) => {
+  const managerLifecycleActions = canManage ? (
+    <div className="flex flex-wrap items-center gap-2">
+      {(currentMeeting.status === 'DRAFT' || currentMeeting.status === 'SCHEDULED' || !currentMeeting.status) && (
+        <Button
+          type="button"
+          size="toolbar"
+          variant="toolbarPrimary"
+          onClick={() =>
+            onLifecycleAdvance(
+              'REGISTRATION_OPEN',
+              'Buka Registrasi Peserta'
+            )
+          }
+          isLoading={isAdvancingLifecycle}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
+        >
+          <Play className="w-3.5 h-3.5 mr-1" />
+          Buka Registrasi Peserta (Kunci Kuorum)
+        </Button>
+      )}
+      {(currentMeeting.status === 'REGISTRATION_OPEN' || currentMeeting.status === 'QUORUM_REACHED') && (
+        <Button
+          type="button"
+          size="toolbar"
+          variant="toolbarPrimary"
+          onClick={() =>
+            onLifecycleAdvance('IN_SESSION', 'Mulai Sidang Paripurna')
+          }
+          isLoading={isAdvancingLifecycle}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
+        >
+          <Play className="w-3.5 h-3.5 mr-1" />
+          Mulai Sidang Paripurna (Buka Palu)
+        </Button>
+      )}
+      {currentMeeting.status === 'IN_SESSION' && (
+        <Button
+          type="button"
+          size="toolbar"
+          variant="toolbarDanger"
+          onClick={() =>
+            onOpenClosureWizard
+              ? onOpenClosureWizard()
+              : onLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')
+          }
+          isLoading={isAdvancingLifecycle}
+        >
+          <Gavel className="w-3.5 h-3.5 mr-1" />
+          Wizard Penutupan Sidang
+        </Button>
+      )}
+      {currentMeeting.status === 'CLOSED' && onOpenClosureWizard && (
+        <Button
+          type="button"
+          size="toolbar"
+          variant="toolbarPrimary"
+          onClick={onOpenClosureWizard}
+        >
+          <Coins className="w-3.5 h-3.5 mr-1" />
+          Distribusi SHU & Berkas Dinas
+        </Button>
+      )}
+    </div>
+  ) : null;
+
   return (
-    <SectionCard title="Pemantauan Kuorum Sah Rapat Anggota" fullWidth={true} className="space-y-4">
+    <SectionCard
+      title="Pemantauan Kuorum Sah Rapat Anggota"
+      actions={managerLifecycleActions}
+      fullWidth={true}
+      className="space-y-4"
+    >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <AnalyticsCardBase
           title="Total Anggota Aktif"
@@ -142,16 +212,17 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           />
         </div>
 
-        {/* Member Check-In CTA & Manager Progression Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-          <div>
+        {/* Member Check-In CTA (if applicable) */}
+        {(myAttendance?.hasAttended ||
+          currentMeeting.status === 'REGISTRATION_OPEN' ||
+          currentMeeting.status === 'IN_SESSION') && (
+          <div className="pt-2">
             {myAttendance?.hasAttended ? (
               <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs">
                 <CheckCircle2 className="w-4 h-4" />
                 Anda telah melakukan presensi resmi pada sidang ini.
               </div>
-            ) : currentMeeting.status === 'REGISTRATION_OPEN' ||
-              currentMeeting.status === 'IN_SESSION' ? (
+            ) : (
               <Button
                 type="button"
                 size="toolbar"
@@ -162,74 +233,9 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
                 <Check className="w-4 h-4 mr-1.5" />
                 Konfirmasi Kehadiran Saya di Sidang RAT
               </Button>
-            ) : null}
+            )}
           </div>
-
-          {canManage && (
-            <div className="flex flex-wrap items-center gap-2">
-              {(currentMeeting.status === 'DRAFT' || currentMeeting.status === 'SCHEDULED' || !currentMeeting.status) && (
-                <Button
-                  type="button"
-                  size="toolbar"
-                  variant="toolbarPrimary"
-                  onClick={() =>
-                    onLifecycleAdvance(
-                      'REGISTRATION_OPEN',
-                      'Buka Registrasi Peserta'
-                    )
-                  }
-                  isLoading={isAdvancingLifecycle}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 mr-1" />
-                  Buka Registrasi Peserta (Kunci Kuorum)
-                </Button>
-              )}
-              {(currentMeeting.status === 'REGISTRATION_OPEN' || currentMeeting.status === 'QUORUM_REACHED') && (
-                <Button
-                  type="button"
-                  size="toolbar"
-                  variant="toolbarPrimary"
-                  onClick={() =>
-                    onLifecycleAdvance('IN_SESSION', 'Mulai Sidang Paripurna')
-                  }
-                  isLoading={isAdvancingLifecycle}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
-                >
-                  <Play className="w-3.5 h-3.5 mr-1" />
-                  Mulai Sidang Paripurna (Buka Palu)
-                </Button>
-              )}
-              {currentMeeting.status === 'IN_SESSION' && (
-                <Button
-                  type="button"
-                  size="toolbar"
-                  variant="toolbarDanger"
-                  onClick={() =>
-                    onOpenClosureWizard
-                      ? onOpenClosureWizard()
-                      : onLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')
-                  }
-                  isLoading={isAdvancingLifecycle}
-                >
-                  <Gavel className="w-3.5 h-3.5 mr-1" />
-                  Wizard Penutupan Sidang
-                </Button>
-              )}
-              {currentMeeting.status === 'CLOSED' && onOpenClosureWizard && (
-                <Button
-                  type="button"
-                  size="toolbar"
-                  variant="toolbarPrimary"
-                  onClick={onOpenClosureWizard}
-                >
-                  <Coins className="w-3.5 h-3.5 mr-1" />
-                  Distribusi SHU & Berkas Dinas
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </SectionCard>
   );

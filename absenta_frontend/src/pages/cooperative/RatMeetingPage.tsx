@@ -178,7 +178,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
 
   // URL state
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab') || 'agenda';
+  const tabParam = searchParams.get('tab') || 'attendance';
 
   const [activeTab, setActiveTab] = useState<string>(tabParam);
   const [selectedMeetingId, setSelectedMeetingId] = useState<string>('');
@@ -413,12 +413,12 @@ const RatMeetingPage: React.FC = React.memo(() => {
     votingStatusMutation.mutate({ sessionId, status });
   }, [votingStatusMutation]);
 
-  // Tab definitions
+  // Tab definitions (Urutan logis alur persidangan: Presensi -> Agenda -> Notulensi -> e-Voting)
   const tabOptions: TabOption[] = useMemo(() => [
-    { id: 'agenda', label: 'Agenda & Ketetapan Sidang', icon: FileCheck2 },
-    { id: 'attendance', label: 'Daftar Presensi Peserta', icon: Users },
-    { id: 'voting', label: 'e-Voting (One Member One Vote)', icon: Vote },
-    { id: 'minutes', label: 'Risalah & Notulensi Sidang', icon: BookOpen },
+    { id: 'attendance', label: 'Presensi', icon: Users },
+    { id: 'agenda', label: 'Agenda', icon: FileCheck2 },
+    { id: 'minutes', label: 'Notulensi', icon: BookOpen },
+    { id: 'voting', label: 'e-Voting', icon: Vote },
   ], []);
 
   const handleSelectVoteSession = useCallback((session: CoopVotingSessionItem) => {
