@@ -99,6 +99,12 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   const [includeWajib, setIncludeWajib] = useState<boolean>(!isWajibPaidThisMonth);
   const [wajibAmount, setWajibAmount] = useState<number>(defaultWajibAmount);
 
+  // Auto-sync selection states when member or payment status changes
+  useEffect(() => {
+    setIncludeWajib(!isWajibPaidThisMonth);
+    setWajibAmount(defaultWajibAmount);
+  }, [student?.id, isWajibPaidThisMonth, defaultWajibAmount]);
+
   // 2. Active Loan Installment Evaluation
   const activeLoan = useMemo(() => {
     return memberLoans.find(l => l.status === 'APPROVED');
@@ -120,6 +126,13 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   }, [activeLoan, nextUnpaidInstallment]);
 
   const [includeLoan, setIncludeLoan] = useState<boolean>(Boolean(nextUnpaidInstallment));
+
+  useEffect(() => {
+    setIncludeLoan(Boolean(nextUnpaidInstallment));
+    setIncludeSukarela(false);
+    setSukarelaAmount(0);
+    setCashReceived('');
+  }, [student?.id, nextUnpaidInstallment?.id]);
 
   // 3. Simpanan Sukarela Evaluation
   const sukarelaSaving = useMemo(() => {
@@ -348,24 +361,44 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
         {/* 2A. Simpanan Wajib Bulan Ini */}
         {wajibSaving && (
           <div className={`p-3 rounded-xl border transition-all ${
-            includeWajib 
-              ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
-              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
+            isWajibPaidThisMonth
+              ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
+              : includeWajib 
+                ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
           }`}>
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <label className={`flex items-start gap-2.5 select-none ${
+              isWajibPaidThisMonth ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+            }`}>
               <input
                 type="checkbox"
                 checked={includeWajib}
-                onChange={(e) => setIncludeWajib(e.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                disabled={isWajibPaidThisMonth}
+                onChange={(e) => {
+                  if (!isWajibPaidThisMonth) {
+                    setIncludeWajib(e.target.checked);
+                  }
+                }}
+                className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                  isWajibPaidThisMonth ? 'cursor-not-allowed opacity-40 bg-slate-100 dark:bg-slate-800' : ''
+                }`}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                     <Wallet className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Simpanan Wajib</span>
+                    {isWajibPaidThisMonth && (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
+                        Lunas
+                      </span>
+                    )}
                   </span>
-                  <span className="font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
+                  <span className={`font-mono font-black text-xs ${
+                    isWajibPaidThisMonth 
+                      ? 'text-slate-400 line-through' 
+                      : 'text-indigo-600 dark:text-indigo-400'
+                  }`}>
                     Rp {wajibAmount.toLocaleString('id-ID')}
                   </span>
                 </div>
@@ -375,7 +408,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                   </span>
                   {isWajibPaidThisMonth ? (
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                      ✓ Sudah Lunas Bulan Ini
+                      ✓ Sudah Lunas Bulan Ini (Terkunci)
                     </span>
                   ) : (
                     <span className="text-amber-600 dark:text-amber-400 font-bold">
