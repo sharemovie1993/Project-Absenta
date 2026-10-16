@@ -385,6 +385,36 @@ export const DEMO_ROLE_PROFILES: DemoRoleProfile[] = [
     gradient: 'from-slate-600 to-zinc-800 text-white',
     border: 'border-slate-300 dark:border-slate-700'
   },
+  {
+    id: 'demo-koperasi-anggota-siswa',
+    category: 'COOP_STAFF',
+    roleCode: 'SISWA',
+    title: 'Siswa (Anggota Koperasi)',
+    simulatedName: 'Anastasya Demo',
+    email: 'anas@absenta.id',
+    password: '11223344',
+    badge: 'Anggota Koperasi (Siswa)',
+    badgeColor: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+    description: 'Akses portal anggota siswa: cek saldo simpanan sukarela, pengajuan pinjaman mandiri, mutasi belanja POS & SHU',
+    iconName: 'GraduationCap',
+    gradient: 'from-indigo-600 to-blue-700 text-white',
+    border: 'border-indigo-300 dark:border-indigo-700'
+  },
+  {
+    id: 'demo-koperasi-anggota-guru',
+    category: 'COOP_STAFF',
+    roleCode: 'GURU',
+    title: 'Guru (Anggota Koperasi)',
+    simulatedName: 'Dadan Demo',
+    email: 'dadan@absenta.id',
+    password: '11223344',
+    badge: 'Anggota Koperasi (Guru)',
+    badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+    description: 'Akses portal anggota guru: simpanan pokok/wajib, pengajuan pinjaman kredit guru, kartu kendali angsuran & dividen SHU',
+    iconName: 'Users',
+    gradient: 'from-emerald-600 to-teal-800 text-white',
+    border: 'border-emerald-300 dark:border-emerald-700'
+  },
 
   // ═══════════════════════════════════════════════════════════════════
   // 👨‍🏫 GURU & WALI KELAS
