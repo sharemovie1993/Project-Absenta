@@ -482,7 +482,7 @@ export default async function dashboardRoutes(fastify: any) {
                 ...recentSavings.map(s => ({
                     id: s.id,
                     type: 'SAVING',
-                    title: `Setoran ${s.saving?.category?.name || 'Simpanan'}`,
+                    title: s.saving?.category?.name ? `Simpanan ${s.saving.category.name}` : 'Simpanan',
                     description: s.saving?.member?.User?.full_name || s.saving?.member?.Guru?.nama_guru || s.saving?.member?.Siswa?.nama_siswa || 'Anggota',
                     amount: Number(s.amount),
                     date: s.date
@@ -490,7 +490,7 @@ export default async function dashboardRoutes(fastify: any) {
                 ...recentSales.map(sl => ({
                     id: sl.id,
                     type: 'SALE',
-                    title: 'Penjualan Kasir POS',
+                    title: 'Kasir POS',
                     description: sl.member ? (sl.member?.User?.full_name || sl.member?.Guru?.nama_guru || sl.member?.Siswa?.nama_siswa) : 'Pembeli Umum',
                     amount: Number(sl.total),
                     date: sl.date

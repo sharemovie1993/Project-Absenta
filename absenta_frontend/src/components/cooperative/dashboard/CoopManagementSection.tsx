@@ -70,67 +70,63 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
           
           {/* Grafik Tren 6 Bulan */}
           <SectionCard 
-            title="Tren Finansial & Operasional (6 Bulan Terakhir)" 
+            title="Tren Finansial" 
+            action={
+              <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setActiveChartMetric('all')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg transition-all",
+                    activeChartMetric === 'all' 
+                      ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-indigo-600 dark:text-indigo-400" 
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  Semua
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveChartMetric('simpanan')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg transition-all",
+                    activeChartMetric === 'simpanan' 
+                      ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-emerald-600 dark:text-emerald-400" 
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  Simpanan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveChartMetric('pinjaman')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg transition-all",
+                    activeChartMetric === 'pinjaman' 
+                      ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-purple-600 dark:text-purple-400" 
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  Pinjaman
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveChartMetric('penjualan')}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg transition-all",
+                    activeChartMetric === 'penjualan' 
+                      ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-blue-600 dark:text-blue-400" 
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                  )}
+                >
+                  Toko POS
+                </button>
+              </div>
+            }
             fullWidth 
             noPadding
           >
             <div className="p-4 sm:p-6 space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="text-slate-500 dark:text-slate-400 font-medium">
-                  Agregat mutasi simpanan, pinjaman, dan penjualan toko riil:
-                </span>
-                <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-0.5 text-xs font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => setActiveChartMetric('all')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg transition-all",
-                      activeChartMetric === 'all' 
-                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-indigo-600 dark:text-indigo-400" 
-                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                    )}
-                  >
-                    Semua
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveChartMetric('simpanan')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg transition-all",
-                      activeChartMetric === 'simpanan' 
-                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-emerald-600 dark:text-emerald-400" 
-                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                    )}
-                  >
-                    Simpanan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveChartMetric('pinjaman')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg transition-all",
-                      activeChartMetric === 'pinjaman' 
-                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-purple-600 dark:text-purple-400" 
-                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                    )}
-                  >
-                    Pinjaman
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveChartMetric('penjualan')}
-                    className={cn(
-                      "px-2.5 py-1 rounded-lg transition-all",
-                      activeChartMetric === 'penjualan' 
-                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-blue-600 dark:text-blue-400" 
-                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-                    )}
-                  >
-                    Penjualan Toko
-                  </button>
-                </div>
-              </div>
-
               <div className="h-72 w-full min-w-0">
                 <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
                   <BarChart
@@ -156,13 +152,13 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
                     />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                     {(activeChartMetric === 'all' || activeChartMetric === 'simpanan') && (
-                      <Bar dataKey="simpanan" name="Simpanan Masuk" fill="#10B981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="simpanan" name="Simpanan" fill="#10B981" radius={[4, 4, 0, 0]} />
                     )}
                     {(activeChartMetric === 'all' || activeChartMetric === 'pinjaman') && (
-                      <Bar dataKey="pinjaman" name="Pencairan Pinjaman" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="pinjaman" name="Pinjaman" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
                     )}
                     {(activeChartMetric === 'all' || activeChartMetric === 'penjualan') && (
-                      <Bar dataKey="penjualan" name="Penjualan Toko" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="penjualan" name="Toko POS" fill="#3B82F6" radius={[4, 4, 0, 0]} />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
@@ -178,40 +174,47 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
         {/* Kolom Kanan (1/3): Aktivitas Mutasi Terkini & Pengumuman */}
         <div className="lg:col-span-1 min-w-0 space-y-6">
           
-          <SectionCard title="Aktivitas Mutasi Terkini" fullWidth noPadding>
+          <SectionCard title="Mutasi Terkini" fullWidth noPadding>
             <div className="p-4 space-y-2.5">
               {recentActivities.length === 0 ? (
                 <p className="text-gray-400 text-center py-8 text-xs italic">Belum ada transaksi mutasi terkini.</p>
               ) : (
-                recentActivities.map((act) => (
-                  <div key={act.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={cn(
-                        "p-2 rounded-xl shrink-0",
-                        act.type === 'SAVING' 
-                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" 
-                          : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
-                      )}>
-                        {act.type === 'SAVING' ? <PiggyBank size={15} /> : <Receipt size={15} />}
+                recentActivities.map((act) => {
+                  const cleanTitle = act.title
+                    .replace(/^Setoran\s+/i, '')
+                    .replace(/^Penjualan\s+Kasir\s+POS/i, 'Kasir POS')
+                    .replace(/^Penjualan\s+Kasir/i, 'Kasir POS');
+
+                  return (
+                    <div key={act.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className={cn(
+                          "p-2 rounded-xl shrink-0",
+                          act.type === 'SAVING' 
+                            ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" 
+                            : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                        )}>
+                          {act.type === 'SAVING' ? <PiggyBank size={15} /> : <Receipt size={15} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{cleanTitle}</p>
+                          <p className="text-[10px] text-slate-400 truncate">{act.description}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{act.title}</p>
-                        <p className="text-[10px] text-slate-400 truncate">{act.description}</p>
+                      <div className="text-right shrink-0 pl-2">
+                        <p className={cn(
+                          "text-xs font-mono font-bold",
+                          act.type === 'SAVING' ? "text-emerald-600 dark:text-emerald-400" : "text-blue-600 dark:text-blue-400"
+                        )}>
+                          +{formatRupiahCompact(act.amount)}
+                        </p>
+                        <p className="text-[9px] text-slate-400">
+                          {formatTime(act.date)}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right shrink-0 pl-2">
-                      <p className={cn(
-                        "text-xs font-mono font-bold",
-                        act.type === 'SAVING' ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-200"
-                      )}>
-                        {formatRupiahCompact(act.amount)}
-                      </p>
-                      <p className="text-[9px] text-slate-400">
-                        {formatTime(act.date)}
-                      </p>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </SectionCard>
