@@ -390,6 +390,39 @@ const RatMeetingPage: React.FC = React.memo(() => {
     votingStatusMutation.mutate({ sessionId, status });
   }, [votingStatusMutation]);
 
+  // Mutation: Delete Voting Session
+  const deleteVotingMutation = useMutation({
+    mutationFn: async (sessionId: string) => {
+      const res = await api.delete(`/cooperative/rat/${selectedMeetingId}/voting-sessions/${sessionId}`);
+      return res.data;
+    },
+    onSuccess: () => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+      toast.success('Sesi e-Voting berhasil dihapus!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal menghapus sesi e-voting';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleDeleteVoteSession = useCallback(async (session: CoopVotingSessionItem) => {
+    const totalVotes = session.ballotsCount || (session.options || []).reduce((acc, curr) => acc + (curr.voteCount || 0), 0);
+    const isConfirmed = await confirm({
+      title: 'Hapus Sesi e-Voting?',
+      message: totalVotes > 0
+        ? `Sesi "${session.title}" sudah memiliki ${totalVotes} surat suara sah. Menghapus sesi ini akan membatalkan pemungutan dan menghapus seluruh surat suara terkait. Apakah Anda yakin ingin menghapus?`
+        : `Apakah Anda yakin ingin menghapus sesi e-Voting "${session.title}"?`,
+      confirmText: 'Ya, Hapus Sesi',
+      cancelText: 'Batal',
+      variant: 'danger',
+      style: 'danger',
+    });
+    if (isConfirmed) {
+      deleteVotingMutation.mutate(session.id);
+    }
+  }, [confirm, deleteVotingMutation]);
+
   // Tab definitions (Urutan logis alur persidangan: Presensi -> Agenda -> Notulensi -> e-Voting)
   const tabOptions: TabOption[] = useMemo(() => [
     { id: 'attendance', label: 'Presensi', icon: Users },
@@ -608,8 +641,9 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   onOpenCreateSession={() => setIsCreateVotingSessionOpen(true)}
                   onSelectVoteSession={handleSelectVoteSession}
                   onUpdateSessionStatus={handleVotingStatusChange}
+                  onDeleteSession={handleDeleteVoteSession}
                   onOpenTvDisplay={() => setIsTvDisplayOpen(true)}
-                  isUpdatingStatus={votingStatusMutation.isPending}
+                  isUpdatingStatus={votingStatusMutation.isPending || deleteVotingMutation.isPending}
                 />
               )}
 

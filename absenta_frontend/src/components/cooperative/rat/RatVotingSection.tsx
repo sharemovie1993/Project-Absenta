@@ -11,7 +11,8 @@ import {
   FileCheck,
   TrendingUp,
   UserCheck,
-  Award
+  Award,
+  Trash2,
 } from 'lucide-react';
 import type { CoopVotingSessionItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -24,6 +25,7 @@ interface RatVotingSectionProps {
   onOpenCreateSession: () => void;
   onSelectVoteSession: (session: CoopVotingSessionItem) => void;
   onUpdateSessionStatus: (sessionId: string, status: 'ACTIVE' | 'CLOSED' | 'TALLIED') => void;
+  onDeleteSession?: (session: CoopVotingSessionItem) => void;
   onOpenTvDisplay?: () => void;
   isUpdatingStatus: boolean;
 }
@@ -37,6 +39,7 @@ export const RatVotingSection: React.FC<RatVotingSectionProps> = React.memo(({
   onOpenCreateSession,
   onSelectVoteSession,
   onUpdateSessionStatus,
+  onDeleteSession,
   onOpenTvDisplay,
   isUpdatingStatus
 }) => {
@@ -179,6 +182,22 @@ export const RatVotingSection: React.FC<RatVotingSectionProps> = React.memo(({
                           <FileCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           <span>Tercatat Permanen di TAP RAT</span>
                         </div>
+                      )}
+
+                      {/* Tombol Hapus Sesi Voting (Hanya jika belum disahkan permanen ke TAP RAT) */}
+                      {session.status !== 'TALLIED' && onDeleteSession && (
+                        <Button
+                          type="button"
+                          size="toolbar"
+                          variant="toolbarOutline"
+                          onClick={() => onDeleteSession(session)}
+                          disabled={isUpdatingStatus}
+                          title="Hapus sesi pemungutan suara ini"
+                          className="gap-1.5 border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs font-bold"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                          <span className="hidden sm:inline">Hapus</span>
+                        </Button>
                       )}
                     </div>
                   )}

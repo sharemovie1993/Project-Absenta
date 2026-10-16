@@ -846,6 +846,29 @@ export class RatService {
   }
 
   /**
+   * Hapus Sesi e-Voting Sidang
+   * Proteksi: Sesi yang sudah berstatus TALLIED (masuk TAP resmi) tidak dapat dihapus
+   */
+  static async deleteVotingSession(sessionId: string, tenantId: string, meetingId?: string) {
+    const session = await prisma.coopVotingSession.findFirst({
+      where: {
+        id: sessionId,
+        ...(meetingId ? { meetingId } : {}),
+        Meeting: { tenantId },
+      },
+    });
+    if (!session) throw new Error('Sesi e-Voting tidak ditemukan.');
+
+    if (session.status === 'TALLIED') {
+      throw new Error('Sesi voting yang telah disahkan ke TAP RAT resmi tidak dapat dihapus demi kepastian hukum persidangan.');
+    }
+
+    return prisma.coopVotingSession.delete({
+      where: { id: sessionId },
+    });
+  }
+
+  /**
    * Kirim Surat Suara Rahasia (*Cast Vote*) - 1 Anggota 1 Suara
    */
   static async castVote(sessionId: string, tenantId: string, memberId: string, optionId: string) {

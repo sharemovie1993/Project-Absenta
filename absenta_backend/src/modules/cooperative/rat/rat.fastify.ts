@@ -568,6 +568,36 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
+  // 12b. DELETE /voting-sessions/:sessionId - Hapus Sesi Voting
+  fastify.delete(
+    '/voting-sessions/:sessionId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        await RatService.deleteVotingSession(req.params.sessionId, tenantId);
+        return { success: true, message: 'Sesi e-Voting berhasil dihapus.' };
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menghapus sesi e-voting' });
+      }
+    }
+  );
+
+  // 12c. DELETE /:id/voting-sessions/:sessionId - Hapus Sesi Voting dengan meeting context
+  fastify.delete(
+    '/:id/voting-sessions/:sessionId',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        await RatService.deleteVotingSession(req.params.sessionId, tenantId, req.params.id);
+        return { success: true, message: 'Sesi e-Voting berhasil dihapus.' };
+      } catch (error: any) {
+        reply.status(400).send({ success: false, message: error.message || 'Gagal menghapus sesi e-voting' });
+      }
+    }
+  );
+
   // 13. POST /:id/resolutions - Pengesahan Risalah / Ketetapan RAT
   fastify.post(
     '/:id/resolutions',
