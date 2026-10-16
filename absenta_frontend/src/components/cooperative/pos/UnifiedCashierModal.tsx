@@ -142,14 +142,16 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+      <div className={`relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 ${
+        !selectedStudent ? 'min-h-[480px] overflow-visible' : 'max-h-[92vh] overflow-hidden'
+      }`}>
         
         {/* Header Modal */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-              <Zap size={18} className="text-amber-500 fill-amber-500" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 rounded-t-2xl shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+              <Zap size={20} className="text-amber-500 fill-amber-500" />
             </div>
             <div>
               <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
@@ -170,73 +172,45 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
         </div>
 
         {/* Content Body */}
-        <div className="p-5 overflow-y-auto space-y-4">
+        <div className={`p-6 ${!selectedStudent ? 'overflow-visible min-h-[400px]' : 'overflow-y-auto space-y-4'}`}>
           {!selectedStudent ? (
-            <div className="space-y-4 py-4">
-              <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-3">
+            <div className="space-y-5">
+              <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-start gap-3">
                 <Scan className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-                <div className="text-xs text-indigo-900 dark:text-indigo-300">
-                  <span className="font-bold">Pindai Kartu Anggota atau Cari Nama:</span>
+                <div className="text-xs text-indigo-950 dark:text-indigo-200 leading-relaxed">
+                  <span className="font-extrabold">Pindai Kartu Anggota atau Cari Nama:</span>
                   <p className="text-slate-500 dark:text-slate-400 mt-0.5">
-                    Tempelkan kartu RFID anggota pada scanner, sorot QR code, atau cari nama anggota untuk langsung memuat tagihan iuran dan cicilannya.
+                    Tempelkan kartu RFID anggota pada scanner, sorot QR code kartu, atau ketik nama/NIS di bawah untuk langsung membuka tagihan simpanan & pinjamannya.
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 relative z-30">
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
                   Cari Siswa / Guru Anggota Koperasi
                 </label>
                 <SmartStudentPicker
                   scope="global"
                   mode="universal"
-                  placeholder="Pindai RFID / QR, atau ketik nama/NIS..."
+                  placeholder="Pindai RFID / QR, atau ketik nama/NIS anggota..."
                   onSelect={handleSelectStudent}
                   autoFocus
                 />
               </div>
+
+              <div className="pt-8 text-center text-slate-400 text-xs">
+                <p className="text-[11px] text-slate-400 italic">
+                  💡 Tips: Anggota yang memiliki kartu RFID dapat langsung di-tap tanpa perlu mengklik input.
+                </p>
+              </div>
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Profile Card Anggota Terpilih */}
-              <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm uppercase">
-                    {selectedStudent.nama_siswa?.charAt(0) || selectedStudent.nama_guru?.charAt(0) || 'A'}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-                      {selectedStudent.nama_siswa || selectedStudent.nama_guru}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] font-bold text-slate-400">
-                        NIS/NIP: {selectedStudent.nis || selectedStudent.nip || '-'}
-                      </span>
-                      {selectedMemberNo && (
-                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.2 rounded">
-                          No. {selectedMemberNo}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleResetMember}
-                  className="px-2.5 py-1 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200 dark:border-indigo-800/60"
-                  title="Ganti Anggota"
-                >
-                  <RefreshCw size={12} />
-                  <span>Ganti Anggota</span>
-                </button>
-              </div>
-
               {/* Status Loading */}
               {(loadingSavings || loadingLoans) ? (
-                <div className="py-8 text-center space-y-2">
-                  <div className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
-                  <p className="text-xs text-slate-400 font-semibold">Memuat tagihan simpanan & pinjaman anggota...</p>
+                <div className="py-12 text-center space-y-3">
+                  <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                  <p className="text-xs text-slate-500 font-bold">Memuat rincian simpanan & pinjaman anggota...</p>
                 </div>
               ) : (
                 <UnifiedPaymentPanel
@@ -245,6 +219,7 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
                   memberLoans={memberLoans}
                   loadingLoans={loadingLoans}
                   onCancel={onClose}
+                  onResetMember={handleResetMember}
                   onProcessUnifiedPayment={handleProcessUnifiedPayment}
                   isProcessing={unifiedTxMutation.isPending}
                 />

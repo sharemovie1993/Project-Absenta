@@ -47,6 +47,7 @@ interface UnifiedPaymentPanelProps {
   memberLoans: MemberLoanItem[];
   loadingLoans: boolean;
   onCancel: () => void;
+  onResetMember?: () => void;
   onSuccessTransaction?: () => void;
   onProcessUnifiedPayment: (payload: {
     memberId: string;
@@ -63,6 +64,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   memberLoans,
   loadingLoans,
   onCancel,
+  onResetMember,
   onSuccessTransaction,
   onProcessUnifiedPayment,
   isProcessing,
@@ -324,6 +326,17 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
             </span>
           </div>
         </div>
+        {onResetMember && (
+          <button
+            type="button"
+            onClick={onResetMember}
+            className="px-2.5 py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white/80 dark:hover:bg-slate-700/60 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200 dark:border-indigo-800/60 bg-white/60 dark:bg-slate-800/60 shrink-0"
+            title="Ganti Anggota Lain"
+          >
+            <RotateCcw size={12} />
+            <span>Ganti</span>
+          </button>
+        )}
       </div>
 
       {/* ── 2. Checklist Tagihan Terpadu ────────────────────────────────── */}
