@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Users, 
-  Wallet, 
-  TrendingUp, 
   Package, 
   PiggyBank, 
   Receipt,
-  CheckCircle2,
-  Bell
+  Bell,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -21,10 +19,13 @@ import {
   Legend
 } from 'recharts';
 import { SectionCard } from '@/components/ui';
-import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { cn } from '@/lib/utils';
 import { formatTime } from '@/utils/date.utils';
 import { CoopApprovalHub } from './CoopApprovalHub';
+import { CoopExecutiveKpiCards, formatRupiahCompact } from './CoopExecutiveKpiCards';
+import { CoopQuickActionBar } from './CoopQuickActionBar';
+import { CoopLiquidityRadarSection } from './CoopLiquidityRadarSection';
+import { CoopRatGovernanceBanner } from './CoopRatGovernanceBanner';
 import type { CoopManagementSectionProps } from './types';
 
 export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React.memo(({
@@ -32,7 +33,6 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
   chartData: propChartData,
   announcements,
   criticalStock,
-  criticalStockLoading,
 }) => {
   const [activeChartMetric, setActiveChartMetric] = useState<'all' | 'simpanan' | 'pinjaman' | 'penjualan'>('all');
 
@@ -43,64 +43,38 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
   const recentActivities = stats.recentActivities || [];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300 w-full min-w-0">
       
-      {/* ── NOTIFIKASI AKSI PENGURUS (Hanya tampil jika ada pengajuan/antrean tertunda) ── */}
+      {/* ── 1. NOTIFIKASI AKSI PENGURUS (Antrean Persetujuan Pinjaman / Anggota) ── */}
       <CoopApprovalHub 
         pendingLoans={stats.pendingLoans}
         pendingMembers={stats.pendingMembers}
       />
 
-      {/* ── 4 KARTU EKSEKUTIF INTI (Ramping, Padat & Bebas Noise) ───────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Keanggotaan & Kepatuhan Iuran */}
-        <AnalyticsCard 
-          title="Total Anggota" 
-          value={stats.totalMembers.toString()} 
-          icon={<Users size={24} />} 
-          gradient="from-indigo-500 to-indigo-700 text-white border-indigo-400/30" 
-          subtitle={`${stats.wajibCompliance?.compliancePercent ?? 100}% Iuran Wajib Lunas (${stats.wajibCompliance?.unpaidCount ?? 0} belum)`}
-        />
+      {/* ── 2. 4 KARTU EKSEKUTIF UTAMA (Anti-Truncation, Tipografi Adaptif) ── */}
+      <CoopExecutiveKpiCards 
+        stats={stats} 
+      />
 
-        {/* 2. Total Simpanan Terkumpul */}
-        <AnalyticsCard 
-          title="Total Simpanan" 
-          value={`Rp ${Math.round(Number(stats.totalSavings || 0)).toLocaleString('id-ID')}`} 
-          icon={<Wallet size={24} />} 
-          gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
-          subtitle={`Pokok: Rp ${(stats.simpananPokok || 0).toLocaleString('id-ID')} | Wajib: Rp ${(stats.simpananWajib || 0).toLocaleString('id-ID')}`}
-        />
+      {/* ── 3. PUSAT KENDALI TINDAKAN HARIAN (Quick Action Bar 1-Klik) ── */}
+      <CoopQuickActionBar 
+        pendingLoansCount={stats.pendingLoans?.length || 0}
+        pendingMembersCount={stats.pendingMembers?.count || 0}
+      />
 
-        {/* 3. Portofolio Pinjaman & Rasio NPL */}
-        <AnalyticsCard 
-          title="Pinjaman Beredar" 
-          value={`Rp ${Math.round(Number(stats.totalLoans || 0)).toLocaleString('id-ID')}`} 
-          icon={<TrendingUp size={24} />} 
-          gradient="from-amber-500 to-amber-700 text-white border-amber-400/30" 
-          subtitle={`${stats.loanPortfolio?.nplRatio ?? 0}% NPL (${stats.activeLoansCount || 0} Pinjaman Aktif)`}
-        />
-
-        {/* 4. Estimasi Akumulasi SHU Tahun Berjalan */}
-        <AnalyticsCard 
-          title={`Estimasi SHU ${stats.estimatedShuYtd?.year || ''}`.trim()} 
-          value={`Rp ${Math.round(Number(stats.estimatedShuYtd?.totalEstimatedShu || 0)).toLocaleString('id-ID')}`} 
-          icon={<PiggyBank size={24} />} 
-          gradient="from-purple-500 to-purple-700 text-white border-purple-400/30" 
-          subtitle={`Omzet Toko: Rp ${Math.round(Number(stats.storeSalesMonth || 0)).toLocaleString('id-ID')}`}
-        />
-      </div>
-
-      {/* ── GRAFIK TREN BULANAN & AKTIVITAS REAL-TIME ─────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* ── 4. GRID OPERASIONAL UTAMA & PANEL KONTROL KANAN ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0">
         
-        {/* Kolom Kiri (2/3): Grafik Analisis Finansial */}
-        <div className="lg:col-span-2 min-w-0">
+        {/* Kolom Kiri (2/3): Grafik Analisis Finansial & Radar Likuiditas */}
+        <div className="lg:col-span-2 min-w-0 space-y-6">
+          
+          {/* Grafik Tren 6 Bulan */}
           <SectionCard 
             title="Tren Finansial & Operasional (6 Bulan Terakhir)" 
             fullWidth 
             noPadding
           >
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
                 <span className="text-slate-500 dark:text-slate-400 font-medium">
                   Agregat mutasi simpanan, pinjaman, dan penjualan toko riil:
@@ -109,36 +83,48 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
                   <button
                     type="button"
                     onClick={() => setActiveChartMetric('all')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      activeChartMetric === 'all' ? 'bg-white dark:bg-slate-950 font-bold shadow-xs text-indigo-600' : 'text-slate-500'
-                    }`}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      activeChartMetric === 'all' 
+                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-indigo-600 dark:text-indigo-400" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
                   >
                     Semua
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveChartMetric('simpanan')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      activeChartMetric === 'simpanan' ? 'bg-white dark:bg-slate-950 font-bold shadow-xs text-emerald-600' : 'text-slate-500'
-                    }`}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      activeChartMetric === 'simpanan' 
+                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-emerald-600 dark:text-emerald-400" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
                   >
                     Simpanan
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveChartMetric('pinjaman')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      activeChartMetric === 'pinjaman' ? 'bg-white dark:bg-slate-950 font-bold shadow-xs text-purple-600' : 'text-slate-500'
-                    }`}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      activeChartMetric === 'pinjaman' 
+                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-purple-600 dark:text-purple-400" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
                   >
                     Pinjaman
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveChartMetric('penjualan')}
-                    className={`px-2.5 py-1 rounded-lg transition-all ${
-                      activeChartMetric === 'penjualan' ? 'bg-white dark:bg-slate-950 font-bold shadow-xs text-blue-600' : 'text-slate-500'
-                    }`}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg transition-all",
+                      activeChartMetric === 'penjualan' 
+                        ? "bg-white dark:bg-slate-950 font-bold shadow-xs text-blue-600 dark:text-blue-400" 
+                        : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+                    )}
                   >
                     Penjualan Toko
                   </button>
@@ -183,23 +169,29 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
               </div>
             </div>
           </SectionCard>
+
+          {/* Radar Likuiditas & Jatuh Tempo Angsuran */}
+          <CoopLiquidityRadarSection stats={stats} />
+
         </div>
 
         {/* Kolom Kanan (1/3): Aktivitas Mutasi Terkini & Pengumuman */}
         <div className="lg:col-span-1 min-w-0 space-y-6">
+          
           <SectionCard title="Aktivitas Mutasi Terkini" fullWidth noPadding>
-            <div className="p-4 space-y-3">
+            <div className="p-4 space-y-2.5">
               {recentActivities.length === 0 ? (
                 <p className="text-gray-400 text-center py-8 text-xs italic">Belum ada transaksi mutasi terkini.</p>
               ) : (
-                recentActivities?.map((act) => (
-                  <div key={act.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100">
+                recentActivities.map((act) => (
+                  <div key={act.id} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className={`p-2 rounded-xl shrink-0 ${
+                      <div className={cn(
+                        "p-2 rounded-xl shrink-0",
                         act.type === 'SAVING' 
-                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                          : 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'
-                      }`}>
+                          ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" 
+                          : "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+                      )}>
                         {act.type === 'SAVING' ? <PiggyBank size={15} /> : <Receipt size={15} />}
                       </div>
                       <div className="min-w-0">
@@ -208,10 +200,11 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
                       </div>
                     </div>
                     <div className="text-right shrink-0 pl-2">
-                      <p className={`text-xs font-mono font-bold ${
-                        act.type === 'SAVING' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200'
-                      }`}>
-                        Rp {act.amount.toLocaleString('id-ID')}
+                      <p className={cn(
+                        "text-xs font-mono font-bold",
+                        act.type === 'SAVING' ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-200"
+                      )}>
+                        {formatRupiahCompact(act.amount)}
                       </p>
                       <p className="text-[9px] text-slate-400">
                         {formatTime(act.date)}
@@ -226,7 +219,7 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
           {announcements.length > 0 && (
             <SectionCard title="Pengumuman Koperasi" fullWidth noPadding>
               <div className="space-y-3 p-4">
-                {announcements?.slice(0, 2)?.map((ann, idx) => (
+                {announcements.slice(0, 2).map((ann, idx) => (
                   <div key={idx} className="bg-indigo-50/60 dark:bg-indigo-950/20 p-3 rounded-xl border-l-4 border-indigo-500 space-y-1">
                     <div className="flex items-start gap-2">
                       <Bell className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" size={14} />
@@ -240,11 +233,18 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
               </div>
             </SectionCard>
           )}
+
         </div>
 
       </div>
 
-      {/* ── STOK KRITIS MINIMARKET (Hanya Tampil Jika Ada Peringatan) ───────────────── */}
+      {/* ── 5. BANNER TATA KELOLA RAT & DIVIDEN SHU ── */}
+      <CoopRatGovernanceBanner 
+        totalActiveMembers={stats.totalMembers || 5}
+        fiscalYear={stats.activePeriod?.year || new Date().getFullYear()}
+      />
+
+      {/* ── 6. PERINGATAN STOK KRITIS MINIMARKET (Jika Ada Barang Habis/Menipis) ── */}
       {criticalStock.length > 0 && (
         <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between mb-3">
@@ -261,7 +261,7 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {criticalStock?.slice(0, 6)?.map((item, i) => (
+            {criticalStock.slice(0, 6).map((item, i) => (
               <div key={i} className="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 rounded-xl flex items-center justify-between">
                 <div className="min-w-0 pr-2">
                   <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.name}</p>
