@@ -309,8 +309,9 @@ const Loans: React.FC = React.memo(() => {
       setRejectTargetLoan(null);
       invalidateLoansCaches(queryClient, variables.loanId);
 
-      if (variables.status === 'APPROVED' && data) {
-        setCreatedLoanData(data);
+      if (variables.status === 'APPROVED') {
+        const approved = (data?.data?.id ? data.data : data?.id ? data : null) || loans.find(l => l.id === variables.loanId) || null;
+        setCreatedLoanData(approved);
         setIsSuccessModalOpen(true);
       }
     },

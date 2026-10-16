@@ -156,8 +156,9 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
       setIsRejectModalOpen(false);
       invalidateLoansCaches(queryClient, id);
 
-      if (status === 'APPROVED' && data) {
-        setApprovedLoanData(data);
+      if (status === 'APPROVED') {
+        const approved = (data?.data?.id ? data.data : data?.id ? data : null) || loan;
+        setApprovedLoanData(approved);
         setIsSuccessModalOpen(true);
       }
     },
@@ -795,18 +796,20 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             memberName={loan.member.name}
             loanAmount={loan.amount}
           />
-          {(approvedLoanData || loan) && (
-            <LoanSuccessModal
-              isOpen={isSuccessModalOpen}
-              onClose={() => {
-                setIsSuccessModalOpen(false);
-                setApprovedLoanData(null);
-              }}
-              loan={approvedLoanData || loan}
-              coopSettings={coopSettings}
-            />
-          )}
         </>
+      )}
+
+      {/* Modal Dialog Berhasil Setujui & Menu Cetak Berkas Lengkap */}
+      {(approvedLoanData || loan) && (
+        <LoanSuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={() => {
+            setIsSuccessModalOpen(false);
+            setApprovedLoanData(null);
+          }}
+          loan={approvedLoanData || loan}
+          coopSettings={coopSettings}
+        />
       )}
 
       {loan && printTarget && createPortal(

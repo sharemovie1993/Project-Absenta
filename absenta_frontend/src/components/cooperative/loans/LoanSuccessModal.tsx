@@ -57,34 +57,36 @@ export const LoanSuccessModal: React.FC<LoanSuccessModalProps> = React.memo(({
 
   if (!isOpen || !loan) return null;
 
-  const isApproved = loan.status === 'APPROVED';
-  const amountNumber = parseFloat(loan.amount) || 0;
-  const durationMonths = loan.duration || 12;
-  const interestRateVal = parseFloat(loan.interestRate) || 0;
+  // Unwrap loan data safely in case it is wrapped in an API response envelope
+  const rawLoan = loan?.data?.id ? loan.data : (loan?.id ? loan : (loan?.data || loan));
+  const isApproved = rawLoan.status === 'APPROVED';
+  const amountNumber = parseFloat(rawLoan.amount) || 0;
+  const durationMonths = Number(rawLoan.duration) || 12;
+  const interestRateVal = parseFloat(rawLoan.interestRate) || 0;
   
   // Calculate flat monthly installment
   const totalInterest = Math.round(amountNumber * (interestRateVal / 100) * durationMonths);
   const totalRepayment = amountNumber + totalInterest;
   const monthlyInstallment = durationMonths > 0 
-    ? (loan.installments?.[0]?.amount ? Math.round(parseFloat(loan.installments[0].amount)) : Math.round(totalRepayment / durationMonths))
+    ? (rawLoan.installments?.[0]?.amount ? Math.round(parseFloat(rawLoan.installments[0].amount)) : Math.round(totalRepayment / durationMonths))
     : 0;
 
   // Format prepared loan object for print templates
   const loanDataForPrint: LoanDetailData = {
-    id: loan.id,
-    memberId: loan.memberId,
-    amount: String(loan.amount),
-    interestRate: String(loan.interestRate),
-    duration: loan.duration,
-    status: loan.status,
-    createdAt: loan.createdAt || new Date().toISOString(),
+    id: rawLoan.id,
+    memberId: rawLoan.memberId,
+    amount: String(rawLoan.amount),
+    interestRate: String(rawLoan.interestRate),
+    duration: durationMonths,
+    status: rawLoan.status,
+    createdAt: rawLoan.createdAt || new Date().toISOString(),
     member: {
-      name: loan.member?.name || 'Anggota Koperasi',
-      memberNo: loan.member?.memberNo || '-',
-      userId: loan.member?.userId || '',
+      name: rawLoan.member?.name || rawLoan.member?.User?.full_name || rawLoan.member?.Siswa?.nama_siswa || rawLoan.member?.Guru?.nama_guru || 'Anggota Koperasi',
+      memberNo: rawLoan.member?.memberNo || '-',
+      userId: rawLoan.member?.userId || '',
     },
-    installments: Array.isArray(loan.installments) && loan.installments.length > 0 
-      ? loan.installments 
+    installments: Array.isArray(rawLoan.installments) && rawLoan.installments.length > 0 
+      ? rawLoan.installments 
       : Array.from({ length: durationMonths }).map((_, idx) => {
           const due = new Date();
           due.setMonth(due.getMonth() + idx + 1);
@@ -98,10 +100,10 @@ export const LoanSuccessModal: React.FC<LoanSuccessModalProps> = React.memo(({
         })
   };
 
-  return (
+  return createPortal(
     <>
       <div 
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-955/80 backdrop-blur-sm animate-in fade-in duration-300 print:hidden"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-955/80 backdrop-blur-sm animate-in fade-in duration-300 print:hidden"
         aria-labelledby="loan-success-title"
         role="dialog"
         aria-modal="true"
@@ -340,7 +342,8 @@ export const LoanSuccessModal: React.FC<LoanSuccessModalProps> = React.memo(({
           }
         }
       `}} />
-    </>
+    </>,
+    document.body
   );
 });
 
