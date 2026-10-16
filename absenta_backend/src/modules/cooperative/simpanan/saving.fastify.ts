@@ -33,6 +33,9 @@ export default async function savingRoutes(fastify: any) {
             if ((isPersonal || !isOperator) && user?.id) {
                 options.userId = user.id;
             }
+            if (req.query?.memberId) {
+                options.memberId = req.query.memberId;
+            }
             
             const savings = await SavingService.getSavings(tenantId, options);
             return savings;

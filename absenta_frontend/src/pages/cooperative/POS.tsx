@@ -1,10 +1,12 @@
-import React, { lazy, Suspense, useMemo, useCallback } from 'react';
+import React, { useState, lazy, Suspense, useMemo, useCallback } from 'react';
 // Hardening Audit triggers: useMemo, useCallback
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
+import Button from '../../components/ui/Button';
+import { Zap } from 'lucide-react';
 import {
   usePOSState,
   ProductList,
@@ -19,6 +21,7 @@ const PaymentModal = lazy(() => import('../../components/cooperative/pos/Payment
 const ReceiptModal = lazy(() => import('../../components/cooperative/pos/ReceiptModal').then(module => ({ default: module.ReceiptModal })));
 const HeldCartsModal = lazy(() => import('../../components/cooperative/pos/HeldCartsModal').then(module => ({ default: module.HeldCartsModal })));
 const QuickRegisterModal = lazy(() => import('../../components/cooperative/pos/QuickRegisterModal').then(module => ({ default: module.QuickRegisterModal })));
+const UnifiedCashierModal = lazy(() => import('../../components/cooperative/pos/UnifiedCashierModal').then(module => ({ default: module.UnifiedCashierModal })));
 
 export type { CoopMember, Voucher, SaleRecord, Product, CartItem, HeldCart, NonMemberCandidate, ProductCategory, SaleItem } from '../../components/cooperative/pos';
 
@@ -120,6 +123,8 @@ const POS: React.FC = React.memo(() => {
     processedSalesHistory
   } = usePOSState();
 
+  const [showUnifiedCashierModal, setShowUnifiedCashierModal] = useState<boolean>(false);
+
   const breadcrumbs = useMemo(() => [
     { label: 'Koperasi', path: '/cooperative' },
     { label: hasCashierAccess ? 'POS' : 'Katalog', path: '/cooperative/pos' }
@@ -159,7 +164,27 @@ const POS: React.FC = React.memo(() => {
         description={pageDesc}
         hardeningModuleKey="coop_pos"
         breadcrumbs={breadcrumbs}
-        topSlot={<CoopFiscalYearSelector className="mb-2" />}
+        topSlot={
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+            <CoopFiscalYearSelector />
+            {hasCashierAccess && (
+              <Button
+                type="button"
+                onClick={() => setShowUnifiedCashierModal(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-sm px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition-all"
+                title="Buka Loket Kasir Terpadu untuk Setor Simpanan & Bayar Cicilan Pinjaman"
+              >
+                <Zap size={14} className="text-amber-300 fill-amber-300" />
+                <span>Loket Simpan Pinjam</span>
+                {selectedMember && (
+                  <span className="text-[10px] bg-indigo-500 text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+                    {selectedMember.name.split(' ')[0]}
+                  </span>
+                )}
+              </Button>
+            )}
+          </div>
+        }
         instruction={instruction}
       >
         {isMobile && hasCashierAccess ? (
@@ -329,6 +354,12 @@ const POS: React.FC = React.memo(() => {
             fetchNextMemberNumber={fetchNextMemberNumber}
             handleRegisterSubmit={handleRegisterSubmit}
             registering={registering}
+          />
+
+          <UnifiedCashierModal
+            isOpen={showUnifiedCashierModal}
+            onClose={() => setShowUnifiedCashierModal(false)}
+            activeMember={selectedMember}
           />
         </Suspense>
       </AcademicPageLayout>
