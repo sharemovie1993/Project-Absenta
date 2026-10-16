@@ -20,7 +20,7 @@ export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = Rea
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 print:hidden w-full max-w-full min-w-0">
       {/* Collateral / Savings Guarantee & DTI Analysis */}
-      <SectionCard className="lg:col-span-2 p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl space-y-4 shadow-xs w-full max-w-full min-w-0">
+      <SectionCard fullWidth className="lg:col-span-2 p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl space-y-4 shadow-xs w-full max-w-full min-w-0">
         <div>
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
             <Award size={16} className="text-indigo-600 shrink-0" /> 
@@ -86,7 +86,7 @@ export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = Rea
       </SectionCard>
 
       {/* Approval Action Panel */}
-      <SectionCard className="p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl flex flex-col justify-between shadow-xs w-full max-w-full min-w-0">
+      <SectionCard fullWidth className="p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl flex flex-col justify-between shadow-xs w-full max-w-full min-w-0">
         <div className="space-y-3">
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
             <CheckCircle size={16} className="text-emerald-600 shrink-0" /> 

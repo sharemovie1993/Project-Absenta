@@ -518,13 +518,13 @@ const LoanDetail: React.FC = React.memo(() => {
                 isStatsCollapsed ? "hidden sm:grid" : "grid"
               )}>
                 {/* User Profile Card */}
-                <SectionCard className="p-4 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between w-full max-w-full min-w-0 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center font-black text-base text-indigo-600 dark:text-indigo-400 border border-indigo-100/30 shrink-0">
+                <SectionCard fullWidth className="p-3 sm:p-3.5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between w-full max-w-full min-w-0 shadow-xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center font-black text-sm text-indigo-600 dark:text-indigo-400 border border-indigo-100/30 shrink-0">
                       {loan.member.name.charAt(0)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 leading-tight uppercase truncate">
+                      <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 leading-tight uppercase truncate" title={loan.member.name}>
                         {loan.member.name}
                       </h3>
                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">
@@ -532,8 +532,8 @@ const LoanDetail: React.FC = React.memo(() => {
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">Status Pinjaman</span>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase">Status Pinjaman</span>
                     <span className={`inline-block px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full border ${
                       loan.status === 'PAID' 
                         ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20' 
@@ -553,8 +553,8 @@ const LoanDetail: React.FC = React.memo(() => {
                   title="Total Nilai Pinjaman"
                   value={`Rp ${Math.round(parseFloat(loan.amount)).toLocaleString('id-ID')}`}
                   subtitle={`Suku Bunga: ${loan.interestRate}% / bln`}
-                  icon={<Percent className="w-4 h-4 text-indigo-500" />}
-                  gradient="from-indigo-500/10 to-indigo-500/5 text-indigo-600"
+                  icon={<Percent className="w-4 h-4 text-white" />}
+                  gradient="from-blue-600 to-indigo-700"
                   variant="compact-premium"
                   mobileCompact={true}
                 />
@@ -564,8 +564,8 @@ const LoanDetail: React.FC = React.memo(() => {
                   title="Sisa Saldo Tagihan"
                   value={`Rp ${Math.round(remainingBalance).toLocaleString('id-ID')}`}
                   subtitle="Tagihan Pokok + Jasa Bunga"
-                  icon={<DollarSign className="w-4 h-4 text-rose-500" />}
-                  gradient="from-rose-500/10 to-rose-500/5 text-rose-600"
+                  icon={<DollarSign className="w-4 h-4 text-white" />}
+                  gradient="from-rose-600 to-rose-700"
                   variant="compact-premium"
                   mobileCompact={true}
                 />
@@ -575,8 +575,8 @@ const LoanDetail: React.FC = React.memo(() => {
                   title="Tenor / Jangka Waktu"
                   value={`${loan.duration} Bulan`}
                   subtitle="Total cicilan bulanan"
-                  icon={<Calendar className="w-4 h-4 text-purple-500" />}
-                  gradient="from-purple-500/10 to-purple-500/5 text-purple-600"
+                  icon={<Calendar className="w-4 h-4 text-white" />}
+                  gradient="from-purple-600 to-violet-700"
                   variant="compact-premium"
                   mobileCompact={true}
                 />
@@ -595,7 +595,7 @@ const LoanDetail: React.FC = React.memo(() => {
 
             {/* Tab 1: Jadwal Rincian Angsuran */}
             {activeDetailTab === 'installments' && (
-              <SectionCard className="p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs space-y-4 w-full max-w-full min-w-0 overflow-x-auto">
+              <SectionCard fullWidth className="p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs space-y-4 w-full max-w-full min-w-0">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
