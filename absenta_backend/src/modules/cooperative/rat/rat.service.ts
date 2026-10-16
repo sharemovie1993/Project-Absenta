@@ -105,16 +105,33 @@ export class RatService {
       throw new Error('Sidang RAT tidak ditemukan.');
     }
 
+    // Jika rapat masih DRAFT atau SCHEDULED, perbarui otomatis snapshot dengan jumlah anggota aktif terkini
+    let totalActiveMembers = meeting.totalActiveMembers;
+    let quorumTarget = meeting.quorumTarget;
+    if (meeting.status === 'DRAFT' || meeting.status === 'SCHEDULED') {
+      const activeCount = await prisma.member.count({
+        where: { tenantId, status: 'ACTIVE' },
+      });
+      if (activeCount > 0 && activeCount !== totalActiveMembers) {
+        totalActiveMembers = activeCount;
+        quorumTarget = Math.floor(activeCount / 2) + 1;
+        await prisma.coopMeeting.update({
+          where: { id },
+          data: { totalActiveMembers, quorumTarget },
+        }).catch(() => {});
+      }
+    }
+
     // Hitung status kuorum terkini di backend
     const totalAttended = meeting.attendances.length;
-    const isQuorumReached = meeting.quorumTarget > 0 ? totalAttended >= meeting.quorumTarget : false;
-    const percentage = meeting.totalActiveMembers > 0
-      ? Math.round((totalAttended / meeting.totalActiveMembers) * 100)
+    const isQuorumReached = quorumTarget > 0 ? totalAttended >= quorumTarget : false;
+    const percentage = totalActiveMembers > 0
+      ? Math.round((totalAttended / totalActiveMembers) * 100)
       : 0;
-    const quorumPercentage = meeting.quorumTarget > 0
-      ? Math.min(100, Math.round((totalAttended / meeting.quorumTarget) * 100))
+    const quorumPercentage = quorumTarget > 0
+      ? Math.min(100, Math.round((totalAttended / quorumTarget) * 100))
       : 0;
-    const remainingNeeded = Math.max(0, meeting.quorumTarget - totalAttended);
+    const remainingNeeded = Math.max(0, quorumTarget - totalAttended);
 
     // Format agendas dan resolutions agar konsisten dengan frontend
     const mappedAgendas = (meeting.agendas || []).map((ag: any) => ({
@@ -192,7 +209,7 @@ export class RatService {
       ...meeting,
       year: meeting.fiscalYear,
       meetingDate: meeting.date ? meeting.date.toISOString() : '',
-      totalEligibleMembers: meeting.totalActiveMembers,
+      totalEligibleMembers: totalActiveMembers,
       actualAttendance: totalAttended,
       isQuorumReached,
       agendas: mappedAgendas,
@@ -200,9 +217,9 @@ export class RatService {
       votingSessions: mappedVotingSessions,
       attendances: mappedAttendances,
       quorumStats: {
-        totalActiveMembers: meeting.totalActiveMembers,
-        totalEligibleMembers: meeting.totalActiveMembers,
-        quorumTarget: meeting.quorumTarget,
+        totalActiveMembers: totalActiveMembers,
+        totalEligibleMembers: totalActiveMembers,
+        quorumTarget: quorumTarget,
         totalAttended,
         actualAttendance: totalAttended,
         percentage,
@@ -336,10 +353,80 @@ export class RatService {
       throw new Error(`Status ${status} tidak valid.`);
     }
 
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id, tenantId },
+    });
+    if (!meeting) {
+      throw new Error('Sidang RAT tidak ditemukan.');
+    }
+
+    const updateData: any = { status: status as any };
+
+    // Saat status dibuka ke REGISTRATION_OPEN atau jika masih DRAFT/SCHEDULED:
+    // Kunci/segarkan snapshot total anggota aktif dan target kuorum sah terkini (UU Perkoperasian: 50% + 1)
+    if (status === 'REGISTRATION_OPEN' || meeting.status === 'DRAFT' || meeting.status === 'SCHEDULED') {
+      const activeCount = await prisma.member.count({
+        where: { tenantId, status: 'ACTIVE' },
+      });
+      const quorumTarget = activeCount > 0 ? Math.floor(activeCount / 2) + 1 : 1;
+      updateData.totalActiveMembers = activeCount;
+      updateData.quorumTarget = quorumTarget;
+    }
+
     return prisma.coopMeeting.update({
       where: { id },
-      data: { status: status as any },
+      data: updateData,
     });
+  }
+
+  /**
+   * Sinkronkan ulang basis snapshot kuorum anggota aktif RAT
+   */
+  static async resyncMeetingQuorum(id: string, tenantId: string) {
+    const meeting = await prisma.coopMeeting.findFirst({
+      where: { id, tenantId },
+    });
+    if (!meeting) {
+      throw new Error('Sidang RAT tidak ditemukan.');
+    }
+
+    if (meeting.status === 'CLOSED' || meeting.status === 'RATIFIED') {
+      throw new Error('Kuorum sidang yang sudah selesai atau disahkan tidak dapat diubah.');
+    }
+
+    const totalActiveMembers = await prisma.member.count({
+      where: { tenantId, status: 'ACTIVE' },
+    });
+    const quorumTarget = totalActiveMembers > 0 ? Math.floor(totalActiveMembers / 2) + 1 : 1;
+
+    const currentAttendanceCount = await prisma.coopMeetingAttendance.count({
+      where: { meetingId: id },
+    });
+
+    let newStatus = meeting.status;
+    if (meeting.status === 'QUORUM_REACHED' && currentAttendanceCount < quorumTarget) {
+      newStatus = 'REGISTRATION_OPEN';
+    } else if (meeting.status === 'REGISTRATION_OPEN' && currentAttendanceCount >= quorumTarget) {
+      newStatus = 'QUORUM_REACHED';
+    }
+
+    const updated = await prisma.coopMeeting.update({
+      where: { id },
+      data: {
+        totalActiveMembers,
+        quorumTarget,
+        status: newStatus as any,
+      },
+    });
+
+    return {
+      success: true,
+      meetingId: id,
+      totalActiveMembers,
+      quorumTarget,
+      status: newStatus,
+      message: `Basis kuorum berhasil disinkronkan (${totalActiveMembers} anggota aktif, target kuorum: ${quorumTarget} orang).`,
+    };
   }
 
   /**

@@ -370,6 +370,36 @@ const RatMeetingPage: React.FC = React.memo(() => {
     }
   }, [confirm, lifecycleMutation]);
 
+  // Mutation: Resync Quorum Snapshot
+  const resyncQuorumMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedMeetingId) throw new Error('Pilih rapat');
+      const res = await api.post(`/cooperative/rat/${selectedMeetingId}/resync-quorum`);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      invalidateRatCaches(queryClient, selectedMeetingId);
+      toast.success(data?.data?.message || 'Basis data kuorum berhasil disinkronkan!');
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal sinkronisasi kuorum';
+      toast.error(errorMsg);
+    }
+  });
+
+  const handleResyncQuorum = useCallback(async () => {
+    const isConfirmed = await confirm({
+      title: 'Sinkronkan Kuorum Sidang RAT',
+      message: 'Perbarui basis data kuorum dengan jumlah seluruh anggota aktif koperasi saat ini? Target kuorum akan otomatis dihitung ulang (50% + 1).',
+      confirmText: 'Sinkronkan Sekarang',
+      cancelText: 'Batal',
+      style: 'info',
+    });
+    if (isConfirmed) {
+      resyncQuorumMutation.mutate();
+    }
+  }, [confirm, resyncQuorumMutation]);
+
   // Mutation: Update Voting Session Status (e.g. TALLIED)
   const votingStatusMutation = useMutation({
     mutationFn: async ({ sessionId, status }: { sessionId: string; status: 'ACTIVE' | 'CLOSED' | 'TALLIED' }) => {
@@ -566,6 +596,8 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   onLifecycleAdvance={handleLifecycleAdvance}
                   isAdvancingLifecycle={lifecycleMutation.isPending}
                   onOpenClosureWizard={() => setIsClosureWizardOpen(true)}
+                  onResyncQuorum={handleResyncQuorum}
+                  isResyncingQuorum={resyncQuorumMutation.isPending}
                 />
               )}
 

@@ -272,6 +272,23 @@ export default async function ratRoutes(fastify: any) {
     }
   );
 
+  // 5b. POST /:id/resync-quorum - Sinkronkan Snapshot Kuorum Anggota Aktif Terkini
+  fastify.post(
+    '/:id/resync-quorum',
+    { preHandler: [requireCapability('cooperative.rat.manage')] },
+    async (req: any, reply: any) => {
+      try {
+        const tenantId = getTenantId(req);
+        const result = await RatService.resyncMeetingQuorum(req.params.id, tenantId);
+        broadcastRatEvent(req, 'RAT_QUORUM_UPDATED', { meetingId: req.params.id });
+        return { success: true, data: result };
+      } catch (error: any) {
+        appLogger.error({ err: error }, 'Failed to resync RAT quorum');
+        reply.status(400).send({ success: false, message: error.message || 'Gagal sinkronisasi kuorum' });
+      }
+    }
+  );
+
   // 6. POST /:id/attendance - Catat Presensi Kehadiran Peserta (Tap RFID / Ketik Manual / Online)
   fastify.post(
     '/:id/attendance',

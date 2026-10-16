@@ -10,6 +10,7 @@ import {
   Play,
   Coins,
   Gavel,
+  RefreshCw,
 } from 'lucide-react';
 import type { CoopMeetingItem } from '../../../pages/cooperative/RatMeetingPage';
 
@@ -30,6 +31,8 @@ export interface RatQuorumHudProps {
   onLifecycleAdvance: (newStatus: string, actionLabel: string) => void;
   isAdvancingLifecycle: boolean;
   onOpenClosureWizard?: () => void;
+  onResyncQuorum?: () => void;
+  isResyncingQuorum?: boolean;
 }
 
 export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
@@ -40,6 +43,8 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
   onLifecycleAdvance,
   isAdvancingLifecycle,
   onOpenClosureWizard,
+  onResyncQuorum,
+  isResyncingQuorum,
 }) => {
   const managerLifecycleActions = canManage ? (
     <div className="flex flex-wrap items-center gap-2">
@@ -101,6 +106,20 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
         >
           <Coins className="w-3.5 h-3.5 mr-1" />
           Distribusi SHU
+        </Button>
+      )}
+      {onResyncQuorum && currentMeeting.status !== 'CLOSED' && currentMeeting.status !== 'RATIFIED' && (
+        <Button
+          type="button"
+          size="toolbar"
+          variant="toolbarGhost"
+          onClick={onResyncQuorum}
+          isLoading={isResyncingQuorum}
+          title="Sinkronkan ulang basis kuorum dengan jumlah anggota aktif terkini di database"
+          className="text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+        >
+          <RefreshCw className="w-3.5 h-3.5 mr-1" />
+          Sinkron Kuorum
         </Button>
       )}
     </div>
