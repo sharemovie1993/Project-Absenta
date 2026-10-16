@@ -44,10 +44,21 @@ import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
 import { invalidateLoansCaches } from '../../lib/coopQueryKeys';
 
-const LoanDetail: React.FC = React.memo(() => {
+export interface LoanDetailProps {
+  loanId?: string;
+  isModal?: boolean;
+  onClose?: () => void;
+}
+
+const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
+  loanId,
+  isModal = false,
+  onClose,
+}) => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = loanId || params.id;
   const navigate = useNavigate();
   const confirm = useConfirm();
 
@@ -363,6 +374,13 @@ const LoanDetail: React.FC = React.memo(() => {
   }, [id, user]);
 
   if (loading) {
+    if (isModal) {
+      return (
+        <div className="flex justify-center items-center h-64 w-full">
+          <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
+        </div>
+      );
+    }
     return (
       <PremiumFeatureGate moduleName="KOPERASI" featureName="Detail Pinjaman Anggota">
         <AcademicPageLayout
@@ -381,7 +399,7 @@ const LoanDetail: React.FC = React.memo(() => {
           breadcrumbs={breadcrumbs}
         >
           <div className="flex justify-center items-center h-64 w-full">
-            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-650 rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin"></div>
           </div>
         </AcademicPageLayout>
       </PremiumFeatureGate>
@@ -389,6 +407,13 @@ const LoanDetail: React.FC = React.memo(() => {
   }
 
   if (!loan) {
+    if (isModal) {
+      return (
+        <div className="p-8 text-center text-slate-400 font-bold uppercase tracking-wider text-xs border border-slate-200 dark:border-slate-800 rounded-2xl w-full">
+          Berkas pinjaman tidak ditemukan atau Anda tidak memiliki hak akses.
+        </div>
+      );
+    }
     return (
       <PremiumFeatureGate moduleName="KOPERASI" featureName="Detail Pinjaman Anggota">
         <AcademicPageLayout
@@ -414,40 +439,23 @@ const LoanDetail: React.FC = React.memo(() => {
     );
   }
 
-  return (
-    <PremiumFeatureGate
-      moduleName="KOPERASI"
-      featureName="Detail Pinjaman Anggota"
-    >
-      <AcademicPageLayout
-        title="Detail Angsuran & Pinjaman"
-        description="Rincian status kelayakan, total tagihan, dan rekonsiliasi pembayaran cicilan"
-        hardeningModuleKey="coop_loandetail"
-        instruction={{
-          title: "Detail Pinjaman Anggota",
-          description: "Halaman ini menampilkan rincian status pinjaman, jadwal angsuran, dan analisis kelayakan kredit anggota koperasi.",
-          items: [
-            { text: "Tinjau informasi pokok pinjaman, bunga, dan tenor pada panel metrik." },
-            { text: "Pengurus dapat menyetujui atau menolak pengajuan yang berstatus PENDING." },
-            { text: "Gunakan tombol cetak untuk menghasilkan kartu kendali, akad, dan kuitansi." }
-          ]
-        }}
-        breadcrumbs={breadcrumbs}
-      >
-        <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 print:hidden w-full max-w-full min-w-0">
+  const mainContent = (
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 print:hidden w-full max-w-full min-w-0">
           
           {/* Topbar Navigation & Action buttons (Pilar 30 Zero-Clipping & Redundant Badge Hidden on <640px) */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full max-w-full min-w-0 print:hidden bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs">
             <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto justify-between sm:justify-start">
               <div className="flex items-center gap-2 min-w-0 flex-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(-1)}
-                  className="text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shrink-0 text-xs"
-                >
-                  <ArrowLeft size={14} /> <span className="hidden sm:inline">Kembali</span>
-                </Button>
+                {!isModal && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(-1)}
+                    className="text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shrink-0 text-xs"
+                  >
+                    <ArrowLeft size={14} /> <span className="hidden sm:inline">Kembali</span>
+                  </Button>
+                )}
                 <div className="min-w-0 flex-1">
                   <h2 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight truncate max-w-[220px] sm:max-w-md">
                     {loan.member.name}
@@ -670,57 +678,94 @@ const LoanDetail: React.FC = React.memo(() => {
             }
           `}} />
         </div>
+  );
 
-        {/* Proxy Modals for Member Profile and Savings Passbook */}
-        {loan && (
-          <>
-            <MemberDetailModalProxy
-              isOpen={isProfileModalOpen}
-              onClose={() => setIsProfileModalOpen(false)}
-              memberId={loan.memberId}
-            />
-            <MemberSavingsPassbookModal
-              isOpen={isPassbookModalOpen}
-              onClose={() => setIsPassbookModalOpen(false)}
-              memberId={loan.memberId}
-              memberName={loan.member.name}
-              memberNo={loan.member.memberNo}
-            />
-          </>
-        )}
+  const sharedModalsAndPortals = (
+    <>
+      {/* Proxy Modals for Member Profile and Savings Passbook */}
+      {loan && (
+        <>
+          <MemberDetailModalProxy
+            isOpen={isProfileModalOpen}
+            onClose={() => setIsProfileModalOpen(false)}
+            memberId={loan.memberId}
+          />
+          <MemberSavingsPassbookModal
+            isOpen={isPassbookModalOpen}
+            onClose={() => setIsPassbookModalOpen(false)}
+            memberId={loan.memberId}
+            memberName={loan.member.name}
+            memberNo={loan.member.memberNo}
+          />
+        </>
+      )}
 
-        {loan && printTarget && createPortal(
-          <>
-            {printTarget === 'CARD' && (
-              <PrintLoanCard 
-                loan={loan} 
-                remainingBalance={remainingBalance} 
-                coopSettings={coopSettings}
-              />
-            )}
-            {printTarget === 'AGREEMENT' && (
-              <PrintLoanAgreement 
-                loan={loan} 
-                coopSettings={coopSettings}
-              />
-            )}
-            {printTarget === 'RECEIPT' && (
-              <PrintLoanReceipt 
-                loan={loan} 
-                coopSettings={coopSettings}
-              />
-            )}
-            {printTarget === 'REPAYMENT' && selectedRepayment && (
-              <PrintLoanRepayment 
-                loan={loan}
-                installment={selectedRepayment.installment}
-                installmentNo={selectedRepayment.index}
-                coopSettings={coopSettings}
-              />
-            )}
-          </>,
-          document.body
-        )}
+      {loan && printTarget && createPortal(
+        <>
+          {printTarget === 'CARD' && (
+            <PrintLoanCard 
+              loan={loan} 
+              remainingBalance={remainingBalance} 
+              coopSettings={coopSettings}
+            />
+          )}
+          {printTarget === 'AGREEMENT' && (
+            <PrintLoanAgreement 
+              loan={loan} 
+              coopSettings={coopSettings}
+            />
+          )}
+          {printTarget === 'RECEIPT' && (
+            <PrintLoanReceipt 
+              loan={loan} 
+              coopSettings={coopSettings}
+            />
+          )}
+          {printTarget === 'REPAYMENT' && selectedRepayment && (
+            <PrintLoanRepayment 
+              loan={loan}
+              installment={selectedRepayment.installment}
+              installmentNo={selectedRepayment.index}
+              coopSettings={coopSettings}
+            />
+          )}
+        </>,
+        document.body
+      )}
+    </>
+  );
+
+  if (isModal) {
+    return (
+      <div className="w-full max-w-full min-w-0">
+        {mainContent}
+        {sharedModalsAndPortals}
+      </div>
+    );
+  }
+
+  return (
+    <PremiumFeatureGate
+      moduleName="KOPERASI"
+      featureName="Detail Pinjaman Anggota"
+    >
+      <AcademicPageLayout
+        title="Detail Angsuran & Pinjaman"
+        description="Rincian status kelayakan, total tagihan, dan rekonsiliasi pembayaran cicilan"
+        hardeningModuleKey="coop_loandetail"
+        instruction={{
+          title: "Detail Pinjaman Anggota",
+          description: "Halaman ini menampilkan rincian status pinjaman, jadwal angsuran, dan analisis kelayakan kredit anggota koperasi.",
+          items: [
+            { text: "Tinjau informasi pokok pinjaman, bunga, dan tenor pada panel metrik." },
+            { text: "Pengurus dapat menyetujui atau menolak pengajuan yang berstatus PENDING." },
+            { text: "Gunakan tombol cetak untuk menghasilkan kartu kendali, akad, dan kuitansi." }
+          ]
+        }}
+        breadcrumbs={breadcrumbs}
+      >
+        {mainContent}
+        {sharedModalsAndPortals}
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

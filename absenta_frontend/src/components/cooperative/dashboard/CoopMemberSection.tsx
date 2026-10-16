@@ -30,6 +30,7 @@ import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { NonMemberBanner } from '@/components/cooperative/shared/NonMemberBanner';
 import { MemberDetailModalProxy } from '@/components/cooperative/loans/MemberDetailModalProxy';
 import { MemberSavingsPassbookModal } from '@/components/cooperative/loans/MemberSavingsPassbookModal';
+import { LoanDetailModal } from '@/components/cooperative/loans/LoanDetailModal';
 import { formatDate } from '@/utils/date.utils';
 import type { Sale, SaleItem } from '@/components/cooperative/types';
 import type { CoopMemberSectionProps } from './types';
@@ -72,9 +73,10 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   const [salesPage, setSalesPage] = useState(1);
   const salesPageLimit = 10;
 
-  // Modal State for Digital Member Card & Savings Passbook
+  // Modal State for Digital Member Card, Savings Passbook & Loan Installment Detail
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
   const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
+  const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
 
   // Identity resolution
   const currentMemberId = memberInfo?.id || memberSummary?.memberInfo?.id || null;
@@ -308,12 +310,13 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                   </div>
                 </div>
               </div>
-              <Link
-                to={`/cooperative/loans/${activeLoan.id}`}
+              <Button
+                type="button"
+                onClick={() => setIsLoanModalOpen(true)}
                 className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shrink-0 text-center transition-colors shadow-2xs text-xs"
               >
                 Lihat Cicilan
-              </Link>
+              </Button>
             </div>
           ) : pendingLoansCount > 0 ? (
             <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between gap-3 text-xs w-full max-w-full min-w-0">
@@ -699,6 +702,15 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
             memberNo={currentMemberNo}
           />
         </>
+      )}
+
+      {/* ── Ready-Made Reused Loan Detail Modal ────────────────────────── */}
+      {activeLoan && (
+        <LoanDetailModal
+          isOpen={isLoanModalOpen}
+          onClose={() => setIsLoanModalOpen(false)}
+          loanId={activeLoan.id}
+        />
       )}
     </div>
   );
