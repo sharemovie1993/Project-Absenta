@@ -439,6 +439,69 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
     );
   }
 
+  // Table Angsuran (Bisa dipakai murni di Modal atau di dalam Tab Halaman Penuh)
+  const installmentsTableSection = (
+    <SectionCard fullWidth className="p-3 sm:p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs space-y-4 w-full max-w-full min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+            Jadwal Rincian Angsuran
+          </h3>
+          <p className="text-[10px] text-slate-400">
+            Perjalanan kartu kendali pembayaran cicilan anggota
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isModal && (
+            <span className="text-[11px] font-semibold text-slate-500">
+              Plafon: <strong className="text-slate-800 dark:text-slate-100">Rp {Math.round(parseFloat(loan.amount)).toLocaleString('id-ID')}</strong> ({loan.duration} Bln)
+            </span>
+          )}
+          {isModal && <span className="text-slate-300 dark:text-slate-700">•</span>}
+          <Badge variant="outline" className="text-[10px] font-bold text-slate-500 w-fit">
+            {loan.installments.filter(i => i.status === 'PAID').length} dari {loan.installments.length} Lunas
+          </Badge>
+        </div>
+      </div>
+
+      <div className="w-full max-w-full min-w-0 overflow-x-auto">
+        {isMobile ? (
+          <MobileAcademicList
+            title="Daftar Jadwal Angsuran"
+            data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
+            loading={false}
+            totalItems={loan.installments.length}
+            emptyMessage="Tidak ada data jadwal angsuran terdaftar."
+            pagination={{
+              currentPage: installmentPage,
+              itemsPerPage: installmentLimit,
+              totalItems: loan.installments.length,
+              totalPages: Math.ceil(loan.installments.length / installmentLimit),
+              onPageChange: (newPage) => setInstallmentPage(newPage),
+              onLimitChange: () => {}
+            }}
+            renderCard={(item, index) => renderMobileInstallmentCard(item, index)}
+          />
+        ) : (
+          <Table 
+            data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
+            columns={installmentColumns}
+            rowKey="id"
+            emptyMessage="Tidak ada data jadwal angsuran terdaftar."
+            pagination={{
+              currentPage: installmentPage,
+              itemsPerPage: installmentLimit,
+              totalItems: loan.installments.length,
+              totalPages: Math.ceil(loan.installments.length / installmentLimit),
+              onPageChange: (newPage) => setInstallmentPage(newPage),
+              onLimitChange: () => {}
+            }}
+          />
+        )}
+      </div>
+    </SectionCard>
+  );
+
   const mainContent = (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300 print:hidden w-full max-w-full min-w-0">
           
@@ -589,59 +652,7 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             </div>
 
             {/* Tab 1: Jadwal Rincian Angsuran */}
-            {activeDetailTab === 'installments' && (
-              <SectionCard fullWidth className="p-4 sm:p-6 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs space-y-4 w-full max-w-full min-w-0">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-                      Jadwal Rincian Angsuran
-                    </h3>
-                    <p className="text-[10px] text-slate-400">
-                      Daftar kartu kendali angsuran bulanan yang harus dibayar anggota
-                    </p>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] font-bold text-slate-500 w-fit">
-                    Total {loan.installments.length} Angsuran
-                  </Badge>
-                </div>
-
-                <div className="w-full max-w-full min-w-0 overflow-x-auto">
-                  {isMobile ? (
-                    <MobileAcademicList
-                      title="Daftar Jadwal Angsuran"
-                      data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
-                      loading={false}
-                      totalItems={loan.installments.length}
-                      emptyMessage="Tidak ada data jadwal angsuran terdaftar."
-                      pagination={{
-                        currentPage: installmentPage,
-                        itemsPerPage: installmentLimit,
-                        totalItems: loan.installments.length,
-                        totalPages: Math.ceil(loan.installments.length / installmentLimit),
-                        onPageChange: (newPage) => setInstallmentPage(newPage),
-                        onLimitChange: () => {}
-                      }}
-                      renderCard={(item, index) => renderMobileInstallmentCard(item, index)}
-                    />
-                  ) : (
-                    <Table 
-                      data={loan.installments.slice((installmentPage - 1) * installmentLimit, installmentPage * installmentLimit)}
-                      columns={installmentColumns}
-                      rowKey="id"
-                      emptyMessage="Tidak ada data jadwal angsuran terdaftar."
-                      pagination={{
-                        currentPage: installmentPage,
-                        itemsPerPage: installmentLimit,
-                        totalItems: loan.installments.length,
-                        totalPages: Math.ceil(loan.installments.length / installmentLimit),
-                        onPageChange: (newPage) => setInstallmentPage(newPage),
-                        onLimitChange: () => {}
-                      }}
-                    />
-                  )}
-                </div>
-              </SectionCard>
-            )}
+            {activeDetailTab === 'installments' && installmentsTableSection}
 
             {/* Tab 2: Analisis Kelayakan & Persetujuan Kredit */}
             {activeDetailTab === 'eligibility' && (
@@ -738,8 +749,18 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   if (isModal) {
     return (
       <div className="w-full max-w-full min-w-0">
-        {mainContent}
-        {sharedModalsAndPortals}
+        {installmentsTableSection}
+
+        {/* Portal Cetak Slip Setor jika anggota klik cetak bukti di baris cicilan */}
+        {loan && printTarget === 'REPAYMENT' && selectedRepayment && createPortal(
+          <PrintLoanRepayment 
+            loan={loan}
+            installment={selectedRepayment.installment}
+            installmentNo={selectedRepayment.index}
+            coopSettings={coopSettings}
+          />,
+          document.body
+        )}
       </div>
     );
   }

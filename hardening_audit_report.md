@@ -9,8 +9,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
 | **Total Halaman Utama** | **212 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **163 Halaman** | 77% | **Sangat Baik** |
-| **⚠️ Sebagian Terstandar (Partial)** | **46 Halaman** | 22% | **Butuh Sentuhan Ringan** |
+| **✅ Lolos Sempurna (Hardened)** | **162 Halaman** | 76% | **Sangat Baik** |
+| **⚠️ Sebagian Terstandar (Partial)** | **47 Halaman** | 22% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
@@ -250,6 +250,14 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+
+---
+
+### 📄 Halaman: `LoanDetail.tsx`
+* **Lokasi File:** [LoanDetail.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/LoanDetail.tsx)
+* **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ⚠️  Tata letak tidak konsisten. Terdeteksi komponen filter atau kartu statistik diletakkan di bawah tabel data master.
 
 ---
 
@@ -899,13 +907,6 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `LaporanInventori.tsx`
 * **Lokasi File:** [LaporanInventori.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/LaporanInventori.tsx)
-* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
-* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
-
----
-
-### 📄 Halaman: `LoanDetail.tsx`
-* **Lokasi File:** [LoanDetail.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/cooperative/LoanDetail.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 
