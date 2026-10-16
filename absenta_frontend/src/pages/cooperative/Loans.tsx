@@ -234,13 +234,15 @@ const Loans: React.FC = React.memo(() => {
   const membersQuery = useQuery<Member[]>({
     queryKey: ['cooperative-members-active-list'],
     queryFn: async () => {
-      const res = await api.get('/cooperative/members?limit=1000&status=ACTIVE');
-      return res.data?.data?.members || [];
+      const res = await api.get('/cooperative/members');
+      const list = Array.isArray(res.data) ? res.data : (res.data?.data?.members || res.data?.data || []);
+      return (list || []).filter((m: any) => !m.status || m.status === 'ACTIVE');
     },
-    enabled: isModalOpen && isOperatorMode,
+    enabled: isOperatorMode,
     staleTime: 5 * 60 * 1000,
   });
   const members = membersQuery.data || [];
+  const loadingMembers = membersQuery.isLoading;
 
   // Mutation: Create Loan (dengan Idempotency Key Guard)
   const createLoanMutation = useMutation({
@@ -731,14 +733,17 @@ const Loans: React.FC = React.memo(() => {
             onClose={() => setIsModalOpen(false)}
             formData={formData}
             setFormData={setFormData}
+            onFormDataChange={setFormData}
             onSubmit={(e) => {
               e.preventDefault();
               createLoanMutation.mutate(formData);
             }}
             loading={createLoanMutation.isPending}
+            submitLoading={createLoanMutation.isPending}
             isStudent={isStudent}
             isOperatorMode={isOperatorMode}
             members={members}
+            loadingMembers={loadingMembers}
             studentMetrics={studentMetrics}
           />
         )}

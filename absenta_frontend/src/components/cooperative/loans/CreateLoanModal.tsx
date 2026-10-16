@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { XCircle, RefreshCw } from 'lucide-react';
 import { Button, Input } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
@@ -9,42 +9,68 @@ interface CreateLoanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (e: React.FormEvent) => void;
-  isStudent: boolean;
-  members: Member[];
+  isStudent?: boolean;
+  isOperatorMode?: boolean;
+  members?: Member[];
+  loadingMembers?: boolean;
+  isLoadingMembers?: boolean;
   formData: {
     memberId: string;
     amount: string;
     interestRate: string;
     duration: string;
-    notes: string;
+    notes?: string;
   };
-  onFormDataChange: React.Dispatch<React.SetStateAction<{
+  onFormDataChange?: React.Dispatch<React.SetStateAction<{
     memberId: string;
     amount: string;
     interestRate: string;
     duration: string;
     notes: string;
   }>>;
-  simulation: {
+  setFormData?: React.Dispatch<React.SetStateAction<any>>;
+  simulation?: {
     interest: number;
     total: number;
     monthly: number;
   };
-  submitLoading: boolean;
+  submitLoading?: boolean;
+  loading?: boolean;
+  studentMetrics?: any;
 }
 
 export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   isOpen,
   onClose,
   onSubmit,
-  isStudent,
-  members,
+  isStudent = false,
+  members = [],
+  loadingMembers = false,
+  isLoadingMembers = false,
   formData,
   onFormDataChange,
+  setFormData,
   simulation,
-  submitLoading,
+  submitLoading = false,
+  loading = false,
 }) => {
   if (!isOpen) return null;
+
+  const updateForm = onFormDataChange || setFormData;
+  const isSubmitting = submitLoading || loading;
+  const isListLoading = loadingMembers || isLoadingMembers;
+
+  // Safe simulation calculation if not provided externally
+  const calculatedSimulation = useMemo(() => {
+    if (simulation) return simulation;
+    const principal = parseFloat(formData.amount) || 0;
+    const rate = parseFloat(formData.interestRate) || 0;
+    const months = parseInt(formData.duration) || 12;
+    const interest = Math.round(principal * (rate / 100) * months);
+    const total = principal + interest;
+    const monthly = months > 0 ? Math.round(total / months) : 0;
+    return { interest, total, monthly };
+  }, [simulation, formData.amount, formData.interestRate, formData.duration]);
 
   return (
     <div 
@@ -82,10 +108,21 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                 <SearchableSelect
                   id="select-member-id"
                   value={formData.memberId}
-                  onValueChange={(val) => onFormDataChange(prev => ({ ...prev, memberId: val }))}
-                  options={(members || [])?.map(m => ({ label: `${m.name} (${m.memberNo})`, value: m.id }))}
+                  onValueChange={(val) => {
+                    if (updateForm) {
+                      updateForm((prev: any) => ({ ...prev, memberId: val }));
+                    }
+                  }}
+                  options={(members || [])?.map((m: any) => {
+                    const idInfo = m.identityNo && m.identityNo !== '-' ? ` • ${m.identityNo}` : (m.nis ? ` • NIS: ${m.nis}` : (m.nip ? ` • NIP: ${m.nip}` : ''));
+                    return {
+                      label: `${m.name || 'Anggota'} (${m.memberNo}${idInfo})`,
+                      value: m.id
+                    };
+                  })}
                   placeholder="-- Pilih Anggota --"
-                  emptyMessage="Anggota tidak ditemukan."
+                  emptyMessage={isListLoading ? "Memuat data anggota koperasi..." : "Anggota tidak ditemukan."}
+                  isLoading={isListLoading}
                 />
               </div>
             )}
@@ -99,7 +136,11 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                 id="loan-amount"
                 type="number"
                 value={formData.amount}
-                onChange={(e) => onFormDataChange(prev => ({ ...prev, amount: e.target.value }))}
+                onChange={(e) => {
+                  if (updateForm) {
+                    updateForm((prev: any) => ({ ...prev, amount: e.target.value }));
+                  }
+                }}
                 placeholder="Masukkan nominal (min: Rp 100.000)"
                 className="h-10 text-sm font-extrabold focus:border-indigo-500"
                 required
@@ -119,7 +160,11 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                   type="number"
                   step="0.1"
                   value={formData.interestRate}
-                  onChange={(e) => onFormDataChange(prev => ({ ...prev, interestRate: e.target.value }))}
+                  onChange={(e) => {
+                    if (updateForm) {
+                      updateForm((prev: any) => ({ ...prev, interestRate: e.target.value }));
+                    }
+                  }}
                   className="h-10 text-xs font-bold focus:border-indigo-500"
                   required
                   aria-label="Suku Bunga"
@@ -132,7 +177,11 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                 <select
                   id="loan-duration"
                   value={formData.duration}
-                  onChange={(e) => onFormDataChange(prev => ({ ...prev, duration: e.target.value }))}
+                  onChange={(e) => {
+                    if (updateForm) {
+                      updateForm((prev: any) => ({ ...prev, duration: e.target.value }));
+                    }
+                  }}
                   aria-label="Jangka Waktu"
                   className="w-full h-10 px-3 text-xs bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none font-bold"
                   required
@@ -143,6 +192,26 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                   <option value="24">24 Bulan</option>
                 </select>
               </div>
+            </div>
+
+            {/* Notes / Keperluan Pinjaman */}
+            <div className="space-y-1">
+              <label htmlFor="loan-notes" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                Keperluan / Keterangan Pinjaman (Opsional)
+              </label>
+              <Input
+                id="loan-notes"
+                type="text"
+                value={formData.notes || ''}
+                onChange={(e) => {
+                  if (updateForm) {
+                    updateForm((prev: any) => ({ ...prev, notes: e.target.value }));
+                  }
+                }}
+                placeholder="Contoh: Modal usaha, biaya pendidikan, keperluan mendesak"
+                className="h-10 text-xs focus:border-indigo-500"
+                aria-label="Keperluan Pinjaman"
+              />
             </div>
 
             {/* Live Simulation Card */}
@@ -156,19 +225,19 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                   <div className="flex justify-between">
                     <span className="text-slate-500">Estimasi Total Bunga:</span>
                     <span className="font-bold text-slate-700 dark:text-slate-350">
-                      Rp {simulation.interest.toLocaleString('id-ID')}
+                      Rp {calculatedSimulation.interest.toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-dashed border-indigo-500/10 pb-1.5">
                     <span className="text-slate-500">Total Pengembalian:</span>
                     <span className="font-bold text-slate-700 dark:text-slate-350">
-                      Rp {simulation.total.toLocaleString('id-ID')}
+                      Rp {calculatedSimulation.total.toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className="flex justify-between pt-1">
                     <span className="font-bold text-slate-600 dark:text-slate-400">Angsuran per Bulan:</span>
                     <span className="font-black text-indigo-650 text-sm">
-                      Rp {simulation.monthly.toLocaleString('id-ID')} / Bulan
+                      Rp {calculatedSimulation.monthly.toLocaleString('id-ID')} / Bulan
                     </span>
                   </div>
                 </div>
@@ -189,11 +258,11 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
             </Button>
             <Button
               type="submit"
-              disabled={submitLoading}
+              disabled={isSubmitting}
               size="sm"
               className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md shadow-indigo-600/10"
             >
-              {submitLoading ? 'Memproses...' : 'Kirim Pengajuan'}
+              {isSubmitting ? 'Memproses...' : 'Kirim Pengajuan'}
             </Button>
           </div>
         </form>
