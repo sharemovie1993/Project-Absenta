@@ -44,7 +44,7 @@ export const RatTvResolutionStage: React.FC<RatTvResolutionStageProps> = React.m
   }) : 'Hari ini';
 
   return (
-    <div className="flex-1 flex flex-col p-6 lg:p-8 space-y-4 max-w-5xl mx-auto w-full overflow-y-auto">
+    <div className="flex-1 flex flex-col p-3 sm:p-6 lg:p-8 space-y-4 max-w-5xl mx-auto w-full max-w-full min-w-0 overflow-y-auto">
       {/* RESOLUTION SELECTOR TOOLBAR */}
       <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-sm shrink-0">
         <div className="flex items-center gap-2">

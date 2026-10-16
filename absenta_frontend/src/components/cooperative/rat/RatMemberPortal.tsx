@@ -193,7 +193,7 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
   ];
 
   return (
-    <div className="w-full min-w-0 space-y-4">
+    <div className="w-full max-w-full min-w-0 space-y-4">
       {/* OPERATOR PREVIEW BAR — full width, always on top */}
       {canManage && (
         <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
@@ -228,7 +228,7 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
       {/* ── MAIN RESPONSIVE LAYOUT ─────────────────────────────────────── */}
       {/*   Mobile / Tablet (<lg): vertical stack                          */}
       {/*   Desktop (lg+): 2-column sidebar + main stage                   */}
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start w-full max-w-full min-w-0">
 
         {/* ── LEFT SIDEBAR (desktop) / Top cards (mobile) ────────────── */}
         <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4">
@@ -331,22 +331,24 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
         </div>
 
         {/* ── RIGHT: Stage area (main content) ───────────────────────── */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div className="flex-1 w-full max-w-full min-w-0 flex flex-col gap-4">
 
           {/* Mobile / Tablet: horizontal scroll navigation tabs */}
-          <div className="flex lg:hidden items-center gap-1 overflow-x-auto p-1.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl shadow-sm">
+          <div className="flex lg:hidden items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth flex-nowrap p-1 sm:p-1.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-xl sm:rounded-2xl shadow-2xs w-full max-w-full min-w-0">
             {stageNavItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setActiveStage(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                   activeStage === item.id
-                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                {item.icon}
+                {React.cloneElement(item.icon as React.ReactElement, {
+                  className: 'w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0',
+                })}
                 <span>{item.label}</span>
                 {item.badge}
               </button>

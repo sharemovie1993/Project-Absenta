@@ -17,6 +17,12 @@ export interface LocalAttendee {
   isNew?: boolean;
 }
 
+const formatAttendanceMethod = (method: string): string => {
+  if (!method) return 'ONLINE';
+  if (method === 'MANUAL_OPERATOR') return 'MANUAL';
+  return method.replace(/_/g, ' ');
+};
+
 interface RatTvQuorumStageProps {
   activeAgenda: any;
   activeIdx: number;
@@ -140,30 +146,30 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
       {/* BOTTOM BALANCED GRID: QUORUM (7 COLS) & LIVE PRESENSI (5 COLS) */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 overflow-visible lg:overflow-hidden w-full max-w-full min-w-0">
         {/* LEFT COLUMN: HERO QUORUM WITH INTEGRATED STATS (7 COLS) */}
-        <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md shadow-slate-200/40 dark:shadow-black/40 p-4 sm:p-6 overflow-visible lg:overflow-hidden">
+        <div className="lg:col-span-7 flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md shadow-slate-200/40 dark:shadow-black/40 p-3.5 sm:p-6 overflow-visible lg:overflow-hidden">
           {/* Top Badge & Legal Citations */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Status Keabsahan Kuorum:
               </span>
               <Badge
                 variant={isQuorumReached ? 'success' : 'warning'}
-                className="text-xs px-3 py-1 font-black uppercase tracking-wider shadow-sm"
+                className="text-[10px] sm:text-xs px-2.5 py-0.5 sm:px-3 sm:py-1 font-black uppercase tracking-wider shadow-sm"
               >
                 {isQuorumReached ? 'KUORUM SAH TERCAPAI' : 'MENUNGGU KUORUM'}
               </Badge>
             </div>
-            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2.5 py-1 rounded-md">
+            <span className="text-[10px] sm:text-[11px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md">
               Landasan Hukum: UU No. 25/1992 Pasal 26
             </span>
           </div>
 
           {/* Split Gauge & Explanation */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center my-auto py-2">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6 items-center my-auto py-2">
             {/* CIRCULAR RADIAL METER (5 cols) */}
-            <div className="md:col-span-5 flex flex-col items-center justify-center p-2">
-              <div className="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center">
+            <div className="md:col-span-5 flex flex-col items-center justify-center p-1 sm:p-2">
+              <div className="relative w-32 h-32 sm:w-44 sm:h-44 flex items-center justify-center shrink-0">
                 <svg className="w-full h-full transform -rotate-90 drop-shadow-sm" viewBox="0 0 200 200">
                   <defs>
                     <linearGradient id="quorumGradEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -200,20 +206,20 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
                   />
                 </svg>
                 {/* Center percentage & status pill with generous breathing room */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-3 sm:px-4">
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5">
                     Capaian
                   </span>
                   <div className="flex items-baseline justify-center">
-                    <span className="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
+                    <span className="text-3xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
                       {percentage}
                     </span>
-                    <span className="text-xl sm:text-2xl font-black text-slate-400 dark:text-slate-500 ml-0.5">
+                    <span className="text-lg sm:text-2xl font-black text-slate-400 dark:text-slate-500 ml-0.5">
                       %
                     </span>
                   </div>
                   <span
-                    className={`inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full mt-2 shadow-sm ${
+                    className={`inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded-full mt-1.5 sm:mt-2 shadow-sm ${
                       isQuorumReached
                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300/80 dark:border-emerald-700'
                         : 'bg-amber-50 text-amber-700 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300/80 dark:border-amber-700'
@@ -231,19 +237,19 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
             </div>
 
             {/* HEADLINE & STATUS DETAILS (7 cols) */}
-            <div className="md:col-span-7 flex flex-col justify-center space-y-3.5 text-left">
+            <div className="md:col-span-7 flex flex-col justify-center space-y-3 sm:space-y-3.5 text-left">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2.5">
                   {isQuorumReached ? (
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30">
-                      <CheckCircle2 className="w-5 h-5" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/30">
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   ) : (
-                    <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
-                      <ShieldCheck className="w-5 h-5" />
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                      <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                   )}
-                  <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-tight">
+                  <h2 className="text-base sm:text-xl font-black text-slate-900 dark:text-white leading-tight">
                     {isQuorumReached
                       ? 'KEPUTUSAN SIDANG SAH MENGIKAT'
                       : `MENUNGGU ${remainingNeeded} ANGGOTA LAGI`}
@@ -258,13 +264,13 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
 
               {/* Progress Bar with Milestone Markers */}
               <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                <div className="flex items-center justify-between text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-300">
                   <span>Kemajuan Kehadiran:</span>
                   <span className="font-mono text-indigo-600 dark:text-indigo-400 font-black">
                     {actualAttended} dari {quorumTarget} Kuorum Diperlukan
                   </span>
                 </div>
-                <div className="relative w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
+                <div className="relative w-full bg-slate-100 dark:bg-slate-800 h-3.5 sm:h-4 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
                   <div
                     className={`h-full rounded-full transition-all duration-700 ${
                       isQuorumReached
@@ -279,56 +285,57 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
           </div>
 
           {/* INTEGRATED EXECUTIVE METRIC STRIP (4 METRICS IN A CLEAN ROW) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-3 sm:pt-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Total Berhak</div>
-                <div className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">{totalEligible}</div>
+                <div className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Total Berhak</div>
+                <div className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">{totalEligible}</div>
               </div>
-              <Users className="w-5 h-5 text-blue-500 opacity-80" />
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500 opacity-80" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Target Kuorum</div>
-                <div className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{quorumTarget}</div>
+                <div className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Target Kuorum</div>
+                <div className="text-lg sm:text-2xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">{quorumTarget}</div>
               </div>
-              <ShieldCheck className="w-5 h-5 text-amber-500 opacity-80" />
+              <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 opacity-80" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Hadir Fisik</div>
-                <div className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{actualAttended}</div>
+                <div className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Hadir Fisik</div>
+                <div className="text-lg sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">{actualAttended}</div>
               </div>
-              <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-80" />
+              <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500 opacity-80" />
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Status Sidang</div>
-                <div className="text-sm sm:text-base font-black text-indigo-600 dark:text-indigo-400 mt-1 uppercase">
+                <div className="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">Status Sidang</div>
+                <div className="text-xs sm:text-sm md:text-base font-black text-indigo-600 dark:text-indigo-400 mt-0.5 sm:mt-1 uppercase">
                   {remainingNeeded === 0 ? 'Sah Pleno' : `Kurang ${remainingNeeded}`}
                 </div>
               </div>
-              <TrendingUp className="w-5 h-5 text-indigo-500 opacity-80" />
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500 opacity-80" />
             </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN: LIVE STREAM PRESENSI PINTU MASUK (5 COLS, FULL HEIGHT) */}
-        <div className="lg:col-span-5 flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-4 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden">
+        <div className="lg:col-span-5 flex flex-col rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-300/80 dark:border-slate-800 p-3.5 sm:p-5 shadow-md shadow-slate-200/50 dark:shadow-black/50 overflow-hidden max-h-[420px] lg:max-h-none">
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Radio className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0 gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5 truncate">
+                <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 Presensi Masuk Aula
               </h3>
             </div>
-            <Badge variant="outline" className="text-[10px] font-mono font-bold">
-              {attendeesList.length} Hadir Terverifikasi
+            <Badge variant="outline" className="text-[10px] font-mono font-bold shrink-0">
+              <span className="hidden sm:inline">{attendeesList.length} Hadir Terverifikasi</span>
+              <span className="sm:hidden">{attendeesList.length} Terverifikasi</span>
             </Badge>
           </div>
 
@@ -352,15 +359,15 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
               attendeesList.map((att, idx) => (
                 <div
                   key={att.id || `${att.memberNo}-${idx}`}
-                  className={`p-2.5 rounded-xl border transition-all flex items-center justify-between gap-3 ${
+                  className={`p-2 sm:p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 sm:gap-3 ${
                     idx === 0
                       ? 'bg-indigo-50/90 dark:bg-indigo-950/40 border-indigo-300 dark:border-indigo-600/50 shadow-sm'
                       : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/60'
                   }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                     <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-[11px] sm:text-xs shrink-0 ${
                         idx === 0
                           ? 'bg-indigo-600 text-white shadow-sm'
                           : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
@@ -372,19 +379,22 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
                       <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                         {att.name}
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
                         <span className="font-mono">{att.memberNo}</span>
                         <span>•</span>
-                        <span className="uppercase">{att.type}</span>
+                        <span className="uppercase truncate">{att.type}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block">
+                  <div className="text-right shrink-0 max-w-[85px] sm:max-w-none">
+                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 block truncate">
                       {att.time}
                     </span>
-                    <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 font-semibold text-slate-600 dark:text-slate-300">
-                      {att.method}
+                    <span
+                      className="text-[8px] sm:text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-300 block truncate"
+                      title={att.method}
+                    >
+                      {formatAttendanceMethod(att.method)}
                     </span>
                   </div>
                 </div>
@@ -393,12 +403,12 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
           </div>
 
           {/* Terminal status ticker */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 shrink-0">
-            <span className="flex items-center gap-1.5">
-              <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[9px] sm:text-[10px] text-slate-500 dark:text-slate-400 shrink-0 gap-2">
+            <span className="flex items-center gap-1.5 truncate">
+              <CreditCard className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
               Terminal Kiosk Pintu Masuk Aktif
             </span>
-            <span className="font-mono">Auto-Sync WebSocket</span>
+            <span className="font-mono shrink-0">Auto-Sync WebSocket</span>
           </div>
         </div>
       </div>

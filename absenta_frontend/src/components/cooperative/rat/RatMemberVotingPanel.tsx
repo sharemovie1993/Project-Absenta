@@ -157,7 +157,7 @@ export const RatMemberVotingPanel: React.FC<RatMemberVotingPanelProps> = React.m
   // ─── STATE: Session CLOSED / TALLIED → Show full results ──────────────────
   if (isClosed) {
     return (
-      <div className="flex-1 flex flex-col p-5 sm:p-6 lg:p-8 space-y-5 max-w-3xl lg:max-w-4xl mx-auto w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 max-w-3xl lg:max-w-4xl mx-auto w-full max-w-full min-w-0 overflow-y-auto">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -241,7 +241,7 @@ export const RatMemberVotingPanel: React.FC<RatMemberVotingPanelProps> = React.m
   // ─── STATE: ACTIVE + member already voted → Receipt + masked tally ─────────
   if (isActive && (hasVoted || auditToken)) {
     return (
-      <div className="flex-1 flex flex-col p-5 sm:p-6 lg:p-8 space-y-5 max-w-2xl sm:max-w-3xl lg:max-w-4xl mx-auto w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 max-w-2xl sm:max-w-3xl lg:max-w-4xl mx-auto w-full max-w-full min-w-0 overflow-y-auto">
         {/* Confirmation hero */}
         <div className="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 shadow-sm text-center space-y-3">
           <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/60 border border-emerald-300 dark:border-emerald-700 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto shadow-inner">
@@ -354,7 +354,7 @@ export const RatMemberVotingPanel: React.FC<RatMemberVotingPanelProps> = React.m
     }
 
     return (
-      <div className="flex-1 flex flex-col p-5 sm:p-6 lg:p-8 space-y-5 max-w-2xl sm:max-w-3xl lg:max-w-4xl mx-auto w-full overflow-y-auto">
+      <div className="flex-1 flex flex-col p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-5 max-w-2xl sm:max-w-3xl lg:max-w-4xl mx-auto w-full max-w-full min-w-0 overflow-y-auto">
         {/* Session header */}
         <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white shadow-xl border border-indigo-700/60">
           <div className="flex items-center gap-2 mb-2">
