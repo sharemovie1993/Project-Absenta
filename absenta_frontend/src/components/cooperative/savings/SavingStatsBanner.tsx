@@ -26,18 +26,6 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isCompact = variant === 'compact-premium' || (isMobile && mobileCompact);
 
-  if (loading) {
-    return (
-      <div className="w-full max-w-full min-w-0 mb-2">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800/50 animate-pulse border border-slate-200/50 dark:border-slate-800" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const stats = useMemo(() => {
     let totalBalance = 0;
     const categoryMap: Record<string, { name: string; color?: string; amount: number }> = {};
@@ -84,6 +72,18 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
     const months = Math.floor(diffDays / 30);
     return `${months} bulan lalu`;
   }, [stats.latestTxDate]);
+
+  if (loading) {
+    return (
+      <div className="w-full max-w-full min-w-0 mb-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800/50 animate-pulse border border-slate-200/50 dark:border-slate-800" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full min-w-0 space-y-2 mb-2">
