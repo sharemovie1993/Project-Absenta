@@ -3,6 +3,7 @@ import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { SavingService } from './saving.service';
+import { LoanService } from '../pinjaman/loan.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { authorizationService } from '@/modules/auth/services/authorization.service';
@@ -125,6 +126,95 @@ export default async function savingRoutes(fastify: any) {
             } else {
                 reply.code(500).send({ message: msg });
             }
+        }
+    });
+
+    // POST /savings/unified-payment (Loket Transaksi Terpadu Simpan Pinjam)
+    fastify.post('/unified-payment', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.loans.repay'])] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const { memberId, savingsTransactions = [], loanInstallments = [], notes } = req.body || {};
+            const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
+
+            if (!memberId) {
+                return reply.code(400).send({ success: false, message: 'memberId wajib diisi' });
+            }
+
+            if ((!savingsTransactions || savingsTransactions.length === 0) && (!loanInstallments || loanInstallments.length === 0)) {
+                return reply.code(400).send({ success: false, message: 'Harus ada setidaknya satu transaksi simpanan atau cicilan pinjaman.' });
+            }
+
+            // 1. Process Savings Transactions
+            const processedSavings: any[] = [];
+            let totalSavingsAmount = 0;
+            for (const item of savingsTransactions) {
+                if (Number(item.amount) > 0) {
+                    const tx = await SavingService.processTransaction(
+                        item.savingId,
+                        Number(item.amount),
+                        item.type || 'DEPOSIT',
+                        item.description || notes || 'Setoran Terpadu Loket',
+                        req.user?.id,
+                        idempotencyKey ? `${idempotencyKey}-sav-${item.savingId}` : undefined
+                    );
+                    processedSavings.push(tx);
+                    totalSavingsAmount += Number(item.amount);
+                }
+            }
+
+            // 2. Process Loan Installments
+            const processedInstallments: any[] = [];
+            let totalLoansAmount = 0;
+            for (const item of loanInstallments) {
+                const paid = await LoanService.payInstallment(
+                    item.installmentId,
+                    idempotencyKey ? `${idempotencyKey}-loan-${item.installmentId}` : undefined
+                );
+                processedInstallments.push(paid);
+                totalLoansAmount += Number(paid.amount);
+            }
+
+            // 3. Broadcast Realtime Updates
+            const io = req.server?.io || fastify?.io;
+            if (io) {
+                if (processedSavings.length > 0) {
+                    const savEvent = {
+                        type: 'COOP_SAVING_UPDATE',
+                        memberId,
+                        timestamp: new Date().toISOString(),
+                    };
+                    io.to(`tenant:${tenantId}`).emit('coop_saving_update', savEvent);
+                    io.emit('coop_saving_update', savEvent);
+                }
+                if (processedInstallments.length > 0) {
+                    const loanEvent = {
+                        type: 'INSTALLMENT_PAID',
+                        memberId,
+                        timestamp: new Date().toISOString(),
+                    };
+                    io.to(`tenant:${tenantId}`).emit('coop_loan_update', loanEvent);
+                    io.emit('coop_loan_update', loanEvent);
+                }
+            }
+
+            const receiptNumber = `TRX-UNI-${Date.now().toString(36).toUpperCase()}`;
+
+            return {
+                success: true,
+                receiptNumber,
+                timestamp: new Date().toISOString(),
+                memberId,
+                processedSavings,
+                processedInstallments,
+                totalSavingsAmount,
+                totalLoansAmount,
+                grandTotal: totalSavingsAmount + totalLoansAmount,
+                notes
+            };
+        } catch (error: any) {
+            appLogger.error({ err: error }, 'Cooperative unified payment error');
+            const msg = error?.message || 'Gagal memproses transaksi terpadu';
+            reply.status(400).send({ success: false, message: msg });
         }
     });
 

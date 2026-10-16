@@ -41,6 +41,22 @@ export interface PrintThermalSlipData {
   newBalance: number;
 }
 
+export interface PrintUnifiedThermalSlipData {
+  receiptNumber: string;
+  date: string;
+  memberName: string;
+  memberNo: string;
+  items: Array<{
+    title: string;
+    amount: number;
+    subtext?: string;
+  }>;
+  totalAmount: number;
+  cashReceived?: number;
+  change?: number;
+  operatorName: string;
+}
+
 export interface CellStyle {
   font?: { name?: string; sz?: number; bold?: boolean; italic?: boolean; color?: { rgb?: string } };
   alignment?: { horizontal?: string; vertical?: string };
@@ -191,6 +207,154 @@ export const printThermalSlip = async (txData: PrintThermalSlipData, operatorNam
   } catch (error) {
     console.error(error);
     toast.error('Gagal mencetak slip thermal.');
+  }
+};
+
+/** Print unified thermal receipt slip (Simpanan & Cicilan Pinjaman) */
+export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData) => {
+  try {
+    let currentCoopName = 'KOPERASI SEKOLAH';
+    try {
+      const settingsRes = await fetchCoopSettings();
+      currentCoopName = settingsRes.cooperative_name || 'KOPERASI SEKOLAH';
+    } catch (e) {
+      console.warn('Failed to load coop settings for slip', e);
+    }
+
+    const calculatedHeight = Math.max(120, 95 + data.items.length * 9);
+    const doc = new jsPDF({
+      orientation: 'p',
+      unit: 'mm',
+      format: [58, calculatedHeight]
+    });
+
+    doc.setFont('Helvetica', 'normal');
+
+    // Header
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text(currentCoopName.toUpperCase(), 29, 8, { align: 'center' });
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('BUKTI TRANSAKSI LOKET TERPADU', 29, 12, { align: 'center' });
+    doc.text('(SIMPANAN & ANGSURAN PINJAMAN)', 29, 15, { align: 'center' });
+    doc.text('----------------------------------------------------', 29, 18, { align: 'center' });
+
+    // Details
+    let y = 22;
+    doc.setFontSize(6);
+    doc.text(`No. Bukti : ${data.receiptNumber}`, 4, y);
+    y += 3.5;
+    doc.text(`Tanggal   : ${formatIndonesianDateTime(data.date)}`, 4, y);
+    y += 3.5;
+    doc.text(`Operator  : ${data.operatorName}`, 4, y);
+    y += 4;
+    doc.text('----------------------------------------------------', 29, y, { align: 'center' });
+
+    // Member details
+    y += 4;
+    doc.setFont('Helvetica', 'bold');
+    doc.text('ANGGOTA:', 4, y);
+    y += 3.5;
+    doc.setFont('Helvetica', 'normal');
+    doc.text(`Nama     : ${data.memberName.toUpperCase()}`, 4, y);
+    y += 3.5;
+    doc.text(`No. Angg : ${data.memberNo}`, 4, y);
+    y += 4;
+    doc.text('----------------------------------------------------', 29, y, { align: 'center' });
+
+    // Transaction Breakdown
+    y += 4;
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('RINCIAN PEMBAYARAN:', 4, y);
+    y += 4;
+
+    data.items.forEach((item, idx) => {
+      doc.setFont('Helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.text(`${idx + 1}. ${item.title}`, 4, y);
+      doc.text(`Rp ${item.amount.toLocaleString('id-ID')}`, 54, y, { align: 'right' });
+      if (item.subtext) {
+        y += 3;
+        doc.setFont('Helvetica', 'italic');
+        doc.setFontSize(5.5);
+        doc.text(`   ${item.subtext}`, 4, y);
+      }
+      y += 4;
+    });
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('----------------------------------------------------', 29, y, { align: 'center' });
+
+    // Total
+    y += 4;
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('TOTAL DIBAYAR', 4, y);
+    doc.text(`Rp ${data.totalAmount.toLocaleString('id-ID')}`, 54, y, { align: 'right' });
+
+    if (data.cashReceived !== undefined && data.cashReceived > 0) {
+      y += 3.5;
+      doc.setFont('Helvetica', 'normal');
+      doc.setFontSize(6);
+      doc.text('Uang Diterima', 4, y);
+      doc.text(`Rp ${data.cashReceived.toLocaleString('id-ID')}`, 54, y, { align: 'right' });
+
+      y += 3;
+      doc.text('Kembalian', 4, y);
+      doc.text(`Rp ${(data.change ?? 0).toLocaleString('id-ID')}`, 54, y, { align: 'right' });
+    }
+
+    // Terbilang
+    y += 4;
+    doc.setFont('Helvetica', 'italic');
+    doc.setFontSize(5.5);
+    const terbilang = formatTerbilangIndonesian(data.totalAmount);
+    const splitTerbilang = doc.splitTextToSize(`"${terbilang}"`, 50);
+    doc.text(splitTerbilang, 4, y);
+    y += splitTerbilang.length * 3;
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('----------------------------------------------------', 29, y, { align: 'center' });
+
+    // Footer
+    y += 4;
+    doc.setFont('Helvetica', 'italic');
+    doc.setFontSize(6);
+    doc.text('Terima Kasih atas partisipasi Anda', 29, y, { align: 'center' });
+    y += 3;
+    doc.setFontSize(5);
+    doc.text('Koperasi Maju Bersama Anggota', 29, y, { align: 'center' });
+
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.src = blobUrl;
+    document.body.appendChild(iframe);
+
+    iframe.onload = () => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(blobUrl);
+      }, 1000);
+    };
+
+    toast.success('Struk transaksi terpadu berhasil dicetak!');
+  } catch (error) {
+    console.error(error);
+    toast.error('Gagal mencetak struk terpadu.');
   }
 };
 

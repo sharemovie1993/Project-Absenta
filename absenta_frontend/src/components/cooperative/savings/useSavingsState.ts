@@ -80,6 +80,8 @@ export const useSavingsState = () => {
   const [quickAmount, setQuickAmount] = useState<string>('');
   const [quickDescription, setQuickDescription] = useState<string>('');
   const [quickTxType, setQuickTxType] = useState<'DEPOSIT' | 'WITHDRAWAL'>('DEPOSIT');
+  const [memberLoans, setMemberLoans] = useState<any[]>([]);
+  const [loadingMemberLoans, setLoadingMemberLoans] = useState<boolean>(false);
   const [accountsExpanded, setAccountsExpanded] = useState(() => {
     return localStorage.getItem('saving_accounts_expanded') === 'true';
   });
@@ -287,6 +289,7 @@ export const useSavingsState = () => {
       toast.error(`${student.nama_siswa || student.nama_guru || 'User'} belum terdaftar sebagai anggota koperasi.`);
       setScannedStudent(null);
       setScannedMemberSavings([]);
+      setMemberLoans([]);
       setSelectedScannedSavingId('');
       setTimeout(() => scannerInputRef.current?.focus(), 500);
       return;
@@ -295,6 +298,26 @@ export const useSavingsState = () => {
     toast.success(`Anggota ditemukan: ${student.nama_siswa || student.nama_guru}`);
     setScannedStudent(student);
     setScannedMemberSavings(matchingSavings);
+
+    // Fetch active loans for this member (Loket Terpadu)
+    const memberId = matchingSavings[0]?.memberId || (matchingSavings[0]?.member as any)?.id;
+    if (memberId) {
+      setLoadingMemberLoans(true);
+      api.get(`/cooperative/loans/manage?memberId=${memberId}`)
+        .then((res) => {
+          const raw = res.data?.data?.loans || res.data || [];
+          setMemberLoans(Array.isArray(raw) ? raw : []);
+        })
+        .catch((err) => {
+          console.warn('Failed to fetch member loans for unified teller:', err);
+          setMemberLoans([]);
+        })
+        .finally(() => {
+          setLoadingMemberLoans(false);
+        });
+    } else {
+      setMemberLoans([]);
+    }
 
     const visibleSavings = getVisibleSavingsForTx(matchingSavings, quickTxType);
     const sukarelaSaving = visibleSavings.find(s => s.category?.code === 'SUKARELA' || s.type === 'SUKARELA');
@@ -366,6 +389,34 @@ export const useSavingsState = () => {
   });
 
   const processingQuickTx = quickTxMutation.isPending;
+
+  // Unified Payment Mutation (Simpanan & Angsuran Pinjaman)
+  const unifiedTxMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const idempotencyKey = crypto.randomUUID();
+      const res = await api.post('/cooperative/savings/unified-payment', payload, {
+        headers: {
+          'Idempotency-Key': idempotencyKey,
+        },
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      toast.success('Pembayaran terpadu berhasil diproses!');
+      invalidateSavingsCaches(queryClient);
+      queryClient.invalidateQueries({ queryKey: ['cooperative-loans'] });
+      return data;
+    },
+    onError: (err: unknown) => {
+      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal memproses pembayaran terpadu';
+      toast.error(errorMsg);
+      throw err;
+    }
+  });
+
+  const handleProcessUnifiedPayment = useCallback(async (payload: any) => {
+    return await unifiedTxMutation.mutateAsync(payload);
+  }, [unifiedTxMutation]);
 
   const executeQuickTransaction = useCallback(async () => {
     if (!confirmTxData || isLocked) return;
@@ -548,6 +599,10 @@ export const useSavingsState = () => {
     handleExportTransactions,
     handleExportSingleSavingPdf,
     handleExportAllSavingsPdf,
-    handleSort
+    handleSort,
+    memberLoans,
+    loadingMemberLoans,
+    handleProcessUnifiedPayment,
+    isProcessingUnifiedPayment: unifiedTxMutation.isPending
   };
 };

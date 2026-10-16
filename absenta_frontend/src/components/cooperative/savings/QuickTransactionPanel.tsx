@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Card from '../../ui/Card';
 import Input from '../../ui/Input';
 import Button from '../../ui/Button';
 import { SmartStudentPicker } from '../../common/SmartStudentPicker';
 import type { Student } from '../../common/SmartStudentPicker';
 import type { Saving } from './types';
-import { Scan, ArrowUpCircle, ArrowDownCircle, CreditCard } from 'lucide-react';
+import { Scan, ArrowUpCircle, ArrowDownCircle, CreditCard, Zap } from 'lucide-react';
+import { UnifiedPaymentPanel, MemberLoanItem } from './UnifiedPaymentPanel';
 
 interface QuickTransactionPanelProps {
   scannedStudent: Student | null;
@@ -25,6 +26,15 @@ interface QuickTransactionPanelProps {
   getVisibleSavingsForTx: (savingsList: Saving[], txType: 'DEPOSIT' | 'WITHDRAWAL') => Saving[];
   getAutoMemo: (saving: Saving | undefined, txType: 'DEPOSIT' | 'WITHDRAWAL') => string;
   isStudent: boolean;
+  memberLoans?: MemberLoanItem[];
+  loadingLoans?: boolean;
+  onProcessUnifiedPayment?: (payload: {
+    memberId: string;
+    savingsTransactions: Array<{ savingId: string; type: 'DEPOSIT' | 'WITHDRAWAL'; amount: number; description?: string }>;
+    loanInstallments: Array<{ installmentId: string; installmentNo?: number }>;
+    notes?: string;
+  }) => Promise<any>;
+  isProcessingUnifiedPayment?: boolean;
 }
 
 export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElement, QuickTransactionPanelProps>((
@@ -45,17 +55,23 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
     processingQuickTx,
     getVisibleSavingsForTx,
     getAutoMemo,
-    isStudent
+    isStudent,
+    memberLoans = [],
+    loadingLoans = false,
+    onProcessUnifiedPayment,
+    isProcessingUnifiedPayment = false
   },
   ref
 ) => {
+  const [panelMode, setPanelMode] = useState<'UNIFIED' | 'REGULAR'>('UNIFIED');
+
   return (
     <Card
       title={
         <div className="flex items-center gap-2">
           <Scan className="text-indigo-600 dark:text-indigo-400" size={18} />
           <span className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-            Transaksi Cepat / Pindai Kartu
+            {scannedStudent && panelMode === 'UNIFIED' ? 'Loket Kasir Terpadu' : 'Transaksi Cepat / Pindai Kartu'}
           </span>
         </div>
       }
@@ -80,7 +96,7 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
           </p>
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-4">
           {/* Scanned Student Profile */}
           <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/60 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl" />
@@ -102,11 +118,54 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
             </div>
           </div>
 
-          {/* Transaction Type Selection */}
-          <div className="space-y-1.5">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
-              Tipe Transaksi
-            </label>
+          {/* Mode Switcher Tabs */}
+          <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl gap-1 border border-slate-200/60 dark:border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => setPanelMode('UNIFIED')}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
+                panelMode === 'UNIFIED'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                  : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <Zap size={14} className={panelMode === 'UNIFIED' ? 'text-amber-500 fill-amber-500' : 'text-slate-400'} />
+              <span>Loket Kasir Terpadu</span>
+              {memberLoans.some(l => l.installments?.some(i => i.status === 'UNPAID')) && (
+                <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse ml-0.5" title="Ada tagihan pinjaman aktif" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanelMode('REGULAR')}
+              className={`flex-1 py-1.5 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
+                panelMode === 'REGULAR'
+                  ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                  : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <CreditCard size={14} className={panelMode === 'REGULAR' ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'} />
+              <span>Simpanan Reguler</span>
+            </button>
+          </div>
+
+          {panelMode === 'UNIFIED' && onProcessUnifiedPayment ? (
+            <UnifiedPaymentPanel
+              student={scannedStudent}
+              savings={scannedMemberSavings}
+              memberLoans={memberLoans}
+              loadingLoans={loadingLoans}
+              onCancel={onCancel}
+              onProcessUnifiedPayment={onProcessUnifiedPayment}
+              isProcessing={isProcessingUnifiedPayment}
+            />
+          ) : (
+            <form onSubmit={onSubmit} className="space-y-4">
+              {/* Transaction Type Selection */}
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                  Tipe Transaksi
+                </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -306,8 +365,10 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
             >
               Proses Transaksi
             </Button>
-          </div>
-        </form>
+            </div>
+          </form>
+          )}
+        </div>
       )}
     </Card>
   );

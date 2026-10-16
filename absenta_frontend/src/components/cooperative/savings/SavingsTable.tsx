@@ -4,7 +4,7 @@ import type { Column } from '../../ui/Table';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { Search, Printer, BookOpen, FileSpreadsheet, Eye, ChevronRight } from 'lucide-react';
+import { Search, Printer, BookOpen, FileSpreadsheet, Eye, ChevronRight, Zap } from 'lucide-react';
 import type { Saving, SavingCategory } from './types';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../academic/shared/MobileAcademicList';
@@ -231,7 +231,29 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         key: 'actions',
         label: 'Aksi',
         render: (_, row: Saving) => (
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-1.5">
+            {!isStudent && (
+              <Button
+                size="sm"
+                variant="primary"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 shadow-sm px-2.5 py-1 text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const member = row.member;
+                  const studentObj: any = {
+                    id: member.siswaId || member.guruId || member.id,
+                    nama_siswa: member.siswa?.nama || member.user?.name || member.memberNo,
+                    nama_guru: member.guru?.nama || '',
+                    nis: member.siswa?.nis || '',
+                    nip: member.guru?.nip || '',
+                  };
+                  handleSelectStudent(studentObj, member.memberNo);
+                }}
+                title="Buka Loket Kasir Terpadu untuk Anggota ini"
+              >
+                <Zap size={12} className="text-amber-300" /> Kasir
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -260,7 +282,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         )
       }
     ];
-  }, [isStudent, handleShowTransactions, handleExportAllSavingsPdf, handleExportSingleSavingPdf]);
+  }, [isStudent, handleShowTransactions, handleExportAllSavingsPdf, handleExportSingleSavingPdf, handleSelectStudent]);
 
   const toolbarLeftElement = useMemo(() => {
     if (isStudent) return null;

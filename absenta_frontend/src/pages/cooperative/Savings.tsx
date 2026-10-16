@@ -89,7 +89,11 @@ const Savings: React.FC = React.memo(() => {
     handleExportTransactions,
     handleExportSingleSavingPdf,
     handleExportAllSavingsPdf,
-    handleSort
+    handleSort,
+    memberLoans,
+    loadingMemberLoans,
+    handleProcessUnifiedPayment,
+    isProcessingUnifiedPayment
   } = state;
 
   const navigate = useNavigate();
@@ -441,6 +445,10 @@ const Savings: React.FC = React.memo(() => {
                       getVisibleSavingsForTx={getVisibleSavingsForTx}
                       getAutoMemo={getAutoMemo}
                       isStudent={isStudent}
+                      memberLoans={memberLoans}
+                      loadingLoans={loadingMemberLoans}
+                      onProcessUnifiedPayment={handleProcessUnifiedPayment}
+                      isProcessingUnifiedPayment={isProcessingUnifiedPayment}
                     />
                   </Suspense>
                 )}

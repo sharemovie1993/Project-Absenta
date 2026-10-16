@@ -35,7 +35,8 @@ export default async function loanRoutes(fastify: any) {
                 return loans;
             }
 
-            const loans = await LoanService.getLoans(tenantId);
+            const memberId = req.query?.memberId as string | undefined;
+            const loans = await LoanService.getLoans(tenantId, memberId);
             return loans;
         } catch (error) {
             appLogger.error({ err: error }, 'Cooperative route error');
@@ -47,7 +48,8 @@ export default async function loanRoutes(fastify: any) {
     fastify.get('/manage', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.approve'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
-            const loans = await LoanService.getLoans(tenantId);
+            const memberId = req.query?.memberId as string | undefined;
+            const loans = await LoanService.getLoans(tenantId, memberId);
             return loans;
         } catch (error) {
             appLogger.error({ err: error }, 'Cooperative route error');
