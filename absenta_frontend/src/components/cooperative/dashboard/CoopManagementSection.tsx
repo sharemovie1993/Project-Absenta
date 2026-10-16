@@ -220,19 +220,24 @@ export const CoopManagementSection: React.FC<CoopManagementSectionProps> = React
           </SectionCard>
 
           {announcements.length > 0 && (
-            <SectionCard title="Pengumuman Koperasi" fullWidth noPadding>
+            <SectionCard title="Pengumuman" fullWidth noPadding>
               <div className="space-y-3 p-4">
-                {announcements.slice(0, 2).map((ann, idx) => (
-                  <div key={idx} className="bg-indigo-50/60 dark:bg-indigo-950/20 p-3 rounded-xl border-l-4 border-indigo-500 space-y-1">
-                    <div className="flex items-start gap-2">
-                      <Bell className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" size={14} />
-                      <div className="min-w-0">
-                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{ann.title}</h4>
-                        <p className="text-slate-600 dark:text-slate-400 text-[11px] line-clamp-2 leading-relaxed">{ann.content}</p>
+                {announcements.slice(0, 2).map((ann, idx) => {
+                  const cleanAnnTitle = ann.title.replace(/^Undangan\s+Resmi:\s*/i, 'Undangan: ');
+                  const cleanAnnContent = ann.content.replace(/^Di\s+mohon/i, 'Dimohon');
+
+                  return (
+                    <div key={idx} className="bg-indigo-50/60 dark:bg-indigo-950/20 p-3 rounded-xl border-l-4 border-indigo-500 space-y-1">
+                      <div className="flex items-start gap-2">
+                        <Bell className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" size={14} />
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">{cleanAnnTitle}</h4>
+                          <p className="text-slate-600 dark:text-slate-400 text-[11px] line-clamp-2 leading-relaxed">{cleanAnnContent}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </SectionCard>
           )}
