@@ -35,6 +35,8 @@ import { PrintLoanAgreement } from '../../components/cooperative/loans/PrintLoan
 import { PrintLoanReceipt } from '../../components/cooperative/loans/PrintLoanReceipt';
 import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoanRepayment';
 import { LoanEligibilitySection } from '../../components/cooperative/loans/LoanEligibilitySection';
+import { MemberDetailModalProxy } from '../../components/cooperative/loans/MemberDetailModalProxy';
+import { MemberSavingsPassbookModal } from '../../components/cooperative/loans/MemberSavingsPassbookModal';
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
@@ -53,6 +55,10 @@ const LoanDetail: React.FC = React.memo(() => {
   const [selectedRepayment, setSelectedRepayment] = useState<{ installment: Installment; index: number } | null>(null);
   const [installmentPage, setInstallmentPage] = useState(1);
   const installmentLimit = 12;
+
+  // Proxy Modals State (Pilar Komponen Bersama Modal & Proxy Pattern)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
 
   // Responsiveness state (Pilar 30 Hardening)
   const [activeDetailTab, setActiveDetailTab] = useState<'installments' | 'eligibility'>('installments');
@@ -526,7 +532,7 @@ const LoanDetail: React.FC = React.memo(() => {
                   gradient="from-emerald-600 to-teal-700"
                   variant="compact-premium"
                   mobileCompact={true}
-                  onClick={() => navigate(`/cooperative/members?id=${loan.memberId}`)}
+                  onClick={() => setIsProfileModalOpen(true)}
                 />
 
                 {/* Total Pinjaman (Compact-Premium) */}
@@ -636,6 +642,8 @@ const LoanDetail: React.FC = React.memo(() => {
                 canApprove={Boolean(canApprove)}
                 canReject={Boolean(canReject)}
                 onChangeStatus={handleChangeStatus}
+                onOpenSavingsPassbook={() => setIsPassbookModalOpen(true)}
+                onOpenMemberProfile={() => setIsProfileModalOpen(true)}
               />
             )}
           </div>
@@ -662,6 +670,24 @@ const LoanDetail: React.FC = React.memo(() => {
             }
           `}} />
         </div>
+
+        {/* Proxy Modals for Member Profile and Savings Passbook */}
+        {loan && (
+          <>
+            <MemberDetailModalProxy
+              isOpen={isProfileModalOpen}
+              onClose={() => setIsProfileModalOpen(false)}
+              memberId={loan.memberId}
+            />
+            <MemberSavingsPassbookModal
+              isOpen={isPassbookModalOpen}
+              onClose={() => setIsPassbookModalOpen(false)}
+              memberId={loan.memberId}
+              memberName={loan.member.name}
+              memberNo={loan.member.memberNo}
+            />
+          </>
+        )}
 
         {loan && printTarget && createPortal(
           <>

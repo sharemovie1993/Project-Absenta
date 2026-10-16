@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Award, CheckCircle } from 'lucide-react';
 import { Button, SectionCard } from '../../ui';
 import type { LoanDetailData } from './types';
@@ -9,6 +8,8 @@ interface LoanEligibilitySectionProps {
   canApprove: boolean;
   canReject: boolean;
   onChangeStatus: (status: 'APPROVED' | 'REJECTED') => void;
+  onOpenSavingsPassbook?: () => void;
+  onOpenMemberProfile?: () => void;
 }
 
 export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = React.memo(({
@@ -16,6 +17,8 @@ export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = Rea
   canApprove,
   canReject,
   onChangeStatus,
+  onOpenSavingsPassbook,
+  onOpenMemberProfile,
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 print:hidden w-full max-w-full min-w-0">
@@ -132,16 +135,24 @@ export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = Rea
         <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2 w-full max-w-full min-w-0">
           <p className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Navigasi Terkait</p>
           <div className="flex gap-2">
-            <Link to={`/cooperative/savings?search=${loan.member.name}`} className="flex-1 min-w-0">
-              <Button variant="outline" size="xs" className="w-full text-[10px] font-bold py-1.5 rounded-lg border-indigo-200 text-indigo-600 hover:bg-indigo-50 truncate">
-                Buku Tabungan
-              </Button>
-            </Link>
-            <Link to={`/cooperative/members?id=${loan.memberId}`} className="flex-1 min-w-0">
-              <Button variant="outline" size="xs" className="w-full text-[10px] font-bold py-1.5 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 truncate">
-                Profil Anggota
-              </Button>
-            </Link>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={onOpenSavingsPassbook}
+              className="flex-1 text-[10px] font-bold py-1.5 rounded-lg border-indigo-200 text-indigo-600 hover:bg-indigo-50 truncate"
+            >
+              Buku Tabungan
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              onClick={onOpenMemberProfile}
+              className="flex-1 text-[10px] font-bold py-1.5 rounded-lg border-slate-200 text-slate-600 hover:bg-slate-50 truncate"
+            >
+              Profil Anggota
+            </Button>
           </div>
         </div>
       </SectionCard>
