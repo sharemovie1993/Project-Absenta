@@ -147,7 +147,7 @@ export const useSavingsState = () => {
 
   // Member Status query
   const memberStatusQuery = useQuery({
-    queryKey: ['koperasi-member-status-me'],
+    queryKey: ['koperasi-member-status-me', user?.id],
     queryFn: async () => {
       try {
         const res = await api.get('/cooperative/members/me');
@@ -157,25 +157,28 @@ export const useSavingsState = () => {
         return 'non-member' as const;
       }
     },
-    enabled: isPersonalMode,
+    enabled: isPersonalMode && Boolean(user?.id),
     staleTime: 5 * 60 * 1000,
   });
 
   const memberStatus = !isPersonalMode ? 'member' : (memberStatusQuery.data || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
 
-  // Savings query
+  // Savings query (runs immediately for user without blocking on external subscription check)
   const savingsQuery = useQuery({
-    queryKey: ['koperasi-savings-list', isPersonalMode],
+    queryKey: ['koperasi-savings-list', isPersonalMode, user?.id],
     queryFn: async () => {
       const url = isPersonalMode ? '/cooperative/savings?personal=true' : '/cooperative/savings';
       const response = await api.get(url);
-      return (Array.isArray(response.data) ? response.data : []) as Saving[];
+      const raw = Array.isArray(response.data)
+        ? response.data
+        : (Array.isArray(response.data?.data) ? response.data.data : []);
+      return raw as Saving[];
     },
-    enabled: (!isPersonalMode || memberStatus === 'member') && subscription !== undefined,
-    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(user?.id),
+    staleTime: 2 * 60 * 1000,
   });
   const savings = savingsQuery.data || [];
-  const loading = savingsQuery.isLoading;
+  const loading = savingsQuery.isLoading || (isPersonalMode && memberStatusQuery.isLoading);
   const fetchSavings = useCallback(async () => {
     await savingsQuery.refetch();
   }, [savingsQuery]);
@@ -185,9 +188,9 @@ export const useSavingsState = () => {
     queryKey: ['koperasi-saving-categories'],
     queryFn: async () => {
       const response = await api.get('/cooperative/saving-categories');
-      return (response.data?.success ? response.data.data : []) as SavingCategory[];
+      return (response.data?.success ? response.data.data : (Array.isArray(response.data) ? response.data : [])) as SavingCategory[];
     },
-    enabled: (isOperator || memberStatus === 'member') && subscription !== undefined,
+    enabled: Boolean(user?.id),
     staleTime: 5 * 60 * 1000,
   });
   const categories = categoriesQuery.data || [];

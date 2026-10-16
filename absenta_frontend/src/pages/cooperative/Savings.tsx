@@ -206,7 +206,7 @@ const Savings: React.FC = React.memo(() => {
               </div>
             )}
 
-            {!loading && <SavingStatsBanner savings={savings} />}
+            <SavingStatsBanner savings={savings} loading={loading} />
 
             {isPersonalMode ? (
               <div className="space-y-4">
