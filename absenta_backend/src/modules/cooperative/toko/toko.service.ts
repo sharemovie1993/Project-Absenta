@@ -698,20 +698,27 @@ export class TokoService {
         };
 
         if (search) {
+            const clean = search.trim();
             where.OR = [
-                { memberNo: { contains: search, mode: 'insensitive' } },
-                { Siswa: { nama_siswa: { contains: search, mode: 'insensitive' } } },
-                { Guru: { nama_guru: { contains: search, mode: 'insensitive' } } },
-                { User: { full_name: { contains: search, mode: 'insensitive' } } },
+                { memberNo: { contains: clean, mode: 'insensitive' } },
+                { Siswa: { nama_siswa: { contains: clean, mode: 'insensitive' } } },
+                { Siswa: { nis: { contains: clean, mode: 'insensitive' } } },
+                { Siswa: { nisn: { contains: clean, mode: 'insensitive' } } },
+                { Siswa: { no_rfid: { equals: clean } } },
+                { Guru: { nama_guru: { contains: clean, mode: 'insensitive' } } },
+                { Guru: { nip: { contains: clean, mode: 'insensitive' } } },
+                { Guru: { no_rfid: { equals: clean } } },
+                { User: { full_name: { contains: clean, mode: 'insensitive' } } },
+                { User: { email: { contains: clean, mode: 'insensitive' } } },
             ];
         }
 
         const members = await prisma.member.findMany({
             where,
             include: {
-                Siswa: { select: { nama_siswa: true } },
-                Guru: { select: { nama_guru: true } },
-                User: { select: { full_name: true } },
+                Siswa: { select: { nama_siswa: true, nis: true, nisn: true, no_rfid: true } },
+                Guru: { select: { nama_guru: true, nip: true, no_rfid: true } },
+                User: { select: { full_name: true, email: true } },
                 savings: {
                     where: {
                         category: {
@@ -739,6 +746,8 @@ export class TokoService {
                 siswaId: m.siswaId,
                 guruId: m.guruId,
                 userId: m.userId,
+                nis: m.Siswa?.nis || m.Guru?.nip || '',
+                identityCode: m.Siswa?.nis ? `NIS: ${m.Siswa.nis}` : (m.Guru?.nip ? `NIP: ${m.Guru.nip}` : (m.memberNo || '')),
                 Siswa: m.Siswa,
                 Guru: m.Guru,
             };
