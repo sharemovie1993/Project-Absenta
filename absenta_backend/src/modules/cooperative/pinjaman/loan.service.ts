@@ -77,7 +77,8 @@ export class LoanService {
         idempotencyKey?: string,
         autoApprove = false,
         tenantId?: string,
-        operatorUserId?: string
+        operatorUserId?: string,
+        notes?: string
     ) {
         // [GUARD 0: Idempotency Key Guard]
         if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
@@ -151,7 +152,14 @@ export class LoanService {
 
         const createdLoan = await prisma.$transaction(async (tx: any) => {
             const loan = await tx.loan.create({
-                data: { memberId, amount, interestRate, duration, status: initialStatus }
+                data: { 
+                    memberId, 
+                    amount, 
+                    interestRate, 
+                    duration, 
+                    status: initialStatus,
+                    notes: notes || null
+                }
             });
 
             const installments = [];
@@ -259,8 +267,14 @@ export class LoanService {
         };
     }
 
-    // Approve or Reject Loan (dengan state machine)
-    static async updateLoanStatus(loanId: string, status: LoanStatus, tenantId: string, operatorUserId?: string) {
+    // Approve or Reject Loan (dengan state machine & alasan penolakan)
+    static async updateLoanStatus(
+        loanId: string, 
+        status: LoanStatus, 
+        tenantId: string, 
+        operatorUserId?: string,
+        rejectionReason?: string
+    ) {
         const loan = await this.getLoanById(loanId, tenantId);
 
         // [GUARD 1: Validasi transisi status]
@@ -286,7 +300,10 @@ export class LoanService {
         return prisma.$transaction(async (tx: any) => {
             const updatedLoan = await tx.loan.update({
                 where: { id: loanId },
-                data: { status },
+                data: { 
+                    status,
+                    ...(status === 'REJECTED' && rejectionReason ? { rejectionReason } : {})
+                },
             });
 
             if (status === 'APPROVED') {

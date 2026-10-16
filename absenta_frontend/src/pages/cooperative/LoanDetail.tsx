@@ -37,6 +37,7 @@ import { PrintLoanRepayment } from '../../components/cooperative/loans/PrintLoan
 import { LoanEligibilitySection } from '../../components/cooperative/loans/LoanEligibilitySection';
 import { MemberDetailModalProxy } from '../../components/cooperative/loans/MemberDetailModalProxy';
 import { MemberSavingsPassbookModal } from '../../components/cooperative/loans/MemberSavingsPassbookModal';
+import { RejectLoanModal } from '../../components/cooperative/loans/RejectLoanModal';
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
@@ -88,6 +89,7 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   // Proxy Modals State (Pilar Komponen Bersama Modal & Proxy Pattern)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
 
   // Responsiveness state (Pilar 30 Hardening)
   const [activeDetailTab, setActiveDetailTab] = useState<'installments' | 'eligibility'>('installments');
@@ -139,12 +141,14 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   }, [subscribe, unsubscribe, queryClient, id]);
 
   const changeStatusMutation = useMutation({
-    mutationFn: async (status: 'APPROVED' | 'REJECTED') => {
-      const res = await api.put(`/cooperative/loans/${id}/status`, { status });
+    mutationFn: async ({ status, rejectionReason }: { status: 'APPROVED' | 'REJECTED'; rejectionReason?: string }) => {
+      const res = await api.put(`/cooperative/loans/${id}/status`, { status, rejectionReason });
       return { data: res.data, status };
     },
     onSuccess: ({ status }) => {
-      toast.success(`Pengajuan pinjaman berhasil di-${status.toLowerCase()}!`);
+      const actionLabel = status === 'APPROVED' ? 'disetujui' : 'ditolak';
+      toast.success(`Pengajuan pinjaman berhasil ${actionLabel}!`);
+      setIsRejectModalOpen(false);
       invalidateLoansCaches(queryClient, id);
     },
     onError: (error) => {
@@ -155,16 +159,20 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   });
 
   const handleChangeStatus = async (status: 'APPROVED' | 'REJECTED') => {
-    const actionLabel = status === 'APPROVED' ? 'menyetujui' : 'menolak';
+    if (status === 'REJECTED') {
+      setIsRejectModalOpen(true);
+      return;
+    }
+
     const isConfirmed = await confirm({
-      title: status === 'APPROVED' ? 'Setujui Pengajuan' : 'Tolak Pengajuan',
-      description: `Apakah Anda yakin ingin ${actionLabel} pengajuan pinjaman ini?`,
-      confirmText: status === 'APPROVED' ? 'Setujui' : 'Tolak',
+      title: 'Setujui Pengajuan Pinjaman?',
+      description: 'Apakah Anda yakin ingin menyetujui pengajuan pinjaman ini? Jadwal cicilan dan pembukuan jurnal kas akan diproses otomatis.',
+      confirmText: 'Ya, Setujui',
       cancelText: 'Batal',
-      style: status === 'APPROVED' ? 'success' : 'danger'
+      style: 'success'
     });
     if (!isConfirmed) return;
-    await changeStatusMutation.mutateAsync(status);
+    await changeStatusMutation.mutateAsync({ status: 'APPROVED' });
   };
 
   const payInstallmentMutation = useMutation({
@@ -725,6 +733,16 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             memberId={loan.memberId}
             memberName={loan.member.name}
             memberNo={loan.member.memberNo}
+          />
+          <RejectLoanModal
+            isOpen={isRejectModalOpen}
+            onClose={() => setIsRejectModalOpen(false)}
+            onConfirm={(reason) => {
+              changeStatusMutation.mutate({ status: 'REJECTED', rejectionReason: reason });
+            }}
+            isLoading={changeStatusMutation.isPending}
+            memberName={loan.member.name}
+            loanAmount={loan.amount}
           />
         </>
       )}

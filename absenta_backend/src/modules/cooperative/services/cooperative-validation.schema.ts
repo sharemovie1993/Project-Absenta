@@ -28,7 +28,8 @@ export const payInstallmentSchema = z.object({
 export const updateLoanStatusSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED'], {
     errorMap: () => ({ message: 'status harus APPROVED atau REJECTED' })
-  })
+  }),
+  rejectionReason: z.string().optional()
 });
 
 // === 1.5. Anggota Koperasi (Members) ===

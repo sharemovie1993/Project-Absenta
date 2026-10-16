@@ -63,7 +63,7 @@ export default async function loanRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = createLoanSchema.parse(req.body);
-            const { memberId, amount, interestRate, duration, autoApprove } = parsed;
+            const { memberId, amount, interestRate, duration, autoApprove, notes } = parsed;
             
             // Security check: regular member can only apply for their own member account
             const user = req.user;
@@ -102,7 +102,8 @@ export default async function loanRoutes(fastify: any) {
                 idempotencyKey, 
                 shouldAutoApprove, 
                 tenantId, 
-                user.id
+                user.id,
+                notes
             );
 
             // Broadcast event realtime ke WebSocket klien
@@ -260,7 +261,13 @@ export default async function loanRoutes(fastify: any) {
         try {
             const tenantId = getTenantId(req);
             const parsed = updateLoanStatusSchema.parse(req.body);
-            const loan = await LoanService.updateLoanStatus(req.params.id, parsed.status, tenantId, req.user?.id);
+            const loan = await LoanService.updateLoanStatus(
+                req.params.id, 
+                parsed.status, 
+                tenantId, 
+                req.user?.id, 
+                parsed.rejectionReason
+            );
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
@@ -269,6 +276,7 @@ export default async function loanRoutes(fastify: any) {
                     type: 'LOAN_STATUS_UPDATED',
                     loanId: req.params.id,
                     status: parsed.status,
+                    rejectionReason: parsed.rejectionReason,
                     timestamp: new Date().toISOString()
                 };
                 io.to(`tenant:${tenantId}`).emit('coop_loan_update', broadcastPayload);

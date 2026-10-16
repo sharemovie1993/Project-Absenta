@@ -36,6 +36,9 @@ const PaymentInstructionsModal = lazy(() =>
 const LoanSuccessModal = lazy(() => 
   import('../../components/cooperative/loans/LoanSuccessModal').then(module => ({ default: module.LoanSuccessModal }))
 );
+const RejectLoanModal = lazy(() => 
+  import('../../components/cooperative/loans/RejectLoanModal').then(module => ({ default: module.RejectLoanModal }))
+);
 
 // Zod Schema Validation Guard (Pilar 25)
 const loanFilterSchema = z.object({
@@ -104,6 +107,7 @@ const Loans: React.FC = React.memo(() => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [createdLoanData, setCreatedLoanData] = useState<any | null>(null);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [rejectTargetLoan, setRejectTargetLoan] = useState<Loan | null>(null);
   const [coopSettings, setCoopSettings] = useState<any>(null);
   const [defaultInterestRate, setDefaultInterestRate] = useState<string>('1.5');
   const [formData, setFormData] = useState({
@@ -295,13 +299,14 @@ const Loans: React.FC = React.memo(() => {
 
   // Mutation: Change Loan Status
   const changeLoanStatusMutation = useMutation({
-    mutationFn: async ({ loanId, status }: { loanId: string; status: 'APPROVED' | 'REJECTED' }) => {
-      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status });
+    mutationFn: async ({ loanId, status, rejectionReason }: { loanId: string; status: 'APPROVED' | 'REJECTED'; rejectionReason?: string }) => {
+      const res = await api.put(`/cooperative/loans/${loanId}/status`, { status, rejectionReason });
       return res.data;
     },
     onSuccess: (_, variables) => {
       const actionText = variables.status === 'APPROVED' ? 'disetujui' : 'ditolak';
       toast.success(`Pengajuan pinjaman berhasil ${actionText}`);
+      setRejectTargetLoan(null);
       invalidateLoansCaches(queryClient, variables.loanId);
     },
     onError: (err: unknown) => {
@@ -310,21 +315,24 @@ const Loans: React.FC = React.memo(() => {
     }
   });
 
-  const handleChangeLoanStatus = useCallback(async (loanId: string, status: 'APPROVED' | 'REJECTED') => {
-    const isApproved = status === 'APPROVED';
+  const handleChangeLoanStatus = useCallback(async (loanId: string, status: 'APPROVED' | 'REJECTED', loanRow?: Loan) => {
+    if (status === 'REJECTED') {
+      const target = loanRow || loans.find(l => l.id === loanId) || null;
+      setRejectTargetLoan(target);
+      return;
+    }
+
     const isConfirmed = await confirm({
-      title: isApproved ? 'Setujui Pinjaman?' : 'Tolak Pinjaman?',
-      message: isApproved 
-        ? 'Apakah Anda yakin ingin menyetujui pengajuan pinjaman ini? Jadwal cicilan akan otomatis dibuat di sistem.' 
-        : 'Apakah Anda yakin ingin menolak pengajuan pinjaman ini?',
-      confirmText: isApproved ? 'Ya, Setujui' : 'Ya, Tolak',
-      variant: isApproved ? 'primary' : 'danger'
+      title: 'Setujui Pinjaman?',
+      message: 'Apakah Anda yakin ingin menyetujui pengajuan pinjaman ini? Jadwal cicilan dan jurnal kas akan otomatis diproses.',
+      confirmText: 'Ya, Setujui',
+      variant: 'primary'
     });
 
     if (isConfirmed) {
       changeLoanStatusMutation.mutate({ loanId, status });
     }
-  }, [confirm, changeLoanStatusMutation]);
+  }, [confirm, changeLoanStatusMutation, loans]);
 
   const handleOpenModal = useCallback(() => {
     if (isStudent && memberStatus !== 'member') {
@@ -416,9 +424,16 @@ const Loans: React.FC = React.memo(() => {
           else if (row.status === 'REJECTED') variant = 'destructive';
           
           return (
-            <Badge variant={variant} className="font-black uppercase tracking-wider text-[9px] rounded-full px-2.5 py-0.5 border">
-              {row.status}
-            </Badge>
+            <div className="space-y-0.5">
+              <Badge variant={variant} className="font-black uppercase tracking-wider text-[9px] rounded-full px-2.5 py-0.5 border">
+                {row.status}
+              </Badge>
+              {row.status === 'REJECTED' && row.rejectionReason && (
+                <p className="text-[9px] text-rose-500 font-medium truncate max-w-[140px]" title={row.rejectionReason}>
+                  Alasan: {row.rejectionReason}
+                </p>
+              )}
+            </div>
           );
         }
       },
@@ -459,7 +474,7 @@ const Loans: React.FC = React.memo(() => {
                   <Button 
                     size="xs" 
                     className="font-bold text-[10px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-2"
-                    onClick={() => handleChangeLoanStatus(row.id, 'REJECTED')}
+                    onClick={() => handleChangeLoanStatus(row.id, 'REJECTED', row)}
                   >
                     Tolak
                   </Button>
@@ -517,9 +532,16 @@ const Loans: React.FC = React.memo(() => {
               {formatCurrency(row.amount)}
             </div>
           </div>
-          <Badge variant={variant} className="font-black uppercase tracking-wider text-[9px] rounded-full px-2.5 py-0.5 border shrink-0">
-            {row.status}
-          </Badge>
+          <div className="text-right">
+            <Badge variant={variant} className="font-black uppercase tracking-wider text-[9px] rounded-full px-2.5 py-0.5 border shrink-0">
+              {row.status}
+            </Badge>
+            {row.status === 'REJECTED' && row.rejectionReason && (
+              <p className="text-[9px] text-rose-500 font-medium truncate max-w-[120px] mt-0.5" title={row.rejectionReason}>
+                Alasan: {row.rejectionReason}
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs w-full max-w-full min-w-0">
@@ -576,7 +598,7 @@ const Loans: React.FC = React.memo(() => {
                 <Button 
                   size="sm" 
                   className="font-bold text-[11px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-3"
-                  onClick={() => handleChangeLoanStatus(row.id, 'REJECTED')}
+                  onClick={() => handleChangeLoanStatus(row.id, 'REJECTED', row)}
                 >
                   Tolak
                 </Button>
@@ -841,6 +863,23 @@ const Loans: React.FC = React.memo(() => {
             onViewDetail={(loanId) => {
               navigate(`/cooperative/loans/${loanId}`);
             }}
+          />
+        )}
+
+        {rejectTargetLoan && (
+          <RejectLoanModal
+            isOpen={!!rejectTargetLoan}
+            onClose={() => setRejectTargetLoan(null)}
+            onConfirm={(reason) => {
+              changeLoanStatusMutation.mutate({
+                loanId: rejectTargetLoan.id,
+                status: 'REJECTED',
+                rejectionReason: reason
+              });
+            }}
+            isLoading={changeLoanStatusMutation.isPending}
+            memberName={rejectTargetLoan.member?.name}
+            loanAmount={rejectTargetLoan.amount}
           />
         )}
       </Suspense>

@@ -123,11 +123,21 @@ export const LoanEligibilitySection: React.FC<LoanEligibilitySectionProps> = Rea
             )}
           </div>
         ) : (
-          <div className="mt-6 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-center">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Keputusan</p>
-            <p className="text-xs font-black text-slate-800 dark:text-slate-100 mt-1 uppercase">
-              {loan.status === 'APPROVED' ? 'DISETUJUI' : loan.status === 'REJECTED' ? 'DITOLAK' : 'LUNAS'}
-            </p>
+          <div className="mt-6 p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-xl text-center space-y-2">
+            <div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Status Keputusan</p>
+              <p className={`text-xs font-black mt-1 uppercase ${loan.status === 'REJECTED' ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                {loan.status === 'APPROVED' ? 'DISETUJUI' : loan.status === 'REJECTED' ? 'DITOLAK' : 'LUNAS'}
+              </p>
+            </div>
+            {loan.status === 'REJECTED' && loan.rejectionReason && (
+              <div className="p-2.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200/60 dark:border-rose-900/60 rounded-lg text-left">
+                <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block">Alasan Penolakan Resmi:</span>
+                <span className="text-[11px] font-semibold text-rose-800 dark:text-rose-200 mt-0.5 block leading-relaxed">
+                  {loan.rejectionReason}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

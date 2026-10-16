@@ -2731,11 +2731,13 @@ model SavingTransaction {
 
 // --- PINJAMAN ---
 model Loan {
-  id           String     @id @default(uuid())
-  amount       Decimal
-  interestRate Decimal
-  duration     Int
-  status       LoanStatus @default(PENDING)
+  id              String     @id @default(uuid())
+  amount          Decimal
+  interestRate    Decimal
+  duration        Int
+  status          LoanStatus @default(PENDING)
+  notes           String?
+  rejectionReason String?
 
   memberId String
   member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)

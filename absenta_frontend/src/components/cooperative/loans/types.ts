@@ -6,6 +6,8 @@ export interface Loan {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
   createdAt: string;
   memberId: string;
+  notes?: string | null;
+  rejectionReason?: string | null;
   member: {
     id: string;
     name: string;
@@ -67,6 +69,8 @@ export interface LoanDetailData {
   duration: number;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
   createdAt: string;
+  notes?: string | null;
+  rejectionReason?: string | null;
   member: {
     name: string;
     memberNo: string;
