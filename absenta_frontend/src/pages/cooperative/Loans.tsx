@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
-import { Button, SectionCard, Table, Badge, SearchableSelect, Input } from '../../components/ui';
+import { Button, SectionCard, Table, Badge, SearchableSelect } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
-import { Plus, Eye, Clock, Ban, Users, Wallet } from 'lucide-react';
+import { Plus, Eye, Clock, Ban, Users, Wallet, HeartHandshake, Search } from 'lucide-react';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { LoanStatsBanner } from '../../components/cooperative/loans/LoanStatsBanner';
 import { LoanRestrictionsAlerts } from '../../components/cooperative/loans/LoanRestrictionsAlerts';
@@ -568,6 +568,86 @@ const Loans: React.FC = React.memo(() => {
     ];
   }, [isStudent]);
 
+  const TableToolbarLeftComponent = useMemo(
+    () => (
+      <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="relative w-full sm:w-64">
+          <span className="absolute inset-y-0 left-3 flex items-center text-slate-400 pointer-events-none">
+            <Search size={14} />
+          </span>
+          <input
+            type="text"
+            id="loans-search-input"
+            value={searchQuery}
+            onChange={(e) => {
+              const parsed = loanFilterSchema.safeParse({ search: e.target.value });
+              if (parsed.success) {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }
+            }}
+            placeholder={isStudent ? "Cari riwayat pinjaman..." : "Cari nama, nomor anggota..."}
+            aria-label="Cari pinjaman atau anggota"
+            className="w-full h-9 pl-9 pr-4 text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+          />
+        </div>
+
+        <div className="w-full sm:w-auto">
+          <SearchableSelect
+            id="loans-status-select"
+            aria-label="Filter status pinjaman"
+            value={statusFilter}
+            onValueChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { label: 'Semua Status', value: 'ALL' },
+              { label: 'PENDING', value: 'PENDING' },
+              { label: 'APPROVED', value: 'APPROVED' },
+              { label: 'PAID', value: 'PAID' },
+              { label: 'REJECTED', value: 'REJECTED' }
+            ]}
+            placeholder="Status Pinjaman"
+            triggerClassName="w-full sm:w-auto sm:min-w-[140px] text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl"
+          />
+        </div>
+      </div>
+    ),
+    [searchQuery, statusFilter, isStudent, setSearchQuery, setStatusFilter, setPage]
+  );
+
+  const TableToolbarRightComponent = useMemo(
+    () => (
+      <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
+        <CoopFiscalYearSelector />
+        {isStudent && (
+          <Button
+            variant="toolbarOutline"
+            size="toolbar"
+            onClick={() => setIsPaymentInstructionsOpen(true)}
+            className="text-xs font-bold tracking-tight rounded-xl border-slate-200 text-slate-700 dark:text-slate-400 dark:border-slate-800 hover:bg-slate-50 transition-all duration-200 shadow-sm"
+          >
+            <Clock size={13} className="mr-2 text-amber-500" />
+            Petunjuk Bayar
+          </Button>
+        )}
+        {canApply && (
+          <Button
+            variant="toolbarPrimary"
+            size="toolbar"
+            onClick={handleOpenModal}
+            className="text-xs font-bold tracking-tight rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/15 transition-all duration-300 transform hover:-translate-y-0.5"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            <span>{isOperatorMode ? 'Input Pinjaman Anggota' : 'Ajukan Pinjaman'}</span>
+          </Button>
+        )}
+      </div>
+    ),
+    [isStudent, canApply, handleOpenModal, isOperatorMode]
+  );
+
   return (
     <PremiumFeatureGate
       moduleName="KOPERASI"
@@ -581,22 +661,6 @@ const Loans: React.FC = React.memo(() => {
           : 'Kelola verifikasi, persetujuan pengajuan pinjaman anggota, dan monitoring cicilan kredit koperasi.'}
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="coop_loans"
-        topSlot={
-          <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
-            <CoopFiscalYearSelector />
-            {canApply && (
-              <Button
-                variant="toolbarPrimary"
-                size="toolbar"
-                onClick={handleOpenModal}
-                className="w-full sm:w-auto flex items-center justify-center gap-1.5 font-bold rounded-xl shadow-md"
-              >
-                <Plus className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{isOperatorMode ? 'Input Pinjaman Anggota' : 'Ajukan Pinjaman'}</span>
-              </Button>
-            )}
-          </div>
-        }
         instruction={{
           title: isStudent ? "Panduan Pinjaman Saya" : "Panduan Manajemen Pinjaman Anggota",
           description: isStudent 
@@ -613,102 +677,67 @@ const Loans: React.FC = React.memo(() => {
           ]
         }}
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
-          <div className="space-y-6">
-            {/* Context Switcher (Khusus Pengurus / Operator) */}
-            {isOperator && (
-              <div className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar flex-nowrap pb-1">
-                <TabSwitcher
-                  tabs={tabOptions}
-                  activeTab={activeTab}
-                  onChange={handleTabChange}
-                />
-              </div>
-            )}
-
-            {/* Top Banner Stats */}
-            <LoanStatsBanner
-              isStudent={isStudent}
-              studentMetrics={studentMetrics}
-              operatorMetrics={operatorMetrics}
-              variant="compact-premium"
-              mobileCompact={true}
-            />
-
-            {/* Restrictions Banner */}
-            <LoanRestrictionsAlerts
-              isStudent={isStudent}
-              studentMetrics={studentMetrics}
-              memberStatus={memberStatus}
-            />
-
-            {/* Filter Bar (Placed Above Table) */}
-            <div className="w-full max-w-full min-w-0 overflow-x-auto flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm">
-              <div className="relative flex-1 w-full max-w-full min-w-0 sm:min-w-[200px]">
-                <Input
-                  id="loans-search-input"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    const parsed = loanFilterSchema.safeParse({ search: e.target.value });
-                    if (parsed.success) {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                    }
-                  }}
-                  placeholder="Cari nama atau no. anggota..."
-                  aria-label="Cari anggota atau nomor anggota"
-                  className="w-full max-w-full min-w-0 text-xs rounded-xl"
-                />
-              </div>
-
-              <div className="w-full sm:w-44 max-w-full min-w-0">
-                <SearchableSelect
-                  id="loans-status-select"
-                  aria-label="Filter status pinjaman"
-                  value={statusFilter}
-                  onValueChange={(val) => {
-                    setStatusFilter(val);
-                    setPage(1);
-                  }}
-                  options={[
-                    { label: 'Semua Status', value: 'ALL' },
-                    { label: 'PENDING', value: 'PENDING' },
-                    { label: 'APPROVED', value: 'APPROVED' },
-                    { label: 'PAID', value: 'PAID' },
-                    { label: 'REJECTED', value: 'REJECTED' }
-                  ]}
-                  placeholder="Status Pinjaman"
-                />
-              </div>
+        <div className="space-y-6">
+          {/* Header Action & Custom Status Badge */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-400 font-black text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm">
+                HARDENED (DEV AUDIT A+)
+              </span>
             </div>
+          </div>
 
-            {/* Loans Table Master */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-              {isMobile ? (
-                <div className="p-4">
-                  <MobileAcademicList
-                    title="Daftar Pinjaman Koperasi"
-                    data={loans}
-                    loading={loansQuery.isLoading}
-                    totalItems={totalItems}
-                    emptyMessage="Belum ada data pinjaman yang tercatat."
-                    pagination={{
-                      currentPage: page,
-                      totalPages,
-                      totalItems,
-                      itemsPerPage: limit,
-                      onPageChange: setPage,
-                      onLimitChange: setLimit,
-                    }}
-                    renderCard={renderMobileCard}
-                  />
+          {/* Context Switcher (Khusus Pengurus / Operator) */}
+          {isOperator && (
+            <div className="w-full max-w-full min-w-0 overflow-x-auto no-scrollbar flex-nowrap pb-1">
+              <TabSwitcher
+                tabs={tabOptions}
+                activeTab={activeTab}
+                onChange={handleTabChange}
+              />
+            </div>
+          )}
+
+          {/* Top Banner Stats */}
+          <LoanStatsBanner
+            isStudent={isStudent}
+            studentMetrics={studentMetrics}
+            operatorMetrics={operatorMetrics}
+            variant="compact-premium"
+            mobileCompact={true}
+          />
+
+          {/* Restrictions Banner */}
+          <LoanRestrictionsAlerts
+            isStudent={isStudent}
+            studentMetrics={studentMetrics}
+            memberStatus={memberStatus}
+          />
+
+          {/* SectionCard dengan Table persis pola Members.tsx */}
+          <SectionCard 
+            title={isStudent ? "Daftar Pinjaman Saya" : "Data Pinjaman Anggota Koperasi"} 
+            icon={HeartHandshake} 
+            fullWidth 
+            noPadding
+          >
+            {isMobile ? (
+              <div className="p-4 space-y-4">
+                <div className="space-y-3">
+                  {TableToolbarLeftComponent}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {TableToolbarRightComponent}
+                  </div>
                 </div>
-              ) : (
-                <Table
-                  columns={columns}
+                <MobileAcademicList
+                  title="Daftar Pinjaman Koperasi"
                   data={loans}
-                  isLoading={loansQuery.isLoading}
+                  loading={loansQuery.isLoading}
+                  totalItems={totalItems}
                   emptyMessage="Belum ada data pinjaman yang tercatat."
                   pagination={{
                     currentPage: page,
@@ -718,11 +747,29 @@ const Loans: React.FC = React.memo(() => {
                     onPageChange: setPage,
                     onLimitChange: setLimit,
                   }}
+                  renderCard={renderMobileCard}
                 />
-              )}
-            </div>
-          </div>
-        </SectionCard>
+              </div>
+            ) : (
+              <Table
+                columns={columns}
+                data={loans}
+                isLoading={loansQuery.isLoading}
+                emptyMessage="Belum ada data pinjaman yang tercatat."
+                toolbarLeft={TableToolbarLeftComponent}
+                toolbarRight={TableToolbarRightComponent}
+                pagination={{
+                  currentPage: page,
+                  totalPages,
+                  totalItems,
+                  itemsPerPage: limit,
+                  onPageChange: setPage,
+                  onLimitChange: setLimit,
+                }}
+              />
+            )}
+          </SectionCard>
+        </div>
       </AcademicPageLayout>
 
       {/* Lazy Loaded Modals */}

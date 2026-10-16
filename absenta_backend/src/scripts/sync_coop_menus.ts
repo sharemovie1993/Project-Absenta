@@ -53,7 +53,7 @@ async function main() {
     { label: 'Dashboard', icon: 'LayoutDashboard', path: '/cooperative/dashboard', required_capability: 'cooperative.dashboard.view.overview' },
     { label: 'Data Anggota', icon: 'Users', path: '/cooperative/members', required_capability: 'cooperative.members.view.list' },
     { label: 'Simpanan', icon: 'Wallet', path: '/cooperative/savings', required_capability: 'cooperative.savings.view.list, cooperative.savings.view.history' },
-    { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.view.list' },
+    { label: 'Pinjaman', icon: 'HeartHandshake', path: '/cooperative/loans', required_capability: 'cooperative.loans.view.list, cooperative.loans.apply' },
     // Divider 1
     { label: 'divider', icon: null, path: null },
     // Klaster 2: Perdagangan, Toko & Unit Usaha Komersial (Retail)
