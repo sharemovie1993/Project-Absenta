@@ -6,6 +6,7 @@ import { MemberService } from './member.service';
 import { mockTenant } from '../../../utils/mocks';
 import { requireCapability } from '@/middlewares/requireCapability';
 import { determineDataScope } from '@/middlewares/dataScope';
+import { authorizationService } from '@/modules/auth/services/authorization.service';
 import {
     createMemberSchema,
     updateMemberSchema,
@@ -34,7 +35,7 @@ export default async function memberRoutes(fastify: any) {
     });
 
     // GET /members/me — Cek status keanggotaan koperasi user yang sedang login
-    fastify.get('/me', { preHandler: [requireCapability('cooperative.dashboard.view.overview')] }, async (req: any, reply: any) => {
+    fastify.get('/me', async (req: any, reply: any) => {
         const startTime = Date.now();
         try {
             const tenantId = getTenantId(req);
@@ -70,22 +71,35 @@ export default async function memberRoutes(fastify: any) {
     });
 
     // GET /members/:id
-    fastify.get('/:id', { preHandler: [requireCapability('cooperative.members.view.detail'), determineDataScope()] }, async (req: any, reply: any) => {
+    fastify.get('/:id', async (req: any, reply: any) => {
         const startTime = Date.now();
         try {
             const tenantId = getTenantId(req);
-            const member = await MemberService.getMemberById(req.params.id, {
+            const userId = req.user?.id;
+            const targetId = req.params.id;
+
+            const myMember = userId ? await MemberService.getMemberByUserId(tenantId, userId) : null;
+            const isSelf = Boolean(myMember && myMember.id === targetId);
+
+            if (!isSelf) {
+                const res = await authorizationService.isUserAuthorized(String(userId), ['cooperative.members.view.detail'], { user: req.user });
+                if (!res.allowed) {
+                    return reply.status(403).send({ error: 'CAPABILITY_ACCESS_DENIED', message: 'Forbidden' });
+                }
+            }
+
+            const member = await MemberService.getMemberById(targetId, {
               tenantId,
-              kelasIds: req.dataScope?.kelasIds,
-              unitIds: req.dataScope?.unitIds,
-              tenantWide: req.dataScope?.tenantWide
+              kelasIds: isSelf ? undefined : req.dataScope?.kelasIds,
+              unitIds: isSelf ? undefined : req.dataScope?.unitIds,
+              tenantWide: isSelf ? true : req.dataScope?.tenantWide
             });
             if (!member) return reply.code(404).send({ message: 'Member not found' });
-            appLogger.info({ action: 'GET_MEMBER_DETAIL', tenantId, memberId: req.params.id, durationMs: Date.now() - startTime }, 'Member detail fetched');
+            appLogger.info({ action: 'GET_MEMBER_DETAIL', tenantId, memberId: targetId, durationMs: Date.now() - startTime }, 'Member detail fetched');
             return member;
         } catch (error) {
             appLogger.error({ err: error, durationMs: Date.now() - startTime }, 'Cooperative route error');
-            reply.status(500).send({ success: false, message: 'Failed to fetch member'  });
+            reply.status(500).send({ success: false, message: 'Failed to fetch member' });
         }
     });
 

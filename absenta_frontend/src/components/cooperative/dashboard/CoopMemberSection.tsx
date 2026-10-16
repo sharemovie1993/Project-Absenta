@@ -11,15 +11,16 @@ import {
   Clock, 
   ShoppingBag, 
   Vote, 
-  ArrowRight,
-  QrCode,
-  BookOpen,
-  Tag,
-  ShieldCheck,
-  AlertCircle,
-  Sparkles,
+  ArrowRight, 
+  QrCode, 
+  BookOpen, 
+  Tag, 
+  ShieldCheck, 
+  AlertCircle, 
+  Sparkles, 
   ChevronRight,
-  CreditCard
+  Receipt,
+  CircleDollarSign
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -79,7 +80,15 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   const currentMemberId = memberInfo?.id || memberSummary?.memberInfo?.id || null;
   const currentMemberName = memberInfo?.User?.full_name || memberInfo?.name || memberSummary?.memberInfo?.name || user?.full_name || 'Anggota Koperasi';
   const currentMemberNo = memberInfo?.memberNo || memberSummary?.memberInfo?.memberNo || '—';
-  const currentMemberType = memberInfo?.type || memberSummary?.memberInfo?.type || (user?.role === 'TEACHER' ? 'GURU' : user?.role === 'STUDENT' ? 'SISWA' : 'ANGGOTA');
+  
+  const currentMemberType = useMemo(() => {
+    if (memberInfo?.type) return memberInfo.type.toUpperCase();
+    if (memberSummary?.memberInfo?.type) return memberSummary.memberInfo.type.toUpperCase();
+    const roleStr = String(user?.role || '').toUpperCase();
+    if (roleStr.includes('TEACHER') || roleStr.includes('GURU')) return 'GURU';
+    if (roleStr.includes('STUDENT') || roleStr.includes('SISWA')) return 'SISWA';
+    return 'ANGGOTA';
+  }, [memberInfo?.type, memberSummary?.memberInfo?.type, user?.role]);
 
   // Savings & Obligations Breakdown
   const totalSavings = memberSummary?.mySavings?.total ?? mySavingsSum;
@@ -87,6 +96,10 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   const wajib = memberSummary?.mySavings?.wajib ?? 0;
   const sukarela = memberSummary?.mySavings?.sukarela ?? 0;
   const unpaidWajib = memberSummary?.mySavings?.unpaidWajibThisMonth ?? false;
+
+  // Loan Status
+  const activeLoan = memberSummary?.myLoans?.activeLoan;
+  const pendingLoansCount = memberSummary?.myLoans?.pendingLoansCount ?? 0;
 
   // SHU Dividend Projections
   const estimatedShu = memberSummary?.myShuEstimate?.estimatedAmount ?? myShuSum;
@@ -143,7 +156,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                     <ShieldCheck size={11} />
                     <span>AKTIF</span>
                   </span>
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/40">
                     {currentMemberType}
                   </span>
                 </div>
@@ -210,7 +223,8 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
               value={`Rp ${totalSavings.toLocaleString('id-ID')}`} 
               icon={<Wallet size={24} />} 
               gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
-              subtitle={`Pokok: Rp ${pokok.toLocaleString('id-ID')} • Wajib: Rp ${wajib.toLocaleString('id-ID')} • Sukarela: Rp ${sukarela.toLocaleString('id-ID')}`}
+              subtitle="Saldo tabungan aktif Anda"
+              onClick={handleOpenPassbookModal}
             />
 
             {unpaidWajib ? (
@@ -220,6 +234,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                 icon={<AlertCircle size={24} />} 
                 gradient="from-amber-500 to-rose-600 text-white border-amber-400/30" 
                 subtitle="Segera lakukan setoran simpanan wajib periode ini"
+                onClick={handleOpenPassbookModal}
               />
             ) : (
               <AnalyticsCard 
@@ -228,6 +243,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                 icon={<ShieldCheck size={24} />} 
                 gradient="from-teal-600 to-emerald-700 text-white border-teal-400/30" 
                 subtitle="Kewajiban simpanan bulanan tertib & aktif"
+                onClick={handleOpenPassbookModal}
               />
             )}
 
@@ -239,6 +255,69 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
               subtitle={`Proyeksi SHU Tahun Buku ${shuYear}`}
             />
           </div>
+
+          {/* Rincian Komponen Simpanan (Zero Truncation Breakdown) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl w-full max-w-full min-w-0 shadow-2xs">
+            <div className="flex items-center justify-between px-3 py-1.5 sm:py-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Simpanan Pokok</span>
+              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
+                Rp {pokok.toLocaleString('id-ID')}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 sm:py-0 sm:border-x border-slate-200 dark:border-slate-800 border-t sm:border-t-0 pt-2 sm:pt-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Simpanan Wajib</span>
+              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
+                Rp {wajib.toLocaleString('id-ID')}
+              </span>
+            </div>
+            <div className="flex items-center justify-between px-3 py-1.5 sm:py-0 border-t sm:border-t-0 pt-2 sm:pt-0">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Simpanan Sukarela</span>
+              <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
+                Rp {sukarela.toLocaleString('id-ID')}
+              </span>
+            </div>
+          </div>
+
+          {/* Status Pinjaman Anggota (Jika Ada Pinjaman Aktif / Pengajuan) */}
+          {activeLoan ? (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs w-full max-w-full min-w-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <CircleDollarSign size={18} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-slate-800 dark:text-slate-100">Pinjaman Anggota Aktif</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                      Tenor {activeLoan.duration} Bln
+                    </span>
+                  </div>
+                  <p className="text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                    Plafon: <strong>Rp {Number(activeLoan.amount).toLocaleString('id-ID')}</strong> &bull; Cicilan Berikutnya: <strong>Rp {Number(activeLoan.nextInstallment?.amount || 0).toLocaleString('id-ID')}</strong>
+                    {activeLoan.nextInstallment?.dueDate && ` (Jatuh Tempo: ${format(new Date(activeLoan.nextInstallment.dueDate), 'dd/MM/yyyy')})`}
+                  </p>
+                </div>
+              </div>
+              <Link
+                to={`/cooperative/loans/${activeLoan.id}`}
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shrink-0 text-center transition-colors shadow-2xs"
+              >
+                Lihat Cicilan
+              </Link>
+            </div>
+          ) : pendingLoansCount > 0 ? (
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 flex items-center justify-between gap-3 text-xs w-full max-w-full min-w-0">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+                <span className="text-amber-900 dark:text-amber-200 font-medium">
+                  Anda memiliki <strong>{pendingLoansCount} pengajuan pinjaman</strong> yang sedang diverifikasi pengurus koperasi.
+                </span>
+              </div>
+              <Link to="/cooperative/loans" className="text-amber-700 dark:text-amber-400 font-bold hover:underline shrink-0">
+                Cek Pengajuan &rarr;
+              </Link>
+            </div>
+          ) : null}
 
           {/* 4. Action Hub: Pintasan Cepat Layanan Anggota */}
           <div className="space-y-3 w-full max-w-full min-w-0">
@@ -455,23 +534,19 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                       render: (id: string) => <StrukBadge id={id} />,
                     },
                     {
-                      label: 'Metode Pembayaran',
-                      key: 'paymentMethod',
-                      render: (m: string) => (
-                        <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase">
-                          {m || 'CASH'}
-                        </span>
+                      label: 'Ringkasan Belanja',
+                      key: 'summary',
+                      render: (_: unknown, row: Sale) => (
+                        <div className="flex items-center gap-1.5 text-xs">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">
+                            {(row.items ?? []).length} Item
+                          </span>
+                          <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-500 uppercase">
+                            {row.paymentMethod || 'CASH'}
+                          </span>
+                        </div>
                       ),
-                    },
-                    {
-                      label: 'Items',
-                      key: 'items',
-                      render: (items: SaleItem[]) => `${(items ?? []).length} Item`,
-                    },
-                    {
-                      label: 'Diskon',
-                      key: 'discount',
-                      render: (val: number) => val > 0 ? `Rp ${val.toLocaleString('id-ID')}` : '-',
                     },
                     {
                       label: 'Total Belanja',
@@ -480,7 +555,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                       render: (val: number, row: Sale) => {
                         const totalVal = val ?? (row as { total_amount?: number })?.total_amount ?? 0;
                         return (
-                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                          <span className="font-extrabold text-blue-600 dark:text-blue-400 text-xs sm:text-sm">
                             Rp {Number(totalVal).toLocaleString('id-ID')}
                           </span>
                         );
@@ -493,12 +568,12 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[10px] gap-1 px-2.5 rounded-lg border-slate-200 dark:border-slate-700"
+                          className="h-7 text-[10px] gap-1 px-2.5 rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                           onClick={() => printReceipt(record)}
                           title="Cetak struk belanja"
                         >
                           <Printer size={13} />
-                          Cetak
+                          <span>Cetak</span>
                         </Button>
                       ),
                     }
