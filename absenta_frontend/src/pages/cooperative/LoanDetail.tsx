@@ -40,6 +40,7 @@ import { LoanEligibilitySection } from '../../components/cooperative/loans/LoanE
 import { MemberDetailModalProxy } from '../../components/cooperative/loans/MemberDetailModalProxy';
 import { MemberSavingsPassbookModal } from '../../components/cooperative/loans/MemberSavingsPassbookModal';
 import { RejectLoanModal } from '../../components/cooperative/loans/RejectLoanModal';
+import { LoanSuccessModal } from '../../components/cooperative/loans/LoanSuccessModal';
 import type { Installment, LoanDetailData, CooperativeSettings } from '../../components/cooperative/loans/types';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
@@ -92,6 +93,8 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [approvedLoanData, setApprovedLoanData] = useState<any | null>(null);
 
   // Responsiveness state (Pilar 30 Hardening)
   const [activeDetailTab, setActiveDetailTab] = useState<'installments' | 'eligibility'>('installments');
@@ -147,11 +150,16 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
       const res = await api.put(`/cooperative/loans/${id}/status`, { status, rejectionReason });
       return { data: res.data, status };
     },
-    onSuccess: ({ status }) => {
+    onSuccess: ({ data, status }) => {
       const actionLabel = status === 'APPROVED' ? 'disetujui' : 'ditolak';
       toast.success(`Pengajuan pinjaman berhasil ${actionLabel}!`);
       setIsRejectModalOpen(false);
       invalidateLoansCaches(queryClient, id);
+
+      if (status === 'APPROVED' && data) {
+        setApprovedLoanData(data);
+        setIsSuccessModalOpen(true);
+      }
     },
     onError: (error) => {
       const err = error as { response?: { data?: { message?: string } } };
@@ -787,6 +795,17 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             memberName={loan.member.name}
             loanAmount={loan.amount}
           />
+          {(approvedLoanData || loan) && (
+            <LoanSuccessModal
+              isOpen={isSuccessModalOpen}
+              onClose={() => {
+                setIsSuccessModalOpen(false);
+                setApprovedLoanData(null);
+              }}
+              loan={approvedLoanData || loan}
+              coopSettings={coopSettings}
+            />
+          )}
         </>
       )}
 

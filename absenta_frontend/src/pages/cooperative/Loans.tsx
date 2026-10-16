@@ -303,11 +303,16 @@ const Loans: React.FC = React.memo(() => {
       const res = await api.put(`/cooperative/loans/${loanId}/status`, { status, rejectionReason });
       return res.data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       const actionText = variables.status === 'APPROVED' ? 'disetujui' : 'ditolak';
       toast.success(`Pengajuan pinjaman berhasil ${actionText}`);
       setRejectTargetLoan(null);
       invalidateLoansCaches(queryClient, variables.loanId);
+
+      if (variables.status === 'APPROVED' && data) {
+        setCreatedLoanData(data);
+        setIsSuccessModalOpen(true);
+      }
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengubah status pinjaman';

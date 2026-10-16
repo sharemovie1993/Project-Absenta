@@ -304,6 +304,16 @@ export class LoanService {
                     status,
                     ...(status === 'REJECTED' && rejectionReason ? { rejectionReason } : {})
                 },
+                include: {
+                    installments: { orderBy: { dueDate: 'asc' } },
+                    member: {
+                        include: {
+                            Siswa: { select: { nama_siswa: true } },
+                            Guru:  { select: { nama_guru:  true } },
+                            User:  { select: { full_name:  true } },
+                        }
+                    }
+                }
             });
 
             if (status === 'REJECTED') {
@@ -331,7 +341,13 @@ export class LoanService {
                 );
             }
 
-            return updatedLoan;
+            return {
+                ...updatedLoan,
+                member: {
+                    ...updatedLoan.member,
+                    name: updatedLoan.member.Siswa?.nama_siswa || updatedLoan.member.Guru?.nama_guru || updatedLoan.member.User?.full_name || 'Unknown',
+                }
+            };
         });
     }
 
