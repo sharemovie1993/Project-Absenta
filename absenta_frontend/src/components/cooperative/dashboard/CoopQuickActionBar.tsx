@@ -7,8 +7,7 @@ import {
   Landmark, 
   Users, 
   Gavel, 
-  ChevronRight,
-  Sparkles
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,8 +23,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
   const actions = [
     {
       id: 'savings',
-      title: 'Catat Simpanan',
-      description: 'Setor / Tarik Tabungan',
+      title: 'Simpanan',
       to: '/cooperative/savings',
       icon: Wallet,
       color: 'text-emerald-600 dark:text-emerald-400',
@@ -34,8 +32,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
     },
     {
       id: 'loans',
-      title: 'Pencairan Pinjaman',
-      description: 'Verifikasi Kredit & Akad',
+      title: 'Pinjaman',
       to: '/cooperative/loans',
       icon: Coins,
       color: 'text-amber-600 dark:text-amber-400',
@@ -46,8 +43,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
     },
     {
       id: 'pos',
-      title: 'Kasir POS Toko',
-      description: 'Scan Barcode & Checkout',
+      title: 'Kasir POS',
       to: '/cooperative/pos',
       icon: ShoppingCart,
       color: 'text-blue-600 dark:text-blue-400',
@@ -56,8 +52,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
     },
     {
       id: 'cash-bank',
-      title: 'Kas & Rekening Bank',
-      description: 'Arus Kas Operasional',
+      title: 'Kas & Bank',
       to: '/cooperative/cash-bank',
       icon: Landmark,
       color: 'text-violet-600 dark:text-violet-400',
@@ -66,8 +61,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
     },
     {
       id: 'members',
-      title: 'Keanggotaan',
-      description: 'Registrasi & Mutasi Anggota',
+      title: 'Anggota',
       to: '/cooperative/members',
       icon: Users,
       color: 'text-indigo-600 dark:text-indigo-400',
@@ -78,8 +72,7 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
     },
     {
       id: 'rat',
-      title: 'Sidang Paripurna RAT',
-      description: 'Kuorum & Musyawarah',
+      title: 'Sidang RAT',
       to: '/cooperative/rat',
       icon: Gavel,
       color: 'text-rose-600 dark:text-rose-400',
@@ -91,15 +84,11 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3 w-full min-w-0">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" />
-            Pusat Kendali Tindakan Harian Pengurus
-          </h3>
-        </div>
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">
+          Aksi Cepat
+        </h3>
         <span className="text-[11px] font-medium text-slate-400 hidden sm:inline-block">
-          Pintasan langsung ke modul operasional utama
+          Pintasan operasional harian
         </span>
       </div>
 
@@ -111,31 +100,26 @@ export const CoopQuickActionBar: React.FC<CoopQuickActionBarProps> = React.memo(
               key={act.id}
               to={act.to}
               className={cn(
-                "group relative flex flex-col justify-between p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 transition-all duration-200 min-h-[76px] sm:min-h-[84px]",
+                "group relative flex items-center gap-2.5 p-2.5 sm:p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 transition-all duration-200 min-h-[52px] hover:shadow-xs",
                 act.bgHover
               )}
             >
-              <div className="flex items-start justify-between gap-1.5 mb-1.5">
-                <div className={cn("p-2 rounded-xl shrink-0 transition-transform group-hover:scale-110", act.iconBg, act.color)}>
-                  <Icon size={16} />
-                </div>
+              <div className={cn("p-2 rounded-xl shrink-0 transition-transform group-hover:scale-110", act.iconBg, act.color)}>
+                <Icon size={17} />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                  {act.title}
+                </p>
                 {act.badge && (
-                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 animate-pulse", act.badgeColor)}>
+                  <span className={cn("text-[9px] font-black px-1.5 py-0.5 rounded-full inline-block mt-0.5", act.badgeColor)}>
                     {act.badge}
                   </span>
                 )}
               </div>
 
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                  {act.title}
-                </p>
-                <p className="text-[10px] text-slate-400 truncate">
-                  {act.description}
-                </p>
-              </div>
-
-              <ChevronRight size={12} className="absolute bottom-2.5 right-2.5 text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight size={13} className="text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 hidden sm:block" />
             </Link>
           );
         })}
