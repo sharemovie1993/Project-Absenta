@@ -283,7 +283,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
           }`}
         >
           <ListOrdered className="w-4 h-4" />
-          <span>Susunan Acara Sidang (Rundown)</span>
+          <span>Rundown</span>
           <Badge variant="outline" className="text-[10px] ml-1">
             {agendas.length} Acara
           </Badge>
@@ -299,7 +299,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
           }`}
         >
           <BookOpen className="w-4 h-4" />
-          <span>Pedoman Tata Tertib Sidang (Rules of Order)</span>
+          <span>Tata Tertib</span>
           <Badge variant="success" className="text-[10px] ml-1">
             UU 25/1992
           </Badge>
@@ -309,7 +309,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {/* VIEW 1: JADWAL ACARA & RUNDOWN */}
       {subTab === 'rundown' && (
         <SectionCard
-          title="Jadwal Acara & Rundown Sidang RAT"
+          title="Rundown Sidang"
           fullWidth
           actions={
             canManage && (
@@ -673,7 +673,7 @@ export const RatAgendaSection: React.FC<RatAgendaSectionProps> = React.memo(({
       {/* VIEW 2: NASKAH TATA TERTIB SIDANG RAT */}
       {subTab === 'rules' && (
         <SectionCard
-          title="Pedoman & Tata Tertib Sidang Paripurna RAT"
+          title="Tata Tertib Sidang"
           fullWidth
           actions={
             <div className="flex items-center gap-2">
