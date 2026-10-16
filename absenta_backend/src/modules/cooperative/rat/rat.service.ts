@@ -1110,15 +1110,15 @@ export class RatService {
     if (!meeting) throw new Error('Sidang RAT tidak ditemukan.');
 
     const standardPresets = [
-      { order: 1, title: 'Registrasi, Verifikasi Kehadiran, & Pengesahan Kuorum Sidang', presenter: 'Panitia & Sekretaris', durationMin: 30 },
-      { order: 2, title: 'Pembukaan Sidang Pleno & Pengesahan Tata Tertib RAT', presenter: 'Pimpinan Sidang Sementara', durationMin: 20 },
-      { order: 3, title: 'Laporan Pertanggungjawaban (LPJ) Pengurus Tahun Buku Berjalan', presenter: 'Ketua & Pengurus Koperasi', durationMin: 45 },
-      { order: 4, title: 'Laporan Hasil Pengawasan (LHP) Badan Pengawas Koperasi', presenter: 'Ketua Badan Pengawas', durationMin: 30 },
-      { order: 5, title: 'Pandangan Umum, Tanya Jawab, & Tanggapan Anggota', presenter: 'Peserta Sidang Pleno', durationMin: 40 },
-      { order: 6, title: 'Pengesahan LPJ Pengurus & Hasil Pengawasan Menjadi Ketetapan', presenter: 'Pimpinan Sidang Pleno', durationMin: 15 },
-      { order: 7, title: 'Pembahasan & Pengesahan Rencana Kerja (RK) dan RAPBK', presenter: 'Pengurus Koperasi', durationMin: 35 },
-      { order: 8, title: 'Pemilihan & Penetapan Pengurus/Pengawas (Bila Ada Formatur)', presenter: 'Tim Formatur / Presidium', durationMin: 30 },
-      { order: 9, title: 'Pembacaan Surat Ketetapan Resmi (TAP RAT) & Penutupan Sidang', presenter: 'Sekretaris Sidang', durationMin: 15 },
+      { order: 1, title: 'Registrasi & Pengesahan Kuorum', presenter: 'Panitia & Sekretaris', durationMin: 30 },
+      { order: 2, title: 'Pembukaan Sidang & Tata Tertib', presenter: 'Pimpinan Sidang Sementara', durationMin: 20 },
+      { order: 3, title: 'Laporan Pengurus (LPJ)', presenter: 'Ketua & Pengurus Koperasi', durationMin: 45 },
+      { order: 4, title: 'Laporan Pengawas (LHP)', presenter: 'Ketua Badan Pengawas', durationMin: 30 },
+      { order: 5, title: 'Pandangan Umum Anggota', presenter: 'Peserta Sidang Pleno', durationMin: 40 },
+      { order: 6, title: 'Pengesahan LPJ & LHP', presenter: 'Pimpinan Sidang Pleno', durationMin: 15 },
+      { order: 7, title: 'Pengesahan Rencana Kerja & RAPBK', presenter: 'Pengurus Koperasi', durationMin: 35 },
+      { order: 8, title: 'Pemilihan Pengurus & Pengawas', presenter: 'Tim Formatur / Presidium', durationMin: 30 },
+      { order: 9, title: 'Penetapan TAP RAT & Penutupan Sidang', presenter: 'Sekretaris Sidang', durationMin: 15 },
     ];
 
     const existingAgendas = await prisma.coopMeetingAgenda.findMany({
