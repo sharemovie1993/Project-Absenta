@@ -71,12 +71,119 @@ const VOTING_RECOMMENDED_KEYWORDS = [
 ];
 
 /**
+ * Struktur data preset butir acara standar resmi RAT Koperasi (UU No. 25/1992)
+ */
+export interface StandardRatPresetItem {
+  order: number;
+  title: string;
+  presenter: string;
+  durationMin: number;
+  requiresTap: boolean;
+  minuteObligation: AgendaMinuteObligation;
+  votingRecommendation: AgendaVotingRecommendation;
+  description?: string;
+}
+
+export const STANDARD_RAT_PRESETS: StandardRatPresetItem[] = [
+  {
+    order: 1,
+    title: 'Registrasi & Pengesahan Kuorum',
+    presenter: 'Panitia & Sekretaris',
+    durationMin: 30,
+    requiresTap: false,
+    minuteObligation: 'CEREMONIAL',
+    votingRecommendation: 'NOT_APPLICABLE',
+    description: 'Pencatatan presensi digital anggota dan verifikasi batas kuorum sah sidang.',
+  },
+  {
+    order: 2,
+    title: 'Pembukaan Sidang & Tata Tertib',
+    presenter: 'Pimpinan Sidang Sementara',
+    durationMin: 20,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Pembacaan dan pengesahan tata tertib musyawarah sidang RAT.',
+  },
+  {
+    order: 3,
+    title: 'Laporan Pengurus (LPJ)',
+    presenter: 'Ketua & Pengurus Koperasi',
+    durationMin: 45,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Pemaparan pertanggungjawaban program kerja & keuangan tahun buku berjalan.',
+  },
+  {
+    order: 4,
+    title: 'Laporan Pengawas (LHP)',
+    presenter: 'Ketua Badan Pengawas',
+    durationMin: 30,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Penyampaian hasil pengawasan kelembagaan, kepatuhan, dan finansial.',
+  },
+  {
+    order: 5,
+    title: 'Pandangan Umum Anggota',
+    presenter: 'Peserta Sidang Pleno',
+    durationMin: 40,
+    requiresTap: false,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Tanggapan, saran, dan evaluasi substantif dari para anggota koperasi.',
+  },
+  {
+    order: 6,
+    title: 'Pengesahan LPJ & LHP',
+    presenter: 'Pimpinan Sidang Pleno',
+    durationMin: 15,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Pemberian pelunasan & pembebasan tanggung jawab (acquit et de charge) Pengurus & Pengawas.',
+  },
+  {
+    order: 7,
+    title: 'Pengesahan Rencana Kerja & RAPBK',
+    presenter: 'Pengurus Koperasi',
+    durationMin: 35,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'OPTIONAL_DEADLOCK',
+    description: 'Penetapan rencana strategis kerja dan anggaran pendapatan belanja tahun buku berikutnya.',
+  },
+  {
+    order: 8,
+    title: 'Pemilihan Pengurus & Pengawas',
+    presenter: 'Tim Formatur / Presidium',
+    durationMin: 30,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'RECOMMENDED',
+    description: 'Pemilihan suksesi kepemimpinan berkala menggunakan sistem e-Voting rahasia.',
+  },
+  {
+    order: 9,
+    title: 'Penetapan TAP RAT & Penutupan Sidang',
+    presenter: 'Sekretaris Sidang',
+    durationMin: 15,
+    requiresTap: true,
+    minuteObligation: 'MANDATORY',
+    votingRecommendation: 'NOT_APPLICABLE',
+    description: 'Pembacaan seluruh Surat Ketetapan (TAP RAT) dan penutupan sidang resmi.',
+  },
+];
+
+/**
  * Helper untuk membersihkan tag klasifikasi internal dari judul butir agenda
  */
 export function cleanAgendaTitle(title: string): string {
   if (!title) return '';
   return title
-    .replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi)\]/gi, '')
+    .replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi|voting|e-voting|no-voting|deadlock-voting)\]/gi, '')
     .trim();
 }
 
@@ -122,6 +229,11 @@ export function isStatutoryTapAgenda(title: string): boolean {
 export function getAgendaVotingRecommendation(title: string): AgendaVotingRecommendation {
   if (!title) return 'NOT_APPLICABLE';
   const lower = title.toLowerCase();
+
+  // Explicit manual override tags
+  if (lower.includes('[voting]') || lower.includes('[e-voting]')) return 'RECOMMENDED';
+  if (lower.includes('[deadlock-voting]')) return 'OPTIONAL_DEADLOCK';
+  if (lower.includes('[no-voting]')) return 'NOT_APPLICABLE';
 
   if (CEREMONIAL_OR_ADMIN_KEYWORDS.some((kw) => lower.includes(kw)) && !lower.includes('pemilihan')) {
     return 'NOT_APPLICABLE';

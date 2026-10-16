@@ -24,7 +24,7 @@ import {
   Scale
 } from 'lucide-react';
 import type { CoopAgendaItem, CoopMeetingMinuteItem } from '../../../pages/cooperative/RatMeetingPage';
-import { getAgendaMinuteRequirement } from './ratAgendaClassifier';
+import { getAgendaMinuteRequirement, cleanAgendaTitle } from './ratAgendaClassifier';
 
 interface RatMinuteTimelineProps {
   meetingId: string;
@@ -386,7 +386,7 @@ export const RatMinuteTimeline: React.FC<RatMinuteTimelineProps> = React.memo(({
 
                     {minute.agenda ? (
                       <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-lg truncate max-w-xs inline-flex items-center gap-1.5">
-                        <span className="truncate">Acara {minute.agenda.order}: {minute.agenda.title}</span>
+                        <span className="truncate">Acara {minute.agenda.order}: {cleanAgendaTitle(minute.agenda.title)}</span>
                         {(() => {
                           const req = getAgendaMinuteRequirement(minute.agenda.title);
                           return (

@@ -6,7 +6,7 @@ import api from '@/lib/axiosInstance';
 import toast from 'react-hot-toast';
 import { CoopDocumentKop } from '../shared/CoopDocumentKop';
 import { ResolutionTextRenderer } from './ResolutionTextRenderer';
-import { getAgendaMinuteRequirement } from './ratAgendaClassifier';
+import { getAgendaMinuteRequirement, cleanAgendaTitle } from './ratAgendaClassifier';
 
 interface RatProceedingsPrintModalProps {
   isOpen: boolean;
@@ -235,7 +235,7 @@ export const RatProceedingsPrintModal: React.FC<RatProceedingsPrintModalProps> =
                   <div className="flex items-baseline justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <h5 className="font-bold text-xs sm:text-sm uppercase text-slate-900">
-                        Acara {idx + 1}: {item.agenda.title}
+                        Acara {idx + 1}: {cleanAgendaTitle(item.agenda.title)}
                       </h5>
                       <span className="text-[9px] font-sans font-semibold px-1.5 py-0.5 rounded border text-slate-600 border-slate-300">
                         {req.label}

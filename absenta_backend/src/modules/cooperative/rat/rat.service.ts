@@ -1408,7 +1408,7 @@ export class RatService {
       year: 'numeric',
     }) : 'Hari ini';
 
-    const cleanTitle = agenda.title.replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi)\]/gi, '').trim();
+    const cleanTitle = agenda.title.replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi|voting|e-voting|no-voting|deadlock-voting)\]/gi, '').trim();
     const resolutionTitle = `Pengesahan Ketetapan Sidang Mengenai ${cleanTitle}`;
     const resolutionContent = 
 `SURAT KETETAPAN RAPAT ANGGOTA TAHUNAN (RAT)

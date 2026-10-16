@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Modal } from '../../ui/Modal';
 import { Button, Input } from '../../ui';
-import { Scale, BookOpen } from 'lucide-react';
+import { Scale, BookOpen, Vote, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../lib/axiosInstance';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -11,8 +11,11 @@ import type { CoopAgendaItem } from '../../../pages/cooperative/RatMeetingPage';
 import {
   isStatutoryTapAgenda,
   getAgendaMinuteRequirement,
+  getAgendaVotingRecommendation,
   cleanAgendaTitle,
+  STANDARD_RAT_PRESETS,
   type AgendaMinuteObligation,
+  type AgendaVotingRecommendation,
 } from './ratAgendaClassifier';
 
 const agendaSchema = z.object({
@@ -47,26 +50,39 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
   const [orderIndex, setOrderIndex] = useState(1);
   const [status, setStatus] = useState<'PENDING' | 'IN_PROGRESS' | 'COMPLETED'>('PENDING');
 
-  // Klasifikasi Yuridis (Wajib TAP & Kewajiban Notulensi)
+  // Preset selector
+  const [selectedPresetOrder, setSelectedPresetOrder] = useState<number | ''>('');
+
+  // Klasifikasi Yuridis (Wajib TAP, Kewajiban Notulensi, dan Rekomendasi e-Voting)
   const [requiresTap, setRequiresTap] = useState(false);
   const [tapManuallyEdited, setTapManuallyEdited] = useState(false);
   const [minuteObligation, setMinuteObligation] = useState<AgendaMinuteObligation>('MANDATORY');
   const [minuteManuallyEdited, setMinuteManuallyEdited] = useState(false);
+  const [votingRecommendation, setVotingRecommendation] = useState<AgendaVotingRecommendation>('OPTIONAL_DEADLOCK');
+  const [votingManuallyEdited, setVotingManuallyEdited] = useState(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (initialData) {
       const rawTitle = initialData.title || '';
-      setTitle(cleanAgendaTitle(rawTitle));
+      const clean = cleanAgendaTitle(rawTitle);
+      setTitle(clean);
       setPresenter(initialData.presenter || (initialData.description?.replace(/^Penyaji \/ Narasumber: /, '') || ''));
       setDurationMinutes(initialData.durationMinutes || initialData.durationMin || 30);
       setOrderIndex(initialData.orderIndex || initialData.order || 1);
       setStatus(initialData.status || (initialData.isCompleted ? 'COMPLETED' : 'PENDING'));
       setRequiresTap(isStatutoryTapAgenda(rawTitle));
       setMinuteObligation(getAgendaMinuteRequirement(rawTitle).obligation);
+      setVotingRecommendation(getAgendaVotingRecommendation(rawTitle));
       setTapManuallyEdited(false);
       setMinuteManuallyEdited(false);
+      setVotingManuallyEdited(false);
+
+      const matchedPreset = STANDARD_RAT_PRESETS.find(
+        (p) => p.title.toLowerCase() === clean.toLowerCase()
+      );
+      setSelectedPresetOrder(matchedPreset ? matchedPreset.order : '');
     } else {
       setTitle('');
       setPresenter('');
@@ -75,20 +91,55 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
       setStatus('PENDING');
       setRequiresTap(false);
       setMinuteObligation('MANDATORY');
+      setVotingRecommendation('OPTIONAL_DEADLOCK');
       setTapManuallyEdited(false);
       setMinuteManuallyEdited(false);
+      setVotingManuallyEdited(false);
+      setSelectedPresetOrder('');
     }
     setErrors({});
   }, [initialData, isOpen]);
 
+  const handlePresetSelect = (val: string) => {
+    if (!val) {
+      setSelectedPresetOrder('');
+      return;
+    }
+    const orderNum = Number(val);
+    const preset = STANDARD_RAT_PRESETS.find((p) => p.order === orderNum);
+    if (!preset) return;
+
+    setSelectedPresetOrder(orderNum);
+    setTitle(preset.title);
+    setPresenter(preset.presenter);
+    setDurationMinutes(preset.durationMin);
+    if (!isEditing) {
+      setOrderIndex(preset.order);
+    }
+    setRequiresTap(preset.requiresTap);
+    setMinuteObligation(preset.minuteObligation);
+    setVotingRecommendation(preset.votingRecommendation);
+    setTapManuallyEdited(true);
+    setMinuteManuallyEdited(true);
+    setVotingManuallyEdited(true);
+  };
+
   const handleTitleChange = (newTitle: string) => {
     setTitle(newTitle);
+    const matchedPreset = STANDARD_RAT_PRESETS.find(
+      (p) => p.title.toLowerCase() === newTitle.trim().toLowerCase()
+    );
+    setSelectedPresetOrder(matchedPreset ? matchedPreset.order : '');
+
     // Smart Auto-Sync: Jika belum diubah manual, sesuaikan otomatis dengan kata kunci
     if (!tapManuallyEdited) {
       setRequiresTap(isStatutoryTapAgenda(newTitle));
     }
     if (!minuteManuallyEdited) {
       setMinuteObligation(getAgendaMinuteRequirement(newTitle).obligation);
+    }
+    if (!votingManuallyEdited) {
+      setVotingRecommendation(getAgendaVotingRecommendation(newTitle));
     }
   };
 
@@ -157,6 +208,15 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
       finalTitle = `${finalTitle} [WAJIB-NOTULENSI]`;
     }
 
+    const naturalVoting = getAgendaVotingRecommendation(finalTitle);
+    if (votingRecommendation === 'RECOMMENDED' && naturalVoting !== 'RECOMMENDED') {
+      finalTitle = `${finalTitle} [VOTING]`;
+    } else if (votingRecommendation === 'NOT_APPLICABLE' && naturalVoting !== 'NOT_APPLICABLE') {
+      finalTitle = `${finalTitle} [NO-VOTING]`;
+    } else if (votingRecommendation === 'OPTIONAL_DEADLOCK' && naturalVoting !== 'OPTIONAL_DEADLOCK') {
+      finalTitle = `${finalTitle} [DEADLOCK-VOTING]`;
+    }
+
     saveMutation.mutate({
       title: finalTitle,
       presenter: parseResult.data.presenter,
@@ -164,7 +224,7 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
       order: parseResult.data.orderIndex,
       status: parseResult.data.status,
     });
-  }, [title, presenter, durationMinutes, orderIndex, status, requiresTap, minuteObligation, saveMutation]);
+  }, [title, presenter, durationMinutes, orderIndex, status, requiresTap, minuteObligation, votingRecommendation, saveMutation]);
 
   return (
     <Modal
@@ -174,6 +234,41 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
       size="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Preset Selector Dropdown */}
+        <div className="p-2.5 rounded-xl border border-indigo-200/90 dark:border-indigo-800/80 bg-indigo-50/50 dark:bg-indigo-950/20 space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Pilih dari 9 Preset Standar Acara RAT (Opsional)</span>
+            </label>
+            {selectedPresetOrder && (
+              <button
+                type="button"
+                onClick={() => setSelectedPresetOrder('')}
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 underline"
+              >
+                Ketik Bebas
+              </button>
+            )}
+          </div>
+          <select
+            value={selectedPresetOrder}
+            onChange={(e) => handlePresetSelect(e.target.value)}
+            className="w-full px-3 py-2 text-xs sm:text-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+            disabled={saveMutation.isPending}
+          >
+            <option value="">-- Ketik Butir Acara Kustom (Manual) --</option>
+            {STANDARD_RAT_PRESETS.map((p) => (
+              <option key={p.order} value={p.order}>
+                Agenda #{p.order}: {p.title} ({p.durationMin} mnt &bull; {p.presenter})
+              </option>
+            ))}
+          </select>
+          <p className="text-[10.5px] text-slate-500 dark:text-slate-400 leading-tight">
+            💡 Memilih preset akan otomatis mengisi judul, durasi, narasumber, status Wajib TAP, notulensi, dan e-Voting. Anda tetap dapat menyesuaikannya.
+          </p>
+        </div>
+
         <div>
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
             Judul Butir Acara / Agenda <span className="text-red-500">*</span>
@@ -293,6 +388,65 @@ export const AgendaFormModal: React.FC<AgendaFormModalProps> = React.memo(({
                 >
                   <p className="text-[11px] font-bold leading-tight">{item.label}</p>
                   <p className={`text-[10px] leading-tight ${minuteObligation === item.value ? 'text-indigo-200' : 'text-slate-400'}`}>
+                    {item.desc}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Pilihan Fasilitas Pemungutan Suara (e-Voting) */}
+          <div className="pt-2 border-t border-indigo-200/60 dark:border-indigo-900/60">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+              <span className="flex items-center gap-1">
+                <Vote className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                <span>Fasilitas Pemungutan Suara (e-Voting)</span>
+              </span>
+              {votingRecommendation === 'RECOMMENDED' && (
+                <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
+                  Disarankan e-Voting
+                </span>
+              )}
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                {
+                  value: 'RECOMMENDED' as const,
+                  label: 'Wajib / Disarankan',
+                  desc: 'Pemilihan Formatur',
+                  activeClass: 'bg-purple-600 text-white border-purple-600 shadow-xs',
+                  activeDesc: 'text-purple-200',
+                },
+                {
+                  value: 'OPTIONAL_DEADLOCK' as const,
+                  label: 'Bila Deadlock',
+                  desc: 'Utamakan Mufakat',
+                  activeClass: 'bg-indigo-600 text-white border-indigo-600 shadow-xs',
+                  activeDesc: 'text-indigo-200',
+                },
+                {
+                  value: 'NOT_APPLICABLE' as const,
+                  label: 'Tanpa Voting',
+                  desc: 'Pemaparan / Seremonial',
+                  activeClass: 'bg-slate-700 text-white border-slate-700 shadow-xs',
+                  activeDesc: 'text-slate-300',
+                },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => {
+                    setVotingRecommendation(item.value);
+                    setVotingManuallyEdited(true);
+                  }}
+                  className={`px-2 py-1.5 rounded-lg text-left transition-all border ${
+                    votingRecommendation === item.value
+                      ? item.activeClass
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-purple-300'
+                  }`}
+                >
+                  <p className="text-[11px] font-bold leading-tight">{item.label}</p>
+                  <p className={`text-[10px] leading-tight ${votingRecommendation === item.value ? item.activeDesc : 'text-slate-400'}`}>
                     {item.desc}
                   </p>
                 </button>
