@@ -18,6 +18,7 @@ import type {
 import { RatTvQuorumStage, type LocalAttendee } from './RatTvQuorumStage';
 import { RatTvVotingStage } from './RatTvVotingStage';
 import { RatTvResolutionStage } from './RatTvResolutionStage';
+import { cleanAgendaTitle } from './ratAgendaClassifier';
 
 export interface RatTvDisplayModalProps {
   isOpen: boolean;
@@ -311,17 +312,19 @@ export const RatTvDisplayModal: React.FC<RatTvDisplayModalProps> = ({
             <Sparkles className="w-5 h-5 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-black tracking-widest text-indigo-600 dark:text-indigo-400 uppercase">
-                Sidang Paripurna Rapat Anggota Tahunan (RAT)
-              </span>
-              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600/40">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-600/40">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                SIARAN LANGSUNG AULA
+                SIARAN LANGSUNG SIDANG
               </span>
             </div>
             <h1 className="text-base sm:text-xl lg:text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase leading-tight truncate">
-              {meeting.title} <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">(Tahun Buku {meeting.year})</span>
+              {cleanAgendaTitle(meeting.title)?.replace(new RegExp(`\\(Tahun Buku ${meeting.year}\\)`, 'gi'), '').trim()}
+              {!meeting.title?.toLowerCase().includes('tahun buku') && (
+                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold ml-2">
+                  (Tahun Buku {meeting.year})
+                </span>
+              )}
             </h1>
           </div>
         </div>

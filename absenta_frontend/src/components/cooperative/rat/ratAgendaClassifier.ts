@@ -71,12 +71,26 @@ const VOTING_RECOMMENDED_KEYWORDS = [
 ];
 
 /**
+ * Helper untuk membersihkan tag klasifikasi internal dari judul butir agenda
+ */
+export function cleanAgendaTitle(title: string): string {
+  if (!title) return '';
+  return title
+    .replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi)\]/gi, '')
+    .trim();
+}
+
+/**
  * Memeriksa apakah butir agenda merupakan agenda statuter yuridis
  * yang wajib menghasilkan Surat Ketetapan (TAP RAT)
  */
 export function isStatutoryTapAgenda(title: string): boolean {
   if (!title) return false;
   const lower = title.toLowerCase();
+
+  // Explicit manual override tags
+  if (lower.includes('[tap]') || lower.includes('(tap)')) return true;
+  if (lower.includes('[non-tap]')) return false;
 
   // Pengecualian mutlak: Registrasi, presensi, atau sekadar penetapan kuorum kehadiran
   // adalah tahapan administratif presensi, bukan Surat Ketetapan (TAP RAT) mandiri
@@ -139,6 +153,49 @@ export function getAgendaMinuteRequirement(title: string): AgendaMinuteClassific
   }
 
   const lower = title.toLowerCase();
+
+  // Explicit manual override tags
+  if (lower.includes('[protokoler]') || lower.includes('[opsional-notulensi]')) {
+    return {
+      obligation: 'CEREMONIAL',
+      label: 'Seremonial / Protokoler',
+      shortLabel: 'Opsional',
+      badgeClass: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+      borderClass: 'border-slate-300 dark:border-slate-700',
+      helperText: 'Seremonial / Protokoler. Tidak wajib notulensi formal. Catatan hanya dibuat bila terdapat pengumuman atau peristiwa khusus.',
+      defaultCategory: 'OPENING',
+      isMandatory: false,
+      priorityScore: 1,
+    };
+  }
+
+  if (lower.includes('[arahan]')) {
+    return {
+      obligation: 'ADVISORY',
+      label: 'Arahan / Catatan Pembinaan',
+      shortLabel: 'Disarankan',
+      badgeClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
+      borderClass: 'border-cyan-500/40',
+      helperText: 'Disarankan dicatat. Memuat arahan pembinaan, evaluasi dinas, atau amanat pimpinan untuk kemajuan koperasi.',
+      defaultCategory: 'DISCUSSION',
+      isMandatory: false,
+      priorityScore: 2,
+    };
+  }
+
+  if (lower.includes('[wajib-notulensi]')) {
+    return {
+      obligation: 'MANDATORY',
+      label: 'Wajib Notulensi Substantif',
+      shortLabel: 'Wajib Notulensi',
+      badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+      borderClass: 'border-amber-500/40',
+      helperText: 'Wajib dicatat. Memuat pertanyaan anggota, tanggapan pengurus, dan konsensus sidang sebagai dasar legalitas Berita Acara & TAP RAT.',
+      defaultCategory: 'DISCUSSION',
+      isMandatory: true,
+      priorityScore: 3,
+    };
+  }
 
   // 1. Kasus Registrasi & Kuorum: Administrasi Otomatis (Opsional Notulensi)
   if (

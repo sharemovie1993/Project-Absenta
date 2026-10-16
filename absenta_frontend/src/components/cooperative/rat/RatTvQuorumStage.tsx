@@ -5,6 +5,7 @@ import {
   Sparkles, TrendingUp, Radio, CreditCard,
   ScanLine, Gavel, BookOpen
 } from 'lucide-react';
+import { cleanAgendaTitle } from './ratAgendaClassifier';
 
 export interface LocalAttendee {
   id: string;
@@ -67,7 +68,7 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                  {activeAgenda ? 'Sedang Berlangsung di Panggung' : 'Tahap Registrasi & Persiapan'}
+                  {activeAgenda ? 'Sedang Berlangsung' : 'Registrasi & Persiapan'}
                 </span>
                 {activeAgenda && (
                   <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -89,8 +90,8 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
               </div>
               <h2 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1 truncate">
                 {activeAgenda
-                  ? `${activeIdx + 1}. ${activeAgenda.title}`
-                  : 'Pengesahan Kuorum & Verifikasi Kehadiran Peserta Sidang'}
+                  ? `${activeIdx + 1}. ${cleanAgendaTitle(activeAgenda.title)}`
+                  : 'Registrasi & Pengesahan Kuorum'}
               </h2>
             </div>
           </div>
@@ -101,7 +102,7 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
               <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 max-w-xs truncate">
                 <span className="font-bold text-slate-700 dark:text-slate-300 shrink-0">Berikutnya:</span>
                 <span className="truncate font-medium text-slate-600 dark:text-slate-300">
-                  {activeIdx + 2}. {nextAgenda.title}
+                  {activeIdx + 2}. {cleanAgendaTitle(nextAgenda.title)}
                 </span>
                 <span className="text-[10px] font-mono text-slate-400 shrink-0">
                   ({nextAgenda.durationMinutes || nextAgenda.durationMin || 30}m)

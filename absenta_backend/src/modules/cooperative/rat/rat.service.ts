@@ -1408,18 +1408,19 @@ export class RatService {
       year: 'numeric',
     }) : 'Hari ini';
 
-    const resolutionTitle = `Pengesahan Ketetapan Sidang Mengenai ${agenda.title}`;
+    const cleanTitle = agenda.title.replace(/\[(tap|non-tap|wajib-notulensi|arahan|protokoler|opsional-notulensi)\]/gi, '').trim();
+    const resolutionTitle = `Pengesahan Ketetapan Sidang Mengenai ${cleanTitle}`;
     const resolutionContent = 
 `SURAT KETETAPAN RAPAT ANGGOTA TAHUNAN (RAT)
 Nomor: ${tapNumber}
-Tentang: ${agenda.title.toUpperCase()}
+Tentang: ${cleanTitle.toUpperCase()}
 
 DENGAN RAHMAT TUHAN YANG MAHA ESA
 RAPAT ANGGOTA TAHUNAN KOPERASI TAHUN BUKU ${year}
 
 MENIMBANG:
 a. Bahwa Rapat Anggota Tahunan merupakan pemegang kekuasaan tertinggi dalam tata kehidupan perkoperasian sesuai Pasal 22 UU No. 25 Tahun 1992 tentang Perkoperasian.
-b. Bahwa agenda "${agenda.title}" telah dipresentasikan, dibahas, dan dimusyawarahkan dalam Sidang Pleno RAT Tahun Buku ${year}.
+b. Bahwa agenda "${cleanTitle}" telah dipresentasikan, dibahas, dan dimusyawarahkan dalam Sidang Pleno RAT Tahun Buku ${year}.
 
 MENGINGAT:
 1. Undang-Undang Republik Indonesia Nomor 25 Tahun 1992 tentang Perkoperasian.
@@ -1433,7 +1434,7 @@ MEMPERHATIKAN:
 
 MEMUTUSKAN:
 MENETAPKAN:
-PERTAMA: Menerima, menyetujui, dan mengesahkan secara paripurna: **"${agenda.title}"**.
+PERTAMA: Menerima, menyetujui, dan mengesahkan secara paripurna: **"${cleanTitle}"**.
 KEDUA: Menginstruksikan kepada Pengurus dan Pengawas Koperasi untuk melaksanakan amanat ketetapan ini dengan itikad baik dan penuh tanggung jawab.
 KETIGA: Ketetapan ini memiliki kekuatan hukum sah yang mengikat seluruh jajaran koperasi dan berlaku sejak tanggal ditetapkan.
 
