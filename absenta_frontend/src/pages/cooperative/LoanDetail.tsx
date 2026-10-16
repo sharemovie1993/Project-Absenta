@@ -67,6 +67,24 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   const [installmentPage, setInstallmentPage] = useState(1);
   const installmentLimit = 12;
 
+  // Browser print trigger when printTarget changes
+  useEffect(() => {
+    if (printTarget) {
+      const handleAfterPrint = () => {
+        setPrintTarget(null);
+      };
+      window.addEventListener('afterprint', handleAfterPrint);
+      const timer = setTimeout(() => {
+        window.print();
+      }, 150);
+
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('afterprint', handleAfterPrint);
+      };
+    }
+  }, [printTarget]);
+
   // Proxy Modals State (Pilar Komponen Bersama Modal & Proxy Pattern)
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);

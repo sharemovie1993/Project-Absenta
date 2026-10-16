@@ -63,7 +63,7 @@ export default async function loanRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = createLoanSchema.parse(req.body);
-            const { memberId, amount, interestRate, duration } = parsed;
+            const { memberId, amount, interestRate, duration, autoApprove } = parsed;
             
             // Security check: regular member can only apply for their own member account
             const user = req.user;
@@ -93,13 +93,23 @@ export default async function loanRoutes(fastify: any) {
                 }
             }
 
-            const loan = await LoanService.createLoan(memberId, amount, effectiveInterestRate, duration, idempotencyKey);
+            const shouldAutoApprove = Boolean(isOperator && autoApprove);
+            const loan = await LoanService.createLoan(
+                memberId, 
+                amount, 
+                effectiveInterestRate, 
+                duration, 
+                idempotencyKey, 
+                shouldAutoApprove, 
+                tenantId, 
+                user.id
+            );
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
             if (io) {
                 const broadcastPayload = {
-                    type: 'LOAN_CREATED',
+                    type: shouldAutoApprove ? 'LOAN_APPROVED' : 'LOAN_CREATED',
                     loanId: loan?.id,
                     memberId,
                     timestamp: new Date().toISOString()
@@ -110,7 +120,7 @@ export default async function loanRoutes(fastify: any) {
 
             reply.code(201).send(loan);
         } catch (error: any) {
-        appLogger.error({ err: error }, 'Cooperative route error');
+            appLogger.error({ err: error }, 'Cooperative route error');
             if (error instanceof z.ZodError) {
                 return reply.code(400).send({
                     message: error.errors.map(e => e.message).join(', '),
@@ -119,13 +129,20 @@ export default async function loanRoutes(fastify: any) {
             }
             if (error.message?.startsWith('LOAN_RESTRICTION:')) {
                 // Validasi aturan bisnis koperasi: kembalikan 400 dengan pesan deskriptif
-                // Ambil teks pesan setelah prefix "LOAN_RESTRICTION:ACTIVE: " atau "LOAN_RESTRICTION:PENDING: "
                 const cleanMessage = error.message.replace(/^LOAN_RESTRICTION:(ACTIVE|PENDING):\s*/, '');
                 reply.code(400).send({ message: cleanMessage });
-            } else if (error.message?.includes('not found')) {
+            } else if (
+                error.message?.includes('tidak diperbolehkan') || 
+                error.message?.includes('wajib diisi') || 
+                error.message?.includes('harus lebih dari') ||
+                error.message?.includes('tidak boleh negatif') ||
+                error.message?.includes('bilangan bulat')
+            ) {
+                reply.code(400).send({ message: error.message });
+            } else if (error.message?.includes('not found') || error.message?.includes('tidak ditemukan')) {
                 reply.code(404).send({ message: error.message });
             } else {
-                reply.status(500).send({ success: false, message: 'Failed to create loan'  });
+                reply.status(500).send({ success: false, message: error.message || 'Failed to create loan' });
             }
         }
     });

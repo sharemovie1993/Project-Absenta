@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../lib/axiosInstance';
 import { Button, SectionCard, Table, Badge, SearchableSelect } from '../../components/ui';
 import type { Column } from '../../components/ui/Table';
@@ -32,6 +32,9 @@ const CreateLoanModal = lazy(() =>
 );
 const PaymentInstructionsModal = lazy(() => 
   import('../../components/cooperative/loans/PaymentInstructionsModal').then(module => ({ default: module.PaymentInstructionsModal }))
+);
+const LoanSuccessModal = lazy(() => 
+  import('../../components/cooperative/loans/LoanSuccessModal').then(module => ({ default: module.LoanSuccessModal }))
 );
 
 // Zod Schema Validation Guard (Pilar 25)
@@ -90,6 +93,8 @@ const Loans: React.FC = React.memo(() => {
     setActiveTab(id as 'manage' | 'personal');
   }, [setActiveTab]);
 
+  const navigate = useNavigate();
+
   const canApprove = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.loans.approve');
   const canReject = can('cooperative.loans.reject');
   const canApply = can('cooperative.loans.apply');
@@ -97,13 +102,17 @@ const Loans: React.FC = React.memo(() => {
 
   const [isPaymentInstructionsOpen, setIsPaymentInstructionsOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createdLoanData, setCreatedLoanData] = useState<any | null>(null);
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+  const [coopSettings, setCoopSettings] = useState<any>(null);
   const [defaultInterestRate, setDefaultInterestRate] = useState<string>('1.5');
   const [formData, setFormData] = useState({
     memberId: '',
     amount: '',
     interestRate: '1.5',
     duration: '12',
-    notes: ''
+    notes: '',
+    autoApprove: true
   });
 
   // Table Pagination & Filter States
@@ -145,11 +154,14 @@ const Loans: React.FC = React.memo(() => {
     async function loadSettings() {
       try {
         const settings = await fetchCoopSettings();
-        const rate = settings?.cooperative_default_interest_rate || (settings as any)?.default_interest_rate;
-        if (!cancelled && rate) {
-          const interestString = String(rate);
-          setDefaultInterestRate(interestString);
-          setFormData(prev => ({ ...prev, interestRate: interestString }));
+        if (!cancelled && settings) {
+          setCoopSettings(settings);
+          const rate = settings?.cooperative_default_interest_rate || (settings as any)?.default_interest_rate;
+          if (rate) {
+            const interestString = String(rate);
+            setDefaultInterestRate(interestString);
+            setFormData(prev => ({ ...prev, interestRate: interestString }));
+          }
         }
       } catch (err) {
         console.warn('Failed to load default interest rate from settings:', err);
@@ -255,17 +267,25 @@ const Loans: React.FC = React.memo(() => {
       });
       return res.data;
     },
-    onSuccess: () => {
-      toast.success('Pengajuan pinjaman berhasil dibuat!');
+    onSuccess: (data) => {
       setIsModalOpen(false);
+      invalidateLoansCaches(queryClient);
+
+      if (isOperatorMode) {
+        setCreatedLoanData(data);
+        setIsSuccessModalOpen(true);
+      } else {
+        toast.success('Pengajuan pinjaman berhasil dibuat!');
+      }
+
       setFormData({
         memberId: isStudent && myMemberId ? myMemberId : '',
         amount: '',
         interestRate: defaultInterestRate,
         duration: '12',
-        notes: ''
+        notes: '',
+        autoApprove: true
       });
-      invalidateLoansCaches(queryClient);
     },
     onError: (err: unknown) => {
       const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal mengajukan pinjaman';
@@ -315,9 +335,10 @@ const Loans: React.FC = React.memo(() => {
       ...prev,
       memberId: isStudent && myMemberId ? myMemberId : prev.memberId,
       interestRate: defaultInterestRate,
+      autoApprove: isOperatorMode,
     }));
     setIsModalOpen(true);
-  }, [isStudent, memberStatus, myMemberId, defaultInterestRate]);
+  }, [isStudent, isOperatorMode, memberStatus, myMemberId, defaultInterestRate]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
@@ -805,6 +826,21 @@ const Loans: React.FC = React.memo(() => {
           <PaymentInstructionsModal
             isOpen={isPaymentInstructionsOpen}
             onClose={() => setIsPaymentInstructionsOpen(false)}
+          />
+        )}
+
+        {isSuccessModalOpen && createdLoanData && (
+          <LoanSuccessModal
+            isOpen={isSuccessModalOpen}
+            onClose={() => {
+              setIsSuccessModalOpen(false);
+              setCreatedLoanData(null);
+            }}
+            loan={createdLoanData}
+            coopSettings={coopSettings}
+            onViewDetail={(loanId) => {
+              navigate(`/cooperative/loans/${loanId}`);
+            }}
           />
         )}
       </Suspense>

@@ -68,8 +68,17 @@ export class LoanService {
         }));
     }
 
-    // Create a new loan application
-    static async createLoan(memberId: string, amount: number, interestRate: number, duration: number, idempotencyKey?: string) {
+    // Create a new loan application (Mendukung Auto-Approval di Tempat oleh Pengurus)
+    static async createLoan(
+        memberId: string, 
+        amount: number, 
+        interestRate: number, 
+        duration: number, 
+        idempotencyKey?: string,
+        autoApprove = false,
+        tenantId?: string,
+        operatorUserId?: string
+    ) {
         // [GUARD 0: Idempotency Key Guard]
         if (idempotencyKey && idempotencyCache.has(idempotencyKey)) {
             const cached = idempotencyCache.get(idempotencyKey);
@@ -108,6 +117,29 @@ export class LoanService {
             );
         }
 
+        // Ambil data anggota untuk keperluan pembukuan & metadata
+        const targetMember = await prisma.member.findUnique({
+            where: { id: memberId },
+            include: {
+                Siswa: { select: { nama_siswa: true } },
+                Guru:  { select: { nama_guru:  true } },
+                User:  { select: { full_name:  true } },
+            }
+        });
+        if (!targetMember) throw new Error('Data anggota tidak ditemukan.');
+
+        const effectiveTenantId = tenantId || targetMember.tenantId;
+
+        // Anti-Self-Approval jika autoApprove aktif
+        if (autoApprove && operatorUserId && targetMember.userId === operatorUserId) {
+            throw new Error('Operator tidak diperbolehkan menyetujui langsung pinjaman atas nama akun pribadi sendiri.');
+        }
+
+        // Pre-warm Chart of Accounts SEBELUM $transaction jika langsung APPROVED
+        if (autoApprove && effectiveTenantId) {
+            await AccountingService.getOrCreateDefaultAccounts(effectiveTenantId);
+        }
+
         // Hitung jadwal cicilan
         const totalInterest     = Number(amount) * (Number(interestRate) / 100);
         const totalAmount       = Number(amount) + totalInterest;
@@ -115,10 +147,11 @@ export class LoanService {
         const lastInstallment   = totalAmount - baseInstallment * (Number(duration) - 1); // Sisa ke cicilan terakhir
 
         const today = new Date();
+        const initialStatus: LoanStatus = autoApprove ? 'APPROVED' : 'PENDING';
 
         const createdLoan = await prisma.$transaction(async (tx: any) => {
             const loan = await tx.loan.create({
-                data: { memberId, amount, interestRate, duration, status: 'PENDING' }
+                data: { memberId, amount, interestRate, duration, status: initialStatus }
             });
 
             const installments = [];
@@ -135,10 +168,42 @@ export class LoanService {
 
             await tx.installment.createMany({ data: installments });
 
-            return tx.loan.findUnique({
+            // Jika langsung disetujui, bukukan jurnal akuntansi penyaluran kas secara otomatis
+            if (autoApprove && effectiveTenantId) {
+                const loanAmountNum = Number(amount);
+                await AccountingService.createJournalEntry(
+                    effectiveTenantId,
+                    `Penyaluran Pinjaman Baru (${targetMember.memberNo})`,
+                    `LN-DISB-${loan.id}`,
+                    [
+                        { accountCode: '1020', type: 'DEBIT',  amount: loanAmountNum },
+                        { accountCode: '1010', type: 'CREDIT', amount: loanAmountNum },
+                    ],
+                    tx,
+                );
+            }
+
+            const res = await tx.loan.findUnique({
                 where: { id: loan.id },
-                include: { installments: true },
+                include: { 
+                    installments: { orderBy: { dueDate: 'asc' } },
+                    member: {
+                        include: {
+                            Siswa: { select: { nama_siswa: true } },
+                            Guru:  { select: { nama_guru:  true } },
+                            User:  { select: { full_name:  true } },
+                        }
+                    }
+                },
             });
+
+            return {
+                ...res,
+                member: {
+                    ...res.member,
+                    name: res.member.Siswa?.nama_siswa || res.member.Guru?.nama_guru || res.member.User?.full_name || 'Unknown',
+                }
+            };
         });
 
         if (idempotencyKey) {

@@ -14,7 +14,9 @@ export const createLoanSchema = z.object({
   }).min(0, 'Suku bunga minimal 0%'),
   duration: z.coerce.number({
     invalid_type_error: 'duration harus berupa angka'
-  }).int().min(1, 'Durasi minimal 1 bulan')
+  }).int().min(1, 'Durasi minimal 1 bulan'),
+  autoApprove: z.coerce.boolean().optional(),
+  notes: z.string().optional()
 });
 
 export const payInstallmentSchema = z.object({

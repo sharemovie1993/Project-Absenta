@@ -20,6 +20,7 @@ interface CreateLoanModalProps {
     interestRate: string;
     duration: string;
     notes?: string;
+    autoApprove?: boolean;
   };
   onFormDataChange?: React.Dispatch<React.SetStateAction<{
     memberId: string;
@@ -27,6 +28,7 @@ interface CreateLoanModalProps {
     interestRate: string;
     duration: string;
     notes: string;
+    autoApprove?: boolean;
   }>>;
   setFormData?: React.Dispatch<React.SetStateAction<any>>;
   simulation?: {
@@ -265,6 +267,32 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                 </div>
               </div>
             )}
+            {/* Auto-Approval Front-Office Mode (Operator Only) */}
+            {isOperatorMode && (
+              <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/80 space-y-2">
+                <label htmlFor="loan-auto-approve" className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id="loan-auto-approve"
+                    checked={formData.autoApprove ?? true}
+                    onChange={(e) => {
+                      if (updateForm) {
+                        updateForm((prev: any) => ({ ...prev, autoApprove: e.target.checked }));
+                      }
+                    }}
+                    className="mt-0.5 rounded border-emerald-400 text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  />
+                  <div className="space-y-0.5 text-xs">
+                    <span className="font-extrabold text-emerald-900 dark:text-emerald-200 block">
+                      Langsung Setujui & Siapkan Pencairan (Di Counter/Kasir)
+                    </span>
+                    <span className="text-[10px] text-emerald-700/90 dark:text-emerald-400/90 block leading-tight">
+                      Pinjaman langsung berstatus AKTIF (APPROVED), jurnal kas dibukukan otomatis, dan dokumen akad/kuitansi/kartu kendali siap dicetak.
+                    </span>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
 
           {/* Footer Buttons */}
@@ -282,9 +310,17 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
               type="submit"
               disabled={isSubmitting}
               size="sm"
-              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md shadow-indigo-600/10"
+              className={`w-full sm:w-auto font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md ${
+                isOperatorMode && (formData.autoApprove ?? true)
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10'
+                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/10'
+              }`}
             >
-              {isSubmitting ? 'Memproses...' : 'Kirim Pengajuan'}
+              {isSubmitting 
+                ? 'Memproses...' 
+                : isOperatorMode 
+                  ? ((formData.autoApprove ?? true) ? 'Setujui & Terbitkan Pinjaman' : 'Simpan Pengajuan (Pending)')
+                  : 'Kirim Pengajuan'}
             </Button>
           </div>
         </form>
