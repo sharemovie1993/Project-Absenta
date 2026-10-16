@@ -5,6 +5,7 @@ import { Button, SectionCard } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
+import { Building2, Layers, Percent, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -24,6 +25,12 @@ const CategoriesTable = lazy(() => import('../../components/cooperative/settings
 })));
 const CategoryModal = lazy(() => import('../../components/cooperative/settings/CategoryModal').then(m => ({
   default: m.CategoryModal
+})));
+const ShuDistributionSetting = lazy(() => import('../../components/cooperative/settings/ShuDistributionSetting').then(m => ({
+  default: m.ShuDistributionSetting
+})));
+const ShuPeriodsSettingTable = lazy(() => import('../../components/cooperative/settings/ShuPeriodsSettingTable').then(m => ({
+  default: m.ShuPeriodsSettingTable
 })));
 const PRESET_COLORS = ['#3B82F6',
 // Blue
@@ -48,17 +55,19 @@ const Settings: React.FC = React.memo(() => {
   } = useAuthStore();
   const {
     isKoperasiHead,
+    isKoperasiFinance,
     isAdmin,
     can
   } = useCapabilities();
   const confirm = useConfirm();
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'shu_distribution' | 'shu_periods'>('profile');
 
   // Capability checks
-  const canEditProfile = can('cooperative.members.manage');
-  const canEditCategories = can('cooperative.savings.types.manage');
+  const canEditProfile = isAdmin || isKoperasiHead || can('cooperative.members.manage') || can('cooperative.settings.manage');
+  const canEditCategories = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.savings.types.manage');
+  const canManageShu = isAdmin || isKoperasiHead || isKoperasiFinance || can('cooperative.shu.manage') || can('cooperative.shu.view.report');
 
   // Local Form state for profile
   const [formData, setFormData] = useState<CooperativeSettings>({
@@ -322,23 +331,38 @@ const Settings: React.FC = React.memo(() => {
     { label: 'Pengaturan Koperasi' }
   ], []);
   const instruction = useMemo(() => ({
-    title: "Panduan Pengaturan",
-    description: "Gunakan menu tab untuk menavigasi konfigurasi koperasi.",
-    items: [{
-      text: "Tab 'Profil & Kop Surat' untuk mengubah logo, nama, nomor hukum, dan data kontak koperasi sekolah."
-    }, {
-      text: "Tab 'Kategori Simpanan' untuk menambah atau mengubah jenis simpanan (misal: Simpanan Sukarela)."
-    }, {
-      text: "Pengaturan alokasi SHU (Jasa Modal) menentukan apakah simpanan tersebut masuk perhitungan pembagian SHU."
-    }]
+    title: "Panduan Pengaturan Koperasi",
+    description: "Gunakan menu tab untuk menavigasi konfigurasi profil, simpanan, dan kebijakan SHU.",
+    items: [
+      { text: "Tab 'Profil & Kop Surat': Mengubah identitas badan hukum, kontak, bunga pinjaman, dan kop surat resmi." },
+      { text: "Tab 'Kategori Simpanan': Menambah jenis simpanan (pokok, wajib, sukarela) dan hak jasa modal SHU." },
+      { text: "Tab 'Distribusi SHU': Mengatur persentase pembagian SHU (Jasa Modal, Jasa Usaha, Cadangan, Pengurus, Sosial) sesuai AD/ART RAT." },
+      { text: "Tab 'Periode SHU': Menetapkan Tahun Buku Aktif dan mengelola tanggal tutup buku tahunan koperasi." }
+    ]
   }), []);
-  const tabOptions = useMemo((): TabOption[] => [...(canEditProfile ? [{
-    id: 'profile',
-    label: 'Profil & Kop Surat'
-  }] : []), ...(canEditCategories ? [{
-    id: 'categories',
-    label: 'Kategori Simpanan'
-  }] : [])], [canEditProfile, canEditCategories]);
+  const tabOptions = useMemo((): TabOption[] => [
+    ...(canEditProfile ? [{
+      id: 'profile',
+      label: 'Profil & Kop Surat',
+      icon: Building2
+    }] : []),
+    ...(canEditCategories ? [{
+      id: 'categories',
+      label: 'Kategori Simpanan',
+      icon: Layers
+    }] : []),
+    ...(canManageShu ? [{
+      id: 'shu_distribution',
+      label: 'Distribusi SHU',
+      icon: Percent
+    }] : []),
+    ...(canManageShu ? [{
+      id: 'shu_periods',
+      label: 'Periode SHU',
+      icon: Calendar
+    }] : [])
+  ], [canEditProfile, canEditCategories, canManageShu]);
+
   if (loading) {
     return <AcademicPageLayout title="Pengaturan Koperasi" description="Kelola identitas badan hukum dan kategori simpanan koperasi" breadcrumbs={breadcrumbs}>
         <div className="flex items-center justify-center min-h-[300px]">
@@ -352,24 +376,38 @@ const Settings: React.FC = React.memo(() => {
       </AcademicPageLayout>;
   }
   return <PremiumFeatureGate moduleName="KOPERASI" featureName="Pengaturan Koperasi">
-      <AcademicPageLayout title="Pengaturan Koperasi" description="Konfigurasi identitas badan hukum, alamat, serta jenis simpanan koperasi secara dinamis" hardeningModuleKey="coop_settings" breadcrumbs={breadcrumbs} instruction={instruction}>
+      <AcademicPageLayout title="Pengaturan Koperasi" description="Konfigurasi identitas badan hukum, alamat, jenis simpanan, dan kebijakan alokasi SHU secara dinamis" hardeningModuleKey="coop_settings" breadcrumbs={breadcrumbs} instruction={instruction}>
         <SectionCard fullWidth noPadding className="border-0 shadow-none bg-transparent p-0 flex flex-col w-full min-w-0 space-y-6">
           {/* Dynamic Tab Switcher */}
           <div>
-            <TabSwitcher options={tabOptions} activeTab={activeTab} onChange={id => setActiveTab(id as 'profile' | 'categories')} />
+            <TabSwitcher options={tabOptions} activeTab={activeTab} onChange={id => setActiveTab(id as any)} />
           </div>
 
           <Suspense fallback={<div className="flex items-center justify-center min-h-[200px]">
               <div className="w-8 h-8 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
             </div>}>
-            {activeTab === 'profile' ? <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {activeTab === 'profile' && (
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 <div className="xl:col-span-8">
                   <CooperativeProfileForm formData={formData} saving={saving} onInputChange={handleInputChange} onSubmit={handleSubmit} effectiveLogoUrl={effectiveLogoUrl} canEditProfile={canEditProfile} />
                 </div>
                 <div className="xl:col-span-4 xl:sticky xl:top-6">
                   <KopSuratPreview cooperativeName={formData.cooperative_name} cooperativeLegalNo={formData.cooperative_legal_no} effectiveLogoUrl={effectiveLogoUrl} />
                 </div>
-              </div> : <CategoriesTable categories={categories} loadingCategories={loadingCategories} onToggleActive={handleToggleCatActive} onEdit={handleOpenEditModal} onDelete={handleDeleteCategory} onOpenCreate={handleOpenCreateModal} canEditCategories={canEditCategories} />}
+              </div>
+            )}
+
+            {activeTab === 'categories' && (
+              <CategoriesTable categories={categories} loadingCategories={loadingCategories} onToggleActive={handleToggleCatActive} onEdit={handleOpenEditModal} onDelete={handleDeleteCategory} onOpenCreate={handleOpenCreateModal} canEditCategories={canEditCategories} />
+            )}
+
+            {activeTab === 'shu_distribution' && (
+              <ShuDistributionSetting canManageShu={canManageShu} />
+            )}
+
+            {activeTab === 'shu_periods' && (
+              <ShuPeriodsSettingTable canManageShu={canManageShu} />
+            )}
 
             <CategoryModal isOpen={showCatModal} onClose={() => setShowCatModal(false)} editingCategory={editingCategory} catFormData={catFormData} onInputChange={handleCatInputChange} onPresetColorSelect={handlePresetColorSelect} onWithdrawRuleChange={handleWithdrawRuleChange} onSubmit={handleCatFormSubmit} savingCat={savingCat} presetColors={PRESET_COLORS} />
           </Suspense>

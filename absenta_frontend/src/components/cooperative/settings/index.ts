@@ -3,3 +3,5 @@ export * from './CooperativeProfileForm';
 export * from './KopSuratPreview';
 export * from './CategoriesTable';
 export * from './CategoryModal';
+export * from './ShuDistributionSetting';
+export * from './ShuPeriodsSettingTable';
