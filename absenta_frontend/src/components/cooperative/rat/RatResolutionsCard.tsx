@@ -117,10 +117,30 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
     }
   };
 
+  const getCleanSummary = (text: string) => {
+    if (!text) return '';
+    const menetapkanIdx = text.indexOf('MENETAPKAN:');
+    if (menetapkanIdx !== -1) {
+      const afterMenetapkan = text.substring(menetapkanIdx + 11).trim();
+      return afterMenetapkan.split('\n\n')[0].replace(/\*\*/g, '').trim();
+    }
+    const lines = text.split('\n').filter((l) => {
+      const trimmed = l.trim();
+      return (
+        trimmed &&
+        !trimmed.startsWith('SURAT KETETAPAN') &&
+        !trimmed.startsWith('Nomor:') &&
+        !trimmed.startsWith('Tentang:') &&
+        !trimmed.startsWith('DENGAN RAHMAT')
+      );
+    });
+    return lines.slice(0, 2).join(' ').trim() || text;
+  };
+
   return (
     <>
       <SectionCard
-        title="Daftar Surat Ketetapan Resmi Sidang (TAP RAT)"
+        title="Ketetapan Sidang (TAP)"
         fullWidth
         className="space-y-4"
         actions={
@@ -135,7 +155,7 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
                 className="gap-1.5 text-xs text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                {loadPresetResolutionsMutation.isPending ? 'Memuat...' : 'Muat Preset Draf TAP RAT'}
+                {loadPresetResolutionsMutation.isPending ? 'Memuat...' : 'Preset TAP'}
               </Button>
               <Button
                 type="button"
@@ -145,16 +165,12 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
                 className="gap-1 text-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Tambah Ketetapan
+                Tambah TAP
               </Button>
             </div>
           )
         }
       >
-        <p className="text-xs text-slate-500">
-          Seluruh ketetapan yang telah disepakati oleh anggota berstatus hukum sah dan mengikat kepengurusan koperasi.
-        </p>
-
         {(resolutions || []).length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(resolutions || []).map((res) => (
@@ -176,8 +192,8 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
                     {res.subject}
                   </h4>
 
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line line-clamp-4">
-                    {res.summary}
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line line-clamp-3">
+                    {getCleanSummary(res.summary)}
                   </p>
 
                   {res.documentUrl && (
@@ -203,7 +219,7 @@ export const RatResolutionsCard: React.FC<RatResolutionsCardProps> = React.memo(
                     className="text-xs gap-1 py-1 text-slate-700 dark:text-slate-300 hover:text-indigo-600"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    Cetak / Lihat SK
+                    Cetak SK
                   </Button>
 
                   {canManage && (
