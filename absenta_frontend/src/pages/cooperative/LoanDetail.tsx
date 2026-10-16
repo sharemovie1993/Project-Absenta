@@ -17,7 +17,9 @@ import {
   FileText, 
   Receipt,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Ban,
+  Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -206,18 +208,25 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
     await payInstallmentMutation.mutateAsync({ installmentId, installmentNo });
   }, [confirm, payInstallmentMutation]);
 
-  // Remaining balance
+  // Remaining balance (Hanya bernilai jika status APPROVED atau PAID)
   const remainingBalance = useMemo(() => {
-    if (!loan) return 0;
-    const unpaid = loan.installments.filter(ins => ins.status === 'UNPAID');
+    if (!loan || loan.status === 'REJECTED' || loan.status === 'PENDING') return 0;
+    const unpaid = (loan.installments || []).filter(ins => ins.status === 'UNPAID');
     return unpaid.reduce((sum, ins) => sum + parseFloat(ins.amount), 0);
   }, [loan]);
 
   // Tab Options (Pilar 30 TabSwitcher Standard)
-  const tabOptions: TabOption[] = useMemo(() => [
-    { id: 'installments', label: 'Jadwal Rincian Angsuran', icon: Calendar },
-    { id: 'eligibility', label: 'Analisis Kelayakan & Jaminan', icon: Award },
-  ], []);
+  const tabOptions: TabOption[] = useMemo(() => {
+    const isRejected = loan?.status === 'REJECTED';
+    return [
+      { 
+        id: 'installments', 
+        label: isRejected ? 'Status Keputusan Penolakan' : (loan?.status === 'PENDING' ? 'Simulasi Estimasi Angsuran' : 'Jadwal Rincian Angsuran'), 
+        icon: isRejected ? Ban : Calendar 
+      },
+      { id: 'eligibility', label: 'Analisis Kelayakan & Jaminan', icon: Award },
+    ];
+  }, [loan?.status]);
 
   // Installment Columns
   const installmentColumns: Column[] = useMemo(() => {
@@ -254,10 +263,10 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
         sortable: true, 
         render: (_, row: Installment) => (
           <Badge 
-            variant={row.status === 'PAID' ? 'success' : 'destructive'} 
+            variant={row.status === 'PAID' ? 'success' : (loan?.status === 'PENDING' ? 'warning' : 'destructive')} 
             className="font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border"
           >
-            {row.status === 'PAID' ? 'Lunas' : 'Belum Lunas'}
+            {row.status === 'PAID' ? 'Lunas' : (loan?.status === 'PENDING' ? 'Simulasi' : 'Belum Lunas')}
           </Badge>
         )
       },
@@ -335,10 +344,10 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             </div>
           </div>
           <Badge
-            variant={isPaid ? 'success' : 'destructive'}
+            variant={isPaid ? 'success' : (loan?.status === 'PENDING' ? 'warning' : 'destructive')}
             className="font-black text-[9px] px-2.5 py-0.5 rounded-full uppercase tracking-wider border shrink-0"
           >
-            {isPaid ? 'Lunas' : 'Belum Lunas'}
+            {isPaid ? 'Lunas' : (loan?.status === 'PENDING' ? 'Simulasi' : 'Belum Lunas')}
           </Badge>
         </div>
 
@@ -465,16 +474,42 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
     );
   }
 
+  // Rejection Notice Section (Pemberitahuan Resmi Berkas Ditolak)
+  const rejectedNoticeSection = (
+    <div className="p-6 sm:p-8 bg-rose-50/70 dark:bg-rose-950/20 border-2 border-dashed border-rose-200 dark:border-rose-900/60 rounded-3xl text-center space-y-4 animate-in fade-in duration-200 w-full max-w-full">
+      <div className="w-14 h-14 rounded-2xl bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto shadow-inner">
+        <Ban size={28} className="stroke-[2.5]" />
+      </div>
+      <div className="max-w-md mx-auto space-y-1">
+        <h3 className="text-base font-black text-rose-900 dark:text-rose-200">
+          Pengajuan Pinjaman Ditolak
+        </h3>
+        <p className="text-xs text-rose-700/80 dark:text-rose-400/80 leading-relaxed">
+          Pengajuan pinjaman ini telah ditolak oleh pengurus koperasi. Berkas ini disimpan sebagai arsip riwayat resmi dan tidak menimbulkan kewajiban pembayaran apa pun bagi anggota.
+        </p>
+      </div>
+
+      <div className="max-w-lg mx-auto p-4 bg-white dark:bg-slate-900 border border-rose-200/80 dark:border-rose-800 rounded-2xl shadow-xs text-left space-y-1.5">
+        <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 block flex items-center gap-1">
+          <FileText size={12} /> Alasan Resmi Penolakan:
+        </span>
+        <p className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-relaxed">
+          {loan.rejectionReason || 'Tidak memenuhi kriteria kelayakan pembiayaan koperasi.'}
+        </p>
+      </div>
+    </div>
+  );
+
   // Table Angsuran (Bisa dipakai murni di Modal atau di dalam Tab Halaman Penuh)
   const installmentsTableSection = (
     <SectionCard fullWidth className="p-3 sm:p-5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl shadow-xs space-y-4 w-full max-w-full min-w-0">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-100 dark:border-slate-800">
         <div>
           <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-            Jadwal Rincian Angsuran
+            {loan.status === 'PENDING' ? 'Simulasi Estimasi Angsuran' : 'Jadwal Rincian Angsuran'}
           </h3>
           <p className="text-[10px] text-slate-400">
-            Perjalanan kartu kendali pembayaran cicilan anggota
+            {loan.status === 'PENDING' ? 'Estimasi cicilan jika disetujui (tagihan belum aktif)' : 'Perjalanan kartu kendali pembayaran cicilan anggota'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -489,6 +524,13 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
           </Badge>
         </div>
       </div>
+
+      {loan.status === 'PENDING' && (
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/80 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+          <Clock size={16} className="shrink-0 text-amber-600" />
+          <span>Pengajuan pinjaman ini masih berstatus <strong>MENUNGGU (PENDING)</strong>. Jadwal di bawah merupakan simulasi estimasi angsuran jika disetujui. Tagihan belum aktif.</span>
+        </div>
+      )}
 
       <div className="w-full max-w-full min-w-0 overflow-x-auto">
         {isMobile ? (
@@ -561,6 +603,7 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
                 loan.status === 'PAID' ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20' :
                 loan.status === 'APPROVED' ? 'bg-blue-50 text-blue-600 border-blue-500/20' :
                 loan.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-500/20' :
+                loan.status === 'REJECTED' ? 'bg-rose-50 text-rose-600 border-rose-500/20' :
                 'bg-slate-50 text-slate-500 border-slate-200'
               )}>
                 Status: {loan.status}
@@ -568,16 +611,16 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto justify-start sm:justify-end min-w-0 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPrintTarget('CARD')}
-                className="text-indigo-600 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-xs text-xs"
-              >
-                <Printer size={13} /> <span className="hidden sm:inline">Cetak</span> Kartu Kendali
-              </Button>
               {(loan.status === 'APPROVED' || loan.status === 'PAID') && (
                 <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPrintTarget('CARD')}
+                    className="text-indigo-600 hover:bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:hover:bg-slate-800 font-bold inline-flex items-center gap-1.5 rounded-xl h-8 shadow-xs text-xs"
+                  >
+                    <Printer size={13} /> <span className="hidden sm:inline">Cetak</span> Kartu Kendali
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -646,10 +689,10 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
                 {/* Sisa Saldo Tagihan (Compact-Premium) */}
                 <AnalyticsCard
                   title="Sisa Saldo Tagihan"
-                  value={`Rp ${Math.round(remainingBalance).toLocaleString('id-ID')}`}
-                  subtitle="Tagihan Pokok + Jasa Bunga"
+                  value={loan.status === 'REJECTED' ? 'Rp 0' : `Rp ${Math.round(remainingBalance).toLocaleString('id-ID')}`}
+                  subtitle={loan.status === 'REJECTED' ? 'Pengajuan Ditolak (Tidak Ada Tagihan)' : loan.status === 'PENDING' ? 'Pengajuan Menunggu Persetujuan' : 'Tagihan Pokok + Jasa Bunga'}
                   icon={<DollarSign className="w-4 h-4 text-white" />}
-                  gradient="from-rose-600 to-rose-700"
+                  gradient={loan.status === 'REJECTED' ? 'from-slate-600 to-slate-700' : 'from-rose-600 to-rose-700'}
                   variant="compact-premium"
                   mobileCompact={true}
                 />
@@ -677,8 +720,8 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
               />
             </div>
 
-            {/* Tab 1: Jadwal Rincian Angsuran */}
-            {activeDetailTab === 'installments' && installmentsTableSection}
+            {/* Tab 1: Jadwal Rincian Angsuran atau Pengumuman Ditolak */}
+            {activeDetailTab === 'installments' && (loan.status === 'REJECTED' ? rejectedNoticeSection : installmentsTableSection)}
 
             {/* Tab 2: Analisis Kelayakan & Persetujuan Kredit */}
             {activeDetailTab === 'eligibility' && (
@@ -785,7 +828,7 @@ const LoanDetail: React.FC<LoanDetailProps> = React.memo(({
   if (isModal) {
     return (
       <div className="w-full max-w-full min-w-0">
-        {installmentsTableSection}
+        {loan.status === 'REJECTED' ? rejectedNoticeSection : installmentsTableSection}
 
         {/* Portal Cetak Slip Setor jika anggota klik cetak bukti di baris cicilan */}
         {loan && printTarget === 'REPAYMENT' && selectedRepayment && createPortal(

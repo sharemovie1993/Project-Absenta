@@ -306,6 +306,13 @@ export class LoanService {
                 },
             });
 
+            if (status === 'REJECTED') {
+                // Hapus seluruh draft jadwal cicilan karena pengajuan ditolak. Anggota TIDAK memiliki kewajiban piutang.
+                await tx.installment.deleteMany({
+                    where: { loanId }
+                });
+            }
+
             if (status === 'APPROVED') {
                 const amount = Number(loan.amount);
 
