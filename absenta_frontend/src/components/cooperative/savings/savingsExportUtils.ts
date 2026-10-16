@@ -243,11 +243,14 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     // Details
     let y = 22;
     doc.setFontSize(6);
-    doc.text(`No. Bukti : ${data.receiptNumber}`, 4, y);
+    doc.text('No. Bukti', 4, y);
+    doc.text(`: ${data.receiptNumber}`, 17, y);
     y += 3.5;
-    doc.text(`Tanggal   : ${formatIndonesianDateTime(data.date)}`, 4, y);
+    doc.text('Tanggal', 4, y);
+    doc.text(`: ${formatIndonesianDateTime(data.date)}`, 17, y);
     y += 3.5;
-    doc.text(`Operator  : ${data.operatorName}`, 4, y);
+    doc.text('Operator', 4, y);
+    doc.text(`: ${data.operatorName}`, 17, y);
     y += 4;
     doc.text('----------------------------------------------------', 29, y, { align: 'center' });
 
@@ -257,9 +260,11 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     doc.text('ANGGOTA:', 4, y);
     y += 3.5;
     doc.setFont('Helvetica', 'normal');
-    doc.text(`Nama     : ${data.memberName.toUpperCase()}`, 4, y);
+    doc.text('Nama', 4, y);
+    doc.text(`: ${data.memberName.toUpperCase()}`, 17, y);
     y += 3.5;
-    doc.text(`No. Angg : ${data.memberNo}`, 4, y);
+    doc.text('No. Angg', 4, y);
+    doc.text(`: ${data.memberNo}`, 17, y);
     y += 4;
     doc.text('----------------------------------------------------', 29, y, { align: 'center' });
 
@@ -311,9 +316,9 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     y += 4;
     doc.setFont('Helvetica', 'italic');
     doc.setFontSize(5.5);
-    const terbilang = formatTerbilangIndonesian(data.totalAmount);
-    const splitTerbilang = doc.splitTextToSize(`"${terbilang}"`, 50);
-    doc.text(splitTerbilang, 4, y);
+    const terbilangClean = formatTerbilangIndonesian(data.totalAmount).trim() + ' Rupiah';
+    const splitTerbilang = doc.splitTextToSize(`"# ${terbilangClean} #"`, 50);
+    doc.text(splitTerbilang, 29, y, { align: 'center' });
     y += splitTerbilang.length * 3;
 
     doc.setFont('Helvetica', 'normal');
