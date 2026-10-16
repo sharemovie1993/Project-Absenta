@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   Clock,
-  Check,
   Play,
   Coins,
   Gavel,
@@ -24,10 +23,10 @@ export interface RatQuorumHudProps {
     isQuorumReached: boolean;
   } | null;
   isLoading: boolean;
-  myAttendance: { hasAttended: boolean } | null;
+  myAttendance?: { hasAttended: boolean } | null;
   canManage: boolean;
-  onSelfCheckIn: () => void;
-  isCheckingIn: boolean;
+  onSelfCheckIn?: () => void;
+  isCheckingIn?: boolean;
   onLifecycleAdvance: (newStatus: string, actionLabel: string) => void;
   isAdvancingLifecycle: boolean;
   onOpenClosureWizard?: () => void;
@@ -37,10 +36,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
   currentMeeting,
   quorumData,
   isLoading,
-  myAttendance,
   canManage,
-  onSelfCheckIn,
-  isCheckingIn,
   onLifecycleAdvance,
   isAdvancingLifecycle,
   onOpenClosureWizard,
@@ -180,31 +176,6 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           isLoading={isLoading}
         />
       </div>
-
-      {/* Member Check-In CTA (if applicable) */}
-      {(myAttendance?.hasAttended ||
-        currentMeeting.status === 'REGISTRATION_OPEN' ||
-        currentMeeting.status === 'IN_SESSION') && (
-        <div className="pt-2">
-          {myAttendance?.hasAttended ? (
-            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold text-xs bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-800/40">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              Anda telah melakukan presensi resmi pada sidang ini.
-            </div>
-          ) : (
-            <Button
-              type="button"
-              size="toolbar"
-              variant="toolbarPrimary"
-              onClick={onSelfCheckIn}
-              isLoading={isCheckingIn}
-            >
-              <Check className="w-4 h-4 mr-1.5" />
-              Konfirmasi Kehadiran
-            </Button>
-          )}
-        </div>
-      )}
     </SectionCard>
   );
 };

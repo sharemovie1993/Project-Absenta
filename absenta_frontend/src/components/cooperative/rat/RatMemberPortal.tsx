@@ -40,8 +40,8 @@ export interface RatMemberPortalProps {
     hasAttended: boolean;
     attendance: CoopAttendanceItem | null;
   } | null;
-  onSelfCheckIn: () => void;
-  isCheckingIn: boolean;
+  onSelfCheckIn?: () => void;
+  isCheckingIn?: boolean;
   onOpenCastVote: (session: CoopVotingSessionItem) => void;
   isMember: boolean;
   canManage?: boolean;
@@ -258,25 +258,16 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
                 </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                  <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                  <p className="text-[11px] text-amber-800 dark:text-amber-200">
-                    Presensi diperlukan untuk menggunakan hak suara.
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-200">
+                    Belum Terdaftar Hadir
+                  </p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    Lakukan presensi resmi melalui panitia di meja registrasi sidang.
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="toolbarPrimary"
-                  size="toolbar"
-                  onClick={onSelfCheckIn}
-                  isLoading={isCheckingIn}
-                  disabled={!isMeetingOpenForCheckIn || isCheckingIn}
-                  className="gap-2 w-full justify-center"
-                >
-                  <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                  <span>Konfirmasi Presensi Mandiri</span>
-                </Button>
               </div>
             )}
           </div>

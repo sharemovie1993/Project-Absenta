@@ -320,29 +320,6 @@ const RatMeetingPage: React.FC = React.memo(() => {
   const quorumData = quorumQuery.data;
   const myAttendance = myAttendanceQuery.data;
 
-  // Mutation: Self check-in
-  const checkInMutation = useMutation({
-    mutationFn: async () => {
-      if (!selectedMeetingId) throw new Error('Pilih rapat terlebih dahulu');
-      const res = await api.post(`/cooperative/rat/${selectedMeetingId}/attendance`, {
-        method: 'ONLINE'
-      });
-      return res.data;
-    },
-    onSuccess: () => {
-      invalidateRatCaches(queryClient, selectedMeetingId);
-      toast.success('Presensi Anda pada Sidang RAT berhasil diverifikasi!');
-    },
-    onError: (err: unknown) => {
-      const errorMsg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Gagal melakukan presensi';
-      toast.error(errorMsg);
-    }
-  });
-
-  const handleSelfCheckIn = useCallback(() => {
-    checkInMutation.mutate();
-  }, [checkInMutation]);
-
   // Mutation: Update Meeting Lifecycle
   const lifecycleMutation = useMutation({
     mutationFn: async (newStatus: 'REGISTRATION_OPEN' | 'IN_SESSION' | 'CLOSED') => {
@@ -538,8 +515,6 @@ const RatMeetingPage: React.FC = React.memo(() => {
                 meeting={currentMeeting}
                 quorumStats={quorumData}
                 myAttendance={myAttendance}
-                onSelfCheckIn={handleSelfCheckIn}
-                isCheckingIn={checkInMutation.isPending}
                 onOpenCastVote={handleSelectVoteSession}
                 isMember={isMember}
                 canManage={canManage}
@@ -554,10 +529,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
                   currentMeeting={currentMeeting}
                   quorumData={quorumData}
                   isLoading={isLoading}
-                  myAttendance={myAttendance}
                   canManage={canManage}
-                  onSelfCheckIn={handleSelfCheckIn}
-                  isCheckingIn={checkInMutation.isPending}
                   onLifecycleAdvance={handleLifecycleAdvance}
                   isAdvancingLifecycle={lifecycleMutation.isPending}
                   onOpenClosureWizard={() => setIsClosureWizardOpen(true)}
