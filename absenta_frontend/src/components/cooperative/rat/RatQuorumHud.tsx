@@ -2,7 +2,6 @@ import React from 'react';
 import SectionCard from '../../ui/SectionCard';
 import Button from '../../ui/Button';
 import { AnalyticsCardBase } from '../../ui/AnalyticsCard';
-import { formatDate } from '../../../utils/layoutUtils';
 import {
   Users,
   ShieldCheck,
@@ -10,7 +9,6 @@ import {
   Clock,
   Check,
   Play,
-  Lock,
   Coins,
   Gavel,
 } from 'lucide-react';
@@ -57,14 +55,14 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           onClick={() =>
             onLifecycleAdvance(
               'REGISTRATION_OPEN',
-              'Buka Registrasi Peserta'
+              'Buka Registrasi'
             )
           }
           isLoading={isAdvancingLifecycle}
           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-sm"
         >
           <Play className="w-3.5 h-3.5 mr-1" />
-          Buka Registrasi Peserta (Kunci Kuorum)
+          Buka Registrasi
         </Button>
       )}
       {(currentMeeting.status === 'REGISTRATION_OPEN' || currentMeeting.status === 'QUORUM_REACHED') && (
@@ -73,13 +71,13 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           size="toolbar"
           variant="toolbarPrimary"
           onClick={() =>
-            onLifecycleAdvance('IN_SESSION', 'Mulai Sidang Paripurna')
+            onLifecycleAdvance('IN_SESSION', 'Mulai Sidang')
           }
           isLoading={isAdvancingLifecycle}
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-sm"
         >
           <Play className="w-3.5 h-3.5 mr-1" />
-          Mulai Sidang Paripurna (Buka Palu)
+          Mulai Sidang
         </Button>
       )}
       {currentMeeting.status === 'IN_SESSION' && (
@@ -90,12 +88,12 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           onClick={() =>
             onOpenClosureWizard
               ? onOpenClosureWizard()
-              : onLifecycleAdvance('CLOSED', 'Tutup & Selesaikan Sidang')
+              : onLifecycleAdvance('CLOSED', 'Tutup Sidang')
           }
           isLoading={isAdvancingLifecycle}
         >
           <Gavel className="w-3.5 h-3.5 mr-1" />
-          Wizard Penutupan Sidang
+          Tutup Sidang
         </Button>
       )}
       {currentMeeting.status === 'CLOSED' && onOpenClosureWizard && (
@@ -106,7 +104,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           onClick={onOpenClosureWizard}
         >
           <Coins className="w-3.5 h-3.5 mr-1" />
-          Distribusi SHU & Berkas Dinas
+          Distribusi SHU
         </Button>
       )}
     </div>
@@ -114,40 +112,38 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
 
   return (
     <SectionCard
-      title="Pemantauan Kuorum Sah Rapat Anggota"
+      title="Kuorum Sidang"
       actions={managerLifecycleActions}
       fullWidth={true}
       className="space-y-4"
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <AnalyticsCardBase
-          title="Total Anggota Aktif"
+          title="Total Anggota"
           value={
             quorumData
               ? `${quorumData.totalEligibleMembers} Orang`
               : `${currentMeeting.totalEligibleMembers} Orang`
           }
           icon={<Users className="w-5 h-5 text-white/90" />}
-          subtitle="Basis penentu kuorum"
           gradient="from-blue-600 to-indigo-700"
           variant="compact-premium"
           isLoading={isLoading}
         />
         <AnalyticsCardBase
-          title="Target Kuorum Sah"
+          title="Target Kuorum"
           value={
             quorumData
               ? `${quorumData.quorumTarget} Orang`
               : `${currentMeeting.quorumTarget} Orang`
           }
           icon={<ShieldCheck className="w-5 h-5 text-white/90" />}
-          subtitle="Minimal 50% + 1 anggota"
           gradient="from-amber-500 to-orange-600"
           variant="compact-premium"
           isLoading={isLoading}
         />
         <AnalyticsCardBase
-          title="Kehadiran Saat Ini"
+          title="Kehadiran"
           value={
             quorumData
               ? `${quorumData.actualAttendance} Orang (${quorumData.percentage}%)`
@@ -156,15 +152,19 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
           icon={<CheckCircle2 className="w-5 h-5 text-white/90" />}
           subtitle={
             quorumData?.isQuorumReached
-              ? 'Kuorum Terpenuhi (Sah)'
-              : 'Belum Memenuhi Kuorum'
+              ? 'Kuorum Sah'
+              : 'Belum Kuorum'
           }
-          gradient="from-emerald-600 to-teal-700"
+          gradient={
+            quorumData?.isQuorumReached
+              ? 'from-emerald-600 to-teal-700'
+              : 'from-amber-600 to-orange-700'
+          }
           variant="compact-premium"
           isLoading={isLoading}
         />
         <AnalyticsCardBase
-          title="Status Pelaksanaan"
+          title="Status Sidang"
           value={
             currentMeeting.status === 'IN_SESSION'
               ? 'Sedang Bersidang'
@@ -172,10 +172,9 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               ? 'Registrasi Dibuka'
               : currentMeeting.status === 'CLOSED'
               ? 'Sidang Selesai'
-              : 'Draft Persiapan'
+              : 'Draf Persiapan'
           }
           icon={<Clock className="w-5 h-5 text-white/90" />}
-          subtitle={formatDate(currentMeeting.meetingDate, 'dd MMMM yyyy HH:mm')}
           gradient="from-purple-600 to-violet-800"
           variant="compact-premium"
           isLoading={isLoading}
@@ -201,7 +200,7 @@ export const RatQuorumHud: React.FC<RatQuorumHudProps> = ({
               isLoading={isCheckingIn}
             >
               <Check className="w-4 h-4 mr-1.5" />
-              Konfirmasi Kehadiran Saya di Sidang RAT
+              Konfirmasi Kehadiran
             </Button>
           )}
         </div>
