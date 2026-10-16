@@ -35,6 +35,7 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
         nama_siswa: activeMember.name || activeMember.Siswa?.nama_siswa || '',
         nama_guru: activeMember.Guru?.nama_guru || '',
         nis: activeMember.memberNo,
+        memberNo: activeMember.memberNo,
       });
     } else if (isOpen && !activeMember && !selectedStudent) {
       setSelectedMemberId('');
@@ -160,6 +161,7 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
       nama_siswa: member.name || member.Siswa?.nama_siswa || member.User?.full_name || 'Anggota',
       nama_guru: member.Guru?.nama_guru || '',
       nis: member.nis || member.Siswa?.nis || member.Guru?.nip || member.memberNo,
+      memberNo: member.memberNo,
     });
     toast.success(`Anggota dipilih: ${member.name}`);
   }, []);

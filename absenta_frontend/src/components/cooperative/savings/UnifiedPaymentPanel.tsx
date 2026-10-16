@@ -152,7 +152,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
       return;
     }
 
-    const memberId = savings[0]?.memberId || savings[0]?.member?.id;
+    const memberId = savings[0]?.memberId || savings[0]?.member?.id || student.id;
     if (!memberId) {
       alert('ID Anggota tidak valid.');
       return;
@@ -222,7 +222,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
           receiptNumber: res.receiptNumber,
           date: res.timestamp || new Date().toISOString(),
           memberName: student.nama_siswa || student.nama_guru || 'Anggota Koperasi',
-          memberNo: savings[0]?.member?.memberNo || '-',
+          memberNo: savings[0]?.member?.memberNo || student.memberNo || '-',
           items,
           totalAmount: totalAmountToPay,
           cashReceived: cashNum > 0 ? cashNum : totalAmountToPay,
@@ -322,7 +322,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
             <span>NIS/NIP: {student.nis || student.nip || '-'}</span>
             <span>&bull;</span>
             <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-              No. {savings[0]?.member?.memberNo || '-'}
+              No. {savings[0]?.member?.memberNo || student.memberNo || '-'}
             </span>
           </div>
         </div>

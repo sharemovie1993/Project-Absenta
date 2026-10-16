@@ -25,6 +25,7 @@ export interface Student {
   foto_profile_url?: string;
   status?: string;
   user_id?: string | null;
+  memberNo?: string | null;
 }
 
 interface SmartStudentPickerProps {

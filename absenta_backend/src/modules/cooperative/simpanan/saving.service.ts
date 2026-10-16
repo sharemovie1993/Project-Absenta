@@ -41,7 +41,7 @@ export class SavingService {
         if (options?.memberId) where.memberId = options.memberId;
         if (options?.userId) (where.member as Record<string, unknown>).userId = options.userId;
 
-        const savings = await prisma.saving.findMany({
+        let savings = await prisma.saving.findMany({
             where,
             include: {
                 category: true,
@@ -49,6 +49,37 @@ export class SavingService {
                 transactions: { take: 10, orderBy: { date: 'desc' } },
             },
         });
+
+        // Self-healing: jika query untuk memberId spesifik dan belum punya rekening simpanan, buatkan rekening default aktif
+        if (options?.memberId && savings.length === 0) {
+            const memberExists = await prisma.member.findFirst({
+                where: { id: options.memberId, tenantId }
+            });
+            if (memberExists) {
+                const { SavingCategoryService } = await import('./saving-category.service');
+                await SavingCategoryService.ensureDefaultCategories(tenantId);
+                const categories = await prisma.savingCategory.findMany({
+                    where: { tenantId, isActive: true }
+                });
+                for (const cat of categories) {
+                    await prisma.saving.create({
+                        data: {
+                            memberId: memberExists.id,
+                            categoryId: cat.id,
+                            amount: 0
+                        }
+                    });
+                }
+                savings = await prisma.saving.findMany({
+                    where,
+                    include: {
+                        category: true,
+                        member: { include: MEMBER_NAME_INCLUDE },
+                        transactions: { take: 10, orderBy: { date: 'desc' } },
+                    },
+                });
+            }
+        }
 
         // Ambil rentang Tahun Buku aktif tenant
         const { FiscalYearGuard } = await import('../fiscal-year.guard');

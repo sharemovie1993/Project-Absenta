@@ -21,13 +21,13 @@ export default async function loanRoutes(fastify: any) {
     };
 
     // GET /loans
-    fastify.get('/', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.apply'])] }, async (req: any, reply: any) => {
+    fastify.get('/', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.apply', 'cooperative.store.orders.manage'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const user = req.user;
 
-            const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.view.list'], { user });
-            const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
+            const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.view.list', 'cooperative.store.orders.manage'], { user });
+            const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN' || user?.capabilities?.includes('cooperative.store.orders.manage');
 
             const isPersonal = req.query?.personal === 'true' || req.query?.personal === true;
             if (isPersonal || !isOperator) {
@@ -45,7 +45,7 @@ export default async function loanRoutes(fastify: any) {
     });
 
     // GET /loans/manage (Alias for operator view)
-    fastify.get('/manage', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.approve'])] }, async (req: any, reply: any) => {
+    fastify.get('/manage', { preHandler: [requireCapability(['cooperative.loans.view.list', 'cooperative.loans.approve', 'cooperative.store.orders.manage'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const memberId = req.query?.memberId as string | undefined;

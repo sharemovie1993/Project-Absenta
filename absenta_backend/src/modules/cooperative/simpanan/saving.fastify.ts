@@ -20,20 +20,21 @@ export default async function savingRoutes(fastify: any) {
     };
 
     // GET /savings
-    fastify.get('/', { preHandler: [requireCapability(['cooperative.savings.view.list', 'cooperative.savings.view.history'])] }, async (req: any, reply: any) => {
+    fastify.get('/', { preHandler: [requireCapability(['cooperative.savings.view.list', 'cooperative.savings.view.history', 'cooperative.store.orders.manage'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const user = req.user;
             
-            const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.savings.view.list'], { user });
-            const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
+            const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.savings.view.list', 'cooperative.store.orders.manage'], { user });
+            const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN' || user?.capabilities?.includes('cooperative.store.orders.manage');
             
             const options: any = {};
             const isPersonal = req.query?.personal === 'true' || req.query?.personal === true;
-            if ((isPersonal || !isOperator) && user?.id) {
+            if (req.query?.memberId && isOperator) {
+                options.memberId = req.query.memberId;
+            } else if ((isPersonal || !isOperator) && user?.id) {
                 options.userId = user.id;
-            }
-            if (req.query?.memberId) {
+            } else if (req.query?.memberId) {
                 options.memberId = req.query.memberId;
             }
             
@@ -133,7 +134,7 @@ export default async function savingRoutes(fastify: any) {
     });
 
     // POST /savings/unified-payment (Loket Transaksi Terpadu Simpan Pinjam)
-    fastify.post('/unified-payment', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.loans.repay'])] }, async (req: any, reply: any) => {
+    fastify.post('/unified-payment', { preHandler: [requireCapability(['cooperative.savings.deposit', 'cooperative.loans.repay', 'cooperative.store.orders.manage'])] }, async (req: any, reply: any) => {
         try {
             const tenantId = getTenantId(req);
             const { memberId, savingsTransactions = [], loanInstallments = [], notes } = req.body || {};
