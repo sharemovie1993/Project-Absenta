@@ -1,10 +1,13 @@
 import type { Announcement, CriticalStockItem, Sale, CoopUserInfo } from '@/components/cooperative/types';
 
 export interface MemberInfo {
+  id?: string;
   User?: { full_name?: string };
   memberNo?: string;
   status?: string;
   name?: string;
+  type?: string;
+  joinDate?: string;
 }
 
 export interface WajibComplianceData {
