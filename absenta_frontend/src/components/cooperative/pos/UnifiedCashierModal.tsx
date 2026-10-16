@@ -107,29 +107,42 @@ export const UnifiedCashierModal: React.FC<UnifiedCashierModalProps> = React.mem
   // Handler saat kasir scan / pilih siswa dari SmartStudentPicker
   const handleSelectStudent = useCallback(async (student: Student, memberNo?: string) => {
     try {
-      // Cari data member berdasarkan student.id atau memberNo
-      const res = await api.get('/cooperative/members', {
-        params: {
-          search: memberNo || student.nis || student.nip || student.nama_siswa || student.nama_guru
-        }
-      });
-      const membersList = res.data?.data || res.data || [];
+      const searchTerm = memberNo || student.nis || student.nip || student.nama_siswa || student.nama_guru || '';
+      
+      let membersList: any[] = [];
+      try {
+        const tokoRes = await api.get(`/cooperative/toko/members?search=${encodeURIComponent(searchTerm)}`);
+        membersList = Array.isArray(tokoRes.data) ? tokoRes.data : (tokoRes.data?.data || []);
+      } catch {
+        const memberRes = await api.get('/cooperative/members', { params: { search: searchTerm } });
+        membersList = Array.isArray(memberRes.data) ? memberRes.data : (memberRes.data?.data || []);
+      }
+
       const matched = membersList.find((m: any) => 
-        (student.id && (m.siswaId === student.id || m.guruId === student.id || m.userId === student.id)) ||
-        (memberNo && m.memberNo === memberNo)
-      ) || membersList[0];
+        (student.id && (m.siswaId === student.id || m.guruId === student.id || m.userId === student.id || m.id === student.id)) ||
+        (memberNo && m.memberNo === memberNo) ||
+        (student.nis && (m.memberNo === student.nis || m.Siswa?.nis === student.nis)) ||
+        (student.nama_siswa && m.name?.toLowerCase().includes(student.nama_siswa.toLowerCase())) ||
+        (student.nama_guru && m.name?.toLowerCase().includes(student.nama_guru.toLowerCase()))
+      ) || (membersList.length === 1 ? membersList[0] : null);
 
       if (!matched) {
-        toast.error('Anggota koperasi tidak ditemukan untuk data ini.');
+        toast.error(`"${student.nama_siswa || student.nama_guru || 'User'}" belum terdaftar sebagai anggota koperasi.`);
         return;
       }
 
       setSelectedMemberId(matched.id);
       setSelectedMemberNo(matched.memberNo);
-      setSelectedStudent(student);
-      toast.success(`Anggota dipilih: ${student.nama_siswa || student.nama_guru || matched.name}`);
-    } catch {
-      toast.error('Gagal mengambil data anggota koperasi.');
+      setSelectedStudent({
+        id: matched.id,
+        nama_siswa: matched.name || student.nama_siswa || matched.Siswa?.nama_siswa,
+        nama_guru: student.nama_guru || matched.Guru?.nama_guru,
+        nis: student.nis || matched.memberNo,
+      });
+      toast.success(`Anggota dipilih: ${matched.name || student.nama_siswa}`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memuat data anggota koperasi.');
     }
   }, []);
 

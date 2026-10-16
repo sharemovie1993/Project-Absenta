@@ -51,7 +51,7 @@ export default async function memberRoutes(fastify: any) {
     });
 
     // GET /members
-    fastify.get('/', { preHandler: [requireCapability('cooperative.members.view.list'), determineDataScope()] }, async (req: any, reply: any) => {
+    fastify.get('/', { preHandler: [requireCapability(['cooperative.members.view.list', 'cooperative.store.orders.manage', 'cooperative.savings.view.list']), determineDataScope()] }, async (req: any, reply: any) => {
         const startTime = Date.now();
         try {
             const tenantId = getTenantId(req);

@@ -736,6 +736,11 @@ export class TokoService {
                 name,
                 type: m.type,
                 sukarelaBalance,
+                siswaId: m.siswaId,
+                guruId: m.guruId,
+                userId: m.userId,
+                Siswa: m.Siswa,
+                Guru: m.Guru,
             };
         });
     }
