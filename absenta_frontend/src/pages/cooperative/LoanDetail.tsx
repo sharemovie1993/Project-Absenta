@@ -517,36 +517,17 @@ const LoanDetail: React.FC = React.memo(() => {
                 "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 w-full max-w-full min-w-0 transition-all duration-200",
                 isStatsCollapsed ? "hidden sm:grid" : "grid"
               )}>
-                {/* User Profile Card */}
-                <SectionCard fullWidth className="p-3 sm:p-3.5 border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex flex-col justify-between w-full max-w-full min-w-0 shadow-xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center font-black text-sm text-indigo-600 dark:text-indigo-400 border border-indigo-100/30 shrink-0">
-                      {loan.member.name.charAt(0)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100 leading-tight uppercase truncate" title={loan.member.name}>
-                        {loan.member.name}
-                      </h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5 truncate">
-                        {loan.member.memberNo}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                    <span className="text-[9px] text-slate-400 font-bold uppercase">Status Pinjaman</span>
-                    <span className={`inline-block px-2 py-0.5 text-[8px] font-black uppercase tracking-wider rounded-full border ${
-                      loan.status === 'PAID' 
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-500/20' 
-                        : loan.status === 'APPROVED' 
-                        ? 'bg-blue-50 text-blue-600 border-blue-500/20' 
-                        : loan.status === 'PENDING' 
-                        ? 'bg-amber-50 text-amber-600 border-amber-500/20' 
-                        : 'bg-slate-50 text-slate-500 border-slate-200'
-                    }`}>
-                      {loan.status}
-                    </span>
-                  </div>
-                </SectionCard>
+                {/* Anggota Peminjam (Compact-Premium) */}
+                <AnalyticsCard
+                  title="Anggota Peminjam"
+                  value={loan.member.name}
+                  subtitle={`No: ${loan.member.memberNo} • Status: ${loan.status}`}
+                  icon={<Users className="w-4 h-4 text-white" />}
+                  gradient="from-emerald-600 to-teal-700"
+                  variant="compact-premium"
+                  mobileCompact={true}
+                  onClick={() => navigate(`/cooperative/members?id=${loan.memberId}`)}
+                />
 
                 {/* Total Pinjaman (Compact-Premium) */}
                 <AnalyticsCard
