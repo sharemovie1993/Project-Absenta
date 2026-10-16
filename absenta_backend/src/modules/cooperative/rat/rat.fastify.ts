@@ -21,6 +21,9 @@ const createMeetingSchema = z.object({
   description: z.string().optional().nullable(),
   lpjDocumentUrl: z.string().optional().nullable(),
   auditDocumentUrl: z.string().optional().nullable(),
+  autoPresetAgendas: z.boolean().optional(),
+  autoPresetResolutions: z.boolean().optional(),
+  createAnnouncement: z.boolean().optional(),
   agendas: z.array(z.object({
     order: z.number().int().optional(),
     title: z.string().min(1, 'Judul agenda wajib diisi'),
@@ -230,6 +233,9 @@ export default async function ratRoutes(fastify: any) {
           date: parseResult.data.date || parseResult.data.meetingDate,
           fiscalYear: parseResult.data.fiscalYear || parseResult.data.year || new Date().getFullYear(),
           location: parseResult.data.location || parseResult.data.description || 'Aula Sekolah & Daring Web Absenta',
+          autoPresetAgendas: parseResult.data.autoPresetAgendas,
+          autoPresetResolutions: parseResult.data.autoPresetResolutions,
+          createAnnouncement: parseResult.data.createAnnouncement,
         };
         const meeting = await RatService.createMeeting(tenantId, normalizedData, operatorId);
         broadcastRatEvent(req, 'RAT_MEETING_CREATED', { meetingId: meeting.id, title: meeting.title });

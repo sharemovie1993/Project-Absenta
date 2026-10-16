@@ -234,7 +234,7 @@ export class RatService {
     // Kuorum sah undang-undang: 50% + 1
     const quorumTarget = Math.floor(totalActiveMembers / 2) + 1;
 
-    return prisma.coopMeeting.create({
+    const meeting = await prisma.coopMeeting.create({
       data: {
         tenantId,
         title: data.title,
@@ -263,6 +263,58 @@ export class RatService {
         agendas: true,
       },
     });
+
+    // Otomasi 1: Pasang 9 Rundown Standar jika diminta
+    if (data.autoPresetAgendas !== false && (!data.agendas || data.agendas.length === 0)) {
+      try {
+        await this.loadPresetAgendas(meeting.id, tenantId, { forceReset: true });
+      } catch (err: any) {
+        appLogger.warn({ err }, 'Gagal memasang preset rundown saat pembuatan meeting');
+      }
+    }
+
+    // Otomasi 2: Siapkan 5 Draf TAP RAT Standar jika diminta
+    if (data.autoPresetResolutions !== false) {
+      try {
+        await this.loadPresetResolutions(meeting.id, tenantId, { forceReset: true });
+      } catch (err: any) {
+        appLogger.warn({ err }, 'Gagal memasang preset TAP saat pembuatan meeting');
+      }
+    }
+
+    // Otomasi 3: Publikasikan Pengumuman Undangan jika diminta
+    if (data.createAnnouncement) {
+      try {
+        const formattedDate = new Date(data.date).toLocaleDateString('id-ID', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        });
+        const loc = data.location || data.description || 'Aula Utama Sekolah & Daring (Portal Absenta)';
+        const announcementTitle = `Undangan Resmi: ${data.title}`;
+        const announcementContent = `Yth. Seluruh Anggota Koperasi,\n\n` +
+          `Dengan ini kami mengundang Bapak/Ibu/Saudara untuk menghadiri persidangan **${data.title}** yang akan diselenggarakan pada:\n\n` +
+          `📅 **Hari, Tanggal**: ${formattedDate}\n` +
+          `⏰ **Waktu**: ${data.startTime || '08:00'} WIB s.d Selesai\n` +
+          `📍 **Tempat / Format**: ${loc}\n\n` +
+          `Kehadiran anggota sangat diharapkan demi tercapainya kuorum sah rapat (50% + 1) sesuai Pasal 22 UU Perkoperasian No. 25/1992 serta menentukan arah kebijakan koperasi.\n\n` +
+          `*Pengurus & Panitia Sidang RAT*`;
+
+        await prisma.announcement.create({
+          data: {
+            tenantId,
+            title: announcementTitle,
+            content: announcementContent,
+            isActive: true,
+          },
+        });
+      } catch (err: any) {
+        appLogger.warn({ err }, 'Gagal membuat pengumuman undangan saat pembuatan meeting');
+      }
+    }
+
+    return meeting;
   }
 
   /**
