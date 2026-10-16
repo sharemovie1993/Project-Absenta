@@ -454,7 +454,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
       }}
     >
       <PremiumFeatureGate featureName="RAT & e-Voting Koperasi">
-        <div className="space-y-6 max-w-full min-w-0">
+        <div className="space-y-6 max-w-full min-w-0 pb-12 sm:pb-8">
           {/* Non-Member Statutory Notice */}
           {!isMember && !canManage && (
             <NonMemberBanner
@@ -474,7 +474,7 @@ const RatMeetingPage: React.FC = React.memo(() => {
               </div>
 
               {(meetings || []).length > 0 ? (
-                <div className="w-[320px] sm:w-[480px] max-w-full">
+                <div className="w-full sm:w-[480px] max-w-full min-w-0">
                   <SearchableSelect
                     id="select-rat-meeting"
                     value={selectedMeetingId || ''}

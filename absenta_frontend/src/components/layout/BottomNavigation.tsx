@@ -384,7 +384,7 @@ export const BottomNavigation: React.FC = React.memo(() => {
     hasGerbangDuty,
     can,
   ]);
-  if (location.pathname.startsWith('/parent-app')) {
+  if (location.pathname.startsWith('/parent-app') || location.pathname.startsWith('/cooperative/rat')) {
     return null;
   }
   const activeTabsList = isSiswa ? siswaTabs : isKepsek ? kepsekTabs : staffTabs;

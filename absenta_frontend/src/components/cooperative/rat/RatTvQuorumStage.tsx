@@ -55,7 +55,7 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
   attendeesList,
 }) => {
   return (
-    <main className="flex-1 p-4 md:p-6 flex flex-col gap-4 overflow-hidden z-10">
+    <main className="flex-1 p-3 sm:p-5 md:p-6 flex flex-col gap-4 overflow-visible lg:overflow-hidden z-10 w-full max-w-full min-w-0">
       {/* HERO STAGE SPOTLIGHT (CALM, BROADCAST-GRADE, ZERO-NOISE) */}
       <section className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-sm shadow-slate-200/40 dark:shadow-black/40 shrink-0">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -138,9 +138,9 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
       </section>
 
       {/* BOTTOM BALANCED GRID: QUORUM (7 COLS) & LIVE PRESENSI (5 COLS) */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 overflow-visible lg:overflow-hidden w-full max-w-full min-w-0">
         {/* LEFT COLUMN: HERO QUORUM WITH INTEGRATED STATS (7 COLS) */}
-        <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md shadow-slate-200/40 dark:shadow-black/40 p-5 sm:p-6 overflow-hidden">
+        <div className="lg:col-span-7 flex flex-col justify-between rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md shadow-slate-200/40 dark:shadow-black/40 p-4 sm:p-6 overflow-visible lg:overflow-hidden">
           {/* Top Badge & Legal Citations */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
             <div className="flex items-center gap-2.5">
@@ -249,7 +249,7 @@ export const RatTvQuorumStage: React.FC<RatTvQuorumStageProps> = React.memo(({
                       : `MENUNGGU ${remainingNeeded} ANGGOTA LAGI`}
                   </h2>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-10">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed pl-0 sm:pl-10">
                   {isQuorumReached
                     ? 'Syarat kehadiran minimal 50% + 1 anggota telah terpenuhi. Seluruh ketetapan dan hasil pemungutan suara sah mengikat bagi seluruh anggota koperasi.'
                     : `Sesuai aturan AD/ART, sidang memerlukan kehadiran fisik minimal ${quorumTarget} anggota untuk sah mengambil keputusan rapat anggota tahunan.`}

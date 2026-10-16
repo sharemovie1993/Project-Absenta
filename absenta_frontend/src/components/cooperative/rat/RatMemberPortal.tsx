@@ -354,7 +354,7 @@ export const RatMemberPortal: React.FC<RatMemberPortalProps> = React.memo(({
           </div>
 
           {/* Stage viewport */}
-          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 overflow-hidden min-h-[520px] lg:min-h-[640px] flex flex-col shadow-sm">
+          <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 overflow-visible lg:overflow-hidden min-h-0 lg:min-h-[640px] flex flex-col shadow-sm">
             {activeStage === 'quorum' && (
               <RatTvQuorumStage
                 activeAgenda={activeAgenda}
