@@ -82,13 +82,13 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   const currentMemberNo = memberInfo?.memberNo || memberSummary?.memberInfo?.memberNo || '—';
   
   const currentMemberType = useMemo(() => {
-    if (memberInfo?.type) return memberInfo.type.toUpperCase();
-    if (memberSummary?.memberInfo?.type) return memberSummary.memberInfo.type.toUpperCase();
-    const roleStr = String(user?.role || '').toUpperCase();
+    const roleStr = String(user?.role || (user as { roleName?: string })?.roleName || '').toUpperCase();
     if (roleStr.includes('TEACHER') || roleStr.includes('GURU')) return 'GURU';
     if (roleStr.includes('STUDENT') || roleStr.includes('SISWA')) return 'SISWA';
-    return 'ANGGOTA';
-  }, [memberInfo?.type, memberSummary?.memberInfo?.type, user?.role]);
+    if (memberInfo?.type && memberInfo.type.toUpperCase() !== 'ANGGOTA') return memberInfo.type.toUpperCase();
+    if (memberSummary?.memberInfo?.type && memberSummary.memberInfo.type.toUpperCase() !== 'ANGGOTA') return memberSummary.memberInfo.type.toUpperCase();
+    return 'SISWA';
+  }, [memberInfo?.type, memberSummary?.memberInfo?.type, user]);
 
   // Savings & Obligations Breakdown
   const totalSavings = memberSummary?.mySavings?.total ?? mySavingsSum;
@@ -132,7 +132,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
   }, [currentMemberId]);
 
   return (
-    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 w-full max-w-full min-w-0">
+    <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-300 w-full max-w-full min-w-0 pb-24 sm:pb-8">
       {/* ── Non-Member State ─────────────────────────────── */}
       {memberStatus === 'non-member' && (
         <NonMemberBanner />
@@ -217,13 +217,14 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
           )}
 
           {/* 3. Tiga Kartu Metrik Finansial Utama */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full max-w-full min-w-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 w-full max-w-full min-w-0">
             <AnalyticsCard 
               title="Total Simpanan Saya" 
               value={`Rp ${totalSavings.toLocaleString('id-ID')}`} 
               icon={<Wallet size={24} />} 
               gradient="from-emerald-500 to-emerald-700 text-white border-emerald-400/30" 
               subtitle="Saldo tabungan aktif Anda"
+              mobileCompact={true}
               onClick={handleOpenPassbookModal}
             />
 
@@ -234,6 +235,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                 icon={<AlertCircle size={24} />} 
                 gradient="from-amber-500 to-rose-600 text-white border-amber-400/30" 
                 subtitle="Segera lakukan setoran simpanan wajib periode ini"
+                mobileCompact={true}
                 onClick={handleOpenPassbookModal}
               />
             ) : (
@@ -243,6 +245,7 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                 icon={<ShieldCheck size={24} />} 
                 gradient="from-teal-600 to-emerald-700 text-white border-teal-400/30" 
                 subtitle="Kewajiban simpanan bulanan tertib & aktif"
+                mobileCompact={true}
                 onClick={handleOpenPassbookModal}
               />
             )}
@@ -253,11 +256,12 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
               icon={<Award size={24} />} 
               gradient="from-indigo-600 to-purple-700 text-white border-indigo-400/30" 
               subtitle={`Proyeksi SHU Tahun Buku ${shuYear}`}
+              mobileCompact={true}
             />
           </div>
 
           {/* Rincian Komponen Simpanan (Zero Truncation Breakdown) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl w-full max-w-full min-w-0 shadow-2xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl w-full max-w-full min-w-0 shadow-2xs">
             <div className="flex items-center justify-between px-3 py-1.5 sm:py-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Simpanan Pokok</span>
               <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-100">
@@ -281,26 +285,32 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
           {/* Status Pinjaman Anggota (Jika Ada Pinjaman Aktif / Pengajuan) */}
           {activeLoan ? (
             <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs w-full max-w-full min-w-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <div className="flex items-start sm:items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm mt-0.5 sm:mt-0">
                   <CircleDollarSign size={18} />
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-extrabold text-slate-800 dark:text-slate-100">Pinjaman Anggota Aktif</span>
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
                       Tenor {activeLoan.duration} Bln
                     </span>
                   </div>
-                  <p className="text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                    Plafon: <strong>Rp {Number(activeLoan.amount).toLocaleString('id-ID')}</strong> &bull; Cicilan Berikutnya: <strong>Rp {Number(activeLoan.nextInstallment?.amount || 0).toLocaleString('id-ID')}</strong>
-                    {activeLoan.nextInstallment?.dueDate && ` (Jatuh Tempo: ${format(new Date(activeLoan.nextInstallment.dueDate), 'dd/MM/yyyy')})`}
-                  </p>
+                  <div className="text-slate-600 dark:text-slate-300 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 leading-relaxed text-[11px] sm:text-xs">
+                    <span>Plafon: <strong className="text-slate-800 dark:text-slate-100">Rp {Number(activeLoan.amount).toLocaleString('id-ID')}</strong></span>
+                    <span className="hidden sm:inline text-slate-400">&bull;</span>
+                    <span>Cicilan Berikutnya: <strong className="text-blue-600 dark:text-blue-400">Rp {Number(activeLoan.nextInstallment?.amount || 0).toLocaleString('id-ID')}</strong></span>
+                    {activeLoan.nextInstallment?.dueDate && (
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-[11px]">
+                        (Jatuh Tempo: {format(new Date(activeLoan.nextInstallment.dueDate), 'dd/MM/yyyy')})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <Link
                 to={`/cooperative/loans/${activeLoan.id}`}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shrink-0 text-center transition-colors shadow-2xs"
+                className="w-full sm:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shrink-0 text-center transition-colors shadow-2xs text-xs"
               >
                 Lihat Cicilan
               </Link>
@@ -507,6 +517,40 @@ export const CoopMemberSection: React.FC<CoopMemberSectionProps> = React.memo(({
                     itemsPerPage: salesPageLimit,
                     onPageChange: (p) => setSalesPage(p),
                     onLimitChange: () => {}
+                  }}
+                  renderMobileCard={(row: Sale) => {
+                    const rawDate = row.date || (row as { created_at?: string })?.created_at;
+                    const totalVal = row.total ?? (row as { total_amount?: number })?.total_amount ?? 0;
+                    return (
+                      <div className="p-3.5 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl flex items-center justify-between gap-3 shadow-2xs">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <StrukBadge id={row.id} />
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              {rawDate ? format(new Date(rawDate), 'dd/MM/yyyy HH:mm', { locale: id }) : '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-blue-600 dark:text-blue-400 text-sm">
+                              Rp {Number(totalVal).toLocaleString('id-ID')}
+                            </span>
+                            <span className="text-slate-300 dark:text-slate-700">&bull;</span>
+                            <span className="text-[11px] text-slate-500 font-medium">
+                              {(row.items ?? []).length} Item ({row.paymentMethod || 'CASH'})
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 text-xs gap-1 px-3 rounded-xl border-slate-200 dark:border-slate-700 shrink-0 hover:bg-slate-50 dark:hover:bg-slate-800"
+                          onClick={() => printReceipt(row)}
+                        >
+                          <Printer size={13} />
+                          <span>Cetak</span>
+                        </Button>
+                      </div>
+                    );
                   }}
                   columns={[
                     {
