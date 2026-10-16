@@ -8,9 +8,17 @@ export interface Transaction {
   savingType?: 'POKOK' | 'WAJIB' | 'SUKARELA' | 'LAINNYA';
 }
 
+export interface SavingCategory {
+  id?: string;
+  name?: string;
+  code?: string;
+}
+
 export interface Saving {
   id: string;
-  type: 'POKOK' | 'WAJIB' | 'SUKARELA' | 'LAINNYA';
+  type?: 'POKOK' | 'WAJIB' | 'SUKARELA' | 'LAINNYA' | string;
+  categoryId?: string;
+  category?: SavingCategory;
   amount: number;
   transactions?: Transaction[];
 }

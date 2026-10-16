@@ -37,9 +37,32 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = React.memo(({
 }) => {
   if (!member) return null;
 
-  const pokokAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'POKOK')?.amount as any) || 0;
-  const wajibAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'WAJIB')?.amount as any) || 0;
-  const sukarelaAmount = parseFloat((member?.savings || [])?.find((s) => s.type === 'SUKARELA')?.amount as any) || 0;
+  const getCategoryAmount = (codeOrName: string) => {
+    const saving = (member?.savings || []).find((s: any) => {
+      const code = (s.category?.code || s.type || '').toUpperCase();
+      const name = (s.category?.name || '').toUpperCase();
+      const search = codeOrName.toUpperCase();
+      return code === search || code.includes(search) || name.includes(search);
+    });
+    return parseFloat(saving?.amount as any) || 0;
+  };
+
+  const pokokAmount = getCategoryAmount('POKOK');
+  const wajibAmount = getCategoryAmount('WAJIB');
+  const sukarelaAmount = getCategoryAmount('SUKARELA');
+
+  // Any other savings beyond Pokok, Wajib, Sukarela (e.g. Hari Raya, Qurban, dll)
+  const otherSavings = (member?.savings || []).filter((s: any) => {
+    const code = (s.category?.code || s.type || '').toUpperCase();
+    const name = (s.category?.name || '').toUpperCase();
+    return !code.includes('POKOK') && !name.includes('POKOK') &&
+           !code.includes('WAJIB') && !name.includes('WAJIB') &&
+           !code.includes('SUKARELA') && !name.includes('SUKARELA');
+  });
+  const otherAmount = otherSavings.reduce((sum: number, s: any) => sum + (parseFloat(s.amount as any) || 0), 0);
+  const otherLabel = otherSavings.length === 1 
+    ? (otherSavings[0].category?.name || otherSavings[0].type || 'Lainnya')
+    : 'Simpanan Lainnya';
 
   return (
     <Modal
@@ -58,7 +81,7 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = React.memo(({
         />
 
         {/* Financial Widget (Real-time Deposits Ledger from Database) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+        <div className={`grid grid-cols-1 ${otherAmount > 0 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-2.5 sm:gap-3`}>
           <div className="p-3 bg-emerald-50/40 dark:bg-emerald-950/10 border border-emerald-100/30 dark:border-emerald-950/20 rounded-xl text-center space-y-1">
             <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Simpanan Pokok</span>
             <p className="text-xs sm:text-sm font-black text-emerald-700 dark:text-emerald-300 truncate">
@@ -77,6 +100,16 @@ export const MemberDetailModal: React.FC<MemberDetailModalProps> = React.memo(({
               Rp {sukarelaAmount.toLocaleString('id-ID')}
             </p>
           </div>
+          {otherAmount > 0 && (
+            <div className="p-3 bg-amber-50/40 dark:bg-amber-950/10 border border-amber-100/30 dark:border-amber-950/20 rounded-xl text-center space-y-1">
+              <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 truncate block">
+                {otherLabel}
+              </span>
+              <p className="text-xs sm:text-sm font-black text-amber-700 dark:text-amber-300 truncate">
+                Rp {otherAmount.toLocaleString('id-ID')}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Savings Transaction Ledger */}

@@ -89,7 +89,11 @@ export class MemberService {
                 Siswa: { select: { nama_siswa: true, no_hp: true, alamat: true, nis: true } },
                 Guru: { select: { nama_guru: true, no_hp: true, alamat: true, nip: true } },
                 User: { select: { email: true, full_name: true, no_hp: true } },
-                savings: true
+                savings: {
+                    include: {
+                        category: true
+                    }
+                }
             },
             // Order by memberNo karena name sudah tidak ada di table
             orderBy: { memberNo: 'asc' }
@@ -103,7 +107,11 @@ export class MemberService {
             phone: m.Siswa?.no_hp || m.Guru?.no_hp || m.User?.no_hp || '-',
             address: m.Siswa?.alamat || m.Guru?.alamat || '-',
             identityNo: m.Siswa?.nis || m.Guru?.nip || '-',
-            savings: m.savings
+            savings: (m.savings || []).map((s: any) => ({
+                ...s,
+                type: s.type || s.category?.code || 'LAINNYA',
+                category: s.category
+            }))
         }));
 
         membersCache.set(cacheKey, { data: result, timestamp: Date.now() });
@@ -127,6 +135,7 @@ export class MemberService {
                 User: { select: { email: true, full_name: true, no_hp: true } },
                 savings: {
                     include: {
+                        category: true,
                         transactions: {
                             orderBy: { date: 'desc' }
                         }
@@ -144,7 +153,11 @@ export class MemberService {
             phone: member.Siswa?.no_hp || member.Guru?.no_hp || member.User?.no_hp || '-',
             address: member.Siswa?.alamat || member.Guru?.alamat || '-',
             identityNo: member.Siswa?.nis || member.Guru?.nip || '-',
-            savings: member.savings
+            savings: (member.savings || []).map((s: any) => ({
+                ...s,
+                type: s.type || s.category?.code || 'LAINNYA',
+                category: s.category
+            }))
         };
     }
 

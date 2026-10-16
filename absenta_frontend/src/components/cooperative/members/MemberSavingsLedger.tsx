@@ -31,7 +31,7 @@ export const MemberSavingsLedger: React.FC<MemberSavingsLedgerProps> = React.mem
       .flatMap(s => 
         (s.transactions || []).map(t => ({
           ...t,
-          savingType: s.type
+          savingType: (s.category?.name || s.category?.code || s.type || 'Simpanan') as any
         }))
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
