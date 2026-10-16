@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { XCircle, RefreshCw } from 'lucide-react';
+import { XCircle, RefreshCw, Lock } from 'lucide-react';
 import { Button, Input } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 
@@ -44,6 +44,7 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   onClose,
   onSubmit,
   isStudent = false,
+  isOperatorMode = false,
   members = [],
   loadingMembers = false,
   isLoadingMembers = false,
@@ -152,23 +153,44 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
             {/* Interest rate & Tenor */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="loan-interest-rate" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
-                  Suku Bunga (% / Bulan)
-                </label>
-                <Input
-                  id="loan-interest-rate"
-                  type="number"
-                  step="0.1"
-                  value={formData.interestRate}
-                  onChange={(e) => {
-                    if (updateForm) {
-                      updateForm((prev: any) => ({ ...prev, interestRate: e.target.value }));
-                    }
-                  }}
-                  className="h-10 text-xs font-bold focus:border-indigo-500"
-                  required
-                  aria-label="Suku Bunga"
-                />
+                <div className="flex items-center justify-between">
+                  <label htmlFor="loan-interest-rate" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">
+                    Suku Bunga (% / Bulan)
+                  </label>
+                  {(isStudent || !isOperatorMode) && (
+                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                      Terkunci
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <Input
+                    id="loan-interest-rate"
+                    type="number"
+                    step="0.1"
+                    value={formData.interestRate}
+                    disabled={isStudent || !isOperatorMode}
+                    readOnly={isStudent || !isOperatorMode}
+                    onChange={(e) => {
+                      if (updateForm) {
+                        updateForm((prev: any) => ({ ...prev, interestRate: e.target.value }));
+                      }
+                    }}
+                    className={`h-10 text-xs font-bold focus:border-indigo-500 ${(isStudent || !isOperatorMode) ? 'bg-slate-100 dark:bg-slate-800/80 cursor-not-allowed text-slate-600 dark:text-slate-400 select-none pr-8' : ''}`}
+                    required
+                    aria-label="Suku Bunga"
+                  />
+                  {(isStudent || !isOperatorMode) && (
+                    <span className="absolute inset-y-0 right-2.5 flex items-center text-slate-400 pointer-events-none">
+                      <Lock size={13} />
+                    </span>
+                  )}
+                </div>
+                {(isStudent || !isOperatorMode) && (
+                  <p className="text-[9px] text-slate-400 leading-tight">
+                    Sesuai pengaturan resmi pengurus koperasi.
+                  </p>
+                )}
               </div>
               <div className="space-y-1">
                 <label htmlFor="loan-duration" className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">

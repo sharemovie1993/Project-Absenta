@@ -145,8 +145,9 @@ const Loans: React.FC = React.memo(() => {
     async function loadSettings() {
       try {
         const settings = await fetchCoopSettings();
-        if (!cancelled && settings && settings.default_interest_rate) {
-          const interestString = String(settings.default_interest_rate);
+        const rate = settings?.cooperative_default_interest_rate || (settings as any)?.default_interest_rate;
+        if (!cancelled && rate) {
+          const interestString = String(rate);
           setDefaultInterestRate(interestString);
           setFormData(prev => ({ ...prev, interestRate: interestString }));
         }
@@ -310,8 +311,13 @@ const Loans: React.FC = React.memo(() => {
       toast.error('Anda belum terdaftar sebagai anggota koperasi.');
       return;
     }
+    setFormData(prev => ({
+      ...prev,
+      memberId: isStudent && myMemberId ? myMemberId : prev.memberId,
+      interestRate: defaultInterestRate,
+    }));
     setIsModalOpen(true);
-  }, [isStudent, memberStatus]);
+  }, [isStudent, memberStatus, myMemberId, defaultInterestRate]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [

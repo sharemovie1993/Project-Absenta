@@ -70,6 +70,8 @@ export default async function loanRoutes(fastify: any) {
             const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.approve', 'cooperative.loans.repay'], { user });
             const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
             
+            let effectiveInterestRate = interestRate;
+
             if (!isOperator) {
                 const member = await prisma.member.findFirst({
                     where: { tenantId, userId: user.id }
@@ -77,9 +79,21 @@ export default async function loanRoutes(fastify: any) {
                 if (!member || member.id !== memberId) {
                     return reply.status(403).send({ success: false, message: 'Forbidden: You can only apply for loans under your own member account'  });
                 }
+
+                // Security & Business Rule Hardening:
+                // Anggota koperasi tidak boleh menentukan suku bunga sendiri.
+                // Suku bunga resmi selalu ditarik dari Pengaturan Koperasi (tabel Config).
+                const configRate = await prisma.config.findFirst({
+                    where: { tenant_id: tenantId, key: 'cooperative_default_interest_rate' }
+                });
+                if (configRate?.value && !isNaN(Number(configRate.value))) {
+                    effectiveInterestRate = Number(configRate.value);
+                } else {
+                    effectiveInterestRate = 1.5; // Fallback default ketentuan koperasi
+                }
             }
 
-            const loan = await LoanService.createLoan(memberId, amount, interestRate, duration, idempotencyKey);
+            const loan = await LoanService.createLoan(memberId, amount, effectiveInterestRate, duration, idempotencyKey);
 
             // Broadcast event realtime ke WebSocket klien
             const io = req.server?.io || fastify.io;
