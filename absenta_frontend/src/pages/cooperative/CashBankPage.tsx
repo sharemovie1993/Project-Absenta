@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { FolderTree } from 'lucide-react';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { Spinner } from '../../components/ui/Spinner';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -77,6 +78,15 @@ export const CashBankPage: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         topSlot={<WorkspaceAppLauncherCard workspaceId="COOPERATIVE_WORKSPACE" />}
         instruction={instruction}
+        actionButton={
+          <Link
+            to="/cooperative/chart-of-accounts"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors border border-slate-200 dark:border-slate-700"
+          >
+            <FolderTree className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Bagan Akun (COA)</span>
+          </Link>
+        }
       >
         <InfraErrorBoundary>
           <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">

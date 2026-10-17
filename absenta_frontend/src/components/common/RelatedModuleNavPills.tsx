@@ -37,7 +37,8 @@ import {
   Zap,
   Bell,
   MessageSquare,
-  Vote
+  Vote,
+  FolderTree
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -306,6 +307,8 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       p.startsWith('/cooperative/savings/manage') ||
       p.startsWith('/cooperative/loans/manage') ||
       p.startsWith('/cooperative/ppob') ||
+      p.startsWith('/cooperative/cash-bank') ||
+      p.startsWith('/cooperative/chart-of-accounts') ||
       p.startsWith('/cooperative/reports') ||
       p.startsWith('/cooperative/accounting') ||
       p.startsWith('/cooperative/shu/manage') ||
@@ -317,10 +320,11 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Kelola Anggota', shortLabel: 'Anggota', path: '/cooperative/members', icon: Users },
       { label: 'Input Simpanan', shortLabel: 'Simpanan', path: '/cooperative/savings/manage', icon: Wallet },
       { label: 'Approval Pinjam', shortLabel: 'Pinjaman', path: '/cooperative/loans/manage', icon: CheckCircle2 },
-      { label: 'Sidang RAT', shortLabel: 'RAT', path: '/cooperative/rat', icon: Vote },
-      { label: 'PPOB Admin', shortLabel: 'PPOB', path: '/cooperative/ppob', icon: Zap },
+      { label: 'Kas & Bank', shortLabel: 'Kas/Bank', path: '/cooperative/cash-bank', icon: Wallet },
+      { label: 'Bagan Akun (COA)', shortLabel: 'COA', path: '/cooperative/chart-of-accounts', icon: FolderTree },
       { label: 'Laporan Keuangan', shortLabel: 'Keuangan', path: '/cooperative/reports', icon: Activity },
       { label: 'Bagi Hasil SHU', shortLabel: 'SHU', path: '/cooperative/shu/manage', icon: Award },
+      { label: 'Sidang RAT', shortLabel: 'RAT', path: '/cooperative/rat', icon: Vote },
       { label: 'Pengaturan Koperasi', shortLabel: 'Pengaturan', path: '/cooperative/settings', icon: Settings },
     ]
   }

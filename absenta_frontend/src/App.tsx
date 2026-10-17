@@ -148,6 +148,7 @@ const CoopVouchers = lazy(() => import('./pages/cooperative/Vouchers'));
 const CoopPPOB = lazy(() => import('./pages/cooperative/PPOB'));
 const CoopReports = lazy(() => import('./pages/cooperative/Accounting'));
 const CoopCashBank = lazy(() => import('./pages/cooperative/CashBankPage'));
+const CoopChartOfAccounts = lazy(() => import('./pages/cooperative/ChartOfAccountsPage'));
 const CoopSettings = lazy(() => import('./pages/cooperative/Settings'));
 const CoopSHU = lazy(() => import('./pages/cooperative/SHU'));
 const CoopProducts = lazy(() => import('./pages/cooperative/Products'));
@@ -1057,6 +1058,12 @@ function App() {
                         <CoopCashBank />
                       </ProtectedRoute>
                     } />
+                    <Route path="/cooperative/chart-of-accounts" element={
+                      <ProtectedRoute requiredCapability="cooperative.reports.view.financial">
+                        <CoopChartOfAccounts />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/cooperative/accounts" element={<Navigate to="/cooperative/chart-of-accounts" replace />} />
                     <Route path="/cooperative/reports" element={
                       <ProtectedRoute requiredCapability="cooperative.reports.view.financial">
                         <CoopReports />

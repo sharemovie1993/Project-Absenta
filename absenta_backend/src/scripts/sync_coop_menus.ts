@@ -68,6 +68,7 @@ async function main() {
     { label: 'divider', icon: null, path: null },
     // Klaster 3: Keuangan Terpadu, Aset & Pertanggungjawaban
     { label: 'Kas & Bank', icon: 'Landmark', path: '/cooperative/cash-bank', required_capability: 'cooperative.reports.view.financial' },
+    { label: 'Bagan Akun (COA)', icon: 'FolderTree', path: '/cooperative/chart-of-accounts', required_capability: 'cooperative.reports.view.financial' },
     { label: 'Aset Koperasi', icon: 'Package', path: '/cooperative/assets', required_capability: 'cooperative.assets.view.list' },
     { label: 'Laporan Keuangan', icon: 'FilePieChart', path: '/cooperative/reports', required_capability: 'cooperative.reports.view.financial' },
     { label: 'Sisa Hasil Usaha', icon: 'Award', path: '/cooperative/shu', required_capability: 'cooperative.shu.view.report' },
