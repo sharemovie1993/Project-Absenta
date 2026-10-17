@@ -58,6 +58,19 @@ export interface PrintUnifiedThermalSlipData {
   operatorName: string;
 }
 
+/** Helper to sanitize internal UUIDs / Idempotency keys from user-facing transaction memos */
+export const cleanMemoDescription = (desc?: string | null): string => {
+  if (!desc) return '-';
+  const cleaned = desc
+    .replace(/\s*\[IDEM:[^\]]+\]/gi, '')
+    .replace(/\s*\(IDEM:[^\)]+\)/gi, '')
+    .replace(/\s*IDEM:[a-f0-9\-]+/gi, '')
+    .replace(/\s*\[[0-9a-fA-F-]{32,36}\]/gi, '')
+    .replace(/\s*[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/gi, '')
+    .trim();
+  return cleaned || '-';
+};
+
 export interface CellStyle {
   font?: { name?: string; sz?: number; bold?: boolean; italic?: boolean; color?: { rgb?: string } };
   alignment?: { horizontal?: string; vertical?: string };
@@ -152,7 +165,7 @@ export const printThermalSlip = async (txData: PrintThermalSlipData, operatorNam
     if (txData.description) {
       y += 4;
       doc.setFont('Helvetica', 'normal');
-      doc.text(`Memo: "${txData.description}"`, 4, y, { maxWidth: 50 });
+      doc.text(`Memo: "${cleanMemoDescription(txData.description)}"`, 4, y, { maxWidth: 50 });
     }
 
     y += 4;
@@ -422,7 +435,7 @@ export const exportTransactions = async (
         t.savingType,
         t.type === 'DEPOSIT' ? 'SETOR' : t.type === 'WITHDRAWAL' ? 'TARIK' : t.type,
         Number(t.amount),
-        t.description || '-'
+        cleanMemoDescription(t.description)
       ]);
 
       const aoaData = [
@@ -796,7 +809,7 @@ export const exportSingleSavingPdf = async (saving: Saving, logoUrl?: string) =>
       date: formatIndonesianDateTime(t.date),
       type: t.type === 'DEPOSIT' ? 'SETORAN (+)' : t.type === 'WITHDRAWAL' ? 'PENARIKAN (-)' : t.type,
       amount: parseFloat(t.amount).toLocaleString('id-ID'),
-      description: t.description || '-'
+      description: cleanMemoDescription(t.description)
     }));
 
     autoTable(doc, {
@@ -1064,7 +1077,7 @@ export const exportAllSavingsPdf = async (saving: Saving, savingsList: Saving[],
       savingType: t.savingType || '',
       type: formatTxType(t.type),
       amount: parseFloat(t.amount).toLocaleString('id-ID'),
-      description: t.description || '-'
+      description: cleanMemoDescription(t.description)
     }));
 
     autoTable(doc, {

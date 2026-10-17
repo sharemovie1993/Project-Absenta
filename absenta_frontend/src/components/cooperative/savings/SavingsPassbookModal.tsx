@@ -16,7 +16,7 @@ import { Modal } from '../../ui/Modal';
 import Button from '../../ui/Button';
 import type { Saving, Transaction } from './types';
 import { formatIndonesianDateTime } from '../../../utils/cooperative/coopDocUtils';
-import { exportSingleSavingPdf, exportAllSavingsPdf } from './savingsExportUtils';
+import { exportSingleSavingPdf, exportAllSavingsPdf, cleanMemoDescription } from './savingsExportUtils';
 import api from '../../../lib/axiosInstance';
 import toast from 'react-hot-toast';
 
@@ -36,12 +36,13 @@ export interface SavingsPassbookModalProps {
 const getShortTabName = (saving?: Saving | null) => {
   if (!saving) return 'Simpanan';
   const code = (saving.category?.code || saving.type || '').toUpperCase();
-  if (code === 'POKOK') return 'Pokok';
-  if (code === 'WAJIB') return 'Wajib';
-  if (code === 'SUKARELA') return 'Sukarela';
-  if (code.includes('RAYA')) return 'Hari Raya';
+  if (code.includes('POKOK')) return 'Pokok';
+  if (code.includes('WAJIB')) return 'Wajib';
+  if (code.includes('SUKARELA')) return 'Sukarela';
+  if (code.includes('RAYA') || code.includes('THR')) return 'Raya';
   const name = saving.category?.name || saving.type || 'Simpanan';
-  return name.replace(/^Simpanan\s+/i, '').trim();
+  const cleaned = name.replace(/^Simpanan\s+/i, '').trim();
+  return cleaned.split(' ')[0] || 'Simpanan';
 };
 
 const formatShortAmount = (amount: number) => {
@@ -245,8 +246,8 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
             <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 truncate">
               {activeTab === 'ALL' ? 'Rekap Buku Tabungan' : `Mutasi: ${getShortTabName(selectedSaving)}`}
             </h3>
-            <p className="text-[10px] text-slate-400 font-medium truncate">
-              Histori mutasi rekening anggota koperasi
+            <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
+              Histori mutasi saldo rekening anggota
             </p>
           </div>
         </div>
@@ -336,7 +337,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
 
         {/* ── 3. Quick Stats Summary ────────────────────────────────────── */}
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 text-xs">
-          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
             <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
               Saldo
             </span>
@@ -344,7 +345,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
               Rp {(activeTab === 'ALL' ? grandTotalBalance : (parseFloat(String(selectedSaving?.amount)) || 0)).toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100/60 dark:border-emerald-900/30">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200/70 dark:border-emerald-800/40">
             <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block truncate">
               Setoran (+)
             </span>
@@ -352,7 +353,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
               +Rp {totalDeposits.toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100/60 dark:border-rose-900/30">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/70 dark:border-rose-800/40">
             <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 block truncate">
               Penarikan (-)
             </span>
@@ -369,9 +370,9 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
               <Calendar size={13} />
               <span>Rincian Mutasi ({displayedTransactions.length})</span>
             </h5>
-            {activeTab !== 'ALL' && selectedSaving && (
+            {activeTab !== 'ALL' && selectedSaving?.accountNumber && selectedSaving.accountNumber !== '-' && (
               <span className="text-[10px] text-slate-400 font-mono">
-                Rek: {selectedSaving.accountNumber || '-'}
+                No. Rek: {selectedSaving.accountNumber}
               </span>
             )}
           </div>
@@ -394,6 +395,7 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                 {displayedTransactions.map((tx, idx) => {
                   const isDep = tx.type === 'DEPOSIT' || tx.type === 'INTEREST';
                   const amt = parseFloat(String(tx.amount)) || 0;
+                  const memo = cleanMemoDescription(tx.description);
                   return (
                     <div 
                       key={tx.id || idx}
@@ -431,8 +433,8 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                        <span className="truncate max-w-[200px] text-slate-600 dark:text-slate-300">
-                          {tx.description || '-'}
+                        <span className="truncate max-w-[210px] text-slate-600 dark:text-slate-300 font-medium">
+                          {memo}
                         </span>
                         <span className="shrink-0 font-medium">
                           {formatIndonesianDateTime(tx.date)}
@@ -479,22 +481,23 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                     displayedTransactions.map((tx, idx) => {
                       const isDep = tx.type === 'DEPOSIT' || tx.type === 'INTEREST';
                       const amt = parseFloat(String(tx.amount)) || 0;
+                      const memo = cleanMemoDescription(tx.description);
                       return (
                         <tr key={tx.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2 px-3 text-center text-[11px] text-slate-400 font-mono">
+                          <td className="py-2.5 px-3 text-center text-[11px] text-slate-400 font-mono">
                             {idx + 1}
                           </td>
-                          <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
                             {formatIndonesianDateTime(tx.date)}
                           </td>
                           {activeTab === 'ALL' && (
-                            <td className="py-2 px-3 whitespace-nowrap">
+                            <td className="py-2.5 px-3 whitespace-nowrap">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                                 {(tx as any).savingCategoryName || 'Simpanan'}
                               </span>
                             </td>
                           )}
-                          <td className="py-2 px-3 whitespace-nowrap">
+                          <td className="py-2.5 px-3 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
                               isDep
                                 ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50'
@@ -513,13 +516,13 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                               )}
                             </span>
                           </td>
-                          <td className={`py-2 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                          <td className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
                             isDep ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                           }`}>
                             {isDep ? '+' : '-'}Rp {amt.toLocaleString('id-ID')}
                           </td>
-                          <td className="py-2 px-3 text-[11px] text-slate-500 dark:text-slate-400 max-w-xs truncate" title={tx.description || '-'}>
-                            {tx.description || '-'}
+                          <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 max-w-sm truncate" title={memo}>
+                            {memo}
                           </td>
                         </tr>
                       );
