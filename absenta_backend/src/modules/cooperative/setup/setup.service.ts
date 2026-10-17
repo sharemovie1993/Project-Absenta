@@ -164,6 +164,30 @@ export class SetupService {
   }
 
   /**
+   * Helper upsert konfigurasi per tenant karena model Config tidak memiliki compound unique constraint
+   */
+  private static async upsertTenantConfig(
+    client: any,
+    tenantId: string,
+    key: string,
+    value: string
+  ) {
+    const existing = await client.config.findFirst({
+      where: { tenant_id: tenantId, key },
+    });
+    if (existing) {
+      return await client.config.update({
+        where: { id: existing.id },
+        data: { value },
+      });
+    } else {
+      return await client.config.create({
+        data: { tenant_id: tenantId, key, value },
+      });
+    }
+  }
+
+  /**
    * Langkah 1: Simpan Pilihan Mode & Profil Dasar Setup
    */
   static async setSetupMode(
@@ -172,30 +196,13 @@ export class SetupService {
     cutoffDate?: string,
     operatorId?: string
   ) {
-    const updates = [
-      prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS } },
-        create: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS, value: 'IN_PROGRESS' },
-        update: { value: 'IN_PROGRESS' },
-      }),
-      prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.MODE } },
-        create: { tenant_id: tenantId, key: this.CONFIG_KEYS.MODE, value: mode },
-        update: { value: mode },
-      }),
-    ];
-
-    if (cutoffDate) {
-      updates.push(
-        prisma.config.upsert({
-          where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.CUTOFF_DATE } },
-          create: { tenant_id: tenantId, key: this.CONFIG_KEYS.CUTOFF_DATE, value: cutoffDate },
-          update: { value: cutoffDate },
-        })
-      );
-    }
-
-    await prisma.$transaction(updates);
+    await prisma.$transaction(async (tx) => {
+      await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.STATUS, 'IN_PROGRESS');
+      await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.MODE, mode);
+      if (cutoffDate) {
+        await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.CUTOFF_DATE, cutoffDate);
+      }
+    });
 
     appLogger.info({ action: 'COOP_SETUP_MODE_SET', tenantId, mode, cutoffDate, operatorId });
     return this.getSetupStatus(tenantId);
@@ -303,11 +310,12 @@ export class SetupService {
       );
 
       // Update flag konfigurasi bahwa saldo awal telah diposting
-      await tx.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: SetupService.CONFIG_KEYS.STATUS } },
-        create: { tenant_id: tenantId, key: SetupService.CONFIG_KEYS.STATUS, value: 'IN_PROGRESS' },
-        update: { value: 'IN_PROGRESS' },
-      });
+      await SetupService.upsertTenantConfig(
+        tx,
+        tenantId,
+        SetupService.CONFIG_KEYS.STATUS,
+        'IN_PROGRESS'
+      );
 
       return createdJournal;
     });
@@ -523,23 +531,11 @@ export class SetupService {
   static async completeSetup(tenantId: string, operatorId?: string) {
     const nowIso = new Date().toISOString();
 
-    await prisma.$transaction([
-      prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS } },
-        create: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS, value: 'COMPLETED' },
-        update: { value: 'COMPLETED' },
-      }),
-      prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.COMPLETED_AT } },
-        create: { tenant_id: tenantId, key: this.CONFIG_KEYS.COMPLETED_AT, value: nowIso },
-        update: { value: nowIso },
-      }),
-      prisma.config.upsert({
-        where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.COMPLETED_BY } },
-        create: { tenant_id: tenantId, key: this.CONFIG_KEYS.COMPLETED_BY, value: operatorId || 'SYSTEM' },
-        update: { value: operatorId || 'SYSTEM' },
-      }),
-    ]);
+    await prisma.$transaction(async (tx) => {
+      await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.STATUS, 'COMPLETED');
+      await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.COMPLETED_AT, nowIso);
+      await this.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.COMPLETED_BY, operatorId || 'SYSTEM');
+    });
 
     appLogger.info({ action: 'COOP_SETUP_COMPLETED', tenantId, operatorId, timestamp: nowIso });
     return this.getSetupStatus(tenantId);
@@ -706,11 +702,7 @@ export class SetupService {
 
       // 4. Reset Status Setup Wizard jika diminta
       if (resetSetupStatus) {
-        await tx.config.upsert({
-          where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS } },
-          create: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS, value: 'NOT_STARTED' },
-          update: { value: 'NOT_STARTED' },
-        });
+        await SetupService.upsertTenantConfig(tx, tenantId, this.CONFIG_KEYS.STATUS, 'NOT_STARTED');
         await tx.config.deleteMany({
           where: {
             tenant_id: tenantId,

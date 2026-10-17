@@ -10,7 +10,9 @@ jest.mock('@/utils/prisma', () => ({
     config: {
       findMany: jest.fn(),
       findFirst: jest.fn(),
-      upsert: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      deleteMany: jest.fn(),
     },
     account: {
       findMany: jest.fn(),
@@ -222,7 +224,10 @@ describe('SetupService - Onboarding & Setup Wizard Unit & QA Tests (Phase 5)', (
               deleteMany: jest.fn(),
             },
             config: {
-              upsert: jest.fn(),
+              findFirst: jest.fn().mockResolvedValue(null),
+              create: jest.fn().mockResolvedValue({}),
+              update: jest.fn().mockResolvedValue({}),
+              deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
             }
           };
           return arg(tx);
@@ -285,7 +290,9 @@ describe('SetupService - Onboarding & Setup Wizard Unit & QA Tests (Phase 5)', (
           coopMeetingAttendance: { deleteMany: jest.fn() },
           ticket: { deleteMany: jest.fn() },
           config: {
-            upsert: jest.fn().mockResolvedValue({}),
+            findFirst: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockResolvedValue({}),
+            update: jest.fn().mockResolvedValue({}),
             deleteMany: jest.fn().mockResolvedValue({ count: 3 }),
           },
         };
