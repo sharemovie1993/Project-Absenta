@@ -33,6 +33,28 @@ export interface SavingsPassbookModalProps {
   logoUrl?: string;
 }
 
+const getShortTabName = (saving?: Saving | null) => {
+  if (!saving) return 'Simpanan';
+  const code = (saving.category?.code || saving.type || '').toUpperCase();
+  if (code === 'POKOK') return 'Pokok';
+  if (code === 'WAJIB') return 'Wajib';
+  if (code === 'SUKARELA') return 'Sukarela';
+  if (code.includes('RAYA')) return 'Hari Raya';
+  const name = saving.category?.name || saving.type || 'Simpanan';
+  return name.replace(/^Simpanan\s+/i, '').trim();
+};
+
+const formatShortAmount = (amount: number) => {
+  if (amount >= 1000000) {
+    const jt = amount / 1000000;
+    return `${jt % 1 === 0 ? jt : jt.toFixed(1)}jt`;
+  }
+  if (amount >= 1000) {
+    return `${Math.round(amount / 1000)}k`;
+  }
+  return String(amount);
+};
+
 export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.memo(({
   isOpen,
   onClose,
@@ -212,77 +234,83 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      size="3xl"
+      size="4xl"
+      contentClassName="p-3.5 sm:p-5"
       title={
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
             <BookOpen size={16} className="text-white" />
           </div>
-          <div>
-            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-              {activeTab === 'ALL' ? 'Rekap Buku Tabungan' : `Mutasi Rekening: ${selectedSaving?.category?.name || 'Simpanan'}`}
+          <div className="min-w-0">
+            <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 truncate">
+              {activeTab === 'ALL' ? 'Rekap Buku Tabungan' : `Mutasi: ${getShortTabName(selectedSaving)}`}
             </h3>
-            <p className="text-[10px] text-slate-400 font-medium">
-              Pratinjau mutasi saldo dan histori transaksi anggota koperasi
+            <p className="text-[10px] text-slate-400 font-medium truncate">
+              Histori mutasi rekening anggota koperasi
             </p>
           </div>
         </div>
       }
     >
-      <div className="p-4 sm:p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+      <div className="space-y-3.5">
         {/* ── 1. Member Information Header ────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-slate-50 to-indigo-50/40 dark:from-slate-800/60 dark:to-slate-800/30 rounded-2xl border border-slate-200/70 dark:border-slate-800">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 sm:p-3.5 bg-gradient-to-r from-slate-50 to-indigo-50/40 dark:from-slate-800/60 dark:to-slate-800/30 rounded-2xl border border-slate-200/70 dark:border-slate-800">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs">
               {member?.name?.charAt(0) || 'U'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase truncate">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 uppercase truncate max-w-[200px] sm:max-w-none">
                   {member?.name || 'Anggota Koperasi'}
                 </h4>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
                   {member?.siswaId ? 'Siswa' : member?.guruId ? 'Guru' : 'Umum'}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium mt-0.5">
+              <div className="flex items-center gap-2 text-[10px] sm:text-[11px] text-slate-500 font-medium mt-0.5">
                 <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
                   No. {member?.memberNo || '-'}
                 </span>
                 <span>&bull;</span>
-                <span>{effectiveSavings.length} Rekening Tabungan</span>
+                <span>{effectiveSavings.length} Rekening</span>
               </div>
             </div>
           </div>
 
-          <div className="text-left sm:text-right shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Total Akumulasi Saldo
+          <div className="flex items-center justify-between sm:block sm:text-right shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/50 dark:border-slate-700/50">
+            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+              Total Saldo
             </span>
-            <span className="text-base sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 block">
+            <span className="text-sm sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400 block">
               Rp {grandTotalBalance.toLocaleString('id-ID')}
             </span>
           </div>
         </div>
 
-        {/* ── 2. Account Selector Pills ─────────────────────────────────── */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+        {/* ── 2. Account Selector Tabs (1 Word Only & Clean Mobile Scroll) ── */}
+        <div 
+          className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:flex-wrap [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
           <button
             type="button"
             onClick={() => setActiveTab('ALL')}
             className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shrink-0 transition-all ${
               activeTab === 'ALL'
-                ? 'bg-indigo-600 text-white shadow-sm'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700'
             }`}
           >
             <BookOpen size={13} />
-            <span>Rekap Buku (Semua)</span>
+            <span>Semua</span>
           </button>
 
           {effectiveSavings.map((s) => {
             const isSelected = activeTab === s.id;
             const bal = parseFloat(String(s.amount)) || 0;
+            const shortName = getShortTabName(s);
+            const shortBal = formatShortAmount(bal);
             return (
               <button
                 key={s.id}
@@ -290,16 +318,16 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                 onClick={() => setActiveTab(s.id)}
                 className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 shrink-0 transition-all ${
                   isSelected
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-650 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700'
                 }`}
               >
                 <Wallet size={13} />
-                <span>{s.category?.name || s.type || 'Simpanan'}</span>
-                <span className={`text-[10px] font-mono font-black px-1.5 py-0.2 rounded ${
-                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/60 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                <span>{shortName}</span>
+                <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                  isSelected ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
                 }`}>
-                  Rp {bal.toLocaleString('id-ID')}
+                  {shortBal}
                 </span>
               </button>
             );
@@ -307,48 +335,118 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
         </div>
 
         {/* ── 3. Quick Stats Summary ────────────────────────────────────── */}
-        <div className="grid grid-cols-3 gap-2 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              {activeTab === 'ALL' ? 'Total Saldo Semua' : 'Saldo Rekening Ini'}
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 text-xs">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">
+              Saldo
             </span>
-            <span className="text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 block truncate">
+            <span className="text-xs sm:text-sm font-black font-mono text-indigo-600 dark:text-indigo-400 mt-0.5 block truncate">
               Rp {(activeTab === 'ALL' ? grandTotalBalance : (parseFloat(String(selectedSaving?.amount)) || 0)).toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100/60 dark:border-emerald-900/30">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
-              Total Setoran (+)
+          <div className="p-2.5 sm:p-3 rounded-xl bg-emerald-50/40 dark:bg-emerald-950/20 border border-emerald-100/60 dark:border-emerald-900/30">
+            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block truncate">
+              Setoran (+)
             </span>
-            <span className="text-sm font-black font-mono text-emerald-700 dark:text-emerald-300 mt-0.5 block truncate">
+            <span className="text-xs sm:text-sm font-black font-mono text-emerald-700 dark:text-emerald-300 mt-0.5 block truncate">
               +Rp {totalDeposits.toLocaleString('id-ID')}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100/60 dark:border-rose-900/30">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 block">
-              Total Penarikan (-)
+          <div className="p-2.5 sm:p-3 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100/60 dark:border-rose-900/30">
+            <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 block truncate">
+              Penarikan (-)
             </span>
-            <span className="text-sm font-black font-mono text-rose-700 dark:text-rose-300 mt-0.5 block truncate">
+            <span className="text-xs sm:text-sm font-black font-mono text-rose-700 dark:text-rose-300 mt-0.5 block truncate">
               -Rp {totalWithdrawals.toLocaleString('id-ID')}
             </span>
           </div>
         </div>
 
-        {/* ── 4. Transactions Ledger Table ──────────────────────────────── */}
+        {/* ── 4. Transactions Ledger ────────────────────────────────────── */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h5 className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
               <Calendar size={13} />
-              <span>Rincian Mutasi Transaksi ({displayedTransactions.length})</span>
+              <span>Rincian Mutasi ({displayedTransactions.length})</span>
             </h5>
             {activeTab !== 'ALL' && selectedSaving && (
               <span className="text-[10px] text-slate-400 font-mono">
-                No. Rek: {selectedSaving.accountNumber || '-'}
+                Rek: {selectedSaving.accountNumber || '-'}
               </span>
             )}
           </div>
 
-          <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
+          {/* Mobile View: Vertical Card Stream (sm:hidden) */}
+          <div className="sm:hidden space-y-2">
+            {loading ? (
+              <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin mx-auto mb-2" />
+                <span>Memuat riwayat transaksi...</span>
+              </div>
+            ) : displayedTransactions.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-800 p-4 space-y-1">
+                <HelpCircle size={24} className="mx-auto opacity-40 text-slate-400" />
+                <p className="font-semibold text-slate-600 dark:text-slate-300">Belum ada riwayat transaksi</p>
+                <p className="text-[10px] text-slate-400">Transaksi setor atau tarik tunai akan tercatat di sini.</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-0.5">
+                {displayedTransactions.map((tx, idx) => {
+                  const isDep = tx.type === 'DEPOSIT' || tx.type === 'INTEREST';
+                  const amt = parseFloat(String(tx.amount)) || 0;
+                  return (
+                    <div 
+                      key={tx.id || idx}
+                      className="p-2.5 rounded-xl bg-white dark:bg-slate-850 border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                            isDep
+                              ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              : 'bg-rose-100/80 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                          }`}>
+                            {isDep ? (
+                              <>
+                                <ArrowUpCircle size={10} className="shrink-0" />
+                                <span>SETOR</span>
+                              </>
+                            ) : (
+                              <>
+                                <ArrowDownCircle size={10} className="shrink-0" />
+                                <span>TARIK</span>
+                              </>
+                            )}
+                          </span>
+                          {activeTab === 'ALL' && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate max-w-[100px]">
+                              {(tx as any).savingCategoryName || 'Simpanan'}
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-mono font-black ${
+                          isDep ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                        }`}>
+                          {isDep ? '+' : '-'}Rp {amt.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                        <span className="truncate max-w-[200px] text-slate-600 dark:text-slate-300">
+                          {tx.description || '-'}
+                        </span>
+                        <span className="shrink-0 font-medium">
+                          {formatIndonesianDateTime(tx.date)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop/Tablet View: Classic Clean Table (hidden sm:block) */}
+          <div className="hidden sm:block border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
             <div className="overflow-x-auto max-h-72">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
@@ -383,20 +481,20 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                       const amt = parseFloat(String(tx.amount)) || 0;
                       return (
                         <tr key={tx.id || idx} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center text-[11px] text-slate-400 font-mono">
+                          <td className="py-2 px-3 text-center text-[11px] text-slate-400 font-mono">
                             {idx + 1}
                           </td>
-                          <td className="py-2.5 px-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                          <td className="py-2 px-3 text-[11px] text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
                             {formatIndonesianDateTime(tx.date)}
                           </td>
                           {activeTab === 'ALL' && (
-                            <td className="py-2.5 px-3 whitespace-nowrap">
+                            <td className="py-2 px-3 whitespace-nowrap">
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                                 {(tx as any).savingCategoryName || 'Simpanan'}
                               </span>
                             </td>
                           )}
-                          <td className="py-2.5 px-3 whitespace-nowrap">
+                          <td className="py-2 px-3 whitespace-nowrap">
                             <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${
                               isDep
                                 ? 'bg-emerald-100/80 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/50'
@@ -415,12 +513,12 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
                               )}
                             </span>
                           </td>
-                          <td className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                          <td className={`py-2 px-3 text-right font-mono font-bold whitespace-nowrap ${
                             isDep ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                           }`}>
                             {isDep ? '+' : '-'}Rp {amt.toLocaleString('id-ID')}
                           </td>
-                          <td className="py-2.5 px-3 text-[11px] text-slate-500 dark:text-slate-400 max-w-xs truncate" title={tx.description || '-'}>
+                          <td className="py-2 px-3 text-[11px] text-slate-500 dark:text-slate-400 max-w-xs truncate" title={tx.description || '-'}>
                             {tx.description || '-'}
                           </td>
                         </tr>
@@ -434,35 +532,36 @@ export const SavingsPassbookModal: React.FC<SavingsPassbookModalProps> = React.m
         </div>
 
         {/* ── 5. Modal Footer Action Buttons ────────────────────────────── */}
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            className="py-2 px-4 text-xs font-semibold rounded-xl"
+            className="py-2 px-3 sm:px-4 text-xs font-semibold rounded-xl"
           >
             Tutup
           </Button>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="primary"
-              disabled={isExporting || effectiveSavings.length === 0}
-              onClick={handleExportPdf}
-              className="py-2 px-4 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-sm"
-            >
-              <Printer size={14} />
-              <span>
-                {isExporting 
-                  ? 'Menyiapkan PDF...' 
-                  : activeTab === 'ALL'
-                    ? 'Cetak Rekap Buku Tabungan (PDF)'
-                    : `Cetak Mutasi ${selectedSaving?.category?.name || 'Rekening'} (PDF)`
-                }
-              </span>
-            </Button>
-          </div>
+          <Button
+            type="button"
+            variant="primary"
+            disabled={isExporting || effectiveSavings.length === 0}
+            onClick={handleExportPdf}
+            className="py-2 px-3 sm:px-4 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 shadow-xs"
+          >
+            <Printer size={14} />
+            <span className="sm:hidden">
+              {isExporting ? 'Memproses...' : 'Cetak PDF'}
+            </span>
+            <span className="hidden sm:inline">
+              {isExporting 
+                ? 'Menyiapkan PDF...' 
+                : activeTab === 'ALL'
+                  ? 'Cetak Rekap Buku Tabungan (PDF)'
+                  : `Cetak Mutasi ${getShortTabName(selectedSaving)} (PDF)`
+              }
+            </span>
+          </Button>
         </div>
       </div>
     </Modal>
