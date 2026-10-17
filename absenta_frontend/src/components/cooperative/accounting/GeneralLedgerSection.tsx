@@ -13,7 +13,6 @@ import {
   Scale,
   RefreshCw
 } from 'lucide-react';
-import Table from '../../ui/Table';
 import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
@@ -25,6 +24,7 @@ import {
 } from '@/utils/cooperative/accountingFormatters';
 
 import { useIsMobile } from '../../../hooks/useIsMobile';
+
 
 const POPULAR_COOP_ACCOUNTS = [
   { value: '1010', label: '1010 - Kas Koperasi (Kas Tunai)' },
@@ -118,102 +118,10 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
     entries: []
   };
 
-  const columns = useMemo(() => [
-    {
-      label: 'Tanggal',
-      key: 'date',
-      className: 'w-28',
-      render: (d: string) => (
-        <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-400">
-          {formatDate(d)}
-        </span>
-      ),
-    },
-    {
-      label: <div className="text-center w-full">No. Referensi</div>,
-      key: 'reference',
-      className: 'w-36 text-center whitespace-nowrap',
-      render: (ref: string) => {
-        const fRef = formatAccountingReference(ref);
-        return (
-          <span 
-            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border shadow-2xs whitespace-nowrap shrink-0 ${fRef.badgeClass}`}
-            title={`Referensi Sistem: ${fRef.full}`}
-          >
-            {fRef.label}
-          </span>
-        );
-      },
-    },
-    {
-      label: 'Keterangan Transaksi',
-      key: 'description',
-      className: 'min-w-[280px]',
-      render: (desc: string) => {
-        const parsedDesc = parseAccountingDescription(desc);
-        return (
-          <div className="space-y-1 py-0.5">
-            {parsedDesc.tag && (
-              <div>
-                <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold tracking-wide uppercase border ${parsedDesc.tagClass}`}>
-                  {parsedDesc.tag}
-                </span>
-              </div>
-            )}
-            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words">
-              {parsedDesc.title}
-            </p>
-          </div>
-        );
-      },
-    },
-    {
-      label: <div className="text-right w-full">Debit (Rp)</div>,
-      key: 'debit',
-      className: 'text-right w-36',
-      render: (d: number) => (
-        <div className="text-right font-mono text-xs">
-          {d > 0 ? (
-            <span className="font-bold text-slate-900 dark:text-slate-100">
-              Rp {Math.round(d).toLocaleString('id-ID')}
-            </span>
-          ) : (
-            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      label: <div className="text-right w-full">Kredit (Rp)</div>,
-      key: 'credit',
-      className: 'text-right w-36',
-      render: (c: number) => (
-        <div className="text-right font-mono text-xs">
-          {c > 0 ? (
-            <span className="font-bold text-slate-900 dark:text-slate-100">
-              Rp {Math.round(c).toLocaleString('id-ID')}
-            </span>
-          ) : (
-            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
-          )}
-        </div>
-      ),
-    },
-    {
-      label: <div className="text-right w-full">Saldo Berjalan (Rp)</div>,
-      key: 'runningBalance',
-      className: 'text-right w-40',
-      render: (b: number) => (
-        <div className="text-right font-mono text-xs font-black text-indigo-700 dark:text-indigo-400">
-          Rp {Math.round(b).toLocaleString('id-ID')}
-        </div>
-      ),
-    },
-  ], []);
-
   const handlePrint = () => {
     window.print();
   };
+
 
   return (
     <div className="space-y-6">
@@ -315,7 +223,7 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           title="Saldo Awal"
           value={`Rp ${Math.round(ledger.openingBalance).toLocaleString('id-ID')}`}
           icon={Scale}
-          description="Posisi saldo sebelum awal periode"
+          description="Saldo awal periode"
           variant="card"
           gradient="from-slate-500 to-slate-700"
         />
@@ -323,7 +231,7 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           title="Total Mutasi Debit"
           value={`Rp ${Math.round(ledger.totalDebit).toLocaleString('id-ID')}`}
           icon={TrendingUp}
-          description="Akumulasi penambahan debit"
+          description="Total mutasi masuk"
           variant="card"
           gradient="from-emerald-500 to-teal-600"
         />
@@ -331,7 +239,7 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           title="Total Mutasi Kredit"
           value={`Rp ${Math.round(ledger.totalCredit).toLocaleString('id-ID')}`}
           icon={TrendingDown}
-          description="Akumulasi pengurangan kredit"
+          description="Total mutasi keluar"
           variant="card"
           gradient="from-rose-500 to-amber-600"
         />
@@ -339,7 +247,7 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           title="Saldo Akhir Berjalan"
           value={`Rp ${Math.round(ledger.endingBalance).toLocaleString('id-ID')}`}
           icon={DollarSign}
-          description={`Posisi saldo per ${effectiveEndDate}`}
+          description={`Per ${effectiveEndDate}`}
           variant="card"
           gradient="from-indigo-600 to-blue-600"
         />
@@ -398,24 +306,25 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
                       </span>
                     </div>
 
-                  <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <div className="flex gap-2 font-mono font-bold text-[11px]">
-                      {entry.debit > 0 && (
-                        <span className="text-emerald-600 dark:text-emerald-400">
-                          D: Rp {Math.round(entry.debit).toLocaleString('id-ID')}
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <div className="flex gap-2 font-mono font-bold text-[11px]">
+                        {entry.debit > 0 && (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            D: Rp {Math.round(entry.debit).toLocaleString('id-ID')}
+                          </span>
+                        )}
+                        {entry.credit > 0 && (
+                          <span className="text-rose-600 dark:text-rose-400">
+                            K: Rp {Math.round(entry.credit).toLocaleString('id-ID')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] text-slate-400 font-medium block">Saldo Berjalan</span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-white">
+                          Rp {Math.round(entry.runningBalance).toLocaleString('id-ID')}
                         </span>
-                      )}
-                      {entry.credit > 0 && (
-                        <span className="text-rose-600 dark:text-rose-400">
-                          K: Rp {Math.round(entry.credit).toLocaleString('id-ID')}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[9px] text-slate-400 font-medium block">Saldo Berjalan</span>
-                      <span className="font-mono font-bold text-slate-900 dark:text-white">
-                        Rp {Math.round(entry.runningBalance).toLocaleString('id-ID')}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -423,12 +332,126 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
             )}
           </div>
         ) : (
-          <Table
-            data={ledger.entries}
-            columns={columns}
-            loading={isLoading}
-            emptyMessage={`Belum ada mutasi pembukuan pada rekening ${ledger.account.code} untuk periode yang dipilih.`}
-          />
+          <div className="overflow-x-auto -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 rounded-b-2xl">
+            <table className="w-full text-left border-collapse text-xs min-w-[960px]">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-955 border-b border-slate-200/80 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  <th className="p-3.5 w-28 whitespace-nowrap">Tanggal</th>
+                  <th className="p-3.5 w-36 text-center whitespace-nowrap">No. Referensi</th>
+                  <th className="p-3.5 min-w-[280px]">Keterangan Transaksi</th>
+                  <th className="p-3.5 w-36 text-right whitespace-nowrap">Debit (Rp)</th>
+                  <th className="p-3.5 w-36 text-right whitespace-nowrap">Kredit (Rp)</th>
+                  <th className="p-3.5 w-40 text-right whitespace-nowrap">Saldo Berjalan (Rp)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
+                {isLoading && ledger.entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-12 text-center text-slate-400 font-bold">
+                      Memuat data buku besar...
+                    </td>
+                  </tr>
+                ) : ledger.entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-12 text-center text-slate-400 font-bold uppercase tracking-wider">
+                      Belum ada mutasi pembukuan pada rekening {ledger.account.code} untuk periode yang dipilih.
+                    </td>
+                  </tr>
+                ) : (
+                  ledger.entries.map((entry, idx) => {
+                    const fRef = formatAccountingReference(entry.reference);
+                    const parsedDesc = parseAccountingDescription(entry.description);
+                    const isEven = idx % 2 === 0;
+
+                    return (
+                      <tr
+                        key={entry.id || idx}
+                        className={`transition-colors ${
+                          isEven ? 'bg-white dark:bg-slate-900/60' : 'bg-slate-50/40 dark:bg-slate-900/30'
+                        } hover:bg-slate-50/80 dark:hover:bg-slate-800/40`}
+                      >
+                        {/* Tanggal */}
+                        <td className="p-3.5 font-mono text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap align-middle">
+                          {formatDate(entry.date)}
+                        </td>
+
+                        {/* No Referensi */}
+                        <td className="p-3.5 text-center whitespace-nowrap align-middle">
+                          <span 
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border shadow-2xs whitespace-nowrap shrink-0 ${fRef.badgeClass}`}
+                            title={`Referensi Sistem: ${fRef.full}`}
+                          >
+                            {fRef.label}
+                          </span>
+                        </td>
+
+                        {/* Keterangan Transaksi */}
+                        <td className="p-3.5 align-middle">
+                          <div className="space-y-1 py-0.5">
+                            {parsedDesc.tag && (
+                              <div>
+                                <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold tracking-wide uppercase border ${parsedDesc.tagClass}`}>
+                                  {parsedDesc.tag}
+                                </span>
+                              </div>
+                            )}
+                            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words">
+                              {parsedDesc.title}
+                            </p>
+                          </div>
+                        </td>
+
+                        {/* Debit */}
+                        <td className="p-3.5 text-right font-mono text-xs whitespace-nowrap align-middle">
+                          {entry.debit > 0 ? (
+                            <span className="font-bold text-slate-900 dark:text-slate-100">
+                              Rp {Math.round(entry.debit).toLocaleString('id-ID')}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
+                          )}
+                        </td>
+
+                        {/* Kredit */}
+                        <td className="p-3.5 text-right font-mono text-xs whitespace-nowrap align-middle">
+                          {entry.credit > 0 ? (
+                            <span className="font-bold text-slate-900 dark:text-slate-100">
+                              Rp {Math.round(entry.credit).toLocaleString('id-ID')}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
+                          )}
+                        </td>
+
+                        {/* Saldo Berjalan */}
+                        <td className="p-3.5 text-right font-mono text-xs font-black text-indigo-700 dark:text-indigo-400 whitespace-nowrap align-middle">
+                          Rp {Math.round(entry.runningBalance).toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+              {ledger.entries.length > 0 && (
+                <tfoot>
+                  <tr className="bg-slate-100/80 dark:bg-slate-950 font-bold border-t-2 border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100">
+                    <td colSpan={3} className="p-3.5 uppercase tracking-wider text-[11px] font-black text-slate-600 dark:text-slate-400">
+                      Total Mutasi & Saldo Akhir
+                    </td>
+                    <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                      Rp {Math.round(ledger.totalDebit).toLocaleString('id-ID')}
+                    </td>
+                    <td className="p-3.5 text-right font-mono whitespace-nowrap">
+                      Rp {Math.round(ledger.totalCredit).toLocaleString('id-ID')}
+                    </td>
+                    <td className="p-3.5 text-right font-mono text-indigo-700 dark:text-indigo-400 font-black whitespace-nowrap">
+                      Rp {Math.round(ledger.endingBalance).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
         )}
       </div>
     </div>
