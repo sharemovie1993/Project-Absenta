@@ -106,7 +106,7 @@ module.exports = async () => {
   } catch (err) {
     console.warn('⚠️ [TestSetup] migrate deploy failed, falling back to prisma db push...');
     try {
-      execSync('npx prisma db push --skip-generate', {
+      execSync('npx prisma db push --skip-generate --accept-data-loss', {
         stdio: 'inherit',
         env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL }
       });

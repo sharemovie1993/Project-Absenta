@@ -185,4 +185,27 @@ export default async function setupRoutes(fastify: FastifyInstance) {
       }
     }
   );
+
+  /**
+   * POST /cooperative/setup/reset-simulation-data
+   * Membersihkan data simulasi / uji coba koperasi (Khusus Bendahara / Ketua Koperasi)
+   */
+  fastify.post(
+    '/reset-simulation-data',
+    {
+      preHandler: [requireCapability('cooperative.setup.manage')],
+    },
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const tenantId = getTenantId(req);
+        const operatorId = getOperatorId(req);
+        const options = (req.body as any) || {};
+
+        const result = await SetupService.resetSimulationData(tenantId, options, operatorId);
+        return reply.send({ success: true, ...result });
+      } catch (error: any) {
+        return reply.status(500).send({ success: false, message: error.message });
+      }
+    }
+  );
 }

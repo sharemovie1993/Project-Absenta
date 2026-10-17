@@ -5,6 +5,14 @@ import { AccountService } from '../laporan/account.service';
 import { AccountingService } from '../laporan/accounting.service';
 import { JournalType } from '@prisma/client';
 
+export interface ResetSimulationOptions {
+  purgeTransactions?: boolean;
+  purgeOpeningBalances?: boolean;
+  purgeMembers?: boolean;
+  purgeProducts?: boolean;
+  resetSetupStatus?: boolean;
+}
+
 export interface SetupStatusResponse {
   status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
   mode?: 'NEW' | 'ANNUAL_TRANSITION' | 'MID_YEAR_CUTOFF' | null;
@@ -18,6 +26,13 @@ export interface SetupStatusResponse {
     storeProductsImported: boolean;
   };
   progressPercentage: number;
+  simulationStats?: {
+    hasSimulationData: boolean;
+    totalJournals: number;
+    totalSales: number;
+    totalLoans: number;
+    totalSavingsTransactions: number;
+  };
 }
 
 export interface OpeningBalanceEntryInput {
@@ -86,7 +101,7 @@ export class SetupService {
     const completedAt = configMap[this.CONFIG_KEYS.COMPLETED_AT] || null;
 
     // Periksa kondisi riil database
-    const [coopNameConfig, totalAccounts, openingJournal, totalMembers, totalProducts] = await Promise.all([
+    const [coopNameConfig, totalAccounts, openingJournal, totalMembers, totalProducts, totalJournals, totalSales, totalLoans, totalSavingsTransactions] = await Promise.all([
       prisma.config.findFirst({
         where: { tenant_id: tenantId, key: 'cooperative_name' },
       }),
@@ -99,7 +114,25 @@ export class SetupService {
       }),
       prisma.member.count({ where: { tenantId } }),
       prisma.product.count({ where: { tenantId } }),
+      prisma.journal.count({
+        where: {
+          tenantId,
+          NOT: { reference: { startsWith: 'SETUP-OPENING' } },
+        },
+      }),
+      prisma.sale.count({ where: { tenantId } }),
+      prisma.loan.count({ where: { member: { tenantId } } }),
+      prisma.savingTransaction.count({ where: { saving: { member: { tenantId } } } }),
     ]);
+
+    const hasSimulationData = totalJournals > 0 || totalSales > 0 || totalLoans > 0 || totalSavingsTransactions > 0;
+    const simulationStats = {
+      hasSimulationData,
+      totalJournals,
+      totalSales,
+      totalLoans,
+      totalSavingsTransactions,
+    };
 
     const checklist = {
       profileConfigured: Boolean(coopNameConfig?.value?.trim()),
@@ -126,6 +159,7 @@ export class SetupService {
       completedAt,
       checklist,
       progressPercentage,
+      simulationStats,
     };
   }
 
@@ -509,5 +543,225 @@ export class SetupService {
 
     appLogger.info({ action: 'COOP_SETUP_COMPLETED', tenantId, operatorId, timestamp: nowIso });
     return this.getSetupStatus(tenantId);
+  }
+
+  /**
+   * Reset & Purge Data Simulasi (Hanya untuk Bendahara / Ketua Koperasi)
+   * Membersihkan transaksi demo/uji coba agar koperasi siap go-live dengan data riil.
+   */
+  static async resetSimulationData(
+    tenantId: string,
+    options: ResetSimulationOptions = {},
+    operatorId?: string
+  ) {
+    const purgeTransactions = options.purgeTransactions !== false;
+    const purgeOpeningBalances = options.purgeOpeningBalances !== false;
+    const purgeMembers = options.purgeMembers === true;
+    const purgeProducts = options.purgeProducts === true;
+    const resetSetupStatus = options.resetSetupStatus !== false;
+
+    return await prisma.$transaction(async (tx) => {
+      let deletedSales = 0;
+      let deletedStockIns = 0;
+      let deletedStockOpnames = 0;
+      let deletedLoans = 0;
+      let deletedSavingsTransactions = 0;
+      let deletedJournals = 0;
+      let deletedExpenses = 0;
+      let deletedCashDeposits = 0;
+      let deletedFundTransfers = 0;
+      let deletedMembers = 0;
+      let deletedProducts = 0;
+
+      // 1. Purge Transaksi Operasional & Simulasi
+      if (purgeTransactions) {
+        // Toko / POS
+        await tx.saleItem.deleteMany({
+          where: { sale: { tenantId } },
+        });
+        const delSales = await tx.sale.deleteMany({
+          where: { tenantId },
+        });
+        deletedSales = delSales.count;
+
+        // Stock Opname
+        await tx.coopStockOpnameItem.deleteMany({
+          where: { Opname: { tenantId } },
+        });
+        const delOpnames = await tx.coopStockOpname.deleteMany({
+          where: { tenantId },
+        });
+        deletedStockOpnames = delOpnames.count;
+
+        // Stock In
+        await tx.coopStockInItem.deleteMany({
+          where: { StockIn: { tenantId } },
+        });
+        const delStockIns = await tx.coopStockIn.deleteMany({
+          where: { tenantId },
+        });
+        deletedStockIns = delStockIns.count;
+
+        // PPOB & Point
+        await tx.coopPointTransaction.deleteMany({
+          where: { tenantId },
+        });
+        await tx.pPOBTransaction.deleteMany({
+          where: { tenantId },
+        });
+
+        // Beban & Kas Masuk / Mutasi
+        const delExpenses = await tx.coopExpense.deleteMany({
+          where: { tenantId },
+        });
+        deletedExpenses = delExpenses.count;
+
+        const delDeposits = await tx.coopCashDeposit.deleteMany({
+          where: { tenantId },
+        });
+        deletedCashDeposits = delDeposits.count;
+
+        const delTransfers = await tx.coopFundTransfer.deleteMany({
+          where: { tenantId },
+        });
+        deletedFundTransfers = delTransfers.count;
+
+        // Pinjaman: Installments & Loans
+        await tx.installment.deleteMany({
+          where: { loan: { member: { tenantId } } },
+        });
+        const delLoans = await tx.loan.deleteMany({
+          where: { member: { tenantId } },
+        });
+        deletedLoans = delLoans.count;
+
+        // Simpanan: SavingTransaction
+        const delSavingTx = await tx.savingTransaction.deleteMany({
+          where: { saving: { member: { tenantId } } },
+        });
+        deletedSavingsTransactions = delSavingTx.count;
+
+        // Reset saldo simpanan jadi 0 jika member tidak dihapus
+        if (!purgeMembers) {
+          await tx.saving.updateMany({
+            where: { member: { tenantId } },
+            data: { amount: 0 },
+          });
+        }
+
+        // Jurnal Umum & Buku Besar
+        if (purgeOpeningBalances) {
+          await tx.journalItem.deleteMany({
+            where: { journal: { tenantId } },
+          });
+          const delJournals = await tx.journal.deleteMany({
+            where: { tenantId },
+          });
+          deletedJournals = delJournals.count;
+        } else {
+          // Hanya hapus jurnal operasional non-opening
+          await tx.journalItem.deleteMany({
+            where: {
+              journal: {
+                tenantId,
+                NOT: { reference: { startsWith: 'SETUP-OPENING' } },
+              },
+            },
+          });
+          const delJournals = await tx.journal.deleteMany({
+            where: {
+              tenantId,
+              NOT: { reference: { startsWith: 'SETUP-OPENING' } },
+            },
+          });
+          deletedJournals = delJournals.count;
+        }
+      }
+
+      // 2. Opsi: Purge Master Produk
+      if (purgeProducts) {
+        await tx.saleItem.deleteMany({ where: { product: { tenantId } } });
+        await tx.coopStockInItem.deleteMany({ where: { Product: { tenantId } } });
+        await tx.coopStockOpnameItem.deleteMany({ where: { Product: { tenantId } } });
+        const delProducts = await tx.product.deleteMany({ where: { tenantId } });
+        deletedProducts = delProducts.count;
+      } else {
+        // Reset stock produk ke 0 jika barang simulasi sudah di-wipe
+        await tx.product.updateMany({
+          where: { tenantId },
+          data: { stock: 0 },
+        });
+      }
+
+      // 3. Opsi: Purge Master Member Koperasi
+      if (purgeMembers) {
+        await tx.saving.deleteMany({ where: { member: { tenantId } } });
+        await tx.shuAllocation.deleteMany({ where: { member: { tenantId } } });
+        await tx.voucher.deleteMany({ where: { member: { tenantId } } });
+        await tx.coopMeetingAttendance.deleteMany({ where: { member: { tenantId } } });
+        await tx.ticket.deleteMany({ where: { member: { tenantId } } });
+        const delMembers = await tx.member.deleteMany({ where: { tenantId } });
+        deletedMembers = delMembers.count;
+      }
+
+      // 4. Reset Status Setup Wizard jika diminta
+      if (resetSetupStatus) {
+        await tx.config.upsert({
+          where: { tenant_id_key: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS } },
+          create: { tenant_id: tenantId, key: this.CONFIG_KEYS.STATUS, value: 'NOT_STARTED' },
+          update: { value: 'NOT_STARTED' },
+        });
+        await tx.config.deleteMany({
+          where: {
+            tenant_id: tenantId,
+            key: {
+              in: [
+                this.CONFIG_KEYS.MODE,
+                this.CONFIG_KEYS.CUTOFF_DATE,
+                this.CONFIG_KEYS.COMPLETED_AT,
+                this.CONFIG_KEYS.COMPLETED_BY,
+              ],
+            },
+          },
+        });
+      }
+
+      appLogger.warn({
+        action: 'COOP_SIMULATION_DATA_RESET',
+        tenantId,
+        operatorId,
+        purged: {
+          sales: deletedSales,
+          stockIns: deletedStockIns,
+          stockOpnames: deletedStockOpnames,
+          loans: deletedLoans,
+          savingsTransactions: deletedSavingsTransactions,
+          journals: deletedJournals,
+          expenses: deletedExpenses,
+          cashDeposits: deletedCashDeposits,
+          fundTransfers: deletedFundTransfers,
+          members: deletedMembers,
+          products: deletedProducts,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Data simulasi koperasi berhasil dibersihkan dengan aman.',
+        purged: {
+          sales: deletedSales,
+          stockIns: deletedStockIns,
+          stockOpnames: deletedStockOpnames,
+          loans: deletedLoans,
+          savingsTransactions: deletedSavingsTransactions,
+          journals: deletedJournals,
+          expenses: deletedExpenses,
+          cashDeposits: deletedCashDeposits,
+          fundTransfers: deletedFundTransfers,
+          members: deletedMembers,
+          products: deletedProducts,
+        },
+      };
+    });
   }
 }

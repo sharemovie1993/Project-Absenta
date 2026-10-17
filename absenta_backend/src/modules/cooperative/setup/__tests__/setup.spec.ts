@@ -45,12 +45,57 @@ jest.mock('@/utils/prisma', () => ({
       create: jest.fn(),
       update: jest.fn(),
     },
+    saving: {
+      updateMany: jest.fn(),
+      deleteMany: jest.fn(),
+    },
     savingTransaction: {
       create: jest.fn(),
+      count: jest.fn(),
+      deleteMany: jest.fn(),
     },
     loan: {
       findFirst: jest.fn(),
       create: jest.fn(),
+      count: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    installment: {
+      deleteMany: jest.fn(),
+    },
+    sale: {
+      count: jest.fn(),
+      deleteMany: jest.fn(),
+    },
+    saleItem: {
+      deleteMany: jest.fn(),
+    },
+    coopStockIn: {
+      deleteMany: jest.fn(),
+    },
+    coopStockInItem: {
+      deleteMany: jest.fn(),
+    },
+    coopStockOpname: {
+      deleteMany: jest.fn(),
+    },
+    coopStockOpnameItem: {
+      deleteMany: jest.fn(),
+    },
+    coopExpense: {
+      deleteMany: jest.fn(),
+    },
+    coopCashDeposit: {
+      deleteMany: jest.fn(),
+    },
+    coopFundTransfer: {
+      deleteMany: jest.fn(),
+    },
+    coopPointTransaction: {
+      deleteMany: jest.fn(),
+    },
+    pPOBTransaction: {
+      deleteMany: jest.fn(),
     },
     $transaction: jest.fn(),
   },
@@ -209,6 +254,58 @@ describe('SetupService - Onboarding & Setup Wizard Unit & QA Tests (Phase 5)', (
 
       expect(result.status).toBe('COMPLETED');
       expect(prisma.$transaction).toHaveBeenCalled();
+    });
+  });
+
+  describe('5. resetSimulationData (Pembersihan Data Demo & Uji Coba Koperasi)', () => {
+    it('harus membersihkan transaksi simulasi dan mereset status onboarding ke NOT_STARTED', async () => {
+      (prisma.$transaction as jest.Mock).mockImplementation(async (callback: any) => {
+        const mockTx = {
+          saleItem: { deleteMany: jest.fn().mockResolvedValue({ count: 10 }) },
+          sale: { deleteMany: jest.fn().mockResolvedValue({ count: 5 }) },
+          coopStockOpnameItem: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          coopStockOpname: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          coopStockInItem: { deleteMany: jest.fn().mockResolvedValue({ count: 4 }) },
+          coopStockIn: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          coopPointTransaction: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+          pPOBTransaction: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+          coopExpense: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          coopCashDeposit: { deleteMany: jest.fn().mockResolvedValue({ count: 1 }) },
+          coopFundTransfer: { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) },
+          installment: { deleteMany: jest.fn().mockResolvedValue({ count: 6 }) },
+          loan: { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) },
+          savingTransaction: { deleteMany: jest.fn().mockResolvedValue({ count: 12 }) },
+          saving: { updateMany: jest.fn().mockResolvedValue({ count: 15 }), deleteMany: jest.fn() },
+          journalItem: { deleteMany: jest.fn().mockResolvedValue({ count: 20 }) },
+          journal: { deleteMany: jest.fn().mockResolvedValue({ count: 8 }) },
+          product: { updateMany: jest.fn().mockResolvedValue({ count: 5 }), deleteMany: jest.fn() },
+          member: { deleteMany: jest.fn() },
+          shuAllocation: { deleteMany: jest.fn() },
+          voucher: { deleteMany: jest.fn() },
+          coopMeetingAttendance: { deleteMany: jest.fn() },
+          ticket: { deleteMany: jest.fn() },
+          config: {
+            upsert: jest.fn().mockResolvedValue({}),
+            deleteMany: jest.fn().mockResolvedValue({ count: 3 }),
+          },
+        };
+        return callback(mockTx);
+      });
+
+      const res = await SetupService.resetSimulationData(mockTenantId, {
+        purgeTransactions: true,
+        purgeOpeningBalances: true,
+        purgeMembers: false,
+        purgeProducts: false,
+        resetSetupStatus: true,
+      }, mockOperatorId);
+
+      expect(res).toBeDefined();
+      expect(res.success).toBe(true);
+      expect(res.purged.sales).toBe(5);
+      expect(res.purged.loans).toBe(2);
+      expect(res.purged.savingsTransactions).toBe(12);
+      expect(res.purged.journals).toBe(8);
     });
   });
 });

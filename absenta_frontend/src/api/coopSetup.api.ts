@@ -21,6 +21,14 @@ export interface SetupChecklistItem {
   required: boolean;
 }
 
+export interface SetupSimulationStats {
+  hasSimulationData: boolean;
+  totalJournals: number;
+  totalSales: number;
+  totalLoans: number;
+  totalSavingsTransactions: number;
+}
+
 export interface SetupStatusData {
   status: SetupCompletionStatus;
   setupStatus: SetupCompletionStatus; // fallback compatibility
@@ -36,6 +44,7 @@ export interface SetupStatusData {
   readinessPercentage: number;
   checklist: SetupChecklistItem[];
   rawChecklist: SetupChecklistStatus;
+  simulationStats?: SetupSimulationStats;
 }
 
 export interface SetModePayload {
@@ -51,6 +60,8 @@ export interface OpeningBalanceRawEntry {
   credit: number;
   notes?: string;
 }
+
+export type OpeningBalanceEntry = OpeningBalanceRawEntry;
 
 export interface PostOpeningBalancePayload {
   mode?: SetupMode;
@@ -132,6 +143,7 @@ export const coopSetupApi = {
       readinessPercentage: d.progressPercentage || 0,
       checklist: uiChecklist,
       rawChecklist,
+      simulationStats: d.simulationStats || undefined,
     };
   },
 
@@ -239,5 +251,30 @@ export const coopSetupApi = {
   completeSetup: async (): Promise<{ success: boolean; message: string }> => {
     const res = await api.post<{ success: boolean; message: string }>('/cooperative/setup/complete');
     return res.data;
-  }
+  },
+
+  /**
+   * Membersihkan data simulasi / uji coba koperasi
+   */
+  resetSimulationData: async (payload: ResetSimulationPayload = {}): Promise<{
+    success: boolean;
+    message: string;
+    purged: Record<string, number>;
+  }> => {
+    const res = await api.post<{
+      success: boolean;
+      message: string;
+      purged: Record<string, number>;
+    }>('/cooperative/setup/reset-simulation-data', payload);
+    return res.data;
+  },
 };
+
+export interface ResetSimulationPayload {
+  purgeTransactions?: boolean;
+  purgeOpeningBalances?: boolean;
+  purgeMembers?: boolean;
+  purgeProducts?: boolean;
+  resetSetupStatus?: boolean;
+}
+

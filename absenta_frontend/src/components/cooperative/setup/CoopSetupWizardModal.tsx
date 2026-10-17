@@ -54,6 +54,17 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   const [selectedMode, setSelectedMode] = useState<SetupMode>('NEW_COOP');
   const [cutoffDate, setCutoffDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
+  // Reset Simulation State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetOptions, setResetOptions] = useState({
+    purgeTransactions: true,
+    purgeOpeningBalances: true,
+    purgeMembers: false,
+    purgeProducts: false,
+    resetSetupStatus: true,
+  });
+  const [confirmText, setConfirmText] = useState('');
+
   // Step 2 State: Accounts list
   const { data: accountsData, isLoading: loadingAccounts, refetch: refetchAccounts } = useQuery({
     queryKey: ['cooperative-accounts-flat'],
@@ -173,6 +184,23 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Gagal menyelesaikan setup');
+    }
+  });
+
+  const resetSimulationMutation = useMutation({
+    mutationFn: coopSetupApi.resetSimulationData,
+    onSuccess: (res) => {
+      toast.success(res.message || 'Data simulasi berhasil dibersihkan!');
+      setIsResetModalOpen(false);
+      setConfirmText('');
+      refetchStatus();
+      queryClient.invalidateQueries({ queryKey: ['coop-setup-status'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-accounts-flat'] });
+      setCurrentStep(1);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Gagal membersihkan data simulasi');
     }
   });
 
@@ -369,6 +397,66 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   Pilihlah salah satu dari 3 skenario berikut agar sistem menyesuaikan struktur saldo awal dan perhitungan SHU konsolidasi secara tepat.
                 </p>
               </div>
+
+              {/* Banner Peringatan Data Simulasi / Transaksi Demo */}
+              {status?.simulationStats?.hasSimulationData && (
+                <div className="rounded-2xl p-4 sm:p-5 border-2 border-rose-200 dark:border-rose-900/60 bg-gradient-to-r from-rose-50/80 to-amber-50/50 dark:from-rose-950/20 dark:to-amber-950/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                          Terdeteksi Data Simulasi / Transaksi Lampau
+                        </h4>
+                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
+                          Perlu Pembersihan
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                        Database koperasi masih menyimpan catatan transaksi uji coba/simulasi. Untuk memulai operasional dengan data riil yang bersih dan akurat, disarankan untuk mereset data demo sebelum melanjutkan.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                        {status.simulationStats.totalJournals > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
+                            <FileText className="w-3.5 h-3.5 text-indigo-500" />
+                            {status.simulationStats.totalJournals} Jurnal Transaksi
+                          </span>
+                        )}
+                        {status.simulationStats.totalSales > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
+                            <Building2 className="w-3.5 h-3.5 text-sky-500" />
+                            {status.simulationStats.totalSales} Transaksi Penjualan
+                          </span>
+                        )}
+                        {status.simulationStats.totalLoans > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
+                            <Wallet className="w-3.5 h-3.5 text-amber-500" />
+                            {status.simulationStats.totalLoans} Pinjaman
+                          </span>
+                        )}
+                        {status.simulationStats.totalSavingsTransactions > 0 && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
+                            <Users className="w-3.5 h-3.5 text-emerald-500" />
+                            {status.simulationStats.totalSavingsTransactions} Mutasi Simpanan
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsResetModalOpen(true)}
+                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-98 shadow-sm transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Bersihkan Data Simulasi</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* 3 Interactive Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -998,6 +1086,160 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
             )}
           </div>
         </div>
+
+        {/* Modal Konfirmasi Reset Data Simulasi */}
+        {isResetModalOpen && (
+          <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-rose-50/50 dark:bg-rose-950/20">
+                <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                    Reset & Pembersihan Data Simulasi
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsResetModalOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                  Tindakan ini akan <strong>menghapus seluruh transaksi simulasi</strong> (penjualan toko, pinjaman demo, mutasi simpanan uji coba, jurnal operasional, kas masuk/keluar) secara permanen untuk mengembalikan status pembukuan ke titik nol.
+                </p>
+
+                {/* Checkbox Options */}
+                <div className="space-y-2.5 pt-2">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={resetOptions.purgeTransactions}
+                      disabled
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        Hapus Seluruh Transaksi & Jurnal Operasional (Wajib)
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Membersihkan penjualan POS, stock opname, pinjaman, mutasi kas, dan jurnal umum.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={resetOptions.purgeOpeningBalances}
+                      onChange={(e) => setResetOptions(prev => ({ ...prev, purgeOpeningBalances: e.target.checked }))}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        Hapus Jurnal Saldo Awal Neraca (SETUP-OPENING)
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Menghapus jurnal saldo awal neraca agar dapat diinput ulang secara presisi.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={resetOptions.purgeMembers}
+                      onChange={(e) => setResetOptions(prev => ({ ...prev, purgeMembers: e.target.checked }))}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        Kosongkan Anggota Koperasi Terdaftar
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Hanya menghapus nomor anggota koperasi. <strong>Data Siswa, Guru, dan User sekolah tidak akan terhapus.</strong>
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={resetOptions.purgeProducts}
+                      onChange={(e) => setResetOptions(prev => ({ ...prev, purgeProducts: e.target.checked }))}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        Kosongkan Katalog Produk Toko
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Jika tidak dicentang, daftar barang tetap ada namun stoknya direset kembali ke 0.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={resetOptions.resetSetupStatus}
+                      onChange={(e) => setResetOptions(prev => ({ ...prev, resetSetupStatus: e.target.checked }))}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        Kembalikan Status Wizard ke NOT_STARTED
+                      </span>
+                      <p className="text-[11px] text-slate-500">
+                        Mengizinkan pengurus memilih ulang skenario awal dan tanggal cut-off dari awal.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Input Konfirmasi Text */}
+                <div className="pt-2">
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Ketik <span className="font-mono text-rose-600 font-bold">RESET SIMULASI</span> untuk konfirmasi:
+                  </label>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="RESET SIMULASI"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+              </div>
+
+              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResetModalOpen(false);
+                    setConfirmText('');
+                  }}
+                  disabled={resetSimulationMutation.isPending}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resetSimulationMutation.mutate(resetOptions)}
+                  disabled={confirmText.trim() !== 'RESET SIMULASI' || resetSimulationMutation.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-rose-600/20 transition-all active:scale-98"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{resetSimulationMutation.isPending ? 'Membersihkan...' : 'Hapus Data Simulasi Sekarang'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
