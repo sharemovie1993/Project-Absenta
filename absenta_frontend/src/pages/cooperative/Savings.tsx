@@ -493,7 +493,7 @@ const Savings: React.FC = React.memo(() => {
             </div>
             <div className="min-w-0">
               <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 truncate">
-                Loket Kasir Terpadu
+                Loket Transaksi Simpanan
               </h3>
               <p className="text-[10px] text-slate-400 font-medium truncate">
                 Setoran Simpanan, Angsuran Pinjaman, dan Tarik Tunai

@@ -346,9 +346,9 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
                   };
                   handleSelectStudent(studentObj, member.memberNo);
                 }}
-                title="Buka Loket Transaksi Kasir untuk Anggota ini"
+                title="Buka Loket Transaksi Simpanan untuk Anggota ini"
               >
-                <Zap size={12} className="text-amber-300" /> Kasir
+                <Zap size={12} className="text-amber-300" /> Transaksi
               </Button>
               <Button
                 size="sm"
@@ -384,7 +384,7 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
           }}
           placeholder="Cari nama / no. anggota..."
           leftIcon={<Search />}
-          className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800"
+          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl h-9 text-xs"
         />
       </div>
     );
@@ -401,9 +401,8 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
   const toolbarRightElement = useMemo(() => {
     if (isStudent) return null;
     return (
-      <div className="flex items-center space-x-3 w-auto shrink-0">
-        <div className="flex items-center space-x-2 w-48">
-          <label htmlFor="filter-saving-type" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter shrink-0">Jenis:</label>
+      <div className="flex items-center gap-2 w-auto shrink-0 flex-wrap sm:flex-nowrap">
+        <div className="w-44 sm:w-48 shrink-0">
           <SearchableSelect
             id="filter-saving-type"
             value={typeFilter}
@@ -412,26 +411,30 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
               setPage(1);
             }}
             options={filterTypeOptions}
-            placeholder="Filter Jenis..."
+            placeholder="Semua Jenis"
+            triggerClassName="h-9 text-xs rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold"
           />
         </div>
         <Button
           size="sm"
           variant="outline"
-          className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold flex items-center gap-1.5 h-8 text-[11px]"
+          className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold flex items-center gap-1.5 text-xs shadow-2xs shrink-0"
           onClick={onOpenExportModal}
+          title="Rekapitulasi Mutasi Simpanan (Excel / PDF)"
         >
-          <FileSpreadsheet size={14} /> Rekap Mutasi
+          <FileSpreadsheet size={14} className="text-emerald-600 dark:text-emerald-400" />
+          <span className="hidden sm:inline">Rekap Mutasi</span>
         </Button>
         {onOpenCashierModal && (
           <Button
             size="sm"
             variant="primary"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 h-8 text-[11px] shadow-sm rounded-xl"
+            className="h-9 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 text-xs shadow-xs shrink-0"
             onClick={onOpenCashierModal}
-            title="Buka Loket Kasir Terpadu (Pindai RFID / QR)"
+            title="Buka Loket Transaksi Simpanan (Setor & Tarik)"
           >
-            <Zap size={13} className="text-amber-300 fill-amber-300" /> Loket Kasir
+            <Zap size={13} className="text-amber-300 fill-amber-300" />
+            <span>Transaksi</span>
           </Button>
         )}
       </div>
@@ -688,9 +691,9 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
                         handleSelectStudent(mockStudent, grp.member.memberNo);
                       }}
                       className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
-                      title="Kasir"
+                      title="Buka Transaksi"
                     >
-                      <Zap size={11} className="text-amber-300" /> Kasir
+                      <Zap size={11} className="text-amber-300" /> Transaksi
                     </button>
                     <button
                       type="button"
