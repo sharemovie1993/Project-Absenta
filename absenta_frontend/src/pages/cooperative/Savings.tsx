@@ -28,6 +28,7 @@ import { CoopFiscalYearSelector } from '../../components/cooperative/shared/Coop
 const SavingExportModal = lazy(() => import('../../components/cooperative/savings/SavingExportModal').then(module => ({ default: module.SavingExportModal })));
 const QuickTxConfirmModal = lazy(() => import('../../components/cooperative/savings/QuickTxConfirmModal').then(module => ({ default: module.QuickTxConfirmModal })));
 const QuickTransactionPanel = lazy(() => import('../../components/cooperative/savings/QuickTransactionPanel').then(module => ({ default: module.QuickTransactionPanel })));
+const SavingsPassbookModal = lazy(() => import('../../components/cooperative/savings/SavingsPassbookModal').then(module => ({ default: module.SavingsPassbookModal })));
 
 const Savings: React.FC = React.memo(() => {
   const { isKoperasiFinance, isKoperasiHead, isAdmin, can } = useCapabilities();
@@ -142,6 +143,35 @@ const Savings: React.FC = React.memo(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Passbook & Mutasi Modal States (Preview UI first before PDF)
+  const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
+  const [passbookTargetSaving, setPassbookTargetSaving] = useState<any | null>(null);
+  const [passbookDefaultMode, setPassbookDefaultMode] = useState<'ALL' | 'SPECIFIC'>('SPECIFIC');
+
+  const handleOpenMutasiModal = useCallback((saving: any) => {
+    setPassbookTargetSaving(saving);
+    setPassbookDefaultMode('SPECIFIC');
+    setIsPassbookModalOpen(true);
+  }, []);
+
+  const handleOpenRekapBukuModal = useCallback((saving: any) => {
+    setPassbookTargetSaving(saving);
+    setPassbookDefaultMode('ALL');
+    setIsPassbookModalOpen(true);
+  }, []);
+
+  const handleClosePassbookModal = useCallback(() => {
+    setIsPassbookModalOpen(false);
+    setPassbookTargetSaving(null);
+  }, []);
+
+  const passbookMemberSavings = useMemo(() => {
+    if (!passbookTargetSaving) return [];
+    const targetNo = passbookTargetSaving.member?.memberNo;
+    if (!targetNo) return [passbookTargetSaving];
+    return savings.filter(s => s.member?.memberNo === targetNo);
+  }, [passbookTargetSaving, savings]);
 
   const toggleExpand = useCallback(() => {
     toggleAccountsExpand();
@@ -398,8 +428,8 @@ const Savings: React.FC = React.memo(() => {
                                   size="sm"
                                   variant="outline"
                                   className="flex-1 text-slate-600 border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[36px] py-1.5"
-                                  onClick={() => handleExportSingleSavingPdf(saving)}
-                                  title="Cetak Mutasi Rekening"
+                                  onClick={() => handleOpenMutasiModal(saving)}
+                                  title="Pratinjau Mutasi Rekening"
                                 >
                                   <Printer size={12} /> Cetak Mutasi
                                 </Button>
@@ -408,8 +438,8 @@ const Savings: React.FC = React.memo(() => {
                                   variant="outline"
                                   className="flex-1 font-bold text-[11px] flex items-center justify-center gap-1.5 min-h-[38px] sm:min-h-[36px] py-1.5"
                                   style={{ color: catColor, borderColor: `${catColor}50`, backgroundColor: `${catColor}08` }}
-                                  onClick={() => handleExportAllSavingsPdf(saving)}
-                                  title="Cetak Rekap Buku Tabungan"
+                                  onClick={() => handleOpenRekapBukuModal(saving)}
+                                  title="Pratinjau Rekap Buku Tabungan"
                                 >
                                   <BookOpen size={12} /> Rekap Buku
                                 </Button>
@@ -443,18 +473,12 @@ const Savings: React.FC = React.memo(() => {
             setPage={setPage}
             limit={limit}
             setLimit={setLimit}
-            handleShowTransactions={handleShowTransactions}
-            handleExportSingleSavingPdf={handleExportSingleSavingPdf}
-            handleExportAllSavingsPdf={handleExportAllSavingsPdf}
+            handleShowTransactions={handleOpenMutasiModal}
+            handleExportSingleSavingPdf={handleOpenMutasiModal}
+            handleExportAllSavingsPdf={handleOpenRekapBukuModal}
             handleSelectStudent={handleOpenCashierWithStudent}
             onOpenExportModal={onOpenExportModal}
             onOpenCashierModal={() => setIsCashierModalOpen(true)}
-          />
-          <SavingsHistoryPanel
-            selectedSaving={selectedSaving}
-            transactions={transactions}
-            handleExportSingleSavingPdf={handleSingleExport}
-            handleExportAllSavingsPdf={handleAllExport}
           />
         </div>
       )}
@@ -499,6 +523,18 @@ const Savings: React.FC = React.memo(() => {
         </div>
       </Modal>
     )}
+
+    {/* ── Buku Tabungan & Mutasi Simpanan Modal (Preview UI Sebelum PDF) ── */}
+    <Suspense fallback={null}>
+      <SavingsPassbookModal
+        isOpen={isPassbookModalOpen}
+        onClose={handleClosePassbookModal}
+        initialSaving={passbookTargetSaving}
+        memberSavings={passbookMemberSavings}
+        defaultViewMode={passbookDefaultMode}
+        logoUrl={subscription?.logo_url}
+      />
+    </Suspense>
 
         <Suspense fallback={null}>
           <SavingExportModal
