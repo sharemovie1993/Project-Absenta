@@ -2,7 +2,7 @@ import React from 'react';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { 
   formatAccountingReference, 
-  humanizeAccountingDescription 
+  parseAccountingDescription 
 } from '@/utils/cooperative/accountingFormatters';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -44,7 +44,7 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
       <div className="p-4 space-y-3">
         {journals.map((journal) => {
           const ref = formatAccountingReference(journal.reference);
-          const desc = humanizeAccountingDescription(journal.description);
+          const parsedDesc = parseAccountingDescription(journal.description);
           const totalDebit = journal.items?.filter(i => i.type === 'DEBIT').reduce((acc, curr) => acc + Number(curr.amount || 0), 0) || 0;
 
           return (
@@ -53,14 +53,23 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
               className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3"
             >
               <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider">
-                    {new Date(journal.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </span>
-                  <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 mt-0.5">{desc}</h4>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                    <span className="text-[10px] text-slate-400 font-mono font-bold uppercase tracking-wider whitespace-nowrap">
+                      {new Date(journal.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                    {parsedDesc.tag && (
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wide border ${parsedDesc.tagClass}`}>
+                        {parsedDesc.tag}
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="font-bold text-xs text-slate-800 dark:text-slate-100 leading-snug break-words">
+                    {parsedDesc.title}
+                  </h4>
                 </div>
                 <span 
-                  className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-lg border shrink-0 ${ref.badgeClass}`}
+                  className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-lg border shrink-0 whitespace-nowrap ${ref.badgeClass}`}
                   title={ref.full}
                 >
                   {ref.label}
@@ -86,13 +95,15 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                         }`}>
                           {item.type}
                         </span>
-                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 font-semibold">{item.account?.code}</span>
+                        <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 font-semibold shrink-0 whitespace-nowrap">
+                          {item.account?.code}
+                        </span>
                       </div>
                       <p className="font-medium text-slate-700 dark:text-slate-200 text-xs mt-0.5 truncate">
                         {item.account?.name}
                       </p>
                     </div>
-                    <span className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 shrink-0">
+                    <span className="font-mono font-bold text-xs text-slate-900 dark:text-slate-100 shrink-0 whitespace-nowrap">
                       Rp {Math.round(Number(item.amount)).toLocaleString('id-ID')}
                     </span>
                   </div>
@@ -116,21 +127,21 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse text-xs">
+      <table className="w-full text-left border-collapse text-xs min-w-[960px]">
         <thead>
           <tr className="bg-slate-50 dark:bg-slate-955 border-b border-slate-200/80 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            <th className="p-3.5 w-28">Tanggal</th>
-            <th className="p-3.5 min-w-[220px]">Keterangan Transaksi</th>
-            <th className="p-3.5 w-32 text-center">No. Referensi</th>
-            <th className="p-3.5 min-w-[280px]">Nama Akun (COA)</th>
-            <th className="p-3.5 w-36 text-right">Debit (Rp)</th>
-            <th className="p-3.5 w-36 text-right">Kredit (Rp)</th>
+            <th className="p-3.5 w-28 whitespace-nowrap">Tanggal</th>
+            <th className="p-3.5 w-[280px] max-w-[340px]">Keterangan Transaksi</th>
+            <th className="p-3.5 w-36 text-center whitespace-nowrap">No. Referensi</th>
+            <th className="p-3.5 min-w-[320px]">Nama Akun (COA)</th>
+            <th className="p-3.5 w-36 text-right whitespace-nowrap">Debit (Rp)</th>
+            <th className="p-3.5 w-36 text-right whitespace-nowrap">Kredit (Rp)</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
           {journals.map((journal, jIdx) => {
             const ref = formatAccountingReference(journal.reference);
-            const desc = humanizeAccountingDescription(journal.description);
+            const parsedDesc = parseAccountingDescription(journal.description);
             const itemsCount = journal.items?.length || 1;
             const isEvenVoucher = jIdx % 2 === 0;
 
@@ -138,7 +149,6 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
               <React.Fragment key={journal.id}>
                 {journal.items?.map((item, idx) => {
                   const isFirstRow = idx === 0;
-                  const isLastRow = idx === itemsCount - 1;
 
                   return (
                     <tr 
@@ -153,7 +163,7 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                       {isFirstRow && (
                         <>
                           <td 
-                            className="p-3.5 font-mono text-xs font-semibold text-slate-600 dark:text-slate-400 align-top"
+                            className="p-3.5 font-mono text-xs font-semibold text-slate-600 dark:text-slate-400 align-top whitespace-nowrap"
                             rowSpan={itemsCount}
                           >
                             {new Date(journal.date).toLocaleDateString('id-ID', { 
@@ -167,17 +177,26 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                             className="p-3.5 align-top"
                             rowSpan={itemsCount}
                           >
-                            <p className="font-bold text-xs text-slate-900 dark:text-slate-100 leading-snug">
-                              {desc}
-                            </p>
+                            <div className="space-y-1.5">
+                              {parsedDesc.tag && (
+                                <div>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border ${parsedDesc.tagClass}`}>
+                                    {parsedDesc.tag}
+                                  </span>
+                                </div>
+                              )}
+                              <p className="font-semibold text-xs text-slate-900 dark:text-slate-100 leading-snug break-words">
+                                {parsedDesc.title}
+                              </p>
+                            </div>
                           </td>
 
                           <td 
-                            className="p-3.5 text-center align-top"
+                            className="p-3.5 text-center align-top whitespace-nowrap"
                             rowSpan={itemsCount}
                           >
                             <span 
-                              className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold border shadow-2xs ${ref.badgeClass}`}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border shadow-2xs whitespace-nowrap shrink-0 ${ref.badgeClass}`}
                               title={`Referensi Sistem: ${ref.full}`}
                             >
                               {ref.label}
@@ -189,21 +208,21 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                       {/* Baris Akun dengan Indensasi Standar Akuntansi */}
                       <td className="p-3.5 align-middle">
                         {item.type === 'CREDIT' ? (
-                          <div className="flex items-center gap-2 pl-7 sm:pl-8 text-slate-600 dark:text-slate-300">
-                            <span className="text-indigo-400 dark:text-indigo-500 font-mono text-xs font-bold select-none">↳</span>
-                            <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.2 rounded border border-indigo-200/60 dark:border-indigo-800/60">
+                          <div className="flex items-center gap-2 pl-6 sm:pl-8 text-slate-600 dark:text-slate-300">
+                            <span className="text-indigo-400 dark:text-indigo-500 font-mono text-xs font-bold select-none shrink-0">↳</span>
+                            <span className="font-mono text-[11px] font-bold text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800/60 shrink-0 whitespace-nowrap">
                               {item.account?.code}
                             </span>
-                            <span className="font-medium text-xs text-slate-700 dark:text-slate-300">
+                            <span className="font-medium text-xs text-slate-700 dark:text-slate-300 break-words leading-tight">
                               {item.account?.name}
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-                            <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200/60 dark:border-emerald-800/60">
+                            <span className="font-mono text-[11px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-200/60 dark:border-emerald-800/60 shrink-0 whitespace-nowrap">
                               {item.account?.code}
                             </span>
-                            <span className="text-xs">
+                            <span className="text-xs break-words leading-tight">
                               {item.account?.name}
                             </span>
                           </div>
@@ -211,7 +230,7 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                       </td>
 
                       {/* Nominal Debit (Rata Kanan) */}
-                      <td className="p-3.5 text-right font-mono text-xs align-middle">
+                      <td className="p-3.5 text-right font-mono text-xs align-middle whitespace-nowrap">
                         {item.type === 'DEBIT' ? (
                           <span className="font-bold text-slate-900 dark:text-slate-100">
                             Rp {Math.round(Number(item.amount)).toLocaleString('id-ID')}
@@ -222,7 +241,7 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
                       </td>
 
                       {/* Nominal Kredit (Rata Kanan) */}
-                      <td className="p-3.5 text-right font-mono text-xs align-middle">
+                      <td className="p-3.5 text-right font-mono text-xs align-middle whitespace-nowrap">
                         {item.type === 'CREDIT' ? (
                           <span className="font-bold text-slate-900 dark:text-slate-100">
                             Rp {Math.round(Number(item.amount)).toLocaleString('id-ID')}
@@ -244,3 +263,4 @@ export const JournalTable = React.memo<JournalTableProps>(({ journals }) => {
 });
 
 JournalTable.displayName = 'JournalTable';
+

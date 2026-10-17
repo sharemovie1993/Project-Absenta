@@ -21,8 +21,9 @@ import { coopAccountApi } from '@/api/coopAccount.api';
 import { formatDate } from '@/utils/date.utils';
 import { 
   formatAccountingReference, 
-  humanizeAccountingDescription 
+  parseAccountingDescription 
 } from '@/utils/cooperative/accountingFormatters';
+
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const POPULAR_COOP_ACCOUNTS = [
@@ -131,12 +132,12 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
     {
       label: <div className="text-center w-full">No. Referensi</div>,
       key: 'reference',
-      className: 'w-32 text-center',
+      className: 'w-36 text-center whitespace-nowrap',
       render: (ref: string) => {
         const fRef = formatAccountingReference(ref);
         return (
           <span 
-            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold border shadow-2xs ${fRef.badgeClass}`}
+            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold border shadow-2xs whitespace-nowrap shrink-0 ${fRef.badgeClass}`}
             title={`Referensi Sistem: ${fRef.full}`}
           >
             {fRef.label}
@@ -147,12 +148,24 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
     {
       label: 'Keterangan Transaksi',
       key: 'description',
-      className: 'min-w-[220px]',
-      render: (desc: string) => (
-        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
-          {humanizeAccountingDescription(desc)}
-        </span>
-      ),
+      className: 'min-w-[280px]',
+      render: (desc: string) => {
+        const parsedDesc = parseAccountingDescription(desc);
+        return (
+          <div className="space-y-1 py-0.5">
+            {parsedDesc.tag && (
+              <div>
+                <span className={`inline-flex items-center px-1.5 py-0.2 rounded text-[9px] font-bold tracking-wide uppercase border ${parsedDesc.tagClass}`}>
+                  {parsedDesc.tag}
+                </span>
+              </div>
+            )}
+            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-snug break-words">
+              {parsedDesc.title}
+            </p>
+          </div>
+        );
+      },
     },
     {
       label: <div className="text-right w-full">Debit (Rp)</div>,
@@ -352,24 +365,38 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
                 Belum ada mutasi pembukuan pada rekening {ledger.account.code}.
               </div>
             ) : (
-              ledger.entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2 text-xs"
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-slate-400 font-bold uppercase block">
-                        {formatDate(entry.date)}
+              ledger.entries.map((entry) => {
+                const fRef = formatAccountingReference(entry.reference);
+                const parsedDesc = parseAccountingDescription(entry.description);
+
+                return (
+                  <div
+                    key={entry.id}
+                    className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/60 dark:border-slate-800 space-y-2 text-xs"
+                  >
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase block whitespace-nowrap">
+                            {formatDate(entry.date)}
+                          </span>
+                          {parsedDesc.tag && (
+                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wide border ${parsedDesc.tagClass}`}>
+                              {parsedDesc.tag}
+                            </span>
+                          )}
+                        </div>
+                        <p className="font-bold text-slate-800 dark:text-slate-100 break-words leading-snug">
+                          {parsedDesc.title}
+                        </p>
+                      </div>
+                      <span 
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border font-bold shrink-0 whitespace-nowrap ${fRef.badgeClass}`}
+                        title={fRef.full}
+                      >
+                        {fRef.label}
                       </span>
-                      <p className="font-bold text-slate-800 dark:text-slate-100 truncate mt-0.5">
-                        {entry.description}
-                      </p>
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 bg-slate-200/70 dark:bg-slate-700 rounded-md font-bold text-slate-600 dark:text-slate-300 shrink-0">
-                      {entry.reference}
-                    </span>
-                  </div>
 
                   <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                     <div className="flex gap-2 font-mono font-bold text-[11px]">
@@ -391,8 +418,8 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
                       </span>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         ) : (

@@ -229,14 +229,14 @@ export const TrialBalanceSection: React.FC<TrialBalanceSectionProps> = React.mem
       {/* ─── TABEL RESMI NERACA SALDO SAK ETAP ─── */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-left border-collapse text-xs min-w-[850px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-955 border-b border-slate-200 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                <th className="p-4 w-32">Kode Akun</th>
-                <th className="p-4 min-w-[260px]">Nama Akun (Bagan Akun)</th>
-                <th className="p-4 w-36">Klasifikasi</th>
-                <th className="p-4 w-44 text-right">Debit (Rp)</th>
-                <th className="p-4 w-44 text-right">Kredit (Rp)</th>
+                <th className="p-4 w-32 whitespace-nowrap">Kode Akun</th>
+                <th className="p-4 min-w-[280px]">Nama Akun (Bagan Akun)</th>
+                <th className="p-4 w-36 whitespace-nowrap">Klasifikasi</th>
+                <th className="p-4 w-44 text-right whitespace-nowrap">Debit (Rp)</th>
+                <th className="p-4 w-44 text-right whitespace-nowrap">Kredit (Rp)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -264,18 +264,18 @@ export const TrialBalanceSection: React.FC<TrialBalanceSectionProps> = React.mem
                         isEven ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/40 dark:bg-slate-900/40'
                       }`}
                     >
-                      <td className="p-4 font-mono font-bold text-xs text-indigo-700 dark:text-indigo-400">
+                      <td className="p-4 font-mono font-bold text-xs text-indigo-700 dark:text-indigo-400 whitespace-nowrap">
                         {account.code}
                       </td>
-                      <td className="p-4 font-bold text-xs text-slate-900 dark:text-slate-100">
+                      <td className="p-4 font-bold text-xs text-slate-900 dark:text-slate-100 break-words leading-snug">
                         {account.name}
                       </td>
-                      <td className="p-4">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${typeMeta.badgeClass}`}>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border whitespace-nowrap ${typeMeta.badgeClass}`}>
                           {typeMeta.label}
                         </span>
                       </td>
-                      <td className="p-4 text-right font-mono text-xs">
+                      <td className="p-4 text-right font-mono text-xs whitespace-nowrap">
                         {account.debit > 0 ? (
                           <span className="font-bold text-slate-900 dark:text-slate-100">
                             Rp {Math.round(account.debit).toLocaleString('id-ID')}
@@ -284,7 +284,7 @@ export const TrialBalanceSection: React.FC<TrialBalanceSectionProps> = React.mem
                           <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
                         )}
                       </td>
-                      <td className="p-4 text-right font-mono text-xs">
+                      <td className="p-4 text-right font-mono text-xs whitespace-nowrap">
                         {account.credit > 0 ? (
                           <span className="font-bold text-slate-900 dark:text-slate-100">
                             Rp {Math.round(account.credit).toLocaleString('id-ID')}

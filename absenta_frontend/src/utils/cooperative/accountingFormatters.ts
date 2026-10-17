@@ -137,3 +137,48 @@ export function humanizeAccountingDescription(desc?: string | null): string {
     .replace(/\[BKK\]/gi, '[Kas Keluar]')
     .replace(/\[TRF\]/gi, '[Pindah Kas]');
 }
+
+export interface ParsedAccountingDescription {
+  tag?: string;
+  tagClass?: string;
+  title: string;
+}
+
+/**
+ * Pisahkan tag kurung siku [Penyesuaian] dsb dari judul transaksi agar dapat dirender rapi sebagai badge terpisah
+ */
+export function parseAccountingDescription(desc?: string | null): ParsedAccountingDescription {
+  const humanized = humanizeAccountingDescription(desc);
+  if (!humanized || humanized === '-') {
+    return { title: '-' };
+  }
+
+  const match = humanized.match(/^\[(.*?)\]\s*(.*)$/);
+  if (match) {
+    const rawTag = match[1].trim();
+    const title = match[2].trim() || rawTag;
+    const lower = rawTag.toLowerCase();
+
+    let tagClass = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    if (lower.includes('penyesuaian') || lower.includes('ajp')) {
+      tagClass = 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/80';
+    } else if (lower.includes('kas masuk') || lower.includes('bkm') || lower.includes('setoran')) {
+      tagClass = 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/80';
+    } else if (lower.includes('kas keluar') || lower.includes('bkk') || lower.includes('penarikan')) {
+      tagClass = 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200/80 dark:border-rose-800/80';
+    } else if (lower.includes('pindah kas') || lower.includes('trf') || lower.includes('transfer')) {
+      tagClass = 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/80';
+    } else if (lower.includes('pinjaman') || lower.includes('cair') || lower.includes('angsuran')) {
+      tagClass = 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200/80 dark:border-purple-800/80';
+    }
+
+    return {
+      tag: rawTag,
+      tagClass,
+      title: title || rawTag,
+    };
+  }
+
+  return { title: humanized };
+}
+
