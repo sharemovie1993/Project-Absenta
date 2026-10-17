@@ -25,7 +25,9 @@ import {
   TrendingUp,
   Info,
   Folder,
-  CornerDownRight
+  CornerDownRight,
+  Lock,
+  Unlock
 } from 'lucide-react';
 import { 
   coopSetupApi, 
@@ -148,6 +150,40 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
     if (Array.isArray(accountsData)) return accountsData;
     return [];
   }, [accountsData]);
+
+  // Step 3: Penguncian kolom cerdas otomatis untuk non-akuntan (Anti-Salah Input)
+  const [strictSideLock, setStrictSideLock] = useState<boolean>(true);
+
+  const getAccountNormalSide = (acc: AccountNode): 'DEBIT' | 'CREDIT' => {
+    // Akun kontra aset (seperti Akumulasi Penyusutan) normalnya berada di Kredit
+    if (acc.code === '1520' || acc.name.toLowerCase().includes('akumulasi penyusutan')) {
+      return 'CREDIT';
+    }
+    if (acc.type === 'ASSET' || acc.type === 'EXPENSE') {
+      return 'DEBIT';
+    }
+    return 'CREDIT';
+  };
+
+  const handleToggleStrictLock = () => {
+    setStrictSideLock(prev => {
+      const nextVal = !prev;
+      if (nextVal) {
+        // Jika kembali dikunci, reset nilai yang tidak sengaja terisi di kolom terlarang
+        setJournalEntries(entries => entries.map(entry => {
+          const acc = accountList.find(a => a.id === entry.account_id);
+          if (!acc) return entry;
+          const normalSide = getAccountNormalSide(acc);
+          return {
+            ...entry,
+            debit: normalSide === 'CREDIT' ? 0 : entry.debit,
+            credit: normalSide === 'DEBIT' ? 0 : entry.credit,
+          };
+        }));
+      }
+      return nextVal;
+    });
+  };
 
   // Guard agar refetch status di background TIDAK otomatis melompati step yang sedang aktif
   const hasInitializedStepRef = React.useRef(false);
@@ -1050,21 +1086,47 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
               {/* Panduan Ramah Non-Akuntan */}
               <div className="p-2.5 sm:p-3 bg-amber-50/90 dark:bg-amber-950/25 border border-amber-200/80 dark:border-amber-800/60 rounded-xl text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs">
                 <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-slate-900 dark:text-slate-100 text-[11.5px] sm:text-xs">
-                    💡 Petunjuk Praktis: Cukup Isi 1 Sisi Saja per Baris Akun (Jangan Dua-Duanya)
-                  </p>
+                <div className="space-y-1.5 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                    <p className="font-bold text-slate-900 dark:text-slate-100 text-[11.5px] sm:text-xs">
+                      💡 Petunjuk Praktis: 1 Akun = 1 Sisi Saja (Kolom Lawan Dikunci Otomatis)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleToggleStrictLock}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-semibold transition-all border shrink-0 w-fit ${
+                        strictSideLock
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
+                          : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                      }`}
+                      title="Klik untuk membuka/mengunci kolom berlawanan"
+                    >
+                      {strictSideLock ? (
+                        <>
+                          <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <span>Kolom Lawan Terkunci (Aman)</span>
+                        </>
+                      ) : (
+                        <>
+                          <Unlock className="w-3 h-3 text-slate-500" />
+                          <span>Mode Bebas (Buka Semua)</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
-                    Anda <strong>TIDAK PERLU</strong> mengisi kolom Debit dan Kredit sekaligus pada baris yang sama. Cukup isi di <strong>salah satu kolom saja</strong> sesuai petunjuk lencana di bawah nama akun:
+                    {strictSideLock
+                      ? 'Kolom berlawanan yang tidak sesuai standar SAK ETAP sudah kami kunci otomatis (tanda —) agar Anda tidak perlu pusing memilih kolom dan terhindar dari salah ketik.'
+                      : 'Mode Bebas aktif: Seluruh kolom Debit dan Kredit terbuka untuk pengeditan manual.'}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 pt-0.5 text-[10.5px]">
                     <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
-                      <strong className="text-sky-700 dark:text-sky-400 font-bold">📥 Kolom DEBIT (Harta / Ada di Mana):</strong>
-                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Uang tunai brankas kas (1010), saldo rekening bank (1011), uang pinjaman yang masih dibawa anggota (1020), atau persediaan toko.</span>
+                      <strong className="text-sky-700 dark:text-sky-400 font-bold">📥 Kolom DEBIT (Harta / Kas / Bank):</strong>
+                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Uang kas di brankas (1010), rekening bank (1011), pinjaman anggota (1020), persediaan toko (1030).</span>
                     </div>
                     <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
-                      <strong className="text-purple-700 dark:text-purple-400 font-bold">📤 Kolom KREDIT (Modal / Milik Siapa):</strong>
-                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Simpanan pokok (3011), simpanan wajib (3012), titipan simpanan sukarela (2011), atau cadangan modal koperasi.</span>
+                      <strong className="text-purple-700 dark:text-purple-400 font-bold">📤 Kolom KREDIT (Modal / Simpanan):</strong>
+                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Simpanan pokok (2011/3011), simpanan wajib (2012/3012), tabungan sukarela (2010), cadangan modal.</span>
                     </div>
                   </div>
                 </div>
@@ -1091,6 +1153,10 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                     {journalEntries.map(entry => {
                       const acc = accountList.find(a => a.id === entry.account_id);
                       if (!acc) return null;
+                      const normalSide = getAccountNormalSide(acc);
+                      const isDebitLocked = strictSideLock && normalSide === 'CREDIT';
+                      const isCreditLocked = strictSideLock && normalSide === 'DEBIT';
+
                       return (
                         <tr key={entry.account_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                           <td className="px-2 sm:px-3 py-1.5 font-mono text-indigo-600 dark:text-indigo-400 font-semibold text-[11px] sm:text-xs whitespace-nowrap">
@@ -1099,7 +1165,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                           <td className="px-2 sm:px-3 py-1.5">
                             <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs line-clamp-1 sm:line-clamp-none">{acc.name}</span>
                             <div className="mt-0.5">
-                              {acc.type === 'ASSET' ? (
+                              {normalSide === 'DEBIT' ? (
                                 <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-800/50 px-1.5 py-0.2 rounded">
                                   📥 Isi di Debit (Aset/Harta)
                                 </span>
@@ -1107,34 +1173,52 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                                 <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-800/50 px-1.5 py-0.2 rounded">
                                   📤 Isi di Kredit (Titipan/Hutang)
                                 </span>
-                              ) : acc.type === 'EQUITY' ? (
+                              ) : (
                                 <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/70 dark:border-purple-800/50 px-1.5 py-0.2 rounded">
                                   💎 Isi di Kredit (Modal/Simpanan)
                                 </span>
-                              ) : (
-                                <span className="text-[9px] text-slate-400">{acc.type}</span>
                               )}
                             </div>
                           </td>
                           <td className="px-1.5 sm:px-3 py-1.5">
-                            <input
-                              type="number"
-                              min="0"
-                              value={entry.debit === 0 ? '' : entry.debit}
-                              placeholder="0"
-                              onChange={(e) => handleEntryChange(entry.account_id, 'debit', Number(e.target.value))}
-                              className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
-                            />
+                            {isDebitLocked ? (
+                              <div
+                                title="Kolom Debit dikunci karena akun ini normalnya di sisi Kredit"
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-900/40 text-center font-mono text-slate-400 dark:text-slate-600 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
+                              >
+                                <Lock className="w-2.5 h-2.5 opacity-40 shrink-0" />
+                                <span>—</span>
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="0"
+                                value={entry.debit === 0 ? '' : entry.debit}
+                                placeholder="0"
+                                onChange={(e) => handleEntryChange(entry.account_id, 'debit', Number(e.target.value))}
+                                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
+                              />
+                            )}
                           </td>
                           <td className="px-1.5 sm:px-3 py-1.5">
-                            <input
-                              type="number"
-                              min="0"
-                              value={entry.credit === 0 ? '' : entry.credit}
-                              placeholder="0"
-                              onChange={(e) => handleEntryChange(entry.account_id, 'credit', Number(e.target.value))}
-                              className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
-                            />
+                            {isCreditLocked ? (
+                              <div
+                                title="Kolom Kredit dikunci karena akun ini normalnya di sisi Debit"
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-900/40 text-center font-mono text-slate-400 dark:text-slate-600 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
+                              >
+                                <Lock className="w-2.5 h-2.5 opacity-40 shrink-0" />
+                                <span>—</span>
+                              </div>
+                            ) : (
+                              <input
+                                type="number"
+                                min="0"
+                                value={entry.credit === 0 ? '' : entry.credit}
+                                placeholder="0"
+                                onChange={(e) => handleEntryChange(entry.account_id, 'credit', Number(e.target.value))}
+                                className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
+                              />
+                            )}
                           </td>
                         </tr>
                       );
