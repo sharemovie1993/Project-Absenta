@@ -302,6 +302,18 @@ export function useScoreSheetManager({
           sumatif_3: s.sumatif_3 !== null && s.sumatif_3 !== '' ? Number(s.sumatif_3) : null,
           sumatif_akhir: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
           nilai_akhir_sumatif: s.sumatif_akhir !== null && s.sumatif_akhir !== '' ? Number(s.sumatif_akhir) : null,
+          nilai_rapor_final:
+            s.nilai_rapor_final !== null && s.nilai_rapor_final !== '' && s.nilai_rapor_final !== undefined
+              ? Number(s.nilai_rapor_final)
+              : s.nilai !== null && s.nilai !== '' && s.nilai !== undefined
+              ? Number(s.nilai)
+              : null,
+          nilai:
+            s.nilai !== null && s.nilai !== '' && s.nilai !== undefined
+              ? Number(s.nilai)
+              : s.nilai_rapor_final !== null && s.nilai_rapor_final !== '' && s.nilai_rapor_final !== undefined
+              ? Number(s.nilai_rapor_final)
+              : null,
           deskripsi_cp: s.deskripsi_cp || '',
           capaian_kompetensi: s.deskripsi_cp || '',
           catatan_deskripsi: s.deskripsi_cp || '',

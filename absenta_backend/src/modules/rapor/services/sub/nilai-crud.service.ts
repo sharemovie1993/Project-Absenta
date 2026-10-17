@@ -174,9 +174,30 @@ export class NilaiCrudService {
         capaian_kompetensi?: string | null;
         deskripsi_cp?: string | null;
         catatan_deskripsi?: string | null;
+        nilai_rapor_final?: number | null;
+        nilai?: number | null;
       }>;
     }
   ) {
+    // 1. Cek otoritas pengaturan sumber nilai rapor (MURNI_CP_MANUAL vs FORMULA_SUMATIF)
+    const [tpSumberCfg, globalSumberCfg, tp] = await Promise.all([
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${data.tahun_pelajaran_id}` },
+      }),
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' },
+      }),
+      prisma.tahunPelajaran.findFirst({
+        where: { id: data.tahun_pelajaran_id, tenant_id: tenantId },
+      }),
+    ]);
+
+    const startYear = parseInt((tp?.tahun || '').split('/')[0].trim(), 10) || 2024;
+    const defaultMode = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    const activeSumberNilai = (tpSumberCfg?.value || globalSumberCfg?.value || defaultMode) as
+      | 'FORMULA_SUMATIF'
+      | 'MURNI_CP_MANUAL';
+
     const operations = data.scores.map((item) => {
       // Calculate Rata-rata Sumatif
       const sumatifList = [item.sumatif_1, item.sumatif_2, item.sumatif_3].filter(
@@ -195,15 +216,21 @@ export class NilaiCrudService {
       // Read Capaian Kompetensi / CP Text (support aliases)
       const cpText = item.capaian_kompetensi ?? item.deskripsi_cp ?? item.catatan_deskripsi ?? undefined;
 
-      // Calculate Nilai Rapor Final = (Rata-rata Sumatif + Nilai Akhir) / 2
+      // Hitung Nilai Rapor Final sesuai Otoritas Pengaturan Rapor
       let nilaiRaporFinal: number | null = null;
 
-      if (rataRataSumatif !== null && nilaiAkhir !== undefined && nilaiAkhir !== null) {
-        nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
-      } else if (nilaiAkhir !== undefined && nilaiAkhir !== null) {
-        nilaiRaporFinal = nilaiAkhir;
-      } else if (rataRataSumatif !== null) {
-        nilaiRaporFinal = rataRataSumatif;
+      if (activeSumberNilai === 'MURNI_CP_MANUAL') {
+        // MURNI CP MANUAL: Utamakan nilai rapor murni yang dikirim atau nilai manual guru (bebas rumus)
+        nilaiRaporFinal = item.nilai_rapor_final ?? item.nilai ?? nilaiAkhir ?? rataRataSumatif ?? null;
+      } else {
+        // FORMULA SUMATIF: (Rata-rata Sumatif + Nilai Akhir) / 2
+        if (rataRataSumatif !== null && nilaiAkhir !== undefined && nilaiAkhir !== null) {
+          nilaiRaporFinal = Number(((rataRataSumatif + nilaiAkhir) / 2).toFixed(2));
+        } else if (nilaiAkhir !== undefined && nilaiAkhir !== null) {
+          nilaiRaporFinal = nilaiAkhir;
+        } else if (rataRataSumatif !== null) {
+          nilaiRaporFinal = rataRataSumatif;
+        }
       }
 
       const mainNilai = nilaiRaporFinal ?? 0;
@@ -223,8 +250,7 @@ export class NilaiCrudService {
           sumatif_3: item.sumatif_3 ?? null,
           rata_rata_sumatif: rataRataSumatif,
           nilai_akhir_sumatif: nilaiAkhir,
-          nilai_rapor_final: nilaiRaporFinal,
-          nilai: mainNilai,
+          ...(nilaiRaporFinal !== null ? { nilai_rapor_final: nilaiRaporFinal, nilai: mainNilai } : {}),
           ...(cpText !== undefined
             ? { capaian_kompetensi: cpText, catatan_deskripsi: cpText }
             : {}),
