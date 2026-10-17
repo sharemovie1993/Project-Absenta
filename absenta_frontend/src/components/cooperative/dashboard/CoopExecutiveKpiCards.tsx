@@ -6,20 +6,24 @@ import type { CoopManagementStats } from './types';
 export const formatRupiahCompact = (amount: number | string | undefined | null): string => {
   const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount || 0);
   if (isNaN(num) || num === 0) return 'Rp 0';
+  const isNegative = num < 0;
   const abs = Math.abs(num);
+  const prefix = isNegative ? '-Rp ' : 'Rp ';
   if (abs >= 1_000_000_000) {
-    return `Rp ${(num / 1_000_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} M`;
+    return `${prefix}${(abs / 1_000_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} M`;
   }
   if (abs >= 1_000_000) {
-    return `Rp ${(num / 1_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} Jt`;
+    return `${prefix}${(abs / 1_000_000).toLocaleString('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} Jt`;
   }
-  return `Rp ${Math.round(num).toLocaleString('id-ID')}`;
+  return `${prefix}${Math.round(abs).toLocaleString('id-ID')}`;
 };
 
 export const formatRupiahFull = (amount: number | string | undefined | null): string => {
   const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount || 0);
-  if (isNaN(num)) return 'Rp 0';
-  return `Rp ${Math.round(num).toLocaleString('id-ID')}`;
+  if (isNaN(num) || num === 0) return 'Rp 0';
+  const isNegative = num < 0;
+  const abs = Math.abs(num);
+  return `${isNegative ? '-Rp ' : 'Rp '}${Math.round(abs).toLocaleString('id-ID')}`;
 };
 
 interface CoopExecutiveKpiCardsProps {

@@ -137,33 +137,63 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
       >
         <div className="p-4 sm:p-5 space-y-3.5">
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Kas Tunai
-              </span>
+            <div className={cn(
+              "p-3 rounded-2xl border transition-colors",
+              cashBalance < 0 
+                ? "bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50" 
+                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-800"
+            )}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Kas Tunai
+                </span>
+                {cashBalance < 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">
+                    Defisit
+                  </span>
+                )}
+              </div>
               <span 
                 title={formatRupiahFull(cashBalance)}
-                className="font-mono font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400 truncate block cursor-help"
+                className={cn(
+                  "font-mono font-black text-sm sm:text-base truncate block cursor-help",
+                  cashBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
+                )}
               >
                 {formatRupiahCompact(cashBalance)}
               </span>
               <span className="text-[9px] text-slate-400 block mt-0.5">
-                Brankas fisik (1010)
+                {cashBalance < 0 ? "Kas minus di buku besar (1010)" : "Brankas fisik (1010)"}
               </span>
             </div>
 
-            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Kas Bank
-              </span>
+            <div className={cn(
+              "p-3 rounded-2xl border transition-colors",
+              bankBalance < 0 
+                ? "bg-rose-50/60 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50" 
+                : "bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-800"
+            )}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Kas Bank
+                </span>
+                {bankBalance < 0 && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300">
+                    Defisit
+                  </span>
+                )}
+              </div>
               <span 
                 title={formatRupiahFull(bankBalance)}
-                className="font-mono font-black text-sm sm:text-base text-blue-600 dark:text-blue-400 truncate block cursor-help"
+                className={cn(
+                  "font-mono font-black text-sm sm:text-base truncate block cursor-help",
+                  bankBalance < 0 ? "text-rose-600 dark:text-rose-400" : "text-blue-600 dark:text-blue-400"
+                )}
               >
                 {formatRupiahCompact(bankBalance)}
               </span>
               <span className="text-[9px] text-slate-400 block mt-0.5">
-                Rekening bank (1011)
+                {bankBalance < 0 ? "Rekening minus di buku besar (1011)" : "Rekening bank (1011)"}
               </span>
             </div>
           </div>
@@ -174,7 +204,10 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
               <span className="text-slate-700 dark:text-slate-300 truncate">
                 Total Kas & Bank:
               </span>
-              <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 shrink-0">
+              <span className={cn(
+                "font-mono font-extrabold shrink-0",
+                totalCashBank < 0 ? "text-rose-600 dark:text-rose-400" : "text-slate-900 dark:text-slate-100"
+              )}>
                 {formatRupiahCompact(totalCashBank)}
               </span>
             </div>
