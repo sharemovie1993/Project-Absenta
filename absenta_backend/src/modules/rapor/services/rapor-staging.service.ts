@@ -241,9 +241,13 @@ export class RaporStagingService {
       }
     }
 
-    // Ekstraksi jurusan dari nama kelas (misal: "X AKL 1" -> "AKL", "XI TKJ 2" -> "TKJ")
-    const classJurusanMatch = (namaKelas || '').match(/\b(AKL|AK|KUL|PHT|HTL|TAV|TKJ|TKR|TOI|TP|TSM)\b/i);
-    const detectedJurusan = classJurusanMatch ? classJurusanMatch[1].toUpperCase() : '';
+    // Ekstraksi jurusan dari nama kelas (misal: "X AKL 1" -> "AKL", "X TM 3" -> "TM", "XI TKJ 2" -> "TKJ")
+    const classJurusanMatch = (namaKelas || '').match(
+      /\b(AKL|AK|KUL|PHT|HTL|TAV|TKJ|TJKT|TKR|TOI|TP|TM|TSM|TE|TO|PPLG|RPL)\b/i
+    );
+    let detectedJurusan = classJurusanMatch ? classJurusanMatch[1].toUpperCase() : '';
+    if (detectedJurusan === 'TJKT') detectedJurusan = 'TKJ';
+    if (detectedJurusan === 'PPLG') detectedJurusan = 'RPL';
 
     // 2. Pencocokan Cerdas & Kontekstual per Mapel
     // A. PAI / Agama / Budi Pekerti
@@ -252,7 +256,7 @@ export class RaporStagingService {
         (m) =>
           m.nama_mapel.toLowerCase().includes('agama') ||
           m.nama_mapel.toLowerCase().includes('budi pekerti') ||
-          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('pai'))
+          (m.kode_mapel && m.kode_mapel.toLowerCase().startsWith('pai'))
       );
       if (found) return found;
     }
@@ -281,31 +285,50 @@ export class RaporStagingService {
     // D. KK / Konsentrasi Keahlian (Contextual by Jurusan)
     if (clean === 'kk' || clean.includes('kons. keahlian') || clean.includes('konsentrasi keahlian')) {
       if (detectedJurusan) {
-        const found = mapelList.find((m) => {
-          const nm = m.nama_mapel.toUpperCase();
-          const kd = (m.kode_mapel || '').toUpperCase();
-          return nm === `KK ${detectedJurusan}` || kd === `KK${detectedJurusan}` || nm.includes(`KK ${detectedJurusan}`);
-        });
-        if (found) return found;
+        const altJurusans =
+          detectedJurusan === 'TM' ? ['TP', 'TM'] :
+          detectedJurusan === 'TP' ? ['TP', 'TM'] :
+          detectedJurusan === 'AKL' ? ['AKL', 'AK'] :
+          detectedJurusan === 'PHT' ? ['PHT', 'HTL'] :
+          detectedJurusan === 'TE' ? ['TOI', 'TAV'] :
+          detectedJurusan === 'TO' ? ['TSM', 'TKR'] :
+          [detectedJurusan];
+
+        for (const j of altJurusans) {
+          const found = mapelList.find((m) => {
+            const nm = m.nama_mapel.toUpperCase();
+            const kd = (m.kode_mapel || '').toUpperCase();
+            return nm === `KK ${j}` || kd === `KK${j}` || nm.includes(`KK ${j}`);
+          });
+          if (found) return found;
+        }
       }
     }
 
     // E. Mapel Pilihan / MPP (Contextual by Jurusan)
     if (clean.includes('pilihan') || clean.startsWith('mpp')) {
       if (detectedJurusan) {
-        const altJurusan = detectedJurusan === 'AKL' ? 'AK' : detectedJurusan === 'PHT' ? 'HTL' : detectedJurusan;
-        const found = mapelList.find((m) => {
-          const nm = m.nama_mapel.toUpperCase();
-          const kd = (m.kode_mapel || '').toUpperCase();
-          return (
-            nm.includes(`MPP ${detectedJurusan}`) ||
-            nm.includes(`MPP ${altJurusan}`) ||
-            kd.includes(`MPP${detectedJurusan}`) ||
-            kd.includes(`MPP${altJurusan}`) ||
-            nm.includes(`PILIHAN ${detectedJurusan}`)
-          );
-        });
-        if (found) return found;
+        const altJurusans =
+          detectedJurusan === 'TM' ? ['TP', 'TM'] :
+          detectedJurusan === 'TP' ? ['TP', 'TM'] :
+          detectedJurusan === 'AKL' ? ['AK', 'AKL'] :
+          detectedJurusan === 'PHT' ? ['HTL', 'PHT'] :
+          detectedJurusan === 'TE' ? ['TOI', 'TAV'] :
+          detectedJurusan === 'TO' ? ['TSM', 'TKR'] :
+          [detectedJurusan];
+
+        for (const j of altJurusans) {
+          const found = mapelList.find((m) => {
+            const nm = m.nama_mapel.toUpperCase();
+            const kd = (m.kode_mapel || '').toUpperCase();
+            return (
+              nm.includes(`MPP ${j}`) ||
+              kd.includes(`MPP${j}`) ||
+              nm.includes(`PILIHAN ${j}`)
+            );
+          });
+          if (found) return found;
+        }
       }
     }
 
@@ -316,17 +339,38 @@ export class RaporStagingService {
       clean.includes('dasar-dasar program keahlian')
     ) {
       if (detectedJurusan) {
-        const found = mapelList.find((m) => {
-          const nm = m.nama_mapel.toUpperCase();
-          const kd = (m.kode_mapel || '').toUpperCase();
-          return (
-            nm === `DDPK ${detectedJurusan}` ||
-            kd === `DDPK${detectedJurusan}` ||
-            nm.includes(`DDPK ${detectedJurusan}`)
-          );
-        });
-        if (found) return found;
+        const altJurusans =
+          detectedJurusan === 'TM' ? ['TM', 'TP'] :
+          detectedJurusan === 'TP' ? ['TP', 'TM'] :
+          detectedJurusan === 'AKL' ? ['AKL', 'AK'] :
+          detectedJurusan === 'PHT' ? ['PHT', 'HTL'] :
+          detectedJurusan === 'TE' ? ['TOI', 'TAV', 'TE'] :
+          detectedJurusan === 'TO' ? ['TSM', 'TKR', 'TO'] :
+          [detectedJurusan];
+
+        for (const j of altJurusans) {
+          const found = mapelList.find((m) => {
+            const nm = m.nama_mapel.toUpperCase();
+            const kd = (m.kode_mapel || '').toUpperCase();
+            return (
+              nm === `DDPK ${j}` ||
+              kd === `DDPK${j}` ||
+              nm.includes(`DDPK ${j}`) ||
+              kd.includes(`DDPK${j}`)
+            );
+          });
+          if (found) return found;
+        }
       }
+
+      // Fallback mapel generic DDPK
+      const genericFound = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('dasar-dasar program keahlian') ||
+          m.nama_mapel.toLowerCase().includes('dasar program keahlian') ||
+          (m.kode_mapel && m.kode_mapel.toLowerCase().startsWith('ddpk'))
+      );
+      if (genericFound) return genericFound;
     }
 
     // G. PKK / Kewirausahaan
@@ -339,14 +383,36 @@ export class RaporStagingService {
       if (found) return found;
     }
 
-    // H. PKN / Pancasila
-    if (clean === 'pkn' || clean.includes('pancasila')) {
-      const found = mapelList.find(
-        (m) =>
-          m.nama_mapel.toLowerCase().includes('pancasila') ||
-          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('pp'))
-      );
-      if (found) return found;
+    // H. PKN / Pancasila / Kewarganegaraan
+    if (
+      clean === 'pkn' ||
+      clean === 'ppkn' ||
+      clean.includes('pancasila') ||
+      clean.includes('kewarganegaraan') ||
+      clean === 'pp'
+    ) {
+      // 1. Utamakan pencocokan nama mapel
+      const foundByName = mapelList.find((m) => {
+        const nm = m.nama_mapel.toLowerCase();
+        return nm.includes('pancasila') || nm.includes('kewarganegaraan') || nm === 'pkn' || nm === 'ppkn';
+      });
+      if (foundByName) return foundByName;
+
+      // 2. Pencocokan kode mapel (harus presisi kode PP / PKN, BUKAN MPP atau PPLG)
+      const foundByCode = mapelList.find((m) => {
+        if (!m.kode_mapel) return false;
+        const kd = m.kode_mapel.toLowerCase().trim();
+        return (
+          kd === 'pp' ||
+          kd === 'pkn' ||
+          kd === 'ppkn' ||
+          kd.startsWith('pp-') ||
+          kd.startsWith('pp_') ||
+          kd.startsWith('pkn-') ||
+          kd.startsWith('pkn_')
+        );
+      });
+      if (foundByCode) return foundByCode;
     }
 
     // I. Bahasa Indonesia
