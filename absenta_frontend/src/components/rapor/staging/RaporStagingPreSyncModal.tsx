@@ -23,7 +23,11 @@ export interface RaporStagingPreSyncModalProps {
   onClose: () => void;
   report: RaporPreSyncReport | null;
   isLoading: boolean;
-  onConfirmSync: (autoProvision: boolean, customMapping?: Record<string, string>) => void;
+  onConfirmSync: (
+    autoProvision: boolean,
+    customMapping?: Record<string, string>,
+    sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'
+  ) => void;
   isSyncing: boolean;
 }
 
@@ -40,6 +44,14 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
     const [autoProvision, setAutoProvision] = useState(true);
     const [showUnmatchedList, setShowUnmatchedList] = useState(false);
     const [showMapelSettings, setShowMapelSettings] = useState(false);
+    const [sumberNilaiRapor, setSumberNilaiRapor] = useState<'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'>('FORMULA_SUMATIF');
+
+    // Inisialisasi sumber nilai dari laporan pre-sync
+    useEffect(() => {
+      if (report?.sumberNilaiRapor) {
+        setSumberNilaiRapor(report.sumberNilaiRapor);
+      }
+    }, [report]);
 
     // State mapping manual: { [rawName]: mapelId | 'IGNORE' }
     const [manualMapping, setManualMapping] = useState<Record<string, string>>({});
@@ -76,8 +88,8 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
     }, [detectedSubjects, manualMapping]);
 
     const handleConfirm = useCallback(() => {
-      onConfirmSync(autoProvision, manualMapping);
-    }, [autoProvision, manualMapping, onConfirmSync]);
+      onConfirmSync(autoProvision, manualMapping, sumberNilaiRapor);
+    }, [autoProvision, manualMapping, sumberNilaiRapor, onConfirmSync]);
 
     if (!isOpen) return null;
 
@@ -365,6 +377,65 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* ── Slot Otoritas Sumber Nilai Rapor ── */}
+              <div className="p-3 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-indigo-600" aria-hidden="true" />
+                    Otoritas Penentu Nilai Rapor
+                  </span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px] font-bold px-2 py-0.5',
+                      sumberNilaiRapor === 'MURNI_CP_MANUAL'
+                        ? 'border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30'
+                        : 'border-indigo-300 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30'
+                    )}
+                  >
+                    {sumberNilaiRapor === 'MURNI_CP_MANUAL' ? 'MURNI SHEET CP' : 'FORMULA SUMATIF'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setSumberNilaiRapor('FORMULA_SUMATIF')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between',
+                      sumberNilaiRapor === 'FORMULA_SUMATIF'
+                        ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-semibold ring-1 ring-indigo-500/30'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="font-bold">⚡ Hitung Formula Sumatif</span>
+                      {sumberNilaiRapor === 'FORMULA_SUMATIF' && <Check size={13} className="text-indigo-600" />}
+                    </div>
+                    <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                      Rerata sumatif materi standar Kurikulum Merdeka
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSumberNilaiRapor('MURNI_CP_MANUAL')}
+                    className={cn(
+                      'p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between',
+                      sumberNilaiRapor === 'MURNI_CP_MANUAL'
+                        ? 'border-amber-600 bg-amber-50/60 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100 font-semibold ring-1 ring-amber-500/30'
+                        : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400'
+                    )}
+                  >
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className="font-bold">📝 Murni Lembar CP (Manual Guru)</span>
+                      {sumberNilaiRapor === 'MURNI_CP_MANUAL' && <Check size={13} className="text-amber-600" />}
+                    </div>
+                    <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400">
+                      Ambil angka lembar CP apa adanya (Jamin nilai cetak fisik &amp; SKL)
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* ── Footer Aksi ── */}

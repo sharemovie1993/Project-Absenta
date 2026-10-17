@@ -949,6 +949,7 @@ export class RaporService {
       kokurikulerTpCfg,
       sumatifArchiveTpCfg,
       modeCetakTpCfg,
+      sumberNilaiTpCfg,
       // Format (Global Fallback)
       kertasGlobalCfg,
       kopGlobalCfg,
@@ -956,6 +957,7 @@ export class RaporService {
       kokurikulerGlobalCfg,
       sumatifArchiveGlobalCfg,
       modeCetakGlobalCfg,
+      sumberNilaiGlobalCfg,
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
@@ -984,6 +986,7 @@ export class RaporService {
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SHOW_KOKURIKULER_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_MODE_CETAK_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${tpId}` } }) : null,
       // Format (Global Fallback)
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
@@ -991,6 +994,7 @@ export class RaporService {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_ENABLE_SUMATIF_ARCHIVE' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_MODE_CETAK' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' } }),
     ]);
 
     const resolvedUkuranKertas = (kertasTpCfg?.value || kertasGlobalCfg?.value || 'A4') as 'A4' | 'F4';
@@ -1026,6 +1030,16 @@ export class RaporService {
       resolvedModeCetakRapor = (startYear === 2023 || startYear === 2024) ? 'SUMATIF_AND_CP' : 'CP_ONLY';
     }
 
+    let resolvedSumberNilaiRapor: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+    if (sumberNilaiTpCfg?.value) {
+      resolvedSumberNilaiRapor = sumberNilaiTpCfg.value as any;
+    } else if (sumberNilaiGlobalCfg?.value) {
+      resolvedSumberNilaiRapor = sumberNilaiGlobalCfg.value as any;
+    } else {
+      // Smart Academic Default: <= 2023 adalah rapor legacy manual -> MURNI_CP_MANUAL
+      resolvedSumberNilaiRapor = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    }
+
     return {
       tahun_pelajaran_id: tpId || null,
       semester_id: semId || null,
@@ -1056,6 +1070,7 @@ export class RaporService {
       tampilkan_kokurikuler: resolvedTampilkanKokurikuler,
       aktifkan_sumatif_arsip: resolvedAktifkanSumatifArsip,
       mode_cetak_rapor: resolvedModeCetakRapor,
+      sumber_nilai_rapor: resolvedSumberNilaiRapor,
     };
   }
 
@@ -1090,6 +1105,7 @@ export class RaporService {
       tampilkan_kokurikuler?: boolean;
       aktifkan_sumatif_arsip?: boolean;
       mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+      sumber_nilai_rapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
     }
   ) {
     const tpId = payload.tahun_pelajaran_id;
@@ -1200,6 +1216,9 @@ export class RaporService {
       if (payload.mode_cetak_rapor !== undefined) {
         await this.updateConfig(tenantId, `RAPOR_MODE_CETAK_${tpId}`, payload.mode_cetak_rapor);
       }
+      if (payload.sumber_nilai_rapor !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_SUMBER_NILAI_${tpId}`, payload.sumber_nilai_rapor);
+      }
     }
 
     // Always update global config as fallback / new default
@@ -1220,6 +1239,9 @@ export class RaporService {
     }
     if (payload.mode_cetak_rapor !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_MODE_CETAK', payload.mode_cetak_rapor);
+    }
+    if (payload.sumber_nilai_rapor !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_SUMBER_NILAI', payload.sumber_nilai_rapor);
     }
 
     void cacheInvalidationService.invalidateRaporCache(tenantId);

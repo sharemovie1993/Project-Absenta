@@ -111,6 +111,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   const [tampilkanKokurikuler, setTampilkanKokurikuler] = useState(true);
   const [aktifkanSumatifArsip, setAktifkanSumatifArsip] = useState(true);
   const [modeCetakRapor, setModeCetakRapor] = useState<'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY'>('CP_ONLY');
+  const [sumberNilaiRapor, setSumberNilaiRapor] = useState<'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'>('FORMULA_SUMATIF');
 
   // Detect whether active semester in toolbar is Ganjil or Genap
   const isGanjilActive = useMemo(() => {
@@ -163,6 +164,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       setTampilkanKokurikuler(s.tampilkan_kokurikuler !== undefined ? s.tampilkan_kokurikuler : true);
       setAktifkanSumatifArsip(s.aktifkan_sumatif_arsip !== undefined ? s.aktifkan_sumatif_arsip : true);
       setModeCetakRapor(s.mode_cetak_rapor || 'CP_ONLY');
+      setSumberNilaiRapor(s.sumber_nilai_rapor || 'FORMULA_SUMATIF');
     }
   }, [settingsData, isGanjilActive]);
 
@@ -233,6 +235,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       tampilkan_kokurikuler: tampilkanKokurikuler,
       aktifkan_sumatif_arsip: aktifkanSumatifArsip,
       mode_cetak_rapor: modeCetakRapor,
+      sumber_nilai_rapor: sumberNilaiRapor,
     });
   }, [
     academicCtx.selectedTahunPelajaran,
@@ -255,6 +258,8 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     tampilkanQr,
     tampilkanKokurikuler,
     aktifkanSumatifArsip,
+    modeCetakRapor,
+    sumberNilaiRapor,
     saveSettingsMutation,
     canManage,
   ]);
@@ -814,6 +819,81 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                               <span className="text-[10px] text-slate-400">Menampilkan evaluasi pembiasaan pagi &amp; kokurikuler (Wajib mulai TP 2025/2026, dinonaktifkan otomatis untuk arsip 2024/2025).</span>
                             </div>
                           </label>
+                        </div>
+
+                        {/* PILIHAN OTORITAS SUMBER NILAI RAPOR */}
+                        <div className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                          <div className="flex items-center justify-between">
+                            <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                              Otoritas Sumber Nilai Rapor (Asesmen vs Cetak Fisik) *
+                            </label>
+                            <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400">
+                              Sinkronisasi Staging &amp; Leger
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-slate-500 leading-relaxed">
+                            Tentukan apakah nilai akhir rapor dihitung secara sistematis dari asesmen sumatif, atau diambil murni dari lembar CP apa adanya (untuk menjaga keaslian rapor lama yang diketik/dikatrol manual oleh guru).
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            {/* Mode A: Formula Sumatif */}
+                            <button
+                              type="button"
+                              aria-label="Pilih sumber nilai Formula Asesmen Sumatif"
+                              onClick={() => setSumberNilaiRapor('FORMULA_SUMATIF')}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                sumberNilaiRapor === 'FORMULA_SUMATIF'
+                                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs flex items-center gap-1.5">
+                                    ⚡ Formula Sumatif Otomatis
+                                  </span>
+                                  {sumberNilaiRapor === 'FORMULA_SUMATIF' && (
+                                    <CheckCircle2 size={15} className="text-indigo-600 dark:text-indigo-400" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  Nilai rapor dihitung dari rerata asesmen sumatif &amp; sumatif akhir materi sesuai kaidah Kurikulum Merdeka standar.
+                                </p>
+                              </div>
+                              <span className="inline-block mt-2.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/60 dark:bg-indigo-900/40 px-2 py-0.5 rounded-md self-start">
+                                Standar TP 2023/2024 ke atas
+                              </span>
+                            </button>
+
+                            {/* Mode B: Murni CP Manual */}
+                            <button
+                              type="button"
+                              aria-label="Pilih sumber nilai Murni Lembar CP Manual Guru"
+                              onClick={() => setSumberNilaiRapor('MURNI_CP_MANUAL')}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                sumberNilaiRapor === 'MURNI_CP_MANUAL'
+                                  ? 'border-amber-600 bg-amber-50/60 dark:bg-amber-950/40 text-amber-950 dark:text-amber-100 ring-2 ring-amber-500/20 shadow-xs'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs flex items-center gap-1.5">
+                                    📝 Murni Lembar CP (Manual / Arsip Asli)
+                                  </span>
+                                  {sumberNilaiRapor === 'MURNI_CP_MANUAL' && (
+                                    <CheckCircle2 size={15} className="text-amber-600 dark:text-amber-400" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  Nilai rapor diambil 100% murni dari nilai di sheet CP tanpa dihitung ulang dari sumatif. Nilai fisik cetak &amp; SKL dijamin persis sama.
+                                </p>
+                              </div>
+                              <span className="inline-block mt-2.5 text-[9px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md self-start">
+                                Rekomendasi Rapor Legacy (≤ TP 2022/2023)
+                              </span>
+                            </button>
+                          </div>
                         </div>
                       </div>
 

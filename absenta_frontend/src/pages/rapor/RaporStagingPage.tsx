@@ -166,12 +166,14 @@ export default React.memo(function RaporStagingPage() {
       id,
       autoProvisionStudents,
       customMapelMapping,
+      sumberNilaiRapor,
     }: {
       id: string;
       autoProvisionStudents?: boolean;
       customMapelMapping?: Record<string, string>;
+      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
     }) => {
-      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents, customMapelMapping });
+      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents, customMapelMapping, sumberNilaiRapor });
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
@@ -248,12 +250,17 @@ export default React.memo(function RaporStagingPage() {
   }, []);
 
   const handleConfirmPreSync = useCallback(
-    (autoProvision: boolean, customMapping?: Record<string, string>) => {
+    (
+      autoProvision: boolean,
+      customMapping?: Record<string, string>,
+      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'
+    ) => {
       if (!preSyncTargetId) return;
       syncMutation.mutate({
         id: preSyncTargetId,
         autoProvisionStudents: autoProvision,
         customMapelMapping: customMapping,
+        sumberNilaiRapor,
       });
     },
     [preSyncTargetId, syncMutation]

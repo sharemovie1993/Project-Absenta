@@ -8,6 +8,7 @@ export interface StudentScoreItem {
   sumatif_akhir?: number | string | null;
   deskripsi_cp?: string | null;
   nilai?: number | string | null;
+  nilai_rapor_final?: number | string | null;
   deskripsi?: string | null;
 }
 

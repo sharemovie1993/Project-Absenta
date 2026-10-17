@@ -312,9 +312,16 @@ export const ScoreGridTable: React.FC<ScoreGridTableProps> = memo(({
                 
                 const sAkhir = parseFloat(sc.sumatif_akhir as string) || 0;
                 const hasSAkhir = sc.sumatif_akhir !== undefined && sc.sumatif_akhir !== null && sc.sumatif_akhir !== '';
-                const finalGrade = cnt > 0 && hasSAkhir 
+                const calculatedFinal = cnt > 0 && hasSAkhir 
                   ? Math.round((avg + sAkhir) / 2) 
                   : (cnt > 0 ? Math.round(avg) : (hasSAkhir ? Math.round(sAkhir) : '-'));
+
+                // Utamakan nilai yang tersimpan di DB jika baris sumatif kosong (misal hasil import/staging murni CP)
+                const persistedFinal = sc.nilai_rapor_final ?? sc.nilai;
+                const hasPersistedFinal = persistedFinal !== undefined && persistedFinal !== null && persistedFinal !== '';
+                const finalGrade = (cnt === 0 && !hasSAkhir && hasPersistedFinal)
+                  ? Math.round(Number(persistedFinal))
+                  : calculatedFinal;
 
                 return (
                   <tr key={sc.siswa_id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">

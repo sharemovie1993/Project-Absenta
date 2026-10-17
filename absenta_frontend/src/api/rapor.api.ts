@@ -382,7 +382,11 @@ export const raporApi = {
   },
   syncStagingToRapor: async (
     id: string,
-    options?: { autoProvisionStudents?: boolean; customMapelMapping?: Record<string, string> }
+    options?: {
+      autoProvisionStudents?: boolean;
+      customMapelMapping?: Record<string, string>;
+      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+    }
   ) => {
     const response = await api.post(`/rapor/staging/${id}/sync`, options || {}, { timeout: 300000 }); // 5 menit
     return response.data;
@@ -445,6 +449,7 @@ export interface RaporPreSyncReport {
   allTenantSubjects: MasterMapelOption[];
   suggestedMapping?: Record<string, string>;
   canSync: boolean;
+  sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
   readinessStatus: 'BLOCKED_ACADEMIC' | 'NEED_STUDENT_PROVISION' | 'READY_TO_SYNC';
 }
 
@@ -468,6 +473,7 @@ export interface RaporStagingItem {
     totalRaporSynced?: number;
     unmappedStudents?: string[];
     unmappedSubjects?: string[];
+    sumberNilaiRapor?: string;
     syncedAt?: string;
     detectedSubjects?: string[];
     matchedMaster?: {
@@ -562,6 +568,7 @@ export interface RaporSettings {
   tampilkan_kokurikuler?: boolean;
   aktifkan_sumatif_arsip?: boolean;
   mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+  sumber_nilai_rapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
 }
 
 export interface P5FasilitatorItem {

@@ -177,7 +177,7 @@ export class RaporStagingController {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
-      const { autoProvisionStudents, customMapelMapping } = req.body || {};
+      const { autoProvisionStudents, customMapelMapping, sumberNilaiRapor } = req.body || {};
 
       if (!id) {
         return reply.status(400).send({ success: false, message: 'ID sheet staging wajib disertakan' });
@@ -186,6 +186,7 @@ export class RaporStagingController {
       const result = await RaporStagingService.syncStagingToRapor(tenant_id, id, {
         autoProvisionStudents: Boolean(autoProvisionStudents),
         customMapelMapping: customMapelMapping || undefined,
+        sumberNilaiRapor: sumberNilaiRapor || undefined,
       });
 
       return sendResponse(reply, 200, true, 'Sinkronisasi ke modul e-Rapor berhasil dilakukan', result);

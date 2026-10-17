@@ -529,6 +529,15 @@ export class RaporStagingService {
 
     const canSync = !!tp && !!sem && !!kelas;
 
+    // 6. Cek Pengaturan Sumber Nilai Rapor (Formula Sumatif vs Murni CP Manual)
+    const [tpSumberCfg, globalSumberCfg] = await Promise.all([
+      tp?.id ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${tp.id}` } }) : null,
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' } }),
+    ]);
+    const startYear = parseInt(sheet.tahun_pelajaran_nama.split('/')[0].trim(), 10) || 2024;
+    const defaultMode = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    const resolvedSumberNilai = (tpSumberCfg?.value || globalSumberCfg?.value || defaultMode) as 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+
     return {
       stagingId,
       namaKelas: sheet.nama_kelas,
@@ -556,6 +565,7 @@ export class RaporStagingService {
       allTenantSubjects: mapelList,
       suggestedMapping,
       canSync,
+      sumberNilaiRapor: resolvedSumberNilai,
       readinessStatus: !canSync
         ? 'BLOCKED_ACADEMIC'
         : unmatchedStudents.length > 0
@@ -571,7 +581,11 @@ export class RaporStagingService {
   static async syncStagingToRapor(
     tenantId: string,
     stagingId: string,
-    options?: { autoProvisionStudents?: boolean; customMapelMapping?: Record<string, string> }
+    options?: {
+      autoProvisionStudents?: boolean;
+      customMapelMapping?: Record<string, string>;
+      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+    }
   ) {
     const sheet = await prisma.raporStagingSheet.findFirst({
       where: { id: stagingId, tenant_id: tenantId },
@@ -607,6 +621,19 @@ export class RaporStagingService {
         `Master Tahun Pelajaran '${sheet.tahun_pelajaran_nama}' atau Semester '${sheet.semester}' belum terdaftar di platform. Pastikan sudah dibuat pada menu Master Akademik.`
       );
     }
+
+    // Resolve Otoritas Sumber Nilai Rapor
+    const [tpSumberCfg, globalSumberCfg] = await Promise.all([
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${tpId}` } }) : null,
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' } }),
+    ]);
+    const startYear = parseInt(sheet.tahun_pelajaran_nama.split('/')[0].trim(), 10) || 2024;
+    const defaultMode = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+    const activeSumberNilai: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL' =
+      options?.sumberNilaiRapor ||
+      (tpSumberCfg?.value as any) ||
+      (globalSumberCfg?.value as any) ||
+      defaultMode;
 
     // 2. Resolve Target Kelas
     let kelasId = sheet.kelas_id;
@@ -860,7 +887,23 @@ export class RaporStagingService {
           continue;
         }
 
-        const nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
+        let nilaiFinal: number;
+        if (activeSumberNilai === 'MURNI_CP_MANUAL') {
+          // MURNI LEMBAR CP: Nilai rapor diambil 100% dari kolom nilai lembar CP (versi cetak fisik asli / manual guru tanpa rumus)
+          nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
+        } else {
+          // FORMULA SUMATIF: Nilai rapor dihitung dari rangkaian asesmen sumatif (nilai akhir / rata-rata sumatif)
+          const sumatifComputed =
+            sumAkhir ??
+            avg ??
+            ([s1, s2, s3].some((v) => v !== null)
+              ? Math.round(
+                  ([s1, s2, s3].filter((v): v is number => v !== null)).reduce((a, b) => a + b, 0) /
+                    [s1, s2, s3].filter((v) => v !== null).length
+                )
+              : null);
+          nilaiFinal = sumatifComputed ?? cpGrade?.nilai_rapor ?? 0;
+        }
 
         await prisma.nilaiSiswa.upsert({
           where: {
@@ -913,6 +956,7 @@ export class RaporStagingService {
           autoProvisionedCount,
           unmappedStudents,
           unmappedSubjects: Array.from(unmappedSubjects),
+          sumberNilaiRapor: activeSumberNilai,
           syncedAt: new Date().toISOString(),
         } as any,
       },

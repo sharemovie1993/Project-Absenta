@@ -112,6 +112,7 @@ export function useScoreSheetManager({
             sumatif_akhir: found.sumatif_akhir ?? found.nilai_akhir_sumatif ?? null,
             deskripsi_cp: found.deskripsi_cp ?? found.capaian_kompetensi ?? found.catatan_deskripsi ?? found.deskripsi ?? '',
             nilai: found.nilai ?? found.nilai_rapor_final ?? null,
+            nilai_rapor_final: found.nilai_rapor_final ?? found.nilai ?? null,
             deskripsi: found.deskripsi ?? found.deskripsi_cp ?? found.catatan_deskripsi ?? '',
           };
         }
@@ -125,6 +126,7 @@ export function useScoreSheetManager({
           sumatif_akhir: null,
           deskripsi_cp: '',
           nilai: null,
+          nilai_rapor_final: null,
           deskripsi: '',
         };
       });
