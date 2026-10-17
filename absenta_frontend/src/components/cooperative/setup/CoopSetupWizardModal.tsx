@@ -324,11 +324,15 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   ];
 
   const handleEntryChange = (accountId: string, field: 'debit' | 'credit', val: number) => {
+    const opposite = field === 'debit' ? 'credit' : 'debit';
+    const positiveVal = Math.max(0, val);
     setJournalEntries(prev => prev.map(entry => {
       if (entry.account_id === accountId) {
         return {
           ...entry,
-          [field]: Math.max(0, val)
+          [field]: positiveVal,
+          // Saat salah satu kolom diisi > 0, otomatis kosongkan kolom seberangnya agar pengguna non-akuntan tidak salah input 2 sisi
+          [opposite]: positiveVal > 0 ? 0 : entry[opposite]
         };
       }
       return entry;
@@ -1043,15 +1047,44 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
               </div>
 
+              {/* Panduan Ramah Non-Akuntan */}
+              <div className="p-2.5 sm:p-3 bg-amber-50/90 dark:bg-amber-950/25 border border-amber-200/80 dark:border-amber-800/60 rounded-xl text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs">
+                <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900 dark:text-slate-100 text-[11.5px] sm:text-xs">
+                    💡 Petunjuk Praktis: Cukup Isi 1 Sisi Saja per Baris Akun (Jangan Dua-Duanya)
+                  </p>
+                  <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                    Anda <strong>TIDAK PERLU</strong> mengisi kolom Debit dan Kredit sekaligus pada baris yang sama. Cukup isi di <strong>salah satu kolom saja</strong> sesuai petunjuk lencana di bawah nama akun:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 pt-0.5 text-[10.5px]">
+                    <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
+                      <strong className="text-sky-700 dark:text-sky-400 font-bold">📥 Kolom DEBIT (Harta / Ada di Mana):</strong>
+                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Uang tunai brankas kas (1010), saldo rekening bank (1011), uang pinjaman yang masih dibawa anggota (1020), atau persediaan toko.</span>
+                    </div>
+                    <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
+                      <strong className="text-purple-700 dark:text-purple-400 font-bold">📤 Kolom KREDIT (Modal / Milik Siapa):</strong>
+                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Simpanan pokok (3011), simpanan wajib (3012), titipan simpanan sukarela (2011), atau cadangan modal koperasi.</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Table Input Jurnal Saldo Awal - Pas di Layar HP & Desktop */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[50vh] sm:max-h-[380px] overflow-y-auto touch-pan-x shadow-2xs">
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[46vh] sm:max-h-[380px] overflow-y-auto touch-pan-x shadow-2xs">
                 <table className="w-full text-left text-xs min-w-full sm:min-w-[480px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 border-b border-slate-200 dark:border-slate-700/80 z-10">
                     <tr>
                       <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-14 sm:w-20">Kode</th>
                       <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-40 text-right">Debit (Rp)</th>
-                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-40 text-right">Kredit (Rp)</th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-44 text-right">
+                        <span>Debit (Rp)</span>
+                        <span className="hidden sm:block text-[9px] font-normal text-sky-600 dark:text-sky-400">Kas, Bank, Piutang</span>
+                      </th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-44 text-right">
+                        <span>Kredit (Rp)</span>
+                        <span className="hidden sm:block text-[9px] font-normal text-purple-600 dark:text-purple-400">Simpanan & Modal</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1065,7 +1098,23 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                           </td>
                           <td className="px-2 sm:px-3 py-1.5">
                             <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs line-clamp-1 sm:line-clamp-none">{acc.name}</span>
-                            <span className="text-[9px] sm:text-[10px] text-slate-400 block">{acc.type}</span>
+                            <div className="mt-0.5">
+                              {acc.type === 'ASSET' ? (
+                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-800/50 px-1.5 py-0.2 rounded">
+                                  📥 Isi di Debit (Aset/Harta)
+                                </span>
+                              ) : acc.type === 'LIABILITY' ? (
+                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-800/50 px-1.5 py-0.2 rounded">
+                                  📤 Isi di Kredit (Titipan/Hutang)
+                                </span>
+                              ) : acc.type === 'EQUITY' ? (
+                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/70 dark:border-purple-800/50 px-1.5 py-0.2 rounded">
+                                  💎 Isi di Kredit (Modal/Simpanan)
+                                </span>
+                              ) : (
+                                <span className="text-[9px] text-slate-400">{acc.type}</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-1.5 sm:px-3 py-1.5">
                             <input
