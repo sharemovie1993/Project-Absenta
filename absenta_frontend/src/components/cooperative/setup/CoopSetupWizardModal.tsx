@@ -314,39 +314,39 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 pb-12 sm:pb-14 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-5xl max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
+        <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                   Panduan Inisialisasi & Setup Koperasi
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
                   Accurate Standard
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                 Pondasi akuntansi konsolidasi 360&deg; untuk koperasi baru dan migrasi pembukuan berjalan
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Wizard Stepper Navigation */}
-        <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 overflow-x-auto">
+        <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 overflow-x-auto">
           <div className="flex items-center justify-between min-w-[550px] gap-2">
             {steps.map((s, idx) => {
               const isPast = s.number < currentStep;
@@ -384,182 +384,167 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
         </div>
 
         {/* Modal Body: Content per Step */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
           {/* ================= STEP 1: PILIH SKENARIO & MODE ================= */}
           {currentStep === 1 && (
-            <div className="space-y-6 animate-in fade-in">
+            <div className="space-y-3.5 animate-in fade-in">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
                   Langkah 1: Pilih Skenario Awal Koperasi Anda
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                  Pilihlah salah satu dari 3 skenario berikut agar sistem menyesuaikan struktur saldo awal dan perhitungan SHU konsolidasi secara tepat.
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pilihlah skenario yang sesuai agar sistem menyesuaikan struktur saldo awal dan tutup buku tahunan secara akurat.
                 </p>
               </div>
 
-              {/* Banner Peringatan Data Simulasi / Transaksi Demo */}
+              {/* Banner Notifikasi Data Simulasi / Transaksi Demo - Compact & Tenang */}
               {status?.simulationStats?.hasSimulationData && (
-                <div className="rounded-2xl p-4 sm:p-5 border-2 border-rose-200 dark:border-rose-900/60 bg-gradient-to-r from-rose-50/80 to-amber-50/50 dark:from-rose-950/20 dark:to-amber-950/10 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
-                      <AlertTriangle className="w-5 h-5" />
+                <div className="rounded-xl px-3.5 py-2.5 border border-amber-200 dark:border-amber-800/60 bg-gradient-to-r from-amber-50/70 via-white to-amber-50/40 dark:from-amber-950/20 dark:via-slate-900 dark:to-amber-950/10 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                          Terdeteksi Data Simulasi / Transaksi Lampau
-                        </h4>
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">
-                          Perlu Pembersihan
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                          Terdeteksi Data Simulasi Uji Coba
+                        </span>
+                        <span className="px-2 py-0.2 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          {[
+                            status.simulationStats.totalJournals > 0 ? `${status.simulationStats.totalJournals} Jurnal` : null,
+                            status.simulationStats.totalSales > 0 ? `${status.simulationStats.totalSales} Penjualan` : null,
+                            status.simulationStats.totalLoans > 0 ? `${status.simulationStats.totalLoans} Pinjaman` : null,
+                            status.simulationStats.totalSavingsTransactions > 0 ? `${status.simulationStats.totalSavingsTransactions} Simpanan` : null,
+                          ].filter(Boolean).join(' • ') || 'Data Demo'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
-                        Database koperasi masih menyimpan catatan transaksi uji coba/simulasi. Untuk memulai operasional dengan data riil yang bersih dan akurat, disarankan untuk mereset data demo sebelum melanjutkan.
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Bersihkan data demo ini sebelum go-live jika Anda ingin memulai pembukuan dari angka nol yang bersih.
                       </p>
-                      <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                        {status.simulationStats.totalJournals > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
-                            <FileText className="w-3.5 h-3.5 text-indigo-500" />
-                            {status.simulationStats.totalJournals} Jurnal Transaksi
-                          </span>
-                        )}
-                        {status.simulationStats.totalSales > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
-                            <Building2 className="w-3.5 h-3.5 text-sky-500" />
-                            {status.simulationStats.totalSales} Transaksi Penjualan
-                          </span>
-                        )}
-                        {status.simulationStats.totalLoans > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
-                            <Wallet className="w-3.5 h-3.5 text-amber-500" />
-                            {status.simulationStats.totalLoans} Pinjaman
-                          </span>
-                        )}
-                        {status.simulationStats.totalSavingsTransactions > 0 && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 shadow-xs">
-                            <Users className="w-3.5 h-3.5 text-emerald-500" />
-                            {status.simulationStats.totalSavingsTransactions} Mutasi Simpanan
-                          </span>
-                        )}
-                      </div>
                     </div>
                   </div>
-                  <div className="shrink-0 flex items-center">
+                  <div className="shrink-0 flex items-center self-end sm:self-center">
                     <button
                       type="button"
                       onClick={() => setIsResetModalOpen(true)}
-                      className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 active:scale-98 shadow-sm transition-all"
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-rose-700 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/50 border border-rose-200 dark:border-rose-900/50 transition-colors shadow-2xs"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Bersihkan Data Simulasi</span>
+                      <Trash2 className="w-3 h-3" />
+                      <span>Bersihkan Data Demo</span>
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* 3 Interactive Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* 3 Interactive Cards - Ringkas & Tidak Terpotong */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {/* Mode 1: Baru Berdiri */}
                 <div
                   onClick={() => setSelectedMode('NEW_COOP')}
-                  className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
+                  className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'NEW_COOP'
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-600/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/50'
+                      ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/40'
                   }`}
                 >
-                  <div className="space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
-                      <Sparkles className="w-5 h-5" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300">
+                        Fresh Start
+                      </span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                         1. Koperasi Baru Berdiri
                       </h4>
-                      <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
-                        Fresh Start (Nol Transaksi Lampau)
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Mulai dari awal legalitas baru. Buku dibuka dari modal pendiri (simpanan pokok/wajib perintis) tanpa utang atau piutang masa lalu.
                       </p>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Cocok untuk koperasi yang baru saja didirikan secara legal. Pembukuan dimulai dari modal pendiri (simpanan pokok/wajib perintis) dan kas peresmian tanpa utang/piutang masa lalu.
-                    </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                     <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'NEW_COOP' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    Input Saldo Awal Opsional / Kas Modal Pokok
+                    <span>Saldo awal modal perintis</span>
                   </div>
                 </div>
 
                 {/* Mode 2: Migrasi Awal Tahun */}
                 <div
                   onClick={() => setSelectedMode('MIGRATION_START_YEAR')}
-                  className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
+                  className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'MIGRATION_START_YEAR'
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-600/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/50'
+                      ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/40'
                   }`}
                 >
-                  <div className="space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                      <Calendar className="w-5 h-5" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                        Cut-Off 1 Januari
+                      </span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                         2. Koperasi Berjalan (Awal Tahun)
                       </h4>
-                      <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
-                        Cut-Off 1 Januari (Tutup Buku Baru)
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Migrasi tepat di awal tahun fiskal. Memindahkan Neraca Saldo Akhir (Trial Balance 31 Des) setelah tutup buku tahunan selesai.
                       </p>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Koperasi sudah beroperasi sebelumnya dan berpindah ke Absenta tepat di pergantian tahun fiskal. Memindahkan Neraca Saldo Akhir tahun lalu (Trial Balance 31 Des).
-                    </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                     <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_START_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    Neraca 100% Bersih (Laba Ditahan Sudah Ditutup)
+                    <span>Neraca bersih awal periode</span>
                   </div>
                 </div>
 
                 {/* Mode 3: Migrasi Tengah Tahun */}
                 <div
                   onClick={() => setSelectedMode('MIGRATION_MID_YEAR')}
-                  className={`cursor-pointer rounded-2xl p-5 border-2 transition-all flex flex-col justify-between ${
+                  className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'MIGRATION_MID_YEAR'
-                      ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-md ring-2 ring-indigo-600/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/50'
+                      ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-800/40'
                   }`}
                 >
-                  <div className="space-y-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5" />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                        Konsolidasi YTD
+                      </span>
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                         3. Koperasi Berjalan (Tengah Tahun)
                       </h4>
-                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
-                        Konsolidasi YTD (Full 12 Bulan)
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                        Migrasi di pertengahan tahun (misal Juni/Sept). Membawa Neraca + Pendapatan/Beban YTD agar SHU membaca tahunan penuh 12 bulan.
                       </p>
                     </div>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Koperasi berpindah di pertengahan tahun berjalan (misal 30 Juni / 30 Sept). Membawa Saldo Neraca + Akumulasi Pendapatan/Beban YTD agar SHU akhir tahun membaca 12 bulan utuh!
-                    </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 flex items-center gap-1.5">
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                     <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_MID_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    Membawa Angka Laba Rugi Berjalan (YTD)
+                    <span>Akumulasi Laba Rugi YTD</span>
                   </div>
                 </div>
               </div>
 
-              {/* Tanggal Cut-Off */}
-              <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {/* Tanggal Cut-Off - Compact */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Calendar className="w-4 h-4 text-indigo-600" />
-                    Tanggal Efektif Cut-off Pembukuan (Tanggal Saldo Awal)
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                    Tanggal Efektif Saldo Awal (Cut-Off Pembukuan)
                   </label>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                     Transaksi sebelum tanggal ini dianggap saldo awal warisan (legacy balance).
@@ -569,7 +554,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   type="date"
                   value={cutoffDate}
                   onChange={(e) => setCutoffDate(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
@@ -982,7 +967,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
         </div>
 
         {/* Footer Navigation Buttons */}
-        <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
+        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
