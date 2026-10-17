@@ -23,7 +23,9 @@ import {
   Sparkles,
   HelpCircle,
   TrendingUp,
-  Info
+  Info,
+  Folder,
+  CornerDownRight
 } from 'lucide-react';
 import { 
   coopSetupApi, 
@@ -838,61 +840,122 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => initCoaMutation.mutate()}
-                  disabled={initCoaMutation.isPending}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${initCoaMutation.isPending ? 'animate-spin' : ''}`} />
-                  {initCoaMutation.isPending ? 'Menginisialisasi...' : 'Inisialisasi 31 Akun SAK ETAP'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {accountList.length >= 15 && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>{accountList.length} Akun SAK ETAP Siap</span>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => initCoaMutation.mutate()}
+                    disabled={initCoaMutation.isPending}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                    title="Inisialisasi ulang jika terdapat kode akun yang terhapus"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${initCoaMutation.isPending ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
+                    <span>{initCoaMutation.isPending ? 'Menginisialisasi...' : 'Inisialisasi Ulang'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Status Box */}
-              <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl p-4 flex items-start gap-3">
-                <Info className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
+              <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800/40 rounded-xl p-3.5 flex items-start gap-3">
+                <Info className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                 <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                   <p className="font-semibold text-slate-900 dark:text-white">
-                    Status COA Saat Ini: {status?.coaCount || 0} Akun Terdaftar
+                    Hierarki Bagan Akun Berstandar SAK ETAP Koperasi ({accountList.length || status?.coaCount || 0} Akun Terdaftar)
                   </p>
-                  <p className="mt-1">
-                    Struktur akun yang diinisialisasi mencakup klasifikasi standar:
-                    <strong className="text-indigo-600 dark:text-indigo-400"> 1000 Aktiva</strong> (Kas, Bank, Piutang Pinjaman), 
-                    <strong className="text-indigo-600 dark:text-indigo-400"> 2000 Kewajiban</strong> (Simpanan Sukarela, Titipan), 
-                    <strong className="text-indigo-600 dark:text-indigo-400"> 3000 Ekuitas</strong> (Simpanan Pokok, Simpanan Wajib, Cadangan SHU), 
-                    <strong className="text-indigo-600 dark:text-indigo-400"> 4000 Pendapatan</strong> (Bunga Pinjaman, Penjualan Toko), dan 
-                    <strong className="text-indigo-600 dark:text-indigo-400"> 5000 Beban</strong>.
+                  <p className="mt-0.5 text-[11px] text-slate-600 dark:text-slate-400">
+                    Akun anak tersusun secara berjenjang (menjorok ke dalam) di bawah akun induk masing-masing:
+                    <strong className="text-sky-700 dark:text-sky-400"> 1000 Aktiva</strong> (Kas, Bank, Piutang Pinjaman), 
+                    <strong className="text-amber-700 dark:text-amber-400"> 2000 Kewajiban</strong> (Simpanan Sukarela, Titipan), 
+                    <strong className="text-purple-700 dark:text-purple-400"> 3000 Ekuitas</strong> (Simpanan Pokok, Simpanan Wajib, Cadangan SHU), 
+                    <strong className="text-emerald-700 dark:text-emerald-400"> 4000 Pendapatan</strong>, dan 
+                    <strong className="text-rose-700 dark:text-rose-400"> 5000 Beban</strong>.
                   </p>
                 </div>
               </div>
 
-              {/* Preview Tabel Akun - Touch & Mobile Scrollable */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[350px] overflow-y-auto touch-pan-x">
-                <table className="w-full text-left text-xs min-w-[460px]">
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 border-b border-slate-200 dark:border-slate-800">
+              {/* Preview Tabel Akun Hierarki - Touch & Mobile Scrollable */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[360px] overflow-y-auto touch-pan-x shadow-2xs">
+                <table className="w-full text-left text-xs min-w-[500px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/70 sticky top-0 border-b border-slate-200 dark:border-slate-700/80 z-10">
                     <tr>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Kode Akun</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Klasifikasi</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Tipe Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-28">Kode Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun (Hierarki)</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-28">Klasifikasi</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-32">Tipe Akun</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {loadingAccounts ? (
                       <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">Memuat bagan akun...</td>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-500">Memuat bagan akun...</td>
                       </tr>
                     ) : accountList.length > 0 ? (
                       accountList.map(acc => {
                         const isHeader = Boolean(acc.isHeader ?? (acc as any).is_header);
+                        const level = acc.level || (acc.parentId ? 2 : 1);
+                        const indentPx = Math.min((level - 1) * 20, 60);
+
+                        const typeBadgeColor: Record<string, string> = {
+                          ASSET: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-800',
+                          LIABILITY: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+                          EQUITY: 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+                          REVENUE: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+                          EXPENSE: 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 dark:border-rose-800',
+                        };
+
+                        const typeLabel: Record<string, string> = {
+                          ASSET: 'Aktiva',
+                          LIABILITY: 'Kewajiban',
+                          EQUITY: 'Ekuitas',
+                          REVENUE: 'Pendapatan',
+                          EXPENSE: 'Beban',
+                        };
+
                         return (
-                          <tr key={acc.id} className={isHeader ? 'bg-slate-50/70 dark:bg-slate-800/40 font-bold' : 'hover:bg-slate-50/40 dark:hover:bg-slate-800/20'}>
-                            <td className="px-4 py-2 font-mono text-indigo-600 dark:text-indigo-400">{acc.code}</td>
-                            <td className="px-4 py-2 text-slate-800 dark:text-slate-200">{acc.name}</td>
-                            <td className="px-4 py-2 text-slate-500">{acc.type}</td>
-                            <td className="px-4 py-2">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${isHeader ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                          <tr 
+                            key={acc.id} 
+                            className={`transition-colors ${
+                              isHeader && level === 1
+                                ? 'bg-indigo-50/60 dark:bg-indigo-950/30 font-bold border-t border-slate-200 dark:border-slate-700'
+                                : isHeader
+                                ? 'bg-slate-50/70 dark:bg-slate-800/40 font-semibold'
+                                : 'hover:bg-slate-50/50 dark:hover:bg-slate-800/20'
+                            }`}
+                          >
+                            <td className="px-3 sm:px-4 py-2 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                              {acc.code}
+                            </td>
+                            <td className="px-3 sm:px-4 py-2">
+                              <div 
+                                className="flex items-center gap-1.5"
+                                style={{ paddingLeft: `${indentPx}px` }}
+                              >
+                                {isHeader ? (
+                                  <Folder className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                ) : (
+                                  <CornerDownRight className="w-3 h-3 text-slate-400 shrink-0" />
+                                )}
+                                <span className={isHeader ? 'font-bold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}>
+                                  {acc.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-medium border ${typeBadgeColor[acc.type] || 'bg-slate-100 text-slate-700'}`}>
+                                {typeLabel[acc.type] || acc.type}
+                              </span>
+                            </td>
+                            <td className="px-3 sm:px-4 py-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                isHeader 
+                                  ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200' 
+                                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                              }`}>
                                 {isHeader ? 'Induk (Header)' : 'Detail (Posting)'}
                               </span>
                             </td>
@@ -901,7 +964,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       })
                     ) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
                           Belum ada akun terdaftar. Klik "Inisialisasi 31 Akun SAK ETAP" di atas.
                         </td>
                       </tr>
