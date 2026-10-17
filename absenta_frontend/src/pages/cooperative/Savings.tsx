@@ -35,6 +35,7 @@ const Savings: React.FC = React.memo(() => {
   const state = useSavingsState();
 
   const {
+    subscription,
     activeTab,
     setActiveTab,
     isOperator,
