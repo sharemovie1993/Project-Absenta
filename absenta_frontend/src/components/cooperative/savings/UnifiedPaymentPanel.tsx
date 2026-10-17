@@ -170,6 +170,75 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   const [includeSukarela, setIncludeSukarela] = useState<boolean>(false);
   const [sukarelaAmount, setSukarelaAmount] = useState<number>(0);
 
+  // ── Smart Cascading Rules & Dependencies ──────────────────────────────
+  // 1. Is any other transaction currently active?
+  const isOtherTransactionSelected = useMemo(() => {
+    return (includeWajib && !isWajibPaidThisMonth) || (includeLoan && Boolean(nextUnpaidInstallment)) || includeSukarela;
+  }, [includeWajib, isWajibPaidThisMonth, includeLoan, nextUnpaidInstallment, includeSukarela]);
+
+  // 2. Simpanan Pokok lock: If not paid, must be included if any other transaction is selected
+  const isPokokLockedByDependency = useMemo(() => {
+    if (isPokokPaid) return true; // locked because already paid
+    return isOtherTransactionSelected; // locked because prerequisite for other transactions
+  }, [isPokokPaid, isOtherTransactionSelected]);
+
+  // 3. Simpanan Wajib lock: If not paid this month, must be included if Sukarela is selected
+  const isWajibLockedBySukarela = useMemo(() => {
+    if (isWajibPaidThisMonth) return true; // locked because already paid
+    return includeSukarela; // locked because prerequisite for voluntary deposits
+  }, [isWajibPaidThisMonth, includeSukarela]);
+
+  // Auto-enforce inclusions whenever dependencies change
+  useEffect(() => {
+    if (!isPokokPaid && isOtherTransactionSelected && !includePokok) {
+      setIncludePokok(true);
+    }
+  }, [isPokokPaid, isOtherTransactionSelected, includePokok]);
+
+  useEffect(() => {
+    if (!isWajibPaidThisMonth && includeSukarela && !includeWajib) {
+      setIncludeWajib(true);
+    }
+  }, [isWajibPaidThisMonth, includeSukarela, includeWajib]);
+
+  // Smart handlers for toggling options
+  const handleTogglePokok = (checked: boolean) => {
+    if (isPokokPaid || isOtherTransactionSelected) return;
+    setIncludePokok(checked);
+  };
+
+  const handleToggleWajib = (checked: boolean) => {
+    if (isWajibPaidThisMonth || isWajibLockedBySukarela) return;
+    setIncludeWajib(checked);
+    if (checked && !isPokokPaid) {
+      setIncludePokok(true);
+    }
+  };
+
+  const handleToggleLoan = (checked: boolean) => {
+    setIncludeLoan(checked);
+    if (checked && !isPokokPaid) {
+      setIncludePokok(true);
+    }
+  };
+
+  const handleToggleSukarela = (checked: boolean) => {
+    setIncludeSukarela(checked);
+    if (checked) {
+      if (sukarelaAmount === 0) setSukarelaAmount(10000);
+      if (!isPokokPaid) setIncludePokok(true);
+      if (!isWajibPaidThisMonth) setIncludeWajib(true);
+    }
+  };
+
+  const handleSukarelaAmountChange = (val: number) => {
+    setSukarelaAmount(val);
+    if (val > 0) {
+      if (!isPokokPaid) setIncludePokok(true);
+      if (!isWajibPaidThisMonth) setIncludeWajib(true);
+    }
+  };
+
   // Cash Calculation (for Deposit)
   const totalAmountToPay = useMemo(() => {
     let total = 0;
@@ -289,6 +358,17 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
     // Default: DEPOSIT_AND_BILL Mode
     if (totalAmountToPay <= 0) {
       alert('Pilih setidaknya satu komponen setoran simpanan atau cicilan pinjaman.');
+      return;
+    }
+
+    // Strict business validation safeguards:
+    if (!isPokokPaid && (!includePokok || pokokAmount <= 0)) {
+      alert('Simpanan Pokok belum lunas. Silakan sertakan pembayaran Simpanan Pokok terlebih dahulu.');
+      return;
+    }
+
+    if (includeSukarela && sukarelaAmount > 0 && !isWajibPaidThisMonth && (!includeWajib || wajibAmount <= 0)) {
+      alert('Setoran Simpanan Sukarela memerlukan pelunasan Simpanan Wajib bulan berjalan.');
       return;
     }
 
@@ -541,6 +621,19 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
       {/* ── 3. Mode Content ─────────────────────────────────────────────── */}
       {tellerMode === 'WITHDRAWAL' ? (
         <div className="space-y-3">
+          {/* Member Prerequisite Notice in Withdrawal Mode */}
+          {(!isPokokPaid || !isWajibPaidThisMonth) && (
+            <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+              <div className="space-y-0.5">
+                <span className="font-bold">Perhatian Tertib Iuran Anggota:</span>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400/90 leading-tight">
+                  Anggota ini masih memiliki kewajiban {!isPokokPaid ? 'Simpanan Pokok' : ''} {!isPokokPaid && !isWajibPaidThisMonth ? 'dan ' : ''} {!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini' : ''} yang belum disetor. Sarankan anggota untuk menyisihkan sebagian uang penarikan guna pelunasan kewajiban di loket.
+                </p>
+              </div>
+            </div>
+          )}
+
           {withdrawableSavings.length === 0 ? (
             <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs space-y-2">
               <div className="flex items-center gap-2 font-bold">
@@ -724,19 +817,15 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
             }`}>
               <label className={`flex items-start gap-2.5 select-none ${
-                isPokokPaid ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                isPokokLockedByDependency ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
               }`}>
                 <input
                   type="checkbox"
                   checked={includePokok}
-                  disabled={isPokokPaid}
-                  onChange={(e) => {
-                    if (!isPokokPaid) {
-                      setIncludePokok(e.target.checked);
-                    }
-                  }}
+                  disabled={isPokokLockedByDependency}
+                  onChange={(e) => handleTogglePokok(e.target.checked)}
                   className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
-                    isPokokPaid ? 'cursor-not-allowed opacity-40 bg-slate-100 dark:bg-slate-800' : ''
+                    isPokokLockedByDependency ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
                   }`}
                 />
                 <div className="flex-1 min-w-0">
@@ -744,11 +833,15 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Simpanan Pokok</span>
-                      {isPokokPaid && (
+                      {isPokokPaid ? (
                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
                           Lunas
                         </span>
-                      )}
+                      ) : isOtherTransactionSelected ? (
+                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-900/40 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                          Prasyarat Wajib
+                        </span>
+                      ) : null}
                     </span>
                     <span className={`font-mono font-black text-xs ${
                       isPokokPaid 
@@ -762,7 +855,9 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                     <span className="text-slate-500">
                       {isPokokPaid
                         ? `Saldo: Rp ${(parseFloat(pokokSaving.amount) || 0).toLocaleString('id-ID')}`
-                        : 'Modal awal pendaftaran anggota (1x setor)'}
+                        : isOtherTransactionSelected
+                          ? 'Wajib disetor karena transaksi lain dipilih'
+                          : 'Modal awal pendaftaran anggota (1x setor)'}
                     </span>
                     {isPokokPaid ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -789,19 +884,15 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
             }`}>
               <label className={`flex items-start gap-2.5 select-none ${
-                isWajibPaidThisMonth ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
               }`}>
                 <input
                   type="checkbox"
                   checked={includeWajib}
-                  disabled={isWajibPaidThisMonth}
-                  onChange={(e) => {
-                    if (!isWajibPaidThisMonth) {
-                      setIncludeWajib(e.target.checked);
-                    }
-                  }}
+                  disabled={isWajibPaidThisMonth || isWajibLockedBySukarela}
+                  onChange={(e) => handleToggleWajib(e.target.checked)}
                   className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
-                    isWajibPaidThisMonth ? 'cursor-not-allowed opacity-40 bg-slate-100 dark:bg-slate-800' : ''
+                    (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
                   }`}
                 />
                 <div className="flex-1 min-w-0">
@@ -809,11 +900,15 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                       <Wallet className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Simpanan Wajib</span>
-                      {isWajibPaidThisMonth && (
+                      {isWajibPaidThisMonth ? (
                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
                           Lunas
                         </span>
-                      )}
+                      ) : isWajibLockedBySukarela ? (
+                        <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-900/40 px-1.5 py-0.2 rounded">
+                          Prasyarat Sukarela
+                        </span>
+                      ) : null}
                     </span>
                     <span className={`font-mono font-black text-xs ${
                       isWajibPaidThisMonth 
@@ -825,7 +920,9 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                   </div>
                   <div className="flex items-center justify-between mt-1 text-[10px]">
                     <span className="text-slate-500">
-                      Bulan {now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                      {isWajibLockedBySukarela && !isWajibPaidThisMonth
+                        ? 'Wajib disetor bersamaan karena ada tabungan sukarela'
+                        : `Bulan ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`}
                     </span>
                     {isWajibPaidThisMonth ? (
                       <span className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -857,7 +954,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                 <input
                   type="checkbox"
                   checked={includeLoan}
-                  onChange={(e) => setIncludeLoan(e.target.checked)}
+                  onChange={(e) => handleToggleLoan(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
                 />
                 <div className="flex-1 min-w-0">
@@ -900,10 +997,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                 <input
                   type="checkbox"
                   checked={includeSukarela}
-                  onChange={(e) => {
-                    setIncludeSukarela(e.target.checked);
-                    if (e.target.checked && sukarelaAmount === 0) setSukarelaAmount(10000);
-                  }}
+                  onChange={(e) => handleToggleSukarela(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                 />
                 <div className="flex-1 min-w-0">
@@ -931,7 +1025,7 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                       <button
                         key={amt}
                         type="button"
-                        onClick={() => setSukarelaAmount(amt)}
+                        onClick={() => handleSukarelaAmountChange(amt)}
                         className={`py-1 text-[10px] font-bold rounded-lg border transition-all ${
                           sukarelaAmount === amt 
                             ? 'bg-teal-600 text-white border-teal-600 shadow-xs' 
@@ -947,10 +1041,18 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
                     min={1000}
                     step={1000}
                     value={sukarelaAmount || ''}
-                    onChange={(e) => setSukarelaAmount(Number(e.target.value) || 0)}
+                    onChange={(e) => handleSukarelaAmountChange(Number(e.target.value) || 0)}
                     placeholder="Ketik nominal sukarela..."
                     className="w-full text-xs font-mono py-1.5"
                   />
+                  {(!isWajibPaidThisMonth || !isPokokPaid) && (
+                    <div className="text-[10px] text-teal-800 dark:text-teal-300 bg-teal-50/80 dark:bg-teal-950/40 p-2 rounded-lg border border-teal-200/60 dark:border-teal-800/50 flex items-center gap-1.5">
+                      <ShieldCheck size={13} className="shrink-0 text-teal-600" />
+                      <span>
+                        <strong>Tertib Iuran:</strong> {!isPokokPaid ? 'Simpanan Pokok & ' : ''}{!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini ' : ''}otomatis disertakan bersama setoran sukarela.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
