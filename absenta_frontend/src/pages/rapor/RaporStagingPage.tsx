@@ -13,11 +13,17 @@ import {
   ExternalLink,
   Search,
   Check,
+  FolderTree,
+  ChevronDown,
+  Layers,
+  GraduationCap,
+  Calendar,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { SectionCard } from '@/components/ui/SectionCard';
+import { TabSwitcher, TabOption } from '@/components/ui/TabSwitcher';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
@@ -47,6 +53,15 @@ const fetchUrlsSchema = z.object({
   urls: z.array(z.string().min(10, 'Tautan tidak valid')).min(1, 'Minimal satu tautan diperlukan'),
 });
 
+// Helper penentu Tingkat Kelas dari nama rombel (X, XI, XII)
+function extractTingkatKelas(namaKelas: string): string {
+  const upper = (namaKelas || '').trim().toUpperCase();
+  if (upper.startsWith('XII') || upper.includes('KELAS 12') || upper.includes('KELAS XII')) return 'Kelas XII';
+  if (upper.startsWith('XI') || upper.includes('KELAS 11') || upper.includes('KELAS XI')) return 'Kelas XI';
+  if (upper.startsWith('X') || upper.includes('KELAS 10') || upper.includes('KELAS X')) return 'Kelas X';
+  return 'Lainnya';
+}
+
 export default React.memo(function RaporStagingPage() {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
@@ -62,8 +77,11 @@ export default React.memo(function RaporStagingPage() {
     isLoadingSem,
   } = useAcademicContext();
 
-  // Search & Filter State
+  // Search & Navigation Hierarchy State
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTahunAjaranTab, setSelectedTahunAjaranTab] = useState<string>('ALL');
+  const [selectedTingkatTab, setSelectedTingkatTab] = useState<string>('ALL');
+  const [selectedSemesterTab, setSelectedSemesterTab] = useState<string>('ALL');
 
   // Modals State
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
@@ -215,26 +233,95 @@ export default React.memo(function RaporStagingPage() {
     [confirm, deleteMutation]
   );
 
+  // ── Ekstraksi Pilihan Hirarki Tab (Tahun Ajaran, Tingkat, Semester) ──
+  const tahunAjaranOptions: TabOption[] = useMemo(() => {
+    const rawSet = new Set<string>();
+    sheets?.forEach((s) => {
+      if (s.tahun_pelajaran_nama) rawSet.add(s.tahun_pelajaran_nama.trim());
+    });
+    const sorted = Array.from(rawSet).sort();
+    return [
+      { id: 'ALL', label: `Semua Tahun (${sheets.length})` },
+      ...(sorted?.map((tp) => {
+        const count = sheets.filter((s) => s.tahun_pelajaran_nama?.trim() === tp).length;
+        return { id: tp, label: `${tp} (${count})` };
+      }) || []),
+    ];
+  }, [sheets]);
+
+  const tingkatOptions: TabOption[] = useMemo(() => {
+    const counts: Record<string, number> = { 'Kelas X': 0, 'Kelas XI': 0, 'Kelas XII': 0, Lainnya: 0 };
+    sheets?.forEach((s) => {
+      const t = extractTingkatKelas(s.nama_kelas);
+      counts[t] = (counts[t] || 0) + 1;
+    });
+
+    const items: TabOption[] = [
+      { id: 'ALL', label: 'Semua Tingkat' },
+      { id: 'Kelas X', label: `Kelas X (${counts['Kelas X'] || 0})` },
+      { id: 'Kelas XI', label: `Kelas XI (${counts['Kelas XI'] || 0})` },
+      { id: 'Kelas XII', label: `Kelas XII (${counts['Kelas XII'] || 0})` },
+    ];
+    if (counts['Lainnya'] > 0) {
+      items.push({ id: 'Lainnya', label: `Lainnya (${counts['Lainnya']})` });
+    }
+    return items;
+  }, [sheets]);
+
+  const semesterFilterOptions: TabOption[] = useMemo(() => {
+    const ganjilCount = sheets.filter((s) => s.semester?.toLowerCase().includes('ganjil')).length;
+    const genapCount = sheets.filter((s) => s.semester?.toLowerCase().includes('genap')).length;
+    return [
+      { id: 'ALL', label: 'Semua Semester' },
+      { id: 'Ganjil', label: `Semester Ganjil (${ganjilCount})` },
+      { id: 'Genap', label: `Semester Genap (${genapCount})` },
+    ];
+  }, [sheets]);
+
   // ── Memoized Filtered List & Metrics (Pilar 3) ──
   const filteredSheets = useMemo(() => {
     return (sheets || []).filter((s) => {
       const q = searchQuery.toLowerCase();
-      const matchKelas = s.nama_kelas?.toLowerCase()?.includes(q);
-      const matchTp = s.tahun_pelajaran_nama?.toLowerCase()?.includes(q);
-      const matchWalas = s.wali_kelas_nama?.toLowerCase()?.includes(q);
-      const matchJurusan = s.jurusan_nama?.toLowerCase()?.includes(q);
-      return matchKelas || matchTp || matchWalas || matchJurusan;
+      const matchSearch =
+        !q ||
+        s.nama_kelas?.toLowerCase()?.includes(q) ||
+        s.tahun_pelajaran_nama?.toLowerCase()?.includes(q) ||
+        s.wali_kelas_nama?.toLowerCase()?.includes(q) ||
+        s.jurusan_nama?.toLowerCase()?.includes(q);
+
+      const matchTahun =
+        selectedTahunAjaranTab === 'ALL' || s.tahun_pelajaran_nama?.trim() === selectedTahunAjaranTab;
+
+      const matchTingkat =
+        selectedTingkatTab === 'ALL' || extractTingkatKelas(s.nama_kelas) === selectedTingkatTab;
+
+      const matchSemester =
+        selectedSemesterTab === 'ALL' ||
+        s.semester?.toLowerCase().includes(selectedSemesterTab.toLowerCase());
+
+      return matchSearch && matchTahun && matchTingkat && matchSemester;
     });
-  }, [sheets, searchQuery]);
+  }, [sheets, searchQuery, selectedTahunAjaranTab, selectedTingkatTab, selectedSemesterTab]);
+
+  // Pengelompokan Hirarkis Otomatis (Tingkat Kelas -> Rombel)
+  const groupedByTingkat = useMemo(() => {
+    const groups: Record<string, RaporStagingItem[]> = {};
+    filteredSheets?.forEach((item) => {
+      const tingkat = extractTingkatKelas(item.nama_kelas);
+      if (!groups[tingkat]) groups[tingkat] = [];
+      groups[tingkat].push(item);
+    });
+    return groups;
+  }, [filteredSheets]);
 
   const metrics = useMemo(() => {
-    const list = sheets || [];
+    const list = filteredSheets || [];
     const totalSheets = list.length;
     const syncedSheets = list.filter((s) => s.status === 'SYNCED').length;
     const readySheets = list.filter((s) => s.status === 'READY').length;
     const totalStudents = list.reduce((acc, curr) => acc + (curr.total_siswa || 0), 0);
     return { totalSheets, syncedSheets, readySheets, totalStudents };
-  }, [sheets]);
+  }, [filteredSheets]);
 
   return (
     <AcademicPageLayout
@@ -245,7 +332,7 @@ export default React.memo(function RaporStagingPage() {
         title: 'Panduan Wadah Penampung Google Sheet',
         items: [
           'Salin dan tempel tautan berkas Google Sheet kelas atau tautan Folder Google Drive induk.',
-          'Sistem otomatis memindai lembar SETTING, INPUT SUMATIF, dan INPUT CP menggunakan Dynamic Variable Scanner.',
+          'Penyajian data otomatis diorganisir berjenjang: Tahun Ajaran → Tingkat Kelas (X, XI, XII) → Semester (Ganjil / Genap).',
           'Pada tautan Folder Google Drive, sistem cerdas memfilter hanya berkas Google Sheets (mengabaikan PDF & dokumen lain).',
           'Gunakan tombol Pratinjau Data untuk memeriksa kelengkapan siswa dan nilai sebelum melakukan 1-Click Sync.',
         ],
@@ -288,8 +375,8 @@ export default React.memo(function RaporStagingPage() {
             {/* ── 4 Metrics Cards (Pilar 30 / Responsive Compact Premium) ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full">
               <AnalyticsCard
-                title="Total Sheet Terkoneksi"
-                value={`${metrics.totalSheets} Kelas`}
+                title="Sheet Terfilter"
+                value={`${metrics.totalSheets} Rombel`}
                 icon={<FileSpreadsheet size={18} aria-hidden="true" />}
                 gradient="from-sky-500 to-sky-700 text-white"
                 subtitle={`${metrics.totalStudents} Siswa Terdaftar`}
@@ -313,12 +400,68 @@ export default React.memo(function RaporStagingPage() {
               />
               <AnalyticsCard
                 title="Rata-rata Mapel"
-                value="15 Mapel"
+                value="17 Mapel"
                 icon={<BookOpen size={18} aria-hidden="true" />}
                 gradient="from-purple-500 to-purple-700 text-white"
                 subtitle="Kurikulum Merdeka SMK"
                 mobileCompact={true}
               />
+            </div>
+
+            {/* ── STRUKTUR HIRARKI ORGANISIR FOLDER GOOGLE DRIVE (Pilar 27 & Responsif) ── */}
+            <div className="bg-slate-50/70 dark:bg-slate-800/40 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <FolderTree size={16} className="text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+                <span>Pengorganisasian Struktur Berkas Google Drive:</span>
+              </div>
+
+              {/* Tingkat 1: Tahun Pelajaran Folder */}
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  <Calendar size={13} aria-hidden="true" />
+                  <span>1. Folder Tahun Pelajaran:</span>
+                </div>
+                <div className="w-full overflow-x-auto no-scrollbar flex-nowrap">
+                  <TabSwitcher
+                    options={tahunAjaranOptions}
+                    activeTab={selectedTahunAjaranTab}
+                    onChange={setSelectedTahunAjaranTab}
+                  />
+                </div>
+              </div>
+
+              {/* Tingkat 2 & 3: Tingkat Kelas & Semester */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60 dark:border-slate-800">
+                {/* Tingkat Kelas (X, XI, XII) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    <GraduationCap size={13} aria-hidden="true" />
+                    <span>2. Sub-Folder Tingkat Kelas:</span>
+                  </div>
+                  <div className="w-full overflow-x-auto no-scrollbar flex-nowrap">
+                    <TabSwitcher
+                      options={tingkatOptions}
+                      activeTab={selectedTingkatTab}
+                      onChange={setSelectedTingkatTab}
+                    />
+                  </div>
+                </div>
+
+                {/* Semester (Ganjil / Genap) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    <Layers size={13} aria-hidden="true" />
+                    <span>3. Sub-Folder Semester:</span>
+                  </div>
+                  <div className="w-full overflow-x-auto no-scrollbar flex-nowrap">
+                    <TabSwitcher
+                      options={semesterFilterOptions}
+                      activeTab={selectedSemesterTab}
+                      onChange={setSelectedSemesterTab}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* ── Search & Counter Bar (Pilar 10 / A11y Form Guard) ── */}
@@ -330,7 +473,7 @@ export default React.memo(function RaporStagingPage() {
                 </label>
                 <Input
                   id="search-staging-kelas"
-                  placeholder="Cari kelas, tahun ajaran, walas..."
+                  placeholder="Cari kelas, jurusan, walas..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 h-9 text-xs rounded-xl w-full"
@@ -340,12 +483,12 @@ export default React.memo(function RaporStagingPage() {
               <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 self-end sm:self-auto shrink-0">
                 <span className="hidden sm:inline">Status Tampilan:</span>
                 <span>
-                  Menampilkan <strong>{filteredSheets?.length || 0}</strong> dari <strong>{sheets?.length || 0}</strong> rombel
+                  Menampilkan <strong>{filteredSheets?.length || 0}</strong> dari <strong>{sheets?.length || 0}</strong> rombel terdaftar
                 </span>
               </div>
             </div>
 
-            {/* ── Grid Sheet Kelas / Loading / Empty State ── */}
+            {/* ── Daftar Berkas Rombel Menurut Hirarki Tingkat ── */}
             {isLoading ? (
               <div className="p-12 text-center text-slate-500 dark:text-slate-400">
                 <RefreshCw className="animate-spin mx-auto mb-3 text-indigo-500" size={24} aria-hidden="true" />
@@ -358,10 +501,10 @@ export default React.memo(function RaporStagingPage() {
                 </div>
                 <div className="max-w-md mx-auto space-y-1.5">
                   <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-                    Belum Ada Tautan Google Sheet yang Dihubungkan
+                    Tidak Ditemukan Lembar Rapor pada Filter Ini
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    Tempelkan tautan berkas Google Sheet rapor kelas untuk mengekstrak nilai sumatif, capaian kompetensi, dan presensi secara otomatis tanpa perlu login akun wali kelas satu per satu.
+                    Ubah filter tahun ajaran, tingkat kelas, atau semester di atas, atau klik tombol di bawah untuk menghubungkan Google Sheet baru.
                   </p>
                 </div>
                 <Button
@@ -375,141 +518,161 @@ export default React.memo(function RaporStagingPage() {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
-                {filteredSheets?.map((item) => {
-                  const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
-                  const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
-
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0"
-                    >
-                      <div className="space-y-3 min-w-0">
-                        {/* Header Card */}
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight truncate">
-                                {item.nama_kelas}
-                              </h4>
-                              <Badge
-                                variant="secondary"
-                                className={cn(
-                                  'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
-                                  item.status === 'SYNCED'
-                                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60'
-                                    : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60'
-                                )}
-                              >
-                                {item.status === 'SYNCED' ? 'Tersinkron' : 'Siap Sinkron'}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                              {item.tahun_pelajaran_nama} • Semester {item.semester}
-                            </p>
-                          </div>
-
-                          <a
-                            href={item.source_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Buka Google Sheet asli di tab baru"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
-                            aria-label={`Buka Google Sheet kelas ${item.nama_kelas}`}
-                          >
-                            <ExternalLink size={16} aria-hidden="true" />
-                          </a>
-                        </div>
-
-                        {/* Metadata Specs - Grid Responsive */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-medium text-slate-400 block uppercase">Wali Kelas</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
-                              {item.wali_kelas_nama || 'Belum terisi'}
-                            </span>
-                          </div>
-                          <div className="min-w-0">
-                            <span className="text-[10px] font-medium text-slate-400 block uppercase">Konsentrasi</span>
-                            <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
-                              {item.jurusan_nama || 'Umum'}
-                            </span>
-                          </div>
-                          <div className="mt-1">
-                            <span className="text-[10px] font-medium text-slate-400 block uppercase">Daftar Siswa</span>
-                            <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                              {item.total_siswa} Siswa
-                            </span>
-                          </div>
-                          <div className="mt-1">
-                            <span className="text-[10px] font-medium text-slate-400 block uppercase">Mata Pelajaran</span>
-                            <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                              {item.total_mapel} Mapel
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Status Sync Timestamp Menggunakan Timezone & Date Standard */}
-                        {item.last_synced_at && (
-                          <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
-                            <Check size={12} aria-hidden="true" />
-                            <span className="truncate">
-                              Terakhir disinkronkan: {formatDateTime(item.last_synced_at)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          type="button"
-                          onClick={() => handleOpenPreview(item.id)}
-                          className="text-xs h-8 gap-1.5 rounded-xl text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
-                          aria-label={`Pratinjau data kelas ${item.nama_kelas}`}
-                        >
-                          <Eye size={13} aria-hidden="true" />
-                          <span>Pratinjau Data</span>
-                        </Button>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <Button
-                            size="sm"
-                            type="button"
-                            disabled={isSyncing}
-                            onClick={() => handleTriggerSync(item.id)}
-                            className={cn(
-                              'text-xs h-8 gap-1.5 rounded-xl font-semibold shadow-2xs',
-                              item.status === 'SYNCED'
-                                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                            )}
-                            aria-label={`Sinkronkan data kelas ${item.nama_kelas} ke e-Rapor`}
-                          >
-                            <RefreshCw size={12} className={cn(isSyncing && 'animate-spin')} aria-hidden="true" />
-                            <span>{item.status === 'SYNCED' ? 'Sinkron Ulang' : '1-Click Sync'}</span>
-                          </Button>
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            type="button"
-                            disabled={isDeleting}
-                            onClick={() => handleDeleteSheet(item)}
-                            className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-xl"
-                            aria-label={`Hapus lembar penampung kelas ${item.nama_kelas}`}
-                            title="Hapus dari Hub"
-                          >
-                            <Trash2 size={14} aria-hidden="true" />
-                          </Button>
-                        </div>
+              <div className="space-y-6">
+                {Object.entries(groupedByTingkat)?.map(([tingkatLabel, classItems]) => (
+                  <div key={tingkatLabel} className="space-y-3">
+                    {/* Header Kelompok Tingkat Kelas */}
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200/80 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" aria-hidden="true" />
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                          {tingkatLabel}
+                        </h3>
+                        <Badge variant="outline" className="text-[10px] font-semibold text-slate-500">
+                          {classItems.length} Rombel
+                        </Badge>
                       </div>
                     </div>
-                  );
-                })}
+
+                    {/* Grid Kartu Rombel */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 w-full">
+                      {classItems?.map((item) => {
+                        const isSyncing = syncMutation.isPending && syncMutation.variables === item.id;
+                        const isDeleting = deleteMutation.isPending && deleteMutation.variables === item.id;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 flex flex-col justify-between space-y-4 min-w-0"
+                          >
+                            <div className="space-y-3 min-w-0">
+                              {/* Header Card */}
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <h4 className="font-bold text-slate-900 dark:text-slate-100 text-lg tracking-tight truncate">
+                                      {item.nama_kelas}
+                                    </h4>
+                                    <Badge
+                                      variant="secondary"
+                                      className={cn(
+                                        'text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                                        item.status === 'SYNCED'
+                                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60'
+                                          : 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60'
+                                      )}
+                                    >
+                                      {item.status === 'SYNCED' ? 'Tersinkron' : 'Siap Sinkron'}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                                    {item.tahun_pelajaran_nama} • Semester {item.semester}
+                                  </p>
+                                </div>
+
+                                <a
+                                  href={item.source_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="Buka Google Sheet asli di tab baru"
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
+                                  aria-label={`Buka Google Sheet kelas ${item.nama_kelas}`}
+                                >
+                                  <ExternalLink size={16} aria-hidden="true" />
+                                </a>
+                              </div>
+
+                              {/* Metadata Specs - Grid Responsive */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-xs">
+                                <div className="min-w-0">
+                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Wali Kelas</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                    {item.wali_kelas_nama || 'Belum terisi'}
+                                  </span>
+                                </div>
+                                <div className="min-w-0">
+                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Konsentrasi</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-200 truncate block">
+                                    {item.jurusan_nama || 'Umum'}
+                                  </span>
+                                </div>
+                                <div className="mt-1">
+                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Daftar Siswa</span>
+                                  <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                                    {item.total_siswa} Siswa
+                                  </span>
+                                </div>
+                                <div className="mt-1">
+                                  <span className="text-[10px] font-medium text-slate-400 block uppercase">Mata Pelajaran</span>
+                                  <span className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                    {item.total_mapel} Mapel
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Status Sync Timestamp Menggunakan Timezone & Date Standard */}
+                              {item.last_synced_at && (
+                                <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                                  <Check size={12} aria-hidden="true" />
+                                  <span className="truncate">
+                                    Terakhir disinkronkan: {formatDateTime(item.last_synced_at)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                type="button"
+                                onClick={() => handleOpenPreview(item.id)}
+                                className="text-xs h-8 gap-1.5 rounded-xl text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700"
+                                aria-label={`Pratinjau data kelas ${item.nama_kelas}`}
+                              >
+                                <Eye size={13} aria-hidden="true" />
+                                <span>Pratinjau Data</span>
+                              </Button>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Button
+                                  size="sm"
+                                  type="button"
+                                  disabled={isSyncing}
+                                  onClick={() => handleTriggerSync(item.id)}
+                                  className={cn(
+                                    'text-xs h-8 gap-1.5 rounded-xl font-semibold shadow-2xs',
+                                    item.status === 'SYNCED'
+                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                                      : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                  )}
+                                  aria-label={`Sinkronkan data kelas ${item.nama_kelas} ke e-Rapor`}
+                                >
+                                  <RefreshCw size={12} className={cn(isSyncing && 'animate-spin')} aria-hidden="true" />
+                                  <span>{item.status === 'SYNCED' ? 'Sinkron Ulang' : '1-Click Sync'}</span>
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  type="button"
+                                  disabled={isDeleting}
+                                  onClick={() => handleDeleteSheet(item)}
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 rounded-xl"
+                                  aria-label={`Hapus lembar penampung kelas ${item.nama_kelas}`}
+                                  title="Hapus dari Hub"
+                                >
+                                  <Trash2 size={14} aria-hidden="true" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
