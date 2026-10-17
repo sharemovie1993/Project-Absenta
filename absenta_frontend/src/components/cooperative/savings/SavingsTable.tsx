@@ -329,11 +329,11 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         render: (_, row: any) => {
           const item = row as GroupedMemberSaving;
           return (
-            <div className="flex items-center space-x-1.5">
+            <div className="flex flex-col gap-1 w-24">
               <Button
                 size="sm"
                 variant="primary"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1 shadow-sm px-2.5 py-1 text-xs rounded-xl"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center justify-center gap-1 shadow-xs px-2 py-0.5 text-[11px] rounded-lg h-7"
                 onClick={(e) => {
                   e.stopPropagation();
                   const member = item.member;
@@ -348,19 +348,19 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
                 }}
                 title="Buka Loket Transaksi Simpanan untuk Anggota ini"
               >
-                <Zap size={12} className="text-amber-300" /> Transaksi
+                <Zap size={11} className="text-amber-300 fill-amber-300" /> Transaksi
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold flex items-center gap-1 px-2.5 py-1 text-xs rounded-xl"
+                className="w-full text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold flex items-center justify-center gap-1 px-2 py-0.5 text-[11px] rounded-lg h-7"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleExportAllSavingsPdf(item.primarySaving);
                 }}
                 title="Pratinjau & Cetak Rekap Buku Tabungan Anggota"
               >
-                <BookOpen size={12} /> Buku
+                <BookOpen size={11} /> Buku
               </Button>
             </div>
           );
