@@ -359,6 +359,28 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
     { number: 5, title: 'Aktivasi Konsolidasi' },
   ];
 
+  const isStepAccessible = (stepNumber: number) => {
+    if (stepNumber === 1) return true;
+    if (stepNumber === 2) return true; // Skenario mode selalu bisa lanjut ke COA
+    if (stepNumber === 3) return accountList.length > 0 || Boolean(status?.coaInitialized);
+    if (stepNumber === 4) return (accountList.length > 0) && (Boolean(status?.hasOpeningJournal) || selectedMode === 'NEW_COOP');
+    if (stepNumber === 5) return Boolean(status?.memberCount && status.memberCount > 0);
+    return false;
+  };
+
+  const handleStepClick = (stepNumber: number) => {
+    if (stepNumber === currentStep) return;
+    if (!isStepAccessible(stepNumber)) {
+      if (stepNumber >= 3 && accountList.length === 0) {
+        toast.error('Bagan Akun (COA) belum diinisialisasi. Silakan inisialisasi pada Langkah 2 terlebih dahulu.');
+        return;
+      }
+      toast.error('Harap selesaikan langkah sebelumnya terlebih dahulu.');
+      return;
+    }
+    setCurrentStep(stepNumber);
+  };
+
   const handleEntryChange = (accountId: string, field: 'debit' | 'credit', val: number) => {
     const opposite = field === 'debit' ? 'credit' : 'debit';
     const positiveVal = Math.max(0, val);
@@ -462,24 +484,32 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
             {steps.map((s, idx) => {
               const isPast = s.number < currentStep;
               const isCurrent = s.number === currentStep;
+              const isAccessible = isStepAccessible(s.number);
+
               return (
                 <React.Fragment key={s.number}>
                   <button
-                    onClick={() => setCurrentStep(s.number)}
+                    type="button"
+                    onClick={() => handleStepClick(s.number)}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                       isCurrent
                         ? 'bg-indigo-600 text-white shadow-sm'
                         : isPast
                         ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100'
-                        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : isAccessible
+                        ? 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-400 dark:text-slate-600 opacity-40 cursor-not-allowed hover:bg-transparent'
                     }`}
+                    title={!isAccessible ? 'Selesaikan langkah sebelumnya terlebih dahulu' : undefined}
                   >
                     <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
                       isCurrent
                         ? 'bg-white text-indigo-600 font-bold'
                         : isPast
                         ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        : isAccessible
+                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600'
                     }`}>
                       {isPast ? <Check className="w-3 h-3" /> : s.number}
                     </div>
@@ -881,22 +911,34 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 self-start sm:self-center shrink-0">
-                  {accountList.length >= 15 && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>{accountList.length} Akun Siap</span>
-                    </span>
+                  {accountList.length > 0 ? (
+                    <>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{accountList.length} Akun Siap</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => initCoaMutation.mutate()}
+                        disabled={initCoaMutation.isPending}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
+                        title="Inisialisasi ulang jika terdapat kode akun yang terhapus"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${initCoaMutation.isPending ? 'animate-spin text-indigo-600' : 'text-slate-400'}`} />
+                        <span>Inisialisasi Ulang</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => initCoaMutation.mutate()}
+                      disabled={initCoaMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>{initCoaMutation.isPending ? 'Menginisialisasi...' : 'Inisialisasi 31 Akun SAK ETAP'}</span>
+                    </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => initCoaMutation.mutate()}
-                    disabled={initCoaMutation.isPending}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-                    title="Inisialisasi ulang jika terdapat kode akun yang terhapus"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${initCoaMutation.isPending ? 'animate-spin text-indigo-600' : 'text-slate-400'}`} />
-                    <span>Inisialisasi Ulang</span>
-                  </button>
                 </div>
               </div>
 
@@ -1004,8 +1046,25 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       })
                     ) : (
                       <tr>
-                        <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
-                          Belum ada akun terdaftar. Klik "Inisialisasi 31 Akun SAK ETAP" di atas.
+                        <td colSpan={4} className="px-4 py-10 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-2 max-w-sm mx-auto">
+                            <Layers className="w-8 h-8 text-indigo-400/60 mb-0.5" />
+                            <p className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                              Bagan Akun Belum Diinisialisasi (0 Akun)
+                            </p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+                              Klik tombol di bawah untuk membentuk 31 akun standar SAK ETAP Koperasi secara instan.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => initCoaMutation.mutate()}
+                              disabled={initCoaMutation.isPending}
+                              className="mt-1.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all active:scale-98"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                              <span>{initCoaMutation.isPending ? 'Menginisialisasi...' : 'Inisialisasi 31 Akun SAK ETAP'}</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -1423,14 +1482,27 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
             )}
 
             {currentStep === 2 && (
-              <button
-                type="button"
-                onClick={() => setCurrentStep(3)}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
-              >
-                <span>Lanjut ke Saldo Awal Neraca</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              accountList.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => initCoaMutation.mutate()}
+                  disabled={initCoaMutation.isPending}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all active:scale-98 disabled:opacity-50"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  <span>{initCoaMutation.isPending ? 'Menginisialisasi...' : 'Inisialisasi 31 Akun SAK ETAP'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                >
+                  <span>Lanjut ke Saldo Awal Neraca</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )
             )}
 
             {currentStep === 3 && (
