@@ -22,6 +22,7 @@ import {
 import toast from 'react-hot-toast';
 import { coopAccountApi } from '@/api/coopAccount.api';
 import { SectionCard } from '@/components/ui/SectionCard';
+import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import Button from '@/components/ui/Button';
 import { formatRupiahCompact, formatRupiahFull } from '../dashboard/CoopExecutiveKpiCards';
 import { AccountFormModal } from './AccountFormModal';
@@ -360,34 +361,34 @@ export const ChartOfAccountsSection: React.FC<ChartOfAccountsSectionProps> = ({
   return (
     <div className="space-y-4 w-full min-w-0">
       
-      {/* ─── KARTU RINGKASAN COA ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200/80 dark:border-slate-800">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-            Total Bagan Akun
-          </span>
-          <span className="font-mono font-black text-xl text-slate-900 dark:text-slate-100">
-            {summary.totalAccounts} <span className="text-xs font-normal text-slate-400">Akun</span>
-          </span>
-        </div>
+      {/* ─── KARTU RINGKASAN COA (SHARED ANALYTICSCARD COMPONENT) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <AnalyticsCard
+          title="Total Bagan Akun"
+          value={`${summary.totalAccounts} Akun`}
+          icon={<FolderTree size={20} />}
+          gradient="from-blue-600 to-indigo-600"
+          subtitle="Seluruh rekening pembukuan aktif"
+          isLoading={isLoading}
+        />
 
-        <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block mb-0.5">
-            Akun Induk (Header)
-          </span>
-          <span className="font-mono font-black text-xl text-indigo-600 dark:text-indigo-400">
-            {summary.totalHeaders} <span className="text-xs font-normal text-indigo-400">Kelompok</span>
-          </span>
-        </div>
+        <AnalyticsCard
+          title="Akun Induk (Header)"
+          value={`${summary.totalHeaders} Kelompok`}
+          icon={<Layers size={20} />}
+          gradient="from-indigo-600 to-purple-600"
+          subtitle="Wadah klasifikasi rekening"
+          isLoading={isLoading}
+        />
 
-        <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block mb-0.5">
-            Akun Transaksi (Posting)
-          </span>
-          <span className="font-mono font-black text-xl text-emerald-600 dark:text-emerald-400">
-            {summary.totalPostingAccounts} <span className="text-xs font-normal text-emerald-400">Posting</span>
-          </span>
-        </div>
+        <AnalyticsCard
+          title="Akun Transaksi (Posting)"
+          value={`${summary.totalPostingAccounts} Posting`}
+          icon={<FileText size={20} />}
+          gradient="from-emerald-600 to-teal-600"
+          subtitle="Rekening operasional transaksi"
+          isLoading={isLoading}
+        />
       </div>
 
       {/* ─── TOOLBAR & AKSI ─── */}

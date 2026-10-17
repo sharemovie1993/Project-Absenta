@@ -9,6 +9,7 @@ export interface AnalyticsCardProps {
   gradient?: string;
   growth?: number;
   subtitle?: string;
+  description?: string;
   onClick?: () => void;
   className?: string;
   compact?: boolean;
@@ -32,6 +33,7 @@ export function AnalyticsCardBase({
   gradient = 'from-blue-500 to-indigo-600',
   growth,
   subtitle,
+  description,
   onClick,
   className,
   compact = false,
@@ -42,6 +44,7 @@ export function AnalyticsCardBase({
 }: AnalyticsCardProps) {
   const isCompact = compact || extraCompact || variant === 'compact-premium';
   const isPremiumVariant = variant === 'premium' || variant === 'compact-premium';
+  const displaySubtitle = subtitle || description;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (onClick && (e.key === 'Enter' || e.key === ' ')) {
@@ -154,13 +157,13 @@ export function AnalyticsCardBase({
                   </div>
                 )}
                 
-                {subtitle && (
+                {displaySubtitle && (
                   <p className={cn(
                     "text-[10px] font-medium items-center gap-1 mt-0.5 max-w-full overflow-hidden truncate hidden sm:flex",
                     isPremiumVariant ? "text-white/70" : "text-slate-600 dark:text-slate-400"
                   )}>
                     <span className={cn("w-1 h-1 rounded-full shrink-0", isPremiumVariant ? "bg-white/40" : "bg-slate-300")} />
-                    <span className="truncate">{subtitle}</span>
+                    <span className="truncate">{displaySubtitle}</span>
                   </p>
                 )}
               </div>
