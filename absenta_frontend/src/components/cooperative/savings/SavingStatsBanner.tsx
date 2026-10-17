@@ -52,10 +52,12 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
     });
 
     const categories = Object.entries(categoryMap).map(([code, v]) => ({ code, ...v }));
+    const uniqueMembersCount = new Set(savings?.map(s => s.memberId || s.member.memberNo)).size;
 
     return {
       totalBalance,
       accountsCount: savings?.length || 0,
+      uniqueMembersCount,
       categories,
       latestTxDate: latestTxDate as Date | null,
     };
@@ -109,7 +111,7 @@ export const SavingStatsBanner = React.memo<SavingStatsBannerProps>(({
       <AnalyticsCard
         title="Total Simpanan"
         value={fmt(stats.totalBalance)}
-        subtitle={`Rp ${Math.round(stats.totalBalance).toLocaleString('id-ID')} (${stats.accountsCount} rekening aktif)`}
+        subtitle={`Rp ${Math.round(stats.totalBalance).toLocaleString('id-ID')} (${stats.uniqueMembersCount} anggota)`}
         icon={<Wallet />}
         gradient="from-indigo-600 to-indigo-850"
       />
