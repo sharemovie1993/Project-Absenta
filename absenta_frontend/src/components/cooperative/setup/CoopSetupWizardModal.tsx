@@ -28,9 +28,11 @@ import {
   CornerDownRight,
   Lock,
   Unlock,
-  UserPlus
+  UserPlus,
+  ExternalLink
 } from 'lucide-react';
 import api from '../../../lib/axiosInstance';
+import { MemberBulkAddModal } from '../members/MemberBulkAddModal';
 import { 
   coopSetupApi, 
   type SetupMode, 
@@ -143,6 +145,8 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
       pinjaman_sisa_tenor_bulan: 0,
     }
   ]);
+
+  const [isBulkAddMemberOpen, setIsBulkAddMemberOpen] = useState<boolean>(false);
 
   // Step 4: Ambil master anggota koperasi yang sudah terdaftar di tenant ini
   const { data: existingMembersData, isLoading: loadingExistingMembers } = useQuery({
@@ -1368,7 +1372,50 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </button>
               </div>
 
-              {/* Integrasi Master Member Terdaftar */}
+              {/* Banner Kondisi 1: Belum Ada Anggota Terdaftar */}
+              {existingMemberList.length === 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/50 shadow-2xs">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs shadow-amber-500/30">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Belum Ada Anggota Koperasi Terdaftar
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                          Data Masih Kosong
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 max-w-xl">
+                        Untuk migrasi saldo simpanan & pinjaman berjalan, Anda dapat mendaftarkan siswa atau guru secara massal langsung di sini tanpa menutup wizard, atau membuka halaman anggota.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkAddMemberOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all active:scale-98"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Daftarkan Masal (Siswa / Guru)</span>
+                    </button>
+                    <a
+                      href="/cooperative/members"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-2xs"
+                    >
+                      <span>Halaman Anggota</span>
+                      <ExternalLink className="w-3 h-3 text-slate-400" />
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Banner Kondisi 2: Sudah Ada Anggota Terdaftar */}
               {existingMemberList.length > 0 && (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50 shadow-2xs">
                   <div className="flex items-start sm:items-center gap-3">
@@ -1389,7 +1436,16 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsBulkAddMemberOpen(true)}
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shadow-2xs"
+                      title="Tambah siswa atau guru lain ke keanggotaan koperasi"
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>+ Tambah Masal</span>
+                    </button>
                     <button
                       type="button"
                       onClick={handlePullAllExistingMembers}
@@ -1925,6 +1981,20 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
             </div>
           </div>
         )}
+
+        {/* Sub-modal: Pendaftaran Anggota Massal Langsung di Wizard */}
+        <MemberBulkAddModal
+          isOpen={isBulkAddMemberOpen}
+          onClose={() => setIsBulkAddMemberOpen(false)}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['cooperative-members-for-wizard-setup'] });
+            queryClient.invalidateQueries({ queryKey: ['koperasi-members'] });
+            refetchStatus();
+            setIsBulkAddMemberOpen(false);
+            toast.success('Anggota berhasil didaftarkan! Data master langsung diperbarui.');
+          }}
+          zIndex="z-[10050]"
+        />
 
       </div>
     </div>

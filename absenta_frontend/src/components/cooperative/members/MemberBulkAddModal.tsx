@@ -14,6 +14,7 @@ interface MemberBulkAddModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  zIndex?: string;
 }
 
 interface NonMember {
@@ -30,6 +31,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
   isOpen,
   onClose,
   onSuccess,
+  zIndex,
 }) => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<number>(1);
@@ -177,6 +179,7 @@ export const MemberBulkAddModal: React.FC<MemberBulkAddModalProps> = React.memo(
       onClose={handleClose}
       title="Tambah Anggota Massal (Wizard)"
       size={step === 2 ? 'xl' : 'lg'}
+      zIndex={zIndex}
     >
       <div className="space-y-6">
         {/* Step Indicator Header */}
