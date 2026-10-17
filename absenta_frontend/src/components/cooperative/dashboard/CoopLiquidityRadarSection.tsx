@@ -28,10 +28,15 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
   const dueAmount = stats.dueInstallmentsAmount || 0;
   const nplRatio = stats.loanPortfolio?.nplRatio ?? 0;
 
-  // Likuiditas: Simpanan - Pinjaman Beredar
+  // Likuiditas Riil Buku Besar (1010 Kas Tunai & 1011 Kas Bank)
+  const cashBalance = Number(stats.cashLiquidity?.cashBalance ?? stats.cashBalance ?? 0);
+  const bankBalance = Number(stats.cashLiquidity?.bankBalance ?? stats.bankBalance ?? 0);
+  const totalCashBank = Number(stats.cashLiquidity?.totalCashBank ?? stats.totalCashBank ?? (cashBalance + bankBalance));
+
+  // Likuiditas Kapasitas Simpan Pinjam: Simpanan - Pinjaman Beredar
   const totalSavings = Number(stats.totalSavings || 0);
   const totalLoans = Number(stats.totalLoans || 0);
-  const idleLiquidity = Math.max(0, totalSavings - totalLoans);
+  const ldrRatio = Number(stats.cashLiquidity?.loanToDepositRatio ?? (totalSavings > 0 ? Math.min(100, Math.round((totalLoans / totalSavings) * 100)) : 0));
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full min-w-0">
@@ -123,7 +128,7 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
             to="/cooperative/cash-bank"
             className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
           >
-            <span>Arus Kas</span>
+            <span>Buku Kas & Bank</span>
             <ArrowUpRight size={13} />
           </Link>
         }
@@ -134,31 +139,31 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Dana Tersedia
+                Kas Tunai
               </span>
               <span 
-                title={formatRupiahFull(idleLiquidity)}
+                title={formatRupiahFull(cashBalance)}
                 className="font-mono font-black text-sm sm:text-base text-emerald-600 dark:text-emerald-400 truncate block cursor-help"
               >
-                {formatRupiahCompact(idleLiquidity)}
+                {formatRupiahCompact(cashBalance)}
               </span>
               <span className="text-[9px] text-slate-400 block mt-0.5">
-                Kas siap disalurkan
+                Brankas fisik (1010)
               </span>
             </div>
 
             <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Omzet Hari Ini
+                Kas Bank
               </span>
               <span 
-                title={formatRupiahFull(stats.storeSalesToday)}
+                title={formatRupiahFull(bankBalance)}
                 className="font-mono font-black text-sm sm:text-base text-blue-600 dark:text-blue-400 truncate block cursor-help"
               >
-                {formatRupiahCompact(stats.storeSalesToday || 0)}
+                {formatRupiahCompact(bankBalance)}
               </span>
               <span className="text-[9px] text-slate-400 block mt-0.5">
-                {stats.storeSalesCountToday || 0} transaksi POS
+                Rekening bank (1011)
               </span>
             </div>
           </div>
@@ -167,12 +172,20 @@ export const CoopLiquidityRadarSection: React.FC<CoopLiquidityRadarSectionProps>
             <div className="flex items-center gap-2 min-w-0">
               <Landmark size={15} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span className="text-slate-700 dark:text-slate-300 truncate">
-                Rasio Pinjaman / Simpanan:
+                Total Kas & Bank:
+              </span>
+              <span className="font-mono font-extrabold text-slate-900 dark:text-slate-100 shrink-0">
+                {formatRupiahCompact(totalCashBank)}
               </span>
             </div>
-            <span className="font-mono font-extrabold text-indigo-700 dark:text-indigo-300 shrink-0 pl-2">
-              {totalSavings > 0 ? Math.min(100, Math.round((totalLoans / totalSavings) * 100)) : 0}%
-            </span>
+            <div className="text-right shrink-0 pl-2">
+              <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                Rasio Pinjaman:{' '}
+              </span>
+              <span className="font-mono font-extrabold text-indigo-700 dark:text-indigo-300">
+                {ldrRatio}%
+              </span>
+            </div>
           </div>
         </div>
       </SectionCard>

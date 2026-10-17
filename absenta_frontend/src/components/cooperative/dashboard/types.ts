@@ -56,6 +56,14 @@ export interface EstimatedShuYtdData {
   status: string;
 }
 
+export interface CashLiquidityData {
+  cashBalance: number;
+  bankBalance: number;
+  totalCashBank: number;
+  idleLiquidity: number;
+  loanToDepositRatio: number;
+}
+
 export interface CoopManagementStats {
   totalMembers: number;
   activeMembers?: number;
@@ -82,6 +90,12 @@ export interface CoopManagementStats {
   loanPortfolio?: LoanPortfolioData;
   pendingMembers?: PendingMembersData;
   estimatedShuYtd?: EstimatedShuYtdData;
+
+  // 5 Likuiditas Kas Riil Buku Besar
+  cashLiquidity?: CashLiquidityData;
+  cashBalance?: number;
+  bankBalance?: number;
+  totalCashBank?: number;
 }
 
 export interface CoopManagementSectionProps {

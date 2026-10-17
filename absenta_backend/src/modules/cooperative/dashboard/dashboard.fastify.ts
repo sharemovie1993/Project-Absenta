@@ -116,7 +116,8 @@ export default async function dashboardRoutes(fastify: any) {
                 pendingMembersList,
                 pendingMembersCount,
                 recentSavings,
-                recentSales
+                recentSales,
+                cashAccounts
             ] = await Promise.all([
                 // 1. Anggota
                 prisma.member.count({ where: { tenantId } }),
@@ -261,8 +262,42 @@ export default async function dashboardRoutes(fastify: any) {
                             }
                         }
                     }
+                }),
+
+                // 10. Akun Kas & Bank Buku Besar (1010 Kas Tunai & 1011 Kas Bank)
+                prisma.account.findMany({
+                    where: { tenantId, code: { in: ['1010', '1011'] } },
+                    select: { id: true, code: true, name: true }
                 })
             ]);
+
+            // ── Likuiditas Kas & Bank Riil Buku Besar ──
+            const cashAccountIds = (cashAccounts || []).map(a => a.id);
+            let cashBalance = 0;
+            let bankBalance = 0;
+
+            if (cashAccountIds.length > 0) {
+                const journalSums = await prisma.journalItem.groupBy({
+                    by: ['accountId', 'type'],
+                    where: {
+                        accountId: { in: cashAccountIds }
+                    },
+                    _sum: { amount: true }
+                });
+
+                const accIdToCode = new Map((cashAccounts || []).map(a => [a.id, a.code]));
+                for (const group of journalSums) {
+                    const code = accIdToCode.get(group.accountId);
+                    const amt = Number(group._sum?.amount || 0);
+                    const netAmt = group.type === 'DEBIT' ? amt : -amt;
+                    if (code === '1010') cashBalance += netAmt;
+                    else if (code === '1011') bankBalance += netAmt;
+                }
+            }
+
+            cashBalance = Math.round(cashBalance);
+            bankBalance = Math.round(bankBalance);
+            const totalCashBank = cashBalance + bankBalance;
 
             // ── Breakdown Simpanan ──
             const catMap = new Map(categories.map(c => [c.id, c.code]));
@@ -523,7 +558,19 @@ export default async function dashboardRoutes(fastify: any) {
                 wajibCompliance,
                 loanPortfolio,
                 pendingMembers,
-                estimatedShuYtd
+                estimatedShuYtd,
+
+                // 5 Likuiditas Kas Riil Buku Besar (Real Ledger Cash & Banking)
+                cashLiquidity: {
+                    cashBalance,
+                    bankBalance,
+                    totalCashBank,
+                    idleLiquidity: Math.max(0, totalSavings - totalLoans),
+                    loanToDepositRatio: totalSavings > 0 ? Math.min(100, Math.round((totalLoans / totalSavings) * 100)) : 0
+                },
+                cashBalance,
+                bankBalance,
+                totalCashBank
             };
 
             // Save to In-Memory Cache
