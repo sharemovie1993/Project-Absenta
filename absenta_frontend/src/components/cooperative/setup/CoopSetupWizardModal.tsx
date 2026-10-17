@@ -1017,136 +1017,95 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
 
           {/* ================= STEP 3: SALDO AWAL NERACA (DOUBLE ENTRY) ================= */}
           {currentStep === 3 && (
-            <div className="space-y-3.5 sm:space-y-5 animate-in fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
+            <div className="space-y-2.5 sm:space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-                    Langkah 3: Input Saldo Awal Neraca (Double-Entry Balanced)
+                    Langkah 3: Input Saldo Awal Neraca
                   </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    Saldo buku besar per tanggal cut-off ({cutoffDate}). Total Debit wajib seimbang dengan Total Kredit.
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    Cut-off: <span className="font-semibold text-slate-700 dark:text-slate-300">{cutoffDate}</span> • 1 Akun = 1 Sisi Terisi
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleToggleStrictLock}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] sm:text-[10.5px] font-semibold transition-all border shrink-0 ${
+                    strictSideLock
+                      ? 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                      : 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300'
+                  }`}
+                  title="Klik untuk mengubah mode penguncian kolom"
+                >
+                  {strictSideLock ? (
+                    <>
+                      <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>Kunci: Aktif</span>
+                    </>
+                  ) : (
+                    <>
+                      <Unlock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                      <span>Mode Bebas</span>
+                    </>
+                  )}
+                </button>
               </div>
 
-              {/* Real-time Balanced Status Card - Edukatif & Tepat Keadaan */}
-              <div className={`p-3 sm:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs ${
+              {/* Status Bar Ramping & Informatif */}
+              <div className={`px-3 py-2 rounded-xl border flex items-center justify-between gap-2 shadow-2xs ${
                 totalDebit === 0 && totalCredit === 0
                   ? 'bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-800/40 dark:border-slate-700 dark:text-slate-200'
                   : isBalanced
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-300'
                   : 'bg-rose-50 border-rose-200 text-rose-900 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-300'
               }`}>
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
                     totalDebit === 0 && totalCredit === 0
-                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      ? 'bg-indigo-600 text-white'
                       : isBalanced 
-                      ? 'bg-emerald-500 text-white shadow-2xs' 
-                      : 'bg-rose-500 text-white shadow-2xs'
+                      ? 'bg-emerald-500 text-white' 
+                      : 'bg-rose-500 text-white'
                   }`}>
                     {totalDebit === 0 && totalCredit === 0 ? (
-                      <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Scale className="w-3.5 h-3.5" />
                     ) : isBalanced ? (
-                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                     ) : (
-                      <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <AlertTriangle className="w-3.5 h-3.5" />
                     )}
                   </div>
-                  <div>
-                    <h4 className="text-xs font-bold uppercase tracking-wider">
-                      {totalDebit === 0 && totalCredit === 0
-                        ? 'Menunggu Pengisian Saldo Awal'
-                        : isBalanced 
-                        ? 'Jurnal Saldo Awal Seimbang (Balanced)' 
-                        : 'Jurnal Belum Seimbang (Unbalanced)'}
-                    </h4>
-                    <p className="text-[11px] opacity-90 leading-tight mt-0.5">
-                      {totalDebit === 0 && totalCredit === 0
-                        ? 'Silakan isi saldo kas, rekening bank, simpanan, dan modal. Debit dan Kredit harus bernilai sama.'
-                        : isBalanced 
-                        ? 'Sempurna! Total Debit sama dengan Total Kredit. Saldo siap diposting ke Buku Besar.' 
-                        : `Terdapat selisih Rp ${diff.toLocaleString('id-ID')}. Total Debit dan Kredit harus identik.`}
-                    </p>
-                  </div>
+                  <span className="text-[11px] sm:text-xs font-bold truncate">
+                    {totalDebit === 0 && totalCredit === 0
+                      ? 'Menunggu Pengisian Saldo'
+                      : isBalanced 
+                      ? 'Saldo Seimbang (Balanced)' 
+                      : `Selisih Rp ${diff.toLocaleString('id-ID')}`}
+                  </span>
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-xs font-mono font-bold shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-700/60">
-                  <div className="text-left sm:text-right">
-                    <span className="text-[10px] text-slate-500 block font-sans">Total Debit</span>
-                    <span className="text-slate-900 dark:text-white">Rp {totalDebit.toLocaleString('id-ID')}</span>
-                  </div>
+                <div className="flex items-center gap-2 sm:gap-3 text-xs font-mono font-bold shrink-0">
                   <div className="text-right">
-                    <span className="text-[10px] text-slate-500 block font-sans">Total Kredit</span>
-                    <span className="text-slate-900 dark:text-white">Rp {totalCredit.toLocaleString('id-ID')}</span>
+                    <span className="text-[9px] text-slate-400 block font-sans">Debit</span>
+                    <span className="text-slate-900 dark:text-white text-[11px] sm:text-xs">Rp {totalDebit.toLocaleString('id-ID')}</span>
+                  </div>
+                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                  <div className="text-right">
+                    <span className="text-[9px] text-slate-400 block font-sans">Kredit</span>
+                    <span className="text-slate-900 dark:text-white text-[11px] sm:text-xs">Rp {totalCredit.toLocaleString('id-ID')}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Panduan Ramah Non-Akuntan */}
-              <div className="p-2.5 sm:p-3 bg-amber-50/90 dark:bg-amber-950/25 border border-amber-200/80 dark:border-amber-800/60 rounded-xl text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5 shadow-2xs">
-                <HelpCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                <div className="space-y-1.5 w-full">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                    <p className="font-bold text-slate-900 dark:text-slate-100 text-[11.5px] sm:text-xs">
-                      💡 Petunjuk Praktis: 1 Akun = 1 Sisi Saja (Kolom Lawan Dikunci Otomatis)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleToggleStrictLock}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-semibold transition-all border shrink-0 w-fit ${
-                        strictSideLock
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800'
-                          : 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                      }`}
-                      title="Klik untuk membuka/mengunci kolom berlawanan"
-                    >
-                      {strictSideLock ? (
-                        <>
-                          <Lock className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                          <span>Kolom Lawan Terkunci (Aman)</span>
-                        </>
-                      ) : (
-                        <>
-                          <Unlock className="w-3 h-3 text-slate-500" />
-                          <span>Mode Bebas (Buka Semua)</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
-                    {strictSideLock
-                      ? 'Kolom berlawanan yang tidak sesuai standar SAK ETAP sudah kami kunci otomatis (tanda —) agar Anda tidak perlu pusing memilih kolom dan terhindar dari salah ketik.'
-                      : 'Mode Bebas aktif: Seluruh kolom Debit dan Kredit terbuka untuk pengeditan manual.'}
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-2 pt-0.5 text-[10.5px]">
-                    <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
-                      <strong className="text-sky-700 dark:text-sky-400 font-bold">📥 Kolom DEBIT (Harta / Kas / Bank):</strong>
-                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Uang kas di brankas (1010), rekening bank (1011), pinjaman anggota (1020), persediaan toko (1030).</span>
-                    </div>
-                    <div className="bg-white/80 dark:bg-slate-900/60 p-1.5 rounded border border-amber-200/50 dark:border-amber-900/40">
-                      <strong className="text-purple-700 dark:text-purple-400 font-bold">📤 Kolom KREDIT (Modal / Simpanan):</strong>
-                      <span className="text-slate-600 dark:text-slate-400 block mt-0.5">Simpanan pokok (2011/3011), simpanan wajib (2012/3012), tabungan sukarela (2010), cadangan modal.</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Table Input Jurnal Saldo Awal - Pas di Layar HP & Desktop */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[46vh] sm:max-h-[380px] overflow-y-auto touch-pan-x shadow-2xs">
+              {/* Table Input Jurnal Saldo Awal - Bersih, Luas & Fokus Fungsi */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[56vh] sm:max-h-[420px] overflow-y-auto touch-pan-x shadow-2xs">
                 <table className="w-full text-left text-xs min-w-full sm:min-w-[480px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 border-b border-slate-200 dark:border-slate-700/80 z-10">
                     <tr>
                       <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-14 sm:w-20">Kode</th>
                       <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-44 text-right">
-                        <span>Debit (Rp)</span>
-                        <span className="hidden sm:block text-[9px] font-normal text-sky-600 dark:text-sky-400">Kas, Bank, Piutang</span>
-                      </th>
-                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-44 text-right">
-                        <span>Kredit (Rp)</span>
-                        <span className="hidden sm:block text-[9px] font-normal text-purple-600 dark:text-purple-400">Simpanan & Modal</span>
-                      </th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-36 text-right">Debit (Rp)</th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-36 text-right">Kredit (Rp)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1163,28 +1122,14 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                             {acc.code}
                           </td>
                           <td className="px-2 sm:px-3 py-1.5">
-                            <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs line-clamp-1 sm:line-clamp-none">{acc.name}</span>
-                            <div className="mt-0.5">
-                              {normalSide === 'DEBIT' ? (
-                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/50 border border-sky-200/70 dark:border-sky-800/50 px-1.5 py-0.2 rounded">
-                                  📥 Isi di Debit (Aset/Harta)
-                                </span>
-                              ) : acc.type === 'LIABILITY' ? (
-                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200/70 dark:border-amber-800/50 px-1.5 py-0.2 rounded">
-                                  📤 Isi di Kredit (Titipan/Hutang)
-                                </span>
-                              ) : (
-                                <span className="inline-block text-[8.5px] sm:text-[9.5px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/70 dark:border-purple-800/50 px-1.5 py-0.2 rounded">
-                                  💎 Isi di Kredit (Modal/Simpanan)
-                                </span>
-                              )}
-                            </div>
+                            <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs line-clamp-1">{acc.name}</span>
+                            <span className="text-[9px] text-slate-400 block">{acc.type}</span>
                           </td>
                           <td className="px-1.5 sm:px-3 py-1.5">
                             {isDebitLocked ? (
                               <div
-                                title="Kolom Debit dikunci karena akun ini normalnya di sisi Kredit"
-                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-900/40 text-center font-mono text-slate-400 dark:text-slate-600 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
+                                title="Kolom Debit dikunci otomatis"
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-900/40 text-center font-mono text-slate-400 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
                               >
                                 <Lock className="w-2.5 h-2.5 opacity-40 shrink-0" />
                                 <span>—</span>
@@ -1203,8 +1148,8 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                           <td className="px-1.5 sm:px-3 py-1.5">
                             {isCreditLocked ? (
                               <div
-                                title="Kolom Kredit dikunci karena akun ini normalnya di sisi Debit"
-                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/70 dark:bg-slate-900/40 text-center font-mono text-slate-400 dark:text-slate-600 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
+                                title="Kolom Kredit dikunci otomatis"
+                                className="w-full px-2 py-1 rounded-lg border border-slate-200/70 dark:border-slate-800/80 bg-slate-100/60 dark:bg-slate-900/40 text-center font-mono text-slate-400 select-none text-[11px] sm:text-xs flex items-center justify-center gap-1 cursor-not-allowed"
                               >
                                 <Lock className="w-2.5 h-2.5 opacity-40 shrink-0" />
                                 <span>—</span>
