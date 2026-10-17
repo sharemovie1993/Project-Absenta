@@ -15,13 +15,13 @@ import {
 } from 'lucide-react';
 import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { AnalyticsCard } from '../../ui/AnalyticsCard';
 import { coopAccountApi } from '@/api/coopAccount.api';
 import { formatDate } from '@/utils/date.utils';
 import { 
   formatAccountingReference, 
   parseAccountingDescription 
 } from '@/utils/cooperative/accountingFormatters';
+
 
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
@@ -217,40 +217,59 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
         </Button>
       </div>
 
-      {/* Metric Cards Saldo Akun */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <AnalyticsCard
-          title="Saldo Awal"
-          value={`Rp ${Math.round(ledger.openingBalance).toLocaleString('id-ID')}`}
-          icon={Scale}
-          description="Saldo awal periode"
-          variant="card"
-          gradient="from-slate-500 to-slate-700"
-        />
-        <AnalyticsCard
-          title="Total Mutasi Debit"
-          value={`Rp ${Math.round(ledger.totalDebit).toLocaleString('id-ID')}`}
-          icon={TrendingUp}
-          description="Total mutasi masuk"
-          variant="card"
-          gradient="from-emerald-500 to-teal-600"
-        />
-        <AnalyticsCard
-          title="Total Mutasi Kredit"
-          value={`Rp ${Math.round(ledger.totalCredit).toLocaleString('id-ID')}`}
-          icon={TrendingDown}
-          description="Total mutasi keluar"
-          variant="card"
-          gradient="from-rose-500 to-amber-600"
-        />
-        <AnalyticsCard
-          title="Saldo Akhir Berjalan"
-          value={`Rp ${Math.round(ledger.endingBalance).toLocaleString('id-ID')}`}
-          icon={DollarSign}
-          description={`Per ${effectiveEndDate}`}
-          variant="card"
-          gradient="from-indigo-600 to-blue-600"
-        />
+      {/* Metric Stat Strip Ramping (Hemat Ruang Vertikal) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Saldo Awal</span>
+            <span className="font-mono font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 whitespace-nowrap block mt-0.5">
+              Rp {Math.round(ledger.openingBalance).toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Saldo awal periode</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
+            <Scale size={16} />
+          </div>
+        </div>
+
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Mutasi Masuk</span>
+            <span className="font-mono font-bold text-sm sm:text-base text-emerald-600 dark:text-emerald-400 whitespace-nowrap block mt-0.5">
+              Rp {Math.round(ledger.totalDebit).toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 block mt-0.5">Total mutasi debit</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+            <TrendingUp size={16} />
+          </div>
+        </div>
+
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Mutasi Keluar</span>
+            <span className="font-mono font-bold text-sm sm:text-base text-rose-600 dark:text-rose-400 whitespace-nowrap block mt-0.5">
+              Rp {Math.round(ledger.totalCredit).toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-rose-600/70 dark:text-rose-400/70 block mt-0.5">Total mutasi kredit</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+            <TrendingDown size={16} />
+          </div>
+        </div>
+
+        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between shadow-2xs">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Saldo Akhir Berjalan</span>
+            <span className="font-mono font-black text-sm sm:text-base text-indigo-600 dark:text-indigo-400 whitespace-nowrap block mt-0.5">
+              Rp {Math.round(ledger.endingBalance).toLocaleString('id-ID')}
+            </span>
+            <span className="text-[10px] text-slate-400 block mt-0.5">Per {effectiveEndDate}</span>
+          </div>
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+            <DollarSign size={16} />
+          </div>
+        </div>
       </div>
 
       {/* Main Table Card */}

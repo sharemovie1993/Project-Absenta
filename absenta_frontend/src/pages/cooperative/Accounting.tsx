@@ -517,50 +517,44 @@ const Accounting: React.FC = React.memo(() => {
             >
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">
-                {/* Fiscal Year Context Bar */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-3.5 bg-slate-50 dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 rounded-2xl">
-                    <div className="flex items-center gap-2.5">
-                        <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl">
-                            <Calendar size={18} />
-                        </div>
-                        <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Konteks Tahun Buku Pembukuan</span>
-                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                                {currentFiscalYear ? `Tahun Buku ${currentFiscalYear.year}` : 'Tahun Buku Berjalan'}
-                                {currentFiscalYear?.isActive && (
-                                    <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 rounded-md border border-emerald-500/20">
-                                        AKTIF
-                                    </span>
-                                )}
-                                {currentFiscalYear && (currentFiscalYear.status === 'APPROVED' || currentFiscalYear.status === 'DISTRIBUTED') && (
-                                    <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded-md">
-                                        CLOSED (LOCKED)
-                                    </span>
-                                )}
-                            </span>
-                        </div>
+                {/* Header Navigasi Tab & Konteks Tahun Buku Terpadu */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                        <TabSwitcher
+                            tabs={tabOptions}
+                            activeTab={activeTab}
+                            onChange={handleTabChange}
+                        />
                     </div>
 
-                    {fiscalYears.length > 0 && (
-                        <div className="flex items-center gap-2 self-end sm:self-center w-full sm:w-64">
-                            <label className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0">Pilih Periode:</label>
-                            <div className="w-full">
+                    {/* Badge Konteks Tahun Buku (Kompak & Elegan) */}
+                    <div className="inline-flex items-center gap-2 self-start lg:self-center px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl text-xs shrink-0 shadow-2xs">
+                        <Calendar size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+                        <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                            {currentFiscalYear ? `Tahun Buku ${currentFiscalYear.year}` : 'Tahun Buku Berjalan'}
+                        </span>
+                        {currentFiscalYear?.isActive && (
+                            <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 rounded border border-emerald-500/20">
+                                AKTIF
+                            </span>
+                        )}
+                        {currentFiscalYear && (currentFiscalYear.status === 'APPROVED' || currentFiscalYear.status === 'DISTRIBUTED') && (
+                            <span className="px-1.5 py-0.2 text-[9px] font-extrabold bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 rounded">
+                                CLOSED
+                            </span>
+                        )}
+                        {fiscalYears.length > 1 && (
+                            <div className="w-36 ml-1">
                                 <SearchableSelect
                                     options={fiscalYearOptions}
                                     value={currentFiscalYear?.id || ''}
                                     onChange={(val) => setSelectedFiscalYearId(val)}
-                                    placeholder="Pilih Tahun Buku"
+                                    placeholder="Ganti Tahun"
                                 />
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
-
-                <TabSwitcher
-                    tabs={tabOptions}
-                    activeTab={activeTab}
-                    onChange={handleTabChange}
-                />
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
