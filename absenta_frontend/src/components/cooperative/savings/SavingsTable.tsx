@@ -4,7 +4,7 @@ import type { Column } from '../../ui/Table';
 import Button from '../../ui/Button';
 import Input from '../../ui/Input';
 import { SearchableSelect } from '../../ui/SearchableSelect';
-import { Search, Printer, BookOpen, FileSpreadsheet, Eye, Zap } from 'lucide-react';
+import { Search, Printer, BookOpen, FileSpreadsheet, Zap } from 'lucide-react';
 import type { Saving, SavingCategory } from './types';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../academic/shared/MobileAcademicList';
@@ -353,26 +353,14 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
               <Button
                 size="sm"
                 variant="outline"
-                className="text-slate-700 border-slate-300 dark:text-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold flex items-center gap-1 px-2 py-1 text-xs rounded-xl"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleShowTransactions(item.primarySaving);
-                }}
-                title="Lihat Riwayat Transaksi"
-              >
-                <Eye size={12} />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
                 className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 font-bold flex items-center gap-1 px-2.5 py-1 text-xs rounded-xl"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleExportAllSavingsPdf(item.primarySaving);
                 }}
-                title="Cetak Rekap Buku Tabungan Anggota"
+                title="Pratinjau & Cetak Rekap Buku Tabungan Anggota"
               >
-                <Printer size={12} /> Buku
+                <BookOpen size={12} /> Buku
               </Button>
             </div>
           );
