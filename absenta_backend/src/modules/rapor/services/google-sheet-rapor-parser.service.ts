@@ -160,8 +160,9 @@ export class GoogleSheetRaporParserService {
 
     const html = res.data;
 
-    // Cek jika akses dibatasi login
-    if (typeof html === 'string' && (html.includes('ServiceLogin') || html.includes('accounts.google.com/signin'))) {
+    // Cek jika akses dibatasi login dan dialihkan ke Google Sign-in
+    const finalUrl = (res.request?.res?.responseUrl || '') as string;
+    if (finalUrl.includes('accounts.google.com')) {
       throw new Error(
         'Folder Google Drive ini masih dibatasi (Privat). Silakan buka folder tersebut di Google Drive, klik menu "Bagikan", lalu ubah akses umum menjadi "Siapa saja yang memiliki link".'
       );

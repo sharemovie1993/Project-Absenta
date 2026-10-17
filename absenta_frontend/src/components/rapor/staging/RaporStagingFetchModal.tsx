@@ -86,7 +86,7 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
               required
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://drive.google.com/drive/folders/15-2Kyn9WDbOS6iIuE-pLwHM980SnU6sq?usp=sharing&#10;https://docs.google.com/spreadsheets/d/1CkcIl9oCPfrJ5R-A-CW0lyUy0IvHqSmhRQq088SDIZU/edit"
+              placeholder="Tempelkan tautan di sini (satu tautan per baris)...&#10;Contoh tautan folder: https://drive.google.com/drive/folders/15-2Kyn9WDbOS6iIuE-pLwHM980SnU6sq?usp=sharing&#10;Contoh tautan berkas: https://docs.google.com/spreadsheets/d/1CkcIl9oCPfrJ5R-A-CW0lyUy0IvHqSmhRQq088SDIZU/edit"
               className="text-xs font-mono rounded-xl resize-none w-full"
               aria-label="Tautan Berkas Google Sheet atau Folder Google Drive"
             />
