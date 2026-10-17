@@ -53,6 +53,53 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   // Step 1 State: Mode & Cutoff
   const [selectedMode, setSelectedMode] = useState<SetupMode>('NEW_COOP');
   const [cutoffDate, setCutoffDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [showCutoffHelp, setShowCutoffHelp] = useState<boolean>(false);
+
+  // Perhitungan Tanggal Cerdas & Anti-Human Error
+  const smartDates = useMemo(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const todayStr = now.toISOString().split('T')[0];
+    const startOfYearStr = `${currentYear}-01-01`;
+    const midYearSemester1Str = `${currentYear}-06-30`;
+
+    // Hari terakhir bulan lalu (End of previous month)
+    const firstDayThisMonth = new Date(currentYear, now.getMonth(), 1);
+    const lastDayPrevMonth = new Date(firstDayThisMonth.getTime() - 86400000);
+    const lastMonthEndStr = lastDayPrevMonth.toISOString().split('T')[0];
+
+    return {
+      todayStr,
+      startOfYearStr,
+      midYearSemester1Str,
+      lastMonthEndStr,
+      currentYear,
+    };
+  }, []);
+
+  // Helper cerdas mendeteksi apakah tanggal jatuh pada akhir bulan (best practice SAK ETAP)
+  const isDateEndOfMonth = (dateStr: string) => {
+    if (!dateStr) return false;
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return false;
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    const lastDay = new Date(y, m, 0).getDate();
+    return d === lastDay;
+  };
+
+  // Handler pemilihan mode cerdas (mengunci tanggal default terbaik tanpa salah ketik)
+  const handleSelectMode = (mode: SetupMode) => {
+    setSelectedMode(mode);
+    if (mode === 'NEW_COOP') {
+      setCutoffDate(smartDates.todayStr);
+    } else if (mode === 'MIGRATION_START_YEAR') {
+      setCutoffDate(smartDates.startOfYearStr);
+    } else if (mode === 'MIGRATION_MID_YEAR') {
+      setCutoffDate(smartDates.lastMonthEndStr);
+    }
+  };
 
   // Reset Simulation State
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -441,7 +488,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {/* Mode 1: Baru Berdiri */}
                 <div
-                  onClick={() => setSelectedMode('NEW_COOP')}
+                  onClick={() => handleSelectMode('NEW_COOP')}
                   className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'NEW_COOP'
                       ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
@@ -466,15 +513,20 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'NEW_COOP' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    <span>Saldo awal modal perintis</span>
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'NEW_COOP' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <span>Saldo modal perintis</span>
+                    </div>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300">
+                      Otomatis Hari Ini
+                    </span>
                   </div>
                 </div>
 
                 {/* Mode 2: Migrasi Awal Tahun */}
                 <div
-                  onClick={() => setSelectedMode('MIGRATION_START_YEAR')}
+                  onClick={() => handleSelectMode('MIGRATION_START_YEAR')}
                   className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'MIGRATION_START_YEAR'
                       ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
@@ -499,15 +551,20 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_START_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    <span>Neraca bersih awal periode</span>
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_START_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <span>Neraca awal periode</span>
+                    </div>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300">
+                      Otomatis 1 Jan
+                    </span>
                   </div>
                 </div>
 
                 {/* Mode 3: Migrasi Tengah Tahun */}
                 <div
-                  onClick={() => setSelectedMode('MIGRATION_MID_YEAR')}
+                  onClick={() => handleSelectMode('MIGRATION_MID_YEAR')}
                   className={`cursor-pointer rounded-xl p-3.5 border-2 transition-all flex flex-col justify-between ${
                     selectedMode === 'MIGRATION_MID_YEAR'
                       ? 'border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs ring-1 ring-indigo-600/30'
@@ -532,30 +589,216 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       </p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-                    <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_MID_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                    <span>Akumulasi Laba Rugi YTD</span>
+                  <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700/60 text-[10px] sm:text-[11px] font-medium text-slate-600 dark:text-slate-300 flex items-center justify-between gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className={`w-3.5 h-3.5 ${selectedMode === 'MIGRATION_MID_YEAR' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                      <span>Akumulasi Laba Rugi YTD</span>
+                    </div>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                      Otomatis Akhir Bln
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Tanggal Cut-Off - Compact */}
-              <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3 border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                    Tanggal Efektif Saldo Awal (Cut-Off Pembukuan)
-                  </label>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                    Transaksi sebelum tanggal ini dianggap saldo awal warisan (legacy balance).
-                  </p>
+              {/* Tanggal Cut-Off - Bersifat Cerdas & Anti-Human Error */}
+              <div className="bg-slate-50 dark:bg-slate-800/40 rounded-xl p-3.5 border border-slate-200 dark:border-slate-700/80 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <label className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                        Tanggal Efektif Saldo Awal (Cut-Off Pembukuan)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCutoffHelp(prev => !prev)}
+                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 transition-colors"
+                        title="Klik untuk melihat penjelasan lengkap maksud tanggal efektif / cut-off"
+                      >
+                        <HelpCircle className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                        <span>{showCutoffHelp ? 'Tutup Panduan' : 'Apa Maksud Tanggal Efektif?'}</span>
+                      </button>
+                    </div>
+
+                    {/* Edukatif & Penjelasan Cerdas Berdasarkan Mode Terpilih */}
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {selectedMode === 'NEW_COOP' && (
+                        <span>
+                          🚀 <strong>Mode Koperasi Baru:</strong> Tanggal disetel ke <strong>Hari Ini</strong> sebagai titik awal legalitas & penyetoran modal perintis.
+                        </span>
+                      )}
+                      {selectedMode === 'MIGRATION_START_YEAR' && (
+                        <span>
+                          📅 <strong>Mode Awal Tahun:</strong> Otomatis disetel ke <strong>01 Januari {smartDates.currentYear}</strong> untuk memindahkan neraca akhir (Trial Balance 31 Des).
+                        </span>
+                      )}
+                      {selectedMode === 'MIGRATION_MID_YEAR' && (
+                        <span>
+                          📊 <strong>Mode Tengah Tahun:</strong> Disetel ke <strong>akhir periode buku sebelumnya</strong> ({cutoffDate}) agar SHU & transaksi berjalan tidak tumpang tindih.
+                        </span>
+                      )}
+                    </p>
+
+                    {/* Status Validasi Cerdas Anti Human Error */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      {selectedMode === 'NEW_COOP' && (
+                        cutoffDate === smartDates.todayStr ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3 h-3" /> Tanggal Cerdas: Hari Ini (Akurat untuk Koperasi Baru)
+                          </span>
+                        ) : cutoffDate > smartDates.todayStr ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="w-3 h-3" /> Perhatian: Tanggal di masa depan (belum terjadi)
+                          </span>
+                        ) : null
+                      )}
+
+                      {selectedMode === 'MIGRATION_START_YEAR' && (
+                        cutoffDate.endsWith('-01-01') ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3 h-3" /> Tanggal Cerdas: 1 Januari Awal Tahun Buku Standar SAK ETAP
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="w-3 h-3" /> Disarankan 1 Januari agar perhitungan SHU 1 tahun sinkron
+                          </span>
+                        )
+                      )}
+
+                      {selectedMode === 'MIGRATION_MID_YEAR' && (
+                        isDateEndOfMonth(cutoffDate) ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="w-3 h-3" /> Tanggal Cerdas: Akhir Bulan Standar (Buku Bulanan Tertutup Rapi)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+                            <AlertTriangle className="w-3 h-3" /> Sebaiknya pilih tanggal akhir bulan (contoh: {smartDates.lastMonthEndStr})
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Kontrol Input Tanggal & Pintasan 1-Klik Cerdas */}
+                  <div className="flex flex-col sm:items-end gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={cutoffDate}
+                        onChange={(e) => setCutoffDate(e.target.value)}
+                        className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                      />
+                    </div>
+
+                    {/* Pintasan 1-Klik Cerdas Anti-Salah Ketik */}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setCutoffDate(smartDates.todayStr)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          cutoffDate === smartDates.todayStr
+                            ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                        title="Setel ke tanggal Hari Ini"
+                      >
+                        Hari Ini
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCutoffDate(smartDates.startOfYearStr)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          cutoffDate === smartDates.startOfYearStr
+                            ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                        title={`Setel ke 01 Januari ${smartDates.currentYear}`}
+                      >
+                        1 Jan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCutoffDate(smartDates.lastMonthEndStr)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          cutoffDate === smartDates.lastMonthEndStr
+                            ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                        title={`Setel ke Akhir Bulan Lalu (${smartDates.lastMonthEndStr})`}
+                      >
+                        Akhir Bln Lalu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCutoffDate(smartDates.midYearSemester1Str)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                          cutoffDate === smartDates.midYearSemester1Str
+                            ? 'bg-indigo-600 text-white font-bold shadow-2xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                        title="Setel ke Akhir Semester 1 (30 Juni)"
+                      >
+                        30 Jun (Sem 1)
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="date"
-                  value={cutoffDate}
-                  onChange={(e) => setCutoffDate(e.target.value)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
-                />
+
+                {/* Penjelasan Edukatif Tooltip / Accordion yang Ramah Pengguna & HP */}
+                {showCutoffHelp && (
+                  <div className="p-3 bg-indigo-50/80 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800/60 text-xs space-y-2 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex items-center justify-between text-indigo-900 dark:text-indigo-200 font-bold">
+                      <div className="flex items-center gap-1.5">
+                        <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                        <span>Panduan Memahami Tanggal Efektif (Cut-Off Pembukuan)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowCutoffHelp(false)}
+                        className="text-slate-400 hover:text-slate-600 text-xs"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                      <strong>Tanggal Cut-Off</strong> adalah garis batas waktu pemisah antara pembukuan manual/lama Anda dengan pencatatan di aplikasi Absenta. 
+                      Tujuannya agar Anda <em>tidak perlu menginput ulang tumpukan nota, kwitansi, atau struk bertahun-tahun yang lalu satu per satu</em>.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs">
+                        <span className="font-bold text-[11px] text-rose-700 dark:text-rose-400 flex items-center gap-1 mb-1">
+                          ⏪ SEBELUM / PADA Tanggal Ini:
+                        </span>
+                        <p className="text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Seluruh saldo uang di kasir/brankas, rekening bank koperasi, simpanan anggota, dan sisa pinjaman berjalan dimasukkan <strong>sekaligus sebagai satu angka Saldo Awal (Neraca)</strong> pada Langkah 3 & 4.
+                        </p>
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-white dark:bg-slate-900 border border-indigo-100 dark:border-indigo-900/50 shadow-2xs">
+                        <span className="font-bold text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mb-1">
+                          ⏩ SETELAH Tanggal Ini:
+                        </span>
+                        <p className="text-[10.5px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Seluruh operasional harian (kasir warung/toko POS, setoran & penarikan simpanan, pencairan pinjaman baru, angsuran) dicatat <strong>satu per satu secara langsung (real-time)</strong> di menu harian Absenta.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/90 dark:bg-slate-900/80 p-2.5 rounded-lg border border-indigo-100 dark:border-indigo-900/40 text-[10.5px] text-slate-600 dark:text-slate-300 space-y-1">
+                      <div className="font-semibold text-slate-800 dark:text-slate-200">
+                        💡 Panduan Memilih Skenario yang Tepat:
+                      </div>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-600 dark:text-slate-400">
+                        <li><strong>Koperasi Baru:</strong> Pilih <em>Hari Ini</em>. Masukkan uang tunai modal perintis pertama kali.</li>
+                        <li><strong>Awal Tahun:</strong> Pilih <em>1 Januari</em>. Masukkan angka Neraca Akhir per 31 Desember tahun lalu.</li>
+                        <li><strong>Tengah Tahun:</strong> Pilih <em>Akhir Bulan Lalu</em> (misal 30 September). Transaksi bulan Oktober mulai dicatat harian di Absenta.</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
