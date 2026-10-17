@@ -235,12 +235,16 @@ export const coopSetupApi = {
     const res = await api.post<{ success: boolean; message: string; data: any }>('/cooperative/setup/import-subledger', {
       members: formattedMembers,
     });
+    const nestedData = res.data?.data?.data || res.data?.data || {};
     return {
       success: res.data.success,
-      message: res.data.message || 'Subledger berhasil diimpor',
+      message: res.data?.data?.message || res.data?.message || 'Subledger berhasil diimpor',
       data: {
-        total_members_imported: formattedMembers.length,
-        ...res.data.data,
+        total_members_imported: nestedData.successCount ?? formattedMembers.length,
+        successCount: nestedData.successCount ?? formattedMembers.length,
+        failCount: nestedData.failCount ?? 0,
+        errors: nestedData.errors ?? [],
+        ...nestedData,
       }
     };
   },

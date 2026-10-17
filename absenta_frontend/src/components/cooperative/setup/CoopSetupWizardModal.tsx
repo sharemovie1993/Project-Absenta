@@ -301,7 +301,17 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   const importSubledgerMutation = useMutation({
     mutationFn: coopSetupApi.importSubledger,
     onSuccess: (res) => {
-      toast.success(`Berhasil mengimpor & merekonsiliasi ${res.data.total_members_imported} anggota!`);
+      const successCount = res.data?.successCount ?? res.data?.total_members_imported ?? 0;
+      const failCount = res.data?.failCount ?? 0;
+      if (failCount > 0) {
+        const firstErr = res.data?.errors?.[0]?.error || 'Beberapa anggota gagal diproses';
+        toast.error(`Perhatian: ${failCount} baris gagal. ${firstErr}`);
+      } else {
+        toast.success(`Berhasil mengimpor & merekonsiliasi ${successCount} saldo subledger anggota!`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['koperasi-savings-list'] });
+      queryClient.invalidateQueries({ queryKey: ['koperasi-members'] });
+      queryClient.invalidateQueries({ queryKey: ['cooperative-members-for-wizard-setup'] });
       refetchStatus();
       setCurrentStep(5);
     },

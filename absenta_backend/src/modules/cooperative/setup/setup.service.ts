@@ -386,36 +386,59 @@ export class SetupService {
         if (!memberNo) throw new Error('Nomor Anggota (memberNo) wajib diisi.');
         if (!identityNo) throw new Error('Nomor Identitas (NIS/NIP/NIK) wajib diisi.');
 
-        // 1. Cari atau hubungkan siswa/guru
-        let siswaId: string | null = null;
-        let guruId: string | null = null;
-        let userId: string | null = null;
-
-        if (typeStr === 'SISWA' || typeStr === 'STUDENT') {
-          const siswa = await prisma.siswa.findFirst({
-            where: { tenant_id: tenantId, nis: identityNo },
-          });
-          if (siswa) {
-            siswaId = siswa.id;
-            userId = siswa.user_id;
+        // 1. Cari anggota yang sudah terdaftar di tenant dengan multi-kriteria:
+        // (Berdasarkan memberNo, atau NIS Siswa / NIP Guru, atau nama lengkap)
+        const trimmedName = String(item.name || '').trim();
+        let member = await prisma.member.findFirst({
+          where: {
+            tenantId,
+            OR: [
+              { memberNo },
+              ...(identityNo ? [
+                { Siswa: { nis: identityNo } },
+                { Guru: { nip: identityNo } },
+              ] : []),
+              ...(trimmedName ? [
+                { Siswa: { nama_siswa: { equals: trimmedName, mode: 'insensitive' } } },
+                { Guru: { nama_guru: { equals: trimmedName, mode: 'insensitive' } } },
+                { User: { full_name: { equals: trimmedName, mode: 'insensitive' } } },
+              ] : [])
+            ]
+          },
+          include: {
+            Siswa: true,
+            Guru: true,
+            User: true,
           }
-        } else if (typeStr === 'GURU' || typeStr === 'TEACHER') {
-          const guru = await prisma.guru.findFirst({
-            where: { tenant_id: tenantId, nip: identityNo },
-          });
-          if (guru) {
-            guruId = guru.id;
-            userId = guru.user_id;
-          }
-        }
+        });
 
-        // 2. Buat atau perbarui anggota
-        let member = await prisma.member.findFirst({ where: { tenantId, memberNo } });
-
+        // 2. Jika belum ada, cari data induk Siswa/Guru untuk dibuatkan kartu anggota baru
         if (!member) {
+          let siswaId: string | null = null;
+          let guruId: string | null = null;
+          let userId: string | null = null;
+
+          if (identityNo) {
+            const siswa = await prisma.siswa.findFirst({
+              where: { tenant_id: tenantId, nis: identityNo },
+            });
+            if (siswa) {
+              siswaId = siswa.id;
+              userId = siswa.user_id;
+            } else {
+              const guru = await prisma.guru.findFirst({
+                where: { tenant_id: tenantId, nip: identityNo },
+              });
+              if (guru) {
+                guruId = guru.id;
+                userId = guru.user_id;
+              }
+            }
+          }
+
           member = await MemberService.createMember(tenantId, {
             memberNo,
-            type: (typeStr === 'SISWA' || typeStr === 'STUDENT') ? 'STUDENT' : (typeStr === 'GURU' || typeStr === 'TEACHER') ? 'TEACHER' : 'GENERAL',
+            type: siswaId ? 'STUDENT' : guruId ? 'TEACHER' : (typeStr === 'SISWA' || typeStr === 'STUDENT') ? 'STUDENT' : (typeStr === 'GURU' || typeStr === 'TEACHER') ? 'TEACHER' : 'GENERAL',
             name: item.name || `Anggota ${memberNo}`,
             siswaId,
             guruId,
@@ -427,7 +450,7 @@ export class SetupService {
           });
         }
 
-        // 3. Masukkan Saldo Simpanan Awal Anggota ke Sub-Ledger
+        // 3. Masukkan Saldo Simpanan Awal Anggota ke Sub-Ledger & Rekam Transaksi Mutasi
         if (item.savings) {
           for (const cat of activeCategories) {
             const catCode = cat.code.toUpperCase();
@@ -439,11 +462,35 @@ export class SetupService {
             else if (item.savings[cat.code] !== undefined) amount = Number(item.savings[cat.code]);
 
             if (amount > 0) {
-              await prisma.saving.upsert({
+              const saving = await prisma.saving.upsert({
                 where: { memberId_categoryId: { memberId: member.id, categoryId: cat.id } },
                 create: { memberId: member.id, categoryId: cat.id, amount },
                 update: { amount },
               });
+
+              // Rekam jejak transaksi mutasi agar sinkron dengan Buku Tabungan & Kartu Anggota
+              const existingTx = await prisma.savingTransaction.findFirst({
+                where: {
+                  savingId: saving.id,
+                  description: { contains: '[Saldo Awal Setup]' }
+                }
+              });
+
+              if (!existingTx) {
+                await prisma.savingTransaction.create({
+                  data: {
+                    savingId: saving.id,
+                    amount,
+                    type: 'DEPOSIT',
+                    description: `[Saldo Awal Setup] Migrasi Saldo ${cat.name}`,
+                  }
+                });
+              } else {
+                await prisma.savingTransaction.update({
+                  where: { id: existingTx.id },
+                  data: { amount }
+                });
+              }
 
               if (catCode === 'POKOK') results.reconciliation.totalSimpananPokok += amount;
               else if (catCode === 'WAJIB') results.reconciliation.totalSimpananWajib += amount;
@@ -517,6 +564,8 @@ export class SetupService {
       },
       operatorId,
     });
+
+    MemberService.invalidateCache(tenantId);
 
     return {
       success: true,
