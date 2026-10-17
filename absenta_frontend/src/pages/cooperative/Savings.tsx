@@ -1,11 +1,12 @@
 import { SectionCard } from '../../components/ui/SectionCard';
 import { generateImportTemplate } from '@/utils/export.utils';
 import { formatDate } from '@/utils/date.utils';
-import React, { useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { Wallet, Clock, BookOpen, AlertCircle, Printer, ArrowDown, ArrowUp, ChevronDown, ChevronUp, Users, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Button from '../../components/ui/Button';
+import { Modal } from '../../components/ui/Modal';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -118,6 +119,30 @@ const Savings: React.FC = React.memo(() => {
     ];
   }, [isPersonalMode]);
 
+  const [isCashierModalOpen, setIsCashierModalOpen] = useState(false);
+  const isCashierOpen = isCashierModalOpen || Boolean(scannedStudent);
+
+  const handleOpenCashierWithStudent = useCallback((student: any, memberNo?: string) => {
+    setIsCashierModalOpen(true);
+    handleSelectStudent(student, memberNo);
+  }, [handleSelectStudent]);
+
+  const handleCloseCashier = useCallback(() => {
+    setIsCashierModalOpen(false);
+    handleSelectStudent({ id: '' });
+  }, [handleSelectStudent]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setIsCashierModalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const toggleExpand = useCallback(() => {
     toggleAccountsExpand();
   }, [toggleAccountsExpand]);
@@ -172,7 +197,19 @@ const Savings: React.FC = React.memo(() => {
         hardeningModuleKey="coop_savings"
         breadcrumbs={breadcrumbs}
         topSlot={
-          <div className="flex items-center justify-end w-full sm:w-auto">
+          <div className="flex items-center gap-2.5 justify-end w-full sm:w-auto">
+            {!isPersonalMode && isOperator && (
+              <Button
+                variant="primary"
+                onClick={() => setIsCashierModalOpen(true)}
+                className="gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md shadow-indigo-500/20"
+                title="Buka Loket Kasir Terpadu (Pindai RFID / QR atau tekan F2)"
+              >
+                <Zap size={14} className="text-amber-300 fill-amber-300" />
+                <span>Buka Loket Kasir</span>
+                <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] bg-white/20 rounded font-mono font-medium">F2</span>
+              </Button>
+            )}
             <CoopFiscalYearSelector />
           </div>
         }
@@ -189,7 +226,7 @@ const Savings: React.FC = React.memo(() => {
               ]
             : [
                 { text: 'Cari anggota via search bar di kiri, saring tipe simpanan di kanan, atau gunakan pencarian universal RFID/QR.' },
-                { text: 'Klik baris anggota untuk memuat detail rekening dan memproses setor/tarik tunai di panel Transaksi Cepat.' },
+                { text: 'Klik tombol Kasir pada baris anggota atau tekan Buka Loket Kasir (F2) untuk memproses setor tunai, angsuran pinjaman, atau penarikan di loket modal.' },
                 { text: 'Klik tombol Mutasi atau Rekap Buku pada baris tabel untuk mencetak laporan mutasi anggota dengan cepat.' },
               ],
         }}
@@ -389,73 +426,79 @@ const Savings: React.FC = React.memo(() => {
           )}
         </div>
       ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <SavingsTable
-                  savings={savings}
-                  loading={loading}
-                  isStudent={isStudent}
-                  categories={categories}
-                  search={search}
-                  setSearch={setSearch}
-                  typeFilter={typeFilter}
-                  setTypeFilter={setTypeFilter}
-                  sortBy={sortBy}
-                  sortOrder={sortOrder}
-                  onSort={handleSort}
-                  page={page}
-                  setPage={setPage}
-                  limit={limit}
-                  setLimit={setLimit}
-                  handleShowTransactions={handleShowTransactions}
-                  handleExportSingleSavingPdf={handleExportSingleSavingPdf}
-                  handleExportAllSavingsPdf={handleExportAllSavingsPdf}
-                  handleSelectStudent={handleSelectStudent}
-                  onOpenExportModal={onOpenExportModal}
-                />
-                <SavingsHistoryPanel
-                  selectedSaving={selectedSaving}
-                  transactions={transactions}
-                  handleExportSingleSavingPdf={handleSingleExport}
-                  handleExportAllSavingsPdf={handleAllExport}
-                />
-              </div>
-
-              <div className="lg:col-span-1 space-y-6">
-                {!isStudent && (
-                  <Suspense fallback={<div className="h-96 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />}>
-                    <QuickTransactionPanel
-                      ref={scannerInputRef}
-                      scannedStudent={scannedStudent}
-                      scannedMemberSavings={scannedMemberSavings}
-                      onSelectStudent={handleSelectStudent}
-                      quickTxType={quickTxType}
-                      onQuickTxTypeChange={handleQuickTxTypeChange}
-                      selectedScannedSavingId={selectedScannedSavingId}
-                      onSelectedScannedSavingIdChange={setSelectedScannedSavingId}
-                      quickAmount={quickAmount}
-                      onQuickAmountChange={setQuickAmount}
-                      quickDescription={quickDescription}
-                      onQuickDescriptionChange={setQuickDescription}
-                      onCancel={() => {
-                        handleSelectStudent({ id: '' });
-                      }}
-                      onSubmit={handleQuickTransactionSubmit}
-                      processingQuickTx={processingQuickTx}
-                      getVisibleSavingsForTx={getVisibleSavingsForTx}
-                      getAutoMemo={getAutoMemo}
-                      isStudent={isStudent}
-                      memberLoans={memberLoans}
-                      loadingLoans={loadingMemberLoans}
-                      onProcessUnifiedPayment={handleProcessUnifiedPayment}
-                      isProcessingUnifiedPayment={isProcessingUnifiedPayment}
-                    />
-                  </Suspense>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="space-y-6">
+          <SavingsTable
+            savings={savings}
+            loading={loading}
+            isStudent={isStudent}
+            categories={categories}
+            search={search}
+            setSearch={setSearch}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+            page={page}
+            setPage={setPage}
+            limit={limit}
+            setLimit={setLimit}
+            handleShowTransactions={handleShowTransactions}
+            handleExportSingleSavingPdf={handleExportSingleSavingPdf}
+            handleExportAllSavingsPdf={handleExportAllSavingsPdf}
+            handleSelectStudent={handleOpenCashierWithStudent}
+            onOpenExportModal={onOpenExportModal}
+            onOpenCashierModal={() => setIsCashierModalOpen(true)}
+          />
+          <SavingsHistoryPanel
+            selectedSaving={selectedSaving}
+            transactions={transactions}
+            handleExportSingleSavingPdf={handleSingleExport}
+            handleExportAllSavingsPdf={handleAllExport}
+          />
         </div>
+      )}
+    </div>
+
+    {/* ── Loket Kasir Terpadu Modal (Kas Masuk & Kas Keluar) ───── */}
+    {!isStudent && (
+      <Modal
+        isOpen={isCashierOpen}
+        onClose={handleCloseCashier}
+        size="xl"
+        title={
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+              <Zap size={16} className="text-amber-300 fill-amber-300" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+                Loket Kasir Terpadu
+              </h3>
+              <p className="text-[10px] text-slate-400 font-medium">
+                Setoran Simpanan, Angsuran Pinjaman, dan Tarik Tunai
+              </p>
+            </div>
+          </div>
+        }
+      >
+        <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+          <Suspense fallback={<div className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />}>
+            <QuickTransactionPanel
+              ref={scannerInputRef}
+              scannedStudent={scannedStudent}
+              scannedMemberSavings={scannedMemberSavings}
+              onSelectStudent={handleSelectStudent}
+              onCancel={handleCloseCashier}
+              memberLoans={memberLoans}
+              loadingLoans={loadingMemberLoans}
+              onProcessUnifiedPayment={handleProcessUnifiedPayment}
+              isProcessingUnifiedPayment={isProcessingUnifiedPayment}
+            />
+          </Suspense>
+        </div>
+      </Modal>
+    )}
 
         <Suspense fallback={null}>
           <SavingExportModal

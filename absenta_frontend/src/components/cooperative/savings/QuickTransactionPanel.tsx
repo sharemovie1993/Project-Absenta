@@ -1,5 +1,4 @@
 import React from 'react';
-import Card from '../../ui/Card';
 import { SmartStudentPicker } from '../../common/SmartStudentPicker';
 import type { Student } from '../../common/SmartStudentPicker';
 import type { Saving } from './types';
@@ -52,16 +51,7 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
   ref
 ) => {
   return (
-    <Card
-      title={
-        <div className="flex items-center gap-2">
-          <Scan className="text-indigo-600 dark:text-indigo-400" size={18} />
-          <span className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
-            {scannedStudent ? 'Loket Kasir Terpadu' : 'Transaksi Cepat / Pindai Kartu'}
-          </span>
-        </div>
-      }
-    >
+    <div className="space-y-4">
       {!scannedStudent ? (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -72,14 +62,20 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
               ref={ref}
               scope="global"
               mode="universal"
-              placeholder="Pindai RFID / QR, atau cari Nama..."
+              placeholder="Pindai RFID / QR, atau ketik Nama / No. Anggota..."
               onSelect={onSelectStudent}
               autoFocus={!isStudent}
             />
           </div>
-          <p className="text-[10px] text-slate-400 leading-relaxed italic">
-            * Tempelkan kartu RFID anggota pada scanner, sorot QR Code kartu ke kamera, atau ketik nama/nomor anggota secara langsung untuk membuka loket kasir satu pintu.
-          </p>
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 space-y-1.5">
+            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Scan size={14} className="text-indigo-600 dark:text-indigo-400" />
+              <span>Petunjuk Mesin Kasir Terpadu:</span>
+            </p>
+            <p>• Tempelkan kartu RFID anggota pada scanner untuk membuka rekening secara instan.</p>
+            <p>• Arahkan QR Code kartu anggota ke kamera scanner.</p>
+            <p>• Atau ketik nama / nomor anggota pada kolom pencarian di atas.</p>
+          </div>
         </div>
       ) : onProcessUnifiedPayment ? (
         <UnifiedPaymentPanel
@@ -88,7 +84,7 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
           memberLoans={memberLoans}
           loadingLoans={loadingLoans}
           onCancel={onCancel}
-          onResetMember={onCancel}
+          onResetMember={() => onSelectStudent({ id: '' })}
           onProcessUnifiedPayment={onProcessUnifiedPayment}
           isProcessing={isProcessingUnifiedPayment}
         />
@@ -97,7 +93,7 @@ export const QuickTransactionPanel = React.memo(React.forwardRef<HTMLInputElemen
           Modul kasir tidak tersedia.
         </div>
       )}
-    </Card>
+    </div>
   );
 }));
 

@@ -61,6 +61,7 @@ interface SavingsTableProps {
   handleExportAllSavingsPdf: (row: Saving) => void;
   handleSelectStudent: (student: StudentData, memberNo?: string) => void;
   onOpenExportModal: () => void;
+  onOpenCashierModal?: () => void;
 }
 
 export const SavingsTable = React.memo<SavingsTableProps>(({
@@ -83,7 +84,8 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
   handleExportSingleSavingPdf,
   handleExportAllSavingsPdf,
   handleSelectStudent,
-  onOpenExportModal
+  onOpenExportModal,
+  onOpenCashierModal,
 }) => {
   const isMobile = useIsMobile();
 
@@ -433,9 +435,20 @@ export const SavingsTable = React.memo<SavingsTableProps>(({
         >
           <FileSpreadsheet size={14} /> Rekap Mutasi
         </Button>
+        {onOpenCashierModal && (
+          <Button
+            size="sm"
+            variant="primary"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold flex items-center gap-1.5 h-8 text-[11px] shadow-sm rounded-xl"
+            onClick={onOpenCashierModal}
+            title="Buka Loket Kasir Terpadu (Pindai RFID / QR)"
+          >
+            <Zap size={13} className="text-amber-300 fill-amber-300" /> Loket Kasir
+          </Button>
+        )}
       </div>
     );
-  }, [isStudent, typeFilter, setTypeFilter, filterTypeOptions, onOpenExportModal, setPage]);
+  }, [isStudent, typeFilter, setTypeFilter, filterTypeOptions, onOpenExportModal, onOpenCashierModal, setPage]);
 
   // Mode Mahasiswa/Personal (Flat)
   const filteredSavings = useMemo(() => {
