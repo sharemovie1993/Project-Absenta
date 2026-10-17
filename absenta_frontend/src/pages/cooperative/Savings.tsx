@@ -228,19 +228,7 @@ const Savings: React.FC = React.memo(() => {
         hardeningModuleKey="coop_savings"
         breadcrumbs={breadcrumbs}
         topSlot={
-          <div className="flex items-center gap-2.5 justify-end w-full sm:w-auto">
-            {!isPersonalMode && isOperator && (
-              <Button
-                variant="primary"
-                onClick={() => setIsCashierModalOpen(true)}
-                className="gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-xs py-2 px-3.5 rounded-xl shadow-md shadow-indigo-500/20"
-                title="Buka Loket Kasir Terpadu (Pindai RFID / QR atau tekan F2)"
-              >
-                <Zap size={14} className="text-amber-300 fill-amber-300" />
-                <span>Buka Loket Kasir</span>
-                <span className="hidden sm:inline-block px-1.5 py-0.2 text-[9px] bg-white/20 rounded font-mono font-medium">F2</span>
-              </Button>
-            )}
+          <div className="flex items-center justify-end w-full sm:w-auto">
             <CoopFiscalYearSelector />
           </div>
         }

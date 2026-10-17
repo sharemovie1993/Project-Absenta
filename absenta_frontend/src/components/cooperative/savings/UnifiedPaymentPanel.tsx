@@ -77,7 +77,30 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   // Dual-mode Cashier: Deposit/Bill Payment vs Cash Withdrawal
   const [tellerMode, setTellerMode] = useState<'DEPOSIT_AND_BILL' | 'WITHDRAWAL'>('DEPOSIT_AND_BILL');
 
-  // 1. Simpanan Wajib Evaluation
+  // 1. Simpanan Pokok Evaluation (Initial Capital)
+  const pokokSaving = useMemo(() => {
+    return savings.find(s => (s.category?.code || s.type || '').toUpperCase() === 'POKOK');
+  }, [savings]);
+
+  const isPokokPaid = useMemo(() => {
+    if (!pokokSaving) return true;
+    return (parseFloat(pokokSaving.amount) || 0) > 0;
+  }, [pokokSaving]);
+
+  const defaultPokokAmount = useMemo(() => {
+    if (!pokokSaving) return 50000;
+    return Number(pokokSaving.category?.defaultAmount || 50000);
+  }, [pokokSaving]);
+
+  const [includePokok, setIncludePokok] = useState<boolean>(!isPokokPaid);
+  const [pokokAmount, setPokokAmount] = useState<number>(defaultPokokAmount);
+
+  useEffect(() => {
+    setIncludePokok(!isPokokPaid);
+    setPokokAmount(defaultPokokAmount);
+  }, [student?.id, isPokokPaid, defaultPokokAmount]);
+
+  // 2. Simpanan Wajib Evaluation
   const wajibSaving = useMemo(() => {
     return savings.find(s => (s.category?.code || s.type || '').toUpperCase() === 'WAJIB');
   }, [savings]);
@@ -150,11 +173,12 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   // Cash Calculation (for Deposit)
   const totalAmountToPay = useMemo(() => {
     let total = 0;
+    if (includePokok && pokokSaving && !isPokokPaid) total += pokokAmount;
     if (includeWajib && wajibSaving) total += wajibAmount;
     if (includeLoan && nextUnpaidInstallment) total += Number(nextUnpaidInstallment.amount);
     if (includeSukarela && sukarelaSaving) total += sukarelaAmount;
     return total;
-  }, [includeWajib, wajibSaving, wajibAmount, includeLoan, nextUnpaidInstallment, includeSukarela, sukarelaSaving, sukarelaAmount]);
+  }, [includePokok, pokokSaving, isPokokPaid, pokokAmount, includeWajib, wajibSaving, wajibAmount, includeLoan, nextUnpaidInstallment, includeSukarela, sukarelaSaving, sukarelaAmount]);
 
   const [cashReceived, setCashReceived] = useState<string>('');
   const cashNum = Number(cashReceived) || 0;
@@ -269,6 +293,15 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
     }
 
     const savingsTransactions: any[] = [];
+    if (includePokok && pokokSaving && !isPokokPaid && pokokAmount > 0) {
+      savingsTransactions.push({
+        savingId: pokokSaving.id,
+        type: 'DEPOSIT',
+        amount: pokokAmount,
+        description: 'Setoran Simpanan Pokok Keanggotaan',
+      });
+    }
+
     if (includeWajib && wajibSaving && wajibAmount > 0) {
       savingsTransactions.push({
         savingId: wajibSaving.id,
@@ -306,6 +339,13 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
       if (res?.success) {
         // Prepare items for receipt
         const items: Array<{ title: string; amount: number; subtext?: string }> = [];
+        if (includePokok && pokokSaving && !isPokokPaid && pokokAmount > 0) {
+          items.push({
+            title: 'Simpanan Pokok',
+            amount: pokokAmount,
+            subtext: 'Iuran Pokok Keanggotaan',
+          });
+        }
         if (includeWajib && wajibSaving) {
           items.push({
             title: 'Simpanan Wajib',
@@ -674,7 +714,72 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
             Pilihan Pembayaran Terpadu
           </label>
 
-          {/* 3A. Simpanan Wajib Bulan Ini */}
+          {/* 3A. Simpanan Pokok (Modal Awal Anggota) */}
+          {pokokSaving && (
+            <div className={`p-3 rounded-xl border transition-all ${
+              isPokokPaid
+                ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
+                : includePokok 
+                  ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
+            }`}>
+              <label className={`flex items-start gap-2.5 select-none ${
+                isPokokPaid ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={includePokok}
+                  disabled={isPokokPaid}
+                  onChange={(e) => {
+                    if (!isPokokPaid) {
+                      setIncludePokok(e.target.checked);
+                    }
+                  }}
+                  className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                    isPokokPaid ? 'cursor-not-allowed opacity-40 bg-slate-100 dark:bg-slate-800' : ''
+                  }`}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Simpanan Pokok</span>
+                      {isPokokPaid && (
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
+                          Lunas
+                        </span>
+                      )}
+                    </span>
+                    <span className={`font-mono font-black text-xs ${
+                      isPokokPaid 
+                        ? 'text-slate-400 line-through' 
+                        : 'text-indigo-600 dark:text-indigo-400'
+                    }`}>
+                      Rp {pokokAmount.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1 text-[10px]">
+                    <span className="text-slate-500">
+                      {isPokokPaid
+                        ? `Saldo: Rp ${(parseFloat(pokokSaving.amount) || 0).toLocaleString('id-ID')}`
+                        : 'Modal awal pendaftaran anggota (1x setor)'}
+                    </span>
+                    {isPokokPaid ? (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                        ✓ Sudah Lunas (Terkunci)
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400 font-bold">
+                        ⚠️ Belum Lunas
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {/* 3B. Simpanan Wajib Bulan Ini */}
           {wajibSaving && (
             <div className={`p-3 rounded-xl border transition-all ${
               isWajibPaidThisMonth
