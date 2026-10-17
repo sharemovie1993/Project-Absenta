@@ -24,6 +24,7 @@ import ratRoutes from './rat/rat.fastify';
 import ratMinuteRoutes from './rat/rat.minute.fastify';
 import ratClosureRoutes from './rat/rat.closure.fastify';
 import accountRoutes from './laporan/account.fastify';
+import setupRoutes from './setup/setup.fastify';
 
 export interface CooperativePluginOptions {
     prefix?: string;
@@ -53,6 +54,7 @@ const cooperativePlugin: FastifyPluginAsync<CooperativePluginOptions> = async (f
     fastify.register(reportRoutes, { prefix: '/reports' });
     fastify.register(reportRoutes, { prefix: '/accounting' }); // Supplying fallback for frontend Accounting.tsx calls
     fastify.register(accountRoutes, { prefix: '/accounts' }); // Hierarchical Chart of Accounts (COA)
+    fastify.register(setupRoutes, { prefix: '/setup' }); // Accurate-style Cooperative Setup Wizard & Onboarding
     fastify.register(ticketRoutes, { prefix: '/tickets' });
     fastify.register(voucherRoutes, { prefix: '/vouchers' });
     fastify.register(pointRoutes, { prefix: '/points' });

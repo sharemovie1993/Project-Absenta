@@ -17,6 +17,8 @@ import type { CriticalStockItem, Announcement, Sale, CoopUserInfo } from '@/comp
 import { CoopFiscalYearSelector } from '../../components/cooperative/shared/CoopFiscalYearSelector';
 import { formatDate } from '../../utils/date.utils';
 import type { MemberInfo, MemberDashboardSummary } from '@/components/cooperative/dashboard/types';
+import { CoopSetupProgressBanner } from '../../components/cooperative/setup/CoopSetupProgressBanner';
+import { CoopSetupWizardModal } from '../../components/cooperative/setup/CoopSetupWizardModal';
 
 export const coopDashboardKeys = {
   all: ['cooperative-dashboard'] as const,
@@ -37,6 +39,7 @@ const Dashboard: React.FC = React.memo(() => {
   const [currentScene, setCurrentScene] = useState(0);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   const { isKoperasi, isKoperasiHead, isKoperasiFinance, isKoperasiStore, isAdmin } = useCapabilities();
   const isKoperasiStaff = isAdmin || isKoperasi || isKoperasiHead || isKoperasiFinance || isKoperasiStore;
@@ -325,6 +328,11 @@ const Dashboard: React.FC = React.memo(() => {
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 max-w-full border-none shadow-none bg-transparent p-0">
           <div className="space-y-6">
+            {/* Onboarding & Setup Wizard Banner (Khusus Pengurus/Staf Koperasi) */}
+            {isKoperasiStaff && (
+              <CoopSetupProgressBanner onOpenWizard={() => setShowSetupWizard(true)} />
+            )}
+
             {/* Tab Context View Switcher (Khusus Pengurus/Staf Koperasi) */}
             {isKoperasiStaff && (
               <div className="flex items-center justify-between pb-1 overflow-x-auto">
@@ -384,6 +392,12 @@ const Dashboard: React.FC = React.memo(() => {
             />
           </Suspense>
         )}
+
+        {/* Modal Setup & Onboarding Wizard */}
+        <CoopSetupWizardModal
+          isOpen={showSetupWizard}
+          onClose={() => setShowSetupWizard(false)}
+        />
       </AcademicPageLayout>
     </PremiumFeatureGate>
   );

@@ -37,6 +37,8 @@ import {
 } from '../../components/cooperative/accounting';
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
 import type { JournalEntry, BalanceSheetItem, PayrollItem, TrialBalanceData } from '../../components/cooperative/accounting';
+import { CoopSetupProgressBanner } from '../../components/cooperative/setup/CoopSetupProgressBanner';
+import { CoopSetupWizardModal } from '../../components/cooperative/setup/CoopSetupWizardModal';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
@@ -489,6 +491,7 @@ const Accounting: React.FC = React.memo(() => {
 
     const [payrollPage, setPayrollPage] = useState<number>(1);
     const [payrollLimit, setPayrollLimit] = useState<number>(10);
+    const [showSetupWizard, setShowSetupWizard] = useState(false);
 
     // ─── SEARCHABLE SELECT OPTIONS ───────────────────────────────────────────
     
@@ -517,6 +520,9 @@ const Accounting: React.FC = React.memo(() => {
             >
             <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
             <div className="space-y-6 print:hidden w-full min-w-0 max-w-full">
+                {/* Onboarding & Setup Wizard Banner */}
+                <CoopSetupProgressBanner onOpenWizard={() => setShowSetupWizard(true)} />
+
                 {/* Header Navigasi Tab & Konteks Tahun Buku Terpadu */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -761,6 +767,12 @@ const Accounting: React.FC = React.memo(() => {
                     </div>
                 </div>
             </Modal>
+
+            {/* Modal Setup & Onboarding Wizard */}
+            <CoopSetupWizardModal
+                isOpen={showSetupWizard}
+                onClose={() => setShowSetupWizard(false)}
+            />
             </AcademicPageLayout>
         </PremiumFeatureGate>
     );
