@@ -213,6 +213,179 @@ export class RaporStagingService {
   }
 
   /**
+   * Helper pencocokan cerdas mata pelajaran berdasarkan nama spreadsheet, data master sekolah, dan rombel kejuruan
+   */
+  static resolveMapelForClass(
+    rawName: string,
+    mapelList: Array<{ id: string; nama_mapel: string; kode_mapel?: string | null }>,
+    namaKelas: string
+  ): { id: string; nama_mapel: string; kode_mapel?: string | null } | null {
+    const clean = rawName.trim().toLowerCase();
+
+    // 1. Direct match (nama_mapel atau kode_mapel)
+    for (const m of mapelList) {
+      if (
+        m.nama_mapel.trim().toLowerCase() === clean ||
+        (m.kode_mapel && m.kode_mapel.trim().toLowerCase() === clean)
+      ) {
+        return m;
+      }
+    }
+
+    // Ekstraksi jurusan dari nama kelas (misal: "X AKL 1" -> "AKL", "XI TKJ 2" -> "TKJ")
+    const classJurusanMatch = (namaKelas || '').match(/\b(AKL|AK|KUL|PHT|HTL|TAV|TKJ|TKR|TOI|TP|TSM)\b/i);
+    const detectedJurusan = classJurusanMatch ? classJurusanMatch[1].toUpperCase() : '';
+
+    // 2. Pencocokan Cerdas & Kontekstual per Mapel
+    // A. PAI / Agama / Budi Pekerti
+    if (clean === 'pai' || clean.includes('agama') || clean.includes('budi pekerti')) {
+      const found = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('agama') ||
+          m.nama_mapel.toLowerCase().includes('budi pekerti') ||
+          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('pai'))
+      );
+      if (found) return found;
+    }
+
+    // B. PJOK / Olahraga / Penjas
+    if (clean === 'pjok' || clean.includes('jasmani') || clean.includes('olahraga') || clean.includes('penjas')) {
+      const found = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('jasmani') ||
+          m.nama_mapel.toLowerCase().includes('pjok') ||
+          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('pjok'))
+      );
+      if (found) return found;
+    }
+
+    // C. IPAS / Projek IPAS
+    if (clean.includes('ipas') || clean.includes('ilmu pengetahuan alam dan sosial')) {
+      const found = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('ipas') ||
+          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('ipas'))
+      );
+      if (found) return found;
+    }
+
+    // D. KK / Konsentrasi Keahlian (Contextual by Jurusan)
+    if (clean === 'kk' || clean.includes('kons. keahlian') || clean.includes('konsentrasi keahlian')) {
+      if (detectedJurusan) {
+        const found = mapelList.find((m) => {
+          const nm = m.nama_mapel.toUpperCase();
+          const kd = (m.kode_mapel || '').toUpperCase();
+          return nm === `KK ${detectedJurusan}` || kd === `KK${detectedJurusan}` || nm.includes(`KK ${detectedJurusan}`);
+        });
+        if (found) return found;
+      }
+    }
+
+    // E. Mapel Pilihan / MPP (Contextual by Jurusan)
+    if (clean.includes('pilihan') || clean.startsWith('mpp')) {
+      if (detectedJurusan) {
+        const altJurusan = detectedJurusan === 'AKL' ? 'AK' : detectedJurusan === 'PHT' ? 'HTL' : detectedJurusan;
+        const found = mapelList.find((m) => {
+          const nm = m.nama_mapel.toUpperCase();
+          const kd = (m.kode_mapel || '').toUpperCase();
+          return (
+            nm.includes(`MPP ${detectedJurusan}`) ||
+            nm.includes(`MPP ${altJurusan}`) ||
+            kd.includes(`MPP${detectedJurusan}`) ||
+            kd.includes(`MPP${altJurusan}`) ||
+            nm.includes(`PILIHAN ${detectedJurusan}`)
+          );
+        });
+        if (found) return found;
+      }
+    }
+
+    // F. DDPK (Contextual by Jurusan)
+    if (
+      clean.startsWith('ddpk') ||
+      clean.includes('dasar program keahlian') ||
+      clean.includes('dasar-dasar program keahlian')
+    ) {
+      if (detectedJurusan) {
+        const found = mapelList.find((m) => {
+          const nm = m.nama_mapel.toUpperCase();
+          const kd = (m.kode_mapel || '').toUpperCase();
+          return (
+            nm === `DDPK ${detectedJurusan}` ||
+            kd === `DDPK${detectedJurusan}` ||
+            nm.includes(`DDPK ${detectedJurusan}`)
+          );
+        });
+        if (found) return found;
+      }
+    }
+
+    // G. PKK / Kewirausahaan
+    if (clean === 'pkk' || clean.includes('kewirausahaan') || clean.includes('kreatif')) {
+      const found = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('kewirausahaan') ||
+          m.nama_mapel.toLowerCase().includes('kreatif')
+      );
+      if (found) return found;
+    }
+
+    // H. PKN / Pancasila
+    if (clean === 'pkn' || clean.includes('pancasila')) {
+      const found = mapelList.find(
+        (m) =>
+          m.nama_mapel.toLowerCase().includes('pancasila') ||
+          (m.kode_mapel && m.kode_mapel.toLowerCase().includes('pp'))
+      );
+      if (found) return found;
+    }
+
+    // I. Bahasa Indonesia
+    if (clean.includes('indonesia') || clean === 'b. indo' || clean === 'b. indonesia') {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('indonesia'));
+      if (found) return found;
+    }
+
+    // J. Bahasa Inggris
+    if (clean.includes('inggris') || clean === 'b. inggris' || clean === 'bing') {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('inggris'));
+      if (found) return found;
+    }
+
+    // K. Matematika / MTK
+    if (clean.includes('matematika') || clean === 'mtk') {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('matematika'));
+      if (found) return found;
+    }
+
+    // L. Bahasa Sunda
+    if (clean.includes('sunda')) {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('sunda'));
+      if (found) return found;
+    }
+
+    // M. Sejarah
+    if (clean.includes('sejarah')) {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('sejarah'));
+      if (found) return found;
+    }
+
+    // N. Seni Budaya
+    if (clean.includes('seni')) {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('seni'));
+      if (found) return found;
+    }
+
+    // O. Informatika
+    if (clean.includes('informatika') || clean.includes('komputer') || clean === 'tik') {
+      const found = mapelList.find((m) => m.nama_mapel.toLowerCase().includes('informatika'));
+      if (found) return found;
+    }
+
+    return null;
+  }
+
+  /**
    * ── PRE-SYNC CHECK: PEMERIKSAAN KESIAPAN SLOT ──
    * Memvalidasi ketersediaan slot Tahun Pelajaran, Semester, Kelas, Siswa, dan Mapel
    * sebelum sinkronisasi permanen dieksekusi ke database produksi.
@@ -298,58 +471,23 @@ export class RaporStagingService {
       }
     }
 
-    // 5. Cek Pemetaan Mata Pelajaran
+    // 5. Cek Pemetaan Mata Pelajaran (Semua master mapel sekolah)
     const mapelList = await prisma.mapel.findMany({
       where: { tenant_id: tenantId },
       select: { id: true, nama_mapel: true, kode_mapel: true },
+      orderBy: { nama_mapel: 'asc' },
     });
 
-    const mapelByName = new Map<string, string>();
-    for (const m of mapelList) {
-      mapelByName.set(m.nama_mapel.trim().toLowerCase(), m.nama_mapel);
-      if (m.kode_mapel) mapelByName.set(m.kode_mapel.trim().toLowerCase(), m.nama_mapel);
-    }
-
-    const mapelAliases: Record<string, string[]> = {
-      pai: ['pendidikan agama islam', 'pendidikan agama', 'pai dan budi pekerti', 'agama'],
-      pkn: ['pendidikan pancasila', 'ppkn', 'pancasila'],
-      'b. indonesia': ['bahasa indonesia', 'b.indo', 'indonesia'],
-      pjok: ['pendidikan jasmani', 'penjas', 'olahraga'],
-      sejarah: ['sejarah indonesia'],
-      'seni budaya': ['seni musik', 'seni rupa', 'seni'],
-      'b. sunda': ['bahasa sunda', 'mulok bahasa sunda'],
-      matematika: ['mtk', 'matematika umum'],
-      mtk: ['matematika', 'matematika umum'],
-      'b. inggris': ['bahasa inggris', 'inggris'],
-      informatika: ['tik', 'komputer'],
-      'projek ipas': ['ipas', 'ipa dan ips', 'proyek ipas'],
-      ddpk: ['dasar-dasar program keahlian', 'dasar keahlian'],
-      'kons. keahlian': ['konsentrasi keahlian'],
-      kk: ['konsentrasi keahlian'],
-      pkk: ['produk kreatif dan kewirausahaan', 'pkwu'],
-    };
-
-    const resolveMapelName = (name: string): string | null => {
-      const clean = name.trim().toLowerCase();
-      if (mapelByName.has(clean)) return mapelByName.get(clean)!;
-      for (const [key, aliases] of Object.entries(mapelAliases)) {
-        if (clean === key || aliases.includes(clean)) {
-          for (const alias of [key, ...aliases]) {
-            if (mapelByName.has(alias)) return mapelByName.get(alias)!;
-          }
-        }
-      }
-      return null;
-    };
-
     const detectedSubjects: string[] = (sheet.sync_logs as any)?.detectedSubjects || [];
-    const matchedSubjects: Array<{ raw: string; matchedName: string }> = [];
+    const matchedSubjects: Array<{ raw: string; matchedName: string; matchedId: string }> = [];
     const unmatchedSubjects: string[] = [];
+    const suggestedMapping: Record<string, string> = {};
 
     for (const sub of detectedSubjects) {
-      const matched = resolveMapelName(sub);
+      const matched = RaporStagingService.resolveMapelForClass(sub, mapelList, sheet.nama_kelas);
       if (matched) {
-        matchedSubjects.push({ raw: sub, matchedName: matched });
+        matchedSubjects.push({ raw: sub, matchedName: matched.nama_mapel, matchedId: matched.id });
+        suggestedMapping[sub] = matched.id;
       } else {
         unmatchedSubjects.push(sub);
       }
@@ -381,6 +519,8 @@ export class RaporStagingService {
         matched: matchedSubjects,
         unmatched: unmatchedSubjects,
       },
+      allTenantSubjects: mapelList,
+      suggestedMapping,
       canSync,
       readinessStatus: !canSync
         ? 'BLOCKED_ACADEMIC'
@@ -397,7 +537,7 @@ export class RaporStagingService {
   static async syncStagingToRapor(
     tenantId: string,
     stagingId: string,
-    options?: { autoProvisionStudents?: boolean }
+    options?: { autoProvisionStudents?: boolean; customMapelMapping?: Record<string, string> }
   ) {
     const sheet = await prisma.raporStagingSheet.findFirst({
       where: { id: stagingId, tenant_id: tenantId },
@@ -647,7 +787,16 @@ export class RaporStagingService {
       ]);
 
       for (const subjectName of allSubjectNames) {
-        const mapelId = resolveMapelId(subjectName);
+        let mapelId: string | null = null;
+        if (options?.customMapelMapping && options.customMapelMapping[subjectName] !== undefined) {
+          const customVal = options.customMapelMapping[subjectName];
+          if (customVal === 'IGNORE') continue; // Sengaja dilewati pengguna
+          mapelId = customVal;
+        } else {
+          const autoMatch = RaporStagingService.resolveMapelForClass(subjectName, mapelList, sheet.nama_kelas);
+          mapelId = autoMatch?.id || resolveMapelId(subjectName);
+        }
+
         if (!mapelId) {
           unmappedSubjects.add(subjectName);
           continue;

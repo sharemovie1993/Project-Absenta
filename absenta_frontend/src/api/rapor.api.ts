@@ -380,7 +380,10 @@ export const raporApi = {
     const response = await api.get(`/rapor/staging/${id}/pre-sync`, { timeout: 60000 });
     return response.data;
   },
-  syncStagingToRapor: async (id: string, options?: { autoProvisionStudents?: boolean }) => {
+  syncStagingToRapor: async (
+    id: string,
+    options?: { autoProvisionStudents?: boolean; customMapelMapping?: Record<string, string> }
+  ) => {
     const response = await api.post(`/rapor/staging/${id}/sync`, options || {}, { timeout: 300000 }); // 5 menit
     return response.data;
   },
@@ -406,6 +409,13 @@ export interface PreSyncStudentItem {
 export interface PreSyncSubjectItem {
   raw: string;
   matchedName: string;
+  matchedId?: string;
+}
+
+export interface MasterMapelOption {
+  id: string;
+  nama_mapel: string;
+  kode_mapel?: string | null;
 }
 
 export interface RaporPreSyncReport {
@@ -432,6 +442,8 @@ export interface RaporPreSyncReport {
     matched: PreSyncSubjectItem[];
     unmatched: string[];
   };
+  allTenantSubjects: MasterMapelOption[];
+  suggestedMapping?: Record<string, string>;
   canSync: boolean;
   readinessStatus: 'BLOCKED_ACADEMIC' | 'NEED_STUDENT_PROVISION' | 'READY_TO_SYNC';
 }

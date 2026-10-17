@@ -162,8 +162,16 @@ export default React.memo(function RaporStagingPage() {
 
   // ── Mutation: Sync Staging ke e-Rapor ──
   const syncMutation = useMutation({
-    mutationFn: async ({ id, autoProvisionStudents }: { id: string; autoProvisionStudents?: boolean }) => {
-      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents });
+    mutationFn: async ({
+      id,
+      autoProvisionStudents,
+      customMapelMapping,
+    }: {
+      id: string;
+      autoProvisionStudents?: boolean;
+      customMapelMapping?: Record<string, string>;
+    }) => {
+      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents, customMapelMapping });
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
@@ -240,9 +248,13 @@ export default React.memo(function RaporStagingPage() {
   }, []);
 
   const handleConfirmPreSync = useCallback(
-    (autoProvision: boolean) => {
+    (autoProvision: boolean, customMapping?: Record<string, string>) => {
       if (!preSyncTargetId) return;
-      syncMutation.mutate({ id: preSyncTargetId, autoProvisionStudents: autoProvision });
+      syncMutation.mutate({
+        id: preSyncTargetId,
+        autoProvisionStudents: autoProvision,
+        customMapelMapping: customMapping,
+      });
     },
     [preSyncTargetId, syncMutation]
   );
