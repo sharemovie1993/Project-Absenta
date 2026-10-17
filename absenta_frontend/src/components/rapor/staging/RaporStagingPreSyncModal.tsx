@@ -487,29 +487,56 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
               </div>
 
               {/* ── Footer Aksi ── */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onClose}
-                  className="text-xs rounded-xl"
-                  aria-label="Batal pre-sync"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!isAcademicReady || isSyncing}
-                  onClick={handleConfirm}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
-                  aria-label="Lanjutkan eksekusi sinkronisasi"
-                >
-                  <Sparkles size={13} aria-hidden="true" />
-                  <span>{isSyncing ? 'Menyinkronkan...' : 'Lanjutkan Sinkronisasi'}</span>
-                  {!isSyncing && <ArrowRight size={13} aria-hidden="true" />}
-                </Button>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="min-w-0 flex items-center">
+                  {hasUnmatchedMapels ? (
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                      <AlertTriangle size={13} className="shrink-0" />
+                      Masih ada {detectedSubjects.length - mappedCount} mapel belum dipetakan / diabaikan
+                    </span>
+                  ) : !isAcademicReady ? (
+                    <span className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1">
+                      <XCircle size={13} className="shrink-0" />
+                      Slot akademik belum lengkap
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center justify-end gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onClose}
+                    className="text-xs rounded-xl"
+                    aria-label="Batal pre-sync"
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!isAcademicReady || hasUnmatchedMapels || isSyncing}
+                    onClick={handleConfirm}
+                    className={cn(
+                      'text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5 transition-all',
+                      !isAcademicReady || hasUnmatchedMapels
+                        ? 'bg-slate-400 dark:bg-slate-700 cursor-not-allowed opacity-70 hover:bg-slate-400'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    )}
+                    aria-label="Lanjutkan eksekusi sinkronisasi"
+                  >
+                    <Sparkles size={13} aria-hidden="true" />
+                    <span>
+                      {isSyncing
+                        ? 'Menyinkronkan...'
+                        : hasUnmatchedMapels
+                        ? `Petakan ${detectedSubjects.length - mappedCount} Mapel Lagi`
+                        : 'Lanjutkan Sinkronisasi'}
+                    </span>
+                    {!isSyncing && !hasUnmatchedMapels && <ArrowRight size={13} aria-hidden="true" />}
+                  </Button>
+                </div>
               </div>
             </>
           )}
