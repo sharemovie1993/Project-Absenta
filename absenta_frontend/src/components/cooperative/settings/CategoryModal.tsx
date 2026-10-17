@@ -62,14 +62,15 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
   });
 
   const liabilityAccountOptions = useMemo(() => {
-    if (!coaAccounts || coaAccounts.length === 0) {
+    const list = Array.isArray(coaAccounts) ? coaAccounts : (coaAccounts?.flat || []);
+    if (list.length === 0) {
       return [
         { value: '2010', label: '2010 - Tabungan Sukarela Anggota' },
         { value: '2020', label: '2020 - Simpanan Pokok & Wajib' },
         { value: '2030', label: '2030 - Simpanan Berjangka' },
       ];
     }
-    return coaAccounts
+    return list
       .filter((a) => !a.isHeader && (a.type === 'LIABILITY' || a.type === 'EQUITY' || a.code.startsWith('2')))
       .map((a) => ({
         value: a.code,

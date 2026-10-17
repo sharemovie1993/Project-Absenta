@@ -56,7 +56,7 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
   });
 
   const categoryOptions = useMemo(() => {
-    const list = accountsData?.flat || [];
+    const list = Array.isArray(accountsData) ? accountsData : (accountsData?.flat || []);
     const valid = list.filter(a => !a.isHeader && (a.type === 'REVENUE' || a.type === 'EQUITY'));
     if (valid.length === 0) return DEPOSIT_CATEGORY_OPTIONS;
     return valid.map(a => ({

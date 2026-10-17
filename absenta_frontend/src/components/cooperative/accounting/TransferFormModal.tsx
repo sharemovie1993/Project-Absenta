@@ -49,7 +49,7 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
   });
 
   const cashBankOptions = useMemo(() => {
-    const list = accountsData?.flat || [];
+    const list = Array.isArray(accountsData) ? accountsData : (accountsData?.flat || []);
     const valid = list.filter(a => !a.isHeader && (a.code.startsWith('101') || a.name.toLowerCase().includes('kas') || a.name.toLowerCase().includes('bank')));
     if (valid.length === 0) {
       return [

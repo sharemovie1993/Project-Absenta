@@ -70,7 +70,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
   });
 
   const expenseFilterOptions = useMemo(() => {
-    const list = coaAccountsData?.flat || [];
+    const list = Array.isArray(coaAccountsData) ? coaAccountsData : (coaAccountsData?.flat || []);
     const expenseAccounts = list.filter(a => !a.isHeader && a.type === 'EXPENSE');
     if (expenseAccounts.length === 0) {
       return [
@@ -91,7 +91,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
   }, [coaAccountsData]);
 
   const depositFilterOptions = useMemo(() => {
-    const list = coaAccountsData?.flat || [];
+    const list = Array.isArray(coaAccountsData) ? coaAccountsData : (coaAccountsData?.flat || []);
     const depositAccounts = list.filter(a => !a.isHeader && (a.type === 'REVENUE' || a.type === 'EQUITY'));
     if (depositAccounts.length === 0) {
       return [

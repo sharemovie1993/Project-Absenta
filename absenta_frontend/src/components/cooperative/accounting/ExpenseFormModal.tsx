@@ -59,7 +59,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({
   });
 
   const categoryOptions = useMemo(() => {
-    const list = accountsData?.flat || [];
+    const list = Array.isArray(accountsData) ? accountsData : (accountsData?.flat || []);
     const valid = list.filter(a => !a.isHeader);
     if (valid.length === 0) return EXPENSE_CATEGORY_OPTIONS;
     return valid.map(a => ({

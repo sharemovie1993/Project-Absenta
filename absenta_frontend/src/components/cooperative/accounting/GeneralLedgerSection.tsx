@@ -64,10 +64,11 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
   });
 
   const accountOptions = useMemo(() => {
-    if (!coaAccountsData || coaAccountsData.length === 0) {
+    const list = Array.isArray(coaAccountsData) ? coaAccountsData : (coaAccountsData?.flat || []);
+    if (list.length === 0) {
       return POPULAR_COOP_ACCOUNTS;
     }
-    return coaAccountsData
+    return list
       .filter((acc) => !acc.isHeader)
       .map((acc) => ({
         value: acc.code,
