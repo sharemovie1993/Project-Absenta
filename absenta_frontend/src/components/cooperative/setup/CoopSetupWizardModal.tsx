@@ -27,8 +27,10 @@ import {
   Folder,
   CornerDownRight,
   Lock,
-  Unlock
+  Unlock,
+  UserPlus
 } from 'lucide-react';
+import api from '../../../lib/axiosInstance';
 import { 
   coopSetupApi, 
   type SetupMode, 
@@ -141,6 +143,29 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
       pinjaman_sisa_tenor_bulan: 0,
     }
   ]);
+
+  // Step 4: Ambil master anggota koperasi yang sudah terdaftar di tenant ini
+  const { data: existingMembersData, isLoading: loadingExistingMembers } = useQuery({
+    queryKey: ['cooperative-members-for-wizard-setup'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/members');
+      const list = res.data?.data || res.data || [];
+      return Array.isArray(list) ? list : [];
+    },
+    enabled: isOpen && currentStep >= 4,
+  });
+
+  const existingMemberList = useMemo(() => {
+    if (!existingMembersData || !Array.isArray(existingMembersData)) return [];
+    return existingMembersData.map((m: any) => ({
+      id: m.id,
+      memberNo: m.memberNo || '',
+      identityNo: m.identityNo || m.Siswa?.nis || m.Guru?.nip || m.memberNo || '',
+      name: m.name || m.Siswa?.nama_siswa || m.Guru?.nama_guru || 'Anggota',
+      phone: (m.phone && m.phone !== '-') ? m.phone : (m.Siswa?.no_hp || m.Guru?.no_hp || ''),
+      type: m.type || 'GENERAL',
+    }));
+  }, [existingMembersData]);
 
   // Normalisasi daftar akun dari flat/nodes agar tahan format respon API
   const accountList: AccountNode[] = useMemo(() => {
@@ -400,10 +425,97 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   const handleSubledgerRowChange = (index: number, field: keyof SubledgerMemberImport, val: any) => {
     setSubledgerMembers(prev => prev.map((row, idx) => {
       if (idx === index) {
+        // Otomatis lengkapi NIK dan No HP jika nama cocok dengan anggota terdaftar
+        if (field === 'nama') {
+          const matched = existingMemberList.find(m => m.name.toLowerCase() === String(val).toLowerCase().trim());
+          if (matched) {
+            return {
+              ...row,
+              nama: matched.name,
+              nik: matched.identityNo || matched.memberNo || row.nik,
+              phone: (matched.phone && matched.phone !== '-') ? matched.phone : row.phone,
+            };
+          }
+        } else if (field === 'nik') {
+          const matched = existingMemberList.find(m => 
+            (m.identityNo && m.identityNo.toLowerCase() === String(val).toLowerCase().trim()) ||
+            (m.memberNo && m.memberNo.toLowerCase() === String(val).toLowerCase().trim())
+          );
+          if (matched) {
+            return {
+              ...row,
+              nik: matched.identityNo || matched.memberNo,
+              nama: matched.name || row.nama,
+              phone: (matched.phone && matched.phone !== '-') ? matched.phone : row.phone,
+            };
+          }
+        }
         return { ...row, [field]: val };
       }
       return row;
     }));
+  };
+
+  const handlePullAllExistingMembers = () => {
+    if (existingMemberList.length === 0) {
+      toast.error('Belum ada data anggota terdaftar di sistem koperasi.');
+      return;
+    }
+    const mapped: SubledgerMemberImport[] = existingMemberList.map(m => ({
+      nik: m.identityNo || m.memberNo,
+      nama: m.name,
+      phone: (m.phone && m.phone !== '-') ? m.phone : '',
+      simpanan_pokok: 0,
+      simpanan_wajib: 0,
+      simpanan_sukarela: 0,
+      pinjaman_pokok_berjalan: 0,
+      pinjaman_sisa_bunga: 0,
+      pinjaman_sisa_tenor_bulan: 0,
+    }));
+    setSubledgerMembers(mapped);
+    toast.success(`Berhasil menarik ${mapped.length} anggota terdaftar ke tabel!`);
+  };
+
+  const handleAddMemberFromMaster = (member: { id: string; name: string; memberNo: string; identityNo: string; phone: string }) => {
+    const exists = subledgerMembers.some(r => 
+      (r.nik && r.nik === (member.identityNo || member.memberNo)) || 
+      (r.nama && r.nama.toLowerCase() === member.name.toLowerCase())
+    );
+    if (exists) {
+      toast.error(`${member.name} sudah ada di dalam tabel sub-ledger.`);
+      return;
+    }
+    
+    // Jika baris pertama masih kosong belum diketik apa-apa, pakai baris pertama
+    if (subledgerMembers.length === 1 && !subledgerMembers[0].nik && !subledgerMembers[0].nama) {
+      setSubledgerMembers([{
+        nik: member.identityNo || member.memberNo,
+        nama: member.name,
+        phone: (member.phone && member.phone !== '-') ? member.phone : '',
+        simpanan_pokok: 0,
+        simpanan_wajib: 0,
+        simpanan_sukarela: 0,
+        pinjaman_pokok_berjalan: 0,
+        pinjaman_sisa_bunga: 0,
+        pinjaman_sisa_tenor_bulan: 0,
+      }]);
+    } else {
+      setSubledgerMembers(prev => [
+        ...prev,
+        {
+          nik: member.identityNo || member.memberNo,
+          nama: member.name,
+          phone: (member.phone && member.phone !== '-') ? member.phone : '',
+          simpanan_pokok: 0,
+          simpanan_wajib: 0,
+          simpanan_sukarela: 0,
+          pinjaman_pokok_berjalan: 0,
+          pinjaman_sisa_bunga: 0,
+          pinjaman_sisa_tenor_bulan: 0,
+        }
+      ]);
+    }
+    toast.success(`${member.name} berhasil ditambahkan ke tabel.`);
   };
 
   const addSubledgerRow = () => {
@@ -1256,6 +1368,56 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </button>
               </div>
 
+              {/* Integrasi Master Member Terdaftar */}
+              {existingMemberList.length > 0 && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/50 shadow-2xs">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-600/30">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900 dark:text-white">
+                          Integrasi Data Master Anggota
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                          {existingMemberList.length} Anggota Terdaftar
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Tarik anggota koperasi yang sudah ada di sistem agar NIK, Nama, dan No HP langsung terisi otomatis.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handlePullAllExistingMembers}
+                      className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all active:scale-98"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Tarik Semua ({existingMemberList.length})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Datalists for autocomplete */}
+              <datalist id="subledger-member-options">
+                {existingMemberList.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.identityNo ? `[${m.identityNo}] ` : ''}({m.type === 'STUDENT' ? 'Siswa' : m.type === 'TEACHER' ? 'Guru' : 'Umum'}) - {m.phone || 'No HP -'}
+                  </option>
+                ))}
+              </datalist>
+              <datalist id="subledger-nik-options">
+                {existingMemberList.map((m) => (
+                  <option key={m.id} value={m.identityNo || m.memberNo}>
+                    {m.name} ({m.type === 'STUDENT' ? 'Siswa' : m.type === 'TEACHER' ? 'Guru' : 'Umum'})
+                  </option>
+                ))}
+              </datalist>
+
               {/* Subledger Totals Summary Box */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 dark:bg-slate-800/40 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -1307,6 +1469,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                             type="text"
                             placeholder="3201..."
                             value={row.nik}
+                            list="subledger-nik-options"
                             onChange={(e) => handleSubledgerRowChange(idx, 'nik', e.target.value)}
                             className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
                           />
@@ -1316,6 +1479,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                             type="text"
                             placeholder="Nama Lengkap"
                             value={row.nama}
+                            list="subledger-member-options"
                             onChange={(e) => handleSubledgerRowChange(idx, 'nama', e.target.value)}
                             className="w-full px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium"
                           />
@@ -1380,14 +1544,41 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </table>
               </div>
 
-              <button
-                type="button"
-                onClick={addSubledgerRow}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Tambah Baris Anggota
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={addSubledgerRow}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tambah Baris Kosong
+                </button>
+
+                {existingMemberList.length > 0 && (
+                  <div className="relative inline-flex items-center">
+                    <select
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        if (!selectedId) return;
+                        const member = existingMemberList.find(m => m.id === selectedId);
+                        if (member) {
+                          handleAddMemberFromMaster(member);
+                        }
+                        e.target.value = '';
+                      }}
+                      defaultValue=""
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200/60 dark:border-indigo-800/60 transition-colors cursor-pointer outline-hidden"
+                    >
+                      <option value="" disabled>+ Pilih Anggota Terdaftar ({existingMemberList.length})...</option>
+                      {existingMemberList.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} ({m.type === 'STUDENT' ? 'Siswa' : m.type === 'TEACHER' ? 'Guru' : 'Umum'}) - {m.identityNo || m.memberNo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
