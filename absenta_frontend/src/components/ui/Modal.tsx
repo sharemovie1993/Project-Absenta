@@ -141,7 +141,7 @@ export function Modal({
       {isOpen && (
         <div 
           className={cn(
-            "fixed inset-0 flex p-4",
+            "fixed inset-0 flex p-2 sm:p-4",
             placement === 'bottom' ? 'items-end justify-center' : placement === 'top' ? 'items-start justify-center' : 'items-center justify-center'
           )} 
           style={{ zIndex }}
@@ -164,7 +164,7 @@ export function Modal({
             aria-labelledby={title ? "modal-title" : undefined}
             aria-describedby={description ? "modal-description" : undefined}
             className={cn(
-              'relative z-10 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[92vh]',
+              'relative z-10 bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 w-full overflow-hidden max-h-[96vh] sm:max-h-[92vh] flex flex-col',
               activeSizeClass,
               className
             )}
@@ -176,7 +176,7 @@ export function Modal({
           >
             {/* Header */}
             {title ? (
-              <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
+              <div className="flex items-center justify-between p-3.5 sm:p-5 border-b border-gray-200 dark:border-slate-700 shrink-0">
                 <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-white">
                   {title}
                 </h2>
@@ -220,7 +220,7 @@ export function Modal({
             )}
             
             {/* Content */}
-            <div className={cn('p-6 overflow-y-auto', (title || description) && 'pt-4', 'max-h-[80vh]', contentClassName)}>
+            <div className={cn('p-3 sm:p-6 overflow-y-auto flex-1', (title || description) && 'pt-2.5 sm:pt-4', 'max-h-[calc(96vh-80px)] sm:max-h-[calc(92vh-100px)]', contentClassName)}>
               {children}
             </div>
           </motion.div>

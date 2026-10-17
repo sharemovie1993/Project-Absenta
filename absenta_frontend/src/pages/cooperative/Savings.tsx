@@ -484,38 +484,37 @@ const Savings: React.FC = React.memo(() => {
       <Modal
         isOpen={isCashierOpen}
         onClose={handleCloseCashier}
-        size="xl"
+        size="4xl"
+        contentClassName="p-3 sm:p-5"
         title={
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <Zap size={16} className="text-amber-300 fill-amber-300" />
             </div>
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100">
+            <div className="min-w-0">
+              <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-800 dark:text-slate-100 truncate">
                 Loket Kasir Terpadu
               </h3>
-              <p className="text-[10px] text-slate-400 font-medium">
+              <p className="text-[10px] text-slate-400 font-medium truncate">
                 Setoran Simpanan, Angsuran Pinjaman, dan Tarik Tunai
               </p>
             </div>
           </div>
         }
       >
-        <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
-          <Suspense fallback={<div className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />}>
-            <QuickTransactionPanel
-              ref={scannerInputRef}
-              scannedStudent={scannedStudent}
-              scannedMemberSavings={scannedMemberSavings}
-              onSelectStudent={handleSelectStudent}
-              onCancel={handleCloseCashier}
-              memberLoans={memberLoans}
-              loadingLoans={loadingMemberLoans}
-              onProcessUnifiedPayment={handleProcessUnifiedPayment}
-              isProcessingUnifiedPayment={isProcessingUnifiedPayment}
-            />
-          </Suspense>
-        </div>
+        <Suspense fallback={<div className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/50 animate-pulse" />}>
+          <QuickTransactionPanel
+            ref={scannerInputRef}
+            scannedStudent={scannedStudent}
+            scannedMemberSavings={scannedMemberSavings}
+            onSelectStudent={handleSelectStudent}
+            onCancel={handleCloseCashier}
+            memberLoans={memberLoans}
+            loadingLoans={loadingMemberLoans}
+            onProcessUnifiedPayment={handleProcessUnifiedPayment}
+            isProcessingUnifiedPayment={isProcessingUnifiedPayment}
+          />
+        </Suspense>
       </Modal>
     )}
 

@@ -551,587 +551,683 @@ export const UnifiedPaymentPanel: React.FC<UnifiedPaymentPanelProps> = React.mem
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* ── 1. Scanned Member Header ─────────────────────────────────── */}
-      <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-50/80 to-purple-50/50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-xl border border-indigo-100/80 dark:border-slate-800/80 relative overflow-hidden">
-        <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
-          {student.nama_siswa?.charAt(0) || student.nama_guru?.charAt(0) || 'U'}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-              TERPADU
-            </span>
-            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate uppercase">
-              {student.nama_siswa || student.nama_guru}
-            </h4>
+    <form onSubmit={handleSubmit} className="space-y-3.5">
+      {/* ── 1. Top Controls: Member Header + Mode Switcher ───────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-stretch">
+        {/* Member Header Card */}
+        <div className="md:col-span-7 flex items-center gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-indigo-50/80 to-purple-50/50 dark:from-slate-800/80 dark:to-slate-800/40 rounded-xl border border-indigo-100/80 dark:border-slate-800/80 relative overflow-hidden shadow-xs">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-sm shrink-0">
+            {student.nama_siswa?.charAt(0) || student.nama_guru?.charAt(0) || 'U'}
           </div>
-          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-medium">
-            <span>NIS/NIP: {student.nis || student.nip || '-'}</span>
-            <span>&bull;</span>
-            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-              No. {savings[0]?.member?.memberNo || student.memberNo || '-'}
-            </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                TERPADU
+              </span>
+              <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 truncate uppercase">
+                {student.nama_siswa || student.nama_guru}
+              </h4>
+            </div>
+            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-medium">
+              <span>NIS/NIP: {student.nis || student.nip || '-'}</span>
+              <span>&bull;</span>
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                No. {savings[0]?.member?.memberNo || student.memberNo || '-'}
+              </span>
+            </div>
           </div>
+          {onResetMember && (
+            <button
+              type="button"
+              onClick={onResetMember}
+              className="px-2.5 py-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-700/60 rounded-lg transition-all flex items-center gap-1 border border-indigo-200 dark:border-indigo-800/60 bg-white/70 dark:bg-slate-800/60 shrink-0 shadow-xs"
+              title="Ganti Anggota Lain"
+            >
+              <RotateCcw size={12} />
+              <span>Ganti</span>
+            </button>
+          )}
         </div>
-        {onResetMember && (
+
+        {/* Mode Switcher */}
+        <div className="md:col-span-5 flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl gap-1 border border-slate-200/60 dark:border-slate-700/60 items-center">
           <button
             type="button"
-            onClick={onResetMember}
-            className="px-2.5 py-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:bg-white/80 dark:hover:bg-slate-700/60 rounded-lg transition-colors flex items-center gap-1 border border-indigo-200 dark:border-indigo-800/60 bg-white/60 dark:bg-slate-800/60 shrink-0"
-            title="Ganti Anggota Lain"
+            onClick={() => setTellerMode('DEPOSIT_AND_BILL')}
+            className={`flex-1 py-2 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
+              tellerMode === 'DEPOSIT_AND_BILL'
+                ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
           >
-            <RotateCcw size={12} />
-            <span>Ganti</span>
+            <ArrowUpCircle size={14} className={tellerMode === 'DEPOSIT_AND_BILL' ? 'text-emerald-500' : 'text-slate-400'} />
+            <span>Setoran & Tagihan</span>
+            {nextUnpaidInstallment && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse ml-0.5" title="Ada tagihan pinjaman aktif" />
+            )}
           </button>
-        )}
+          <button
+            type="button"
+            onClick={() => setTellerMode('WITHDRAWAL')}
+            className={`flex-1 py-2 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
+              tellerMode === 'WITHDRAWAL'
+                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
+                : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <ArrowDownCircle size={14} className={tellerMode === 'WITHDRAWAL' ? 'text-rose-500' : 'text-slate-400'} />
+            <span>Tarik Tunai</span>
+          </button>
+        </div>
       </div>
 
-      {/* ── 2. Teller Mode Switcher (Kas Masuk vs Kas Keluar) ───────────── */}
-      <div className="flex p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl gap-1 border border-slate-200/60 dark:border-slate-700/60">
-        <button
-          type="button"
-          onClick={() => setTellerMode('DEPOSIT_AND_BILL')}
-          className={`flex-1 py-1.5 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
-            tellerMode === 'DEPOSIT_AND_BILL'
-              ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
-              : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <ArrowUpCircle size={14} className={tellerMode === 'DEPOSIT_AND_BILL' ? 'text-emerald-500' : 'text-slate-400'} />
-          <span>Setoran & Tagihan</span>
-          {nextUnpaidInstallment && (
-            <span className="w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse ml-0.5" title="Ada tagihan pinjaman aktif" />
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => setTellerMode('WITHDRAWAL')}
-          className={`flex-1 py-1.5 px-3 rounded-lg font-black text-xs flex items-center justify-center gap-1.5 transition-all ${
-            tellerMode === 'WITHDRAWAL'
-              ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm border border-slate-200/50 dark:border-slate-700/50'
-              : 'text-slate-650 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <ArrowDownCircle size={14} className={tellerMode === 'WITHDRAWAL' ? 'text-rose-500' : 'text-slate-400'} />
-          <span>Tarik Tunai Simpanan</span>
-        </button>
-      </div>
-
-      {/* ── 3. Mode Content ─────────────────────────────────────────────── */}
+      {/* ── 2. Mode Content: 2-Column Responsive Grid ───────────────────── */}
       {tellerMode === 'WITHDRAWAL' ? (
-        <div className="space-y-3">
-          {/* Member Prerequisite Notice in Withdrawal Mode */}
-          {(!isPokokPaid || !isWajibPaidThisMonth) && (
-            <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
-              <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
-              <div className="space-y-0.5">
-                <span className="font-bold">Perhatian Tertib Iuran Anggota:</span>
-                <p className="text-[11px] text-amber-700 dark:text-amber-400/90 leading-tight">
-                  Anggota ini masih memiliki kewajiban {!isPokokPaid ? 'Simpanan Pokok' : ''} {!isPokokPaid && !isWajibPaidThisMonth ? 'dan ' : ''} {!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini' : ''} yang belum disetor. Sarankan anggota untuk menyisihkan sebagian uang penarikan guna pelunasan kewajiban di loket.
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+          {/* Left Column: Account Selection & Input (7 cols) */}
+          <div className="lg:col-span-7 space-y-3">
+            {/* Member Prerequisite Notice in Withdrawal Mode */}
+            {(!isPokokPaid || !isWajibPaidThisMonth) && (
+              <div className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 flex items-start gap-2.5 text-amber-800 dark:text-amber-300 text-xs">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold">Perhatian Tertib Iuran Anggota:</span>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400/90 leading-tight">
+                    Anggota ini masih memiliki kewajiban {!isPokokPaid ? 'Simpanan Pokok' : ''} {!isPokokPaid && !isWajibPaidThisMonth ? 'dan ' : ''} {!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini' : ''} yang belum disetor. Sarankan anggota untuk menyisihkan sebagian uang penarikan guna pelunasan kewajiban di loket.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {withdrawableSavings.length === 0 ? (
+              <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <span>Tidak Ada Rekening yang Dapat Ditarik</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                  Simpanan Pokok dan Simpanan Wajib merupakan modal penyertaan tetap anggota yang <strong>tidak dapat ditarik</strong> selama status keanggotaan masih aktif.
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Untuk penarikan tunai, anggota harus memiliki saldo pada <strong>Simpanan Sukarela</strong> atau jenis tabungan sukarela lainnya.
                 </p>
               </div>
-            </div>
-          )}
+            ) : (
+              <>
+                {/* Account Selector */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
+                    Pilih Rekening Penarikan
+                  </label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {withdrawableSavings.map((s) => {
+                      const isSelected = s.id === (selectedWithdrawSaving?.id);
+                      const bal = parseFloat(s.amount) || 0;
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => setSelectedWithdrawSavingId(s.id)}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            isSelected
+                              ? 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs ring-1 ring-rose-500/30'
+                              : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                              isSelected
+                                ? 'bg-rose-500 text-white'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            }`}>
+                              <Wallet size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                                {s.category?.name || s.type || 'Simpanan Sukarela'}
+                              </p>
+                              <p className="text-[10px] text-slate-400 font-mono">
+                                No. Rek: {s.accountNumber || '-'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-400 block font-medium">Saldo Tersedia</span>
+                            <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
+                              Rp {bal.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          {withdrawableSavings.length === 0 ? (
-            <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/60 dark:border-amber-800/40 text-amber-800 dark:text-amber-300 text-xs space-y-2">
-              <div className="flex items-center gap-2 font-bold">
-                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>Tidak Ada Rekening yang Dapat Ditarik</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
-                Simpanan Pokok dan Simpanan Wajib merupakan modal penyertaan tetap anggota yang <strong>tidak dapat ditarik</strong> selama status keanggotaan masih aktif.
-              </p>
-              <p className="text-[11px] text-slate-500">
-                Untuk penarikan tunai, anggota harus memiliki saldo pada <strong>Simpanan Sukarela</strong> atau jenis tabungan sukarela lainnya.
-              </p>
-            </div>
-          ) : (
-            <>
-              {/* Account Selector */}
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
-                  Pilih Rekening Penarikan
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {withdrawableSavings.map((s) => {
-                    const isSelected = s.id === (selectedWithdrawSaving?.id);
-                    const bal = parseFloat(s.amount) || 0;
-                    return (
-                      <div
-                        key={s.id}
-                        onClick={() => setSelectedWithdrawSavingId(s.id)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                          isSelected
-                            ? 'border-rose-500 bg-rose-50/40 dark:bg-rose-950/20 shadow-xs'
-                            : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+                {/* Withdrawal Amount Input & Quick Chips */}
+                <div className="space-y-2.5 p-3.5 rounded-xl border border-rose-200/80 dark:border-rose-900/50 bg-rose-50/20 dark:bg-rose-950/10">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Nominal Penarikan
+                    </label>
+                    <span className="text-[10px] font-mono font-bold text-slate-500">
+                      Maks: Rp {maxWithdrawBalance.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">
+                      Rp
+                    </span>
+                    <input
+                      type="number"
+                      min={1000}
+                      max={maxWithdrawBalance}
+                      step={1000}
+                      value={withdrawAmount || ''}
+                      onChange={(e) => {
+                        const val = Number(e.target.value) || 0;
+                        setWithdrawAmount(val);
+                      }}
+                      placeholder="0"
+                      className="w-full pl-10 pr-3 py-2 text-base font-black font-mono rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                  </div>
+
+                  {/* Quick chips */}
+                  <div className="grid grid-cols-5 gap-1.5 pt-1">
+                    {[50000, 100000, 200000, 500000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        disabled={amt > maxWithdrawBalance}
+                        onClick={() => setWithdrawAmount(amt)}
+                        className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                          withdrawAmount === amt
+                            ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                            : amt > maxWithdrawBalance
+                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                            isSelected
-                              ? 'bg-rose-500 text-white'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                          }`}>
-                            <Wallet size={16} />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                              {s.category?.name || s.type || 'Simpanan Sukarela'}
-                            </p>
-                            <p className="text-[10px] text-slate-400 font-mono">
-                              No. Rek: {s.accountNumber || '-'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] text-slate-400 block font-medium">Saldo Tersedia</span>
-                          <span className="text-xs font-black font-mono text-emerald-600 dark:text-emerald-400">
-                            Rp {bal.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Withdrawal Amount Input & Quick Chips */}
-              <div className="space-y-2 p-3.5 rounded-xl border border-rose-200/80 dark:border-rose-900/50 bg-rose-50/20 dark:bg-rose-950/10">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Nominal Penarikan
-                  </label>
-                  <span className="text-[10px] font-mono font-bold text-slate-500">
-                    Maks: Rp {maxWithdrawBalance.toLocaleString('id-ID')}
-                  </span>
-                </div>
-
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs text-slate-400">
-                    Rp
-                  </span>
-                  <input
-                    type="number"
-                    min={1000}
-                    max={maxWithdrawBalance}
-                    step={1000}
-                    value={withdrawAmount || ''}
-                    onChange={(e) => {
-                      const val = Number(e.target.value) || 0;
-                      setWithdrawAmount(val);
-                    }}
-                    placeholder="0"
-                    className="w-full pl-9 pr-3 py-2 text-base font-black font-mono rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                </div>
-
-                {/* Quick chips */}
-                <div className="grid grid-cols-5 gap-1.5 pt-1">
-                  {[50000, 100000, 200000, 500000].map((amt) => (
+                        {amt / 1000}k
+                      </button>
+                    ))}
                     <button
-                      key={amt}
                       type="button"
-                      disabled={amt > maxWithdrawBalance}
-                      onClick={() => setWithdrawAmount(amt)}
+                      disabled={maxWithdrawBalance <= 0}
+                      onClick={() => setWithdrawAmount(maxWithdrawBalance)}
                       className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
-                        withdrawAmount === amt
+                        withdrawAmount === maxWithdrawBalance && maxWithdrawBalance > 0
                           ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                          : amt > maxWithdrawBalance
-                            ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 cursor-not-allowed opacity-50'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                          : 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30'
                       }`}
                     >
-                      {amt / 1000}k
+                      Semua
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={maxWithdrawBalance <= 0}
-                    onClick={() => setWithdrawAmount(maxWithdrawBalance)}
-                    className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
-                      withdrawAmount === maxWithdrawBalance && maxWithdrawBalance > 0
-                        ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
-                        : 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30'
-                    }`}
-                  >
-                    Semua
-                  </button>
-                </div>
+                  </div>
 
-                {/* Warning if amount > balance */}
-                {withdrawAmount > maxWithdrawBalance && (
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 mt-1">
-                    <AlertTriangle size={12} />
-                    <span>Nominal penarikan melebihi saldo tersedia!</span>
-                  </p>
-                )}
+                  {/* Warning if amount > balance */}
+                  {withdrawAmount > maxWithdrawBalance && (
+                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 mt-1">
+                      <AlertTriangle size={12} />
+                      <span>Nominal penarikan melebihi saldo tersedia!</span>
+                    </p>
+                  )}
 
-                {/* Note Input */}
-                <div className="pt-2 border-t border-rose-100 dark:border-rose-900/40">
-                  <input
-                    type="text"
-                    value={withdrawNote}
-                    onChange={(e) => setWithdrawNote(e.target.value)}
-                    placeholder="Catatan / Keperluan penarikan (opsional)..."
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
-                  />
+                  {/* Note Input */}
+                  <div className="pt-2 border-t border-rose-100 dark:border-rose-900/40">
+                    <input
+                      type="text"
+                      value={withdrawNote}
+                      onChange={(e) => setWithdrawNote(e.target.value)}
+                      placeholder="Catatan / Keperluan penarikan (opsional)..."
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-rose-500"
+                    />
+                  </div>
                 </div>
+              </>
+            )}
+          </div>
+
+          {/* Right Column: Settlement & Actions (5 cols) */}
+          <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-0">
+            {/* Withdrawal Summary Box */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900 text-white space-y-2.5 shadow-md">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Total Kas Keluar
+                </span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-rose-400">
+                  Rp {withdrawAmount.toLocaleString('id-ID')}
+                </span>
               </div>
-
-              {/* Withdrawal Summary Box */}
-              <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2 shadow-sm">
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Total Kas Keluar (Diserahkan)
-                  </span>
-                  <span className="text-xl font-black font-mono text-rose-400">
-                    Rp {withdrawAmount.toLocaleString('id-ID')}
-                  </span>
-                </div>
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                  <span>Sisa Saldo Rekening:</span>
-                  <span className="font-mono font-bold text-slate-200">
-                    Rp {Math.max(0, maxWithdrawBalance - withdrawAmount).toLocaleString('id-ID')}
-                  </span>
-                </div>
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span>Sisa Saldo Rekening:</span>
+                <span className="font-mono font-bold text-slate-200">
+                  Rp {Math.max(0, maxWithdrawBalance - withdrawAmount).toLocaleString('id-ID')}
+                </span>
               </div>
-            </>
-          )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 text-xs font-semibold"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                disabled={
+                  isProcessing ||
+                  withdrawAmount <= 0 ||
+                  withdrawAmount > maxWithdrawBalance ||
+                  withdrawableSavings.length === 0
+                }
+                className="flex-2 py-2.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1.5 justify-center shadow-md shadow-rose-500/20"
+              >
+                <ArrowDownCircle className="w-3.5 h-3.5" />
+                <span>{isProcessing ? 'Memproses...' : `Tarik Tunai (Rp ${withdrawAmount.toLocaleString('id-ID')})`}</span>
+              </Button>
+            </div>
+          </div>
         </div>
       ) : (
-        /* ── DEPOSIT & BILL PAYMENT VIEW ───────────────────────────────── */
-        <div className="space-y-2">
-          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
-            Pilihan Pembayaran Terpadu
-          </label>
+        /* ── DEPOSIT & BILL PAYMENT VIEW: 2-Column Responsive Grid ────── */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+          {/* Left Column: Checklist Options (7 cols) */}
+          <div className="lg:col-span-7 space-y-2.5">
+            <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">
+              Pilihan Pembayaran Terpadu
+            </label>
 
-          {/* 3A. Simpanan Pokok (Modal Awal Anggota) */}
-          {pokokSaving && (
-            <div className={`p-3 rounded-xl border transition-all ${
-              isPokokPaid
-                ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
-                : includePokok 
-                  ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
-            }`}>
-              <label className={`flex items-start gap-2.5 select-none ${
-                isPokokLockedByDependency ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+            {/* 3A. Simpanan Pokok (Modal Awal Anggota) */}
+            {pokokSaving && (
+              <div className={`p-3 rounded-xl border transition-all ${
+                isPokokPaid
+                  ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
+                  : includePokok 
+                    ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
               }`}>
-                <input
-                  type="checkbox"
-                  checked={includePokok}
-                  disabled={isPokokLockedByDependency}
-                  onChange={(e) => handleTogglePokok(e.target.checked)}
-                  className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
-                    isPokokLockedByDependency ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Simpanan Pokok</span>
+                <label className={`flex items-start gap-2.5 select-none ${
+                  isPokokLockedByDependency ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={includePokok}
+                    disabled={isPokokLockedByDependency}
+                    onChange={(e) => handleTogglePokok(e.target.checked)}
+                    className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                      isPokokLockedByDependency ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Simpanan Pokok</span>
+                        {isPokokPaid ? (
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
+                            Lunas
+                          </span>
+                        ) : isOtherTransactionSelected ? (
+                          <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-900/40 px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                            Prasyarat Wajib
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className={`font-mono font-black text-xs ${
+                        isPokokPaid 
+                          ? 'text-slate-400 line-through' 
+                          : 'text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        Rp {pokokAmount.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                      <span className="text-slate-500">
+                        {isPokokPaid
+                          ? `Saldo: Rp ${(parseFloat(pokokSaving.amount) || 0).toLocaleString('id-ID')}`
+                          : isOtherTransactionSelected
+                            ? 'Wajib disetor karena transaksi lain dipilih'
+                            : 'Modal awal pendaftaran anggota (1x setor)'}
+                      </span>
                       {isPokokPaid ? (
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
-                          Lunas
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          ✓ Sudah Lunas (Terkunci)
                         </span>
-                      ) : isOtherTransactionSelected ? (
-                        <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100/70 dark:bg-amber-900/40 px-1.5 py-0.2 rounded flex items-center gap-0.5">
-                          Prasyarat Wajib
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                          ⚠️ Belum Lunas
                         </span>
-                      ) : null}
-                    </span>
-                    <span className={`font-mono font-black text-xs ${
-                      isPokokPaid 
-                        ? 'text-slate-400 line-through' 
-                        : 'text-indigo-600 dark:text-indigo-400'
-                    }`}>
-                      Rp {pokokAmount.toLocaleString('id-ID')}
-                    </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-1 text-[10px]">
-                    <span className="text-slate-500">
-                      {isPokokPaid
-                        ? `Saldo: Rp ${(parseFloat(pokokSaving.amount) || 0).toLocaleString('id-ID')}`
-                        : isOtherTransactionSelected
-                          ? 'Wajib disetor karena transaksi lain dipilih'
-                          : 'Modal awal pendaftaran anggota (1x setor)'}
-                    </span>
-                    {isPokokPaid ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        ✓ Sudah Lunas (Terkunci)
-                      </span>
-                    ) : (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">
-                        ⚠️ Belum Lunas
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </label>
-            </div>
-          )}
+                </label>
+              </div>
+            )}
 
-          {/* 3B. Simpanan Wajib Bulan Ini */}
-          {wajibSaving && (
-            <div className={`p-3 rounded-xl border transition-all ${
-              isWajibPaidThisMonth
-                ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
-                : includeWajib 
-                  ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
-                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
-            }`}>
-              <label className={`flex items-start gap-2.5 select-none ${
-                (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+            {/* 3B. Simpanan Wajib Bulan Ini */}
+            {wajibSaving && (
+              <div className={`p-3 rounded-xl border transition-all ${
+                isWajibPaidThisMonth
+                  ? 'border-emerald-200/80 dark:border-emerald-800/50 bg-emerald-50/20 dark:bg-emerald-950/10'
+                  : includeWajib 
+                    ? 'border-indigo-400 dark:border-indigo-600 bg-indigo-50/40 dark:bg-indigo-950/20 shadow-xs' 
+                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
               }`}>
-                <input
-                  type="checkbox"
-                  checked={includeWajib}
-                  disabled={isWajibPaidThisMonth || isWajibLockedBySukarela}
-                  onChange={(e) => handleToggleWajib(e.target.checked)}
-                  className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
-                    (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                      <Wallet className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Simpanan Wajib</span>
+                <label className={`flex items-start gap-2.5 select-none ${
+                  (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-80' : 'cursor-pointer'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={includeWajib}
+                    disabled={isWajibPaidThisMonth || isWajibLockedBySukarela}
+                    onChange={(e) => handleToggleWajib(e.target.checked)}
+                    className={`mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 ${
+                      (isWajibPaidThisMonth || isWajibLockedBySukarela) ? 'cursor-not-allowed opacity-50 bg-slate-100 dark:bg-slate-800' : ''
+                    }`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Simpanan Wajib</span>
+                        {isWajibPaidThisMonth ? (
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
+                            Lunas
+                          </span>
+                        ) : isWajibLockedBySukarela ? (
+                          <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-900/40 px-1.5 py-0.2 rounded">
+                            Prasyarat Sukarela
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className={`font-mono font-black text-xs ${
+                        isWajibPaidThisMonth 
+                          ? 'text-slate-400 line-through' 
+                          : 'text-indigo-600 dark:text-indigo-400'
+                      }`}>
+                        Rp {wajibAmount.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-[10px]">
+                      <span className="text-slate-500">
+                        {isWajibLockedBySukarela && !isWajibPaidThisMonth
+                          ? 'Wajib disetor bersamaan karena ada tabungan sukarela'
+                          : `Bulan ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`}
+                      </span>
                       {isWajibPaidThisMonth ? (
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-1.5 py-0.2 rounded">
-                          Lunas
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          ✓ Sudah Lunas Bulan Ini (Terkunci)
                         </span>
-                      ) : isWajibLockedBySukarela ? (
-                        <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/70 dark:bg-indigo-900/40 px-1.5 py-0.2 rounded">
-                          Prasyarat Sukarela
+                      ) : (
+                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                          ⚠️ Belum Disetor
                         </span>
-                      ) : null}
-                    </span>
-                    <span className={`font-mono font-black text-xs ${
-                      isWajibPaidThisMonth 
-                        ? 'text-slate-400 line-through' 
-                        : 'text-indigo-600 dark:text-indigo-400'
-                    }`}>
-                      Rp {wajibAmount.toLocaleString('id-ID')}
-                    </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between mt-1 text-[10px]">
-                    <span className="text-slate-500">
-                      {isWajibLockedBySukarela && !isWajibPaidThisMonth
-                        ? 'Wajib disetor bersamaan karena ada tabungan sukarela'
-                        : `Bulan ${now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`}
-                    </span>
-                    {isWajibPaidThisMonth ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-                        ✓ Sudah Lunas Bulan Ini (Terkunci)
+                </label>
+              </div>
+            )}
+
+            {/* 3C. Angsuran Pinjaman Berjalan */}
+            <div className={`p-3 rounded-xl border transition-all ${
+              nextUnpaidInstallment
+                ? includeLoan
+                  ? 'border-purple-400 dark:border-purple-600 bg-purple-50/40 dark:bg-purple-950/20 shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
+                : 'border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40'
+            }`}>
+              {loadingLoans ? (
+                <div className="py-2 text-center text-xs text-slate-400">Memeriksa pinjaman aktif...</div>
+              ) : nextUnpaidInstallment ? (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeLoan}
+                    onChange={(e) => handleToggleLoan(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                        <CreditCard className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Cicilan Pinjaman #{installmentNumber}</span>
                       </span>
-                    ) : (
-                      <span className="text-amber-600 dark:text-amber-400 font-bold">
-                        ⚠️ Belum Disetor
+                      <span className="font-mono font-black text-xs text-purple-600 dark:text-purple-400">
+                        Rp {Number(nextUnpaidInstallment.amount).toLocaleString('id-ID')}
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>Jatuh Tempo: {formatIndonesianDate(nextUnpaidInstallment.dueDate)}</span>
+                      </span>
+                      <span className="font-semibold text-purple-700 dark:text-purple-300">
+                        Tenor {activeLoan?.duration} Bln
+                      </span>
+                    </div>
+                  </div>
+                </label>
+              ) : (
+                <div className="flex items-center gap-2 py-0.5 text-slate-500 text-xs">
+                  <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className="text-[11px] font-medium">Tidak ada pinjaman aktif / Seluruh cicilan lunas</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3D. Simpanan Sukarela (Opsional) */}
+            {sukarelaSaving && (
+              <div className={`p-3 rounded-xl border transition-all ${
+                includeSukarela 
+                  ? 'border-teal-400 dark:border-teal-600 bg-teal-50/40 dark:bg-teal-950/20' 
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
+              }`}>
+                <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeSukarela}
+                    onChange={(e) => handleToggleSukarela(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
+                        <DollarSign className="w-3.5 h-3.5 text-teal-600" />
+                        <span>Tambah Tabungan Sukarela</span>
+                      </span>
+                      {includeSukarela && (
+                        <span className="font-mono font-black text-xs text-teal-600 dark:text-teal-400">
+                          +Rp {sukarelaAmount.toLocaleString('id-ID')}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Saldo saat ini: Rp {(parseFloat(sukarelaSaving.amount) || 0).toLocaleString('id-ID')}
+                    </p>
+                  </div>
+                </label>
+
+                {includeSukarela && (
+                  <div className="mt-2.5 pt-2 border-t border-teal-200/50 dark:border-teal-800/40 space-y-2">
+                    <div className="grid grid-cols-4 gap-1">
+                      {[10000, 20000, 50000, 100000].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => handleSukarelaAmountChange(amt)}
+                          className={`py-1.5 text-[10px] font-bold rounded-lg border transition-all ${
+                            sukarelaAmount === amt 
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-xs' 
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          +{amt / 1000}k
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      type="number"
+                      min={1000}
+                      step={1000}
+                      value={sukarelaAmount || ''}
+                      onChange={(e) => handleSukarelaAmountChange(Number(e.target.value) || 0)}
+                      placeholder="Ketik nominal sukarela..."
+                      className="w-full text-xs font-mono py-2"
+                    />
+                    {(!isWajibPaidThisMonth || !isPokokPaid) && (
+                      <div className="text-[10px] text-teal-800 dark:text-teal-300 bg-teal-50/80 dark:bg-teal-950/40 p-2 rounded-lg border border-teal-200/60 dark:border-teal-800/50 flex items-center gap-1.5">
+                        <ShieldCheck size={13} className="shrink-0 text-teal-600" />
+                        <span>
+                          <strong>Tertib Iuran:</strong> {!isPokokPaid ? 'Simpanan Pokok & ' : ''}{!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini ' : ''}otomatis disertakan bersama setoran sukarela.
+                        </span>
+                      </div>
                     )}
                   </div>
-                </div>
-              </label>
-            </div>
-          )}
-
-          {/* 3B. Angsuran Pinjaman Berjalan */}
-          <div className={`p-3 rounded-xl border transition-all ${
-            nextUnpaidInstallment
-              ? includeLoan
-                ? 'border-purple-400 dark:border-purple-600 bg-purple-50/40 dark:bg-purple-950/20 shadow-xs'
-                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-70'
-              : 'border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40'
-          }`}>
-            {loadingLoans ? (
-              <div className="py-2 text-center text-xs text-slate-400">Memeriksa pinjaman aktif...</div>
-            ) : nextUnpaidInstallment ? (
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={includeLoan}
-                  onChange={(e) => handleToggleLoan(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5 text-purple-600" />
-                      <span>Cicilan Pinjaman #{installmentNumber}</span>
-                    </span>
-                    <span className="font-mono font-black text-xs text-purple-600 dark:text-purple-400">
-                      Rp {Number(nextUnpaidInstallment.amount).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1 text-[10px] text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" />
-                      <span>Jatuh Tempo: {formatIndonesianDate(nextUnpaidInstallment.dueDate)}</span>
-                    </span>
-                    <span className="font-semibold text-purple-700 dark:text-purple-300">
-                      Tenor {activeLoan?.duration} Bln
-                    </span>
-                  </div>
-                </div>
-              </label>
-            ) : (
-              <div className="flex items-center gap-2 py-0.5 text-slate-500 text-xs">
-                <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                <span className="text-[11px] font-medium">Tidak ada pinjaman aktif / Seluruh cicilan lunas</span>
+                )}
               </div>
             )}
           </div>
 
-          {/* 3C. Simpanan Sukarela (Opsional) */}
-          {sukarelaSaving && (
-            <div className={`p-3 rounded-xl border transition-all ${
-              includeSukarela 
-                ? 'border-teal-400 dark:border-teal-600 bg-teal-50/40 dark:bg-teal-950/20' 
-                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
-            }`}>
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={includeSukarela}
-                  onChange={(e) => handleToggleSukarela(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5 text-teal-600" />
-                      <span>Tambah Tabungan Sukarela</span>
+          {/* Right Column: Settlement Summary & Action Buttons (5 cols) */}
+          <div className="lg:col-span-5 space-y-3 lg:sticky lg:top-0">
+            {/* Quick Itemized Breakdown */}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                Ringkasan Transaksi Kasir
+              </span>
+              <div className="space-y-1.5 text-xs">
+                {includePokok && pokokSaving && !isPokokPaid && (
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <ShieldCheck size={13} className="text-emerald-500" />
+                      <span>Simpanan Pokok</span>
                     </span>
-                    {includeSukarela && (
-                      <span className="font-mono font-black text-xs text-teal-600 dark:text-teal-400">
-                        +Rp {sukarelaAmount.toLocaleString('id-ID')}
-                      </span>
-                    )}
+                    <span className="font-mono font-bold">Rp {pokokAmount.toLocaleString('id-ID')}</span>
                   </div>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
-                    Saldo saat ini: Rp {(parseFloat(sukarelaSaving.amount) || 0).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </label>
+                )}
+                {includeWajib && wajibSaving && !isWajibPaidThisMonth && (
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <Wallet size={13} className="text-indigo-500" />
+                      <span>Simpanan Wajib</span>
+                    </span>
+                    <span className="font-mono font-bold">Rp {wajibAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {includeLoan && nextUnpaidInstallment && (
+                  <div className="flex justify-between items-center text-slate-700 dark:text-slate-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <CreditCard size={13} className="text-purple-500" />
+                      <span>Cicilan #{installmentNumber}</span>
+                    </span>
+                    <span className="font-mono font-bold">Rp {Number(nextUnpaidInstallment.amount).toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {includeSukarela && sukarelaSaving && sukarelaAmount > 0 && (
+                  <div className="flex justify-between items-center text-teal-700 dark:text-teal-300">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <DollarSign size={13} className="text-teal-500" />
+                      <span>Simpanan Sukarela</span>
+                    </span>
+                    <span className="font-mono font-bold">+Rp {sukarelaAmount.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
+                {totalAmountToPay === 0 && (
+                  <p className="text-[11px] text-slate-400 italic py-1">Pilih setoran atau tagihan di samping</p>
+                )}
+              </div>
+            </div>
 
-              {includeSukarela && (
-                <div className="mt-2.5 pt-2 border-t border-teal-200/50 dark:border-teal-800/40 space-y-1.5">
-                  <div className="grid grid-cols-4 gap-1">
-                    {[10000, 20000, 50000, 100000].map((amt) => (
+            {/* Settlement Box */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-900 text-white space-y-2.5 shadow-md">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  Total Harus Diterima
+                </span>
+                <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+                  Rp {totalAmountToPay.toLocaleString('id-ID')}
+                </span>
+              </div>
+
+              <div className="pt-2 border-t border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs gap-2">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold shrink-0">Uang Diterima:</span>
+                  <div className="flex-1 max-w-[150px]">
+                    <input
+                      type="number"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      placeholder="Rp 0"
+                      className="w-full px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg bg-slate-800 border border-slate-700 text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick denomination helper buttons */}
+                {totalAmountToPay > 0 && (
+                  <div className="flex justify-end gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setCashReceived(String(totalAmountToPay))}
+                      className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 transition-colors"
+                    >
+                      Uang Pas
+                    </button>
+                    {[50000, 100000, 200000, 500000].filter(a => a >= totalAmountToPay).slice(0, 2).map(denom => (
                       <button
-                        key={amt}
+                        key={denom}
                         type="button"
-                        onClick={() => handleSukarelaAmountChange(amt)}
-                        className={`py-1 text-[10px] font-bold rounded-lg border transition-all ${
-                          sukarelaAmount === amt 
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-xs' 
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                        }`}
+                        onClick={() => setCashReceived(String(denom))}
+                        className="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors"
                       >
-                        +{amt / 1000}k
+                        {denom / 1000}k
                       </button>
                     ))}
                   </div>
-                  <Input
-                    type="number"
-                    min={1000}
-                    step={1000}
-                    value={sukarelaAmount || ''}
-                    onChange={(e) => handleSukarelaAmountChange(Number(e.target.value) || 0)}
-                    placeholder="Ketik nominal sukarela..."
-                    className="w-full text-xs font-mono py-1.5"
-                  />
-                  {(!isWajibPaidThisMonth || !isPokokPaid) && (
-                    <div className="text-[10px] text-teal-800 dark:text-teal-300 bg-teal-50/80 dark:bg-teal-950/40 p-2 rounded-lg border border-teal-200/60 dark:border-teal-800/50 flex items-center gap-1.5">
-                      <ShieldCheck size={13} className="shrink-0 text-teal-600" />
-                      <span>
-                        <strong>Tertib Iuran:</strong> {!isPokokPaid ? 'Simpanan Pokok & ' : ''}{!isWajibPaidThisMonth ? 'Simpanan Wajib bulan ini ' : ''}otomatis disertakan bersama setoran sukarela.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                )}
 
-          {/* 3D. Total & Kalkulator Kembalian (Deposit Only) */}
-          <div className="p-3.5 rounded-xl bg-slate-900 text-white space-y-2.5 shadow-sm">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                Total Harus Diterima
-              </span>
-              <span className="text-xl font-black font-mono text-emerald-400">
-                Rp {totalAmountToPay.toLocaleString('id-ID')}
-              </span>
-            </div>
-
-            <div className="pt-2 border-t border-slate-800 space-y-1.5">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Uang Tunai Diterima:</span>
-                <div className="w-32">
-                  <input
-                    type="number"
-                    value={cashReceived}
-                    onChange={(e) => setCashReceived(e.target.value)}
-                    placeholder="Rp 0"
-                    className="w-full px-2 py-1 text-xs font-mono font-bold rounded bg-slate-800 border border-slate-700 text-white text-right focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                  />
+                <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold">Kembalian:</span>
+                  <span className={`font-mono font-black text-sm ${changeAmount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
+                    Rp {changeAmount.toLocaleString('id-ID')}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <div className="flex items-center justify-between text-xs pt-1">
-                <span className="text-[10px] text-slate-400 uppercase font-bold">Kembalian:</span>
-                <span className={`font-mono font-black ${changeAmount > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                  Rp {changeAmount.toLocaleString('id-ID')}
-                </span>
-              </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                disabled={isProcessing}
+                className="flex-1 py-2.5 text-xs font-semibold"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isProcessing || totalAmountToPay <= 0}
+                className="flex-2 py-2.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 justify-center shadow-md shadow-indigo-500/20"
+              >
+                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                <span>{isProcessing ? 'Memproses...' : `Bayar Terpadu (Rp ${totalAmountToPay.toLocaleString('id-ID')})`}</span>
+              </Button>
             </div>
           </div>
         </div>
       )}
-
-      {/* ── 4. Submit & Action Buttons ──────────────────────────────────── */}
-      <div className="flex items-center gap-2 pt-1">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1 py-2 text-xs font-semibold"
-        >
-          Batal
-        </Button>
-        {tellerMode === 'WITHDRAWAL' ? (
-          <Button
-            type="submit"
-            variant="danger"
-            disabled={
-              isProcessing ||
-              withdrawAmount <= 0 ||
-              withdrawAmount > maxWithdrawBalance ||
-              withdrawableSavings.length === 0
-            }
-            className="flex-2 py-2 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white gap-1.5 justify-center shadow-sm"
-          >
-            <ArrowDownCircle className="w-3.5 h-3.5" />
-            <span>{isProcessing ? 'Memproses Penarikan...' : `Tarik Tunai (Rp ${withdrawAmount.toLocaleString('id-ID')})`}</span>
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={isProcessing || totalAmountToPay <= 0}
-            className="flex-2 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white gap-1.5 justify-center shadow-sm"
-          >
-            <Zap className="w-3.5 h-3.5 text-amber-300" />
-            <span>{isProcessing ? 'Memproses...' : `Bayar Terpadu (Rp ${totalAmountToPay.toLocaleString('id-ID')})`}</span>
-          </Button>
-        )}
-      </div>
     </form>
   );
 });
