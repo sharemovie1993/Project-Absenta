@@ -46,6 +46,7 @@ export interface PrintUnifiedThermalSlipData {
   date: string;
   memberName: string;
   memberNo: string;
+  transactionType?: 'DEPOSIT' | 'WITHDRAWAL';
   items: Array<{
     title: string;
     amount: number;
@@ -230,6 +231,8 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
 
     doc.setFont('Helvetica', 'normal');
 
+    const isWithdrawal = data.transactionType === 'WITHDRAWAL' || data.items.some(i => i.title.toLowerCase().includes('tarik') || i.title.toLowerCase().includes('penarikan'));
+
     // Header
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(8.5);
@@ -237,7 +240,7 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.text('BUKTI TRANSAKSI LOKET TERPADU', 29, 12, { align: 'center' });
-    doc.text('(SIMPANAN & ANGSURAN PINJAMAN)', 29, 15, { align: 'center' });
+    doc.text(isWithdrawal ? 'PENARIKAN TUNAI SIMPANAN' : '(SIMPANAN & ANGSURAN PINJAMAN)', 29, 15, { align: 'center' });
     doc.text('----------------------------------------------------', 29, 18, { align: 'center' });
 
     // Details
@@ -272,7 +275,7 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     y += 4;
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.text('RINCIAN PEMBAYARAN:', 4, y);
+    doc.text(isWithdrawal ? 'RINCIAN PENARIKAN:' : 'RINCIAN PEMBAYARAN:', 4, y);
     y += 4;
 
     data.items.forEach((item, idx) => {
@@ -297,10 +300,10 @@ export const printUnifiedThermalSlip = async (data: PrintUnifiedThermalSlipData)
     y += 4;
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('TOTAL DIBAYAR', 4, y);
+    doc.text(isWithdrawal ? 'TOTAL DISERAHKAN' : 'TOTAL DIBAYAR', 4, y);
     doc.text(`Rp ${data.totalAmount.toLocaleString('id-ID')}`, 54, y, { align: 'right' });
 
-    if (data.cashReceived !== undefined && data.cashReceived > 0) {
+    if (!isWithdrawal && data.cashReceived !== undefined && data.cashReceived > 0) {
       y += 3.5;
       doc.setFont('Helvetica', 'normal');
       doc.setFontSize(6);
