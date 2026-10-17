@@ -155,8 +155,6 @@ export class AccountService {
    * Mengambil daftar akun beserta saldo riil dan struktur pohon hierarki
    */
   static async listAccounts(tenantId: string, options?: { tree?: boolean; search?: string; type?: string }) {
-    await this.ensureDefaultHierarchy(tenantId);
-
     const where: any = { tenantId };
     if (options?.type && options.type !== 'ALL') {
       where.type = options.type as AccountType;
