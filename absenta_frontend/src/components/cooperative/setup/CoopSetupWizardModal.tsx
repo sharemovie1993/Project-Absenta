@@ -314,25 +314,25 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 pb-12 sm:pb-14 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-5xl max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 pb-0 sm:pb-14 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-5xl max-h-[92vh] sm:max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+        <div className="px-4 sm:px-6 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/40 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-xs sm:text-base font-bold text-slate-900 dark:text-white line-clamp-1">
                   Panduan Inisialisasi & Setup Koperasi
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
                   Accurate Standard
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                 Pondasi akuntansi konsolidasi 360&deg; untuk koperasi baru dan migrasi pembukuan berjalan
               </p>
             </div>
@@ -345,9 +345,9 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
           </button>
         </div>
 
-        {/* Wizard Stepper Navigation */}
-        <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 overflow-x-auto">
-          <div className="flex items-center justify-between min-w-[550px] gap-2">
+        {/* Wizard Stepper Navigation - Horizontal Swipeable di HP */}
+        <div className="px-3 sm:px-6 py-2 border-b border-slate-100 dark:border-slate-800/60 bg-white dark:bg-slate-900 overflow-x-auto scrollbar-none touch-pan-x shrink-0">
+          <div className="flex items-center justify-between min-w-[480px] sm:min-w-[550px] gap-1.5 sm:gap-2">
             {steps.map((s, idx) => {
               const isPast = s.number < currentStep;
               const isCurrent = s.number === currentStep;
@@ -602,15 +602,15 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
               </div>
 
-              {/* Preview Tabel Akun */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[350px] overflow-y-auto">
-                <table className="w-full text-left text-xs">
+              {/* Preview Tabel Akun - Touch & Mobile Scrollable */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[350px] overflow-y-auto touch-pan-x">
+                <table className="w-full text-left text-xs min-w-[460px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 border-b border-slate-200 dark:border-slate-800">
                     <tr>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Kode Akun</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Klasifikasi</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Tipe Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Kode Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Klasifikasi</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Tipe Akun</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -694,15 +694,15 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
               </div>
 
-              {/* Table Input Jurnal Saldo Awal */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[380px] overflow-y-auto">
-                <table className="w-full text-left text-xs">
+              {/* Table Input Jurnal Saldo Awal - Touch & Mobile Scrollable */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[380px] overflow-y-auto touch-pan-x">
+                <table className="w-full text-left text-xs min-w-[500px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 border-b border-slate-200 dark:border-slate-800">
                     <tr>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-24">Kode</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-44">Debit (Rp)</th>
-                      <th className="px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-44">Kredit (Rp)</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-24">Kode</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-36 sm:w-44">Debit (Rp)</th>
+                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-36 sm:w-44">Kredit (Rp)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -798,9 +798,9 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
               </div>
 
-              {/* Subledger Rows Input Table */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-[350px] overflow-y-auto">
-                <table className="w-full text-left text-xs">
+              {/* Subledger Rows Input Table - Touch & Mobile Scrollable */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[350px] overflow-y-auto touch-pan-x">
+                <table className="w-full text-left text-xs min-w-[720px]">
                   <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 border-b border-slate-200 dark:border-slate-800">
                     <tr>
                       <th className="px-3 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-28">NIK / ID</th>
@@ -967,28 +967,29 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
         </div>
 
         {/* Footer Navigation Buttons */}
-        <div className="px-6 py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-3">
+        {/* Footer Navigation Buttons - Responsive Mobile & Desktop */}
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
             disabled={currentStep === 1}
-            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold border transition-all shrink-0 ${
               currentStep === 1
                 ? 'opacity-40 cursor-not-allowed border-slate-200 text-slate-400'
                 : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100'
             }`}
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            Sebelumnya
+            <span>Sebelumnya</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {currentStep === 1 && (
               <button
                 type="button"
                 onClick={() => setModeMutation.mutate({ mode: selectedMode, cutoff_date: cutoffDate })}
                 disabled={setModeMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
               >
                 <span>{setModeMutation.isPending ? 'Menyimpan...' : 'Simpan & Lanjut ke Bagan Akun'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -999,7 +1000,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
               <button
                 type="button"
                 onClick={() => setCurrentStep(3)}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
               >
                 <span>Lanjut ke Saldo Awal Neraca</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1027,13 +1028,13 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                     notes: `Jurnal saldo awal setup wizard mode ${selectedMode}`
                   });
                 }}
-                className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm ${
+                className={`inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-sm ${
                   !isBalanced || postBalanceMutation.isPending
                     ? 'bg-slate-400 cursor-not-allowed'
                     : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
                 }`}
               >
-                <span>{postBalanceMutation.isPending ? 'Memposting Jurnal...' : 'Posting Jurnal & Lanjut ke Subledger'}</span>
+                <span>{postBalanceMutation.isPending ? 'Memposting...' : 'Posting & Lanjut Subledger'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -1051,9 +1052,9 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   }
                   importSubledgerMutation.mutate({ members: validMembers });
                 }}
-                className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition-all"
               >
-                <span>{importSubledgerMutation.isPending ? 'Mengimpor Subledger...' : 'Simpan Subledger & Lanjut ke Aktivasi'}</span>
+                <span>{importSubledgerMutation.isPending ? 'Mengimpor...' : 'Simpan & Lanjut Aktivasi'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             )}
@@ -1063,7 +1064,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 type="button"
                 onClick={() => completeMutation.mutate()}
                 disabled={completeMutation.isPending}
-                className="inline-flex items-center gap-2 px-6 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all active:scale-98"
+                className="inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-lg shadow-emerald-600/20 transition-all active:scale-98"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>{completeMutation.isPending ? 'Mengaktifkan...' : 'Konfirmasi & Aktifkan Operasional Penuh'}</span>
@@ -1072,113 +1073,122 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
           </div>
         </div>
 
-        {/* Modal Konfirmasi Reset Data Simulasi */}
+        {/* Modal Konfirmasi Reset Data Simulasi - 100% Mobile & Keyboard-Friendly Bottom-Sheet */}
         {isResetModalOpen && (
-          <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95">
-              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-rose-50/50 dark:bg-rose-950/20">
-                <div className="flex items-center gap-2.5 text-rose-600 dark:text-rose-400">
-                  <AlertTriangle className="w-5 h-5 shrink-0" />
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+          <div className="fixed inset-0 z-60 bg-slate-900/75 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150">
+            <div className="bg-white dark:bg-slate-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 max-w-lg w-full max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom-6 sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200">
+              
+              {/* Header Modal */}
+              <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-rose-50/50 dark:bg-rose-950/20 shrink-0">
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                  <div className="w-7 h-7 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <h3 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">
                     Reset & Pembersihan Data Simulasi
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsResetModalOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                  Tindakan ini akan <strong>menghapus seluruh transaksi simulasi</strong> (penjualan toko, pinjaman demo, mutasi simpanan uji coba, jurnal operasional, kas masuk/keluar) secara permanen untuk mengembalikan status pembukuan ke titik nol.
-                </p>
+              {/* Body Modal - Scrollable & Keyboard Safe */}
+              <div className="p-4 sm:p-5 space-y-3 overflow-y-auto flex-1 text-slate-700 dark:text-slate-300">
+                {/* Warning Callout Box */}
+                <div className="p-3 rounded-xl bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200/80 dark:border-rose-900/40 text-[11px] sm:text-xs text-rose-900 dark:text-rose-200 leading-relaxed flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                  <p>
+                    <strong>Tindakan Permanen:</strong> Seluruh transaksi demo/simulasi (penjualan kasir, pinjaman uji coba, mutasi simpanan, dan jurnal lampau) akan dibersihkan agar pembukuan kembali ke titik nol yang bersih.
+                  </p>
+                </div>
 
-                {/* Checkbox Options */}
-                <div className="space-y-2.5 pt-2">
-                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs">
+                {/* Checkbox Options dengan Accent Rose Senada */}
+                <div className="space-y-2 pt-1">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-xs select-none">
                     <input
                       type="checkbox"
                       checked={resetOptions.purgeTransactions}
                       disabled
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 rounded accent-rose-600 w-4 h-4 text-rose-600 focus:ring-rose-500 cursor-not-allowed"
                     />
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
                         Hapus Seluruh Transaksi & Jurnal Operasional (Wajib)
                       </span>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Membersihkan penjualan POS, stock opname, pinjaman, mutasi kas, dan jurnal umum.
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs select-none transition-colors">
                     <input
                       type="checkbox"
                       checked={resetOptions.purgeOpeningBalances}
                       onChange={(e) => setResetOptions(prev => ({ ...prev, purgeOpeningBalances: e.target.checked }))}
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 rounded accent-rose-600 w-4 h-4 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
                         Hapus Jurnal Saldo Awal Neraca (SETUP-OPENING)
                       </span>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Menghapus jurnal saldo awal neraca agar dapat diinput ulang secara presisi.
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs select-none transition-colors">
                     <input
                       type="checkbox"
                       checked={resetOptions.purgeMembers}
                       onChange={(e) => setResetOptions(prev => ({ ...prev, purgeMembers: e.target.checked }))}
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 rounded accent-rose-600 w-4 h-4 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
                         Kosongkan Anggota Koperasi Terdaftar
                       </span>
-                      <p className="text-[11px] text-slate-500">
-                        Hanya menghapus nomor anggota koperasi. <strong>Data Siswa, Guru, dan User sekolah tidak akan terhapus.</strong>
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Hanya menghapus nomor anggota koperasi. <strong className="text-slate-700 dark:text-slate-300">Data Siswa, Guru, dan User sekolah tidak akan terhapus.</strong>
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs select-none transition-colors">
                     <input
                       type="checkbox"
                       checked={resetOptions.purgeProducts}
                       onChange={(e) => setResetOptions(prev => ({ ...prev, purgeProducts: e.target.checked }))}
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 rounded accent-rose-600 w-4 h-4 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
                         Kosongkan Katalog Produk Toko
                       </span>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Jika tidak dicentang, daftar barang tetap ada namun stoknya direset kembali ke 0.
                       </p>
                     </div>
                   </label>
 
-                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs">
+                  <label className="flex items-start gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer text-xs select-none transition-colors">
                     <input
                       type="checkbox"
                       checked={resetOptions.resetSetupStatus}
                       onChange={(e) => setResetOptions(prev => ({ ...prev, resetSetupStatus: e.target.checked }))}
-                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                      className="mt-0.5 rounded accent-rose-600 w-4 h-4 text-rose-600 focus:ring-rose-500 cursor-pointer"
                     />
                     <div>
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block text-xs">
                         Kembalikan Status Wizard ke NOT_STARTED
                       </span>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                         Mengizinkan pengurus memilih ulang skenario awal dan tanggal cut-off dari awal.
                       </p>
                     </div>
@@ -1186,21 +1196,22 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                 </div>
 
                 {/* Input Konfirmasi Text */}
-                <div className="pt-2">
+                <div className="pt-1.5 pb-1">
                   <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Ketik <span className="font-mono text-rose-600 font-bold">RESET SIMULASI</span> untuk konfirmasi:
+                    Ketik <span className="font-mono text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 px-1 py-0.5 rounded">RESET SIMULASI</span> untuk konfirmasi:
                   </label>
                   <input
                     type="text"
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder="RESET SIMULASI"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-rose-500 uppercase tracking-wider"
                   />
                 </div>
               </div>
 
-              <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-end gap-2.5">
+              {/* Footer Tombol - Stacked Full-Width di HP, Inline di Desktop */}
+              <div className="px-4 py-3 sm:px-6 sm:py-3.5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col-reverse sm:flex-row sm:items-center justify-end gap-2 sm:gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
@@ -1208,7 +1219,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                     setConfirmText('');
                   }}
                   disabled={resetSimulationMutation.isPending}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-center"
                 >
                   Batal
                 </button>
@@ -1216,7 +1227,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   type="button"
                   onClick={() => resetSimulationMutation.mutate(resetOptions)}
                   disabled={confirmText.trim() !== 'RESET SIMULASI' || resetSimulationMutation.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-rose-600/20 transition-all active:scale-98"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-rose-600/20 transition-all active:scale-98"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>{resetSimulationMutation.isPending ? 'Membersihkan...' : 'Hapus Data Simulasi Sekarang'}</span>
