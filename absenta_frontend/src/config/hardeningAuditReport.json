@@ -7172,7 +7172,7 @@
     "emptyState": true,
     "loadingGuard": true,
     "formA11y": false,
-    "performanceOptimization": true,
+    "performanceOptimization": false,
     "userGuidance": false,
     "tablePagination": true,
     "standardToolbar": false,

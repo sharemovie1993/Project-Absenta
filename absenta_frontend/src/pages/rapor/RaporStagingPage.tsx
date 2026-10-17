@@ -22,13 +22,13 @@ import {
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/lib/toast';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { Badge } from '@/components/ui/Badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { raporApi, RaporStagingItem, RaporStagingDetail } from '@/api/rapor.api';
 import { useAcademicContext } from '@/hooks/useAcademicContext';
@@ -411,104 +411,104 @@ export default React.memo(function RaporStagingPage() {
       </div>
 
       {/* ── MODAL 1: HUBUNGKAN GOOGLE SHEET (LINK INGESTION) ── */}
-      <Dialog open={isFetchModalOpen} onOpenChange={setIsFetchModalOpen}>
-        <DialogContent className="max-w-lg bg-white dark:bg-slate-900 rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <LinkIcon size={18} className="text-indigo-600" />
-              Hubungkan Link Google Sheet Rapor
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-              Salin dan tempel tautan Google Sheet rapor kelas. Anda dapat memasukkan banyak tautan sekaligus (satu tautan per baris).
-            </DialogDescription>
-          </DialogHeader>
+      <Modal
+        isOpen={isFetchModalOpen}
+        onClose={() => setIsFetchModalOpen(false)}
+        size="lg"
+        title={
+          <div className="flex items-center gap-2">
+            <LinkIcon size={18} className="text-indigo-600" />
+            <span>Hubungkan Link Google Sheet Rapor</span>
+          </div>
+        }
+        description="Salin dan tempel tautan Google Sheet rapor kelas. Anda dapat memasukkan banyak tautan sekaligus (satu tautan per baris)."
+      >
+        <form onSubmit={handleFetchSubmit} className="space-y-4 p-6 pt-2">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Tautan Google Sheet (Satu baris per link kelas)
+            </label>
+            <Textarea
+              rows={5}
+              required
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/1R6-4FyKNiIWwV1sOQ_7ZJYOYj59ccLKIAQdlM0AVfiA/edit&#10;https://docs.google.com/spreadsheets/d/1.../edit"
+              className="text-xs font-mono rounded-xl resize-none"
+            />
+          </div>
 
-          <form onSubmit={handleFetchSubmit} className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Tautan Google Sheet (Satu baris per link kelas)
-              </label>
-              <Textarea
-                rows={5}
-                required
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/1R6-4FyKNiIWwV1sOQ_7ZJYOYj59ccLKIAQdlM0AVfiA/edit&#10;https://docs.google.com/spreadsheets/d/1.../edit"
-                className="text-xs font-mono rounded-xl resize-none"
-              />
+          <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 p-3 rounded-2xl flex items-start gap-2.5">
+            <Info size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
+              <p className="font-semibold text-indigo-950 dark:text-indigo-200">
+                Adaptif Multi-Tahun:
+              </p>
+              <p>
+                Sistem menggunakan <em>Dynamic Variable Scanner</em> berbasis label sel pada sheet <code>SETTING</code>, <code>INPUT SUMATIF</code>, dan <code>INPUT CP</code>. Posisi baris atau penambahan fitur di lembar rapor Google Sheet tidak akan merusak parsing.
+              </p>
             </div>
+          </div>
 
-            <div className="bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 p-3 rounded-2xl flex items-start gap-2.5">
-              <Info size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
-              <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
-                <p className="font-semibold text-indigo-950 dark:text-indigo-200">
-                  Adaptif Multi-Tahun:
-                </p>
-                <p>
-                  Sistem menggunakan <em>Dynamic Variable Scanner</em> berbasis label sel pada sheet <code>SETTING</code>, <code>INPUT SUMATIF</code>, dan <code>INPUT CP</code>. Posisi baris atau penambahan fitur di lembar rapor Google Sheet tidak akan merusak parsing.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setIsFetchModalOpen(false)}
-                className="text-xs rounded-xl"
-              >
-                Batal
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                disabled={fetchMutation.isPending}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
-              >
-                <RefreshCw size={13} className={cn(fetchMutation.isPending && 'animate-spin')} />
-                <span>{fetchMutation.isPending ? 'Sedang Membaca & Mengekstrak...' : 'Tarik & Simpan ke Wadah'}</span>
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFetchModalOpen(false)}
+              className="text-xs rounded-xl"
+            >
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={fetchMutation.isPending}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs gap-1.5"
+            >
+              <RefreshCw size={13} className={cn(fetchMutation.isPending && 'animate-spin')} />
+              <span>{fetchMutation.isPending ? 'Sedang Membaca & Mengekstrak...' : 'Tarik & Simpan ke Wadah'}</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* ── MODAL 2: PRATINJAU INTERAKTIF STAGING SHEET ── */}
-      <Dialog open={!!previewId} onOpenChange={(open) => !open && setPreviewId(null)}>
-        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-white dark:bg-slate-900 rounded-3xl p-6">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileSpreadsheet size={18} className="text-indigo-600" />
-                <span>Pratinjau Data Kelas: {previewData?.nama_kelas || 'Memuat...'}</span>
-              </div>
-              {previewData && (
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    syncMutation.mutate(previewData.id);
-                    setPreviewId(null);
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl gap-1 shadow-xs font-semibold"
-                >
-                  <RefreshCw size={12} />
-                  <span>Sinkronkan ke e-Rapor</span>
-                </Button>
-              )}
-            </DialogTitle>
-            <DialogDescription className="text-xs text-slate-500">
-              Tahun Ajaran {previewData?.tahun_pelajaran_nama} • Semester {previewData?.semester} • Wali Kelas: {previewData?.wali_kelas_nama || '-'}
-            </DialogDescription>
-          </DialogHeader>
-
+      <Modal
+        isOpen={!!previewId}
+        onClose={() => setPreviewId(null)}
+        size="5xl"
+        title={
+          <div className="flex items-center justify-between w-full pr-8">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet size={18} className="text-indigo-600" />
+              <span>Pratinjau Data Kelas: {previewData?.nama_kelas || 'Memuat...'}</span>
+            </div>
+            {previewData && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  syncMutation.mutate(previewData.id);
+                  setPreviewId(null);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-xl gap-1 shadow-xs font-semibold"
+              >
+                <RefreshCw size={12} />
+                <span>Sinkronkan ke e-Rapor</span>
+              </Button>
+            )}
+          </div>
+        }
+        description={`Tahun Ajaran ${previewData?.tahun_pelajaran_nama || ''} • Semester ${previewData?.semester || ''} • Wali Kelas: ${previewData?.wali_kelas_nama || '-'}`}
+      >
+        <div className="p-6 pt-2 max-h-[75vh] overflow-y-auto">
           {isLoadingPreview ? (
             <div className="p-12 text-center text-slate-500">
               <RefreshCw className="animate-spin mx-auto mb-2 text-indigo-500" size={20} />
               <p className="text-xs">Mengambil pratinjau data siswa dan nilai...</p>
             </div>
           ) : previewData ? (
-            <Tabs defaultValue="sumatif" className="mt-4 space-y-4">
+            <Tabs defaultValue="sumatif" className="mt-2 space-y-4">
               <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
                 <TabsTrigger value="sumatif" className="text-xs rounded-xl font-bold">
                   Nilai Sumatif ({previewData.sumatif_sheet_data?.length || 0} Siswa)
@@ -637,8 +637,8 @@ export default React.memo(function RaporStagingPage() {
               </TabsContent>
             </Tabs>
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </div>
+      </Modal>
     </AcademicPageLayout>
   );
 });
