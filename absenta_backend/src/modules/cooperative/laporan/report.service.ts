@@ -27,6 +27,98 @@ const payrollLocks = new Set<string>();
 
 export class ReportService {
     
+    /**
+     * Get Trial Balance (Neraca Saldo) — Seluruh Akun (1-5) dengan Kolom Debit & Kredit SAK ETAP
+     */
+    static async getTrialBalance(tenantId: string, asOfDate?: Date) {
+        const journalDateFilter = asOfDate 
+            ? { journal: { date: { lte: asOfDate } } }
+            : {};
+
+        // Ambil seluruh akun non-header
+        const accounts = await prisma.account.findMany({
+            where: {
+                tenantId,
+                isHeader: { not: true },
+            },
+            include: {
+                journalItems: {
+                    where: journalDateFilter,
+                    select: {
+                        amount: true,
+                        type: true,
+                    }
+                }
+            },
+            orderBy: {
+                code: 'asc'
+            }
+        });
+
+        const trialBalanceAccounts = accounts.map(acc => {
+            let totalDebit = 0;
+            let totalCredit = 0;
+
+            acc.journalItems.forEach(item => {
+                const amt = Number(item.amount || 0);
+                if (item.type === 'DEBIT') totalDebit += amt;
+                else if (item.type === 'CREDIT') totalCredit += amt;
+            });
+
+            let debitBalance = 0;
+            let creditBalance = 0;
+
+            // Aturan Saldo Normal Akuntansi:
+            // Aktiva (1) & Beban (5): Saldo Normal DEBIT
+            // Kewajiban (2), Ekuitas (3), Pendapatan (4): Saldo Normal KREDIT
+            if (acc.type === 'ASSET' || acc.type === 'EXPENSE') {
+                const net = totalDebit - totalCredit;
+                if (net >= 0) {
+                    debitBalance = Math.round(net);
+                } else {
+                    creditBalance = Math.round(Math.abs(net)); // Kontra-aset masuk Kredit
+                }
+            } else {
+                const net = totalCredit - totalDebit;
+                if (net >= 0) {
+                    creditBalance = Math.round(net);
+                } else {
+                    debitBalance = Math.round(Math.abs(net)); // Kontra-liabilitas/ekuitas masuk Debit
+                }
+            }
+
+            return {
+                id: acc.id,
+                code: acc.code,
+                name: acc.name,
+                type: acc.type,
+                debit: debitBalance,
+                credit: creditBalance,
+                totalMutationDebit: totalDebit,
+                totalMutationCredit: totalCredit,
+            };
+        });
+
+        // Filter akun yang memiliki saldo atau mutasi agar neraca saldo bersih
+        const activeAccounts = trialBalanceAccounts.filter(a => a.debit > 0 || a.credit > 0 || a.totalMutationDebit > 0 || a.totalMutationCredit > 0);
+
+        const totalDebit = activeAccounts.reduce((sum, a) => sum + a.debit, 0);
+        const totalCredit = activeAccounts.reduce((sum, a) => sum + a.credit, 0);
+        const balanceCheck = Math.abs(totalDebit - totalCredit);
+        const isBalanced = balanceCheck === 0;
+
+        return {
+            accounts: activeAccounts,
+            summary: {
+                totalDebit,
+                totalCredit,
+                balanceCheck,
+                isBalanced,
+                totalAccounts: activeAccounts.length
+            }
+        };
+    }
+
     // Get Balance Sheet (Neraca) — format standar akuntansi (Aktiva = Pasiva)
     static async getBalanceSheet(tenantId: string, asOfDate?: Date) {
         const journalDateFilter = asOfDate 

@@ -120,6 +120,20 @@ export default async function reportRoutes(fastify: any) {
         }
     });
 
+    // Get Trial Balance (Neraca Saldo Resmi - Seluruh Akun dengan Debit & Kredit SAK ETAP)
+    fastify.get('/trial-balance', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
+        try {
+            const tenantId = getTenantId(req);
+            const query = dateRangeQuerySchema.parse(req.query);
+            const asOfDate = query.endDate ? new Date(query.endDate) : undefined;
+            const report = await ReportService.getTrialBalance(tenantId, asOfDate);
+            return reply.send({ success: true, data: report });
+        } catch (error: any) {
+            appLogger.error({ err: error }, '[ReportRoutes] Gagal mengambil neraca saldo trial balance');
+            return reply.status(500).send({ success: false, message: error.message });
+        }
+    });
+
     // Get Balance Sheet (Neraca - Flattened for Accounting.tsx Trial Balance)
     fastify.get('/balance-sheet', { preHandler: [requireCapability('cooperative.reports.view.financial')] }, async (req: any, reply: any) => {
         try {

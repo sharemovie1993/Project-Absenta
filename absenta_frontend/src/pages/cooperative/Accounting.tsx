@@ -36,8 +36,7 @@ import {
     type AccountingTabId
 } from '../../components/cooperative/accounting';
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
-const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
-import type { JournalEntry, BalanceSheetItem, PayrollItem } from '../../components/cooperative/accounting';
+import type { JournalEntry, BalanceSheetItem, PayrollItem, TrialBalanceData } from '../../components/cooperative/accounting';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { useSocket } from '../../hooks/useSocket';
@@ -48,6 +47,7 @@ const PrintPayrollDeductions = lazy(() =>
         default: module.PrintPayrollDeductions
     }))
 );
+const PayrollDeductionsSection = lazy(() => import('../../components/cooperative/accounting/PayrollDeductionsSection').then(m => ({ default: m.PayrollDeductionsSection })));
 
 interface SubscriptionWithFeatures {
     features?: string[];
@@ -195,19 +195,19 @@ const Accounting: React.FC = React.memo(() => {
         await journalsQuery.refetch();
     }, [journalsQuery]);
 
-    const balanceSheetQuery = useQuery({
-        queryKey: ['koperasi-accounting-balance-sheet', currentFiscalYear?.id],
+    const trialBalanceQuery = useQuery({
+        queryKey: ['koperasi-accounting-trial-balance', currentFiscalYear?.id],
         queryFn: async () => {
-            const res = await api.get('/cooperative/reports/balance-sheet');
-            return (res.data as BalanceSheetItem[]) || [];
+            const res = await api.get('/cooperative/reports/trial-balance');
+            return res.data?.data as TrialBalanceData;
         },
         enabled: activeTab === 'balance' && subscription !== undefined,
         staleTime: 5 * 60 * 1000,
     });
-    const balanceSheet = balanceSheetQuery.data || [];
-    const fetchBalanceSheet = useCallback(async () => {
-        await balanceSheetQuery.refetch();
-    }, [balanceSheetQuery]);
+    const trialBalanceData = trialBalanceQuery.data;
+    const fetchTrialBalance = useCallback(async () => {
+        await trialBalanceQuery.refetch();
+    }, [trialBalanceQuery]);
 
     const payrollQuery = useQuery({
         queryKey: ['koperasi-accounting-payroll', selectedMonth, selectedYear],
@@ -225,7 +225,7 @@ const Accounting: React.FC = React.memo(() => {
     const isPosted: boolean = useMemo(() => !!payrollQuery.data?.isPosted, [payrollQuery.data]);
 
     const loading = (activeTab === 'journal' && journalsQuery.isLoading) ||
-                    (activeTab === 'balance' && balanceSheetQuery.isLoading) ||
+                    (activeTab === 'balance' && trialBalanceQuery.isLoading) ||
                     (activeTab === 'payroll' && payrollQuery.isLoading);
 
     useEffect(() => {
@@ -607,8 +607,9 @@ const Accounting: React.FC = React.memo(() => {
 
                         {activeTab === 'balance' && (
                             <TrialBalanceSection 
-                                balanceSheet={balanceSheet} 
-                                loading={loading} 
+                                data={trialBalanceData} 
+                                loading={trialBalanceQuery.isLoading}
+                                onRefresh={fetchTrialBalance} 
                             />
                         )}
 

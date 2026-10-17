@@ -26,6 +26,28 @@ export interface BalanceSheetItem {
     credit?: number;
 }
 
+export interface TrialBalanceAccount {
+    id: string;
+    code: string;
+    name: string;
+    type: string;
+    debit: number;
+    credit: number;
+    totalMutationDebit?: number;
+    totalMutationCredit?: number;
+}
+
+export interface TrialBalanceData {
+    accounts: TrialBalanceAccount[];
+    summary: {
+        totalDebit: number;
+        totalCredit: number;
+        balanceCheck: number;
+        isBalanced: boolean;
+        totalAccounts: number;
+    };
+}
+
 export interface PayrollItem {
     no: number;
     memberNo: string;
