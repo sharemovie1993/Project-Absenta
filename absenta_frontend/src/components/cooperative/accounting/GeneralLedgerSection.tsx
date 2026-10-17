@@ -19,6 +19,10 @@ import { SearchableSelect } from '../../ui/SearchableSelect';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
 import { coopAccountApi } from '@/api/coopAccount.api';
 import { formatDate } from '@/utils/date.utils';
+import { 
+  formatAccountingReference, 
+  humanizeAccountingDescription 
+} from '@/utils/cooperative/accountingFormatters';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
 const POPULAR_COOP_ACCOUNTS = [
@@ -117,55 +121,79 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
     {
       label: 'Tanggal',
       key: 'date',
+      className: 'w-28',
       render: (d: string) => (
-        <span className="font-mono text-xs text-slate-600 dark:text-slate-400">
+        <span className="font-mono text-xs font-semibold text-slate-600 dark:text-slate-400">
           {formatDate(d)}
         </span>
       ),
     },
     {
-      label: 'No. Referensi',
+      label: <div className="text-center w-full">No. Referensi</div>,
       key: 'reference',
-      render: (ref: string) => (
-        <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400">
-          {ref}
-        </span>
-      ),
+      className: 'w-32 text-center',
+      render: (ref: string) => {
+        const fRef = formatAccountingReference(ref);
+        return (
+          <span 
+            className={`inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold border shadow-2xs ${fRef.badgeClass}`}
+            title={`Referensi Sistem: ${fRef.full}`}
+          >
+            {fRef.label}
+          </span>
+        );
+      },
     },
     {
       label: 'Keterangan Transaksi',
       key: 'description',
+      className: 'min-w-[220px]',
       render: (desc: string) => (
-        <span className="text-xs text-slate-800 dark:text-slate-200 line-clamp-1">
-          {desc}
+        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
+          {humanizeAccountingDescription(desc)}
         </span>
       ),
     },
     {
-      label: 'Debit',
+      label: <div className="text-right w-full">Debit (Rp)</div>,
       key: 'debit',
+      className: 'text-right w-36',
       render: (d: number) => (
-        <span className={`font-mono text-xs ${d > 0 ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-700'}`}>
-          {d > 0 ? `Rp ${Math.round(d).toLocaleString('id-ID')}` : '-'}
-        </span>
+        <div className="text-right font-mono text-xs">
+          {d > 0 ? (
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              Rp {Math.round(d).toLocaleString('id-ID')}
+            </span>
+          ) : (
+            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
+          )}
+        </div>
       ),
     },
     {
-      label: 'Kredit',
+      label: <div className="text-right w-full">Kredit (Rp)</div>,
       key: 'credit',
+      className: 'text-right w-36',
       render: (c: number) => (
-        <span className={`font-mono text-xs ${c > 0 ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-300 dark:text-slate-700'}`}>
-          {c > 0 ? `Rp ${Math.round(c).toLocaleString('id-ID')}` : '-'}
-        </span>
+        <div className="text-right font-mono text-xs">
+          {c > 0 ? (
+            <span className="font-bold text-slate-900 dark:text-slate-100">
+              Rp {Math.round(c).toLocaleString('id-ID')}
+            </span>
+          ) : (
+            <span className="text-slate-300 dark:text-slate-700 select-none">-</span>
+          )}
+        </div>
       ),
     },
     {
-      label: 'Saldo Berjalan',
+      label: <div className="text-right w-full">Saldo Berjalan (Rp)</div>,
       key: 'runningBalance',
+      className: 'text-right w-40',
       render: (b: number) => (
-        <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-400">
+        <div className="text-right font-mono text-xs font-black text-indigo-700 dark:text-indigo-400">
           Rp {Math.round(b).toLocaleString('id-ID')}
-        </span>
+        </div>
       ),
     },
   ], []);
@@ -275,24 +303,32 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
           value={`Rp ${Math.round(ledger.openingBalance).toLocaleString('id-ID')}`}
           icon={Scale}
           description="Posisi saldo sebelum awal periode"
+          variant="card"
+          gradient="from-slate-500 to-slate-700"
         />
         <AnalyticsCard
           title="Total Mutasi Debit"
           value={`Rp ${Math.round(ledger.totalDebit).toLocaleString('id-ID')}`}
           icon={TrendingUp}
           description="Akumulasi penambahan debit"
+          variant="card"
+          gradient="from-emerald-500 to-teal-600"
         />
         <AnalyticsCard
           title="Total Mutasi Kredit"
           value={`Rp ${Math.round(ledger.totalCredit).toLocaleString('id-ID')}`}
           icon={TrendingDown}
           description="Akumulasi pengurangan kredit"
+          variant="card"
+          gradient="from-rose-500 to-amber-600"
         />
         <AnalyticsCard
           title="Saldo Akhir Berjalan"
           value={`Rp ${Math.round(ledger.endingBalance).toLocaleString('id-ID')}`}
           icon={DollarSign}
           description={`Posisi saldo per ${effectiveEndDate}`}
+          variant="card"
+          gradient="from-indigo-600 to-blue-600"
         />
       </div>
 
