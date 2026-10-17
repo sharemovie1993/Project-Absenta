@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { coopAccountApi } from '@/api/coopAccount.api';
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
+import { SearchableSelect } from '../../ui/SearchableSelect';
 import { Calendar, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import type { CoopTransferFormData } from './types';
 
@@ -15,8 +18,8 @@ interface TransferFormModalProps {
 const transferFormSchema = z.object({
   date: z.string().min(1, 'Tanggal transfer wajib diisi'),
   amount: z.number().min(1, 'Nominal transfer harus lebih besar dari Rp 0'),
-  fromAccountCode: z.enum(['1010', '1011']),
-  toAccountCode: z.enum(['1010', '1011']),
+  fromAccountCode: z.string().min(1, 'Rekening sumber wajib dipilih'),
+  toAccountCode: z.string().min(1, 'Rekening tujuan wajib dipilih'),
   description: z.string().min(3, 'Keterangan transfer minimal 3 karakter'),
 }).refine(data => data.fromAccountCode !== data.toAccountCode, {
   message: 'Rekening sumber dan rekening tujuan tidak boleh sama',
@@ -38,6 +41,45 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const { data: accountsData } = useQuery({
+    queryKey: ['coop-accounts-flat', 'CASH_BANK_TRANSFER'],
+    queryFn: () => coopAccountApi.getAccounts({ tree: false, type: 'ASSET' }),
+    staleTime: 60 * 1000,
+  });
+
+  const cashBankOptions = useMemo(() => {
+    const list = accountsData?.flat || [];
+    const valid = list.filter(a => !a.isHeader && (a.code.startsWith('101') || a.name.toLowerCase().includes('kas') || a.name.toLowerCase().includes('bank')));
+    if (valid.length === 0) {
+      return [
+        { value: '1010', label: '1010 - Kas Koperasi (Tunai)' },
+        { value: '1011', label: '1011 - Kas Bank Koperasi' },
+      ];
+    }
+    return valid.map(a => ({
+      value: a.code,
+      label: `${a.code} - ${a.name}`,
+    }));
+  }, [accountsData]);
+
+  const fromAccountLabel = useMemo(() => {
+    const found = cashBankOptions.find(o => o.value === formData.fromAccountCode);
+    return found?.label || formData.fromAccountCode;
+  }, [cashBankOptions, formData.fromAccountCode]);
+
+  const toAccountLabel = useMemo(() => {
+    const found = cashBankOptions.find(o => o.value === formData.toAccountCode);
+    return found?.label || formData.toAccountCode;
+  }, [cashBankOptions, formData.toAccountCode]);
+
+  const handleSwapAccounts = () => {
+    setFormData(prev => ({
+      ...prev,
+      fromAccountCode: prev.toAccountCode,
+      toAccountCode: prev.fromAccountCode,
+    }));
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -95,54 +137,53 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
           {errors.date && <p className="text-[11px] text-rose-500 mt-1">{errors.date}</p>}
         </div>
 
-        {/* Transfer Dari & Ke (Pill buttons) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800">
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Dari Rekening (Sumber)
-            </label>
-            <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, fromAccountCode: '1010', toAccountCode: '1011' }))}
-                className={`w-full py-1.5 px-3 text-xs font-bold rounded-xl text-left border transition-all ${
-                  formData.fromAccountCode === '1010'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                1010 - Kas Koperasi (Tunai)
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, fromAccountCode: '1011', toAccountCode: '1010' }))}
-                className={`w-full py-1.5 px-3 text-xs font-bold rounded-xl text-left border transition-all ${
-                  formData.fromAccountCode === '1011'
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                    : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                1011 - Kas Bank Koperasi
-              </button>
-            </div>
+        {/* Transfer Dari & Ke (Dynamic Account Selectors) */}
+        <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Pengaturan Rekening Sumber & Tujuan
+            </span>
+            <button
+              type="button"
+              onClick={handleSwapAccounts}
+              title="Tukar Posisi Rekening"
+              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 rounded-lg transition-colors border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+            >
+              <ArrowRightLeft size={12} />
+              <span>Tukar</span>
+            </button>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-              Ke Rekening (Tujuan)
-            </label>
-            <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <span className="font-bold text-xs text-slate-800 dark:text-slate-100 block">
-                  {formData.toAccountCode === '1011' ? '1011 - Kas Bank Koperasi' : '1010 - Kas Koperasi (Tunai)'}
-                </span>
-                <span className="text-[10px] text-slate-400">
-                  {formData.toAccountCode === '1011' ? 'Setor tunai ke rekening bank' : 'Tarik tunai dari bank ke kas brankas'}
-                </span>
-              </div>
-              <ArrowRightLeft size={16} className="text-blue-500" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                Dari Rekening (Sumber/Kredit) <span className="text-rose-500">*</span>
+              </label>
+              <SearchableSelect
+                id="transfer-from-account"
+                value={formData.fromAccountCode}
+                onChange={(val) => setFormData(prev => ({ ...prev, fromAccountCode: String(val) }))}
+                options={cashBankOptions}
+                placeholder="Pilih Rekening Sumber..."
+                aria-label="Pilih Rekening Sumber"
+              />
+              {errors.fromAccountCode && <p className="text-[11px] text-rose-500 mt-1">{errors.fromAccountCode}</p>}
             </div>
-            {errors.toAccountCode && <p className="text-[11px] text-rose-500 mt-1">{errors.toAccountCode}</p>}
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1">
+                Ke Rekening (Tujuan/Debit) <span className="text-rose-500">*</span>
+              </label>
+              <SearchableSelect
+                id="transfer-to-account"
+                value={formData.toAccountCode}
+                onChange={(val) => setFormData(prev => ({ ...prev, toAccountCode: String(val) }))}
+                options={cashBankOptions}
+                placeholder="Pilih Rekening Tujuan..."
+                aria-label="Pilih Rekening Tujuan"
+              />
+              {errors.toAccountCode && <p className="text-[11px] text-rose-500 mt-1">{errors.toAccountCode}</p>}
+            </div>
           </div>
         </div>
 
@@ -192,9 +233,9 @@ export const TransferFormModal: React.FC<TransferFormModalProps> = ({
           <div className="text-[11px] text-blue-900 dark:text-blue-200 space-y-0.5 leading-relaxed">
             <span className="font-bold block">Otomatisasi Jurnal Transfer Kas & Bank (TRF):</span>
             <p>
-              • <strong>Debit:</strong> Akun {formData.toAccountCode} ({formData.toAccountCode === '1011' ? 'Kas Bank Koperasi' : 'Kas Tunai'})
+              • <strong>Debit:</strong> Akun {formData.toAccountCode} ({toAccountLabel})
               <br />
-              • <strong>Kredit:</strong> Akun {formData.fromAccountCode} ({formData.fromAccountCode === '1011' ? 'Kas Bank Koperasi' : 'Kas Tunai'})
+              • <strong>Kredit:</strong> Akun {formData.fromAccountCode} ({fromAccountLabel})
             </p>
           </div>
         </div>

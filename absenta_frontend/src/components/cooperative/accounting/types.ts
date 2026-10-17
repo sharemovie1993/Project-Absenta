@@ -131,8 +131,8 @@ export interface CoopTransferItem {
     voucherNumber: string;
     date: string;
     amount: number;
-    fromAccountCode: '1010' | '1011';
-    toAccountCode: '1010' | '1011';
+    fromAccountCode: string;
+    toAccountCode: string;
     description: string;
     journalId?: string | null;
     createdAt?: string;
@@ -141,8 +141,8 @@ export interface CoopTransferItem {
 export interface CoopTransferFormData {
     date: string;
     amount: number;
-    fromAccountCode: '1010' | '1011';
-    toAccountCode: '1010' | '1011';
+    fromAccountCode: string;
+    toAccountCode: string;
     description: string;
 }
 

@@ -82,18 +82,22 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
     const revenues = data?.revenue || [];
     const expenses = data?.expense || [];
 
-    // Pisahkan COGS/HPP (kode akun 5xxx atau nama 'Beban Pokok Penjualan' / 'HPP')
-    const cogsAccounts = expenses.filter(e => 
-        e.code.startsWith('5') || 
+    // Saring akun induk (Header) bersaldo 0 agar tidak mengotori baris laporan
+    const validRevenues = revenues.filter(r => Number(r.balance) !== 0 || !r.name.toUpperCase().includes('HEADER'));
+    const validExpenses = expenses.filter(e => Number(e.balance) !== 0 || !e.name.toUpperCase().includes('HEADER'));
+
+    // Pisahkan COGS/HPP (kode akun 501x atau nama 'Beban Pokok Penjualan' / 'HPP')
+    const cogsAccounts = validExpenses.filter(e => 
+        e.code.startsWith('501') || 
         e.name.toLowerCase().includes('pokok') || 
         e.name.toLowerCase().includes('hpp') ||
         e.name.toLowerCase().includes('cogs')
     );
 
-    // Beban Operasional (kode akun 6xxx atau selain COGS)
-    const operatingExpenseAccounts = expenses.filter(e => !cogsAccounts.includes(e));
+    // Beban Operasional (seluruh beban operasional & administrasi selain COGS)
+    const operatingExpenseAccounts = validExpenses.filter(e => !cogsAccounts.includes(e));
 
-    const totalRevenue = revenues.reduce((sum, r) => sum + Number(r.balance || 0), 0);
+    const totalRevenue = validRevenues.reduce((sum, r) => sum + Number(r.balance || 0), 0);
     const totalCogs = cogsAccounts.reduce((sum, c) => sum + Number(c.balance || 0), 0);
     const grossProfit = totalRevenue - totalCogs;
     const totalOperatingExpense = operatingExpenseAccounts.reduce((sum, o) => sum + Number(o.balance || 0), 0);
@@ -229,10 +233,10 @@ export const IncomeStatementReport: React.FC<IncomeStatementReportProps> = ({
                                 Pendapatan Usaha Koperasi
                             </div>
                             <div className="space-y-1 pt-1">
-                                {revenues.length === 0 ? (
+                                {validRevenues.length === 0 ? (
                                     <div className="text-xs text-slate-400 italic pl-4 py-1">Tidak ada pendapatan pada periode ini.</div>
                                 ) : (
-                                    revenues.map(acc => (
+                                    validRevenues.map(acc => (
                                         <div key={acc.id} className="flex justify-between items-center py-1 pl-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded transition-colors text-xs">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-mono text-[11px] text-slate-400">{acc.code}</span>

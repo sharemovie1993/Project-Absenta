@@ -153,6 +153,13 @@ export class AccountingService {
                 );
             }
 
+            if (acc.isHeader) {
+                throw new Error(
+                    `[AUDIT INTEGRITAS] Akun kode "${acc.code} - ${acc.name}" adalah Akun Induk (Header) dan tidak boleh dijurnal langsung. ` +
+                    `Gunakan sub-akun detail (Posting Account) di bawah kelompok ini. Referensi: ${reference}`
+                );
+            }
+
             const roundedAmount = Math.round(item.amount); // Rupiah tidak pakai desimal
 
             if (item.type === 'DEBIT') debitSum  += roundedAmount;

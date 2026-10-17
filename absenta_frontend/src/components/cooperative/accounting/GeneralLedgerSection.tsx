@@ -17,6 +17,7 @@ import Table from '../../ui/Table';
 import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
+import { coopAccountApi } from '@/api/coopAccount.api';
 import { formatDate } from '@/utils/date.utils';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
@@ -55,6 +56,24 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
 
   const effectiveStartDate = periodPreset === 'year' ? `${selectedYear}-01-01` : customStartDate;
   const effectiveEndDate = periodPreset === 'year' ? `${selectedYear}-12-31` : customEndDate;
+
+  const { data: coaAccountsData } = useQuery({
+    queryKey: ['cooperative-coa-accounts', 'flat'],
+    queryFn: () => coopAccountApi.getAccounts({ tree: false }),
+    staleTime: 60 * 1000,
+  });
+
+  const accountOptions = useMemo(() => {
+    if (!coaAccountsData || coaAccountsData.length === 0) {
+      return POPULAR_COOP_ACCOUNTS;
+    }
+    return coaAccountsData
+      .filter((acc) => !acc.isHeader)
+      .map((acc) => ({
+        value: acc.code,
+        label: `${acc.code} - ${acc.name}`,
+      }));
+  }, [coaAccountsData]);
 
   const { data, isLoading, isRefetching, refetch } = useQuery<{
     account: { id: string; code: string; name: string; type: string };
@@ -164,7 +183,7 @@ export const GeneralLedgerSection: React.FC = React.memo(() => {
               id="gl-account-select"
               value={selectedAccountCode}
               onChange={(val) => setSelectedAccountCode(String(val))}
-              options={POPULAR_COOP_ACCOUNTS}
+              options={accountOptions}
               placeholder="Pilih Nomor Akun Buku Besar..."
               aria-label="Pilih Akun Buku Besar"
             />

@@ -58,9 +58,9 @@ export const BalanceSheetReport: React.FC<BalanceSheetReportProps> = ({
         window.print();
     };
 
-    const assets = data?.assets || [];
-    const liabilities = data?.liabilities || [];
-    const equity = data?.equity || [];
+    const assets = (data?.assets || []).filter(a => Number(a.balance) !== 0 || !a.name.toUpperCase().includes('HEADER'));
+    const liabilities = (data?.liabilities || []).filter(l => Number(l.balance) !== 0 || !l.name.toUpperCase().includes('HEADER'));
+    const equity = (data?.equity || []).filter(e => Number(e.balance) !== 0 || !e.name.toUpperCase().includes('HEADER'));
     const summary = data?.summary || {
         totalAssets: 0,
         totalLiabilities: 0,

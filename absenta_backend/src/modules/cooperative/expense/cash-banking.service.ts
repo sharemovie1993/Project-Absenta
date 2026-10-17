@@ -17,8 +17,8 @@ export interface CreateDepositInput {
 export interface CreateTransferInput {
   date: string | Date;
   amount: number;
-  fromAccountCode: '1010' | '1011';
-  toAccountCode: '1010' | '1011';
+  fromAccountCode: string;
+  toAccountCode: string;
   description: string;
 }
 
@@ -306,8 +306,13 @@ export class CashBankingService {
     const voucherNumber = await this.generateTransferVoucherNumber(tenantId);
     const date = data.date ? new Date(data.date) : new Date();
 
-    const fromName = data.fromAccountCode === '1010' ? 'Kas Koperasi (Tunai)' : 'Kas Bank Koperasi';
-    const toName = data.toAccountCode === '1010' ? 'Kas Koperasi (Tunai)' : 'Kas Bank Koperasi';
+    const [fromAcc, toAcc] = await Promise.all([
+      prisma.account.findFirst({ where: { tenantId, code: data.fromAccountCode } }),
+      prisma.account.findFirst({ where: { tenantId, code: data.toAccountCode } })
+    ]);
+
+    const fromName = fromAcc?.name || (data.fromAccountCode === '1010' ? 'Kas Koperasi (Tunai)' : 'Kas Bank Koperasi');
+    const toName = toAcc?.name || (data.toAccountCode === '1010' ? 'Kas Koperasi (Tunai)' : 'Kas Bank Koperasi');
 
     // Pre-warm accounts
     await AccountingService.getOrCreateDefaultAccounts(tenantId);

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { Button } from '../../ui';
 import { SearchableSelect } from '../../ui/SearchableSelect';
+import { coopAccountApi } from '@/api/coopAccount.api';
 import type { SavingCategory } from './types';
 
 interface CatFormData {
@@ -26,6 +28,7 @@ interface CategoryModalProps {
   onInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onPresetColorSelect: (color: string) => void;
   onWithdrawRuleChange: (value: string) => void;
+  onAccountCodeChange?: (value: string) => void;
   onSubmit: (e: React.FormEvent) => void;
   savingCat: boolean;
   presetColors: string[];
@@ -46,10 +49,34 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
   onInputChange,
   onPresetColorSelect,
   onWithdrawRuleChange,
+  onAccountCodeChange,
   onSubmit,
   savingCat,
   presetColors
 }) => {
+  const { data: coaAccounts } = useQuery({
+    queryKey: ['cooperative-coa-accounts', 'flat'],
+    queryFn: () => coopAccountApi.getAccounts({ tree: false }),
+    staleTime: 60 * 1000,
+    enabled: isOpen,
+  });
+
+  const liabilityAccountOptions = useMemo(() => {
+    if (!coaAccounts || coaAccounts.length === 0) {
+      return [
+        { value: '2010', label: '2010 - Tabungan Sukarela Anggota' },
+        { value: '2020', label: '2020 - Simpanan Pokok & Wajib' },
+        { value: '2030', label: '2030 - Simpanan Berjangka' },
+      ];
+    }
+    return coaAccounts
+      .filter((a) => !a.isHeader && (a.type === 'LIABILITY' || a.type === 'EQUITY' || a.code.startsWith('2')))
+      .map((a) => ({
+        value: a.code,
+        label: `${a.code} - ${a.name}`,
+      }));
+  }, [coaAccounts]);
+
   if (!isOpen) return null;
 
   return (
@@ -100,15 +127,21 @@ export const CategoryModal = React.memo<CategoryModalProps>(({
                 <label htmlFor="cat-account-code" className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
                   Kode Akun Jurnal (Chart of Account) <span className="text-red-500">*</span>
                 </label>
-                <input
+                <SearchableSelect
                   id="cat-account-code"
-                  type="text"
-                  name="accountCode"
                   value={catFormData.accountCode}
-                  onChange={onInputChange}
-                  placeholder="Contoh: 2010 (Tabungan), 2020 (Wajib/Pokok)"
-                  className="w-full h-9 px-3 text-xs bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-mono font-bold text-slate-800 dark:text-slate-100"
-                  required
+                  onChange={(val) => {
+                    if (onAccountCodeChange) {
+                      onAccountCodeChange(String(val));
+                    } else {
+                      onInputChange({
+                        target: { name: 'accountCode', value: String(val), type: 'text' }
+                      } as unknown as React.ChangeEvent<HTMLInputElement>);
+                    }
+                  }}
+                  options={liabilityAccountOptions}
+                  placeholder="Pilih Akun Liabilitas / Simpanan..."
+                  aria-label="Pilih Akun Jurnal Simpanan"
                 />
               </div>
             </div>

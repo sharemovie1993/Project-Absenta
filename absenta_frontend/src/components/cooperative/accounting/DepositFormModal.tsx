@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { coopAccountApi } from '@/api/coopAccount.api';
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
@@ -47,6 +49,22 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const { data: accountsData } = useQuery({
+    queryKey: ['coop-accounts-flat', 'DEPOSIT_SOURCES'],
+    queryFn: () => coopAccountApi.getAccounts({ tree: false }),
+    staleTime: 60 * 1000,
+  });
+
+  const categoryOptions = useMemo(() => {
+    const list = accountsData?.flat || [];
+    const valid = list.filter(a => !a.isHeader && (a.type === 'REVENUE' || a.type === 'EQUITY'));
+    if (valid.length === 0) return DEPOSIT_CATEGORY_OPTIONS;
+    return valid.map(a => ({
+      value: a.code,
+      label: `${a.code} - ${a.name}`,
+    }));
+  }, [accountsData]);
+
   useEffect(() => {
     if (isOpen) {
       setFormData({
@@ -64,8 +82,8 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
 
   const handleCategoryChange = (val: string | number) => {
     const code = String(val);
-    const found = DEPOSIT_CATEGORY_OPTIONS.find(c => c.value === code);
-    const label = found ? found.label.split(' - ')[1] : '';
+    const found = categoryOptions.find(c => c.value === code);
+    const label = found ? (found.label.includes(' - ') ? found.label.split(' - ')[1] : found.label) : '';
     setFormData(prev => ({
       ...prev,
       accountCode: code,
@@ -157,7 +175,7 @@ export const DepositFormModal: React.FC<DepositFormModalProps> = ({
             id="deposit-category-select"
             value={formData.accountCode}
             onChange={handleCategoryChange}
-            options={DEPOSIT_CATEGORY_OPTIONS}
+            options={categoryOptions}
             placeholder="Pilih Sumber Pendapatan..."
             aria-label="Pilih Sumber Pendapatan"
           />

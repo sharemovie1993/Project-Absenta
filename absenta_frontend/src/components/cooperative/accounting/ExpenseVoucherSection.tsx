@@ -21,6 +21,7 @@ import Table from '../../ui/Table';
 import Button from '../../ui/Button';
 import { SearchableSelect } from '../../ui/SearchableSelect';
 import { AnalyticsCard } from '../../ui/AnalyticsCard';
+import { coopAccountApi } from '@/api/coopAccount.api';
 import useConfirm from '@/hooks/useConfirm';
 import { formatDate } from '@/utils/date.utils';
 import { ExpenseFormModal } from './ExpenseFormModal';
@@ -60,6 +61,52 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
   const [isExpenseOpen, setIsExpenseOpen] = useState(autoOpenCreateModal && initialSubTab === 'EXPENSE');
   const [isDepositOpen, setIsDepositOpen] = useState(autoOpenCreateModal && initialSubTab === 'DEPOSIT');
   const [isTransferOpen, setIsTransferOpen] = useState(autoOpenCreateModal && initialSubTab === 'TRANSFER');
+
+  // Query Dynamic COA for category filter
+  const { data: coaAccountsData } = useQuery({
+    queryKey: ['coop-accounts-flat', 'ALL_CATEGORIES'],
+    queryFn: () => coopAccountApi.getAccounts({ tree: false }),
+    staleTime: 60 * 1000,
+  });
+
+  const expenseFilterOptions = useMemo(() => {
+    const list = coaAccountsData?.flat || [];
+    const expenseAccounts = list.filter(a => !a.isHeader && a.type === 'EXPENSE');
+    if (expenseAccounts.length === 0) {
+      return [
+        { value: 'ALL', label: 'Semua Kategori Beban' },
+        { value: '5021', label: '5021 - Listrik & Air' },
+        { value: '5022', label: '5022 - Internet & Komunikasi' },
+        { value: '5023', label: '5023 - Aplikasi & TI' },
+        { value: '5024', label: '5024 - ATK & Kantor' },
+        { value: '5025', label: '5025 - Pemeliharaan Sarana' },
+        { value: '5026', label: '5026 - Operasional Pengurus' },
+        { value: '5090', label: '5090 - Beban Lain-lain' },
+      ];
+    }
+    return [
+      { value: 'ALL', label: 'Semua Kategori Beban' },
+      ...expenseAccounts.map(a => ({ value: a.code, label: `${a.code} - ${a.name}` }))
+    ];
+  }, [coaAccountsData]);
+
+  const depositFilterOptions = useMemo(() => {
+    const list = coaAccountsData?.flat || [];
+    const depositAccounts = list.filter(a => !a.isHeader && (a.type === 'REVENUE' || a.type === 'EQUITY'));
+    if (depositAccounts.length === 0) {
+      return [
+        { value: 'ALL', label: 'Semua Sumber Penerimaan' },
+        { value: '4030', label: '4030 - Sewa & Kerjasama' },
+        { value: '4040', label: '4040 - Jasa Giro & Bank' },
+        { value: '4090', label: '4090 - Pendapatan Lain-lain' },
+        { value: '3020', label: '3020 - Hibah & Sumbangan' },
+      ];
+    }
+    return [
+      { value: 'ALL', label: 'Semua Sumber Penerimaan' },
+      ...depositAccounts.map(a => ({ value: a.code, label: `${a.code} - ${a.name}` }))
+    ];
+  }, [coaAccountsData]);
 
   // Sync if initialSubTab prop changes
   React.useEffect(() => {
@@ -835,16 +882,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
                     setSelectedCategory(String(val));
                     setPage(1);
                   }}
-                  options={[
-                    { value: 'ALL', label: 'Semua Kategori Beban' },
-                    { value: '5021', label: '5021 - Listrik & Air' },
-                    { value: '5022', label: '5022 - Internet & Komunikasi' },
-                    { value: '5023', label: '5023 - Aplikasi & TI' },
-                    { value: '5024', label: '5024 - ATK & Kantor' },
-                    { value: '5025', label: '5025 - Pemeliharaan Sarana' },
-                    { value: '5026', label: '5026 - Operasional Pengurus' },
-                    { value: '5090', label: '5090 - Beban Lain-lain' },
-                  ]}
+                  options={expenseFilterOptions}
                   placeholder="Kategori Beban"
                   aria-label="Filter Kategori Beban"
                 />
@@ -860,13 +898,7 @@ export const ExpenseVoucherSection: React.FC<ExpenseVoucherSectionProps> = React
                     setSelectedCategory(String(val));
                     setPage(1);
                   }}
-                  options={[
-                    { value: 'ALL', label: 'Semua Sumber Penerimaan' },
-                    { value: '4030', label: '4030 - Sewa & Kerjasama' },
-                    { value: '4040', label: '4040 - Jasa Giro & Bank' },
-                    { value: '4090', label: '4090 - Pendapatan Lain-lain' },
-                    { value: '3020', label: '3020 - Hibah & Sumbangan' },
-                  ]}
+                  options={depositFilterOptions}
                   placeholder="Sumber Pendapatan"
                   aria-label="Filter Sumber Pendapatan"
                 />

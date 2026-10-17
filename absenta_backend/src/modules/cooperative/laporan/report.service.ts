@@ -37,7 +37,8 @@ export class ReportService {
         const accounts = await prisma.account.findMany({
             where: {
                 tenantId: tenantId,
-                type: { in: ['ASSET', 'LIABILITY', 'EQUITY'] }
+                type: { in: ['ASSET', 'LIABILITY', 'EQUITY'] },
+                isHeader: { not: true }
             },
             include: {
                 journalItems: {
@@ -133,7 +134,8 @@ export class ReportService {
         const accounts = await prisma.account.findMany({
             where: {
                 tenantId: tenantId,
-                type: { in: ['REVENUE', 'EXPENSE'] }
+                type: { in: ['REVENUE', 'EXPENSE'] },
+                isHeader: { not: true }
             },
             include: {
                 journalItems: {
@@ -347,7 +349,12 @@ export class ReportService {
         const cashAccounts = await prisma.account.findMany({
             where: {
                 tenantId,
-                code: { in: ['1010', '1011'] }
+                isHeader: false,
+                OR: [
+                    { code: { in: ['1010', '1011'] } },
+                    { code: { startsWith: '101' } },
+                    { parent: { code: { in: ['1010', '1100'] } } },
+                ]
             }
         });
         const cashAccountIds = cashAccounts.map(a => a.id);
