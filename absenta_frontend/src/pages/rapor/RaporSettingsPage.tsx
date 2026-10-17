@@ -109,7 +109,6 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   const [tampilkanKop, setTampilkanKop] = useState(true);
   const [tampilkanQr, setTampilkanQr] = useState(true);
   const [tampilkanKokurikuler, setTampilkanKokurikuler] = useState(true);
-  const [aktifkanSumatifArsip, setAktifkanSumatifArsip] = useState(true);
   const [modeCetakRapor, setModeCetakRapor] = useState<'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY'>('CP_ONLY');
   const [sumberNilaiRapor, setSumberNilaiRapor] = useState<'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'>('FORMULA_SUMATIF');
 
@@ -162,7 +161,6 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       setTampilkanKop(s.tampilkan_kop !== undefined ? s.tampilkan_kop : true);
       setTampilkanQr(s.tampilkan_qr !== undefined ? s.tampilkan_qr : true);
       setTampilkanKokurikuler(s.tampilkan_kokurikuler !== undefined ? s.tampilkan_kokurikuler : true);
-      setAktifkanSumatifArsip(s.aktifkan_sumatif_arsip !== undefined ? s.aktifkan_sumatif_arsip : true);
       setModeCetakRapor(s.mode_cetak_rapor || 'CP_ONLY');
       setSumberNilaiRapor(s.sumber_nilai_rapor || 'FORMULA_SUMATIF');
     }
@@ -233,7 +231,6 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       tampilkan_kop: tampilkanKop,
       tampilkan_qr: tampilkanQr,
       tampilkan_kokurikuler: tampilkanKokurikuler,
-      aktifkan_sumatif_arsip: aktifkanSumatifArsip,
       mode_cetak_rapor: modeCetakRapor,
       sumber_nilai_rapor: sumberNilaiRapor,
     });
@@ -257,7 +254,6 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     tampilkanKop,
     tampilkanQr,
     tampilkanKokurikuler,
-    aktifkanSumatifArsip,
     modeCetakRapor,
     sumberNilaiRapor,
     saveSettingsMutation,

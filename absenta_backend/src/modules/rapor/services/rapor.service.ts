@@ -947,7 +947,6 @@ export class RaporService {
       kopTpCfg,
       qrTpCfg,
       kokurikulerTpCfg,
-      sumatifArchiveTpCfg,
       modeCetakTpCfg,
       sumberNilaiTpCfg,
       // Format (Global Fallback)
@@ -955,7 +954,6 @@ export class RaporService {
       kopGlobalCfg,
       qrGlobalCfg,
       kokurikulerGlobalCfg,
-      sumatifArchiveGlobalCfg,
       modeCetakGlobalCfg,
       sumberNilaiGlobalCfg,
     ] = await Promise.all([
@@ -984,7 +982,6 @@ export class RaporService {
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_KOP_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_QR_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SHOW_KOKURIKULER_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_MODE_CETAK_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${tpId}` } }) : null,
       // Format (Global Fallback)
@@ -992,7 +989,6 @@ export class RaporService {
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_ENABLE_SUMATIF_ARCHIVE' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_MODE_CETAK' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' } }),
     ]);
@@ -1011,15 +1007,6 @@ export class RaporService {
       resolvedTampilkanKokurikuler = startYear >= 2025;
     }
 
-    let resolvedAktifkanSumatifArsip: boolean;
-    if (sumatifArchiveTpCfg) {
-      resolvedAktifkanSumatifArsip = sumatifArchiveTpCfg.value === 'true';
-    } else if (sumatifArchiveGlobalCfg) {
-      resolvedAktifkanSumatifArsip = sumatifArchiveGlobalCfg.value === 'true';
-    } else {
-      resolvedAktifkanSumatifArsip = true;
-    }
-
     let resolvedModeCetakRapor: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
     if (modeCetakTpCfg?.value) {
       resolvedModeCetakRapor = modeCetakTpCfg.value as any;
@@ -1029,6 +1016,9 @@ export class RaporService {
       // Smart Academic Default: 2023 & 2024 = SUMATIF_AND_CP. Tahun lainnya = CP_ONLY
       resolvedModeCetakRapor = (startYear === 2023 || startYear === 2024) ? 'SUMATIF_AND_CP' : 'CP_ONLY';
     }
+
+    // Turunan otomatis dari mode cetak: aktifkan sumatif jika bukan CP_ONLY
+    const resolvedAktifkanSumatifArsip = resolvedModeCetakRapor !== 'CP_ONLY';
 
     let resolvedSumberNilaiRapor: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
     if (sumberNilaiTpCfg?.value) {
@@ -1103,7 +1093,6 @@ export class RaporService {
       tampilkan_kop?: boolean;
       tampilkan_qr?: boolean;
       tampilkan_kokurikuler?: boolean;
-      aktifkan_sumatif_arsip?: boolean;
       mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
       sumber_nilai_rapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
     }
@@ -1210,9 +1199,6 @@ export class RaporService {
       if (payload.tampilkan_kokurikuler !== undefined) {
         await this.updateConfig(tenantId, `RAPOR_SHOW_KOKURIKULER_${tpId}`, String(payload.tampilkan_kokurikuler));
       }
-      if (payload.aktifkan_sumatif_arsip !== undefined) {
-        await this.updateConfig(tenantId, `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}`, String(payload.aktifkan_sumatif_arsip));
-      }
       if (payload.mode_cetak_rapor !== undefined) {
         await this.updateConfig(tenantId, `RAPOR_MODE_CETAK_${tpId}`, payload.mode_cetak_rapor);
       }
@@ -1233,9 +1219,6 @@ export class RaporService {
     }
     if (payload.tampilkan_kokurikuler !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_SHOW_KOKURIKULER', String(payload.tampilkan_kokurikuler));
-    }
-    if (payload.aktifkan_sumatif_arsip !== undefined) {
-      await this.updateConfig(tenantId, 'RAPOR_ENABLE_SUMATIF_ARCHIVE', String(payload.aktifkan_sumatif_arsip));
     }
     if (payload.mode_cetak_rapor !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_MODE_CETAK', payload.mode_cetak_rapor);
