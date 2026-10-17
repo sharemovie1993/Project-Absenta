@@ -2772,10 +2772,16 @@ model Installment {
 
 // --- PEMBUKUAN (ACCOUNTING) ---
 model Account {
-  id   String      @id @default(uuid())
-  code String
-  name String
-  type AccountType
+  id         String      @id @default(uuid())
+  code       String
+  name       String
+  type       AccountType
+  isHeader   Boolean     @default(false)
+  parentId   String?
+  parent     Account?    @relation("AccountHierarchy", fields: [parentId], references: [id], onDelete: Restrict)
+  children   Account[]   @relation("AccountHierarchy")
+  isSystem   Boolean     @default(false)
+  isActive   Boolean     @default(true)
 
   tenantId String
 
@@ -2786,6 +2792,7 @@ model Account {
 
   @@index([tenantId])
   @@index([tenantId, code])
+  @@index([tenantId, parentId])
 }
 
 model Journal {

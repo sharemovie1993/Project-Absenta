@@ -11,4 +11,7 @@ export { CashFlowStatementReport } from './CashFlowStatementReport';
 export { GeneralLedgerSection } from './GeneralLedgerSection';
 export { TrialBalanceSection } from './TrialBalanceSection';
 export { AccountingWorkflowHeader } from './AccountingWorkflowHeader';
+export { ChartOfAccountsSection } from './ChartOfAccountsSection';
+export { AccountFormModal } from './AccountFormModal';
+
 

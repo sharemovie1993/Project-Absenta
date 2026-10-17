@@ -145,3 +145,49 @@ export interface CoopTransferFormData {
     toAccountCode: '1010' | '1011';
     description: string;
 }
+
+// ─── BAGAN AKUN DINAMIS & BERJENJANG (HIERARCHICAL COA) ─────────────────────
+
+export type AccountCategoryType = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'REVENUE' | 'EXPENSE';
+
+export interface AccountNode {
+    id: string;
+    code: string;
+    name: string;
+    type: AccountCategoryType;
+    isHeader: boolean;
+    parentId: string | null;
+    isSystem: boolean;
+    isActive: boolean;
+    balance: number;
+    level: number;
+    children?: AccountNode[];
+    journalCount?: number;
+}
+
+export interface AccountTreeResponse {
+    tree: AccountNode[];
+    flat: AccountNode[];
+    summary: {
+        totalAccounts: number;
+        totalHeaders: number;
+        totalPostingAccounts: number;
+    };
+}
+
+export interface CreateAccountPayload {
+    code: string;
+    name: string;
+    type: AccountCategoryType;
+    isHeader?: boolean;
+    parentId?: string | null;
+}
+
+export interface UpdateAccountPayload {
+    code?: string;
+    name?: string;
+    isHeader?: boolean;
+    parentId?: string | null;
+    isActive?: boolean;
+}
+
