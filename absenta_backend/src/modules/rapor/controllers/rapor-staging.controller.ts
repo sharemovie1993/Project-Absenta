@@ -1,6 +1,7 @@
 import { appLogger } from '@/utils/app-logger';
 import { sendResponse, sendError } from '../../../utils/response';
 import { RaporStagingService } from '../services/rapor-staging.service';
+import { GoogleSheetRaporParserService } from '../services/google-sheet-rapor-parser.service';
 import { z } from 'zod';
 
 const fetchSheetsSchema = z.object({
@@ -8,6 +9,71 @@ const fetchSheetsSchema = z.object({
 });
 
 export class RaporStagingController {
+  /**
+   * POST /api/rapor/staging/scan-folder
+   * Memindai tautan (berkas atau folder) dan mengembalikan daftar file Google Sheet yang terdeteksi
+   * sehingga pengguna dapat memilih/menceklis berkas mana saja yang ingin ditarik ke staging.
+   */
+  static async scanFolder(req: any, reply: any) {
+    try {
+      const parsed = fetchSheetsSchema.parse(req.body);
+      const items: Array<{ id: string; url: string; title: string }> = [];
+      const errors: Array<{ url: string; error: string }> = [];
+
+      for (const rawUrl of parsed.urls) {
+        const trimmed = rawUrl.trim();
+        if (!trimmed) continue;
+
+        if (GoogleSheetRaporParserService.isFolderUrl(trimmed)) {
+          try {
+            const sheetsInFolder = await GoogleSheetRaporParserService.extractGoogleSheetUrlsFromFolder(trimmed);
+            sheetsInFolder.forEach((s: { id: string; url: string; title?: string }) => {
+              items.push({
+                id: s.id,
+                url: s.url,
+                title: s.title || `Google Sheet (${s.id.slice(0, 8)}...)`,
+              });
+            });
+          } catch (err: any) {
+            errors.push({
+              url: trimmed,
+              error: err.message || 'Gagal memindai folder Google Drive',
+            });
+          }
+        } else {
+          try {
+            const id = GoogleSheetRaporParserService.extractSpreadsheetId(trimmed);
+            items.push({
+              id,
+              url: `https://docs.google.com/spreadsheets/d/${id}/edit`,
+              title: `Google Sheet Berkas (${id.slice(0, 8)}...)`,
+            });
+          } catch (err: any) {
+            errors.push({
+              url: trimmed,
+              error: err.message || 'Tautan Google Sheet tidak valid',
+            });
+          }
+        }
+      }
+
+      return sendResponse(reply, 200, true, `Pemindaian selesai: ${items.length} sheet terdeteksi`, {
+        files: items,
+        errors,
+      });
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'RaporStagingController.scanFolder error');
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map((e) => e.message).join(', '),
+          errors: error.errors,
+        });
+      }
+      return sendError(reply, 500, error.message || 'Gagal memindai berkas', error);
+    }
+  }
+
   /**
    * POST /api/rapor/staging/fetch
    * Menarik Google Sheet dari satu atau banyak link dan menyimpannya ke Staging Hub

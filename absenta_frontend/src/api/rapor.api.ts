@@ -360,6 +360,10 @@ export const raporApi = {
   },
 
   // === RAPOR STAGING HUB (GOOGLE SHEET INTEGRATOR) ===
+  scanGoogleDriveFolder: async (urls: string[]) => {
+    const response = await api.post('/rapor/staging/scan-folder', { urls });
+    return response.data;
+  },
   fetchAndStageGoogleSheets: async (urls: string[]) => {
     const response = await api.post('/rapor/staging/fetch', { urls });
     return response.data;
