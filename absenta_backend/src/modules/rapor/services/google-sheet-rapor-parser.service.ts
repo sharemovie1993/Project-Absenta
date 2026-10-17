@@ -119,15 +119,112 @@ export class GoogleSheetRaporParserService {
   }
 
   /**
+   * Cek apakah URL yang diberikan merupakan tautan folder Google Drive
+   */
+  static isFolderUrl(url: string): boolean {
+    const trimmed = url.trim();
+    return trimmed.includes('/folders/') || trimmed.includes('/drive/folders/');
+  }
+
+  /**
+   * Ekstraksi Folder ID dari tautan folder Google Drive
+   */
+  static extractFolderId(url: string): string {
+    const trimmed = url.trim();
+    const match = trimmed.match(/\/folders\/([a-zA-Z0-9_-]{25,})/);
+    if (match) return match[1];
+    throw new Error('Format tautan folder Google Drive tidak valid.');
+  }
+
+  /**
+   * Ekstraksi otomatis seluruh berkas Google Sheet dari tautan folder Google Drive publik.
+   * Hanya menyaring berkas tipe Google Sheets (mengabaikan PDF, Google Dokumen, Foto, Folder, dll).
+   */
+  static async extractGoogleSheetUrlsFromFolder(
+    folderUrl: string
+  ): Promise<Array<{ id: string; url: string; title?: string }>> {
+    const folderId = this.extractFolderId(folderUrl);
+    const requestUrl = `https://drive.google.com/drive/folders/${folderId}`;
+
+    appLogger.info({ folderId, folderUrl }, 'Memindai berkas Google Sheet di dalam folder Google Drive...');
+
+    const res = await axios.get<string>(requestUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      maxRedirects: 5,
+      timeout: 20000,
+    });
+
+    const html = res.data;
+
+    // Cek jika akses dibatasi login
+    if (typeof html === 'string' && (html.includes('ServiceLogin') || html.includes('accounts.google.com/signin'))) {
+      throw new Error(
+        'Folder Google Drive ini masih dibatasi (Privat). Silakan buka folder tersebut di Google Drive, klik menu "Bagikan", lalu ubah akses umum menjadi "Siapa saja yang memiliki link".'
+      );
+    }
+
+    const rowRegex = /<tr[^>]*data-id="([a-zA-Z0-9_-]{25,})"[^>]*data-target="doc"[\s\S]*?<\/tr>/g;
+    let m: RegExpExecArray | null;
+    const foundSpreadsheets: Array<{ id: string; url: string; title?: string }> = [];
+    const seenIds = new Set<string>();
+
+    while ((m = rowRegex.exec(html)) !== null) {
+      const rowHtml = m[0];
+      const idMatch = rowHtml.match(/data-id="([a-zA-Z0-9_-]{25,})"/);
+      const id = idMatch ? idMatch[1] : null;
+      if (!id || seenIds.has(id)) continue;
+
+      // Filter ketat: HANYA Google Sheets (bukan PDF, Google Doc, Gambar, Shortcut, dsb)
+      const isGoogleSheet =
+        rowHtml.includes('Google Sheets') ||
+        rowHtml.includes('Spreadsheet') ||
+        rowHtml.includes('application/vnd.google-apps.spreadsheet') ||
+        rowHtml.includes('spreadsheets');
+
+      const isPdf = rowHtml.includes('PDF') || rowHtml.includes('application/pdf') || /\.pdf/i.test(rowHtml);
+      const isGoogleDoc = rowHtml.includes('Google Dokumen') || rowHtml.includes('Google Docs');
+
+      if (isGoogleSheet && !isPdf && !isGoogleDoc) {
+        seenIds.add(id);
+        const textMatches = [...rowHtml.matchAll(/>([^<]{3,100})</g)]
+          .map((x) => x[1].trim())
+          .filter((x) => x && !x.startsWith('ssk=') && x !== 'Google Sheets' && x !== 'Dibagikan');
+
+        foundSpreadsheets.push({
+          id,
+          url: `https://docs.google.com/spreadsheets/d/${id}/edit`,
+          title: textMatches[0] || undefined,
+        });
+      }
+    }
+
+    if (foundSpreadsheets.length === 0) {
+      throw new Error(
+        'Tidak ditemukan berkas Google Sheet di dalam folder Google Drive ini. Pastikan folder berisi berkas Google Sheet rapor kelas dan akses disetel "Siapa saja yang memiliki link".'
+      );
+    }
+
+    appLogger.info(
+      { folderId, totalSheets: foundSpreadsheets.length },
+      'Berhasil menemukan berkas Google Sheet di dalam folder Google Drive'
+    );
+    return foundSpreadsheets;
+  }
+
+  /**
    * Ekstraksi Spreadsheet ID dari beragam format link Google Docs/Drive
    */
   static extractSpreadsheetId(url: string): string {
     const trimmed = url.trim();
 
     // Deteksi jika pengguna secara tidak sengaja memasukkan link Google Drive Folder
-    if (trimmed.includes('/folders/') || trimmed.includes('/drive/folders/')) {
+    if (this.isFolderUrl(trimmed)) {
       throw new Error(
-        'Tautan yang dimasukkan adalah folder Google Drive, bukan berkas Google Sheet per kelas. Silakan buka folder tersebut di peramban, buka salah satu berkas rapor kelas, lalu salin tautan berkasnya (contoh: https://docs.google.com/spreadsheets/d/.../edit).'
+        'Tautan yang dimasukkan adalah folder Google Drive. Sistem kini mendukung tautan folder secara otomatis melalui proses ekstraksi berkas kelas.'
       );
     }
 

@@ -70,15 +70,15 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
             <span>Hubungkan Link Google Sheet Rapor</span>
           </div>
         }
-        description="Salin dan tempel tautan Google Sheet rapor kelas. Anda dapat memasukkan banyak tautan sekaligus (satu tautan per baris)."
+        description="Salin dan tempel tautan Google Sheet rapor kelas atau tautan Folder Google Drive induk. Sistem otomatis mengekstrak seluruh file Google Sheet di dalamnya (mengabaikan PDF dan format lain)."
       >
         <form onSubmit={handleSubmit} className="space-y-4 p-4 sm:p-6 pt-2 w-full max-w-full min-w-0">
           <div className="space-y-1.5 w-full">
             <label htmlFor="google-sheet-urls" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Tautan Berkas Google Sheet Kelas (Satu baris per tautan)
+              Tautan Berkas Google Sheet atau Folder Google Drive (Satu baris per tautan)
             </label>
             <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Gunakan tautan berkas per kelas (format: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">https://docs.google.com/spreadsheets/d/.../edit</code>). Jika memiliki folder Drive, buka file rapor di dalamnya lalu salin tautannya.
+              Mendukung tautan berkas per kelas (<code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">https://docs.google.com/spreadsheets/d/.../edit</code>) maupun tautan Folder Google Drive induk (<code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">https://drive.google.com/drive/folders/...</code>).
             </p>
             <Textarea
               id="google-sheet-urls"
@@ -86,9 +86,9 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
               required
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/1R6-4FyKNiIWwV1sOQ_7ZJYOYj59ccLKIAQdlM0AVfiA/edit&#10;https://docs.google.com/spreadsheets/d/1CkcIl9oCPfrJ5R-A-CW0lyUy0IvHqSmhRQq088SDIZU/edit"
+              placeholder="https://drive.google.com/drive/folders/15-2Kyn9WDbOS6iIuE-pLwHM980SnU6sq?usp=sharing&#10;https://docs.google.com/spreadsheets/d/1CkcIl9oCPfrJ5R-A-CW0lyUy0IvHqSmhRQq088SDIZU/edit"
               className="text-xs font-mono rounded-xl resize-none w-full"
-              aria-label="Tautan Berkas Google Sheet Kelas"
+              aria-label="Tautan Berkas Google Sheet atau Folder Google Drive"
             />
           </div>
 
@@ -96,10 +96,10 @@ export const RaporStagingFetchModal: React.FC<RaporStagingFetchModalProps> = Rea
             <Info size={16} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" aria-hidden="true" />
             <div className="text-[11px] text-slate-600 dark:text-slate-300 space-y-1">
               <p className="font-semibold text-indigo-950 dark:text-indigo-200">
-                Adaptif Multi-Tahun & Akurasi Otomatis:
+                Penyaring Cerdas & Dynamic Variable Scanner:
               </p>
               <p>
-                Sistem menggunakan <em>Dynamic Variable Scanner</em> berbasis label sel pada sheet <code>SETTING</code>, <code>INPUT SUMATIF</code>, dan <code>INPUT CP</code>. Pergeseran baris atau penambahan fitur di lembar rapor Google Sheet tidak akan merusak parsing.
+                Jika Anda memasukkan tautan Folder Google Drive, sistem akan memindai dan hanya mengambil berkas <strong>Google Sheets</strong> (otomatis mengabaikan file PDF, Google Docs, atau format lainnya).
               </p>
             </div>
           </div>

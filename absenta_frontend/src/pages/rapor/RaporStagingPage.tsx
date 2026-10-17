@@ -244,8 +244,9 @@ export default React.memo(function RaporStagingPage() {
       instruction={{
         title: 'Panduan Wadah Penampung Google Sheet',
         items: [
-          'Salin dan tempel tautan berkas Google Sheet per kelas langsung (bukan tautan folder Drive).',
+          'Salin dan tempel tautan berkas Google Sheet kelas atau tautan Folder Google Drive induk.',
           'Sistem otomatis memindai lembar SETTING, INPUT SUMATIF, dan INPUT CP menggunakan Dynamic Variable Scanner.',
+          'Pada tautan Folder Google Drive, sistem cerdas memfilter hanya berkas Google Sheets (mengabaikan PDF & dokumen lain).',
           'Gunakan tombol Pratinjau Data untuk memeriksa kelengkapan siswa dan nilai sebelum melakukan 1-Click Sync.',
         ],
       }}

@@ -20,12 +20,38 @@ export class RaporStagingService {
     const results: any[] = [];
     const errors: Array<{ url: string; error: string }> = [];
 
+    // 1. Pra-ekspansi: deteksi tautan Google Drive Folder dan saring hanya berkas Google Sheet
+    const resolvedQueue: Array<{ url: string; originFolder?: string }> = [];
+
     for (const rawUrl of urls) {
-      const url = rawUrl.trim();
-      if (!url) continue;
+      const trimmed = rawUrl.trim();
+      if (!trimmed) continue;
+
+      if (GoogleSheetRaporParserService.isFolderUrl(trimmed)) {
+        try {
+          appLogger.info({ url: trimmed, tenantId }, 'Mendeteksi folder Google Drive, mengekstrak daftar Google Sheet di dalamnya...');
+          const sheetsInFolder = await GoogleSheetRaporParserService.extractGoogleSheetUrlsFromFolder(trimmed);
+          sheetsInFolder.forEach((s) => {
+            resolvedQueue.push({ url: s.url, originFolder: trimmed });
+          });
+        } catch (folderErr: any) {
+          appLogger.error({ err: folderErr, url: trimmed }, 'Gagal mengekstrak berkas dari folder Google Drive');
+          errors.push({
+            url: trimmed,
+            error: folderErr.message || 'Gagal memindai folder Google Drive',
+          });
+        }
+      } else {
+        resolvedQueue.push({ url: trimmed });
+      }
+    }
+
+    // 2. Proses ekstraksi setiap berkas Google Sheet kelas
+    for (const item of resolvedQueue) {
+      const url = item.url;
 
       try {
-        appLogger.info({ url, tenantId }, 'Memulai ekstraksi Google Sheet Rapor');
+        appLogger.info({ url, tenantId, originFolder: item.originFolder }, 'Memulai ekstraksi Google Sheet Rapor');
         const parsed: ParsedRaporClassData = await GoogleSheetRaporParserService.parseGoogleSheet(url);
 
         const tahunPelajaranNama = parsed.metadata.tahunPelajaran.replace(/\s+/g, ' ').trim() || '2024 / 2025';
