@@ -81,6 +81,7 @@ const Settings: React.FC = React.memo(() => {
     cooperative_default_interest_rate: '',
     cooperative_loan_min_membership_enabled: 'false',
     cooperative_loan_min_membership_months: '3',
+    cooperative_loan_require_simpanan_pokok: 'true',
   });
 
   // Category Modal State

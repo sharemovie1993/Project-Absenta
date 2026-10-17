@@ -11,6 +11,8 @@ export interface CooperativeSettings {
   cooperative_loan_min_membership_enabled?: string; // 'true' | 'false'
   /** Durasi minimum keanggotaan dalam bulan sebelum boleh mengajukan pinjaman */
   cooperative_loan_min_membership_months?: string;
+  /** Wajib lunas simpanan pokok sebelum boleh mengajukan pinjaman */
+  cooperative_loan_require_simpanan_pokok?: string; // 'true' | 'false'
 }
 
 export interface SavingCategory {

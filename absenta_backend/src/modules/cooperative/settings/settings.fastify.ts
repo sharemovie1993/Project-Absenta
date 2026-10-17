@@ -21,7 +21,8 @@ export default async function settingsRoutes(fastify: any) {
         'cooperative_logo_url',
         'cooperative_default_interest_rate',
         'cooperative_loan_min_membership_enabled',
-        'cooperative_loan_min_membership_months'
+        'cooperative_loan_min_membership_months',
+        'cooperative_loan_require_simpanan_pokok'
     ];
 
     // GET /cooperative/settings
@@ -110,6 +111,7 @@ export default async function settingsRoutes(fastify: any) {
                     cooperative_default_interest_rate: configMap['cooperative_default_interest_rate'] || '1.5',
                     cooperative_loan_min_membership_enabled: configMap['cooperative_loan_min_membership_enabled'] || 'false',
                     cooperative_loan_min_membership_months: configMap['cooperative_loan_min_membership_months'] || '3',
+                    cooperative_loan_require_simpanan_pokok: configMap['cooperative_loan_require_simpanan_pokok'] ?? 'true',
                     signatures: {
                         bendahara: bendaharaName,
                         ketua: ketuaName,

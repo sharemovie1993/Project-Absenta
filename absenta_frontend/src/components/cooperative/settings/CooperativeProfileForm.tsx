@@ -262,7 +262,7 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
           </div>
         </div>
 
-        {/* ─── Kebijakan Masa Keanggotaan Minimum ─────────────────────────────────── */}
+        {/* ─── Kebijakan & Syarat Kelayakan Pinjaman Anggota ──────────────────────── */}
         <div className="p-4 border border-violet-200/70 dark:border-violet-800/50 rounded-xl bg-violet-50/40 dark:bg-violet-950/20 space-y-4">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-violet-100 dark:bg-violet-900/60 text-violet-600 dark:text-violet-400 rounded-lg shrink-0">
@@ -270,75 +270,110 @@ export const CooperativeProfileForm = React.memo<CooperativeProfileFormProps>(({
             </div>
             <div>
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 leading-tight">
-                Kebijakan Masa Keanggotaan Sebelum Pinjaman
+                Kebijakan & Syarat Kelayakan Pinjaman Anggota
               </h4>
               <p className="text-[10px] text-slate-400 leading-tight mt-0.5">
-                Wajibkan anggota telah bergabung minimal N bulan sebelum dapat mengajukan pinjaman.
+                Konfigurasi syarat kelayakan anggota sebelum diizinkan mengajukan pinjaman fasilitas koperasi.
               </p>
             </div>
           </div>
 
-          {/* Toggle Aktif/Nonaktif */}
-          <div className="flex items-center justify-between gap-3">
+          {/* Layer 1: Wajib Lunas Simpanan Pokok */}
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-violet-200/40 dark:border-violet-800/30">
             <div>
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                Aktifkan Pembatasan
+                1. Wajib Lunas Simpanan Pokok
               </span>
               <span className="text-[10px] text-slate-400">
-                {formData.cooperative_loan_min_membership_enabled === 'true' ? 'Kebijakan ini sedang AKTIF.' : 'Kebijakan ini sedang NONAKTIF — semua anggota boleh pinjam kapan saja.'}
+                {(formData.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false'
+                  ? 'Aktif — Anggota wajib memiliki saldo Simpanan Pokok > Rp 0 sebelum boleh mengajukan pinjaman.'
+                  : 'Nonaktif — Anggota dapat mengajukan pinjaman tanpa memeriksa Simpanan Pokok.'}
               </span>
             </div>
             <button
               type="button"
               disabled={!canEditProfile}
               onClick={() => {
-                const current = formData.cooperative_loan_min_membership_enabled === 'true';
-                onToggleChange?.('cooperative_loan_min_membership_enabled', current ? 'false' : 'true');
+                const isCurrentlyActive = (formData.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false';
+                onToggleChange?.('cooperative_loan_require_simpanan_pokok', isCurrentlyActive ? 'false' : 'true');
               }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500/40 shrink-0 ${
-                formData.cooperative_loan_min_membership_enabled === 'true'
-                  ? 'bg-violet-600'
+                (formData.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false'
+                  ? 'bg-emerald-600'
                   : 'bg-slate-300 dark:bg-slate-700'
               } ${!canEditProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-              aria-checked={formData.cooperative_loan_min_membership_enabled === 'true'}
+              aria-checked={(formData.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false'}
               role="switch"
-              aria-label="Aktifkan kebijakan masa keanggotaan minimum"
+              aria-label="Wajib lunas simpanan pokok sebelum pinjaman"
             >
               <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
-                formData.cooperative_loan_min_membership_enabled === 'true' ? 'translate-x-6' : 'translate-x-1'
+                (formData.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false' ? 'translate-x-6' : 'translate-x-1'
               }`} />
             </button>
           </div>
 
-          {/* Input durasi minimum (hanya tampil jika aktif) */}
-          {formData.cooperative_loan_min_membership_enabled === 'true' && (
-            <div className="space-y-1.5 pt-1 border-t border-violet-200/60 dark:border-violet-800/40">
-              <Label htmlFor="cooperative_loan_min_membership_months" className="text-xs font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
-                <Clock size={12} />
-                Minimal Masa Keanggotaan (Bulan)
-              </Label>
-              <div className="flex items-center gap-3">
-                <Input
-                  type="number"
-                  id="cooperative_loan_min_membership_months"
-                  name="cooperative_loan_min_membership_months"
-                  value={formData.cooperative_loan_min_membership_months || '3'}
-                  onChange={onInputChange}
-                  disabled={!canEditProfile}
-                  min="1"
-                  max="60"
-                  placeholder="Contoh: 3"
-                  className="h-9 w-32 text-sm text-center font-bold"
-                />
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  bulan sejak tanggal bergabung sebagai anggota
+          {/* Layer 2: Masa Keanggotaan Minimum */}
+          <div className="pt-2 border-t border-violet-200/40 dark:border-violet-800/30 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  2. Masa Keanggotaan Minimum (N Bulan)
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {formData.cooperative_loan_min_membership_enabled === 'true'
+                    ? `Aktif — Minimal ${formData.cooperative_loan_min_membership_months || 3} bulan bergabung untuk pinjam.`
+                    : 'Nonaktif — Tidak ada batasan minimal masa keanggotaan.'}
                 </span>
               </div>
-              <p className="text-[10px] text-violet-700/80 dark:text-violet-400/80 leading-tight">
-                Anggota yang belum memenuhi syarat akan mendapatkan pesan penolakan informatif. Operator/Kasir tetap dapat memproses pinjaman tanpa batasan ini.
-              </p>
+              <button
+                type="button"
+                disabled={!canEditProfile}
+                onClick={() => {
+                  const current = formData.cooperative_loan_min_membership_enabled === 'true';
+                  onToggleChange?.('cooperative_loan_min_membership_enabled', current ? 'false' : 'true');
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-violet-500/40 shrink-0 ${
+                  formData.cooperative_loan_min_membership_enabled === 'true'
+                    ? 'bg-violet-600'
+                    : 'bg-slate-300 dark:bg-slate-700'
+                } ${!canEditProfile ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                aria-checked={formData.cooperative_loan_min_membership_enabled === 'true'}
+                role="switch"
+                aria-label="Aktifkan kebijakan masa keanggotaan minimum"
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+                  formData.cooperative_loan_min_membership_enabled === 'true' ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
             </div>
-          )}
+
+            {/* Input durasi minimum (hanya tampil jika aktif) */}
+            {formData.cooperative_loan_min_membership_enabled === 'true' && (
+              <div className="space-y-1.5 pl-2 border-l-2 border-violet-300 dark:border-violet-700">
+                <Label htmlFor="cooperative_loan_min_membership_months" className="text-xs font-semibold text-violet-800 dark:text-violet-300 flex items-center gap-1.5">
+                  <Clock size={12} />
+                  Durasi Minimum (Bulan)
+                </Label>
+                <div className="flex items-center gap-3">
+                  <Input
+                    type="number"
+                    id="cooperative_loan_min_membership_months"
+                    name="cooperative_loan_min_membership_months"
+                    value={formData.cooperative_loan_min_membership_months || '3'}
+                    onChange={onInputChange}
+                    disabled={!canEditProfile}
+                    min="1"
+                    max="60"
+                    placeholder="Contoh: 3"
+                    className="h-9 w-32 text-sm text-center font-bold"
+                  />
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    bulan sejak tanggal bergabung
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
         {/* ─────────────────────────────────────────────────────────────────────────── */}
 

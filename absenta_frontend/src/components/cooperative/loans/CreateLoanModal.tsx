@@ -44,6 +44,9 @@ interface CreateLoanModalProps {
   loanMinMembershipEnabled?: boolean;
   loanMinMembershipMonths?: number;
   meetsMinMembershipPolicy?: boolean | null;
+  requireSimpananPokok?: boolean;
+  hasSimpananPokok?: boolean;
+  simpananPokokAmount?: number;
 }
 
 export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
@@ -66,6 +69,9 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   loanMinMembershipEnabled,
   loanMinMembershipMonths,
   meetsMinMembershipPolicy,
+  requireSimpananPokok = true,
+  hasSimpananPokok = false,
+  simpananPokokAmount = 0,
 }) => {
   if (!isOpen) return null;
 
@@ -114,10 +120,12 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Personal Mode: Info Pemohon */}
             {isStudent && (
-              <div className={`p-3 border rounded-xl space-y-2 ${
-                loanMinMembershipEnabled && meetsMinMembershipPolicy === false
-                  ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/50'
-                  : 'bg-indigo-50/70 dark:bg-indigo-950/25 border-indigo-100/80 dark:border-indigo-900/40'
+              <div className={`p-3.5 border rounded-xl space-y-2.5 ${
+                (requireSimpananPokok && !hasSimpananPokok)
+                  ? 'bg-rose-50/70 dark:bg-rose-950/25 border-rose-200/80 dark:border-rose-800/60'
+                  : (loanMinMembershipEnabled && meetsMinMembershipPolicy === false)
+                    ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/50'
+                    : 'bg-indigo-50/70 dark:bg-indigo-950/25 border-indigo-100/80 dark:border-indigo-900/40'
               }`}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -133,34 +141,51 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
                   </span>
                 </div>
 
-                {/* Info Masa Keanggotaan (tampil jika kebijakan aktif) */}
+                {/* Layer 1: Info Simpanan Pokok */}
+                {requireSimpananPokok && (
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Simpanan Pokok:
+                    </span>
+                    {hasSimpananPokok ? (
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+                        ✓ Lunas (Rp {simpananPokokAmount.toLocaleString('id-ID')})
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-700">
+                        ✕ Belum Setor
+                      </span>
+                    )}
+                  </div>
+                )}
+                {requireSimpananPokok && !hasSimpananPokok && (
+                  <p className="text-[10px] text-rose-700/90 dark:text-rose-400/90 leading-tight">
+                    Wajib menyetorkan Simpanan Pokok terlebih dahulu sebelum berhak mengajukan pinjaman koperasi.
+                  </p>
+                )}
+
+                {/* Layer 2: Info Masa Keanggotaan (tampil jika kebijakan aktif) */}
                 {loanMinMembershipEnabled && membershipMonthsElapsed !== null && membershipMonthsElapsed !== undefined && (
-                  <div className={`flex items-start gap-2 pt-2 border-t ${
-                    meetsMinMembershipPolicy === false
-                      ? 'border-amber-200/60 dark:border-amber-800/40'
-                      : 'border-indigo-100/60 dark:border-indigo-900/40'
-                  }`}>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between flex-wrap gap-1">
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                          Masa keanggotaan: <strong className="text-slate-700 dark:text-slate-200">{membershipMonthsElapsed} bulan</strong>
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        Masa Keanggotaan: <strong className="text-slate-700 dark:text-slate-200">{membershipMonthsElapsed} bulan</strong>
+                      </span>
+                      {meetsMinMembershipPolicy === false ? (
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
+                          ⚠ Kurang {(loanMinMembershipMonths || 0) - membershipMonthsElapsed} bln
                         </span>
-                        {meetsMinMembershipPolicy === false ? (
-                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
-                            ⚠ Belum memenuhi syarat
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
-                            ✓ Memenuhi syarat
-                          </span>
-                        )}
-                      </div>
-                      {meetsMinMembershipPolicy === false && (
-                        <p className="text-[10px] text-amber-700/90 dark:text-amber-400/90 mt-0.5 leading-tight">
-                          Minimal {loanMinMembershipMonths} bulan diperlukan. Kurang {(loanMinMembershipMonths || 0) - membershipMonthsElapsed} bulan lagi.
-                        </p>
+                      ) : (
+                        <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+                          ✓ Memenuhi Syarat
+                        </span>
                       )}
                     </div>
+                    {meetsMinMembershipPolicy === false && (
+                      <p className="text-[10px] text-amber-700/90 dark:text-amber-400/90 leading-tight">
+                        Kebijakan koperasi mewajibkan minimal {loanMinMembershipMonths} bulan masa keanggotaan aktif.
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -370,22 +395,36 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
             >
               Batal
             </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              size="sm"
-              className={`w-full sm:w-auto font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md ${
-                isOperatorMode && (formData.autoApprove ?? true)
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10'
-                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/10'
-              }`}
-            >
-              {isSubmitting 
-                ? 'Memproses...' 
-                : isOperatorMode 
-                  ? ((formData.autoApprove ?? true) ? 'Setujui & Terbitkan Pinjaman' : 'Simpan Pengajuan (Pending)')
-                  : 'Kirim Pengajuan'}
-            </Button>
+            {(() => {
+              const isBlockedByPokok = isStudent && requireSimpananPokok && !hasSimpananPokok;
+              const isBlockedByMembership = isStudent && loanMinMembershipEnabled && meetsMinMembershipPolicy === false;
+              const isBlocked = isBlockedByPokok || isBlockedByMembership;
+
+              return (
+                <Button
+                  type="submit"
+                  disabled={isSubmitting || isBlocked}
+                  size="sm"
+                  className={`w-full sm:w-auto font-bold rounded-xl text-xs py-2.5 sm:py-2 shadow-md transition-all ${
+                    isBlocked
+                      ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-400 cursor-not-allowed shadow-none'
+                      : isOperatorMode && (formData.autoApprove ?? true)
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/10'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/10'
+                  }`}
+                >
+                  {isSubmitting 
+                    ? 'Memproses...' 
+                    : isBlockedByPokok
+                      ? 'Wajib Lunas Simpanan Pokok'
+                      : isBlockedByMembership
+                        ? 'Masa Keanggotaan Belum Cukup'
+                        : isOperatorMode 
+                          ? ((formData.autoApprove ?? true) ? 'Setujui & Terbitkan Pinjaman' : 'Simpan Pengajuan (Pending)')
+                          : 'Kirim Pengajuan'}
+                </Button>
+              );
+            })()}
           </div>
         </form>
       </div>

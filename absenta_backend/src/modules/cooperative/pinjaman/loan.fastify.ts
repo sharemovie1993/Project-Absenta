@@ -88,7 +88,36 @@ export default async function loanRoutes(fastify: any) {
 
             let effectiveInterestRate = interestRate;
 
-            // ─── Kebijakan Masa Keanggotaan Minimum (Pilar Validasi Bisnis) ─────────────────
+            // ─── LAYER 1: Validasi Kewajiban Simpanan Pokok ────────────────────────────────
+            // Syarat mutlak koperasi: anggota wajib telah menyetor Simpanan Pokok (> 0)
+            const requireSimpananPokokCfg = await prisma.config.findFirst({
+                where: { tenant_id: tenantId, key: 'cooperative_loan_require_simpanan_pokok' }
+            });
+            const isRequireSimpananPokok = (requireSimpananPokokCfg?.value ?? 'true') !== 'false';
+
+            if (isRequireSimpananPokok && !isOperator) {
+                const pokokSaving = await prisma.saving.findFirst({
+                    where: {
+                        memberId,
+                        category: { code: 'POKOK' }
+                    }
+                });
+                const pokokAmount = Number(pokokSaving?.amount || 0);
+
+                if (pokokAmount <= 0) {
+                    return reply.status(400).send({
+                        success: false,
+                        code: 'SIMPANAN_POKOK_REQUIRED',
+                        message: 'Pengajuan pinjaman belum dapat diproses: Anda belum melunasi Simpanan Pokok koperasi. Silakan lakukan setoran Simpanan Pokok terlebih dahulu sebelum mengajukan pinjaman.',
+                        data: {
+                            hasSimpananPokok: false,
+                            pokokAmount
+                        }
+                    });
+                }
+            }
+
+            // ─── LAYER 2: Kebijakan Masa Keanggotaan Minimum (Pilar Validasi Bisnis) ───────
             // Hanya berlaku untuk pengajuan personal (bukan operator/kasir yang input atas nama anggota)
             // Operator (kasir/bendahara) tetap bisa memproses pinjaman tanpa batasan ini.
             const minMembershipEnabledCfg = await prisma.config.findFirst({

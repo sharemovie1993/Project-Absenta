@@ -200,10 +200,19 @@ export class MemberService {
                 id: true,
                 memberNo: true,
                 status: true,
+                joinDate: true,
                 createdAt: true,
                 User: {
                     select: { id: true, email: true, full_name: true }
                 },
+                savings: {
+                    select: {
+                        amount: true,
+                        category: {
+                            select: { code: true, name: true }
+                        }
+                    }
+                }
             },
         });
         return member ?? null;

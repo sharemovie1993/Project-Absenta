@@ -179,7 +179,16 @@ const Loans: React.FC = React.memo(() => {
     }
   }, [coopSettingsQuery.data]);
 
-  // ─── Hitung Kelayakan Masa Keanggotaan ─────────────────────────────────────
+  // ─── LAYER 1: Hitung Status Kelayakan Simpanan Pokok ─────────────────────
+  const requireSimpananPokok = (coopSettingsQuery.data?.cooperative_loan_require_simpanan_pokok ?? 'true') !== 'false';
+  const simpananPokokAmount = useMemo(() => {
+    if (!currentMember?.savings || !Array.isArray(currentMember.savings)) return 0;
+    const pokok = currentMember.savings.find((s: any) => s.category?.code === 'POKOK');
+    return Number(pokok?.amount || 0);
+  }, [currentMember]);
+  const hasSimpananPokok = simpananPokokAmount > 0;
+
+  // ─── LAYER 2: Hitung Kelayakan Masa Keanggotaan ───────────────────────────
   const loanMinMembershipEnabled = coopSettingsQuery.data?.cooperative_loan_min_membership_enabled === 'true';
   const loanMinMembershipMonths = parseInt(coopSettingsQuery.data?.cooperative_loan_min_membership_months || '3', 10);
 
@@ -376,10 +385,19 @@ const Loans: React.FC = React.memo(() => {
         toast.error('Akun Anda belum terdaftar sebagai anggota aktif koperasi.');
         return;
       }
-      // Cek kebijakan masa keanggotaan minimum
+      // ─── Layer 1: Cek Pelunasan Simpanan Pokok ─────────────────────────
+      if (requireSimpananPokok && !hasSimpananPokok) {
+        toast.error(
+          'Belum memenuhi syarat: Anda belum melunasi Simpanan Pokok koperasi. Pelunasan simpanan pokok adalah syarat utama keanggotaan aktif sebelum dapat mengajukan pinjaman.',
+          { duration: 6000 }
+        );
+        return;
+      }
+
+      // ─── Layer 2: Cek kebijakan masa keanggotaan minimum ──────────────
       if (loanMinMembershipEnabled && meetsMinMembershipPolicy === false) {
         toast.error(
-          `Belum memenuhi syarat. Pinjaman dapat diajukan setelah ${loanMinMembershipMonths} bulan menjadi anggota. Masa keanggotaan Anda: ${membershipMonthsElapsed} bulan.`,
+          `Belum memenuhi syarat: Pinjaman hanya dapat diajukan setelah ${loanMinMembershipMonths} bulan menjadi anggota. Masa keanggotaan Anda saat ini: ${membershipMonthsElapsed} bulan.`,
           { duration: 6000 }
         );
         return;
@@ -392,7 +410,7 @@ const Loans: React.FC = React.memo(() => {
       autoApprove: isOperatorMode,
     }));
     setIsModalOpen(true);
-  }, [isStudent, memberStatusQuery.isLoading, isPersonalMemberActive, myMemberId, defaultInterestRate, isOperatorMode, loanMinMembershipEnabled, meetsMinMembershipPolicy, loanMinMembershipMonths, membershipMonthsElapsed]);
+  }, [isStudent, memberStatusQuery.isLoading, isPersonalMemberActive, myMemberId, defaultInterestRate, isOperatorMode, requireSimpananPokok, hasSimpananPokok, loanMinMembershipEnabled, meetsMinMembershipPolicy, loanMinMembershipMonths, membershipMonthsElapsed]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
@@ -904,6 +922,9 @@ const Loans: React.FC = React.memo(() => {
             loanMinMembershipEnabled={loanMinMembershipEnabled}
             loanMinMembershipMonths={loanMinMembershipMonths}
             meetsMinMembershipPolicy={meetsMinMembershipPolicy}
+            requireSimpananPokok={requireSimpananPokok}
+            hasSimpananPokok={hasSimpananPokok}
+            simpananPokokAmount={simpananPokokAmount}
           />
         )}
 
