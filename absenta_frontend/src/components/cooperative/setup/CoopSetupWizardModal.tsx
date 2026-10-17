@@ -385,7 +385,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
   };
 
   return (
-    <div className="fixed inset-0 z-[70] overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[10000] overflow-y-auto bg-slate-900/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-5xl h-[94vh] sm:h-auto sm:max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
         
         {/* Header - Compact di HP */}
@@ -977,63 +977,81 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
 
           {/* ================= STEP 3: SALDO AWAL NERACA (DOUBLE ENTRY) ================= */}
           {currentStep === 3 && (
-            <div className="space-y-6 animate-in fade-in">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-3.5 sm:space-y-5 animate-in fade-in">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Langkah 3: Input Saldo Awal Neraca (Strict Double-Entry Balanced)
+                  <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                    Langkah 3: Input Saldo Awal Neraca (Double-Entry Balanced)
                   </h3>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                    Masukkan saldo awal buku besar per tanggal cut-off ({cutoffDate}). Total Debit wajib sama dengan Total Kredit.
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Saldo buku besar per tanggal cut-off ({cutoffDate}). Total Debit wajib seimbang dengan Total Kredit.
                   </p>
                 </div>
               </div>
 
-              {/* Real-time Balanced Status Card */}
-              <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
-                isBalanced
+              {/* Real-time Balanced Status Card - Edukatif & Tepat Keadaan */}
+              <div className={`p-3 sm:p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs ${
+                totalDebit === 0 && totalCredit === 0
+                  ? 'bg-slate-50 border-slate-200 text-slate-800 dark:bg-slate-800/40 dark:border-slate-700 dark:text-slate-200'
+                  : isBalanced
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-300'
                   : 'bg-rose-50 border-rose-200 text-rose-900 dark:bg-rose-950/20 dark:border-rose-800 dark:text-rose-300'
               }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                    isBalanced ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                    totalDebit === 0 && totalCredit === 0
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : isBalanced 
+                      ? 'bg-emerald-500 text-white shadow-2xs' 
+                      : 'bg-rose-500 text-white shadow-2xs'
                   }`}>
-                    {isBalanced ? <CheckCircle2 className="w-5 h-5" /> : <AlertTriangle className="w-5 h-5" />}
+                    {totalDebit === 0 && totalCredit === 0 ? (
+                      <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
+                    ) : isBalanced ? (
+                      <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+                    )}
                   </div>
                   <div>
                     <h4 className="text-xs font-bold uppercase tracking-wider">
-                      {isBalanced ? 'Jurnal Saldo Awal Seimbang (Balanced)' : 'Jurnal Belum Seimbang (Unbalanced)'}
+                      {totalDebit === 0 && totalCredit === 0
+                        ? 'Menunggu Pengisian Saldo Awal'
+                        : isBalanced 
+                        ? 'Jurnal Saldo Awal Seimbang (Balanced)' 
+                        : 'Jurnal Belum Seimbang (Unbalanced)'}
                     </h4>
-                    <p className="text-[11px] opacity-90">
-                      {isBalanced 
+                    <p className="text-[11px] opacity-90 leading-tight mt-0.5">
+                      {totalDebit === 0 && totalCredit === 0
+                        ? 'Silakan isi saldo kas, rekening bank, simpanan, dan modal. Debit dan Kredit harus bernilai sama.'
+                        : isBalanced 
                         ? 'Sempurna! Total Debit sama dengan Total Kredit. Saldo siap diposting ke Buku Besar.' 
                         : `Terdapat selisih Rp ${diff.toLocaleString('id-ID')}. Total Debit dan Kredit harus identik.`}
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs font-mono font-bold shrink-0">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-xs font-mono font-bold shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-slate-700/60">
+                  <div className="text-left sm:text-right">
                     <span className="text-[10px] text-slate-500 block font-sans">Total Debit</span>
-                    <span>Rp {totalDebit.toLocaleString('id-ID')}</span>
+                    <span className="text-slate-900 dark:text-white">Rp {totalDebit.toLocaleString('id-ID')}</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-slate-500 block font-sans">Total Kredit</span>
-                    <span>Rp {totalCredit.toLocaleString('id-ID')}</span>
+                    <span className="text-slate-900 dark:text-white">Rp {totalCredit.toLocaleString('id-ID')}</span>
                   </div>
                 </div>
               </div>
 
-              {/* Table Input Jurnal Saldo Awal - Touch & Mobile Scrollable */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[380px] overflow-y-auto touch-pan-x">
-                <table className="w-full text-left text-xs min-w-[500px]">
-                  <thead className="bg-slate-50 dark:bg-slate-800/60 sticky top-0 border-b border-slate-200 dark:border-slate-800">
+              {/* Table Input Jurnal Saldo Awal - Pas di Layar HP & Desktop */}
+              <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto max-h-[50vh] sm:max-h-[380px] overflow-y-auto touch-pan-x shadow-2xs">
+                <table className="w-full text-left text-xs min-w-full sm:min-w-[480px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 sticky top-0 border-b border-slate-200 dark:border-slate-700/80 z-10">
                     <tr>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-24">Kode</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-36 sm:w-44">Debit (Rp)</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-bold text-slate-700 dark:text-slate-300 w-36 sm:w-44">Kredit (Rp)</th>
+                      <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-14 sm:w-20">Kode</th>
+                      <th className="px-2 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300">Nama Akun</th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-40 text-right">Debit (Rp)</th>
+                      <th className="px-1.5 sm:px-3 py-2 font-bold text-slate-700 dark:text-slate-300 w-24 sm:w-40 text-right">Kredit (Rp)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -1042,31 +1060,31 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       if (!acc) return null;
                       return (
                         <tr key={entry.account_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                          <td className="px-4 py-2 font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
+                          <td className="px-2 sm:px-3 py-1.5 font-mono text-indigo-600 dark:text-indigo-400 font-semibold text-[11px] sm:text-xs whitespace-nowrap">
                             {acc.code}
                           </td>
-                          <td className="px-4 py-2 text-slate-800 dark:text-slate-200">
-                            <span className="font-medium">{acc.name}</span>
-                            <span className="text-[10px] text-slate-400 block">{acc.category || acc.type}</span>
+                          <td className="px-2 sm:px-3 py-1.5">
+                            <span className="font-medium text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs line-clamp-1 sm:line-clamp-none">{acc.name}</span>
+                            <span className="text-[9px] sm:text-[10px] text-slate-400 block">{acc.type}</span>
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-1.5 sm:px-3 py-1.5">
                             <input
                               type="number"
                               min="0"
                               value={entry.debit === 0 ? '' : entry.debit}
                               placeholder="0"
                               onChange={(e) => handleEntryChange(entry.account_id, 'debit', Number(e.target.value))}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                              className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
                             />
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-1.5 sm:px-3 py-1.5">
                             <input
                               type="number"
                               min="0"
                               value={entry.credit === 0 ? '' : entry.credit}
                               placeholder="0"
                               onChange={(e) => handleEntryChange(entry.account_id, 'credit', Number(e.target.value))}
-                              className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500"
+                              className="w-full px-2 py-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-right font-mono font-semibold text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 text-[11px] sm:text-xs"
                             />
                           </td>
                         </tr>
