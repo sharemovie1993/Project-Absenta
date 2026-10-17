@@ -537,28 +537,31 @@ export default React.memo(function RaporStagingPage() {
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-12 text-center">No</th>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-24">NIS / NISN</th>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 min-w-[180px]">Nama Siswa</th>
-                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-14 text-center">JK</th>
-                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 min-w-[200px]">Contoh Nilai Sumatif</th>
+                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300">Nilai Sumatif Rombel</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {previewData.sumatif_sheet_data?.map((s) => {
-                        const sampleSubject = Object.keys(s.scores || {})[0];
-                        const sampleScore = sampleSubject ? s.scores[sampleSubject] : null;
+                      {previewData.sumatif_sheet_data?.map((s: any) => {
+                        const scoredSubjects = Object.entries(s.scores || {})
+                          .filter(([_, sc]: any) => sc && (sc.rata_rata !== null || sc.nilai_akhir !== null || sc.sumatif_1 !== null))
+                          .slice(0, 4);
 
                         return (
                           <tr key={s.nis || s.nama} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                             <td className="p-2.5 text-center font-mono text-slate-500">{s.no}</td>
                             <td className="p-2.5 font-mono text-slate-500">{s.nis || s.nisn || '-'}</td>
                             <td className="p-2.5 font-semibold text-slate-800 dark:text-slate-200">{s.nama}</td>
-                            <td className="p-2.5 text-center text-slate-500">{s.jk}</td>
                             <td className="p-2.5 text-slate-600 dark:text-slate-300">
-                              {sampleSubject ? (
-                                <span className="text-[11px]">
-                                  <strong>{sampleSubject}</strong>: Sum1 ({sampleScore?.sumatif1 ?? '-'}), Sum2 ({sampleScore?.sumatif2 ?? '-'}), Rata ({sampleScore?.rataRata ?? '-'})
-                                </span>
+                              {scoredSubjects.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {scoredSubjects.map(([mapel, sc]: any) => (
+                                    <span key={mapel} className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px]">
+                                      <strong>{mapel}</strong>: {sc.rata_rata ?? sc.nilai_akhir ?? sc.sumatif_1}
+                                    </span>
+                                  ))}
+                                </div>
                               ) : (
-                                <span className="text-slate-400 italic">Tidak ada nilai</span>
+                                <span className="text-slate-400 italic">Nilai sumatif dihitung dari rata-rata asesmen</span>
                               )}
                             </td>
                           </tr>
@@ -577,27 +580,39 @@ export default React.memo(function RaporStagingPage() {
                       <tr>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-12 text-center">No</th>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 min-w-[180px]">Nama Siswa</th>
-                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300">Pratinjau Nilai Rapor & Deskripsi CP</th>
+                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300">Nilai Akhir Rapor & Capaian Kompetensi (CP)</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {previewData.cp_sheet_data?.map((s) => {
-                        const firstMapel = Object.keys(s.scores || {})[0];
-                        const mapelScore = firstMapel ? s.scores[firstMapel] : null;
+                      {previewData.cp_sheet_data?.map((s: any) => {
+                        const grades = s.mapelGrades || s.scores || {};
+                        const validGrades = Object.entries(grades).filter(
+                          ([_, g]: any) => g && (g.nilai_rapor !== null || g.capaian_kompetensi)
+                        );
 
                         return (
                           <tr key={s.nis || s.nama} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
                             <td className="p-2.5 text-center font-mono text-slate-500">{s.no}</td>
                             <td className="p-2.5 font-semibold text-slate-800 dark:text-slate-200">{s.nama}</td>
-                            <td className="p-2.5 space-y-1">
-                              {firstMapel ? (
-                                <div className="text-[11px]">
-                                  <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                                    {firstMapel}: {mapelScore?.nilaiRapor ?? '-'}
-                                  </span>
-                                  <p className="text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
-                                    {mapelScore?.capaianKompetensi || 'Belum ada deskripsi'}
-                                  </p>
+                            <td className="p-2.5 space-y-1.5">
+                              {validGrades.length > 0 ? (
+                                <div className="space-y-1.5">
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {validGrades.map(([mapel, g]: any) => (
+                                      <Badge
+                                        key={mapel}
+                                        variant="secondary"
+                                        className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60"
+                                      >
+                                        {mapel}: {g.nilai_rapor ?? '-'}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                  {validGrades[0] && (validGrades[0][1] as any).capaian_kompetensi && (
+                                    <p className="text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-2">
+                                      <strong className="text-slate-800 dark:text-slate-200 not-italic">{validGrades[0][0]}:</strong> "{(validGrades[0][1] as any).capaian_kompetensi}"
+                                    </p>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-slate-400 italic">Belum ada nilai CP</span>
@@ -611,7 +626,7 @@ export default React.memo(function RaporStagingPage() {
                 </div>
               </TabsContent>
 
-              {/* Tab 3: Absensi & Catatan */}
+              {/* Tab 3: Absensi, Ekskul & Catatan */}
               <TabsContent value="absensi" className="space-y-3">
                 <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-x-auto max-h-[450px]">
                   <table className="w-full text-left text-xs border-collapse">
@@ -620,24 +635,43 @@ export default React.memo(function RaporStagingPage() {
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-12 text-center">No</th>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 min-w-[180px]">Nama Siswa</th>
                         <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300 w-24 text-center">Kehadiran (S/I/A)</th>
-                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300">Catatan Wali Kelas</th>
+                        <th className="p-2.5 font-bold text-slate-600 dark:text-slate-300">Catatan Wali Kelas & Ekskul</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {previewData.cp_sheet_data?.map((s) => (
-                        <tr key={s.nis || s.nama} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                          <td className="p-2.5 text-center font-mono text-slate-500">{s.no}</td>
-                          <td className="p-2.5 font-semibold text-slate-800 dark:text-slate-200">{s.nama}</td>
-                          <td className="p-2.5 text-center font-mono">
-                            <span className="text-sky-600 font-bold">{s.absensi?.sakit ?? 0}</span> /{' '}
-                            <span className="text-amber-600 font-bold">{s.absensi?.izin ?? 0}</span> /{' '}
-                            <span className="text-rose-600 font-bold">{s.absensi?.alpa ?? 0}</span>
-                          </td>
-                          <td className="p-2.5 text-slate-600 dark:text-slate-300 text-[11px]">
-                            {s.catatanWalas || <span className="text-slate-400 italic">Tidak ada catatan</span>}
-                          </td>
-                        </tr>
-                      ))}
+                      {previewData.cp_sheet_data?.map((s: any) => {
+                        const kehadiran = s.kehadiran || s.absensi || {};
+                        const catatan = s.catatanWali || s.catatanWalas || '';
+                        const ekskulList = (s.ekskul || []).filter((e: any) => e.nama && e.nama !== '-');
+
+                        return (
+                          <tr key={s.nis || s.nama} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                            <td className="p-2.5 text-center font-mono text-slate-500">{s.no}</td>
+                            <td className="p-2.5 font-semibold text-slate-800 dark:text-slate-200">{s.nama}</td>
+                            <td className="p-2.5 text-center font-mono">
+                              <span className="text-sky-600 font-bold" title="Sakit">{kehadiran.sakit ?? 0}</span> /{' '}
+                              <span className="text-amber-600 font-bold" title="Izin">{kehadiran.izin ?? 0}</span> /{' '}
+                              <span className="text-rose-600 font-bold" title="Alpa">{kehadiran.alpa ?? 0}</span>
+                            </td>
+                            <td className="p-2.5 text-slate-600 dark:text-slate-300 text-[11px] space-y-1">
+                              {catatan ? (
+                                <p className="font-medium text-slate-700 dark:text-slate-200">"{catatan}"</p>
+                              ) : (
+                                <span className="text-slate-400 italic">Tidak ada catatan</span>
+                              )}
+                              {ekskulList.length > 0 && (
+                                <div className="flex flex-wrap gap-1 text-[10px] text-slate-500">
+                                  {ekskulList.map((e: any, idx: number) => (
+                                    <span key={idx} className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                      {e.nama} ({e.predikat || 'Baik'})
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

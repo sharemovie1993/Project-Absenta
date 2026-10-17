@@ -429,13 +429,13 @@ export interface RaporStagingDetail extends RaporStagingItem {
     nis: string;
     nisn: string;
     nama: string;
-    jk: string;
+    jk?: string;
     scores: Record<string, {
-      sumatif1: number | null;
-      sumatif2: number | null;
-      sumatif3: number | null;
-      rataRata: number | null;
-      akhirSumatif: number | null;
+      sumatif_1?: number | null;
+      sumatif_2?: number | null;
+      sumatif_3?: number | null;
+      rata_rata?: number | null;
+      nilai_akhir?: number | null;
     }>;
   }>;
   cp_sheet_data: Array<{
@@ -443,16 +443,24 @@ export interface RaporStagingDetail extends RaporStagingItem {
     nis: string;
     nisn: string;
     nama: string;
-    scores: Record<string, {
-      nilaiRapor: number | null;
-      capaianKompetensi: string;
+    mapelGrades?: Record<string, {
+      nilai_rapor: number | null;
+      capaian_kompetensi: string;
     }>;
+    scores?: Record<string, any>;
+    kehadiran?: {
+      sakit: number;
+      izin: number;
+      alpa: number;
+    };
     absensi?: {
       sakit: number;
       izin: number;
       alpa: number;
     };
+    catatanWali?: string;
     catatanWalas?: string;
+    keputusanTransisi?: string;
     ekskul?: Array<{ nama: string; predikat: string; keterangan: string }>;
   }>;
 }
