@@ -376,8 +376,12 @@ export const raporApi = {
     const response = await api.get(`/rapor/staging/${id}`);
     return response.data;
   },
-  syncStagingToRapor: async (id: string) => {
-    const response = await api.post(`/rapor/staging/${id}/sync`, {}, { timeout: 300000 }); // 5 menit
+  checkPreSyncReadiness: async (id: string) => {
+    const response = await api.get(`/rapor/staging/${id}/pre-sync`, { timeout: 60000 });
+    return response.data;
+  },
+  syncStagingToRapor: async (id: string, options?: { autoProvisionStudents?: boolean }) => {
+    const response = await api.post(`/rapor/staging/${id}/sync`, options || {}, { timeout: 300000 }); // 5 menit
     return response.data;
   },
   deleteStagedSheet: async (id: string) => {
@@ -385,6 +389,52 @@ export const raporApi = {
     return response.data;
   },
 };
+
+export interface PreSyncAcademicSlot {
+  raw: string;
+  isReady: boolean;
+  matchedName: string | null;
+  id: string | null;
+}
+
+export interface PreSyncStudentItem {
+  nis: string;
+  nama: string;
+  nisn?: string;
+}
+
+export interface PreSyncSubjectItem {
+  raw: string;
+  matchedName: string;
+}
+
+export interface RaporPreSyncReport {
+  stagingId: string;
+  namaKelas: string;
+  tahunPelajaranNama: string;
+  semester: string;
+  academicSlots: {
+    tahunPelajaran: PreSyncAcademicSlot;
+    semester: PreSyncAcademicSlot;
+    kelas: PreSyncAcademicSlot;
+  };
+  studentSlots: {
+    totalInSheet: number;
+    matchedCount: number;
+    unmatchedCount: number;
+    matched: PreSyncStudentItem[];
+    unmatched: PreSyncStudentItem[];
+  };
+  subjectSlots: {
+    totalInSheet: number;
+    matchedCount: number;
+    unmatchedCount: number;
+    matched: PreSyncSubjectItem[];
+    unmatched: string[];
+  };
+  canSync: boolean;
+  readinessStatus: 'BLOCKED_ACADEMIC' | 'NEED_STUDENT_PROVISION' | 'READY_TO_SYNC';
+}
 
 export interface RaporStagingItem {
   id: string;

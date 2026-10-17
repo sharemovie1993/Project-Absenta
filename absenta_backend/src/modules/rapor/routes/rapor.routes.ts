@@ -30,6 +30,7 @@ export default async function raporRoutes(fastify: any) {
   fastify.post('/staging/fetch', { preHandler: [requireCapability(academicManageCaps), determineDataScope()] }, RaporStagingController.fetchAndStage);
   fastify.get('/staging', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()] }, RaporStagingController.getList);
   fastify.get('/staging/:id', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()] }, RaporStagingController.getDetail);
+  fastify.get('/staging/:id/pre-sync', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()] }, RaporStagingController.checkPreSync);
   fastify.post('/staging/:id/sync', { preHandler: [requireCapability(academicManageCaps), determineDataScope()] }, RaporStagingController.sync);
   fastify.delete('/staging/:id', { preHandler: [requireCapability(academicManageCaps), determineDataScope()] }, RaporStagingController.delete);
 }

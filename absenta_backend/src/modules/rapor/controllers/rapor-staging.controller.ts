@@ -149,10 +149,10 @@ export class RaporStagingController {
   }
 
   /**
-   * POST /api/rapor/staging/:id/sync
-   * Menyinkronkan data lembar staging ke modul produksi e-Rapor (NilaiSiswa & RaporSiswa)
+   * GET /api/rapor/staging/:id/pre-sync
+   * Melakukan verifikasi kesiapan slot akademik, siswa, dan mapel sebelum sinkronisasi
    */
-  static async sync(req: any, reply: any) {
+  static async checkPreSync(req: any, reply: any) {
     try {
       const { tenant_id } = req.user!;
       const { id } = req.params;
@@ -161,7 +161,31 @@ export class RaporStagingController {
         return reply.status(400).send({ success: false, message: 'ID sheet staging wajib disertakan' });
       }
 
-      const result = await RaporStagingService.syncStagingToRapor(tenant_id, id);
+      const report = await RaporStagingService.checkPreSyncReadiness(tenant_id, id);
+      return sendResponse(reply, 200, true, 'Pemeriksaan kesiapan slot pre-sync berhasil', report);
+    } catch (error: any) {
+      appLogger.error({ err: error }, 'RaporStagingController.checkPreSync error');
+      return sendError(reply, 500, error.message || 'Gagal memeriksa kesiapan slot', error);
+    }
+  }
+
+  /**
+   * POST /api/rapor/staging/:id/sync
+   * Menyinkronkan data lembar staging ke modul produksi e-Rapor (NilaiSiswa & RaporSiswa)
+   */
+  static async sync(req: any, reply: any) {
+    try {
+      const { tenant_id } = req.user!;
+      const { id } = req.params;
+      const { autoProvisionStudents } = req.body || {};
+
+      if (!id) {
+        return reply.status(400).send({ success: false, message: 'ID sheet staging wajib disertakan' });
+      }
+
+      const result = await RaporStagingService.syncStagingToRapor(tenant_id, id, {
+        autoProvisionStudents: Boolean(autoProvisionStudents),
+      });
 
       return sendResponse(reply, 200, true, 'Sinkronisasi ke modul e-Rapor berhasil dilakukan', result);
     } catch (error: any) {

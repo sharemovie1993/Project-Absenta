@@ -213,10 +213,192 @@ export class RaporStagingService {
   }
 
   /**
+   * ── PRE-SYNC CHECK: PEMERIKSAAN KESIAPAN SLOT ──
+   * Memvalidasi ketersediaan slot Tahun Pelajaran, Semester, Kelas, Siswa, dan Mapel
+   * sebelum sinkronisasi permanen dieksekusi ke database produksi.
+   */
+  static async checkPreSyncReadiness(tenantId: string, stagingId: string) {
+    const sheet = await prisma.raporStagingSheet.findFirst({
+      where: { id: stagingId, tenant_id: tenantId },
+    });
+
+    if (!sheet) {
+      throw new Error('Data staging tidak ditemukan');
+    }
+
+    // 1. Cek Slot Tahun Pelajaran
+    const tpRaw = sheet.tahun_pelajaran_nama;
+    const tp = await prisma.tahunPelajaran.findFirst({
+      where: {
+        tenant_id: tenantId,
+        tahun: { contains: tpRaw.split('/')[0].trim(), mode: 'insensitive' },
+      },
+      select: { id: true, tahun: true },
+    });
+
+    // 2. Cek Slot Semester
+    const semRaw = sheet.semester;
+    const sem = await prisma.semester.findFirst({
+      where: {
+        tenant_id: tenantId,
+        nama_semester: { equals: semRaw, mode: 'insensitive' },
+      },
+      select: { id: true, nama_semester: true },
+    });
+
+    // 3. Cek Slot Kelas
+    const kelasRaw = sheet.nama_kelas;
+    const kelas = await prisma.kelas.findFirst({
+      where: {
+        tenant_id: tenantId,
+        nama_kelas: { equals: kelasRaw, mode: 'insensitive' },
+      },
+      select: { id: true, nama_kelas: true, tingkat: true },
+    });
+
+    // 4. Kumpulkan Seluruh Siswa di Lembar Staging
+    const sumatifStudents = (sheet.sumatif_sheet_data as any[]) || [];
+    const cpStudents = (sheet.cp_sheet_data as any[]) || [];
+    const mergedStudents = new Map<string, { nis: string; nama: string; nisn: string }>();
+
+    for (const s of sumatifStudents) {
+      const key = (s.nis || s.nama || '').trim().toLowerCase();
+      if (key) mergedStudents.set(key, { nis: (s.nis || '').trim(), nama: (s.nama || '').trim(), nisn: (s.nisn || '').trim() });
+    }
+    for (const c of cpStudents) {
+      const key = (c.nis || c.nama || '').trim().toLowerCase();
+      if (key && !mergedStudents.has(key)) {
+        mergedStudents.set(key, { nis: (c.nis || '').trim(), nama: (c.nama || '').trim(), nisn: (c.nisn || '').trim() });
+      }
+    }
+
+    // Cek Siswa terhadap Master Siswa Tenant
+    const siswaList = await prisma.siswa.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama_siswa: true, nis: true, nisn: true },
+    });
+
+    const siswaByNis = new Set(siswaList.map((s) => s.nis?.trim()).filter(Boolean));
+    const siswaByNisn = new Set(siswaList.map((s) => s.nisn?.trim()).filter(Boolean));
+    const siswaByNama = new Set(siswaList.map((s) => s.nama_siswa?.trim().toLowerCase()).filter(Boolean));
+
+    const matchedStudents: Array<{ nis: string; nama: string; nisn?: string }> = [];
+    const unmatchedStudents: Array<{ nis: string; nama: string; nisn?: string }> = [];
+
+    for (const [, item] of mergedStudents) {
+      const isMatched =
+        (item.nis && siswaByNis.has(item.nis)) ||
+        (item.nisn && siswaByNisn.has(item.nisn)) ||
+        siswaByNama.has(item.nama.toLowerCase());
+
+      if (isMatched) {
+        matchedStudents.push(item);
+      } else {
+        unmatchedStudents.push(item);
+      }
+    }
+
+    // 5. Cek Pemetaan Mata Pelajaran
+    const mapelList = await prisma.mapel.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama_mapel: true, kode_mapel: true },
+    });
+
+    const mapelByName = new Map<string, string>();
+    for (const m of mapelList) {
+      mapelByName.set(m.nama_mapel.trim().toLowerCase(), m.nama_mapel);
+      if (m.kode_mapel) mapelByName.set(m.kode_mapel.trim().toLowerCase(), m.nama_mapel);
+    }
+
+    const mapelAliases: Record<string, string[]> = {
+      pai: ['pendidikan agama islam', 'pendidikan agama', 'pai dan budi pekerti', 'agama'],
+      pkn: ['pendidikan pancasila', 'ppkn', 'pancasila'],
+      'b. indonesia': ['bahasa indonesia', 'b.indo', 'indonesia'],
+      pjok: ['pendidikan jasmani', 'penjas', 'olahraga'],
+      sejarah: ['sejarah indonesia'],
+      'seni budaya': ['seni musik', 'seni rupa', 'seni'],
+      'b. sunda': ['bahasa sunda', 'mulok bahasa sunda'],
+      matematika: ['mtk', 'matematika umum'],
+      mtk: ['matematika', 'matematika umum'],
+      'b. inggris': ['bahasa inggris', 'inggris'],
+      informatika: ['tik', 'komputer'],
+      'projek ipas': ['ipas', 'ipa dan ips', 'proyek ipas'],
+      ddpk: ['dasar-dasar program keahlian', 'dasar keahlian'],
+      'kons. keahlian': ['konsentrasi keahlian'],
+      kk: ['konsentrasi keahlian'],
+      pkk: ['produk kreatif dan kewirausahaan', 'pkwu'],
+    };
+
+    const resolveMapelName = (name: string): string | null => {
+      const clean = name.trim().toLowerCase();
+      if (mapelByName.has(clean)) return mapelByName.get(clean)!;
+      for (const [key, aliases] of Object.entries(mapelAliases)) {
+        if (clean === key || aliases.includes(clean)) {
+          for (const alias of [key, ...aliases]) {
+            if (mapelByName.has(alias)) return mapelByName.get(alias)!;
+          }
+        }
+      }
+      return null;
+    };
+
+    const detectedSubjects: string[] = (sheet.sync_logs as any)?.detectedSubjects || [];
+    const matchedSubjects: Array<{ raw: string; matchedName: string }> = [];
+    const unmatchedSubjects: string[] = [];
+
+    for (const sub of detectedSubjects) {
+      const matched = resolveMapelName(sub);
+      if (matched) {
+        matchedSubjects.push({ raw: sub, matchedName: matched });
+      } else {
+        unmatchedSubjects.push(sub);
+      }
+    }
+
+    const canSync = !!tp && !!sem && !!kelas;
+
+    return {
+      stagingId,
+      namaKelas: sheet.nama_kelas,
+      tahunPelajaranNama: sheet.tahun_pelajaran_nama,
+      semester: sheet.semester,
+      academicSlots: {
+        tahunPelajaran: { raw: tpRaw, isReady: !!tp, matchedName: tp?.tahun || null, id: tp?.id || null },
+        semester: { raw: semRaw, isReady: !!sem, matchedName: sem?.nama_semester || null, id: sem?.id || null },
+        kelas: { raw: kelasRaw, isReady: !!kelas, matchedName: kelas?.nama_kelas || null, id: kelas?.id || null },
+      },
+      studentSlots: {
+        totalInSheet: mergedStudents.size,
+        matchedCount: matchedStudents.length,
+        unmatchedCount: unmatchedStudents.length,
+        matched: matchedStudents,
+        unmatched: unmatchedStudents,
+      },
+      subjectSlots: {
+        totalInSheet: detectedSubjects.length,
+        matchedCount: matchedSubjects.length,
+        unmatchedCount: unmatchedSubjects.length,
+        matched: matchedSubjects,
+        unmatched: unmatchedSubjects,
+      },
+      canSync,
+      readinessStatus: !canSync
+        ? 'BLOCKED_ACADEMIC'
+        : unmatchedStudents.length > 0
+        ? 'NEED_STUDENT_PROVISION'
+        : 'READY_TO_SYNC',
+    };
+  }
+
+  /**
    * ── SINKRONISASI CERDAS KE MODUL RESMI E-RAPOR ──
    * Memindahkan data dari staging ke tabel produksi `NilaiSiswa` dan `RaporSiswa`.
    */
-  static async syncStagingToRapor(tenantId: string, stagingId: string) {
+  static async syncStagingToRapor(
+    tenantId: string,
+    stagingId: string,
+    options?: { autoProvisionStudents?: boolean }
+  ) {
     const sheet = await prisma.raporStagingSheet.findFirst({
       where: { id: stagingId, tenant_id: tenantId },
     });
@@ -337,6 +519,7 @@ export class RaporStagingService {
 
     let totalNilaiSynced = 0;
     let totalRaporSynced = 0;
+    let autoProvisionedCount = 0;
     const unmappedStudents: string[] = [];
     const unmappedSubjects: Set<string> = new Set();
 
@@ -365,6 +548,53 @@ export class RaporStagingService {
         (item.nisn && siswaByNisn.get(item.nisn)) ||
         siswaByNama.get(item.nama.trim().toLowerCase()) ||
         null;
+
+      // Auto-Provisioning jika opsi diaktifkan dan siswa belum terdaftar
+      if (!siswaId && options?.autoProvisionStudents) {
+        try {
+          const autoNis = item.nis || `AUTO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          const createdSiswa = await prisma.siswa.create({
+            data: {
+              tenant_id: tenantId,
+              nis: autoNis,
+              nisn: item.nisn || null,
+              nama_siswa: item.nama.trim(),
+              jenis_kelamin: 'L', // default L
+            },
+          });
+          siswaId = createdSiswa.id;
+          autoProvisionedCount++;
+
+          // Tautkan juga riwayat kelas ke SiswaAkademik
+          await prisma.siswaAkademik.upsert({
+            where: {
+              siswa_id_tahun_pelajaran_id_semester_id: {
+                siswa_id: siswaId,
+                tahun_pelajaran_id: tpId,
+                semester_id: semId,
+              },
+            },
+            create: {
+              siswa_id: siswaId,
+              kelas_id: kelasId,
+              tahun_pelajaran_id: tpId,
+              semester_id: semId,
+              status: 'AKTIF',
+            },
+            update: {
+              kelas_id: kelasId,
+              status: 'AKTIF',
+            },
+          });
+
+          // Daftarkan ke lookup map lokal
+          if (item.nis) siswaByNis.set(item.nis.trim(), siswaId);
+          if (item.nisn) siswaByNisn.set(item.nisn.trim(), siswaId);
+          siswaByNama.set(item.nama.trim().toLowerCase(), siswaId);
+        } catch (provErr) {
+          appLogger.error({ err: provErr, student: item }, 'Gagal auto-provision siswa baru');
+        }
+      }
 
       if (!siswaId) {
         unmappedStudents.push(`${item.nama} (NIS: ${item.nis || '-'})`);
@@ -483,6 +713,7 @@ export class RaporStagingService {
         sync_logs: {
           totalNilaiSynced,
           totalRaporSynced,
+          autoProvisionedCount,
           unmappedStudents,
           unmappedSubjects: Array.from(unmappedSubjects),
           syncedAt: new Date().toISOString(),
@@ -494,6 +725,7 @@ export class RaporStagingService {
       success: true,
       totalNilaiSynced,
       totalRaporSynced,
+      autoProvisionedCount,
       unmappedStudents,
       unmappedSubjects: Array.from(unmappedSubjects),
     };

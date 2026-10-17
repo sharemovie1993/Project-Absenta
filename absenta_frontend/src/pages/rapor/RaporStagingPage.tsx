@@ -31,7 +31,7 @@ import { Loader } from '@/components/ui/Loader';
 import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/utils/date.utils';
-import { raporApi, RaporStagingItem, RaporStagingDetail } from '@/api/rapor.api';
+import { raporApi, RaporStagingItem, RaporStagingDetail, RaporPreSyncReport } from '@/api/rapor.api';
 import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { useConfirm } from '@/providers/ConfirmProvider';
 
@@ -45,6 +45,12 @@ const RaporStagingFetchModal = lazy(() =>
 const RaporStagingDetailModal = lazy(() =>
   import('@/components/rapor/staging/RaporStagingDetailModal').then((m) => ({
     default: m.RaporStagingDetailModal,
+  }))
+);
+
+const RaporStagingPreSyncModal = lazy(() =>
+  import('@/components/rapor/staging/RaporStagingPreSyncModal').then((m) => ({
+    default: m.RaporStagingPreSyncModal,
   }))
 );
 
@@ -86,6 +92,7 @@ export default React.memo(function RaporStagingPage() {
   // Modals State
   const [isFetchModalOpen, setIsFetchModalOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [preSyncTargetId, setPreSyncTargetId] = useState<string | null>(null);
 
   // ── Query: Daftar Staging Sheets ──
   const { data: sheets = [], isLoading } = useQuery<RaporStagingItem[]>({
@@ -105,6 +112,17 @@ export default React.memo(function RaporStagingPage() {
       return res?.data as RaporStagingDetail;
     },
     enabled: !!previewId,
+  });
+
+  // ── Query: Laporan Kesiapan Pre-Sync Slot ──
+  const { data: preSyncReport, isLoading: isLoadingPreSync } = useQuery<RaporPreSyncReport>({
+    queryKey: ['rapor-staging-pre-sync', preSyncTargetId],
+    queryFn: async () => {
+      if (!preSyncTargetId) throw new Error('Target pre-sync belum dipilih');
+      const res = await raporApi.checkPreSyncReadiness(preSyncTargetId);
+      return res?.data as RaporPreSyncReport;
+    },
+    enabled: !!preSyncTargetId,
   });
 
   // ── Mutation: Fetch & Stage Sheets ──
@@ -144,19 +162,23 @@ export default React.memo(function RaporStagingPage() {
 
   // ── Mutation: Sync Staging ke e-Rapor ──
   const syncMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return await raporApi.syncStagingToRapor(id);
+    mutationFn: async ({ id, autoProvisionStudents }: { id: string; autoProvisionStudents?: boolean }) => {
+      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents });
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
       queryClient.invalidateQueries({ queryKey: ['school-teacher-monitoring'] });
-      const { totalNilaiSynced, totalRaporSynced, unmappedStudents } = res?.data || {};
+      setPreSyncTargetId(null);
+      const { totalNilaiSynced, totalRaporSynced, autoProvisionedCount, unmappedStudents } = res?.data || {};
 
-      let msg = `Sinkronisasi berhasil! ${totalNilaiSynced || 0} nilai & ${totalRaporSynced || 0} rapor siswa diperbarui.`;
-      if ((unmappedStudents?.length || 0) > 0) {
-        msg += ` (${unmappedStudents.length} siswa belum terdaftar di platform)`;
+      let msg = `Sinkronisasi berhasil! ${totalNilaiSynced || 0} nilai & ${totalRaporSynced || 0} rapor diperbarui.`;
+      if ((autoProvisionedCount || 0) > 0) {
+        msg += ` (${autoProvisionedCount} siswa baru otomatis didaftarkan)`;
       }
-      toast.success(msg);
+      if ((unmappedStudents?.length || 0) > 0) {
+        msg += ` (${unmappedStudents.length} siswa dilewati)`;
+      }
+      toast.success(msg, { duration: 6000 });
     },
     onError: (err: unknown) => {
       const errorMsg =
@@ -209,11 +231,20 @@ export default React.memo(function RaporStagingPage() {
     setPreviewId(null);
   }, []);
 
-  const handleTriggerSync = useCallback(
-    (id: string) => {
-      syncMutation.mutate(id);
+  const handleTriggerSync = useCallback((id: string) => {
+    setPreSyncTargetId(id);
+  }, []);
+
+  const handleClosePreSync = useCallback(() => {
+    setPreSyncTargetId(null);
+  }, []);
+
+  const handleConfirmPreSync = useCallback(
+    (autoProvision: boolean) => {
+      if (!preSyncTargetId) return;
+      syncMutation.mutate({ id: preSyncTargetId, autoProvisionStudents: autoProvision });
     },
-    [syncMutation]
+    [preSyncTargetId, syncMutation]
   );
 
   const handleDeleteSheet = useCallback(
@@ -700,6 +731,20 @@ export default React.memo(function RaporStagingPage() {
             previewData={previewData}
             isLoading={isLoadingPreview}
             onSync={handleTriggerSync}
+          />
+        )}
+      </Suspense>
+
+      {/* ── MODAL 3: PEMERIKSAAN KESIAPAN SLOT (PRE-SYNC) ── */}
+      <Suspense fallback={<div className="p-4 text-center"><Loader /></div>}>
+        {preSyncTargetId && (
+          <RaporStagingPreSyncModal
+            isOpen={!!preSyncTargetId}
+            onClose={handleClosePreSync}
+            report={preSyncReport || null}
+            isLoading={isLoadingPreSync}
+            onConfirmSync={handleConfirmPreSync}
+            isSyncing={syncMutation.isPending}
           />
         )}
       </Suspense>
