@@ -122,11 +122,27 @@ export class GoogleSheetRaporParserService {
    * Ekstraksi Spreadsheet ID dari beragam format link Google Docs/Drive
    */
   static extractSpreadsheetId(url: string): string {
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
-    if (!match) {
-      throw new Error('Format link Google Sheet tidak valid. Pastikan menyertakan ID spreadsheet.');
+    const trimmed = url.trim();
+
+    // Deteksi jika pengguna secara tidak sengaja memasukkan link Google Drive Folder
+    if (trimmed.includes('/folders/') || trimmed.includes('/drive/folders/')) {
+      throw new Error(
+        'Tautan yang dimasukkan adalah folder Google Drive, bukan berkas Google Sheet per kelas. Silakan buka folder tersebut di peramban, buka salah satu berkas rapor kelas, lalu salin tautan berkasnya (contoh: https://docs.google.com/spreadsheets/d/.../edit).'
+      );
     }
-    return match[1];
+
+    // Pola 1: /spreadsheets/d/ID atau /file/d/ID atau /d/ID
+    const match = trimmed.match(/\/(?:spreadsheets|file)\/d\/([a-zA-Z0-9_-]{25,})/) || trimmed.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+    if (match) {
+      return match[1];
+    }
+
+    // Pola 2: Jika pengguna langsung menempel Spreadsheet ID murni
+    if (/^[a-zA-Z0-9_-]{25,80}$/.test(trimmed)) {
+      return trimmed;
+    }
+
+    throw new Error('Format tautan Google Sheet tidak valid. Pastikan menyertakan tautan Google Sheet kelas (https://docs.google.com/spreadsheets/d/.../edit).');
   }
 
   /**
@@ -137,12 +153,22 @@ export class GoogleSheetRaporParserService {
     try {
       const res = await axios.get<string>(htmlUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
         },
+        maxRedirects: 5,
         timeout: 15000,
       });
 
       const html = res.data;
+
+      // Cek jika dialihkan ke halaman login akun Google (Restricted access)
+      if (typeof html === 'string' && (html.includes('ServiceLogin') || html.includes('accounts.google.com/signin'))) {
+        throw new Error(
+          'Akses berkas Google Sheet ini masih dibatasi (Privat). Silakan buka file tersebut di Google Drive, klik menu "Bagikan / Share", lalu ubah akses umum menjadi "Siapa saja yang memiliki link" (Anyone with the link can view).'
+        );
+      }
+
       const re = /items\.push\(\{name:\s*"([^"]+)",\s*pageUrl:[^}]*gid:\s*"([0-9]+)"/g;
       let m: RegExpExecArray | null;
       const tabs: Array<{ name: string; gid: string }> = [];
@@ -152,17 +178,26 @@ export class GoogleSheetRaporParserService {
       }
 
       if (tabs.length === 0) {
-        // Fallback: cari tautan gid di anchor tag
+        // Fallback: cari tautan gid di anchor tag atau tab list htmlview
         const re2 = /gid=([0-9]+)[^>]*>([^<]+)<\/a>/g;
         while ((m = re2.exec(html)) !== null) {
           tabs.push({ name: m[2].trim(), gid: m[1] });
         }
       }
 
+      if (tabs.length === 0) {
+        throw new Error(
+          'Tidak dapat membaca daftar sheet/tab di berkas Google Sheet ini. Pastikan akses Google Sheet disetel ke "Siapa saja yang memiliki link dapat melihat".'
+        );
+      }
+
       return tabs;
     } catch (err: any) {
       appLogger.error({ err }, `Gagal memuat htmlview Google Sheet ${spreadsheetId}`);
-      throw new Error(`Gagal membuka dokumen Google Sheet: ${err.message || 'Periksa apakah akses disetel publik (Anyone with link can view)'}`);
+      if (err.message && err.message.includes('Akses berkas Google Sheet ini masih dibatasi')) {
+        throw err;
+      }
+      throw new Error(`Gagal membuka dokumen Google Sheet: ${err.message || 'Periksa apakah akses disetel publik (Anyone with the link can view)'}`);
     }
   }
 

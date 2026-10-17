@@ -84,15 +84,19 @@ export default React.memo(function RaporStagingPage() {
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
-      setIsFetchModalOpen(false);
-      setUrlInput('');
       const results = res.data?.results || [];
       const errors = res.data?.errors || [];
+
       if (results.length > 0) {
+        setIsFetchModalOpen(false);
+        setUrlInput('');
         toast.success(`Berhasil memproses ${results.length} Google Sheet kelas!`);
       }
+
       if (errors.length > 0) {
-        toast.error(`Ada ${errors.length} tautan yang gagal diproses. Cek format link.`);
+        errors.forEach((errItem: { url: string; error: string }) => {
+          toast.error(errItem.error, { duration: 9000 });
+        });
       }
     },
     onError: (err: any) => {
@@ -424,16 +428,19 @@ export default React.memo(function RaporStagingPage() {
         description="Salin dan tempel tautan Google Sheet rapor kelas. Anda dapat memasukkan banyak tautan sekaligus (satu tautan per baris)."
       >
         <form onSubmit={handleFetchSubmit} className="space-y-4 p-6 pt-2">
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-              Tautan Google Sheet (Satu baris per link kelas)
+              Tautan Berkas Google Sheet Kelas (Satu baris per tautan)
             </label>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              Gunakan tautan berkas per kelas (format: <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px]">https://docs.google.com/spreadsheets/d/.../edit</code>). Jika Anda memiliki Folder Google Drive, buka folder tersebut lalu salin tautan berkas sheet kelas di dalamnya.
+            </p>
             <Textarea
               rows={5}
               required
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/1R6-4FyKNiIWwV1sOQ_7ZJYOYj59ccLKIAQdlM0AVfiA/edit&#10;https://docs.google.com/spreadsheets/d/1.../edit"
+              placeholder="https://docs.google.com/spreadsheets/d/1R6-4FyKNiIWwV1sOQ_7ZJYOYj59ccLKIAQdlM0AVfiA/edit&#10;https://docs.google.com/spreadsheets/d/.../edit"
               className="text-xs font-mono rounded-xl resize-none"
             />
           </div>
