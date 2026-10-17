@@ -3,9 +3,7 @@ import { z } from 'zod';
 
 // === 1. Pinjaman (Loans) ===
 export const createLoanSchema = z.object({
-  memberId: z.string({
-    required_error: 'memberId wajib diisi'
-  }).uuid({ message: 'memberId harus berupa UUID yang valid' }),
+  memberId: z.string().uuid({ message: 'memberId harus berupa UUID yang valid' }).optional().or(z.literal('')),
   amount: z.coerce.number({
     invalid_type_error: 'amount harus berupa angka'
   }).min(1, 'Jumlah pinjaman minimal Rp 1'),

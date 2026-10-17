@@ -128,23 +128,28 @@ const Loans: React.FC = React.memo(() => {
   // Gating Logic menggunakan useModuleAccess (Pilar Lisensi Hardening)
   const { isLocked } = useModuleAccess('KOPERASI');
 
-  // Member Status query
+  // Member Status query (selalu cek profil keanggotaan user yang sedang login untuk pengajuan personal)
   const memberStatusQuery = useQuery({
-    queryKey: ['koperasi-member-status-me'],
+    queryKey: ['koperasi-member-status-me', user?.id],
     queryFn: async () => {
-      if (isOperatorMode) return { status: 'member' as const, id: '' };
-      const res = await api.get('/cooperative/members/me');
-      const data = res?.data?.data;
-      if (data && data.status === 'ACTIVE') {
-        return { status: 'member' as const, id: data.id as string };
+      try {
+        const res = await api.get('/cooperative/members/me');
+        const data = res?.data?.data;
+        if (data && data.status === 'ACTIVE') {
+          return { status: 'member' as const, id: data.id as string, member: data };
+        }
+        return { status: 'non-member' as const, id: '', member: null };
+      } catch {
+        return { status: 'non-member' as const, id: '', member: null };
       }
-      return { status: 'non-member' as const, id: '' };
     },
     staleTime: 5 * 60 * 1000,
   });
 
+  const currentMember = memberStatusQuery.data?.member || null;
+  const myMemberId = memberStatusQuery.data?.id || '';
+  const isPersonalMemberActive = memberStatusQuery.data?.status === 'member';
   const memberStatus = isOperatorMode ? 'member' : (memberStatusQuery.data?.status || (memberStatusQuery.isLoading ? 'loading' : 'non-member'));
-  const myMemberId = isOperatorMode ? '' : (memberStatusQuery.data?.id || '');
 
   useEffect(() => {
     if (isStudent && myMemberId) {
@@ -341,18 +346,24 @@ const Loans: React.FC = React.memo(() => {
   }, [confirm, changeLoanStatusMutation, loans]);
 
   const handleOpenModal = useCallback(() => {
-    if (isStudent && memberStatus !== 'member') {
-      toast.error('Anda belum terdaftar sebagai anggota koperasi.');
-      return;
+    if (isStudent) {
+      if (memberStatusQuery.isLoading) {
+        toast.info('Sedang memeriksa data keanggotaan...');
+        return;
+      }
+      if (!isPersonalMemberActive && !myMemberId) {
+        toast.error('Akun Anda belum terdaftar sebagai anggota aktif koperasi.');
+        return;
+      }
     }
     setFormData(prev => ({
       ...prev,
-      memberId: isStudent && myMemberId ? myMemberId : prev.memberId,
+      memberId: isStudent ? (myMemberId || '') : '',
       interestRate: defaultInterestRate,
       autoApprove: isOperatorMode,
     }));
     setIsModalOpen(true);
-  }, [isStudent, isOperatorMode, memberStatus, myMemberId, defaultInterestRate]);
+  }, [isStudent, memberStatusQuery.isLoading, isPersonalMemberActive, myMemberId, defaultInterestRate, isOperatorMode]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
@@ -838,7 +849,19 @@ const Loans: React.FC = React.memo(() => {
             onFormDataChange={setFormData}
             onSubmit={(e) => {
               e.preventDefault();
-              createLoanMutation.mutate(formData);
+              const effectiveMemberId = isStudent ? (myMemberId || formData.memberId) : formData.memberId;
+              if (!effectiveMemberId || effectiveMemberId.trim() === '') {
+                if (isOperatorMode) {
+                  toast.error('Silakan pilih anggota koperasi terlebih dahulu.');
+                } else {
+                  toast.error('Akun keanggotaan koperasi Anda tidak ditemukan atau belum aktif.');
+                }
+                return;
+              }
+              createLoanMutation.mutate({
+                ...formData,
+                memberId: effectiveMemberId
+              });
             }}
             loading={createLoanMutation.isPending}
             submitLoading={createLoanMutation.isPending}
@@ -847,6 +870,7 @@ const Loans: React.FC = React.memo(() => {
             members={members}
             loadingMembers={loadingMembers}
             studentMetrics={studentMetrics}
+            currentMember={currentMember}
           />
         )}
 

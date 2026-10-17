@@ -63,13 +63,29 @@ export default async function loanRoutes(fastify: any) {
             const tenantId = getTenantId(req);
             const idempotencyKey = (req.headers['idempotency-key'] || req.headers['x-idempotency-key'] || req.body?.idempotencyKey) as string | undefined;
             const parsed = createLoanSchema.parse(req.body);
-            const { memberId, amount, interestRate, duration, autoApprove, notes } = parsed;
+            let { memberId, amount, interestRate, duration, autoApprove, notes } = parsed;
             
             // Security check: regular member can only apply for their own member account
             const user = req.user;
             const authResult = await authorizationService.isUserAuthorized(String(user.id), ['cooperative.loans.approve', 'cooperative.loans.repay'], { user });
             const isOperator = authResult.allowed || user?.role?.name?.toUpperCase() === 'SUPERADMIN';
             
+            // Auto-resolve memberId jika tidak dikirim atau string kosong (pengajuan personal)
+            if (!memberId || memberId.trim() === '') {
+                const selfMember = await prisma.member.findFirst({
+                    where: { tenantId, userId: user.id }
+                });
+                if (!selfMember) {
+                    return reply.status(400).send({ 
+                        success: false, 
+                        message: isOperator 
+                            ? 'Silakan pilih anggota koperasi terlebih dahulu.' 
+                            : 'Akun keanggotaan koperasi Anda tidak ditemukan atau belum aktif.' 
+                    });
+                }
+                memberId = selfMember.id;
+            }
+
             let effectiveInterestRate = interestRate;
 
             if (!isOperator) {

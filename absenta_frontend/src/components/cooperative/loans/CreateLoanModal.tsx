@@ -39,6 +39,7 @@ interface CreateLoanModalProps {
   submitLoading?: boolean;
   loading?: boolean;
   studentMetrics?: any;
+  currentMember?: any;
 }
 
 export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
@@ -56,6 +57,7 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   simulation,
   submitLoading = false,
   loading = false,
+  currentMember,
 }) => {
   if (!isOpen) return null;
 
@@ -102,6 +104,23 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
 
         <form onSubmit={onSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
+            {/* Personal Mode: Info Pemohon */}
+            {isStudent && (
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-100/80 dark:border-indigo-900/40 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 block">
+                    Pemohon Pinjaman (Akun Pribadi)
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                    {currentMember?.name || 'Anggota Koperasi'} {currentMember?.memberNo ? `(${currentMember.memberNo})` : ''}
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                  Anggota Aktif
+                </span>
+              </div>
+            )}
+
             {/* Select Member (Operator mode only) */}
             {!isStudent && (
               <div className="space-y-1.5">
