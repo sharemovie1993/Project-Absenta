@@ -1627,6 +1627,46 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'TahunPelajaranSelect dimuat secara lazy. Route /kesiswaan/program-ketarunaan menggunakan lazy import di App.tsx.'
       }
     ]
+  },
+  'rapor-staging': {
+    moduleName: 'rapor-staging',
+    displayName: 'Wadah Penampung Nilai Rapor Google Sheet',
+    standards: [
+      {
+        id: 'dynamic_variable_scanner',
+        name: 'Dynamic Variable Scanner & Resilient Parser',
+        description: 'Pemindaian sel adaptif menggunakan regex label pada sheet SETTING, INPUT SUMATIF, dan INPUT CP tahan perubahan baris antar-tahun ajaran.',
+        status: 'VERIFIED',
+        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService.'
+      },
+      {
+        id: 'one_click_sync',
+        name: '1-Click Synchronization to e-Rapor',
+        description: 'Sinkronisasi atomik dari tabel staging ke tabel resmi NilaiSiswa dan RaporSiswa.',
+        status: 'VERIFIED',
+        details: 'Staging sync controller dan service terisolasi dengan validasi kurikulum.'
+      }
+    ]
+  },
+  rapor_staging: {
+    moduleName: 'rapor_staging',
+    displayName: 'Wadah Penampung Nilai Rapor Google Sheet',
+    standards: [
+      {
+        id: 'dynamic_variable_scanner',
+        name: 'Dynamic Variable Scanner & Resilient Parser',
+        description: 'Pemindaian sel adaptif menggunakan regex label pada sheet SETTING, INPUT SUMATIF, dan INPUT CP tahan perubahan baris antar-tahun ajaran.',
+        status: 'VERIFIED',
+        details: 'Regex label matcher aktif pada GoogleSheetRaporParserService.'
+      },
+      {
+        id: 'one_click_sync',
+        name: '1-Click Synchronization to e-Rapor',
+        description: 'Sinkronisasi atomik dari tabel staging ke tabel resmi NilaiSiswa dan RaporSiswa.',
+        status: 'VERIFIED',
+        details: 'Staging sync controller dan service terisolasi dengan validasi kurikulum.'
+      }
+    ]
   }
 };
 
