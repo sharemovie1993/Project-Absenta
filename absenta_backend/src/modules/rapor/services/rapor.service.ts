@@ -948,12 +948,14 @@ export class RaporService {
       qrTpCfg,
       kokurikulerTpCfg,
       sumatifArchiveTpCfg,
+      modeCetakTpCfg,
       // Format (Global Fallback)
       kertasGlobalCfg,
       kopGlobalCfg,
       qrGlobalCfg,
       kokurikulerGlobalCfg,
       sumatifArchiveGlobalCfg,
+      modeCetakGlobalCfg,
     ] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
@@ -981,12 +983,14 @@ export class RaporService {
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_QR_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SHOW_KOKURIKULER_${tpId}` } }) : null,
       tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}` } }) : null,
+      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_MODE_CETAK_${tpId}` } }) : null,
       // Format (Global Fallback)
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
       prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_ENABLE_SUMATIF_ARCHIVE' } }),
+      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_MODE_CETAK' } }),
     ]);
 
     const resolvedUkuranKertas = (kertasTpCfg?.value || kertasGlobalCfg?.value || 'A4') as 'A4' | 'F4';
@@ -1010,6 +1014,16 @@ export class RaporService {
       resolvedAktifkanSumatifArsip = sumatifArchiveGlobalCfg.value === 'true';
     } else {
       resolvedAktifkanSumatifArsip = true;
+    }
+
+    let resolvedModeCetakRapor: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+    if (modeCetakTpCfg?.value) {
+      resolvedModeCetakRapor = modeCetakTpCfg.value as any;
+    } else if (modeCetakGlobalCfg?.value) {
+      resolvedModeCetakRapor = modeCetakGlobalCfg.value as any;
+    } else {
+      // Smart Academic Default: 2023 & 2024 = SUMATIF_AND_CP. Tahun lainnya = CP_ONLY
+      resolvedModeCetakRapor = (startYear === 2023 || startYear === 2024) ? 'SUMATIF_AND_CP' : 'CP_ONLY';
     }
 
     return {
@@ -1041,6 +1055,7 @@ export class RaporService {
       tampilkan_qr: resolvedTampilkanQr,
       tampilkan_kokurikuler: resolvedTampilkanKokurikuler,
       aktifkan_sumatif_arsip: resolvedAktifkanSumatifArsip,
+      mode_cetak_rapor: resolvedModeCetakRapor,
     };
   }
 
@@ -1074,6 +1089,7 @@ export class RaporService {
       tampilkan_qr?: boolean;
       tampilkan_kokurikuler?: boolean;
       aktifkan_sumatif_arsip?: boolean;
+      mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
     }
   ) {
     const tpId = payload.tahun_pelajaran_id;
@@ -1181,6 +1197,9 @@ export class RaporService {
       if (payload.aktifkan_sumatif_arsip !== undefined) {
         await this.updateConfig(tenantId, `RAPOR_ENABLE_SUMATIF_ARCHIVE_${tpId}`, String(payload.aktifkan_sumatif_arsip));
       }
+      if (payload.mode_cetak_rapor !== undefined) {
+        await this.updateConfig(tenantId, `RAPOR_MODE_CETAK_${tpId}`, payload.mode_cetak_rapor);
+      }
     }
 
     // Always update global config as fallback / new default
@@ -1198,6 +1217,9 @@ export class RaporService {
     }
     if (payload.aktifkan_sumatif_arsip !== undefined) {
       await this.updateConfig(tenantId, 'RAPOR_ENABLE_SUMATIF_ARCHIVE', String(payload.aktifkan_sumatif_arsip));
+    }
+    if (payload.mode_cetak_rapor !== undefined) {
+      await this.updateConfig(tenantId, 'RAPOR_MODE_CETAK', payload.mode_cetak_rapor);
     }
 
     void cacheInvalidationService.invalidateRaporCache(tenantId);

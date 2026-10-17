@@ -110,6 +110,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
   const [tampilkanQr, setTampilkanQr] = useState(true);
   const [tampilkanKokurikuler, setTampilkanKokurikuler] = useState(true);
   const [aktifkanSumatifArsip, setAktifkanSumatifArsip] = useState(true);
+  const [modeCetakRapor, setModeCetakRapor] = useState<'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY'>('CP_ONLY');
 
   // Detect whether active semester in toolbar is Ganjil or Genap
   const isGanjilActive = useMemo(() => {
@@ -161,6 +162,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       setTampilkanQr(s.tampilkan_qr !== undefined ? s.tampilkan_qr : true);
       setTampilkanKokurikuler(s.tampilkan_kokurikuler !== undefined ? s.tampilkan_kokurikuler : true);
       setAktifkanSumatifArsip(s.aktifkan_sumatif_arsip !== undefined ? s.aktifkan_sumatif_arsip : true);
+      setModeCetakRapor(s.mode_cetak_rapor || 'CP_ONLY');
     }
   }, [settingsData, isGanjilActive]);
 
@@ -230,6 +232,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
       tampilkan_qr: tampilkanQr,
       tampilkan_kokurikuler: tampilkanKokurikuler,
       aktifkan_sumatif_arsip: aktifkanSumatifArsip,
+      mode_cetak_rapor: modeCetakRapor,
     });
   }, [
     academicCtx.selectedTahunPelajaran,
@@ -677,6 +680,101 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                           />
                         </div>
 
+                        {/* PILIHAN MODE KELUARAN CETAK RAPOR */}
+                        <div className="space-y-2 pt-1">
+                          <label className="font-bold text-slate-700 dark:text-slate-300 block">
+                            Mode Keluaran Cetak Rapor Semester *
+                          </label>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {/* Mode 1: CP Saja */}
+                            <button
+                              type="button"
+                              aria-label="Pilih mode cetak Hanya CP Saja"
+                              onClick={() => setModeCetakRapor('CP_ONLY')}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                modeCetakRapor === 'CP_ONLY'
+                                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs flex items-center gap-1.5">
+                                    📄 Hanya CP Saja
+                                  </span>
+                                  {modeCetakRapor === 'CP_ONLY' && (
+                                    <CheckCircle2 size={15} className="text-indigo-600 dark:text-indigo-400" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  Mencetak lembar utama Laporan Hasil Belajar (Nilai Akhir Rapor &amp; Capaian Kompetensi).
+                                </p>
+                              </div>
+                              <span className="inline-block mt-2.5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-100/60 dark:bg-indigo-900/40 px-2 py-0.5 rounded-md self-start">
+                                Standar TP 2022/2023, 2025/2026, 2026/2027
+                              </span>
+                            </button>
+
+                            {/* Mode 2: Sumatif + CP */}
+                            <button
+                              type="button"
+                              aria-label="Pilih mode cetak Lengkap Sumatif dan CP"
+                              onClick={() => setModeCetakRapor('SUMATIF_AND_CP')}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                modeCetakRapor === 'SUMATIF_AND_CP'
+                                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs flex items-center gap-1.5">
+                                    📑 Lengkap: Sumatif &amp; CP
+                                  </span>
+                                  {modeCetakRapor === 'SUMATIF_AND_CP' && (
+                                    <CheckCircle2 size={15} className="text-indigo-600 dark:text-indigo-400" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  Mencetak 2 lembar: Lembar Rincian Sumatif Lingkup Materi dan Lembar Nilai Akhir CP.
+                                </p>
+                              </div>
+                              <span className="inline-block mt-2.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/60 dark:bg-emerald-900/40 px-2 py-0.5 rounded-md self-start">
+                                Periode Transisi 2023/2024 &amp; 2024/2025
+                              </span>
+                            </button>
+
+                            {/* Mode 3: Hanya Sumatif */}
+                            <button
+                              type="button"
+                              aria-label="Pilih mode cetak Hanya Sumatif Saja"
+                              onClick={() => setModeCetakRapor('SUMATIF_ONLY')}
+                              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                                modeCetakRapor === 'SUMATIF_ONLY'
+                                  ? 'border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 ring-2 ring-indigo-500/20 shadow-xs'
+                                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="font-black text-xs flex items-center gap-1.5">
+                                    📋 Hanya Sumatif Saja
+                                  </span>
+                                  {modeCetakRapor === 'SUMATIF_ONLY' && (
+                                    <CheckCircle2 size={15} className="text-indigo-600 dark:text-indigo-400" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                  Hanya mencetak blangko hijau rincian nilai sumatif untuk kebutuhan arsip asesmen guru.
+                                </p>
+                              </div>
+                              <span className="inline-block mt-2.5 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-100/60 dark:bg-amber-900/40 px-2 py-0.5 rounded-md self-start">
+                                Khusus Dokumen Penilaian Guru
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="pt-2 space-y-3">
                           <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
                             <input
@@ -713,20 +811,7 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
                             />
                             <div>
                               <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Sertakan Bagian Kokurikuler pada Rapor Semester (CK Page 2)</span>
-                              <span className="text-[10px] text-slate-400">Menampilkan evaluasi pembiasaan pagi & kokurikuler (Wajib mulai TP 2025/2026, dinonaktifkan otomatis untuk arsip 2024/2025).</span>
-                            </div>
-                          </label>
-
-                          <label className="flex items-center gap-3 cursor-pointer p-3 bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                            <input
-                              type="checkbox"
-                              checked={aktifkanSumatifArsip}
-                              onChange={(e) => setAktifkanSumatifArsip(e.target.checked)}
-                              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300"
-                            />
-                            <div>
-                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200 block">Aktifkan Opsi Cetak Rapor Penilaian Sumatif (Arsip Terdahulu)</span>
-                              <span className="text-[10px] text-slate-400">Menyediakan pilihan cetak format blangko hijau rincian nilai sumatif untuk kebutuhan cetak ulang arsip lampau.</span>
+                              <span className="text-[10px] text-slate-400">Menampilkan evaluasi pembiasaan pagi &amp; kokurikuler (Wajib mulai TP 2025/2026, dinonaktifkan otomatis untuk arsip 2024/2025).</span>
                             </div>
                           </label>
                         </div>

@@ -561,6 +561,7 @@ export interface RaporSettings {
   tampilkan_qr: boolean;
   tampilkan_kokurikuler?: boolean;
   aktifkan_sumatif_arsip?: boolean;
+  mode_cetak_rapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
 }
 
 export interface P5FasilitatorItem {

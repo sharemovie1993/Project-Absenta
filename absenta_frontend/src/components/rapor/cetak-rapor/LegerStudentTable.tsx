@@ -32,6 +32,7 @@ interface LegerStudentTableProps {
   onOpenTranskripModal: (student: LegerStudent) => void;
   getPdfSklUrl?: (siswaId: string) => string;
   getPdfUkkUrl?: (siswaId: string) => string;
+  modeCetakRapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
 }
 
 export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
@@ -51,6 +52,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   onOpenTranskripModal,
   getPdfSklUrl,
   getPdfUkkUrl,
+  modeCetakRapor = 'CP_ONLY',
 }) => {
   if (isLoading) {
     return (
@@ -212,6 +214,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         hasPkl={isJenjangSmk !== false}
                         hasUkk={isJenjangSmk !== false}
                         hasSkl={true}
+                        showSumatifArchive={modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY'}
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
                       />

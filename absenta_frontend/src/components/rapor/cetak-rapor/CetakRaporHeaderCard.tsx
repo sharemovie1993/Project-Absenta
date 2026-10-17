@@ -43,6 +43,7 @@ export interface CetakRaporHeaderCardProps {
   kurikulumStrukturListLength?: number;
   kurikulumTotalJp?: number;
   onNavigateInputNilai?: () => void;
+  modeCetakRapor?: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
 }
 
 export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
@@ -66,6 +67,7 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
   currentKelasNama,
   kurikulumStrukturListLength = 0,
   kurikulumTotalJp = 0,
+  modeCetakRapor = 'CP_ONLY',
 }) => {
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const batchMenuRef = useRef<HTMLDivElement>(null);
@@ -283,6 +285,22 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
           {kurikulumStrukturListLength > 0 && (
             <Badge variant="outline" className="text-[10px] font-semibold border-emerald-200 text-emerald-600 dark:border-emerald-800 dark:text-emerald-400 whitespace-nowrap bg-emerald-50/40 dark:bg-emerald-950/20">
               Kurikulum: {kurikulumStrukturListLength} Mapel ({kurikulumTotalJp} JP)
+            </Badge>
+          )}
+
+          {modeCetakRapor === 'CP_ONLY' && (
+            <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:border-indigo-800 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40">
+              📄 Format: Hanya CP
+            </Badge>
+          )}
+          {modeCetakRapor === 'SUMATIF_AND_CP' && (
+            <Badge variant="outline" className="text-[10px] font-bold border-emerald-300 text-emerald-700 dark:border-emerald-800 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/40">
+              📑 Format: Sumatif &amp; CP
+            </Badge>
+          )}
+          {modeCetakRapor === 'SUMATIF_ONLY' && (
+            <Badge variant="outline" className="text-[10px] font-bold border-amber-300 text-amber-700 dark:border-amber-800 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/40">
+              📋 Format: Hanya Sumatif
             </Badge>
           )}
         </div>

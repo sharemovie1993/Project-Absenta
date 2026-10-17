@@ -187,6 +187,10 @@ export default React.memo(function CetakRaporPage() {
     return startYear >= 2025;
   }, [settingsRes, academicActiveYear]);
 
+  const modeCetakRapor = useMemo<'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY'>(() => {
+    return settingsRes?.data?.mode_cetak_rapor || 'CP_ONLY';
+  }, [settingsRes]);
+
   // Hook cetak PDF terpadu
   const { printLeger } = useRaporPdf({
     tahunPelajaranId: activeYear?.id,
@@ -679,6 +683,7 @@ export default React.memo(function CetakRaporPage() {
             currentKelasNama={currentKelasObj?.nama_kelas}
             kurikulumStrukturListLength={kurikulumStrukturList?.length}
             kurikulumTotalJp={kurikulumTotalJp}
+            modeCetakRapor={modeCetakRapor}
             onNavigateInputNilai={() =>
               navigate(
                 `/rapor/input-nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
@@ -704,6 +709,7 @@ export default React.memo(function CetakRaporPage() {
             pdfLoading={pdfLoading}
             tahunPelajaranId={activeYear?.id}
             semesterId={activeSemester?.id}
+            modeCetakRapor={modeCetakRapor}
             onOpenSummaryModal={handleOpenSummaryModal}
             onPrintRapor={handlePrintRapor}
             onPrintP5={handlePrintP5}
