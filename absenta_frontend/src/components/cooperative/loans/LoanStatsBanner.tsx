@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, DollarSign, CheckCircle, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
-import { SectionCard, Button } from '../../ui';
-import { cn } from '../../../lib/utils';
+import { Clock, Wallet, CheckCircle2, ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
 import type { StudentMetrics, OperatorMetrics } from './types';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 
@@ -19,119 +17,151 @@ export const LoanStatsBanner = React.memo<LoanStatsBannerProps>(({
   studentMetrics,
   operatorMetrics,
   onPaymentInstructionsOpen,
-  variant = 'compact-premium',
-  mobileCompact = true,
 }) => {
   const isMobile = useIsMobile();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const isCompact = variant === 'compact-premium' || (isMobile && mobileCompact);
+
+  // Mode Operator (Pengurus)
+  const opTitle1 = operatorMetrics?.card1Title || 'Pengajuan Menunggu';
+  const opVal1 = operatorMetrics?.card1Val || '0 Berkas';
+  const opTitle2 = operatorMetrics?.card2Title || 'Pinjaman Aktif';
+  const opVal2 = operatorMetrics?.card2Val || '0 Berjalan';
+  const opTitle3 = operatorMetrics?.card3Title || 'Total Penyaluran';
+  const opVal3 = operatorMetrics?.card3Val || 'Rp 0';
+
+  // Mode Student (Member)
+  const stTitle1 = studentMetrics?.card1Title || 'Status Pinjaman';
+  const stVal1 = studentMetrics?.card1Val || '-';
+  const stSub1 = studentMetrics?.card1Sub;
+  const stTitle2 = studentMetrics?.card2Title || 'Sisa Pokok Pinjaman';
+  const stVal2 = studentMetrics?.card2Val || 'Rp 0';
+  const stSub2 = studentMetrics?.card2Sub;
+  const stTitle3 = studentMetrics?.card3Title || 'Tagihan Berjalan';
+  const stVal3 = studentMetrics?.card3Val || 'Rp 0';
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-2">
+    <div className="w-full max-w-full min-w-0 space-y-2 mb-3">
       {/* Mobile Collapsible Header Bar */}
-      <div className="flex sm:hidden items-center justify-between px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800/80 text-xs">
-        <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">
-          <BarChart2 size={13} className="text-indigo-600 dark:text-indigo-400" />
-          <span>Statistik Pinjaman</span>
+      <div className="flex sm:hidden items-center justify-between px-3.5 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/70 dark:border-slate-800 text-xs">
+        <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-300">
+          <BarChart2 size={14} className="text-indigo-600 dark:text-indigo-400" />
+          <span>Ringkasan Pinjaman</span>
         </div>
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
-          aria-label={isCollapsed ? 'Tampilkan statistik' : 'Sembunyikan statistik'}
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+          aria-label={isCollapsed ? 'Tampilkan ringkasan' : 'Sembunyikan ringkasan'}
         >
-          {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+          {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
         </button>
       </div>
 
       {!isCollapsed && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 w-full max-w-full min-w-0 animate-in fade-in duration-200">
-          {/* Card 1 */}
-          <SectionCard className={cn(
-            "border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex items-center justify-between transition-transform hover:scale-[1.01] w-full max-w-full min-w-0 shadow-xs",
-            isCompact ? "p-3 sm:p-5" : "p-5"
-          )}>
-            <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
-                {isStudent ? studentMetrics?.card1Title : operatorMetrics?.card1Title}
-              </p>
-              <h3 className={cn("font-extrabold text-slate-850 dark:text-slate-100 leading-tight truncate", isCompact ? "text-base sm:text-xl" : "text-xl")}>
-                {isStudent ? studentMetrics?.card1Val : operatorMetrics?.card1Val}
-              </h3>
-              {isStudent && studentMetrics?.card1Sub && (
-                <p className="text-[9px] text-slate-400 font-bold truncate">{studentMetrics.card1Sub}</p>
-              )}
-            </div>
-            <div className={cn("bg-amber-50 dark:bg-amber-950/20 text-amber-500 rounded-xl shrink-0 ml-2", isCompact ? "p-2 sm:p-3" : "p-3")}>
-              <Clock size={isCompact ? 16 : 20} />
-            </div>
-          </SectionCard>
-
-          {/* Card 2 */}
-          <SectionCard className={cn(
-            "border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex items-center justify-between transition-transform hover:scale-[1.01] w-full max-w-full min-w-0 shadow-xs",
-            isCompact ? "p-3 sm:p-5" : "p-5"
-          )}>
-            <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
-                {isStudent ? studentMetrics?.card2Title : operatorMetrics?.card2Title}
-              </p>
-              <h3 className={cn("font-extrabold text-indigo-650 dark:text-indigo-400 leading-tight truncate", isCompact ? "text-base sm:text-xl" : "text-xl")}>
-                {isStudent ? studentMetrics?.card2Val : operatorMetrics?.card2Val}
-              </h3>
-              {isStudent && studentMetrics?.card2Sub && (
-                <p className="text-[9px] text-slate-400 font-bold truncate">{studentMetrics.card2Sub}</p>
-              )}
-            </div>
-            <div className={cn("bg-indigo-50 dark:bg-indigo-950/20 text-indigo-500 rounded-xl shrink-0 ml-2", isCompact ? "p-2 sm:p-3" : "p-3")}>
-              <DollarSign size={isCompact ? 16 : 20} />
-            </div>
-          </SectionCard>
-
-          {/* Card 3 */}
-          <SectionCard className={cn(
-            "border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 rounded-2xl relative overflow-hidden flex items-center justify-between transition-transform hover:scale-[1.01] w-full max-w-full min-w-0 shadow-xs",
-            isCompact ? "p-3 sm:p-5" : "p-5"
-          )}>
-            <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
-                {isStudent ? studentMetrics?.card3Title : operatorMetrics?.card3Title}
-              </p>
-              <h3 className={cn("font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight truncate", isCompact ? "text-base sm:text-xl" : "text-xl")}>
-                {isStudent ? studentMetrics?.card3Val : operatorMetrics?.card3Val}
-              </h3>
-              {isStudent && studentMetrics?.card3Sub && (
-                <div className="mt-0.5 sm:mt-1">
-                  <span className={cn(
-                    "text-[9px] font-extrabold px-1.5 sm:px-2 py-0.5 rounded-lg border inline-block truncate max-w-full",
-                    studentMetrics.isOverdue 
-                      ? "bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-950/20 dark:text-rose-455" 
-                      : studentMetrics.isApproaching
-                      ? "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/20 dark:text-amber-455"
-                      : "bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-950/20 dark:text-slate-455"
-                  )}>
-                    {studentMetrics.isOverdue ? '⚠️ Terlambat! ' : ''}
-                    {studentMetrics.card3Sub}
-                  </span>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 animate-in fade-in duration-200">
+          {/* ── CARD 1: PENGAJUAN MENUNGGU / STATUS PINJAMAN ────────────────── */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Clock size={14} />
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col items-end gap-1.5 sm:gap-2.5 shrink-0 ml-2">
-              <div className={cn("bg-emerald-50 dark:bg-emerald-950/20 text-emerald-500 rounded-xl", isCompact ? "p-2 sm:p-3" : "p-3")}>
-                <CheckCircle size={isCompact ? 16 : 20} />
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {isStudent ? stTitle1 : opTitle1}
+                </span>
               </div>
-              {isStudent && studentMetrics?.hasApprovedLoans && onPaymentInstructionsOpen && (
-                <Button
-                  size="xs"
-                  variant="outline"
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                {isStudent ? 'Pribadi' : 'Verifikasi'}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-slate-100 block">
+                {isStudent ? stVal1 : opVal1}
+              </span>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+              <span>{isStudent ? (stSub1 || 'Status Berkas') : 'Perlu Ditinjau'}</span>
+              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">
+                {isStudent ? 'Akun Aktif' : 'Antrean'}
+              </span>
+            </div>
+          </div>
+
+          {/* ── CARD 2: PINJAMAN BERJALAN / SISA POKOK ─────────────────────── */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <Wallet size={14} />
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {isStudent ? stTitle2 : opTitle2}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
+                {isStudent ? 'Kewajiban' : 'Aktif'}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-indigo-650 dark:text-indigo-400 block">
+                {isStudent ? stVal2 : opVal2}
+              </span>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+              <span>{isStudent ? (stSub2 || 'Sisa Pokok') : 'Sedang Berjalan'}</span>
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                {isStudent ? 'Cicilan' : 'Terjadwal'}
+              </span>
+            </div>
+          </div>
+
+          {/* ── CARD 3: TOTAL PENYALURAN / JATUH TEMPO ────────────────────── */}
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-2xs flex flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                  <CheckCircle2 size={14} />
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  {isStudent ? stTitle3 : opTitle3}
+                </span>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-mono">
+                {isStudent ? 'Tagihan' : 'Akumulasi'}
+              </span>
+            </div>
+
+            <div className="my-2.5">
+              <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-400 block">
+                {isStudent ? stVal3 : opVal3}
+              </span>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+              <span>
+                {isStudent 
+                  ? (studentMetrics?.isOverdue ? '⚠️ Terlambat' : studentMetrics?.card3Sub || 'Lancar') 
+                  : 'Total Dana Salur'}
+              </span>
+              {isStudent && studentMetrics?.hasApprovedLoans && onPaymentInstructionsOpen ? (
+                <button
+                  type="button"
                   onClick={onPaymentInstructionsOpen}
-                  className="text-[9px] font-black uppercase tracking-wider border-slate-200 dark:border-slate-800 hover:bg-slate-55 rounded-lg px-2 py-0.5 sm:py-1 flex items-center gap-1 shadow-xs shrink-0 animate-pulse"
+                  className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                 >
-                  Cara Bayar
-                </Button>
+                  Cara Bayar →
+                </button>
+              ) : (
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                  {isStudent ? 'Mandiri' : 'Kredit'}
+                </span>
               )}
             </div>
-          </SectionCard>
+          </div>
         </div>
       )}
     </div>

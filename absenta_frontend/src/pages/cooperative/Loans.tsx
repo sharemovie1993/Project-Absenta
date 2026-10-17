@@ -515,21 +515,26 @@ const Loans: React.FC = React.memo(() => {
         key: 'actions',
         label: 'Tindakan',
         render: (_, row: Loan) => (
-          <div className="flex gap-1.5 justify-center">
-            <Link to={`/cooperative/loans/${row.id}`}>
-              <Button size="xs" variant="outline" className="font-bold text-[10px] inline-flex items-center gap-1">
-                <Eye size={10} /> Detail
+          <div className="flex flex-col gap-1 w-24 mx-auto">
+            <Link to={`/cooperative/loans/${row.id}`} className="w-full">
+              <Button 
+                size="xs" 
+                variant="outline" 
+                className="w-full text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-[11px] flex items-center justify-center gap-1 rounded-lg h-7"
+              >
+                <Eye size={11} /> Detail
               </Button>
             </Link>
 
             {(canApprove || canReject) && row.status === 'PENDING' && (
-              <>
+              <div className="flex gap-1 w-full">
                 {canApprove && (
                   <Button 
                     size="xs" 
                     variant="success" 
-                    className="font-bold text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-2"
+                    className="flex-1 font-bold text-[10px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg h-7 px-1 flex items-center justify-center shadow-xs"
                     onClick={() => handleChangeLoanStatus(row.id, 'APPROVED')}
+                    title="Setujui Pinjaman"
                   >
                     Setuju
                   </Button>
@@ -537,13 +542,14 @@ const Loans: React.FC = React.memo(() => {
                 {canReject && (
                   <Button 
                     size="xs" 
-                    className="font-bold text-[10px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg px-2"
+                    className="flex-1 font-bold text-[10px] bg-rose-600 hover:bg-rose-700 text-white rounded-lg h-7 px-1 flex items-center justify-center shadow-xs"
                     onClick={() => handleChangeLoanStatus(row.id, 'REJECTED', row)}
+                    title="Tolak Pinjaman"
                   >
                     Tolak
                   </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
         )
@@ -791,18 +797,6 @@ const Loans: React.FC = React.memo(() => {
         }}
       >
         <div className="space-y-6">
-          {/* Header Action & Custom Status Badge */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 text-emerald-700 dark:text-emerald-400 font-black text-[9px] uppercase tracking-widest px-2.5 py-0.5 rounded-full shadow-sm">
-                HARDENED (DEV AUDIT A+)
-              </span>
-            </div>
-          </div>
 
           {/* Context Switcher (Khusus Pengurus / Operator) */}
           {isOperator && (
