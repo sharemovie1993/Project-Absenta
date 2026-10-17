@@ -274,7 +274,10 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - cooperative.savings.view.history
 - cooperative.savings.view.list
 - cooperative.savings.withdraw
+- cooperative.settings.update
 - cooperative.settings.view
+- cooperative.setup.manage
+- cooperative.setup.view
 - cooperative.shu.approve
 - cooperative.shu.calculate
 - cooperative.shu.manage

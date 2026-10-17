@@ -781,8 +781,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.shu.calculate',
     'cooperative.shu.view.report',
 
-    // Pengaturan & Layanan
+    // Pengaturan & Setup Onboarding Koperasi
+    'cooperative.setup.view',
+    'cooperative.setup.manage',
     'cooperative.settings.view',
+    'cooperative.settings.update',
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
 
@@ -853,13 +856,16 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.shu.approve',
     'cooperative.shu.view.report',
 
-    // Pengaturan & Layanan
+    // Pengaturan & Kebijakan Setup Koperasi
+    'cooperative.setup.view',
+    'cooperative.setup.manage',
+    'cooperative.settings.view',
+    'cooperative.settings.update',
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.update.status',
-    'cooperative.settings.view',
 
     // Rapat Anggota Tahunan (RAT)
     'cooperative.rat.manage',
@@ -905,6 +911,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'cooperative.tickets.create',
     'cooperative.tickets.reply',
     'cooperative.tickets.update.status',
+
+    // Monitoring Setup Koperasi (Read-Only)
+    'cooperative.setup.view',
+    'cooperative.settings.view',
 
     // Rapat Anggota Tahunan (RAT)
     'cooperative.rat.manage',
@@ -952,6 +962,10 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Audit Layanan Aspirasi Anggota
     'cooperative.tickets.view.list',
     'cooperative.tickets.view.detail',
+
+    // Audit Setup & Saldo Awal Koperasi (Read-Only)
+    'cooperative.setup.view',
+    'cooperative.settings.view',
 
     // Rapat Anggota Tahunan (RAT - Audit & Verifikasi)
     'cooperative.rat.view',

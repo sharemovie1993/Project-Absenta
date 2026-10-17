@@ -530,8 +530,25 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
     'correspondence.inbox.manage',
     'correspondence.outbox.view',
     'correspondence.outbox.manage',
-    'correspondence.outbox.sign',
-  ].concat(allPermissionIds.filter(id => id.startsWith('cooperative.'))));
+  ].concat(allPermissionIds.filter(id => {
+    if (!id.startsWith('cooperative.')) return false;
+    // PEMBATASAN WEWENANG KEUANGAN ADMIN:
+    // Admin IT/Sekolah dilarang mengeksekusi mutasi kas riil, setoran/penarikan simpanan,
+    // approval pinjaman, pembagian deviden SHU, dan posting saldo awal keuangan.
+    const restrictedCoopFinancialCapabilities = [
+      'cooperative.savings.deposit',
+      'cooperative.savings.withdraw',
+      'cooperative.savings.manage',
+      'cooperative.loans.approve',
+      'cooperative.loans.reject',
+      'cooperative.loans.repay',
+      'cooperative.shu.calculate',
+      'cooperative.shu.approve',
+      'cooperative.shu.manage',
+      'cooperative.setup.manage', // Khusus Pengurus Koperasi (Bendahara & Ketua)
+    ];
+    return !restrictedCoopFinancialCapabilities.includes(id);
+  })));
 
   const ensureNoOrganizationalInBaseline = (role: string, baseline: string[]) => {
     const violating = baseline.filter((id) => {

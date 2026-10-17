@@ -22,9 +22,10 @@ export default async function setupRoutes(fastify: FastifyInstance) {
     {
       preHandler: [
         requireCapability([
+          'cooperative.setup.view',
+          'cooperative.setup.manage',
           'cooperative.dashboard.view.overview',
           'cooperative.settings.view',
-          'cooperative.reports.view.financial',
         ]),
       ],
     },
@@ -46,7 +47,7 @@ export default async function setupRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/mode',
     {
-      preHandler: [requireCapability('cooperative.settings.update')],
+      preHandler: [requireCapability('cooperative.setup.manage')],
     },
     async (req: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -79,7 +80,7 @@ export default async function setupRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/initialize-coa',
     {
-      preHandler: [requireCapability('cooperative.settings.update')],
+      preHandler: [requireCapability('cooperative.setup.manage')],
     },
     async (req: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -95,11 +96,12 @@ export default async function setupRoutes(fastify: FastifyInstance) {
   /**
    * POST /cooperative/setup/opening-balance
    * Posting Jurnal Saldo Awal Konsolidasi (Double-Entry Balance Enforced)
+   * Wewenang eksklusif Bendahara & Ketua Koperasi (Admin IT/Sekolah dibatasi urusan uang)
    */
   fastify.post(
     '/opening-balance',
     {
-      preHandler: [requireCapability('cooperative.settings.update')],
+      preHandler: [requireCapability('cooperative.setup.manage')],
     },
     async (req: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -139,7 +141,7 @@ export default async function setupRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/import-subledger',
     {
-      preHandler: [requireCapability('cooperative.members.manage')],
+      preHandler: [requireCapability(['cooperative.setup.manage', 'cooperative.members.manage'])],
     },
     async (req: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -170,7 +172,7 @@ export default async function setupRoutes(fastify: FastifyInstance) {
   fastify.post(
     '/complete',
     {
-      preHandler: [requireCapability('cooperative.settings.update')],
+      preHandler: [requireCapability('cooperative.setup.manage')],
     },
     async (req: FastifyRequest, reply: FastifyReply) => {
       try {
