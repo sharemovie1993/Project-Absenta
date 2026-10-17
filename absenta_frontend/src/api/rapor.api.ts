@@ -361,11 +361,11 @@ export const raporApi = {
 
   // === RAPOR STAGING HUB (GOOGLE SHEET INTEGRATOR) ===
   scanGoogleDriveFolder: async (urls: string[]) => {
-    const response = await api.post('/rapor/staging/scan-folder', { urls });
+    const response = await api.post('/rapor/staging/scan-folder', { urls }, { timeout: 180000 }); // 3 menit
     return response.data;
   },
   fetchAndStageGoogleSheets: async (urls: string[]) => {
-    const response = await api.post('/rapor/staging/fetch', { urls });
+    const response = await api.post('/rapor/staging/fetch', { urls }, { timeout: 600000 }); // 10 menit untuk dataset banyak kelas
     return response.data;
   },
   getStagedSheets: async (params?: { tahunPelajaran?: string; semester?: string; kelas?: string }) => {
@@ -377,7 +377,7 @@ export const raporApi = {
     return response.data;
   },
   syncStagingToRapor: async (id: string) => {
-    const response = await api.post(`/rapor/staging/${id}/sync`);
+    const response = await api.post(`/rapor/staging/${id}/sync`, {}, { timeout: 300000 }); // 5 menit
     return response.data;
   },
   deleteStagedSheet: async (id: string) => {

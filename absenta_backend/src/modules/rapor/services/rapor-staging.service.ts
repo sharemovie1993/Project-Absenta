@@ -46,107 +46,113 @@ export class RaporStagingService {
       }
     }
 
-    // 2. Proses ekstraksi setiap berkas Google Sheet kelas
-    for (const item of resolvedQueue) {
-      const url = item.url;
+    // 2. Proses ekstraksi setiap berkas Google Sheet kelas secara paralel ber-batch (concurrency = 3)
+    // agar waktu tunggu terpangkas 3x lipat tanpa terkena rate-limit
+    const CHUNK_SIZE = 3;
+    for (let i = 0; i < resolvedQueue.length; i += CHUNK_SIZE) {
+      const chunk = resolvedQueue.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (item) => {
+          const url = item.url;
+          try {
+            appLogger.info({ url, tenantId, originFolder: item.originFolder }, 'Memulai ekstraksi Google Sheet Rapor');
+            const parsed: ParsedRaporClassData = await GoogleSheetRaporParserService.parseGoogleSheet(url);
 
-      try {
-        appLogger.info({ url, tenantId, originFolder: item.originFolder }, 'Memulai ekstraksi Google Sheet Rapor');
-        const parsed: ParsedRaporClassData = await GoogleSheetRaporParserService.parseGoogleSheet(url);
+            const tahunPelajaranNama = parsed.metadata.tahunPelajaran.replace(/\s+/g, ' ').trim() || '2024 / 2025';
+            const semesterNama = parsed.metadata.semester.trim() || 'Ganjil';
+            const namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
 
-        const tahunPelajaranNama = parsed.metadata.tahunPelajaran.replace(/\s+/g, ' ').trim() || '2024 / 2025';
-        const semesterNama = parsed.metadata.semester.trim() || 'Ganjil';
-        const namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
+            // Auto-match master IDs jika sudah ada di DB
+            const [matchedTp, matchedSem, matchedKelas] = await Promise.all([
+              prisma.tahunPelajaran.findFirst({
+                where: {
+                  tenant_id: tenantId,
+                  tahun: { contains: tahunPelajaranNama.split('/')[0].trim(), mode: 'insensitive' },
+                },
+              }),
+              prisma.semester.findFirst({
+                where: {
+                  tenant_id: tenantId,
+                  nama_semester: { equals: semesterNama, mode: 'insensitive' },
+                },
+              }),
+              prisma.kelas.findFirst({
+                where: {
+                  tenant_id: tenantId,
+                  nama_kelas: { equals: namaKelas, mode: 'insensitive' },
+                },
+              }),
+            ]);
 
-        // Auto-match master IDs jika sudah ada di DB
-        const [matchedTp, matchedSem, matchedKelas] = await Promise.all([
-          prisma.tahunPelajaran.findFirst({
-            where: {
+            // Cek apakah sheet dengan URL atau kelas + TP + semester yang sama sudah ada di staging
+            const existing = await prisma.raporStagingSheet.findFirst({
+              where: {
+                tenant_id: tenantId,
+                nama_kelas: namaKelas,
+                tahun_pelajaran_nama: tahunPelajaranNama,
+                semester: semesterNama,
+              },
+            });
+
+            const stagingData = {
               tenant_id: tenantId,
-              tahun: { contains: tahunPelajaranNama.split('/')[0].trim(), mode: 'insensitive' },
-            },
-          }),
-          prisma.semester.findFirst({
-            where: {
-              tenant_id: tenantId,
-              nama_semester: { equals: semesterNama, mode: 'insensitive' },
-            },
-          }),
-          prisma.kelas.findFirst({
-            where: {
-              tenant_id: tenantId,
-              nama_kelas: { equals: namaKelas, mode: 'insensitive' },
-            },
-          }),
-        ]);
+              source_url: url,
+              file_title: `RAPOR ${tahunPelajaranNama} ${semesterNama} ${namaKelas}`,
+              tahun_pelajaran_id: matchedTp?.id || null,
+              tahun_pelajaran_nama: tahunPelajaranNama,
+              semester: semesterNama,
+              kelas_id: matchedKelas?.id || null,
+              nama_kelas: namaKelas,
+              wali_kelas_nama: parsed.metadata.walas || null,
+              jurusan_nama: parsed.metadata.konsentrasiKeahlian || parsed.metadata.programKeahlian || null,
+              total_siswa: parsed.totalSiswa,
+              total_mapel: parsed.detectedSubjects.length,
+              metadata_json: parsed.metadata as any,
+              sumatif_sheet_data: parsed.sumatifStudents as any,
+              cp_sheet_data: parsed.cpStudents as any,
+              status: 'READY',
+              sync_logs: {
+                detectedSubjects: parsed.detectedSubjects,
+                matchedMaster: {
+                  tp: matchedTp ? matchedTp.tahun : null,
+                  semester: matchedSem ? matchedSem.nama_semester : null,
+                  kelas: matchedKelas ? matchedKelas.nama_kelas : null,
+                },
+              } as any,
+            };
 
-        // Cek apakah sheet dengan URL atau kelas + TP + semester yang sama sudah ada di staging
-        const existing = await prisma.raporStagingSheet.findFirst({
-          where: {
-            tenant_id: tenantId,
-            nama_kelas: namaKelas,
-            tahun_pelajaran_nama: tahunPelajaranNama,
-            semester: semesterNama,
-          },
-        });
+            let savedRecord;
+            if (existing) {
+              savedRecord = await prisma.raporStagingSheet.update({
+                where: { id: existing.id },
+                data: stagingData,
+              });
+            } else {
+              savedRecord = await prisma.raporStagingSheet.create({
+                data: stagingData,
+              });
+            }
 
-        const stagingData = {
-          tenant_id: tenantId,
-          source_url: url,
-          file_title: `RAPOR ${tahunPelajaranNama} ${semesterNama} ${namaKelas}`,
-          tahun_pelajaran_id: matchedTp?.id || null,
-          tahun_pelajaran_nama: tahunPelajaranNama,
-          semester: semesterNama,
-          kelas_id: matchedKelas?.id || null,
-          nama_kelas: namaKelas,
-          wali_kelas_nama: parsed.metadata.walas || null,
-          jurusan_nama: parsed.metadata.konsentrasiKeahlian || parsed.metadata.programKeahlian || null,
-          total_siswa: parsed.totalSiswa,
-          total_mapel: parsed.detectedSubjects.length,
-          metadata_json: parsed.metadata as any,
-          sumatif_sheet_data: parsed.sumatifStudents as any,
-          cp_sheet_data: parsed.cpStudents as any,
-          status: 'READY',
-          sync_logs: {
-            detectedSubjects: parsed.detectedSubjects,
-            matchedMaster: {
-              tp: matchedTp ? matchedTp.tahun : null,
-              semester: matchedSem ? matchedSem.nama_semester : null,
-              kelas: matchedKelas ? matchedKelas.nama_kelas : null,
-            },
-          } as any,
-        };
-
-        let savedRecord;
-        if (existing) {
-          savedRecord = await prisma.raporStagingSheet.update({
-            where: { id: existing.id },
-            data: stagingData,
-          });
-        } else {
-          savedRecord = await prisma.raporStagingSheet.create({
-            data: stagingData,
-          });
-        }
-
-        results.push({
-          id: savedRecord.id,
-          nama_kelas: savedRecord.nama_kelas,
-          tahun_pelajaran: savedRecord.tahun_pelajaran_nama,
-          semester: savedRecord.semester,
-          wali_kelas: savedRecord.wali_kelas_nama,
-          total_siswa: savedRecord.total_siswa,
-          total_mapel: savedRecord.total_mapel,
-          status: savedRecord.status,
-          source_url: savedRecord.source_url,
-        });
-      } catch (err: any) {
-        appLogger.error({ err, url }, 'Gagal mengimpor Google Sheet');
-        errors.push({
-          url,
-          error: err.message || 'Gagal memproses file Google Sheet',
-        });
-      }
+            results.push({
+              id: savedRecord.id,
+              nama_kelas: savedRecord.nama_kelas,
+              tahun_pelajaran: savedRecord.tahun_pelajaran_nama,
+              semester: savedRecord.semester,
+              wali_kelas: savedRecord.wali_kelas_nama,
+              total_siswa: savedRecord.total_siswa,
+              total_mapel: savedRecord.total_mapel,
+              status: savedRecord.status,
+              source_url: savedRecord.source_url,
+            });
+          } catch (err: any) {
+            appLogger.error({ err, url }, 'Gagal mengimpor Google Sheet');
+            errors.push({
+              url,
+              error: err.message || 'Gagal memproses file Google Sheet',
+            });
+          }
+        })
+      );
     }
 
     return { results, errors };
