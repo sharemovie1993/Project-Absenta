@@ -103,13 +103,13 @@ const Accounting: React.FC = React.memo(() => {
     }, [setSearchParams]);
 
     const tabOptions: TabOption[] = useMemo(() => [
-        { id: 'income-statement', label: 'Laba Rugi (PHU)', icon: TrendingUp },
-        { id: 'neraca', label: 'Neraca (Posisi Keuangan)', icon: Scale },
-        { id: 'cash-flow', label: 'Arus Kas (Cash Flow)', icon: Activity },
-        { id: 'ledger', label: 'Buku Besar Akun', icon: BookOpen },
+        { id: 'income-statement', label: 'Laba Rugi', icon: TrendingUp },
+        { id: 'neraca', label: 'Neraca', icon: Scale },
+        { id: 'cash-flow', label: 'Arus Kas', icon: Activity },
+        { id: 'ledger', label: 'Buku Besar', icon: BookOpen },
         { id: 'journal', label: 'Jurnal Umum', icon: FileText },
-        { id: 'balance', label: 'Neraca Saldo (Trial Balance)', icon: FileSpreadsheet },
-        { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar },
+        { id: 'balance', label: 'Neraca Saldo', icon: FileSpreadsheet },
+        { id: 'payroll', label: 'Potongan Gaji', icon: Calendar },
     ], []);
 
     // Payroll recap states

@@ -284,7 +284,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <BookOpen size={14} className={activeTab === 'ledger' ? 'text-white' : 'text-indigo-500'} />
-                      <span className="text-xs font-semibold">Buku Besar per Rekening</span>
+                      <span className="text-xs font-semibold">Buku Besar</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'ledger' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Saldo Kas
@@ -302,7 +302,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <FileText size={14} className={activeTab === 'journal' ? 'text-white' : 'text-slate-500'} />
-                      <span className="text-xs font-semibold">Jurnal Umum Transaksi</span>
+                      <span className="text-xs font-semibold">Jurnal Umum</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'journal' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Audit Trail
@@ -320,7 +320,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <FileSpreadsheet size={14} className={activeTab === 'balance' ? 'text-white' : 'text-amber-500'} />
-                      <span className="text-xs font-semibold">Neraca Saldo Koperasi</span>
+                      <span className="text-xs font-semibold">Neraca Saldo</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'balance' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Kontrol
@@ -360,7 +360,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <TrendingUp size={14} className={activeTab === 'income-statement' ? 'text-white' : 'text-emerald-500'} />
-                      <span className="text-xs font-semibold">Laba Rugi (PHU / SHU)</span>
+                      <span className="text-xs font-semibold">Laba Rugi</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'income-statement' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Keuntungan
@@ -378,7 +378,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <Scale size={14} className={activeTab === 'neraca' ? 'text-white' : 'text-indigo-500'} />
-                      <span className="text-xs font-semibold">Neraca (Posisi Keuangan)</span>
+                      <span className="text-xs font-semibold">Neraca</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'neraca' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Kekayaan
@@ -396,7 +396,7 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                   >
                     <div className="flex items-center gap-2">
                       <Activity size={14} className={activeTab === 'cash-flow' ? 'text-white' : 'text-sky-500'} />
-                      <span className="text-xs font-semibold">Arus Kas (Cash Flow)</span>
+                      <span className="text-xs font-semibold">Arus Kas</span>
                     </div>
                     <span className={`text-[9px] ${activeTab === 'cash-flow' ? 'text-indigo-100' : 'text-slate-400'}`}>
                       Uang Riil
