@@ -477,8 +477,42 @@ export class RaporStagingService {
       select: { id: true, nama_mapel: true, kode_mapel: true },
       orderBy: { nama_mapel: 'asc' },
     });
+    // Kumpulkan hanya mata pelajaran yang nyata memiliki nilai / CP pada data siswa di sheet ini
+    const activeSubjectsSet = new Set<string>();
 
-    const detectedSubjects: string[] = (sheet.sync_logs as any)?.detectedSubjects || [];
+    for (const s of sumatifStudents) {
+      if (s.scores && typeof s.scores === 'object') {
+        for (const [subName, sc] of Object.entries(s.scores as Record<string, any>)) {
+          if (
+            sc &&
+            (sc.rata_rata !== null ||
+              sc.nilai_akhir !== null ||
+              sc.sumatif_1 !== null ||
+              sc.sumatif_2 !== null ||
+              sc.sumatif_3 !== null)
+          ) {
+            activeSubjectsSet.add(subName);
+          }
+        }
+      }
+    }
+
+    for (const c of cpStudents) {
+      const grades = c.mapelGrades || c.scores || {};
+      if (grades && typeof grades === 'object') {
+        for (const [subName, g] of Object.entries(grades as Record<string, any>)) {
+          if (g && (g.nilai_rapor !== null || (g.capaian_kompetensi && g.capaian_kompetensi.trim() !== ''))) {
+            activeSubjectsSet.add(subName);
+          }
+        }
+      }
+    }
+
+    // Patokan mapel: Utamakan mata pelajaran yang nyata muncul & memiliki nilai pada siswa
+    const detectedSubjects: string[] =
+      activeSubjectsSet.size > 0
+        ? Array.from(activeSubjectsSet)
+        : ((sheet.sync_logs as any)?.detectedSubjects || []);
     const matchedSubjects: Array<{ raw: string; matchedName: string; matchedId: string }> = [];
     const unmatchedSubjects: string[] = [];
     const suggestedMapping: Record<string, string> = {};
@@ -810,9 +844,23 @@ export class RaporStagingService {
         const s3 = sumatifScore?.sumatif_3 ?? null;
         const avg = sumatifScore?.rata_rata ?? null;
         const sumAkhir = sumatifScore?.nilai_akhir ?? null;
-
-        const nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? s1 ?? 0;
         const cpText = cpGrade?.capaian_kompetensi || '';
+
+        // Abaikan jika mapel ini tidak memiliki data nilai maupun teks CP pada siswa ini
+        const hasScore =
+          (cpGrade && cpGrade.nilai_rapor !== null) ||
+          avg !== null ||
+          sumAkhir !== null ||
+          s1 !== null ||
+          s2 !== null ||
+          s3 !== null ||
+          Boolean(cpText && cpText.trim() !== '');
+
+        if (!hasScore) {
+          continue;
+        }
+
+        const nilaiFinal = cpGrade?.nilai_rapor ?? avg ?? sumAkhir ?? s1 ?? 0;
 
         await prisma.nilaiSiswa.upsert({
           where: {
