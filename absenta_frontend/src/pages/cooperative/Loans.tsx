@@ -17,7 +17,6 @@ import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { cn } from '../../lib/utils';
 import useConfirm from '../../hooks/useConfirm';
-import { fetchCoopSettings } from '../../utils/cooperative/coopDocUtils';
 import { formatDate, formatCurrency } from '@/utils/layoutUtils';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
@@ -157,28 +156,50 @@ const Loans: React.FC = React.memo(() => {
     }
   }, [isStudent, myMemberId]);
 
-  // Load cooperative settings to fetch default interest rate
+  // Load cooperative settings (React Query – termasuk kebijakan masa keanggotaan)
+  const coopSettingsQuery = useQuery({
+    queryKey: ['koperasi-settings-detail'],
+    queryFn: async () => {
+      const res = await api.get('/cooperative/settings');
+      return res.data?.data || {};
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Sync coopSettings & defaultInterestRate saat data tersedia
   useEffect(() => {
-    let cancelled = false;
-    async function loadSettings() {
-      try {
-        const settings = await fetchCoopSettings();
-        if (!cancelled && settings) {
-          setCoopSettings(settings);
-          const rate = settings?.cooperative_default_interest_rate || (settings as any)?.default_interest_rate;
-          if (rate) {
-            const interestString = String(rate);
-            setDefaultInterestRate(interestString);
-            setFormData(prev => ({ ...prev, interestRate: interestString }));
-          }
-        }
-      } catch (err) {
-        console.warn('Failed to load default interest rate from settings:', err);
+    if (coopSettingsQuery.data) {
+      setCoopSettings(coopSettingsQuery.data);
+      const rate = coopSettingsQuery.data?.cooperative_default_interest_rate;
+      if (rate) {
+        const interestString = String(rate);
+        setDefaultInterestRate(interestString);
+        setFormData(prev => ({ ...prev, interestRate: interestString }));
       }
     }
-    loadSettings();
-    return () => { cancelled = true; };
-  }, []);
+  }, [coopSettingsQuery.data]);
+
+  // ─── Hitung Kelayakan Masa Keanggotaan ─────────────────────────────────────
+  const loanMinMembershipEnabled = coopSettingsQuery.data?.cooperative_loan_min_membership_enabled === 'true';
+  const loanMinMembershipMonths = parseInt(coopSettingsQuery.data?.cooperative_loan_min_membership_months || '3', 10);
+
+  const membershipMonthsElapsed = useMemo(() => {
+    const joinDate = currentMember?.joinDate ? new Date(currentMember.joinDate) : null;
+    if (!joinDate) return null;
+    const now = new Date();
+    const diffYears = now.getFullYear() - joinDate.getFullYear();
+    const diffMonths = diffYears * 12 + (now.getMonth() - joinDate.getMonth());
+    return Math.max(0, diffMonths);
+  }, [currentMember]);
+
+  // Apakah anggota personal memenuhi syarat masa keanggotaan?
+  const meetsMinMembershipPolicy = useMemo(() => {
+    if (!loanMinMembershipEnabled) return true; // Kebijakan nonaktif → semua boleh
+    if (isOperatorMode) return true;             // Operator kasir bebas membatasan ini
+    if (membershipMonthsElapsed === null) return null; // Masih loading / tidak diketahui
+    return membershipMonthsElapsed >= loanMinMembershipMonths;
+  }, [loanMinMembershipEnabled, isOperatorMode, membershipMonthsElapsed, loanMinMembershipMonths]);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const { subscribe, unsubscribe } = useSocket();
 
@@ -355,6 +376,14 @@ const Loans: React.FC = React.memo(() => {
         toast.error('Akun Anda belum terdaftar sebagai anggota aktif koperasi.');
         return;
       }
+      // Cek kebijakan masa keanggotaan minimum
+      if (loanMinMembershipEnabled && meetsMinMembershipPolicy === false) {
+        toast.error(
+          `Belum memenuhi syarat. Pinjaman dapat diajukan setelah ${loanMinMembershipMonths} bulan menjadi anggota. Masa keanggotaan Anda: ${membershipMonthsElapsed} bulan.`,
+          { duration: 6000 }
+        );
+        return;
+      }
     }
     setFormData(prev => ({
       ...prev,
@@ -363,7 +392,7 @@ const Loans: React.FC = React.memo(() => {
       autoApprove: isOperatorMode,
     }));
     setIsModalOpen(true);
-  }, [isStudent, memberStatusQuery.isLoading, isPersonalMemberActive, myMemberId, defaultInterestRate, isOperatorMode]);
+  }, [isStudent, memberStatusQuery.isLoading, isPersonalMemberActive, myMemberId, defaultInterestRate, isOperatorMode, loanMinMembershipEnabled, meetsMinMembershipPolicy, loanMinMembershipMonths, membershipMonthsElapsed]);
 
   const columns: Column[] = useMemo(() => {
     const baseCols: Column[] = [
@@ -871,6 +900,10 @@ const Loans: React.FC = React.memo(() => {
             loadingMembers={loadingMembers}
             studentMetrics={studentMetrics}
             currentMember={currentMember}
+            membershipMonthsElapsed={membershipMonthsElapsed}
+            loanMinMembershipEnabled={loanMinMembershipEnabled}
+            loanMinMembershipMonths={loanMinMembershipMonths}
+            meetsMinMembershipPolicy={meetsMinMembershipPolicy}
           />
         )}
 

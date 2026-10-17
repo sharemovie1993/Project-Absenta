@@ -7,6 +7,10 @@ export interface CooperativeSettings {
   cooperative_website: string;
   cooperative_logo_url: string;
   cooperative_default_interest_rate?: string;
+  /** Aktifkan pembatasan masa keanggotaan minimum sebelum boleh mengajukan pinjaman */
+  cooperative_loan_min_membership_enabled?: string; // 'true' | 'false'
+  /** Durasi minimum keanggotaan dalam bulan sebelum boleh mengajukan pinjaman */
+  cooperative_loan_min_membership_months?: string;
 }
 
 export interface SavingCategory {

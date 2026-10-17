@@ -40,6 +40,10 @@ interface CreateLoanModalProps {
   loading?: boolean;
   studentMetrics?: any;
   currentMember?: any;
+  membershipMonthsElapsed?: number | null;
+  loanMinMembershipEnabled?: boolean;
+  loanMinMembershipMonths?: number;
+  meetsMinMembershipPolicy?: boolean | null;
 }
 
 export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
@@ -58,6 +62,10 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
   submitLoading = false,
   loading = false,
   currentMember,
+  membershipMonthsElapsed,
+  loanMinMembershipEnabled,
+  loanMinMembershipMonths,
+  meetsMinMembershipPolicy,
 }) => {
   if (!isOpen) return null;
 
@@ -106,18 +114,55 @@ export const CreateLoanModal = React.memo<CreateLoanModalProps>(({
           <div className="p-6 space-y-4 overflow-y-auto flex-1">
             {/* Personal Mode: Info Pemohon */}
             {isStudent && (
-              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-100/80 dark:border-indigo-900/40 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 block">
-                    Pemohon Pinjaman (Akun Pribadi)
-                  </span>
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
-                    {currentMember?.name || 'Anggota Koperasi'} {currentMember?.memberNo ? `(${currentMember.memberNo})` : ''}
+              <div className={`p-3 border rounded-xl space-y-2 ${
+                loanMinMembershipEnabled && meetsMinMembershipPolicy === false
+                  ? 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200/80 dark:border-amber-800/50'
+                  : 'bg-indigo-50/70 dark:bg-indigo-950/25 border-indigo-100/80 dark:border-indigo-900/40'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-400 block">
+                      Pemohon Pinjaman (Akun Pribadi)
+                    </span>
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                      {currentMember?.name || 'Anggota Koperasi'} {currentMember?.memberNo ? `(${currentMember.memberNo})` : ''}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 shrink-0">
+                    Anggota Aktif
                   </span>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
-                  Anggota Aktif
-                </span>
+
+                {/* Info Masa Keanggotaan (tampil jika kebijakan aktif) */}
+                {loanMinMembershipEnabled && membershipMonthsElapsed !== null && membershipMonthsElapsed !== undefined && (
+                  <div className={`flex items-start gap-2 pt-2 border-t ${
+                    meetsMinMembershipPolicy === false
+                      ? 'border-amber-200/60 dark:border-amber-800/40'
+                      : 'border-indigo-100/60 dark:border-indigo-900/40'
+                  }`}>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Masa keanggotaan: <strong className="text-slate-700 dark:text-slate-200">{membershipMonthsElapsed} bulan</strong>
+                        </span>
+                        {meetsMinMembershipPolicy === false ? (
+                          <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
+                            ⚠ Belum memenuhi syarat
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-700">
+                            ✓ Memenuhi syarat
+                          </span>
+                        )}
+                      </div>
+                      {meetsMinMembershipPolicy === false && (
+                        <p className="text-[10px] text-amber-700/90 dark:text-amber-400/90 mt-0.5 leading-tight">
+                          Minimal {loanMinMembershipMonths} bulan diperlukan. Kurang {(loanMinMembershipMonths || 0) - membershipMonthsElapsed} bulan lagi.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

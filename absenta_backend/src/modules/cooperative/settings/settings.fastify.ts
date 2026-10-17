@@ -19,7 +19,9 @@ export default async function settingsRoutes(fastify: any) {
         'cooperative_email',
         'cooperative_website',
         'cooperative_logo_url',
-        'cooperative_default_interest_rate'
+        'cooperative_default_interest_rate',
+        'cooperative_loan_min_membership_enabled',
+        'cooperative_loan_min_membership_months'
     ];
 
     // GET /cooperative/settings
@@ -106,6 +108,8 @@ export default async function settingsRoutes(fastify: any) {
                     cooperative_website: configMap['cooperative_website'] || '',
                     cooperative_logo_url: configMap['cooperative_logo_url'] || '',
                     cooperative_default_interest_rate: configMap['cooperative_default_interest_rate'] || '1.5',
+                    cooperative_loan_min_membership_enabled: configMap['cooperative_loan_min_membership_enabled'] || 'false',
+                    cooperative_loan_min_membership_months: configMap['cooperative_loan_min_membership_months'] || '3',
                     signatures: {
                         bendahara: bendaharaName,
                         ketua: ketuaName,

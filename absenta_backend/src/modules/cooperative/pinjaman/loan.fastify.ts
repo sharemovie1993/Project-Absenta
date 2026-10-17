@@ -88,6 +88,46 @@ export default async function loanRoutes(fastify: any) {
 
             let effectiveInterestRate = interestRate;
 
+            // ─── Kebijakan Masa Keanggotaan Minimum (Pilar Validasi Bisnis) ─────────────────
+            // Hanya berlaku untuk pengajuan personal (bukan operator/kasir yang input atas nama anggota)
+            // Operator (kasir/bendahara) tetap bisa memproses pinjaman tanpa batasan ini.
+            const minMembershipEnabledCfg = await prisma.config.findFirst({
+                where: { tenant_id: tenantId, key: 'cooperative_loan_min_membership_enabled' }
+            });
+            const isMinMembershipEnabled = minMembershipEnabledCfg?.value === 'true';
+
+            if (isMinMembershipEnabled && !isOperator) {
+                const minMonthsCfg = await prisma.config.findFirst({
+                    where: { tenant_id: tenantId, key: 'cooperative_loan_min_membership_months' }
+                });
+                const minMonths = parseInt(minMonthsCfg?.value || '3', 10);
+
+                // Ambil data member untuk cek joinDate
+                const targetMember = await prisma.member.findUnique({ where: { id: memberId } });
+                if (targetMember) {
+                    const joinDate = targetMember.joinDate || targetMember.createdAt;
+                    const now = new Date();
+                    // Hitung selisih bulan antara sekarang dan tanggal bergabung
+                    const diffYears = now.getFullYear() - joinDate.getFullYear();
+                    const diffMonths = diffYears * 12 + (now.getMonth() - joinDate.getMonth());
+                    const membershipMonths = Math.max(0, diffMonths);
+
+                    if (membershipMonths < minMonths) {
+                        return reply.status(400).send({
+                            success: false,
+                            code: 'MEMBERSHIP_DURATION_TOO_SHORT',
+                            message: `Pengajuan belum memenuhi syarat. Berdasarkan kebijakan koperasi, pinjaman hanya dapat diajukan setelah menjadi anggota minimal ${minMonths} bulan. Masa keanggotaan Anda saat ini: ${membershipMonths} bulan.`,
+                            data: {
+                                minMonths,
+                                currentMonths: membershipMonths,
+                                joinDate: joinDate.toISOString()
+                            }
+                        });
+                    }
+                }
+            }
+            // ─────────────────────────────────────────────────────────────────────────────────
+
             if (!isOperator) {
                 const member = await prisma.member.findFirst({
                     where: { tenantId, userId: user.id }

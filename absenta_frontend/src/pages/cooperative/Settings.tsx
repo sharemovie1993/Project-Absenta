@@ -78,7 +78,9 @@ const Settings: React.FC = React.memo(() => {
     cooperative_email: '',
     cooperative_website: '',
     cooperative_logo_url: '',
-    cooperative_default_interest_rate: ''
+    cooperative_default_interest_rate: '',
+    cooperative_loan_min_membership_enabled: 'false',
+    cooperative_loan_min_membership_months: '3',
   });
 
   // Category Modal State
@@ -139,6 +141,10 @@ const Settings: React.FC = React.memo(() => {
       ...prev,
       [name]: value
     }));
+  }, []);
+
+  const handleToggleChange = useCallback((name: keyof CooperativeSettings, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
   }, []);
   const saveSettingsMutation = useMutation({
     mutationFn: async (payload: CooperativeSettings) => {
@@ -389,7 +395,7 @@ const Settings: React.FC = React.memo(() => {
             {activeTab === 'profile' && (
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 <div className="xl:col-span-8">
-                  <CooperativeProfileForm formData={formData} saving={saving} onInputChange={handleInputChange} onSubmit={handleSubmit} effectiveLogoUrl={effectiveLogoUrl} canEditProfile={canEditProfile} />
+                  <CooperativeProfileForm formData={formData} saving={saving} onInputChange={handleInputChange} onSubmit={handleSubmit} effectiveLogoUrl={effectiveLogoUrl} canEditProfile={canEditProfile} onToggleChange={handleToggleChange} />
                 </div>
                 <div className="xl:col-span-4 xl:sticky xl:top-6">
                   <KopSuratPreview cooperativeName={formData.cooperative_name} cooperativeLegalNo={formData.cooperative_legal_no} effectiveLogoUrl={effectiveLogoUrl} />
