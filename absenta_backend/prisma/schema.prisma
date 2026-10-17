@@ -4735,6 +4735,7 @@ model RaporStagingSheet {
   @@index([tenant_id])
   @@index([tenant_id, tahun_pelajaran_nama, semester])
   @@index([tenant_id, nama_kelas])
+  @@map("rapor_staging_sheets")
 }
 
 model SertifikatUkk {

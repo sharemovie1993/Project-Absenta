@@ -2,6 +2,7 @@ import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
 import { GoogleSheetRaporParserService, ParsedRaporClassData } from './google-sheet-rapor-parser.service';
 
+// Rapor Staging Hub Service - Maps to rapor_staging_sheets PostgreSQL table
 export interface StagingFilter {
   tahunPelajaran?: string;
   semester?: string;
