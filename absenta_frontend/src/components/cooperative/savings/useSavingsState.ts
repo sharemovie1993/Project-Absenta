@@ -280,7 +280,23 @@ export const useSavingsState = () => {
     });
   }, []);
 
-  const handleSelectStudent = useCallback((student: Student, memberNo?: string) => {
+  const handleResetScanner = useCallback(() => {
+    setScannedStudent(null);
+    setScannedMemberSavings([]);
+    setMemberLoans([]);
+    setSelectedScannedSavingId('');
+    setQuickAmount('');
+    setQuickDescription('');
+    setTimeout(() => scannerInputRef.current?.focus(), 150);
+  }, []);
+
+  const handleSelectStudent = useCallback((student: Student | null | undefined, memberNo?: string) => {
+    // If resetting scanner / empty student passed, reset without showing error toast
+    if (!student || (!student.id && !memberNo)) {
+      handleResetScanner();
+      return;
+    }
+
     const matchingSavings = savings.filter(s => {
       if (memberNo) {
         return s.member.memberNo === memberNo;
@@ -596,6 +612,7 @@ export const useSavingsState = () => {
     getAutoMemo,
     getVisibleSavingsForTx,
     handleSelectStudent,
+    handleResetScanner,
     executeQuickTransaction,
     handleQuickTransactionSubmit,
     handleQuickTxTypeChange,

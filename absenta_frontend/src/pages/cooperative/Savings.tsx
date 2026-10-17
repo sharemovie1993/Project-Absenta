@@ -86,6 +86,7 @@ const Savings: React.FC = React.memo(() => {
     getAutoMemo,
     getVisibleSavingsForTx,
     handleSelectStudent,
+    handleResetScanner,
     executeQuickTransaction,
     handleQuickTransactionSubmit,
     handleQuickTxTypeChange,
@@ -131,19 +132,24 @@ const Savings: React.FC = React.memo(() => {
 
   const handleCloseCashier = useCallback(() => {
     setIsCashierModalOpen(false);
-    handleSelectStudent({ id: '' });
-  }, [handleSelectStudent]);
+    handleResetScanner();
+  }, [handleResetScanner]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'F2') {
         e.preventDefault();
-        setIsCashierModalOpen(prev => !prev);
+        setIsCashierModalOpen(prev => {
+          if (prev) {
+            handleResetScanner();
+          }
+          return !prev;
+        });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handleResetScanner]);
 
   // Passbook & Mutasi Modal States (Preview UI first before PDF)
   const [isPassbookModalOpen, setIsPassbookModalOpen] = useState(false);
