@@ -14,7 +14,7 @@ import Table from '../../components/ui/Table';
 import type { Column } from '../../components/ui/Table';
 import Card from '../../components/ui/Card';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
-import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Activity, FolderTree } from 'lucide-react';
+import { BookOpen, FileText, Printer, Download, Calendar, CheckCircle2, AlertCircle, TrendingUp, Scale, FileSpreadsheet, Activity } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -33,7 +33,6 @@ import {
     CashFlowStatementReport, 
     GeneralLedgerSection,
     TrialBalanceSection,
-    ChartOfAccountsSection,
     type AccountingTabId
 } from '../../components/cooperative/accounting';
 import { WorkspaceAppLauncherCard } from '../../components/common/WorkspaceAppLauncherCard';
@@ -75,10 +74,12 @@ const Accounting: React.FC = React.memo(() => {
     const [searchParams, setSearchParams] = useSearchParams();
     const tabParam = searchParams.get('tab');
     
-    // Auto-redirect jika pengguna membuka tab expenses/kas-keluar legacy ke halaman mandiri Kas & Bank
+    // Auto-redirect jika pengguna membuka tab legacy ke halaman mandiri masing-masing
     useEffect(() => {
         if (tabParam === 'expenses' || tabParam === 'beban' || tabParam === 'kas-keluar') {
             navigate('/cooperative/cash-bank', { replace: true });
+        } else if (tabParam === 'coa' || tabParam === 'bagan-akun') {
+            navigate('/cooperative/chart-of-accounts', { replace: true });
         }
     }, [tabParam, navigate]);
 
@@ -90,7 +91,6 @@ const Accounting: React.FC = React.memo(() => {
         if (tabParam === 'balance') return 'balance';
         if (tabParam === 'payroll') return 'payroll';
         if (tabParam === 'journal') return 'journal';
-        if (tabParam === 'coa' || tabParam === 'bagan-akun') return 'coa';
         return 'income-statement';
     }, [tabParam]);
 
@@ -110,7 +110,6 @@ const Accounting: React.FC = React.memo(() => {
         { id: 'journal', label: 'Jurnal Umum', icon: FileText },
         { id: 'balance', label: 'Neraca Saldo (Trial Balance)', icon: FileSpreadsheet },
         { id: 'payroll', label: 'Rekap Potongan Gaji', icon: Calendar },
-        { id: 'coa', label: 'Bagan Akun (COA)', icon: FolderTree },
     ], []);
 
     // Payroll recap states
@@ -611,12 +610,6 @@ const Accounting: React.FC = React.memo(() => {
                                 balanceSheet={balanceSheet} 
                                 loading={loading} 
                             />
-                        )}
-
-                        {activeTab === 'coa' && (
-                            <div className="p-4 sm:p-6">
-                                <ChartOfAccountsSection canManage={isOperator || isKoperasiFinance || isAdmin} />
-                            </div>
                         )}
 
                         {activeTab === 'payroll' && (

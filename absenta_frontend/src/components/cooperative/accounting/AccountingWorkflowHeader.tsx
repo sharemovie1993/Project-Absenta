@@ -29,8 +29,7 @@ export type AccountingTabId =
   | 'ledger' 
   | 'journal' 
   | 'balance' 
-  | 'payroll'
-  | 'coa';
+  | 'payroll';
 
 interface AccountingWorkflowHeaderProps {
   activeTab: AccountingTabId;
@@ -262,19 +261,15 @@ export const AccountingWorkflowHeader: React.FC<AccountingWorkflowHeaderProps> =
                 <div className="space-y-1.5 pt-1">
                   <button
                     type="button"
-                    onClick={() => onSelectTab('coa')}
-                    className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                      activeTab === 'coa'
-                        ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
-                    }`}
+                    onClick={() => navigate('/cooperative/chart-of-accounts')}
+                    className="w-full flex items-center justify-between p-2 rounded-lg text-left transition-all bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-400 group"
                   >
                     <div className="flex items-center gap-2">
-                      <FolderTree size={14} className={activeTab === 'coa' ? 'text-white' : 'text-emerald-500'} />
+                      <FolderTree size={14} className="text-emerald-500 group-hover:scale-110 transition-transform" />
                       <span className="text-xs font-semibold">Bagan Akun (COA)</span>
                     </div>
-                    <span className={`text-[9px] ${activeTab === 'coa' ? 'text-indigo-100' : 'text-slate-400'}`}>
-                      Hierarki
+                    <span className="text-[9px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-0.5 group-hover:underline">
+                      Buka Menu <ExternalLink size={9} />
                     </span>
                   </button>
 
