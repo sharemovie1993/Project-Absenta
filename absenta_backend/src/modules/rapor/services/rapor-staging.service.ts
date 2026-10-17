@@ -63,7 +63,7 @@ export class RaporStagingService {
             const namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
 
             // Auto-match master IDs jika sudah ada di DB
-            const [matchedTp, matchedSem, matchedKelas] = await Promise.all([
+            const [matchedTp, matchedSem, candidateClasses] = await Promise.all([
               prisma.tahunPelajaran.findFirst({
                 where: {
                   tenant_id: tenantId,
@@ -76,13 +76,22 @@ export class RaporStagingService {
                   nama_semester: { equals: semesterNama, mode: 'insensitive' },
                 },
               }),
-              prisma.kelas.findFirst({
+              prisma.kelas.findMany({
                 where: {
                   tenant_id: tenantId,
                   nama_kelas: { equals: namaKelas, mode: 'insensitive' },
                 },
+                include: {
+                  Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+                },
               }),
             ]);
+
+            const matchedKelas = RaporStagingService.resolveKelasWithJurusan(
+              candidateClasses,
+              parsed.metadata.konsentrasiKeahlian,
+              parsed.metadata.programKeahlian
+            );
 
             // Cek apakah sheet dengan URL atau kelas + TP + semester yang sama sudah ada di staging
             const existing = await prisma.raporStagingSheet.findFirst({
@@ -386,6 +395,74 @@ export class RaporStagingService {
   }
 
   /**
+   * ── RESOLVER CERDAS KELAS DENGAN FILTER JURUSAN / KONSENTRASI KEAHLIAN ──
+   * Mengatasi kasus rombel dengan nama kelas identik (misal: 'X TE 3')
+   * yang di tahun ajaran tertentu masuk TOI dan di tahun lain masuk TAV.
+   */
+  static resolveKelasWithJurusan<
+    T extends {
+      id: string;
+      nama_kelas: string;
+      Jurusan?: { id?: string; nama?: string; kode?: string | null; singkatan?: string | null } | null;
+    }
+  >(
+    candidates: T[],
+    konsentrasiHint?: string | null,
+    programHint?: string | null
+  ): T | null {
+    if (!candidates || candidates.length === 0) return null;
+    if (candidates.length === 1) return candidates[0];
+
+    const rawHint = `${konsentrasiHint || ''} ${programHint || ''}`.toLowerCase().trim();
+    if (!rawHint) return candidates[0];
+
+    // Pemetaan alias jurusan SMK populer (TOI, TAV, TSM, TKR, dll.)
+    const jurusanKeywords: Record<string, string[]> = {
+      toi: ['otomasi', 'industri', 'toi'],
+      tav: ['audio', 'video', 'tav'],
+      tkj: ['jaringan', 'komputer', 'tkj', 'tjkt'],
+      rpl: ['perangkat lunak', 'rpl', 'pplg', 'rekayasa perangkat'],
+      tkr: ['kendaraan ringan', 'tkr', 'otomotif'],
+      tsm: ['sepeda motor', 'tsm', 'tbsm', 'motor'],
+      tp: ['mesin', 'pemesinan', 'tp', 'tm'],
+      akl: ['akuntansi', 'keuangan', 'akl', 'ak'],
+      pht: ['perhotelan', 'hotel', 'pht', 'htl'],
+      kul: ['kuliner', 'tata boga', 'kul', 'boga'],
+    };
+
+    // 1. Coba pencocokan presisi nama jurusan, kode, atau singkatan
+    for (const c of candidates) {
+      const jName = (c.Jurusan?.nama || '').toLowerCase().trim();
+      const jKode = (c.Jurusan?.kode || '').toLowerCase().trim();
+      const jSing = (c.Jurusan?.singkatan || '').toLowerCase().trim();
+
+      if (
+        (jName && (rawHint.includes(jName) || jName.includes(rawHint))) ||
+        (jKode && rawHint.includes(jKode)) ||
+        (jSing && rawHint.includes(jSing))
+      ) {
+        return c;
+      }
+    }
+
+    // 2. Coba pencocokan via kata kunci tematik
+    for (const c of candidates) {
+      const jKode = (c.Jurusan?.kode || c.Jurusan?.singkatan || '').toLowerCase();
+      const jName = (c.Jurusan?.nama || '').toLowerCase();
+
+      for (const [key, keywords] of Object.entries(jurusanKeywords)) {
+        const isMatchKey = jKode === key || jName.includes(key);
+        if (isMatchKey) {
+          const matchesHint = keywords.some((kw) => rawHint.includes(kw));
+          if (matchesHint) return c;
+        }
+      }
+    }
+
+    return candidates[0];
+  }
+
+  /**
    * ── PRE-SYNC CHECK: PEMERIKSAAN KESIAPAN SLOT ──
    * Memvalidasi ketersediaan slot Tahun Pelajaran, Semester, Kelas, Siswa, dan Mapel
    * sebelum sinkronisasi permanen dieksekusi ke database produksi.
@@ -419,15 +496,27 @@ export class RaporStagingService {
       select: { id: true, nama_semester: true },
     });
 
-    // 3. Cek Slot Kelas
+    // 3. Cek Slot Kelas Cerdas Berbasis Nama & Konsentrasi Keahlian / Jurusan
     const kelasRaw = sheet.nama_kelas;
-    const kelas = await prisma.kelas.findFirst({
+    const candidateClasses = await prisma.kelas.findMany({
       where: {
         tenant_id: tenantId,
         nama_kelas: { equals: kelasRaw, mode: 'insensitive' },
       },
-      select: { id: true, nama_kelas: true, tingkat: true },
+      include: {
+        Jurusan: {
+          select: { id: true, nama: true, kode: true, singkatan: true },
+        },
+      },
     });
+
+    const konsentrasiHint = (sheet.metadata_json as any)?.konsentrasiKeahlian || sheet.jurusan_nama;
+    const programHint = (sheet.metadata_json as any)?.programKeahlian;
+    const matchedKelas = RaporStagingService.resolveKelasWithJurusan(
+      candidateClasses,
+      konsentrasiHint,
+      programHint
+    );
 
     // 4. Kumpulkan Seluruh Siswa di Lembar Staging
     const sumatifStudents = (sheet.sumatif_sheet_data as any[]) || [];
@@ -527,7 +616,7 @@ export class RaporStagingService {
       }
     }
 
-    const canSync = !!tp && !!sem && !!kelas;
+    const canSync = !!tp && !!sem && !!matchedKelas;
 
     // 6. Cek Pengaturan Sumber Nilai Rapor (Formula Sumatif vs Murni CP Manual)
     const [tpSumberCfg, globalSumberCfg] = await Promise.all([
@@ -546,7 +635,20 @@ export class RaporStagingService {
       academicSlots: {
         tahunPelajaran: { raw: tpRaw, isReady: !!tp, matchedName: tp?.tahun || null, id: tp?.id || null },
         semester: { raw: semRaw, isReady: !!sem, matchedName: sem?.nama_semester || null, id: sem?.id || null },
-        kelas: { raw: kelasRaw, isReady: !!kelas, matchedName: kelas?.nama_kelas || null, id: kelas?.id || null },
+        kelas: {
+          raw: kelasRaw,
+          isReady: !!matchedKelas,
+          matchedName: matchedKelas ? matchedKelas.nama_kelas : null,
+          jurusanNama: matchedKelas?.Jurusan?.nama || null,
+          jurusanKode: matchedKelas?.Jurusan?.kode || matchedKelas?.Jurusan?.singkatan || null,
+          id: matchedKelas?.id || null,
+          candidateClasses: candidateClasses.map((c) => ({
+            id: c.id,
+            nama_kelas: c.nama_kelas,
+            jurusanNama: c.Jurusan?.nama || null,
+            jurusanKode: c.Jurusan?.kode || c.Jurusan?.singkatan || null,
+          })),
+        },
       },
       studentSlots: {
         totalInSheet: mergedStudents.size,
@@ -585,6 +687,7 @@ export class RaporStagingService {
       autoProvisionStudents?: boolean;
       customMapelMapping?: Record<string, string>;
       sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+      customKelasId?: string;
     }
   ) {
     const sheet = await prisma.raporStagingSheet.findFirst({
@@ -635,16 +738,22 @@ export class RaporStagingService {
       (globalSumberCfg?.value as any) ||
       defaultMode;
 
-    // 2. Resolve Target Kelas
-    let kelasId = sheet.kelas_id;
+    // 2. Resolve Target Kelas (Mendukung customKelasId dari modal pre-sync atau pencocokan multi-kriteria jurusan)
+    let kelasId = options?.customKelasId || null;
     if (!kelasId) {
-      const kelas = await prisma.kelas.findFirst({
+      const candidateClasses = await prisma.kelas.findMany({
         where: {
           tenant_id: tenantId,
           nama_kelas: { equals: sheet.nama_kelas, mode: 'insensitive' },
         },
+        include: {
+          Jurusan: { select: { id: true, nama: true, kode: true, singkatan: true } },
+        },
       });
-      kelasId = kelas?.id || null;
+      const konsentrasiHint = (sheet.metadata_json as any)?.konsentrasiKeahlian || sheet.jurusan_nama;
+      const programHint = (sheet.metadata_json as any)?.programKeahlian;
+      const matched = RaporStagingService.resolveKelasWithJurusan(candidateClasses, konsentrasiHint, programHint);
+      kelasId = matched?.id || sheet.kelas_id || candidateClasses[0]?.id || null;
     }
 
     if (!kelasId) {

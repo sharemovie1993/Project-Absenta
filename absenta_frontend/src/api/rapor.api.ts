@@ -386,6 +386,7 @@ export const raporApi = {
       autoProvisionStudents?: boolean;
       customMapelMapping?: Record<string, string>;
       sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+      customKelasId?: string;
     }
   ) => {
     const response = await api.post(`/rapor/staging/${id}/sync`, options || {}, { timeout: 300000 }); // 5 menit
@@ -397,11 +398,21 @@ export const raporApi = {
   },
 };
 
+export interface PreSyncCandidateClass {
+  id: string;
+  nama_kelas: string;
+  jurusanNama?: string | null;
+  jurusanKode?: string | null;
+}
+
 export interface PreSyncAcademicSlot {
   raw: string;
   isReady: boolean;
   matchedName: string | null;
   id: string | null;
+  jurusanNama?: string | null;
+  jurusanKode?: string | null;
+  candidateClasses?: PreSyncCandidateClass[];
 }
 
 export interface PreSyncStudentItem {

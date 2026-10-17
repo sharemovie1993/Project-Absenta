@@ -26,7 +26,8 @@ export interface RaporStagingPreSyncModalProps {
   onConfirmSync: (
     autoProvision: boolean,
     customMapping?: Record<string, string>,
-    sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'
+    sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL',
+    customKelasId?: string
   ) => void;
   isSyncing: boolean;
 }
@@ -45,11 +46,21 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
     const [showUnmatchedList, setShowUnmatchedList] = useState(false);
     const [showMapelSettings, setShowMapelSettings] = useState(false);
     const [sumberNilaiRapor, setSumberNilaiRapor] = useState<'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'>('FORMULA_SUMATIF');
+    const [selectedKelasId, setSelectedKelasId] = useState<string>('');
 
     // Inisialisasi sumber nilai dari laporan pre-sync
     useEffect(() => {
       if (report?.sumberNilaiRapor) {
         setSumberNilaiRapor(report.sumberNilaiRapor);
+      }
+    }, [report]);
+
+    // Inisialisasi selectedKelasId dari kelas yang cocok
+    useEffect(() => {
+      if (report?.academicSlots.kelas.id) {
+        setSelectedKelasId(report.academicSlots.kelas.id);
+      } else {
+        setSelectedKelasId('');
       }
     }, [report]);
 
@@ -88,15 +99,15 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
     }, [detectedSubjects, manualMapping]);
 
     const handleConfirm = useCallback(() => {
-      onConfirmSync(autoProvision, manualMapping, sumberNilaiRapor);
-    }, [autoProvision, manualMapping, sumberNilaiRapor, onConfirmSync]);
+      onConfirmSync(autoProvision, manualMapping, sumberNilaiRapor, selectedKelasId || undefined);
+    }, [autoProvision, manualMapping, sumberNilaiRapor, selectedKelasId, onConfirmSync]);
 
     if (!isOpen) return null;
 
     const isAcademicReady = Boolean(
       report?.academicSlots.tahunPelajaran.isReady &&
       report?.academicSlots.semester.isReady &&
-      report?.academicSlots.kelas.isReady
+      (selectedKelasId || report?.academicSlots.kelas.isReady)
     );
 
     const hasUnmatchedStudents = (report?.studentSlots.unmatchedCount || 0) > 0;
@@ -203,15 +214,52 @@ export const RaporStagingPreSyncModal: React.FC<RaporStagingPreSyncModalProps> =
                     )}
                   </div>
                   {/* Kelas */}
-                  <div className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
-                    <div className="min-w-0">
-                      <span className="text-[10px] text-slate-400 block">Rombel Kelas</span>
-                      <span className="font-semibold block truncate">{report.academicSlots.kelas.raw}</span>
+                  <div
+                    className={cn(
+                      'p-2 bg-white dark:bg-slate-900 rounded-xl border flex flex-col justify-between',
+                      report.academicSlots.kelas.candidateClasses && report.academicSlots.kelas.candidateClasses.length > 1
+                        ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/20 sm:col-span-1'
+                        : 'border-slate-200/60 dark:border-slate-700/60'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="min-w-0">
+                        <span className="text-[10px] text-slate-400 block">Rombel Kelas</span>
+                        <span className="font-semibold block truncate">{report.academicSlots.kelas.raw}</span>
+                      </div>
+                      {report.academicSlots.kelas.isReady || selectedKelasId ? (
+                        <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300 shrink-0">Ada</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300 shrink-0">Belum Ada</Badge>
+                      )}
                     </div>
-                    {report.academicSlots.kelas.isReady ? (
-                      <Badge variant="outline" className="text-[10px] text-emerald-600 border-emerald-300">Ada</Badge>
+
+                    {/* Info Jurusan / Selector Spesialisasi Keahlian */}
+                    {report.academicSlots.kelas.candidateClasses && report.academicSlots.kelas.candidateClasses.length > 1 ? (
+                      <div className="mt-2 pt-1.5 border-t border-amber-200/60 dark:border-amber-800/60">
+                        <label htmlFor="select-candidate-kelas" className="text-[10px] font-semibold text-amber-800 dark:text-amber-300 block mb-1">
+                          ⚠️ Jurusan Terdeteksi ({report.academicSlots.kelas.candidateClasses.length} Opsi Rombel):
+                        </label>
+                        <select
+                          id="select-candidate-kelas"
+                          value={selectedKelasId}
+                          onChange={(e) => setSelectedKelasId(e.target.value)}
+                          className="w-full h-7 text-[11px] rounded-lg border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-950 px-1 font-medium text-slate-800 dark:text-slate-100 cursor-pointer shadow-xs"
+                          aria-label="Pilih rombel dan keahlian yang sesuai"
+                        >
+                          {report.academicSlots.kelas.candidateClasses.map((cand) => (
+                            <option key={cand.id} value={cand.id}>
+                              {cand.nama_kelas} - {cand.jurusanNama || cand.jurusanKode || 'Umum'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     ) : (
-                      <Badge variant="outline" className="text-[10px] text-rose-600 border-rose-300">Belum Ada</Badge>
+                      report.academicSlots.kelas.jurusanNama && (
+                        <div className="mt-1 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          Jurusan: <span className="font-semibold text-slate-700 dark:text-slate-200">{report.academicSlots.kelas.jurusanNama}</span>
+                        </div>
+                      )
                     )}
                   </div>
                 </div>

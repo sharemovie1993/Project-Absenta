@@ -167,13 +167,20 @@ export default React.memo(function RaporStagingPage() {
       autoProvisionStudents,
       customMapelMapping,
       sumberNilaiRapor,
+      customKelasId,
     }: {
       id: string;
       autoProvisionStudents?: boolean;
       customMapelMapping?: Record<string, string>;
       sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+      customKelasId?: string;
     }) => {
-      return await raporApi.syncStagingToRapor(id, { autoProvisionStudents, customMapelMapping, sumberNilaiRapor });
+      return await raporApi.syncStagingToRapor(id, {
+        autoProvisionStudents,
+        customMapelMapping,
+        sumberNilaiRapor,
+        customKelasId,
+      });
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
@@ -253,7 +260,8 @@ export default React.memo(function RaporStagingPage() {
     (
       autoProvision: boolean,
       customMapping?: Record<string, string>,
-      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL'
+      sumberNilaiRapor?: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL',
+      customKelasId?: string
     ) => {
       if (!preSyncTargetId) return;
       syncMutation.mutate({
@@ -261,6 +269,7 @@ export default React.memo(function RaporStagingPage() {
         autoProvisionStudents: autoProvision,
         customMapelMapping: customMapping,
         sumberNilaiRapor,
+        customKelasId,
       });
     },
     [preSyncTargetId, syncMutation]
