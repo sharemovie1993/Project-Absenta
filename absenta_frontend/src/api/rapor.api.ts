@@ -358,7 +358,104 @@ export const raporApi = {
     const response = await api.put('/rapor/settings', data);
     return response.data;
   },
+
+  // === RAPOR STAGING HUB (GOOGLE SHEET INTEGRATOR) ===
+  fetchAndStageGoogleSheets: async (urls: string[]) => {
+    const response = await api.post('/rapor/staging/fetch', { urls });
+    return response.data;
+  },
+  getStagedSheets: async (params?: { tahunPelajaran?: string; semester?: string; kelas?: string }) => {
+    const response = await api.get('/rapor/staging', { params });
+    return response.data;
+  },
+  getStagedSheetDetail: async (id: string) => {
+    const response = await api.get(`/rapor/staging/${id}`);
+    return response.data;
+  },
+  syncStagingToRapor: async (id: string) => {
+    const response = await api.post(`/rapor/staging/${id}/sync`);
+    return response.data;
+  },
+  deleteStagedSheet: async (id: string) => {
+    const response = await api.delete(`/rapor/staging/${id}`);
+    return response.data;
+  },
 };
+
+export interface RaporStagingItem {
+  id: string;
+  file_title: string;
+  source_url: string;
+  tahun_pelajaran_nama: string;
+  semester: string;
+  nama_kelas: string;
+  wali_kelas_nama: string | null;
+  jurusan_nama: string | null;
+  total_siswa: number;
+  total_mapel: number;
+  status: 'READY' | 'SYNCED' | 'ERROR';
+  last_synced_at: string | null;
+  created_at: string;
+  updated_at: string;
+  sync_logs?: {
+    totalNilaiSynced?: number;
+    totalRaporSynced?: number;
+    unmappedStudents?: string[];
+    unmappedSubjects?: string[];
+    syncedAt?: string;
+    detectedSubjects?: string[];
+    matchedMaster?: {
+      tp?: string | null;
+      semester?: string | null;
+      kelas?: string | null;
+    };
+  };
+}
+
+export interface RaporStagingDetail extends RaporStagingItem {
+  metadata_json: {
+    sekolah: string;
+    fase: string;
+    kelas: string;
+    semester: string;
+    tahunPelajaran: string;
+    programKeahlian: string;
+    konsentrasiKeahlian: string;
+    walas: string;
+    nipWalas: string;
+  };
+  sumatif_sheet_data: Array<{
+    no: number;
+    nis: string;
+    nisn: string;
+    nama: string;
+    jk: string;
+    scores: Record<string, {
+      sumatif1: number | null;
+      sumatif2: number | null;
+      sumatif3: number | null;
+      rataRata: number | null;
+      akhirSumatif: number | null;
+    }>;
+  }>;
+  cp_sheet_data: Array<{
+    no: number;
+    nis: string;
+    nisn: string;
+    nama: string;
+    scores: Record<string, {
+      nilaiRapor: number | null;
+      capaianKompetensi: string;
+    }>;
+    absensi?: {
+      sakit: number;
+      izin: number;
+      alpa: number;
+    };
+    catatanWalas?: string;
+    ekskul?: Array<{ nama: string; predikat: string; keterangan: string }>;
+  }>;
+}
 
 export interface RaporSettings {
   tahun_pelajaran_id?: string | null;

@@ -153,6 +153,7 @@ model Tenant {
   JenisNilaiMaster         JenisNilaiMaster[]
   NilaiSiswa               NilaiSiswa[]
   RaporSiswa               RaporSiswa[]
+  RaporStagingSheet        RaporStagingSheet[]
   SertifikatUkk            SertifikatUkk[]
   KelulusanSiswa           KelulusanSiswa[]
   P5Projek                 P5Projek[]
@@ -4704,6 +4705,36 @@ model RaporSiswa {
   @@index([tenant_id])
   @@index([tenant_id, siswa_id])
   @@index([tenant_id, kelas_id, tahun_pelajaran_id, semester_id])
+}
+
+model RaporStagingSheet {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  source_url           String    @db.Text
+  file_title           String?
+  tahun_pelajaran_id   String?
+  tahun_pelajaran_nama String
+  semester             String
+  kelas_id             String?
+  nama_kelas           String
+  wali_kelas_nama      String?
+  jurusan_nama         String?
+  total_siswa          Int       @default(0)
+  total_mapel          Int       @default(0)
+  metadata_json        Json?
+  sumatif_sheet_data   Json
+  cp_sheet_data        Json
+  status               String    @default("READY")
+  last_synced_at       DateTime?
+  sync_logs            Json?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  Tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_nama, semester])
+  @@index([tenant_id, nama_kelas])
 }
 
 model SertifikatUkk {

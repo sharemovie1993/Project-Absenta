@@ -169,6 +169,7 @@ const AtpBuilderPage = lazy(() => import('./pages/kurikulum/AtpBuilderPage').the
 const AtpTemplatePage = lazy(() => import('./pages/kurikulum/AtpTemplatePage').then(m => ({ default: m.AtpTemplatePage })));
 const InputNilaiPage = lazy(() => import('./pages/rapor/InputNilaiPage'));
 const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
+const RaporStagingPage = lazy(() => import('./pages/rapor/RaporStagingPage'));
 const P5Page = lazy(() => import('./pages/rapor/P5Page'));
 const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
@@ -978,6 +979,11 @@ function App() {
                     <Route path="/rapor/cetak" element={
                       <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
                         <CetakRaporPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/staging" element={
+                      <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
+                        <RaporStagingPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/p5" element={

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
   FileText, 
@@ -13,8 +14,10 @@ import {
   Printer, 
   UserCheck,
   GraduationCap,
-  Info
+  Info,
+  FileSpreadsheet
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
@@ -30,6 +33,7 @@ import { PersonalTeacherProgressWidget } from '@/components/rapor/dashboard/Pers
 import { ClassSubjectProgressCard } from '@/components/rapor/cetak-rapor/ClassSubjectProgressCard';
 
 export default React.memo(function RaporDashboard() {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { isAdmin, isKurikulum, isKepsek, isWaliKelas, walikelasKelas, walikelasKelasIds } = useCapabilities();
   const userKelasId = walikelasKelas?.id || (walikelasKelasIds && walikelasKelasIds.length > 0 ? walikelasKelasIds[0] : null);
@@ -113,6 +117,17 @@ export default React.memo(function RaporDashboard() {
             variant="toolbar"
           />
           <TvModeToggle />
+          {canViewSchoolMonitoring && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/rapor/staging')}
+              className="text-xs h-9 rounded-xl font-bold gap-1.5 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 hover:bg-indigo-100 dark:bg-indigo-950/30"
+            >
+              <FileSpreadsheet size={14} />
+              <span>Penampung Google Sheet</span>
+            </Button>
+          )}
         </div>
       }
     >
