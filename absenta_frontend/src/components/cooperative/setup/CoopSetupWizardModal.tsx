@@ -138,6 +138,24 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
     }
   ]);
 
+  // Normalisasi daftar akun dari flat/nodes agar tahan format respon API
+  const accountList: AccountNode[] = useMemo(() => {
+    if (!accountsData) return [];
+    if (Array.isArray(accountsData.flat)) return accountsData.flat;
+    if (Array.isArray((accountsData as any).nodes)) return (accountsData as any).nodes;
+    if (Array.isArray(accountsData)) return accountsData;
+    return [];
+  }, [accountsData]);
+
+  // Guard agar refetch status di background TIDAK otomatis melompati step yang sedang aktif
+  const hasInitializedStepRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      hasInitializedStepRef.current = false;
+    }
+  }, [isOpen]);
+
   // Sinkronkan status data ke local state saat pertama dibuka
   useEffect(() => {
     if (status) {
@@ -147,21 +165,25 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
       if (status.cutoffDate) {
         setCutoffDate(status.cutoffDate);
       }
-      // Tentukan step rekomendasi awal jika status belum selesai
-      if (!status.coaInitialized) {
-        setCurrentStep(1);
-      } else if (!status.hasOpeningJournal && status.setupMode !== 'NEW_COOP') {
-        setCurrentStep(3);
-      } else if (status.memberCount === 0) {
-        setCurrentStep(4);
+      // Tentukan step rekomendasi HANYA 1 kali saat modal baru pertama kali terbuka
+      if (!hasInitializedStepRef.current) {
+        hasInitializedStepRef.current = true;
+        if (!status.coaInitialized) {
+          setCurrentStep(1);
+        } else if (!status.hasOpeningJournal && status.setupMode !== 'NEW_COOP') {
+          // Tetap mulai dari Step 1 agar pengurus bisa mereview skenario & tanggal
+          setCurrentStep(1);
+        } else if (status.memberCount === 0) {
+          setCurrentStep(1);
+        }
       }
     }
   }, [status]);
 
-  // Inisialisasi daftar entri saldo awal dari akun yang tersedia
+  // Inisialisasi daftar entri saldo awal dari akun detail (posting) yang tersedia
   useEffect(() => {
-    if (accountsData?.nodes && accountsData.nodes.length > 0 && journalEntries.length === 0) {
-      const detailAccounts = accountsData.nodes.filter(a => !a.is_header);
+    if (accountList.length > 0 && journalEntries.length === 0) {
+      const detailAccounts = accountList.filter(a => !(a.isHeader ?? (a as any).is_header));
       const initialEntries: OpeningBalanceEntry[] = detailAccounts.map(a => ({
         account_id: a.id,
         debit: 0,
@@ -170,7 +192,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
       }));
       setJournalEntries(initialEntries);
     }
-  }, [accountsData, journalEntries.length]);
+  }, [accountList, journalEntries.length]);
 
   // Mutations
   const setModeMutation = useMutation({
@@ -861,19 +883,22 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                       <tr>
                         <td colSpan={4} className="px-4 py-6 text-center text-slate-500">Memuat bagan akun...</td>
                       </tr>
-                    ) : accountsData?.nodes && accountsData.nodes.length > 0 ? (
-                      accountsData.nodes.map(acc => (
-                        <tr key={acc.id} className={acc.is_header ? 'bg-slate-50/50 dark:bg-slate-800/30 font-bold' : ''}>
-                          <td className="px-4 py-2 font-mono text-indigo-600 dark:text-indigo-400">{acc.code}</td>
-                          <td className="px-4 py-2 text-slate-800 dark:text-slate-200">{acc.name}</td>
-                          <td className="px-4 py-2 text-slate-500">{acc.category || acc.type}</td>
-                          <td className="px-4 py-2">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${acc.is_header ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
-                              {acc.is_header ? 'Induk (Header)' : 'Detail (Posting)'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                    ) : accountList.length > 0 ? (
+                      accountList.map(acc => {
+                        const isHeader = Boolean(acc.isHeader ?? (acc as any).is_header);
+                        return (
+                          <tr key={acc.id} className={isHeader ? 'bg-slate-50/70 dark:bg-slate-800/40 font-bold' : 'hover:bg-slate-50/40 dark:hover:bg-slate-800/20'}>
+                            <td className="px-4 py-2 font-mono text-indigo-600 dark:text-indigo-400">{acc.code}</td>
+                            <td className="px-4 py-2 text-slate-800 dark:text-slate-200">{acc.name}</td>
+                            <td className="px-4 py-2 text-slate-500">{acc.type}</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${isHeader ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>
+                                {isHeader ? 'Induk (Header)' : 'Detail (Posting)'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
@@ -950,7 +975,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {journalEntries.map(entry => {
-                      const acc = accountsData?.nodes?.find(a => a.id === entry.account_id);
+                      const acc = accountList.find(a => a.id === entry.account_id);
                       if (!acc) return null;
                       return (
                         <tr key={entry.account_id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
@@ -1258,7 +1283,7 @@ export const CoopSetupWizardModal: React.FC<CoopSetupWizardModalProps> = ({ isOp
                   const filteredEntries = journalEntries
                     .filter(e => e.debit > 0 || e.credit > 0)
                     .map(e => {
-                      const acc = accountsData?.nodes?.find(a => a.id === e.account_id);
+                      const acc = accountList.find(a => a.id === e.account_id);
                       return {
                         ...e,
                         accountCode: acc?.code || '',
