@@ -652,15 +652,43 @@ export default React.memo(function InputNilaiPage() {
                 />
               </div>
 
-              {tabOptions.length > 1 && (
-                <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
+                {tabOptions.length > 1 && (
                   <TabSwitcher
                     options={tabOptions}
                     activeTab={activeRoleTab}
                     onChange={handleRoleTabChange}
                   />
-                </div>
-              )}
+                )}
+
+                {/* Quick Nav: Cetak Rapor (Pindah ke atas disamping TabSwitcher) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const params = new URLSearchParams();
+                    if (activeRoleTab === 'wali_kelas') {
+                      if (waliKelasId) params.set('kelas_id', waliKelasId);
+                      params.set('tab', 'wali_kelas');
+                    } else {
+                      if (selectedKelas) params.set('kelas_id', selectedKelas);
+                      if (activeRoleTab === 'supervisi') params.set('tab', 'supervisi');
+                    }
+                    if (selectedTahunPelajaran || activeYear?.id) {
+                      params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
+                    }
+                    if (selectedSemester || activeSemester?.id) {
+                      params.set('semester_id', selectedSemester || activeSemester?.id || '');
+                    }
+                    const q = params.toString();
+                    navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 h-[38px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                  title="Buka Cetak Rapor Siswa"
+                >
+                  <Printer className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <span>Cetak Rapor</span>
+                </button>
+              </div>
             </div>
 
             {/* Baris 2: Seleksi Rombel / Mapel & Tombol Aksi */}
@@ -718,38 +746,11 @@ export default React.memo(function InputNilaiPage() {
                   <button
                     type="button"
                     onClick={() => setShowMonitoringModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 h-[38px] rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
                     title="Buka Status Monitoring Pengisian Mapel Rombel"
                   >
                     <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
                     <span>Monitoring Mapel</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (selectedKelas) params.set('kelas_id', selectedKelas);
-                      params.set('tab', 'supervisi');
-                      if (selectedTahunPelajaran || activeYear?.id) params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
-                      if (selectedSemester || activeSemester?.id) params.set('semester_id', selectedSemester || activeSemester?.id || '');
-                      const q = params.toString();
-                      navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                    title="Buka Cetak Rapor Siswa"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Cetak Rapor</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate('/rapor/dashboard')}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
-                    title="Buka Dashboard Monitoring Rapor"
-                  >
-                    <span>Dashboard</span>
                   </button>
                 </div>
               </div>
@@ -808,20 +809,6 @@ export default React.memo(function InputNilaiPage() {
                       <UserCheck className="w-3.5 h-3.5" />
                       <span>Isi Catatan</span>
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
-                        )
-                      }
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
-                      title="Buka Leger & Cetak Rapor"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Cetak Rapor</span>
-                    </button>
                   </div>
                 </div>
 
@@ -867,23 +854,6 @@ export default React.memo(function InputNilaiPage() {
                   >
                     <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
                     <span>Monitoring Mapel</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const params = new URLSearchParams();
-                      if (selectedKelas) params.set('kelas_id', selectedKelas);
-                      if (selectedTahunPelajaran || activeYear?.id) params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
-                      if (selectedSemester || activeSemester?.id) params.set('semester_id', selectedSemester || activeSemester?.id || '');
-                      const q = params.toString();
-                      navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                    title="Buka Cetak Rapor Siswa"
-                  >
-                    <Printer className="w-3.5 h-3.5" />
-                    <span>Cetak Rapor</span>
                   </button>
                 </div>
               </div>

@@ -74,58 +74,6 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
 
   return (
     <Card className="p-0 border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden dark:bg-slate-900/40 w-full max-w-full min-w-0">
-      {/* Table Toolbar Header with Clear Leger Print & Export Buttons */}
-      <div className="bg-slate-50 dark:bg-slate-800/60 px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-            <BookOpen size={16} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-xs sm:text-sm text-slate-800 dark:text-slate-100">
-                Buku Leger Nilai &amp; Peringkat Kelas
-              </span>
-              <Badge variant="outline" className="bg-white dark:bg-slate-800 text-[10px] font-bold border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
-                {students.length} Siswa
-              </Badge>
-            </div>
-            <p className="text-[11px] text-slate-400">
-              Rekapitulasi nilai rapor intrakurikuler seluruh mata pelajaran dan urutan ranking rombel.
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons for Leger */}
-        <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
-          {onPrintLeger && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onPrintLeger}
-              className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs h-8 px-3 flex items-center gap-1.5 shadow-xs cursor-pointer"
-              title="Cetak Buku Leger Nilai Kelas format Landscape (PDF)"
-            >
-              <Printer size={13} />
-              <span>Cetak Buku Leger (PDF)</span>
-            </Button>
-          )}
-
-          {onExportLeger && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onExportLeger}
-              className="border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl font-bold text-xs h-8 px-3 flex items-center gap-1.5 cursor-pointer"
-              title="Unduh Leger Nilai Kelas format Spreadsheet (.xlsx)"
-            >
-              <FileSpreadsheet size={13} />
-              <span>Ekspor Excel</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
       <div className="overflow-x-auto w-full max-w-full min-w-0">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
@@ -200,12 +148,13 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         size="sm"
                         onClick={() => onOpenSummaryModal(student)}
                         className="text-xs font-semibold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 whitespace-nowrap flex-shrink-0"
+                        title="Isi presensi & catatan perkembangan siswa"
                       >
                         <Edit3 size={13} className="mr-1 flex-shrink-0 text-slate-500" />
                         <span>Catatan</span>
                       </Button>
 
-                      {/* Dropdown Cetak Dokumen Rapor Lengkap */}
+                      {/* Dropdown Cetak Dokumen Rapor Lengkap (Termasuk Transkrip) */}
                       <RaporPrintMenu
                         studentId={student.id}
                         studentName={student.nama_siswa}
@@ -217,19 +166,8 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         showSumatifArchive={modeCetakRapor === 'SUMATIF_AND_CP' || modeCetakRapor === 'SUMATIF_ONLY'}
                         onPrintRaporPkl={() => onPrintRaporPkl?.(student)}
                         onPrintSertifikatPkl={() => onPrintSertifikatPkl?.(student)}
+                        onOpenTranskrip={() => onOpenTranskripModal(student)}
                       />
-
-                      {/* Transkrip Modal */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOpenTranskripModal(student)}
-                        className="text-xs font-semibold border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40 whitespace-nowrap flex-shrink-0"
-                        title="Rekapitulasi Nilai & Transkrip Kumulatif"
-                      >
-                        <Award size={13} className="mr-1 flex-shrink-0" />
-                        <span>Transkrip</span>
-                      </Button>
                     </div>
                   </td>
 
