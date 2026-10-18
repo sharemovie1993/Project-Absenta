@@ -630,26 +630,29 @@ export class PdfRaporService {
       const kenaikanTitle = `${showKokurikuler ? 'V' : 'IV'}. KENAIKAN KELAS`;
       const tingkat = student.Kelas?.tingkat || 10;
       const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
-      let keputusanDesc = '';
+      const curKelas = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
+
       const rawKep = (data.keputusan_transisi || '').trim().toUpperCase();
-      if (rawKep === 'NAIK') {
-        keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
-      } else if (rawKep === 'MENETAP' || rawKep === 'TINGGAL') {
-        const curKelasLabel = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
-        keputusanDesc = tingkat >= 12 ? 'Tidak lulus dari satuan pendidikan' : `Tinggal di kelas ${curKelasLabel}`;
-      } else if (data.keputusan_transisi) {
-        keputusanDesc = data.keputusan_transisi.replace(/_/g, ' ');
-      } else {
-        keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
-      }
+      const isMenetap = rawKep === 'MENETAP' || rawKep === 'TINGGAL';
+
+      const textNaik = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
+      const textTinggal = (tingkat >= 12 ? 'Tidak lulus dari satuan pendidikan' : `Tinggal di kelas ${curKelas}`) + ' &nbsp;*)';
+
+      const lineNaik = isMenetap
+        ? `<div style="text-decoration: line-through; color: #333; margin-top: 2px;">${textNaik}</div>`
+        : `<div style="font-weight: bold; margin-top: 2px;">${textNaik}</div>`;
+      const lineTinggal = !isMenetap
+        ? `<div style="text-decoration: line-through; color: #333; margin-top: 2px;">${textTinggal}</div>`
+        : `<div style="font-weight: bold; margin-top: 2px;">${textTinggal}</div>`;
 
       kenaikanKelasHtml = `
         <div style="margin-bottom: 14px; page-break-inside: avoid;">
           <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">${kenaikanTitle}</div>
-          <div style="border: 1px solid #111; padding: 8px 12px; font-size: 10.5px; line-height: 1.5;">
-            <div>Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan:</div>
-            <div style="font-weight: bold; margin-top: 3px;">
-              ${keputusanDesc}
+          <div style="font-size: 10px; line-height: 1.5;">
+            <div>Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan</div>
+            <div style="margin-left: 2px;">
+              ${lineNaik}
+              ${lineTinggal}
             </div>
           </div>
         </div>

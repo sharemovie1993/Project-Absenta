@@ -525,34 +525,52 @@ export const renderStudentRaporPages = (
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(10);
     doc.text(`${kenaikanNumeral}. KENAIKAN KELAS`, 15, y);
-    y += 4;
+    y += 5;
 
     const tingkat = Number(siswa.tingkat || 10);
     const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
-    let keputusanDesc = '';
-    const rawKep = (data.keputusan_transisi || '').trim().toUpperCase();
-    if (rawKep === 'NAIK') {
-      keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
-    } else if (rawKep === 'MENETAP' || rawKep === 'TINGGAL') {
-      const curKelasLabel = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
-      keputusanDesc = tingkat >= 12 ? 'Tidak lulus dari satuan pendidikan' : `Tinggal di kelas ${curKelasLabel}`;
-    } else if (data.keputusan_transisi) {
-      keputusanDesc = data.keputusan_transisi.replace(/_/g, ' ');
-    } else {
-      keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
-    }
+    const curKelas = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
 
-    const kenaikanBoxHeight = 16;
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.rect(15, y, 180, kenaikanBoxHeight);
+    const rawKep = (data.keputusan_transisi || '').trim().toUpperCase();
+    const isMenetap = rawKep === 'MENETAP' || rawKep === 'TINGGAL';
+
+    const textNaik = tingkat >= 12 ? 'Lulus' : `Naik ke kelas ${targetNext}`;
+    const textTinggal = (tingkat >= 12 ? 'Tidak Lulus' : `Tinggal di kelas ${curKelas}`) + '  *)';
 
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(8.5);
-    doc.text('Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan:', 18, y + 5);
-    doc.setFont('Helvetica', 'bold');
-    doc.text(keputusanDesc, 18, y + 10.5);
-    y += kenaikanBoxHeight + 8;
+    doc.text('Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan', 15, y);
+    y += 4.5;
+
+    // Baris 1: Naik
+    const textNaikX = 15;
+    if (isMenetap) {
+      doc.setFont('Helvetica', 'normal');
+      doc.text(textNaik, textNaikX, y);
+      const wNaik = doc.getTextWidth(textNaik);
+      doc.setDrawColor(40, 40, 40);
+      doc.setLineWidth(0.35);
+      doc.line(textNaikX, y - 1.1, textNaikX + wNaik, y - 1.1);
+    } else {
+      doc.setFont('Helvetica', 'bold');
+      doc.text(textNaik, textNaikX, y);
+    }
+    y += 4.2;
+
+    // Baris 2: Tinggal (dengan tanda *)
+    const textTinggalX = 15;
+    if (!isMenetap) {
+      doc.setFont('Helvetica', 'normal');
+      doc.text(textTinggal, textTinggalX, y);
+      const wTinggal = doc.getTextWidth(textTinggal);
+      doc.setDrawColor(40, 40, 40);
+      doc.setLineWidth(0.35);
+      doc.line(textTinggalX, y - 1.1, textTinggalX + wTinggal, y - 1.1);
+    } else {
+      doc.setFont('Helvetica', 'bold');
+      doc.text(textTinggal, textTinggalX, y);
+    }
+    y += 8;
   } else {
     y += 4;
   }
