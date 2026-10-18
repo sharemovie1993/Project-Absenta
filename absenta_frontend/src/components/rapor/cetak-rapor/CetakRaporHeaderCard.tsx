@@ -109,11 +109,11 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
   }, [isBatchMenuOpen]);
 
   return (
-    <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full min-w-0 space-y-3.5">
+    <Card className="p-3.5 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 rounded-2xl w-full max-w-full min-w-0 space-y-3.5">
       {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Persona & Pintasan Input Nilai di kanan */}
       {(onTahunPelajaranChange || tabOptions.length > 1 || onNavigateInputNilai) && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="w-full md:w-auto">
             {onTahunPelajaranChange && onSemesterChange && (
               <AcademicContextBar
                 id="cetak-rapor"
@@ -130,7 +130,7 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
             )}
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
             {tabOptions.length > 1 && onRoleTabChange && (
               <TabSwitcher
                 options={tabOptions}
@@ -144,10 +144,10 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
               <Button
                 variant="outline"
                 onClick={onNavigateInputNilai}
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-[38px] px-3.5 flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl font-bold text-xs h-[38px] px-2.5 sm:px-3.5 flex items-center gap-1.5 cursor-pointer shrink-0"
                 title="Beralih ke Lembar Penginputan Nilai e-Rapor"
               >
-                <BookOpen className="w-4 h-4 text-indigo-500" />
+                <BookOpen className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span>Input Nilai</span>
               </Button>
             )}
@@ -231,12 +231,12 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
         </div>
 
         {/* Sisi Kanan: Aksi Cetak Sekaligus, Buku Leger & Rincian Mapel */}
-        <div className="flex items-center gap-2 shrink-0 self-start lg:self-end flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto shrink-0 self-start lg:self-end">
           {/* Tombol Utama: Cetak Sekaligus (Maks 2 Kata) */}
           <Button
             onClick={onBatchPrintRapor}
             disabled={isBatchPrinting || !hasLegerData || isLoadingLeger}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all h-[38px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer text-xs"
+            className="col-span-2 sm:col-span-1 w-full sm:w-auto justify-center bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all h-[38px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer text-xs"
             title={
               !selectedKelas
                 ? 'Pilih kelas terlebih dahulu'
@@ -254,12 +254,12 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
           </Button>
 
           {/* Dropdown Aksi Sekunder: Buku Leger (Maks 2 Kata) */}
-          <div className="relative inline-block text-left" ref={batchMenuRef}>
+          <div className="relative inline-block text-left w-full sm:w-auto" ref={batchMenuRef}>
             <Button
               variant="outline"
               onClick={() => setIsBatchMenuOpen((prev) => !prev)}
               disabled={!hasLegerData || isLoadingLeger}
-              className="border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl font-bold text-xs h-[38px] px-3 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              className="w-full sm:w-auto justify-center border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 bg-amber-50/50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl font-bold text-xs h-[38px] px-3 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
               title="Opsi cetak buku leger nilai, rapor PKL, dan ekspor excel sekelas"
             >
               <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -349,7 +349,7 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
             <Button
               variant="outline"
               onClick={onOpenMonitoringModal}
-              className="border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl font-bold text-xs h-[38px] px-3 flex items-center gap-1.5 cursor-pointer"
+              className="w-full sm:w-auto justify-center border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/60 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-xl font-bold text-xs h-[38px] px-3 flex items-center gap-1.5 cursor-pointer"
               title="Lihat Rincian Status Pengisian Nilai Mapel Rombel Ini"
             >
               <BarChart3 className="w-4 h-4 text-indigo-500" />

@@ -92,9 +92,9 @@ export function AcademicContextBar({
   // ── Varian: toolbar ──────────────────────────────────────────────────────
   if (variant === 'toolbar') {
     return (
-      <div className={cn('flex items-center gap-2 flex-wrap', className)}>
+      <div className={cn('grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto', className)}>
         {/* Tahun Pelajaran */}
-        <div className="w-48 sm:w-52">
+        <div className="w-full sm:w-52 min-w-0">
           <SearchableSelect
             id={tpId}
             aria-label="Pilih tahun pelajaran"
@@ -108,7 +108,7 @@ export function AcademicContextBar({
         </div>
 
         {/* Semester */}
-        <div className="w-44 sm:w-48">
+        <div className="w-full sm:w-44 min-w-0">
           <SearchableSelect
             id={semId}
             aria-label="Pilih semester"

@@ -634,10 +634,10 @@ export default React.memo(function InputNilaiPage() {
         <div className="space-y-4">
 
           {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3.5">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
             {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role di kanan */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-full md:w-auto">
                 <AcademicContextBar
                   id="input-nilai"
                   tahunPelajaranId={selectedTahunPelajaran}
@@ -653,7 +653,7 @@ export default React.memo(function InputNilaiPage() {
               </div>
 
               {tabOptions.length > 1 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
                   <TabSwitcher
                     options={tabOptions}
                     activeTab={activeRoleTab}
