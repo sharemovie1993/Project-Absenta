@@ -106,34 +106,37 @@ export const renderOfficialSumatifPage = (
   });
 
   const buildRow = (m: any, idx: number) => {
-    let rincianText = '';
     const hasSumatif = m.sumatif_1 != null || m.sumatif_2 != null || m.sumatif_3 != null;
 
+    let s1 = '';
+    let s2 = '';
+    let s3 = '';
+
     if (hasSumatif) {
-      const s1 = m.sumatif_1 != null ? String(m.sumatif_1) : '';
-      const s2 = m.sumatif_2 != null ? String(m.sumatif_2) : '';
-      const s3 = m.sumatif_3 != null ? String(m.sumatif_3) : '';
-      rincianText = `Nilai  :  ${s1}   ,   Nilai  :  ${s2}   ,   Nilai  :  ${s3}`;
+      s1 = m.sumatif_1 != null ? String(m.sumatif_1) : '';
+      s2 = m.sumatif_2 != null ? String(m.sumatif_2) : '';
+      s3 = m.sumatif_3 != null ? String(m.sumatif_3) : '';
     } else if (m.nilai_components && Array.isArray(m.nilai_components) && m.nilai_components.length > 0) {
-      if (m.nilai_components.length === 1) {
-        const val = m.nilai_components[0]?.nilai ?? m.nilai_akhir ?? '';
-        rincianText = `Nilai  :  ${val}   ,   Nilai  :     ,   Nilai  :  `;
-      } else {
-        rincianText = m.nilai_components
-          .map((c: any) => `Nilai  :  ${c.nilai ?? ''}`)
-          .join('   ,   ');
-      }
+      s1 = m.nilai_components[0]?.nilai != null ? String(m.nilai_components[0].nilai) : (m.nilai_akhir ? String(m.nilai_akhir) : '');
+      s2 = m.nilai_components[1]?.nilai != null ? String(m.nilai_components[1].nilai) : '';
+      s3 = m.nilai_components[2]?.nilai != null ? String(m.nilai_components[2].nilai) : '';
     } else if (m.nilai_akhir && m.nilai_akhir > 0) {
-      rincianText = `Nilai  :  ${m.nilai_akhir}   ,   Nilai  :     ,   Nilai  :  `;
-    } else {
-      rincianText = 'Nilai  :     ,   Nilai  :     ,   Nilai  :  ';
+      s1 = String(m.nilai_akhir);
     }
 
     const rerata = m.rata_rata_sumatif != null && m.rata_rata_sumatif > 0
       ? String(Math.round(m.rata_rata_sumatif))
       : (m.nilai_akhir && m.nilai_akhir > 0 ? String(Math.round(m.nilai_akhir)) : '-');
 
-    return [idx + 1, m.mapel_name || '-', rerata, rincianText];
+    return [
+      idx + 1,
+      m.mapel_name || '-',
+      rerata,
+      {
+        content: '',
+        sumatifData: { s1, s2, s3 },
+      },
+    ];
   };
 
   const tableBody: any[] = [];
@@ -142,7 +145,13 @@ export const renderOfficialSumatifPage = (
       {
         content: 'A. Kelompok Umum',
         colSpan: 4,
-        styles: { fontStyle: 'bold', fillColor: [235, 237, 240], textColor: [0, 0, 0] },
+        styles: {
+          fontStyle: 'bold',
+          fillColor: [235, 237, 240],
+          textColor: [0, 0, 0],
+          halign: 'left',
+          cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+        },
       },
     ]);
     mapelUmum.forEach((m, i) => tableBody.push(buildRow(m, i)));
@@ -153,7 +162,13 @@ export const renderOfficialSumatifPage = (
       {
         content: 'B. Kelompok Kejuruan',
         colSpan: 4,
-        styles: { fontStyle: 'bold', fillColor: [235, 237, 240], textColor: [0, 0, 0] },
+        styles: {
+          fontStyle: 'bold',
+          fillColor: [235, 237, 240],
+          textColor: [0, 0, 0],
+          halign: 'left',
+          cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+        },
       },
     ]);
     mapelKejuruan.forEach((m, i) => tableBody.push(buildRow(m, i)));
@@ -189,6 +204,32 @@ export const renderOfficialSumatifPage = (
       1: { cellWidth: 60 },
       2: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
       3: { cellWidth: 88 },
+    },
+    didDrawCell: (data) => {
+      if (data.section === 'body' && data.column.index === 3) {
+        const rawCell = data.cell.raw as any;
+        const sumatif = rawCell?.sumatifData;
+        if (sumatif) {
+          const cell = data.cell;
+          const slotWidth = cell.width / 3;
+          const textY = cell.y + (cell.height / 2) + 1.1;
+
+          doc.setFont('Helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(0, 0, 0);
+
+          // Slot 1 (Bagi rata persis 1/3 lebar kolom)
+          doc.text(`Nilai  :  ${sumatif.s1}`, cell.x + 2.5, textY);
+          doc.text(',', cell.x + slotWidth - 3, textY);
+
+          // Slot 2 (Bagi rata persis 1/3 lebar kolom)
+          doc.text(`Nilai  :  ${sumatif.s2}`, cell.x + slotWidth + 2.5, textY);
+          doc.text(',', cell.x + (2 * slotWidth) - 3, textY);
+
+          // Slot 3 (Bagi rata persis 1/3 lebar kolom)
+          doc.text(`Nilai  :  ${sumatif.s3}`, cell.x + (2 * slotWidth) + 2.5, textY);
+        }
+      }
     },
   });
 
