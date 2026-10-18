@@ -503,6 +503,13 @@ export default React.memo(function CetakRaporPage() {
       });
   }, [selectedKelas, studentList, leger, searchQuery]);
 
+  const isGenap = useMemo(() => {
+    const currentSemObj = semesterOptions?.find((s) => s.value === effectiveSemId)?.raw as Semester | undefined;
+    const semName = (currentSemObj?.nama_semester || (currentSemObj as any)?.nama || academicActiveSemester?.nama_semester || academicActiveSemester?.nama || '').toLowerCase();
+    const semNum = (currentSemObj as any)?.semester || (academicActiveSemester as any)?.semester;
+    return semName.includes('genap') || semName.includes('2') || semNum === 2;
+  }, [semesterOptions, effectiveSemId, academicActiveSemester]);
+
   // ── Custom Hook: Summary & Form Validation Manager ──
   const {
     isSummaryModalOpen,
@@ -518,6 +525,7 @@ export default React.memo(function CetakRaporPage() {
     selectedKelas,
     activeYear,
     activeSemester,
+    isGenap,
   });
 
   // ── Rekap Absensi custom hook untuk modal summary ──
@@ -659,6 +667,7 @@ export default React.memo(function CetakRaporPage() {
             onSubmit={handleSummarySubmit}
             isSaving={isSavingSummary}
             tampilkanKokurikuler={tampilkanKokurikuler}
+            isGenap={isGenap}
           />
         </Suspense>
 

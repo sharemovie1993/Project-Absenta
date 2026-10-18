@@ -630,9 +630,18 @@ export class PdfRaporService {
       const kenaikanTitle = `${showKokurikuler ? 'V' : 'IV'}. KENAIKAN KELAS`;
       const tingkat = student.Kelas?.tingkat || 10;
       const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
-      const keputusanDesc = data.keputusan_transisi
-        ? data.keputusan_transisi.replace(/_/g, ' ')
-        : `Naik ke kelas ${targetNext}`;
+      let keputusanDesc = '';
+      const rawKep = (data.keputusan_transisi || '').trim().toUpperCase();
+      if (rawKep === 'NAIK') {
+        keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
+      } else if (rawKep === 'MENETAP' || rawKep === 'TINGGAL') {
+        const curKelasLabel = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
+        keputusanDesc = tingkat >= 12 ? 'Tidak lulus dari satuan pendidikan' : `Tinggal di kelas ${curKelasLabel}`;
+      } else if (data.keputusan_transisi) {
+        keputusanDesc = data.keputusan_transisi.replace(/_/g, ' ');
+      } else {
+        keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
+      }
 
       kenaikanKelasHtml = `
         <div style="margin-bottom: 14px; page-break-inside: avoid;">

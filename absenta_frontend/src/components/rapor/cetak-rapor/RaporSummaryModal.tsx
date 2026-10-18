@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, Loader2, AlertCircle, X, Download } from 'lucide-react';
+import { Sparkles, Loader2, AlertCircle, X, Download, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { toast } from 'sonner';
 import { LegerStudent, SummaryFormData } from '../../../types/cetakRapor.types';
@@ -15,6 +15,7 @@ interface RaporSummaryModalProps {
   onSubmit: (e: React.FormEvent) => void;
   isSaving: boolean;
   tampilkanKokurikuler?: boolean;
+  isGenap?: boolean;
 }
 
 const ABSENSI_FIELDS: Array<{ field: 'sakit' | 'izin' | 'alpa'; label: string; badgeColor: string }> = [
@@ -34,6 +35,7 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
   onSubmit,
   isSaving,
   tampilkanKokurikuler = false,
+  isGenap = false,
 }) => {
   if (!isOpen || !selectedStudent) return null;
 
@@ -209,29 +211,60 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
               </div>
             )}
 
-            {/* Keputusan Kenaikan / Transisi */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="input-summary-keputusan"
-                className="text-xs font-bold text-slate-700 dark:text-slate-300 block"
-              >
-                Keputusan Kenaikan / Kelulusan
-              </label>
-              <input
-                id="input-summary-keputusan"
-                type="text"
-                maxLength={200}
-                placeholder="Contoh: Naik ke Kelas XI TJKT 1"
-                value={summaryForm.keputusan_transisi ?? ''}
-                onChange={(e) => onFormChange('keputusan_transisi', e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-800 dark:text-white px-3 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-              />
-              {formErrors.keputusan_transisi && (
-                <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1">
-                  <AlertCircle size={10} /> {formErrors.keputusan_transisi}
-                </p>
-              )}
-            </div>
+            {/* Keputusan Kenaikan / Kelulusan (Hanya Muncul di Semester Genap) */}
+            {isGenap && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                  Keputusan Kenaikan / Kelulusan
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => onFormChange('keputusan_transisi', 'NAIK')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      summaryForm.keputusan_transisi === 'NAIK' || !summaryForm.keputusan_transisi
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700 dark:bg-emerald-950/60 dark:border-emerald-600 dark:text-emerald-300 ring-2 ring-emerald-500/20 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <CheckCircle2
+                      size={15}
+                      className={
+                        summaryForm.keputusan_transisi === 'NAIK' || !summaryForm.keputusan_transisi
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-400'
+                      }
+                    />
+                    <span>NAIK</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onFormChange('keputusan_transisi', 'MENETAP')}
+                    className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                      summaryForm.keputusan_transisi === 'MENETAP'
+                        ? 'bg-rose-50 border-rose-500 text-rose-700 dark:bg-rose-950/60 dark:border-rose-600 dark:text-rose-300 ring-2 ring-rose-500/20 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                    }`}
+                  >
+                    <XCircle
+                      size={15}
+                      className={
+                        summaryForm.keputusan_transisi === 'MENETAP'
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-slate-400'
+                      }
+                    />
+                    <span>MENETAP</span>
+                  </button>
+                </div>
+                {formErrors.keputusan_transisi && (
+                  <p className="text-[10px] text-rose-500 font-semibold flex items-center gap-1">
+                    <AlertCircle size={10} /> {formErrors.keputusan_transisi}
+                  </p>
+                )}
+              </div>
+            )}
 
           </div>
 
