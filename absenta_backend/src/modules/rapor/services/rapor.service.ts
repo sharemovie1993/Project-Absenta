@@ -624,6 +624,72 @@ export class RaporService {
       });
     }
 
+    // Resolusi Ekstrakurikuler Siswa (dari AnggotaKegiatanEskul)
+    const eskulAssignments = await prisma.anggotaKegiatanEskul.findMany({
+      where: {
+        tenant_id: tenantId,
+        SiswaAkademik: {
+          siswa_id: { in: safeStudentIds },
+        },
+      },
+      include: {
+        JenisKegiatanMaster: true,
+        SiswaAkademik: true,
+      },
+    }).catch(() => []);
+
+    const eskulMap = new Map<string, string[]>();
+    eskulAssignments.forEach((a) => {
+      const sId = a.SiswaAkademik?.siswa_id;
+      if (sId && a.JenisKegiatanMaster?.nama) {
+        const arr = eskulMap.get(sId) || [];
+        if (!arr.includes(a.JenisKegiatanMaster.nama)) {
+          arr.push(a.JenisKegiatanMaster.nama);
+        }
+        eskulMap.set(sId, arr);
+      }
+    });
+
+    // Resolusi Nama & NIP Wali Kelas
+    let walasNama = 'Wali Kelas';
+    let walasNip = '-';
+
+    const waliAssignment = await prisma.organizationalAssignment.findFirst({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: params.kelas_id,
+        is_active: true,
+        Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+      },
+      include: {
+        User: {
+          include: {
+            Guru: true,
+          },
+        },
+      },
+    });
+
+    if (waliAssignment?.User?.Guru) {
+      walasNama = waliAssignment.User.Guru.nama_guru;
+      walasNip = waliAssignment.User.Guru.nip || '-';
+    } else if (waliAssignment?.User?.full_name) {
+      walasNama = waliAssignment.User.full_name;
+      walasNip = '-';
+    } else {
+      const stagingSheet = await prisma.raporStagingSheet.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: params.kelas_id,
+          wali_kelas_nama: { not: null },
+        },
+        orderBy: { updated_at: 'desc' },
+      });
+      if (stagingSheet?.wali_kelas_nama) {
+        walasNama = stagingSheet.wali_kelas_nama;
+      }
+    }
+
     // Ambil Struktur Kurikulum resmi untuk tingkat & jurusan kelas ini sebagai Single Source of Truth
     let strukturList = await prisma.strukturKurikulum.findMany({
       where: {
@@ -821,6 +887,9 @@ export class RaporService {
       const averageScore = mapelCount > 0 ? Number((totalScore / mapelCount).toFixed(2)) : 0;
       const raporRec = raporSummaryMap.get(siswa.id);
       const refPresensi = referensiMap.get(siswa.id) || { sakit: 0, izin: 0, alpa: 0 };
+      const studentEskuls = eskulMap.get(siswa.id) || [];
+      const ekskul1 = (siswa as any).ekskul_1 || studentEskuls[0] || '';
+      const ekskul2 = (siswa as any).ekskul_2 || studentEskuls[1] || '';
 
       return {
         id: siswa.id,
@@ -829,6 +898,8 @@ export class RaporService {
         nisn: siswa.nisn || '',
         grades,
         gradeDetails,
+        ekskul_1: ekskul1,
+        ekskul_2: ekskul2,
         total: totalScore,
         rata_rata: averageScore,
         sakit: raporRec?.sakit || 0,
@@ -855,6 +926,10 @@ export class RaporService {
       semester: { id: sem.id, nama_semester: sem.nama_semester },
       mapel_list: mapelList,
       students: studentsSortedByName,
+      walas: {
+        nama: walasNama,
+        nip: walasNip,
+      },
     };
       },
       CACHE_TTL.DASHBOARD

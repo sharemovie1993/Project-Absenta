@@ -1094,88 +1094,131 @@ export class PdfRaporService {
     const mapelColumns = legerData.mapel_list || [];
     const siswaRows = legerData.students || [];
 
-    // Header cells for mapel
+    const getShortMapelName = (name: string, code?: string): string => {
+      if (code && code.trim() && code !== 'N/A' && code.length <= 14) return code.trim();
+      const n = (name || '').trim().toLowerCase();
+      if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai')) return 'PAI';
+      if (n.includes('pancasila') || n.includes('ppkn') || n.includes('pkn')) return 'PKN';
+      if (n.includes('indonesia')) return 'B. INDONESIA';
+      if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok')) return 'PJOK';
+      if (n.includes('sejarah')) return 'SEJARAH';
+      if (n.includes('seni') || n.includes('budaya')) return 'SENI BUDAYA';
+      if (n.includes('sunda')) return 'B. SUNDA';
+      if (n.includes('matematika') || n === 'mtk') return 'MTK';
+      if (n.includes('inggris')) return 'B. INGGRIS';
+      if (n.includes('informatika')) return 'INFORMATIKA';
+      if (n.includes('ipas') || n.includes('projek ipas')) return 'PROJEK IPAS';
+      if (n.includes('ddpk') || n.includes('dasar-dasar program keahlian') || n.includes('dasar program keahlian')) return 'DDPK';
+      if (n.includes('koding') || n.includes('coding') || n.includes('pemrograman')) return 'KODING';
+      if (n.includes('pkk') || n.includes('kreatif')) return 'PKK';
+      if (n.includes('konsentrasi') || n.includes('kk')) return 'KONSENTRASI';
+      if (n.includes('pkl')) return 'PKL';
+      return name.length > 15 ? name.substring(0, 14).toUpperCase() : name.toUpperCase();
+    };
+
+    const mapelColors = [
+      { bg: '#f59e0b', tint: '#fef3c7' }, // PAI
+      { bg: '#15803d', tint: '#dcfce7' }, // PKN
+      { bg: '#2563eb', tint: '#dbeafe' }, // B. INDO
+      { bg: '#9333ea', tint: '#f3e8ff' }, // PJOK
+      { bg: '#1e3a8a', tint: '#e0e7ff' }, // SEJARAH
+      { bg: '#d97706', tint: '#fef3c7' }, // SENI BUDAYA
+      { bg: '#65a30d', tint: '#ecfccb' }, // B. SUNDA
+      { bg: '#ea580c', tint: '#ffedd5' }, // MTK
+      { bg: '#f97316', tint: '#ffedd5' }, // B. INGGRIS
+      { bg: '#0284c7', tint: '#e0f2fe' }, // INFORMATIKA
+      { bg: '#0d9488', tint: '#ccfbf1' }, // PROJEK IPAS
+      { bg: '#3b82f6', tint: '#dbeafe' }, // DDPK
+      { bg: '#334155', tint: '#f1f5f9' }, // KODING
+      { bg: '#7c3aed', tint: '#ede9fe' },
+      { bg: '#059669', tint: '#d1fae5' },
+    ];
+
+    // Header cells for mapel (Vertical text, bottom-to-top)
     let mapelHeaderTh = '';
-    mapelColumns.forEach((m: any) => {
-      const shortCode = m.kode_mapel || m.nama_mapel.substring(0, 5).toUpperCase();
+    mapelColumns.forEach((m: any, idx: number) => {
+      const color = mapelColors[idx % mapelColors.length];
+      const shortCode = getShortMapelName(m.nama_mapel, m.kode_mapel);
       mapelHeaderTh += `
-        <th style="border: 1px solid #111; padding: 4px 2px; font-size: 8px; writing-mode: vertical-lr; transform: rotate(180deg); min-width: 22px; max-width: 26px; height: 75px; text-align: left; background-color: #f1f5f9;">
+        <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); min-width: 18px; max-width: 22px; height: 68px; text-align: left; background-color: ${color.bg}; color: #ffffff; font-weight: bold; vertical-align: middle;">
           ${shortCode}
         </th>
       `;
     });
 
+    const numStudents = siswaRows.length || 1;
     let dataRowsHtml = '';
     siswaRows.forEach((s: any, idx: number) => {
       let mapelTd = '';
-      mapelColumns.forEach((m: any) => {
+      mapelColumns.forEach((m: any, mIdx: number) => {
         const val = s.grades?.[m.id];
+        const color = mapelColors[mIdx % mapelColors.length];
         mapelTd += `
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; padding: 2px 1px;">
-            ${val !== undefined && val !== null ? val : '-'}
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px; padding: 1px; background-color: ${color.tint};">
+            ${val !== undefined && val !== null && val > 0 ? val : '-'}
           </td>
         `;
       });
 
-      const sakit = s.sakit || '-';
-      const izin = s.izin || '-';
-      const alpa = s.alpa || '-';
+      const sakit = s.sakit > 0 ? s.sakit : '-';
+      const izin = s.izin > 0 ? s.izin : '-';
+      const alpa = s.alpa > 0 ? s.alpa : '-';
+
+      const rankVal = s.rank || idx + 1;
+      let rankBg = '#fef08a'; // yellow
+      if (rankVal <= 10) rankBg = '#bbf7d0'; // soft green
+      else if (rankVal > Math.floor(numStudents * 0.7)) rankBg = '#fecaca'; // soft pink
 
       dataRowsHtml += `
-        <tr style="height: 18px;">
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${idx + 1}</td>
-          <td style="border: 1px solid #111; font-size: 8.5px; padding: 2px 4px; white-space: nowrap; overflow: hidden; max-width: 140px; font-weight: 500;">${s.nama_siswa}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${kelasNama}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${semester?.nama_semester || 'Ganjil'}</td>
+        <tr style="height: 15px;">
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${idx + 1}</td>
+          <td style="border: 1px solid #64748b; font-size: 8px; padding: 1px 4px; vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-weight: 500;">${s.nama_siswa}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${kelasNama}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${semester?.nama_semester || 'Ganjil'}</td>
           ${mapelTd}
-          <td style="border: 1px solid #111; font-size: 8px; text-align: center; padding: 1px 3px;">-</td>
-          <td style="border: 1px solid #111; font-size: 8px; text-align: center; padding: 1px 3px;">-</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${sakit}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${izin}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px;">${alpa}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #fef08a;">${s.total || 0}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #fed7aa;">${s.rata_rata || 0}</td>
-          <td style="border: 1px solid #111; text-align: center; font-size: 8.5px; font-weight: bold; background: #bbf7d0;">${s.rank || '-'}</td>
+          <td style="border: 1px solid #64748b; font-size: 7.5px; text-align: center; vertical-align: middle; padding: 1px 2px;">${s.ekskul_1 || ''}</td>
+          <td style="border: 1px solid #64748b; font-size: 7.5px; text-align: center; vertical-align: middle; padding: 1px 2px;">${s.ekskul_2 || ''}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${sakit}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${izin}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px;">${alpa}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px; font-weight: bold; background: #fef9c3;">${s.total || 0}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px; font-weight: bold; background: #fed7aa;">${s.rata_rata ? Math.round(s.rata_rata) : 0}</td>
+          <td style="border: 1px solid #64748b; text-align: center; vertical-align: middle; font-size: 8px; font-weight: bold; background: ${rankBg};">${rankVal}</td>
         </tr>
       `;
     });
 
     const html = `
-      <div style="font-size: 10px;">
+      <div style="font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #111827;">
         <!-- Header Banner -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <div style="text-align: center; flex: 1;">
             <div style="font-size: 13px; font-weight: bold; text-transform: uppercase;">LEGER SEMESTER ${semesterNama}</div>
-            <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; color: #1e293b;">${schoolMeta.schoolName}</div>
+            <div style="font-size: 13px; font-weight: bold; text-transform: uppercase; color: #0f172a;">${schoolMeta.schoolName}</div>
             <div style="font-size: 11px; font-weight: bold;">TAHUN PELAJARAN ${tpNama}</div>
           </div>
-          <div style="background-color: #f97316; color: #fff; font-weight: bold; padding: 6px 16px; border-radius: 4px; font-size: 13px; letter-spacing: 1px;">
+          <div style="background-color: #f97316; color: #fff; font-weight: bold; padding: 6px 18px; border-radius: 4px; font-size: 14px; letter-spacing: 0.5px;">
             ${kelasNama}
           </div>
         </div>
 
-        <!-- Matriks Leger Table -->
-        <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+        <!-- Matriks Leger Table (Single tall header row) -->
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: auto;">
           <thead>
-            <tr style="background-color: #e2e8f0; text-align: center;">
-              <th rowspan="2" style="border: 1px solid #111; width: 22px; font-size: 8.5px;">NO</th>
-              <th rowspan="2" style="border: 1px solid #111; min-width: 130px; font-size: 8.5px;">NAMA</th>
-              <th rowspan="2" style="border: 1px solid #111; width: 45px; font-size: 8.5px;">KELAS</th>
-              <th rowspan="2" style="border: 1px solid #111; width: 45px; font-size: 8.5px;">SEMESTER</th>
-              <th colspan="${mapelColumns.length}" style="border: 1px solid #111; font-size: 8.5px; background: #bae6fd;">MATA PELAJARAN</th>
-              <th colspan="2" style="border: 1px solid #111; font-size: 8.5px; background: #e0e7ff;">EKSTRAKURIKULER</th>
-              <th colspan="3" style="border: 1px solid #111; font-size: 8.5px; background: #fce7f3;">PRESENSI</th>
-              <th rowspan="2" style="border: 1px solid #111; width: 35px; font-size: 8px; background: #fef08a;">JUMLAH</th>
-              <th rowspan="2" style="border: 1px solid #111; width: 35px; font-size: 8px; background: #fed7aa;">RATA-RATA</th>
-              <th rowspan="2" style="border: 1px solid #111; width: 30px; font-size: 8px; background: #bbf7d0;">RANKING</th>
-            </tr>
             <tr>
+              <th style="border: 1px solid #334155; width: 22px; font-size: 8px; background-color: #881337; color: #fff; text-align: center; vertical-align: middle;">NO</th>
+              <th style="border: 1px solid #334155; min-width: 120px; font-size: 8px; background-color: #881337; color: #fff; text-align: center; vertical-align: middle;">NAMA</th>
+              <th style="border: 1px solid #334155; width: 38px; font-size: 8px; background-color: #881337; color: #fff; text-align: center; vertical-align: middle;">KELAS</th>
+              <th style="border: 1px solid #334155; width: 40px; font-size: 8px; background-color: #881337; color: #fff; text-align: center; vertical-align: middle;">SEMESTER</th>
               ${mapelHeaderTh}
-              <th style="border: 1px solid #111; width: 50px; font-size: 8px;">EKSKUL-1</th>
-              <th style="border: 1px solid #111; width: 50px; font-size: 8px;">EKSKUL-2</th>
-              <th style="border: 1px solid #111; width: 22px; font-size: 8px;">SAKIT</th>
-              <th style="border: 1px solid #111; width: 22px; font-size: 8px;">IZIN</th>
-              <th style="border: 1px solid #111; width: 26px; font-size: 8px;">TANPA KET</th>
+              <th style="border: 1px solid #334155; width: 55px; font-size: 7.5px; background-color: #374151; color: #fff; text-align: center; vertical-align: middle;">EKSKUL-1</th>
+              <th style="border: 1px solid #334155; width: 55px; font-size: 7.5px; background-color: #374151; color: #fff; text-align: center; vertical-align: middle;">EKSKUL-2</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 18px; height: 68px; background-color: #374151; color: #fff; vertical-align: middle;">SAKIT</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 18px; height: 68px; background-color: #374151; color: #fff; vertical-align: middle;">IZIN</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 22px; height: 68px; background-color: #374151; color: #fff; vertical-align: middle;">TANPA KETERANGAN</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 26px; height: 68px; background-color: #f59e0b; color: #fff; vertical-align: middle;">JUMLAH</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 26px; height: 68px; background-color: #f59e0b; color: #fff; vertical-align: middle;">RATA-RATA</th>
+              <th style="border: 1px solid #334155; padding: 4px 1px; font-size: 7.5px; writing-mode: vertical-rl; transform: rotate(180deg); width: 24px; height: 68px; background-color: #f59e0b; color: #fff; vertical-align: middle;">RANKING</th>
             </tr>
           </thead>
           <tbody>
@@ -1183,20 +1226,30 @@ export class PdfRaporService {
           </tbody>
         </table>
 
-        <!-- Signatures (Landscape) -->
-        ${renderSignaturesBlock({
-          walas: schoolMeta.walas,
-          kepsek: schoolMeta.kepsek,
-          titimangsaDate: schoolMeta.dateStr,
-          orientation: 'landscape',
-        })}
+        <!-- Signatures (Landscape, left aligned within columns, underlined names) -->
+        <div style="display: flex; justify-content: space-between; margin-top: 6px; padding: 0 20px; font-size: 9px; page-break-inside: avoid;">
+          <!-- Left Signatory: Kepala Sekolah -->
+          <div style="text-align: left; min-width: 220px;">
+            <div>Mengetahui,</div>
+            <div style="margin-bottom: 42px;">Kepala ${schoolMeta.schoolName}</div>
+            <div style="font-weight: bold; text-decoration: underline;">${schoolMeta.kepsek.nama}</div>
+            <div>NIP. ${schoolMeta.kepsek.nip}</div>
+          </div>
+
+          <!-- Right Signatory: Wali Kelas -->
+          <div style="text-align: left; min-width: 220px;">
+            <div>${schoolMeta.kepsek.kota || 'Purwakarta'}, ${schoolMeta.dateStr}</div>
+            <div style="margin-bottom: 42px;">Wali Kelas,</div>
+            <div style="font-weight: bold; text-decoration: underline;">${schoolMeta.walas.nama}</div>
+            <div>NIP. ${schoolMeta.walas.nip}</div>
+          </div>
+        </div>
       </div>
     `;
 
     const paperSize = (schoolMeta.raporSettings?.ukuran_kertas || 'A4') as 'A4' | 'F4';
-    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Buku Leger - ${kelasNama}`, orientation: 'landscape', margin: '8mm 10mm' }), 'landscape', paperSize);
+    return this.renderHtmlToPdf(wrapWithPdfLayout(html, { title: `Buku Leger - ${kelasNama}`, orientation: 'landscape', margin: '4mm 6mm' }), 'landscape', paperSize);
   }
-
 
   // 2. GENERATE SURAT KETERANGAN LULUS (SKL) PDF
   static async generateSklPdf(tenantId: string, siswaId: string) {
