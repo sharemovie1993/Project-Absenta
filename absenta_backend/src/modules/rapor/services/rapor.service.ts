@@ -424,9 +424,66 @@ export class RaporService {
       }
     }
 
+    // 8. Resolusi Nilai Ekstrakurikuler Siswa
+    const listNilaiEskul = await prisma.nilaiEskul.findMany({
+      where: {
+        tenant_id: tenantId,
+        siswa_id: filter.siswa_id,
+        tahun_pelajaran_id: filter.tahun_pelajaran_id,
+        semester_id: filter.semester_id,
+      },
+      include: {
+        JenisKegiatanMaster: {
+          select: { nama: true },
+        },
+      },
+      orderBy: {
+        JenisKegiatanMaster: { nama: 'asc' },
+      },
+    });
+
+    let studentEkskuls: Array<{ nama_ekskul: string; predikat: string; keterangan: string }> = [];
+
+    if (listNilaiEskul.length > 0) {
+      studentEkskuls = listNilaiEskul.map((e) => ({
+        nama_ekskul: e.JenisKegiatanMaster?.nama || 'Ekstrakurikuler',
+        predikat: e.predikat,
+        keterangan: e.keterangan || `Melaksanakan kegiatan ekstrakurikuler ${e.JenisKegiatanMaster?.nama || ''} dengan predikat ${e.predikat}.`,
+      }));
+    } else {
+      // Fallback ke keanggotaan eskul siswa jika belum diisi nilai
+      const eskulMembership = await prisma.anggotaKegiatanEskul.findMany({
+        where: {
+          tenant_id: tenantId,
+          SiswaAkademik: {
+            siswa_id: filter.siswa_id,
+          },
+        },
+        include: {
+          JenisKegiatanMaster: { select: { nama: true } },
+        },
+      }).catch(() => []);
+
+      const names: string[] = [];
+      eskulMembership.forEach((m) => {
+        if (m.JenisKegiatanMaster?.nama && !names.includes(m.JenisKegiatanMaster.nama)) {
+          names.push(m.JenisKegiatanMaster.nama);
+        }
+      });
+      if ((siswa as any).ekskul_1 && !names.includes((siswa as any).ekskul_1)) names.push((siswa as any).ekskul_1);
+      if ((siswa as any).ekskul_2 && !names.includes((siswa as any).ekskul_2)) names.push((siswa as any).ekskul_2);
+
+      studentEkskuls = names.map((n) => ({
+        nama_ekskul: n,
+        predikat: 'A',
+        keterangan: `Melaksanakan kegiatan ekstrakurikuler ${n} dengan baik.`,
+      }));
+    }
+
     const finalAkademikList = Object.values(mapelGrades);
 
     return {
+      ekskul: studentEkskuls,
       siswa: {
         id: siswa.id,
         nis: siswa.nis,
@@ -679,6 +736,32 @@ export class RaporService {
       }
     });
 
+    // Resolusi Nilai Ekstrakurikuler Resmi untuk Leger
+    const listLegerNilaiEskul = await prisma.nilaiEskul.findMany({
+      where: {
+        tenant_id: tenantId,
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        semester_id: params.semester_id,
+        siswa_id: { in: safeStudentIds },
+      },
+      include: {
+        JenisKegiatanMaster: { select: { nama: true } },
+      },
+      orderBy: {
+        JenisKegiatanMaster: { nama: 'asc' },
+      },
+    }).catch(() => []);
+
+    const nilaiEskulMap = new Map<string, Array<{ nama: string; predikat: string }>>();
+    listLegerNilaiEskul.forEach((ne) => {
+      const arr = nilaiEskulMap.get(ne.siswa_id) || [];
+      arr.push({
+        nama: ne.JenisKegiatanMaster?.nama || 'Eskul',
+        predikat: ne.predikat,
+      });
+      nilaiEskulMap.set(ne.siswa_id, arr);
+    });
+
     // Resolusi Nama & NIP Wali Kelas
     let walasNama = 'Wali Kelas';
     let walasNip = '-';
@@ -916,9 +999,21 @@ export class RaporService {
       const averageScore = mapelCount > 0 ? Number((totalScore / mapelCount).toFixed(2)) : 0;
       const raporRec = raporSummaryMap.get(siswa.id);
       const refPresensi = referensiMap.get(siswa.id) || { sakit: 0, izin: 0, alpa: 0 };
+      const studentNilaiEskul = nilaiEskulMap.get(siswa.id) || [];
       const studentEskuls = eskulMap.get(siswa.id) || [];
-      const ekskul1 = (siswa as any).ekskul_1 || studentEskuls[0] || '';
-      const ekskul2 = (siswa as any).ekskul_2 || studentEskuls[1] || '';
+
+      let ekskul1 = '';
+      let ekskul2 = '';
+
+      if (studentNilaiEskul.length > 0) {
+        ekskul1 = `${studentNilaiEskul[0].nama} (${studentNilaiEskul[0].predikat})`;
+        if (studentNilaiEskul.length > 1) {
+          ekskul2 = `${studentNilaiEskul[1].nama} (${studentNilaiEskul[1].predikat})`;
+        }
+      } else {
+        ekskul1 = (siswa as any).ekskul_1 || studentEskuls[0] || '';
+        ekskul2 = (siswa as any).ekskul_2 || studentEskuls[1] || '';
+      }
 
       return {
         id: siswa.id,

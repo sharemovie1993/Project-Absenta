@@ -516,10 +516,13 @@ export const renderStudentRaporPages = (
 
   const ekskulList: any[] = data?.ekskul || [];
   const ekskulRows = ekskulList.length > 0
-    ? ekskulList.map((e: any, idx: number) => [idx + 1, e.nama_ekskul || e.nama || '-', e.keterangan || e.predikat || '-'])
+    ? ekskulList.map((e: any, idx: number) => [
+        idx + 1,
+        e.nama_ekskul || e.nama || '-',
+        e.keterangan || (e.predikat ? `Melaksanakan kegiatan ekstrakurikuler dengan predikat ${e.predikat}.` : '-')
+      ])
     : [
-        [1, '', ''],
-        [2, '', ''],
+        [1, '-', '-'],
       ];
 
   autoTable(doc, {

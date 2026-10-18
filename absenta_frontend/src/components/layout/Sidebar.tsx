@@ -550,7 +550,8 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
                 cPath.includes('/kurikulum/perangkat') ||
                 cPath.includes('/kurikulum/kalender') ||
                 cPath.includes('/rapor/nilai') ||
-                cPath.includes('/rapor/p5')
+                cPath.includes('/rapor/p5') ||
+                cPath.includes('/rapor/eskul')
               ) {
                 primaryItems.push(child);
               }

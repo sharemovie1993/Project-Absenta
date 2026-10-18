@@ -396,6 +396,42 @@ export const raporApi = {
     const response = await api.delete(`/rapor/staging/${id}`);
     return response.data;
   },
+
+  // === NILAI EKSTRAKURIKULER RAPOR ===
+  getEskulOptions: async () => {
+    const response = await api.get('/rapor/eskul/options');
+    return response.data;
+  },
+  getEskulMatrix: async (params: {
+    jenis_kegiatan_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    kelas_id?: string;
+  }) => {
+    const response = await api.get('/rapor/eskul/matrix', { params });
+    return response.data;
+  },
+  upsertMatrixNilaiEskul: async (data: {
+    jenis_kegiatan_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+    grades: Array<{
+      siswa_id: string;
+      predikat: 'A' | 'B' | 'C' | 'D';
+      keterangan?: string | null;
+    }>;
+  }) => {
+    const response = await api.post('/rapor/eskul/matrix', data);
+    return response.data;
+  },
+  getEskulWaliOverview: async (params: {
+    kelas_id: string;
+    tahun_pelajaran_id: string;
+    semester_id: string;
+  }) => {
+    const response = await api.get('/rapor/eskul/wali-overview', { params });
+    return response.data;
+  },
 };
 
 export interface PreSyncCandidateClass {
@@ -603,3 +639,35 @@ export interface P5FasilitatorItem {
     };
   }>;
 }
+
+export interface EskulOptionItem {
+  id: string;
+  nama: string;
+  tipe: string;
+  total_anggota: number;
+  is_pembina: boolean;
+}
+
+export interface EskulMatrixMember {
+  siswa_id: string;
+  nama_siswa: string;
+  nis: string;
+  nisn: string;
+  kelas_id: string;
+  kelas_nama: string;
+  tingkat: number;
+  predikat: 'A' | 'B' | 'C' | 'D';
+  keterangan: string;
+  is_saved: boolean;
+}
+
+export interface EskulMatrixResponse {
+  eskul: {
+    id: string;
+    nama: string;
+    tipe: string;
+  };
+  total_anggota: number;
+  members: EskulMatrixMember[];
+}
+

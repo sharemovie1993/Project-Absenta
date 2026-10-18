@@ -158,6 +158,7 @@ model Tenant {
   KelulusanSiswa           KelulusanSiswa[]
   P5Projek                 P5Projek[]
   P5NilaiSiswa             P5NilaiSiswa[]
+  NilaiEskul               NilaiEskul[]
   P5Fasilitator            P5Fasilitator[]
   PerangkatAjar            PerangkatAjar[]
   AlurTujuanPembelajaran   AlurTujuanPembelajaran[]
@@ -955,6 +956,7 @@ model TahunPelajaran {
   NilaiSiswa             NilaiSiswa[]
   RaporSiswa             RaporSiswa[]
   P5Projek               P5Projek[]
+  NilaiEskul             NilaiEskul[]
   KospConfig             KospConfig[]
   PerangkatAjar          PerangkatAjar[]
   KalenderAkademik       KalenderAkademik[]
@@ -988,6 +990,7 @@ model Semester {
   NilaiSiswa             NilaiSiswa[]
   RaporSiswa             RaporSiswa[]
   P5Projek               P5Projek[]
+  NilaiEskul             NilaiEskul[]
   PerangkatAjar          PerangkatAjar[]
   GuruMapel              GuruMapel[]
   JadwalKegiatan         JadwalKegiatan[]
@@ -1115,6 +1118,7 @@ model Siswa {
   SertifikatUkk       SertifikatUkk[]
   KelulusanSiswa      KelulusanSiswa[]
   P5NilaiSiswa        P5NilaiSiswa[]
+  NilaiEskul          NilaiEskul[]
   BkKonsultasiBooking BkKonsultasiBooking[]
 
   @@unique([tenant_id, nis])
@@ -1524,6 +1528,7 @@ model JenisKegiatanMaster {
   Tenant                Tenant                     @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   AnggotaKegiatanEskul  AnggotaKegiatanEskul[]
   organizationalAssigns OrganizationalAssignment[]
+  NilaiEskul            NilaiEskul[]
 
   @@unique([tenant_id, nama])
   @@index([tenant_id])
@@ -4849,6 +4854,31 @@ model P5NilaiSiswa {
   @@index([tenant_id])
   @@index([tenant_id, siswa_id])
   @@index([tenant_id, projek_id])
+}
+
+model NilaiEskul {
+  id                 String              @id @default(uuid())
+  tenant_id          String
+  siswa_id           String
+  jenis_kegiatan_id  String
+  tahun_pelajaran_id String
+  semester_id        String
+  predikat           String              @default("A")
+  keterangan         String?             @db.Text
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+
+  Tenant              Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  Siswa               Siswa               @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+  JenisKegiatanMaster JenisKegiatanMaster @relation(fields: [jenis_kegiatan_id], references: [id], onDelete: Cascade)
+  TahunPelajaran      TahunPelajaran      @relation(fields: [tahun_pelajaran_id], references: [id])
+  Semester            Semester            @relation(fields: [semester_id], references: [id])
+
+  @@unique([tenant_id, siswa_id, jenis_kegiatan_id, tahun_pelajaran_id, semester_id], name: "unique_nilai_eskul_semester")
+  @@index([tenant_id])
+  @@index([tenant_id, jenis_kegiatan_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, siswa_id, tahun_pelajaran_id, semester_id])
+  @@map("nilai_eskul")
 }
 
 model PerangkatAjar {

@@ -712,6 +712,9 @@ export async function registerRoutes(fastify: any, prisma: any) {
       const { default: p5Routes } = await import('../modules/rapor/routes/p5.routes');
       await fastify.register(p5Routes, { prefix: '/rapor/p5' });
 
+      const { default: eskulRoutes } = await import('../modules/rapor/routes/eskul.routes');
+      await fastify.register(eskulRoutes, { prefix: '/rapor/eskul' });
+
       // Attendance Module (Protected & Capability Guarded)
       const { default: attendancePlugin } = await import('../modules/attendance/plugin');
       await fastify.register(attendancePlugin);

@@ -1558,6 +1558,41 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
     ]
   },
 
+  nilai_eskul_page: {
+    moduleName: 'nilai_eskul_page',
+    displayName: 'Penilaian Ekstrakurikuler Rapor',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Halaman dibungkus dengan InfraErrorBoundary agar error rendering tidak merusak antarmuka utama.',
+        status: 'VERIFIED',
+        details: 'NilaiEskulPage terbungkus dalam InfraErrorBoundary.'
+      },
+      {
+        id: 'academic_context_integration',
+        name: 'Integrasi Konteks Akademik (Tahun Pelajaran & Semester)',
+        description: 'Menggunakan AcademicContextBar dan useAcademicContext() agar data nilai eskul tersinkronisasi dengan Tahun Pelajaran dan Semester yang aktif.',
+        status: 'VERIFIED',
+        details: 'AcademicContextBar + useAcademicContext() terintegrasi di toolbar.'
+      },
+      {
+        id: 'bulk_input_efficiency',
+        name: 'Input Massal Efisien (Bulk Set Predikat & Salin Catatan)',
+        description: 'Menyediakan tombol Set Cepat A/B dan salin catatan agar guru pembina dapat mengisi penilaian awal se-eskul dalam 1 klik.',
+        status: 'VERIFIED',
+        details: 'handleBulkSetAllPredikat dan handleCopyFirstKeteranganToAll tersedia di atas tabel penilaian.'
+      },
+      {
+        id: 'zod_schema_validation',
+        name: 'Validasi Input Zod (Schema Guard)',
+        description: 'Penyimpanan matriks nilai eskul dilindungi oleh Zod schema validation.',
+        status: 'VERIFIED',
+        details: 'eskulGradeMatrixSchema terintegrasi pada handler submit simpan nilai.'
+      }
+    ]
+  },
+
   // ─── Program Ketarunaan ────────────────────────────────────────────────────
   program_ketarunaan: {
     moduleName: 'program_ketarunaan',

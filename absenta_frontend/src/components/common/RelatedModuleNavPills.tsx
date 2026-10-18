@@ -246,6 +246,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Input Nilai', shortLabel: 'Input Nilai', path: '/rapor/nilai', icon: Award },
       { label: 'Cetak Lembar Rapor', shortLabel: 'Cetak', path: '/rapor/cetak', icon: Printer },
       { label: 'Projek P5', shortLabel: 'P5', path: '/rapor/p5', icon: Layers },
+      { label: 'Nilai Ekstrakurikuler', shortLabel: 'Eskul', path: '/rapor/eskul', icon: Sparkles },
       { label: 'Pengaturan Dokumen', shortLabel: 'Pengaturan', path: '/rapor/settings', icon: Settings },
     ]
   },
