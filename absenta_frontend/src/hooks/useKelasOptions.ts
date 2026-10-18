@@ -63,8 +63,10 @@ export function useKelasOptions(params: UseKelasOptionsParams = {}) {
 
   return {
     options,
+    kelasOptions: options,
     rawList: filteredList,
     isLoading: query.isLoading,
+    isLoadingKelas: query.isLoading,
     refetch: query.refetch
   };
 }

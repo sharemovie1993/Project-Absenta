@@ -86,7 +86,7 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
 
   // 1. Konteks Akademik Terpusat
   const academicCtx = useAcademicContext();
-  const { kelasOptions, isLoadingKelas } = useKelasOptions();
+  const { options: kelasOptions = [], isLoading: isLoadingKelas } = useKelasOptions();
 
   // 2. Akses & Role Detection
   const canManageAcademic = can('academic.manage.academic') || isKurikulum || isAdmin;
@@ -129,7 +129,7 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
     if (activeRoleTab === 'my_eskul') {
       source = rawEskulOptions.filter((e) => e.is_pembina || assignedEskulIds.includes(e.id));
     }
-    return source.map((e) => ({
+    return (source || []).map((e) => ({
       value: e.id,
       label: `${e.nama} (${e.total_anggota} Anggota)`,
     }));
@@ -146,7 +146,7 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
   const smartKelasFilterOptions = useMemo(() => {
     return [
       { value: '', label: 'Semua Anggota (Lintas Kelas)' },
-      ...kelasOptions.map((k) => ({
+      ...(kelasOptions || []).map((k) => ({
         value: k.value,
         label: k.label,
       })),
