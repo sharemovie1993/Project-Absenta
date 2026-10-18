@@ -31,7 +31,11 @@ const PklDeskripsiTpTab = lazy(() => import('../../components/hubin/nilai-pkl/Pk
 const PklSkemaSettingsModal = lazy(() => import('../../components/hubin/nilai-pkl/PklSkemaSettingsModal'));
 const PklNilaiPasteModal = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiPasteModal'));
 
-export const InputNilaiPklPage: React.FC = React.memo(() => {
+export interface InputNilaiPklPageProps {
+  layoutMode?: 'hubin' | 'rapor';
+}
+
+export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({ layoutMode = 'hubin' }) => {
   const isMobile = useIsMobile(768);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -451,10 +455,18 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     });
   }, [scores, selectedTp, selectedSemester, saveBatchMutation]);
 
-  const breadcrumbs = useMemo(() => [
-    { label: 'Hubin & PKL', path: '/hubin/workspace' },
-    { label: 'Penilaian PKL' }
-  ], []);
+  const breadcrumbs = useMemo(() => {
+    if (layoutMode === 'rapor') {
+      return [
+        { label: 'Rapor', path: '/rapor/dashboard' },
+        { label: 'Nilai PKL' }
+      ];
+    }
+    return [
+      { label: 'Hubin & PKL', path: '/hubin/workspace' },
+      { label: 'Penilaian PKL' }
+    ];
+  }, [layoutMode]);
 
   const deskripsiListData = useMemo(() => {
     const raw = (deskripsiList as { data?: DeskripsiTpItem[] })?.data;
@@ -467,18 +479,13 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
     { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
   ], [displayedScores.length, isCompositeMode]);
 
-  return (
-    <PremiumFeatureGate
-      moduleName="HUBIN"
-      featureName="Penilaian & Sertifikasi PKL Siswa"
-      description="Kelola penilaian hard skills, soft skills, catatan instruktur industri, dan sertifikat resmi PKL siswa."
-    >
-      <InfraErrorBoundary>
-        <AcademicPageLayout
-          title="Penilaian & Sertifikasi Praktik Kerja Lapangan (PKL)"
-          description="Entri nilai hard skills & soft skills, catatan instruktur DUDI, serta pratinjau sertifikat resmi PKL siswa."
-          breadcrumbs={breadcrumbs}
-          hardeningModuleKey="hubin_input_nilai_pkl"
+  const pageContent = (
+    <InfraErrorBoundary>
+      <AcademicPageLayout
+        title={layoutMode === 'rapor' ? "Nilai Praktik Kerja Lapangan (PKL) Rapor" : "Penilaian & Sertifikasi Praktik Kerja Lapangan (PKL)"}
+        description={layoutMode === 'rapor' ? "Rekapitulasi dan entri nilai capaian PKL siswa untuk penyusunan lembar rapor dan leger nilai." : "Entri nilai hard skills & soft skills, catatan instruktur DUDI, serta pratinjau sertifikat resmi PKL siswa."}
+        breadcrumbs={breadcrumbs}
+        hardeningModuleKey={layoutMode === 'rapor' ? "rapor_pkl" : "hubin_input_nilai_pkl"}
           instruction={{
             title: "Panduan Penilaian PKL",
             description: "Gunakan modul ini untuk memasukkan capaian kompetensi siswa di DUDI mitra.",
@@ -707,6 +714,19 @@ export const InputNilaiPklPage: React.FC = React.memo(() => {
           />
         )}
       </InfraErrorBoundary>
+  );
+
+  if (layoutMode === 'rapor') {
+    return pageContent;
+  }
+
+  return (
+    <PremiumFeatureGate
+      moduleName="HUBIN"
+      featureName="Penilaian & Sertifikasi PKL Siswa"
+      description="Kelola penilaian hard skills, soft skills, catatan instruktur industri, dan sertifikat resmi PKL siswa."
+    >
+      {pageContent}
     </PremiumFeatureGate>
   );
 });

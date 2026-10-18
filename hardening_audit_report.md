@@ -8,8 +8,8 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **215 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **159 Halaman** | 74% | **Sangat Baik** |
+| **Total Halaman Utama** | **216 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **160 Halaman** | 74% | **Sangat Baik** |
 | **⚠️ Sebagian Terstandar (Partial)** | **53 Halaman** | 25% | **Butuh Sentuhan Ringan** |
 | **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
@@ -1468,6 +1468,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `TermsOfServicePage.tsx`
 * **Lokasi File:** [TermsOfServicePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/public/TermsOfServicePage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `RaporPklPage.tsx`
+* **Lokasi File:** [RaporPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/RaporPklPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

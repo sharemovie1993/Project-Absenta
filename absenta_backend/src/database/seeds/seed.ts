@@ -407,6 +407,7 @@ async function main() {
         { label: 'Cetak Rapor', icon: 'Printer', path: '/rapor/cetak', required_capability: 'dashboard.view.walikelas, academic.homeroom.manage' },
         { label: 'Projek P5', icon: 'Layers', path: '/rapor/p5', required_capability: 'academic.teaching.view, academic.manage.academic' },
         { label: 'Nilai Ekstrakurikuler', icon: 'Sparkles', path: '/rapor/eskul', required_capability: 'academic.activities.grades.manage, academic.activities.grades.view, academic.teaching.view, academic.homeroom.manage, academic.manage.academic' },
+        { label: 'Nilai PKL', icon: 'Briefcase', path: '/rapor/pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list, academic.homeroom.manage, academic.manage.academic' },
         { label: 'divider', icon: null, path: null },
         { label: 'Pengaturan Dokumen', icon: 'Settings', path: '/rapor/settings', required_capability: 'academic.manage.academic, dashboard.view.kepsek, core.sekolah.update.profile' },
       ]

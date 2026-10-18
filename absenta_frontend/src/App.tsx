@@ -172,6 +172,7 @@ const CetakRaporPage = lazy(() => import('./pages/rapor/CetakRaporPage'));
 const RaporStagingPage = lazy(() => import('./pages/rapor/RaporStagingPage'));
 const P5Page = lazy(() => import('./pages/rapor/P5Page'));
 const NilaiEskulPage = lazy(() => import('./pages/rapor/NilaiEskulPage'));
+const RaporPklPage = lazy(() => import('./pages/rapor/RaporPklPage'));
 const RaporSettingsPage = lazy(() => import('./pages/rapor/RaporSettingsPage'));
 const CbtDashboard = lazy(() => import('./pages/cbt/Dashboard'));
 const TrackingSiswaPage = lazy(() => import('./pages/attendance/TrackingSiswaPage'));
@@ -995,6 +996,11 @@ function App() {
                     <Route path="/rapor/eskul" element={
                       <ProtectedRoute requiredCapability={['academic.activities.grades.manage', 'academic.activities.grades.view', 'academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic', 'kesiswaan.schedules.view.list', 'dashboard.view.kepsek']}>
                         <NilaiEskulPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/rapor/pkl" element={
+                      <ProtectedRoute requiredCapability={['hubin.pkl.manage', 'hubin.guidance.manage', 'hubin.pkl.view.list', 'academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
+                        <RaporPklPage />
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/settings" element={
