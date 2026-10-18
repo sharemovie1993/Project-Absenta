@@ -635,6 +635,8 @@ export default React.memo(function CetakRaporPage() {
             pdfLoading={pdfLoading}
             tahunPelajaranId={activeYear?.id}
             semesterId={activeSemester?.id}
+            tahunPelajaranNama={activeYear?.nama || academicActiveYear?.tahun}
+            semesterNama={activeSemester?.nama || academicActiveSemester?.nama_semester}
             modeCetakRapor={modeCetakRapor}
             onOpenSummaryModal={handleOpenSummaryModal}
             onPrintRapor={handlePrintRapor}

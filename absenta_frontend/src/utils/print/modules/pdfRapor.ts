@@ -126,6 +126,37 @@ export const renderStudentRaporPages = (
   raporSettings?: any
 ): void => {
   const siswa = data?.siswa || {};
+  const effectiveSettings = raporSettings || data?.rapor_settings;
+
+  // Multi-layered resolution: Parameter -> Data Payload -> Settings Map -> Smart Fallback
+  const effectiveSemesterNama =
+    (semesterNama || '').trim() ||
+    (data?.semester?.nama_semester || '').trim() ||
+    (data?.is_genap ? 'Genap' : '') ||
+    (effectiveSettings?.genap_semester_id && (
+      effectiveSettings.genap_semester_id === data?.semester?.id ||
+      effectiveSettings.genap_semester_id === effectiveSettings?.semester_id
+    ) ? 'Genap' : '') ||
+    '';
+
+  const effectiveTahunPelajaranNama =
+    (tahunPelajaranNama || '').trim() ||
+    (data?.tahun_pelajaran?.tahun || '').trim() ||
+    '';
+
+  const isGenap = Boolean(
+    data?.is_genap ||
+    data?.semester?.is_genap ||
+    (effectiveSemesterNama && (effectiveSemesterNama.toLowerCase().includes('genap') || effectiveSemesterNama.includes('2'))) ||
+    (effectiveSettings?.genap_semester_id && (
+      effectiveSettings.genap_semester_id === data?.semester?.id ||
+      effectiveSettings.genap_semester_id === effectiveSettings?.semester_id
+    ))
+  );
+
+  const displaySemester = effectiveSemesterNama || (isGenap ? 'Genap' : 'Ganjil');
+  const displayTahunPelajaran = effectiveTahunPelajaranNama || '2025 / 2026';
+
   const tingkatNum = Number(siswa.tingkat || 10);
   const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
 
@@ -194,8 +225,8 @@ export const renderStudentRaporPages = (
     const rightInfo = [
       ['Kelas', siswa.kelas || '-'],
       ['Fase', fase],
-      ['Semester', semesterNama || 'Ganjil'],
-      ['Tahun Pelajaran', tahunPelajaranNama || '2025 / 2026'],
+      ['Semester', displaySemester],
+      ['Tahun Pelajaran', displayTahunPelajaran],
     ];
 
     let rightY = startY;
@@ -419,8 +450,7 @@ export const renderStudentRaporPages = (
   // Student Info Grid Header on Page 2
   y = drawStudentMetadataGrid(doc, y);
 
-  const effectiveSettings = raporSettings || data?.rapor_settings;
-  const tpYearStr = tahunPelajaranNama || '';
+  const tpYearStr = displayTahunPelajaran;
   const matchYear = tpYearStr.match(/^(\d{4})/);
   const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
 
@@ -519,7 +549,6 @@ export const renderStudentRaporPages = (
   sectionIdx++;
 
   // Section: KENAIKAN KELAS (Khusus Semester Genap)
-  const isGenap = Boolean(semesterNama.toLowerCase().includes('genap') || semesterNama.includes('2'));
   if (isGenap) {
     const kenaikanNumeral = romanNumerals[sectionIdx - 1] || 'V';
     doc.setFont('Helvetica', 'bold');
@@ -641,12 +670,25 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
 
+  const effectiveSettings = raporSettings || data?.rapor_settings;
+  const resolvedSemesterNama =
+    (semesterNama || '').trim() ||
+    (data?.semester?.nama_semester || '').trim() ||
+    (data?.is_genap ? 'Genap' : '') ||
+    (effectiveSettings?.genap_semester_id && effectiveSettings.genap_semester_id === semesterId ? 'Genap' : '') ||
+    '';
+
+  const resolvedTahunPelajaranNama =
+    (tahunPelajaranNama || '').trim() ||
+    (data?.tahun_pelajaran?.tahun || '').trim() ||
+    '';
+
   // 3. Create PDF document & render 2 pages
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-  renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true, raporSettings);
+  renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings);
 
   const siswa = data?.siswa || {};
-  const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${resolvedSemesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };

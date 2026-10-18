@@ -23,6 +23,8 @@ interface LegerStudentTableProps {
   pdfLoading?: Record<string, boolean>;
   tahunPelajaranId?: string;
   semesterId?: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
   onOpenSummaryModal: (student: LegerStudent) => void;
   onPrintRapor?: (student: LegerStudent) => void;
   onPrintP5?: (student: LegerStudent) => void;
@@ -48,6 +50,8 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   pdfLoading = {},
   tahunPelajaranId,
   semesterId,
+  tahunPelajaranNama,
+  semesterNama,
   onOpenSummaryModal,
   onPrintRapor,
   onPrintP5,
@@ -314,6 +318,8 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                         studentName={student.nama_siswa}
                         tahunPelajaranId={tahunPelajaranId}
                         semesterId={semesterId}
+                        tahunPelajaranNama={tahunPelajaranNama}
+                        semesterNama={semesterNama}
                         hasPkl={isJenjangSmk !== false}
                         hasUkk={isJenjangSmk !== false}
                         hasSkl={true}

@@ -431,8 +431,14 @@ export class PdfRaporService {
     }
 
     const schoolMeta = await this.getSchoolAndSignatories(tenantId, student.kelas_id, params);
-    const semesterName = semester?.nama_semester || 'Ganjil';
-    const isGenap = Boolean(semesterName.toLowerCase().includes('genap') || semesterName.includes('2'));
+    const semesterName = semester?.nama_semester || (data as any)?.semester?.nama_semester || 'Ganjil';
+    const isGenap = Boolean(
+      (data as any)?.is_genap ||
+      (data as any)?.semester?.is_genap ||
+      semesterName.toLowerCase().includes('genap') ||
+      semesterName.includes('2') ||
+      (schoolMeta.raporSettings?.genap_semester_id && schoolMeta.raporSettings.genap_semester_id === params.semester_id)
+    );
 
     // Resolve format and Kokurikuler settings (Scoped to TP -> Global Fallback -> Smart Year Rule)
     const tpYearStr = tp?.tahun || '2025/2026';

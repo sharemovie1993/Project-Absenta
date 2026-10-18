@@ -84,8 +84,8 @@ export class RaporService {
       throw new Error('Siswa belum memiliki kelas');
     }
 
-    // 2. Ambil catatan, kehadiran & kokurikuler rapor serta pengaturan rapor
-    const [raporSummary, kokurikulerCfg, raporSettings] = await Promise.all([
+    // 2. Ambil catatan, kehadiran & kokurikuler rapor, pengaturan rapor, serta data semester & TP
+    const [raporSummary, kokurikulerCfg, raporSettings, semRecord, tpRecord] = await Promise.all([
       prisma.raporSiswa.findFirst({
         where: {
           tenant_id: tenantId,
@@ -103,6 +103,12 @@ export class RaporService {
       this.getSettings(tenantId, {
         tahun_pelajaran_id: filter.tahun_pelajaran_id,
         semester_id: filter.semester_id,
+      }),
+      prisma.semester.findFirst({
+        where: { id: filter.semester_id, tenant_id: tenantId },
+      }),
+      prisma.tahunPelajaran.findFirst({
+        where: { id: filter.tahun_pelajaran_id, tenant_id: tenantId },
       }),
     ]);
 
@@ -405,6 +411,29 @@ export class RaporService {
       catatan_kokurikuler: kokurikulerCfg?.value || '',
       tampilkan_kokurikuler: raporSettings?.tampilkan_kokurikuler ?? true,
       rapor_settings: raporSettings,
+      semester: semRecord
+        ? {
+            id: semRecord.id,
+            nama_semester: semRecord.nama_semester,
+            is_active: semRecord.is_active,
+            is_genap: Boolean(
+              (semRecord.nama_semester || '').toLowerCase().includes('genap') ||
+              (semRecord.nama_semester || '').includes('2') ||
+              (raporSettings?.genap_semester_id && raporSettings.genap_semester_id === semRecord.id)
+            ),
+          }
+        : null,
+      tahun_pelajaran: tpRecord
+        ? {
+            id: tpRecord.id,
+            tahun: tpRecord.tahun,
+          }
+        : null,
+      is_genap: Boolean(
+        (semRecord?.nama_semester || '').toLowerCase().includes('genap') ||
+        (semRecord?.nama_semester || '').includes('2') ||
+        (raporSettings?.genap_semester_id && raporSettings.genap_semester_id === filter.semester_id)
+      ),
       nilai_akademik: finalAkademikList,
     };
   }

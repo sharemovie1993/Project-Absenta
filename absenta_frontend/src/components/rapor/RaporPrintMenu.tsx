@@ -17,6 +17,8 @@ export interface RaporPrintMenuProps {
   studentName?: string;
   tahunPelajaranId?: string;
   semesterId?: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
   showSumatifArchive?: boolean;
   hasPkl?: boolean;
   hasUkk?: boolean;
@@ -34,6 +36,8 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
   studentName,
   tahunPelajaranId,
   semesterId,
+  tahunPelajaranNama,
+  semesterNama,
   showSumatifArchive = true,
   hasPkl = false,
   hasUkk = false,
@@ -57,7 +61,7 @@ export const RaporPrintMenu: React.FC<RaporPrintMenuProps> = ({
     printSkl,
     printUkk,
     printPkl,
-  } = useRaporPdf({ tahunPelajaranId, semesterId });
+  } = useRaporPdf({ tahunPelajaranId, semesterId, tahunPelajaranNama, semesterNama });
 
   // Close dropdown on click outside
   useEffect(() => {

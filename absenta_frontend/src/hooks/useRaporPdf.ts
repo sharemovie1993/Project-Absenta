@@ -14,6 +14,8 @@ import {
 export interface UseRaporPdfOptions {
   tahunPelajaranId?: string;
   semesterId?: string;
+  tahunPelajaranNama?: string;
+  semesterNama?: string;
 }
 
 export function useRaporPdf(options: UseRaporPdfOptions = {}) {
@@ -162,6 +164,8 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
           siswaId,
           tahunPelajaranId: tpId,
           semesterId: semId,
+          tahunPelajaranNama: options.tahunPelajaranNama,
+          semesterNama: options.semesterNama,
         });
         updateProgress({
           stage: 'rendering',
@@ -178,7 +182,7 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
         setActivePrintingDoc(null);
       }
     },
-    [options.tahunPelajaranId, options.semesterId, showToast]
+    [options.tahunPelajaranId, options.semesterId, options.tahunPelajaranNama, options.semesterNama, showToast]
   );
 
   const printRaporSumatif = useCallback(
@@ -201,6 +205,8 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
           siswaId,
           tahunPelajaranId: tpId,
           semesterId: semId,
+          tahunPelajaranNama: options.tahunPelajaranNama,
+          semesterNama: options.semesterNama,
         });
         updateProgress({ stage: 'rendering', stageText: 'Merender rapor sumatif...', progressPercent: 95 });
         finishRender(blobUrl, filename, `${docTitle} berhasil dikompilasi!`);
@@ -213,7 +219,7 @@ export function useRaporPdf(options: UseRaporPdfOptions = {}) {
         setActivePrintingDoc(null);
       }
     },
-    [options.tahunPelajaranId, options.semesterId, showToast]
+    [options.tahunPelajaranId, options.semesterId, options.tahunPelajaranNama, options.semesterNama, showToast]
   );
 
   const printLeger = useCallback(
