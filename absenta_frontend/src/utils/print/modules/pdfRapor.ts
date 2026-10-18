@@ -190,35 +190,57 @@ export const renderStudentRaporPages = (
     const rightColX = 130;
     const colValOffset = 45;
     const rightValOffset = 35;
+    const maxLeftValWidth = rightColX - (leftColX + colValOffset) - 4; // 130 - 60 - 4 = 66mm
 
     startDoc.setFontSize(8.5);
 
-    // Left column metadata (Adaptive by Jenjang)
-    const leftInfo: Array<[string, string]> = [
+    // Left column: Top basic info
+    const topInfo: Array<[string, string]> = [
       ['Nama Peserta Didik', siswa.nama_siswa || '-'],
       ['NIS/NISN', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
       ['Nama Sekolah', namaSekolah],
-      ['Alamat', alamatSekolah],
     ];
 
-    if (jenjang === 'SMK') {
-      leftInfo.push(
-        ['Bidang Keahlian', siswa.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa'],
-        ['Program Keahlian', siswa.program_keahlian || 'Teknik Otomotif'],
-        ['Konsentrasi Keahlian', siswa.konsentrasi_keahlian || 'Teknik Sepeda Motor']
-      );
-    } else if (jenjang === 'SMA' && siswa.peminatan) {
-      leftInfo.push(['Peminatan / Kelompok', siswa.peminatan]);
-    }
-
     let leftY = startY;
-    leftInfo.forEach(([label, value]) => {
+    topInfo.forEach(([label, value]) => {
       startDoc.setFont('Helvetica', 'normal');
       startDoc.text(label, leftColX, leftY);
       startDoc.text(':', leftColX + colValOffset - 2, leftY);
       startDoc.setFont('Helvetica', label === 'Nama Peserta Didik' ? 'bold' : 'normal');
       startDoc.text(String(value), leftColX + colValOffset, leftY);
       leftY += 4.2;
+    });
+
+    // Left column: Alamat (Wrapped cleanly to prevent colliding with right column, followed by an enter/gap)
+    startDoc.setFont('Helvetica', 'normal');
+    startDoc.text('Alamat', leftColX, leftY);
+    startDoc.text(':', leftColX + colValOffset - 2, leftY);
+    const alamatLines = startDoc.splitTextToSize(alamatSekolah, maxLeftValWidth);
+    startDoc.text(alamatLines, leftColX + colValOffset, leftY);
+    leftY += Math.max(alamatLines.length * 4.0, 4.2);
+
+    // Spacing/Enter before Bidang Keahlian (Per standard e-Rapor & user request)
+    leftY += 3.5;
+
+    // Left column: Vocational/Peminatan fields
+    const vocationalInfo: Array<[string, string]> = [];
+    if (jenjang === 'SMK') {
+      vocationalInfo.push(
+        ['Bidang Keahlian', siswa.bidang_keahlian || 'Teknologi Manufaktur dan Rekayasa'],
+        ['Program Keahlian', siswa.program_keahlian || 'Teknik Elektronika'],
+        ['Konsentrasi Keahlian', siswa.konsentrasi_keahlian || 'Teknik Otomasi Industri']
+      );
+    } else if (jenjang === 'SMA' && siswa.peminatan) {
+      vocationalInfo.push(['Peminatan / Kelompok', siswa.peminatan]);
+    }
+
+    vocationalInfo.forEach(([label, value]) => {
+      startDoc.setFont('Helvetica', 'normal');
+      startDoc.text(label, leftColX, leftY);
+      startDoc.text(':', leftColX + colValOffset - 2, leftY);
+      const valLines = startDoc.splitTextToSize(String(value), maxLeftValWidth);
+      startDoc.text(valLines, leftColX + colValOffset, leftY);
+      leftY += Math.max(valLines.length * 4.0, 4.2);
     });
 
     // Right column metadata
@@ -239,7 +261,7 @@ export const renderStudentRaporPages = (
       rightY += 4.2;
     });
 
-    return Math.max(leftY, rightY) + 5;
+    return Math.max(leftY, rightY) + 4;
   };
 
   if (!isFirstStudent) {
@@ -529,19 +551,34 @@ export const renderStudentRaporPages = (
 
   autoTable(doc, {
     startY: y,
-    head: [['Ketidakhadiran', 'Catatan Wali Kelas']],
+    head: [
+      [
+        { content: 'Ketidakhadiran', colSpan: 2, styles: { halign: 'center' } },
+        { content: 'Catatan Wali Kelas', styles: { halign: 'center' } },
+      ],
+    ],
     body: [
       [
-        `Sakit : ${absensi.sakit ?? 0} Hari\nIzin : ${absensi.izin ?? 0} Hari\nTanpa Keterangan : ${absensi.alpa ?? 0} Hari`,
-        catatanWali,
+        { content: 'Sakit' },
+        { content: `${absensi.sakit ?? 0} Hari`, styles: { halign: 'center' } },
+        { content: catatanWali, rowSpan: 3, styles: { valign: 'top' } },
+      ],
+      [
+        { content: 'Izin' },
+        { content: `${absensi.izin ?? 0} Hari`, styles: { halign: 'center' } },
+      ],
+      [
+        { content: 'Tanpa Keterangan' },
+        { content: `${absensi.alpa ?? 0} Hari`, styles: { halign: 'center' } },
       ],
     ],
     theme: 'grid',
-    headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center' },
-    bodyStyles: { fontSize: 8.5, cellPadding: 3.5 },
+    headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8.5, cellPadding: 3.5, textColor: 0 },
     columnStyles: {
-      0: { cellWidth: 60 },
-      1: { cellWidth: 120 },
+      0: { cellWidth: 38 },
+      1: { cellWidth: 25, halign: 'center' },
+      2: { cellWidth: 117 },
     },
     margin: { left: 15, right: 15 },
   });
@@ -606,19 +643,40 @@ export const renderStudentRaporPages = (
 
   // Signatures Section (Orang Tua, Wali Kelas, Kepala Sekolah)
   const kota = effectiveSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
-  const effectiveDateVal = isGenap
-    ? (effectiveSettings?.tanggal_rapor_genap || effectiveSettings?.tanggal_rapor)
-    : (effectiveSettings?.tanggal_rapor_ganjil || effectiveSettings?.tanggal_rapor);
+  let effectiveDateVal = isGenap
+    ? (effectiveSettings?.tanggal_rapor_genap || (data?.is_genap ? effectiveSettings?.tanggal_rapor : undefined) || effectiveSettings?.tanggal_rapor)
+    : (effectiveSettings?.tanggal_rapor_ganjil || (!data?.is_genap ? effectiveSettings?.tanggal_rapor : undefined) || effectiveSettings?.tanggal_rapor);
+
+  // Smart Academic Fallback if no titimangsa date is configured: use authentic end-of-semester calendar
+  if (!effectiveDateVal) {
+    const matchYear = displayTahunPelajaran.match(/^(\d{4})/);
+    const parsedStartYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+    if (isGenap) {
+      effectiveDateVal = `${parsedStartYear + 1}-06-24`;
+    } else {
+      effectiveDateVal = `${parsedStartYear}-12-22`;
+    }
+  }
 
   let dateStr = '';
   if (effectiveDateVal) {
-    try {
-      dateStr = new Date(effectiveDateVal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-    } catch {
-      dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const dateParts = String(effectiveDateVal).split('-');
+    if (dateParts.length === 3) {
+      const year = parseInt(dateParts[0], 10);
+      const month = parseInt(dateParts[1], 10) - 1;
+      const day = parseInt(dateParts[2], 10);
+      const months = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      dateStr = `${day} ${months[month]} ${year}`;
+    } else {
+      try {
+        dateStr = new Date(effectiveDateVal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch {
+        dateStr = String(effectiveDateVal);
+      }
     }
-  } else {
-    dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   }
 
   const kepalaSekolahNama = effectiveSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';

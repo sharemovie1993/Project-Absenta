@@ -101,10 +101,23 @@ export class PdfRaporService {
     const kepsekStatus = raporSettings?.kepsek_status || 'DEFINITIF';
     const kota = raporSettings?.tempat_terbit || sekolah?.kota || 'Purwakarta';
 
-    const effectiveDate = raporSettings?.tanggal_rapor || (params?.semester_id ? raporSettings?.tanggal_rapor_ganjil : '') || '';
-    const dateStr = effectiveDate
-      ? new Date(effectiveDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-      : new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    const effectiveDate =
+      raporSettings?.tanggal_rapor ||
+      raporSettings?.tanggal_rapor_genap ||
+      raporSettings?.tanggal_rapor_ganjil ||
+      '';
+    let dateStr = '';
+    if (effectiveDate) {
+      const parts = String(effectiveDate).split('-');
+      if (parts.length === 3) {
+        const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        dateStr = `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]} ${parseInt(parts[0], 10)}`;
+      } else {
+        dateStr = new Date(effectiveDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+    } else {
+      dateStr = '24 Juni 2026';
+    }
 
     return {
       schoolName: sekolah?.nama || tenant?.name || 'SMK NEGERI 1 PLERED',

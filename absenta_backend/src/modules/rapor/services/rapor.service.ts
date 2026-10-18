@@ -1025,23 +1025,46 @@ export class RaporService {
 
         const getCfg = (k?: string | null) => (k ? cfgMap.get(k) : undefined);
 
-        const tempatTerbitCfgVal = getCfg(`RAPOR_TEMPAT_TERBIT_${tpId}`);
-        const tanggalRaporCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`) : undefined;
-        const tanggalP5CfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${semId}`) : undefined;
-        const tanggalPtsCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${semId}`) : undefined;
-        const tanggalPlenoCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${semId}`) : undefined;
+        const tempatTerbitCfgVal = getCfg(`RAPOR_TEMPAT_TERBIT_${tpId}`) || getCfg('RAPOR_TEMPAT_TERBIT');
+        let tanggalRaporCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`) : undefined;
+        let tanggalP5CfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${semId}`) : undefined;
+        let tanggalPtsCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${semId}`) : undefined;
+        let tanggalPlenoCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${semId}`) : undefined;
 
         // Ganjil
-        const raporGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`) : undefined;
-        const p5GanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`) : undefined;
-        const ptsGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`) : undefined;
+        let raporGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`) : undefined;
+        let p5GanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`) : undefined;
+        let ptsGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`) : undefined;
 
         // Genap
-        const raporGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`) : undefined;
-        const p5GenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${genapId}`) : undefined;
-        const ptsGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${genapId}`) : undefined;
-        const plenoGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`) : undefined;
-        const kelulusanCfgVal = tpId ? getCfg(`RAPOR_TANGGAL_KELULUSAN_${tpId}`) : undefined;
+        let raporGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`) : undefined;
+        let p5GenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${genapId}`) : undefined;
+        let ptsGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${genapId}`) : undefined;
+        let plenoGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`) : undefined;
+        let kelulusanCfgVal = tpId ? getCfg(`RAPOR_TANGGAL_KELULUSAN_${tpId}`) : undefined;
+
+        // Multi-level fallback for Titimangsa:
+        if (!raporGanjilCfgVal) raporGanjilCfgVal = getCfg('RAPOR_TANGGAL_RAPOR_GANJIL');
+        if (!raporGenapCfgVal) raporGenapCfgVal = getCfg('RAPOR_TANGGAL_RAPOR_GENAP');
+        if (!kelulusanCfgVal) kelulusanCfgVal = getCfg('RAPOR_TANGGAL_KELULUSAN');
+
+        // Cross-TP fallback (if any TP in this school has configured genap/ganjil titimangsa)
+        if (!raporGenapCfgVal) {
+          for (const [k, v] of cfgMap.entries()) {
+            if (k.startsWith('RAPOR_TANGGAL_RAPOR_') && v && v.trim()) {
+              raporGenapCfgVal = v.trim();
+              break;
+            }
+          }
+        }
+
+        // Smart Academic Fallback if still empty: authentic end-of-semester calendar
+        if (!raporGanjilCfgVal) raporGanjilCfgVal = `${startYear}-12-22`;
+        if (!raporGenapCfgVal) raporGenapCfgVal = `${startYear + 1}-06-24`;
+
+        if (!tanggalRaporCfgVal) {
+          tanggalRaporCfgVal = (semId === genapId) ? raporGenapCfgVal : raporGanjilCfgVal;
+        }
 
         // Pejabat
         const kepsekStatusCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_STATUS_${tpId}`) : undefined;
@@ -1216,10 +1239,13 @@ export class RaporService {
       }
 
       // Save Ganjil Specifics
-      if (ganjilId) {
-        if (payload.tanggal_rapor_ganjil !== undefined) {
+      if (payload.tanggal_rapor_ganjil !== undefined) {
+        if (ganjilId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`, payload.tanggal_rapor_ganjil);
         }
+        await this.updateConfig(tenantId, 'RAPOR_TANGGAL_RAPOR_GANJIL', payload.tanggal_rapor_ganjil);
+      }
+      if (ganjilId) {
         if (payload.tanggal_p5_ganjil !== undefined) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`, payload.tanggal_p5_ganjil);
         }
@@ -1229,10 +1255,13 @@ export class RaporService {
       }
 
       // Save Genap Specifics
-      if (genapId) {
-        if (payload.tanggal_rapor_genap !== undefined) {
+      if (payload.tanggal_rapor_genap !== undefined) {
+        if (genapId) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`, payload.tanggal_rapor_genap);
         }
+        await this.updateConfig(tenantId, 'RAPOR_TANGGAL_RAPOR_GENAP', payload.tanggal_rapor_genap);
+      }
+      if (genapId) {
         if (payload.tanggal_p5_genap !== undefined) {
           await this.updateConfig(tenantId, `RAPOR_TANGGAL_P5_${tpId}_${genapId}`, payload.tanggal_p5_genap);
         }
