@@ -1532,54 +1532,6 @@ export const generateCoverRaporPdf = async (options: {
   return { blobUrl, filename };
 };
 
-/**
- * 📋 2. Generate Biodata Siswa 17 Butir PDF (Client-side jsPDF)
- */
-export const generateBiodataSiswaPdf = async (options: {
-  siswaId: string;
-  tahunPelajaranId?: string;
-  semesterId?: string;
-}): Promise<{ blobUrl: string; filename: string }> => {
-  const { siswaId, tahunPelajaranId = '', semesterId = '' } = options;
-
-  const [raporRes, siswaRes, sekolahRes, tenantRes] = await Promise.allSettled([
-    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
-    siswaApi.getById(siswaId),
-    sekolahApi.getProfile(),
-    getMyTenant().catch(() => null),
-  ]);
-
-  const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
-  const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
-  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-
-  const currentUser = useAuthStore.getState().user;
-  const tenantId = (siswaDirect as any)?.tenant_id || currentUser?.tenant_id;
-
-  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
-  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && tenantId) {
-    try {
-      const resById = await getTenantById(tenantId);
-      if (resById?.data) {
-        tenantData = { ...(tenantData || {}), ...resById.data };
-      }
-    } catch {}
-  }
-
-  const tenantInfo = {
-    ...((currentUser as any)?.tenant || {}),
-    ...(tenantData || {}),
-  };
-
-  const siswa = {
-    ...(siswaDirect || {}),
-    ...(raporRaw?.siswa || {}),
-  };
-  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
-
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-  const fontFamily = await ensureCambriaFont(doc);
-
 export const resolveJenjangLines = (sekolah: any, tenantInfo: any, siswa: any) => {
   const tingkatNum = Number(siswa?.tingkat || 10);
   const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
@@ -1784,6 +1736,54 @@ export const renderOfficialBiodataPage = (
   doc.setFontSize(9.5);
   doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 35);
 };
+
+/**
+ * 📋 2. Generate Biodata Siswa 17 Butir PDF (Client-side jsPDF)
+ */
+export const generateBiodataSiswaPdf = async (options: {
+  siswaId: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+}): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId = '', semesterId = '' } = options;
+
+  const [raporRes, siswaRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    siswaApi.getById(siswaId),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+
+  const currentUser = useAuthStore.getState().user;
+  const tenantId = (siswaDirect as any)?.tenant_id || currentUser?.tenant_id;
+
+  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && tenantId) {
+    try {
+      const resById = await getTenantById(tenantId);
+      if (resById?.data) {
+        tenantData = { ...(tenantData || {}), ...resById.data };
+      }
+    } catch {}
+  }
+
+  const tenantInfo = {
+    ...((currentUser as any)?.tenant || {}),
+    ...(tenantData || {}),
+  };
+
+  const siswa = {
+    ...(siswaDirect || {}),
+    ...(raporRaw?.siswa || {}),
+  };
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
 
   // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
   const { jenjangLine1, jenjangLine2 } = resolveJenjangLines(sekolah, tenantInfo, siswa);
