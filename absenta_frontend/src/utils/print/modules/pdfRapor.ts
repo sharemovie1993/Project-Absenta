@@ -669,22 +669,22 @@ export const renderStudentRaporPages = (
     ],
     body: [
       [
-        { content: 'Sakit' },
-        { content: `${absensi.sakit ?? 0} Hari`, styles: { halign: 'center' } },
-        { content: catatanWali, rowSpan: 3, styles: { valign: 'top' } },
+        { content: 'Sakit', styles: { valign: 'middle' } },
+        { content: `${absensi.sakit ?? 0} Hari`, styles: { halign: 'center', valign: 'middle' } },
+        { content: catatanWali, rowSpan: 3, styles: { valign: 'middle', halign: 'left', cellPadding: 4 } },
       ],
       [
-        { content: 'Izin' },
-        { content: `${absensi.izin ?? 0} Hari`, styles: { halign: 'center' } },
+        { content: 'Izin', styles: { valign: 'middle' } },
+        { content: `${absensi.izin ?? 0} Hari`, styles: { halign: 'center', valign: 'middle' } },
       ],
       [
-        { content: 'Tanpa Keterangan' },
-        { content: `${absensi.alpa ?? 0} Hari`, styles: { halign: 'center' } },
+        { content: 'Tanpa Keterangan', styles: { valign: 'middle' } },
+        { content: `${absensi.alpa ?? 0} Hari`, styles: { halign: 'center', valign: 'middle' } },
       ],
     ],
     theme: 'grid',
-    headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold' },
-    bodyStyles: { fontSize: 8.5, cellPadding: 3.5, textColor: 0 },
+    headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center', valign: 'middle', minCellHeight: 8 },
+    bodyStyles: { fontSize: 8.5, cellPadding: 3.5, textColor: 0, valign: 'middle', minCellHeight: 9 },
     columnStyles: {
       0: { cellWidth: 38 },
       1: { cellWidth: 25, halign: 'center' },
@@ -692,7 +692,7 @@ export const renderStudentRaporPages = (
     },
     margin: { left: 15, right: 15 },
   });
-  y = (doc as any).lastAutoTable.finalY + 6;
+  y = (doc as any).lastAutoTable.finalY + 7;
   sectionIdx++;
 
   // Section: KENAIKAN KELAS (Khusus Semester Genap)
@@ -746,20 +746,33 @@ export const renderStudentRaporPages = (
       doc.setFont('Helvetica', 'bold');
       doc.text(textTinggal, textTinggalX, y);
     }
-    y += 8;
+    y += 11;
   } else {
-    y += 4;
+    y += 6;
   }
 
   // Signatures Section (Orang Tua, Wali Kelas, Kepala Sekolah)
   const kota = effectiveSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
   let effectiveDateVal = isGenap
-    ? (effectiveSettings?.tanggal_rapor_genap || (data?.is_genap ? effectiveSettings?.tanggal_rapor : undefined) || effectiveSettings?.tanggal_rapor)
-    : (effectiveSettings?.tanggal_rapor_ganjil || (!data?.is_genap ? effectiveSettings?.tanggal_rapor : undefined) || effectiveSettings?.tanggal_rapor);
+    ? effectiveSettings?.tanggal_rapor_genap
+    : effectiveSettings?.tanggal_rapor_ganjil;
+
+  // Fallback ke tanggal_rapor umum HANYA jika bulannya sesuai semester (Genap: Mei-Juli, Ganjil: Nov-Jan)
+  if (!effectiveDateVal && effectiveSettings?.tanggal_rapor) {
+    const rawParts = String(effectiveSettings.tanggal_rapor).split('-');
+    if (rawParts.length === 3) {
+      const m = parseInt(rawParts[1], 10);
+      if (isGenap && m >= 5 && m <= 7) {
+        effectiveDateVal = effectiveSettings.tanggal_rapor;
+      } else if (!isGenap && (m >= 11 || m <= 1)) {
+        effectiveDateVal = effectiveSettings.tanggal_rapor;
+      }
+    }
+  }
 
   // Smart Academic Fallback if no titimangsa date is configured: use authentic end-of-semester calendar
   if (!effectiveDateVal) {
-    const matchYear = displayTahunPelajaran.match(/^(\d{4})/);
+    const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
     const parsedStartYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
     if (isGenap) {
       effectiveDateVal = `${parsedStartYear + 1}-06-24`;

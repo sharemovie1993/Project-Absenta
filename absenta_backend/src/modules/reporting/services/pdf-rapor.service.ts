@@ -783,19 +783,19 @@ export class PdfRaporService {
           </thead>
           <tbody>
             <tr>
-              <td style="width: 24%; padding: 4px 8px;">Sakit</td>
-              <td style="width: 12%; text-align: center; font-weight: bold;">${data.absensi.sakit || '-'} Hari</td>
-              <td rowspan="3" style="vertical-align: top; padding: 8px 10px; font-size: 10.5px; text-align: justify; line-height: 1.45;">
-                ${data.catatan_wali || 'Harus tetap rajin belajar dan tingkatkan prestasimu agar lebih baik dari sebelumnya.'}
+              <td style="width: 24%; padding: 6px 8px; vertical-align: middle;">Sakit</td>
+              <td style="width: 12%; text-align: center; font-weight: bold; vertical-align: middle;">${data.absensi.sakit ?? 0} Hari</td>
+              <td rowspan="3" style="vertical-align: middle; padding: 8px 12px; font-size: 10.5px; text-align: left; line-height: 1.45;">
+                ${data.catatan_wali || 'Pertahankan prestasi akademik dan terus kembangkan potensi diri dengan penuh disiplin serta semangat pantang menyerah.'}
               </td>
             </tr>
             <tr>
-              <td style="padding: 4px 8px;">Izin</td>
-              <td style="text-align: center; font-weight: bold;">${data.absensi.izin || '-'} Hari</td>
+              <td style="padding: 6px 8px; vertical-align: middle;">Izin</td>
+              <td style="text-align: center; font-weight: bold; vertical-align: middle;">${data.absensi.izin ?? 0} Hari</td>
             </tr>
             <tr>
-              <td style="padding: 4px 8px;">Tanpa Keterangan</td>
-              <td style="text-align: center; font-weight: bold;">${data.absensi.alpa || 2} Hari</td>
+              <td style="padding: 6px 8px; vertical-align: middle;">Tanpa Keterangan</td>
+              <td style="text-align: center; font-weight: bold; vertical-align: middle;">${data.absensi.alpa ?? 0} Hari</td>
             </tr>
           </tbody>
         </table>
