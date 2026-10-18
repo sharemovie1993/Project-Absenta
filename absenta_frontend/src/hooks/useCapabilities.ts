@@ -203,6 +203,7 @@ export function useCapabilities() {
     user,
     can: typedCan,
     canAny: typedCanAny,
+    hasCapability: typedCan,
     isAdmin: isAdmin(),
     isAuthenticated,
     caps,

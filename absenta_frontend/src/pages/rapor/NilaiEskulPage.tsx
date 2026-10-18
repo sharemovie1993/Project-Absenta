@@ -82,15 +82,14 @@ const PREDIKAT_OPTIONS: Array<{
 export const NilaiEskulPage: React.FC = React.memo(() => {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
-  const { hasCapability } = useCapabilities();
+  const { can, isWaliKelas, isKurikulum, isAdmin } = useCapabilities();
 
   // 1. Konteks Akademik Terpusat
   const academicCtx = useAcademicContext();
   const { kelasOptions, isLoadingKelas } = useKelasOptions();
 
   // 2. Akses & Role Detection
-  const canManageAcademic = hasCapability('academic.manage.academic');
-  const isWaliKelas = hasCapability('academic.view.wali.kelas') || hasCapability('academic.homeroom.manage');
+  const canManageAcademic = can('academic.manage.academic') || isKurikulum || isAdmin;
 
   // Role Tab Options
   type RoleTabType = 'my_eskul' | 'supervisi' | 'wali_kelas';
