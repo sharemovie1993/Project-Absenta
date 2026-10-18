@@ -4,7 +4,8 @@ import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
 import { siswaApi } from '../../../api/academic.api';
 import { getKelasDetail } from '../../../api/academic/kelas.api';
-import { getMyTenant } from '../../../api/tenants.api';
+import { getMyTenant, getTenantById } from '../../../api/tenants.api';
+import { useAuthStore } from '../../../store/authStore';
 import { drawKopSurat } from '../pdfGeneric';
 import { getBase64ImageFromUrl } from '../../cooperative/coopDocUtils';
 
@@ -877,7 +878,7 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
   const data = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
   const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
   const effectiveSettings = raporSettings || data?.rapor_settings;
   const resolvedSemesterNama =
@@ -923,7 +924,7 @@ export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ 
     getMyTenant().catch(() => null)
   ]);
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
   let logoDaerahBase64: string | null = null;
   let logoSekolahBase64: string | null = null;
@@ -1056,7 +1057,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
     raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
   ]);
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
   const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
 
   // 2. Initialize single jsPDF document for entire class
@@ -1115,8 +1116,16 @@ const DEFAULT_JABAR_LOGO_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
 );
 
 const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<string | null> => {
-  if (!url) return null;
-  if (url.startsWith('data:image/svg+xml')) {
+  if (!url || !url.trim()) return null;
+  const trimmed = url.trim();
+
+  // If already base64 data URL
+  if (trimmed.startsWith('data:image/png') || trimmed.startsWith('data:image/jpeg')) {
+    return trimmed;
+  }
+
+  // Handle SVG data URI by rendering to canvas PNG
+  if (trimmed.startsWith('data:image/svg+xml')) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -1136,13 +1145,39 @@ const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<
         }
       };
       img.onerror = () => resolve(null);
-      img.src = url;
+      img.src = trimmed;
     });
   }
-  if (url.startsWith('data:image/png') || url.startsWith('data:image/jpeg')) {
-    return url;
-  }
-  return getBase64ImageFromUrl(url).catch(() => null);
+
+  // 1. Direct browser image loading via canvas (handles relative /api/uploads/..., CORS, and absolute URLs)
+  const fromCanvas = await new Promise<string | null>((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width || 200;
+        canvas.height = img.naturalHeight || img.height || 200;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/png'));
+        } else {
+          resolve(null);
+        }
+      } catch (err) {
+        console.warn('Canvas export failed, falling back:', err);
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = trimmed;
+  });
+
+  if (fromCanvas) return fromCanvas;
+
+  // 2. Fallback via getBase64ImageFromUrl
+  return getBase64ImageFromUrl(trimmed).catch(() => null);
 };
 
 interface RenderCoverRaporOptions {
@@ -1265,7 +1300,24 @@ export const generateCoverRaporPdf = async (options: {
   const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
   const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  const currentUser = useAuthStore.getState().user;
+  const tenantId = (siswaDirect as any)?.tenant_id || currentUser?.tenant_id;
+
+  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && tenantId) {
+    try {
+      const resById = await getTenantById(tenantId);
+      if (resById?.data) {
+        tenantData = { ...(tenantData || {}), ...resById.data };
+      }
+    } catch {}
+  }
+
+  const tenantInfo = {
+    ...((currentUser as any)?.tenant || {}),
+    ...(tenantData || {}),
+  };
 
   const siswa = {
     ...(siswaDirect || {}),
@@ -1336,7 +1388,24 @@ export const generateBiodataSiswaPdf = async (options: {
   const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
   const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+
+  const currentUser = useAuthStore.getState().user;
+  const tenantId = (siswaDirect as any)?.tenant_id || currentUser?.tenant_id;
+
+  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && tenantId) {
+    try {
+      const resById = await getTenantById(tenantId);
+      if (resById?.data) {
+        tenantData = { ...(tenantData || {}), ...resById.data };
+      }
+    } catch {}
+  }
+
+  const tenantInfo = {
+    ...((currentUser as any)?.tenant || {}),
+    ...(tenantData || {}),
+  };
 
   const siswa = {
     ...(siswaDirect || {}),
@@ -1507,7 +1576,7 @@ export const generateLegerPdf = async (options: {
 
   const legerData = legerRes.status === 'fulfilled' ? (legerRes.value?.data || legerRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
   const settingsData = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
   const kelasDetailData = kelasRes.status === 'fulfilled' ? (kelasRes.value as any) : null;
 
@@ -1887,7 +1956,7 @@ export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promi
 
   const raporData = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
   if (!raporData) throw new Error('Data rapor sumatif tidak ditemukan.');
 
@@ -2000,7 +2069,7 @@ export const generateTranskripPdf = async (options: {
 
   const transkripData = transkripRes.status === 'fulfilled' ? (transkripRes.value?.data || transkripRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
