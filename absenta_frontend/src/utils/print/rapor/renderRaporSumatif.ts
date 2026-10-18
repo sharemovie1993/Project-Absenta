@@ -26,7 +26,13 @@ export const renderOfficialSumatifPage = (
   const siswa = raporData.siswa || {};
   const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SMKN 1 PLERED';
   const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
-  const alamatSekolah = sekolah?.alamat || tenantInfo?.address || 'Jl. Raya Rawasari, Plered';
+  const rawAlamatSekolah = sekolah?.alamat || tenantInfo?.address || 'Jl. Raya Rawasari, Plered';
+  let alamatSekolah = (rawAlamatSekolah || '-').trim();
+  if (/(?:,\s*|\s+)(?=(?:Kab\.|Kabupaten|Kota\b))/i.test(alamatSekolah)) {
+    alamatSekolah = alamatSekolah.replace(/(?:,\s*|\s+)(?=(?:Kab\.|Kabupaten|Kota\b))/i, (match) => {
+      return match.includes(',') ? ',\n' : '\n';
+    });
+  }
 
   const tingkatNum = Number(siswa.tingkat || 10);
   const fase = tingkatNum <= 10 ? 'E' : 'F';
