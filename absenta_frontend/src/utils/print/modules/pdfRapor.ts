@@ -386,7 +386,16 @@ export const renderStudentRaporPages = (
         {
           content: groupName,
           colSpan: 4,
-          styles: { fontStyle: 'bold', fillColor: [240, 240, 240], textColor: [0, 0, 0], fontSize: 8.5 },
+          styles: {
+            fontStyle: 'bold',
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontSize: 8.5,
+            halign: 'left',
+            valign: 'middle',
+            minCellHeight: 7.5,
+            cellPadding: { left: 3, top: 1.5, bottom: 1.5 },
+          },
         },
       ]);
 
@@ -427,19 +436,21 @@ export const renderStudentRaporPages = (
         }
 
         tableRows.push([
-          { content: String(idx + 1), styles: { halign: 'center' } },
-          { content: n.mapel_name || '-' },
+          { content: String(idx + 1), styles: { halign: 'center', valign: 'middle' } },
+          { content: n.mapel_name || '-', styles: { halign: 'left', valign: 'middle' } },
           {
             content: String(score),
             styles: {
               halign: 'center',
-              fontStyle: 'bold',
+              valign: 'middle',
               textColor: isMissing ? [220, 38, 38] : [0, 0, 0],
             },
           },
           {
             content: cap,
             styles: {
+              halign: 'left',
+              valign: 'middle',
               textColor: isMissing ? [220, 38, 38] : [0, 0, 0],
               fontStyle: isMissing ? 'italic' : 'normal',
             },
@@ -453,13 +464,27 @@ export const renderStudentRaporPages = (
       head: [['No', 'Mata Pelajaran', 'Nilai', 'Capaian Kompetensi']],
       body: tableRows,
       theme: 'grid',
-      headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center' },
-      bodyStyles: { fontSize: 8, cellPadding: 2.5 },
+      headStyles: {
+        fillColor: [205, 205, 205],
+        textColor: 0,
+        fontSize: 8.5,
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle',
+        minCellHeight: 8,
+      },
+      bodyStyles: {
+        fontSize: 7.8,
+        valign: 'middle',
+        minCellHeight: 12,
+        cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 },
+        textColor: 0,
+      },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },
-        1: { cellWidth: 55 },
-        2: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
-        3: { cellWidth: 99 },
+        0: { halign: 'center', valign: 'middle', cellWidth: 10 },
+        1: { halign: 'left', valign: 'middle', cellWidth: 56 },
+        2: { halign: 'center', valign: 'middle', cellWidth: 16 },
+        3: { halign: 'left', valign: 'middle', cellWidth: 98 },
       },
       margin: { left: 15, right: 15 },
     });
