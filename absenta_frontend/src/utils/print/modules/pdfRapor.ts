@@ -1331,12 +1331,12 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
   doc.setFontSize(16);
   doc.text(`${opts.nis} / ${opts.nisn}`, pageWidth / 2, 199 + 9.2, { align: 'center' });
 
-  // 5. Footer Kementerian - Cambria 11 Bold
+  // 5. Footer Kementerian - Ukuran sama dengan Nama SMK (Cambria 16 Bold)
   doc.setFont(font, 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
   doc.text('KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI', pageWidth / 2, 258, { align: 'center' });
-  doc.text('REPUBLIK INDONESIA', pageWidth / 2, 264, { align: 'center' });
+  doc.text('REPUBLIK INDONESIA', pageWidth / 2, 266, { align: 'center' });
 };
 
 /**
@@ -1526,39 +1526,107 @@ export const generateBiodataSiswaPdf = async (options: {
   let currentY = 16;
   doc.setFont(fontFamily, 'bold');
   doc.setFontSize(14);
-  doc.setTextColor(17, 24, 39);
+  doc.setTextColor(0, 0, 0);
   doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
 
-  const fullAlamatSiswa = [
+  const formatAlamatDuaBaris = (
+    rawAlamat?: string,
+    dusun?: string,
+    rt?: string,
+    rw?: string,
+    kelurahan?: string,
+    kecamatan?: string,
+    kabupaten?: string
+  ): string => {
+    if (rawAlamat && (/kec\b|kecamatan\b/i.test(rawAlamat) || /kab\b|kabupaten\b/i.test(rawAlamat))) {
+      const splitMatch = rawAlamat.split(/(?=\b(?:Kec|Kecamatan)\b)/i);
+      if (splitMatch.length >= 2) {
+        return `${splitMatch[0].trim()}\n${splitMatch.slice(1).join('').trim()}`;
+      }
+    }
+    const p1 = [
+      rawAlamat || '',
+      dusun ? `Dusun ${dusun}` : '',
+      (rt || rw) ? `RT ${rt || '01'} RW ${rw || '01'}` : '',
+      kelurahan ? `Desa ${kelurahan}` : '',
+    ].filter(Boolean).map(s => s.trim()).filter(Boolean);
+
+    const p2 = [
+      kecamatan ? `Kecamatan ${kecamatan.replace(/^kec(amatan)?\.?\s*/i, '')}` : '',
+      kabupaten ? `Kabupaten ${kabupaten.replace(/^kab(upaten)?\.?\s*/i, '')}` : '',
+    ].filter(Boolean).map(s => s.trim()).filter(Boolean);
+
+    let l1 = p1.join(' ');
+    let l2 = p2.join(' ');
+    if (l1 && l2) return `${l1}\n${l2}`;
+    const comb = l1 || l2 || '-';
+    if (comb.length > 40 && comb.includes(' ')) {
+      const words = comb.split(' ');
+      const half = Math.ceil(words.length / 2);
+      return `${words.slice(0, half).join(' ')}\n${words.slice(half).join(' ')}`;
+    }
+    return comb;
+  };
+
+  const formatAnakKe = (val: any): string => {
+    if (!val) return '-';
+    const num = parseInt(String(val), 10);
+    const words = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh'];
+    if (!isNaN(num) && num >= 1 && num <= 10) {
+      return `${num} (${words[num]})`;
+    }
+    return String(val);
+  };
+
+  const alamatSiswaDuaBaris = formatAlamatDuaBaris(
     siswa.alamat,
-    siswa.dusun ? `Dusun ${siswa.dusun}` : '',
-    siswa.rt || siswa.rw ? `RT ${siswa.rt || '01'} RW ${siswa.rw || '01'}` : '',
-    siswa.kelurahan ? `Desa/Kel. ${siswa.kelurahan}` : '',
-    siswa.kecamatan ? `Kec. ${siswa.kecamatan}` : '',
-    siswa.kabupaten ? `Kab. ${siswa.kabupaten}` : '',
-  ].filter(Boolean).join(' ') || siswa.alamat || '-';
+    siswa.dusun,
+    siswa.rt,
+    siswa.rw,
+    siswa.kelurahan,
+    siswa.kecamatan,
+    siswa.kabupaten
+  );
+
+  const alamatOrtuDuaBaris = formatAlamatDuaBaris(
+    siswa.alamat_ortu || siswa.alamat,
+    siswa.dusun_ortu || siswa.dusun,
+    siswa.rt_ortu || siswa.rt,
+    siswa.rw_ortu || siswa.rw,
+    siswa.kelurahan_ortu || siswa.kelurahan,
+    siswa.kecamatan_ortu || siswa.kecamatan,
+    siswa.kabupaten_ortu || siswa.kabupaten
+  );
 
   const jk = (siswa.jenis_kelamin || '').toUpperCase().startsWith('L') ? 'Laki-Laki' : 'Perempuan';
-  const ttl = `${siswa.tempat_lahir || '-'}, ${formatIndoDate(siswa.tanggal_lahir)}`;
+  const ttl = `${siswa.tempat_lahir || '-'} , ${formatIndoDate(siswa.tanggal_lahir)}`;
   const tglMasuk = formatIndoDate(siswa.tanggal_masuk);
 
-  const tableBody = [
-    ['1.', 'Nama Peserta Didik (Lengkap)', ':', (siswa.nama_siswa || '-').toUpperCase()],
+  const tableBody: Array<[string, string, string, string]> = [
+    ['1.', 'Nama Peserta Didik Lengkap', ':', (siswa.nama_siswa || '-').toUpperCase()],
     ['2.', 'Nomor Induk Siswa / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
-    ['3.', 'Tempat, Tanggal Lahir', ':', ttl],
+    ['3.', 'Tempat Tanggal Lahir', ':', ttl],
     ['4.', 'Jenis Kelamin', ':', jk],
-    ['5.', 'Agama', ':', siswa.agama || '-'],
+    ['5.', 'Agama / Kepercayaan', ':', siswa.agama || '-'],
     ['6.', 'Status dalam Keluarga', ':', siswa.status_dalam_keluarga || 'Anak Kandung'],
-    ['7.', 'Anak ke', ':', siswa.anak_ke ? String(siswa.anak_ke) : '-'],
-    ['8.', 'Alamat Peserta Didik', ':', fullAlamatSiswa],
-    ['9.', 'Nomor Telepon Rumah / HP', ':', siswa.no_telepon || '-'],
-    ['10.', 'Sekolah Asal (SMP / MTs)', ':', siswa.sekolah_asal || '-'],
-    ['11.', 'Diterima di Sekolah ini', ':', `a. Di Kelas      : ${siswa.kelas || '-'}\nb. Pada Tanggal: ${tglMasuk}`],
-    ['12.', 'Nama Orang Tua', ':', `a. Ayah : ${siswa.nama_ayah || '-'}\nb. Ibu   : ${siswa.nama_ibu || '-'}`],
-    ['13.', 'Alamat Orang Tua', ':', siswa.alamat_ortu || fullAlamatSiswa],
-    ['14.', 'Pekerjaan Orang Tua', ':', `a. Ayah : ${siswa.pekerjaan_ayah || '-'}\nb. Ibu   : ${siswa.pekerjaan_ibu || '-'}`],
+    ['7.', 'Anak ke', ':', formatAnakKe(siswa.anak_ke)],
+    ['8.', 'Alamat Peserta Didik', ':', alamatSiswaDuaBaris],
+    ['9.', 'Nomor Telepon Rumah', ':', siswa.no_telepon || '-'],
+    ['10.', 'Sekolah Asal', ':', siswa.sekolah_asal || '-'],
+    ['11.', 'Diterima di sekolah ini', '', ''],
+    ['', '   Di kelas', ':', siswa.kelas || '-'],
+    ['', '   Pada tanggal', ':', tglMasuk],
+    ['12.', 'Nama Orang Tua', '', ''],
+    ['', '   a. Ayah', ':', siswa.nama_ayah || '-'],
+    ['', '   b. Ibu', ':', siswa.nama_ibu || '-'],
+    ['13.', 'Alamat Orang Tua', ':', alamatOrtuDuaBaris],
+    ['', '   Nomor Telepon Rumah', ':', siswa.no_telepon_ortu || '-'],
+    ['14.', 'Pekerjaan Orang Tua', '', ''],
+    ['', '   a. Ayah', ':', siswa.pekerjaan_ayah || '-'],
+    ['', '   b. Ibu', ':', siswa.pekerjaan_ibu || '-'],
     ['15.', 'Nama Wali Peserta Didik', ':', siswa.nama_wali || '-'],
     ['16.', 'Alamat Wali Peserta Didik', ':', siswa.alamat_wali || '-'],
+    ['', '   Nomor Telepon Rumah', ':', siswa.no_telepon_wali || '-'],
     ['17.', 'Pekerjaan Wali Peserta Didik', ':', siswa.pekerjaan_wali || '-'],
   ];
 
@@ -1570,48 +1638,62 @@ export const generateBiodataSiswaPdf = async (options: {
     styles: {
       font: fontFamily,
       fontSize: 8.5,
-      cellPadding: 1.4,
-      textColor: [17, 24, 39],
+      cellPadding: { top: 0.8, bottom: 0.8, left: 0.8, right: 0.8 },
+      textColor: [0, 0, 0],
       overflow: 'linebreak',
     },
     columnStyles: {
-      0: { cellWidth: 8 },
-      1: { cellWidth: 54 },
-      2: { cellWidth: 4 },
-      3: { cellWidth: 112 },
+      0: { cellWidth: 8, halign: 'left' },
+      1: { cellWidth: 54, halign: 'left' },
+      2: { cellWidth: 4, halign: 'center' },
+      3: { cellWidth: 112, halign: 'left' },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === 0 && data.column.index === 3) {
+        data.cell.styles.fontStyle = 'bold';
+      }
     },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 215;
-  const photoY = Math.min(finalY + 6, 235);
+  const finalY = (doc as any).lastAutoTable?.finalY || 180;
+  const photoY = Math.min(Math.max(finalY + 10, 185), 235);
 
-  // Kotak Pas Foto 3x4 (Left)
-  doc.setDrawColor(71, 85, 105);
-  doc.setLineWidth(0.6);
-  doc.rect(25, photoY, 30, 40);
-  doc.setFontSize(8);
+  // Kotak Pas Foto 3x4 (Centered in left half, matching Gambar 2)
+  const photoX = 62;
+  const photoW = 30;
+  const photoH = 40;
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+  doc.rect(photoX, photoY, photoW, photoH);
   doc.setFont(fontFamily, 'normal');
-  doc.setTextColor(100, 116, 139);
-  doc.text('Pas Foto', 40, photoY + 18, { align: 'center' });
-  doc.text('3 x 4 cm', 40, photoY + 23, { align: 'center' });
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0);
+  doc.text('Pas Foto', photoX + photoW / 2, photoY + 18, { align: 'center' });
+  doc.text('3x4', photoX + photoW / 2, photoY + 24, { align: 'center' });
 
-  // Tanda Tangan Kepala Sekolah (Right)
-  const rightX = 135;
-  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Drs. H. Mulyadi, M.Pd.';
-  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
+  // Tanda Tangan Kepala Sekolah (Right, matching Gambar 2)
+  const rightX = 125;
+  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
+  const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001';
   const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9);
-  doc.setTextColor(17, 24, 39);
-  doc.text(titimangsa, rightX, photoY + 4);
-  doc.text('Kepala Sekolah,', rightX, photoY + 9);
+  doc.setTextColor(0, 0, 0);
+  doc.text(titimangsa, rightX, photoY + 6);
+  doc.text('Kepala Sekolah', rightX, photoY + 12);
 
+  // Nama Kepala Sekolah (Bold with Underline)
   doc.setFont(fontFamily, 'bold');
-  doc.text(kepalaSekolahNama, rightX, photoY + 34);
+  doc.text(kepalaSekolahNama, rightX, photoY + 33);
+  const kepsekWidth = doc.getTextWidth(kepalaSekolahNama);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.line(rightX, photoY + 33.8, rightX + kepsekWidth, photoY + 33.8);
+
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(8.5);
-  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 38.5);
+  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 38);
 
   const filename = `Biodata_Siswa_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
