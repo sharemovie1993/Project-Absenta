@@ -8,6 +8,13 @@ import { formatIndoDate } from './raporShared';
 
 /**
  * 📊 3. Generate Buku Leger Nilai PDF (Landscape A4 - Client-side jsPDF)
+ * Sesuai referensi resmi:
+ * - Header vertikal warna-warni per mata pelajaran (berdiri tegak / angle 90)
+ * - Header presensi vertikal (SAKIT, IZIN, TANPA KETERANGAN)
+ * - Header rekapitulasi vertikal (JUMLAH, RATA-RATA, RANKING)
+ * - Badge kelas oranye di pojok kanan atas
+ * - Strict 1 halaman A4 Landscape
+ * - Blok tanda tangan resmi Kepala Sekolah & Wali Kelas
  */
 export const generateLegerPdf = async (options: {
   kelasId: string;
@@ -98,174 +105,255 @@ export const generateLegerPdf = async (options: {
   const actualTotalWidth = fixedColsWidth + totalMapelWidth + namaWidth + (ekskulWidth * 2);
   const tableMarginLeft = Math.max(6, Number(((pageWidth - actualTotalWidth) / 2).toFixed(1)));
 
-  // Calculate dynamic font sizes so all rows and text fit crisply on 1 landscape page
-  const numRows = students.length || 1;
-  const cellPadY = numRows > 32 ? 0.35 : numRows > 28 ? 0.5 : 0.65;
-  const bodyFontSize = numRows > 32 ? 5.8 : numRows > 28 ? 6.2 : 6.8;
+  // Top Right Orange Badge (aligned with table right edge)
+  const badgeWidth = 42;
+  const badgeX = tableMarginLeft + actualTotalWidth - badgeWidth;
+  doc.setFillColor(249, 115, 22); // vibrant orange #f97316
+  doc.roundedRect(badgeX, 5.5, badgeWidth, 9.5, 1.2, 1.2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(klsText.toUpperCase(), badgeX + (badgeWidth / 2), 12, { align: 'center' });
 
-  // Header Row 1
-  const headRow1: any[] = [
-    { content: 'NO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'NAMA PESERTA DIDIK', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'KELAS', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'SEMESTER', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'NILAI HASIL BELAJAR', colSpan: numMapels, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'KEHADIRAN', colSpan: 3, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'EKSTRAKURIKULER', colSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'JML', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'RATA-RATA', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-    { content: 'PERINGKAT', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-  ];
-
-  // Header Row 2: dynamic mapel names + attendance sub-headers + 2 ekskul
-  const headRow2: any[] = [
-    ...mapelList.map((m: any) => ({
-      content: m.kode_mapel || m.nama_mapel || 'MAPEL',
-      styles: { halign: 'center', valign: 'middle' }
-    })),
-    { content: 'S', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'I', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'A', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Ekskul 1', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Ekskul 2', styles: { halign: 'center', valign: 'middle' } },
-  ];
-
-  const colStyles: any = {
-    0: { cellWidth: 6, halign: 'center' },      // NO
-    1: { cellWidth: namaWidth, halign: 'left' },// NAMA PESERTA DIDIK
-    2: { cellWidth: 12, halign: 'center' },     // KELAS
-    3: { cellWidth: 13, halign: 'center' },     // SEMESTER
+  // Helper mapel abbreviation
+  const getShortMapelName = (name: string, code?: string): string => {
+    if (code && code.trim() && code !== 'N/A' && code.length <= 14) return code.trim();
+    const n = (name || '').trim().toLowerCase();
+    if (n.includes('agama') || n.includes('budi pekerti') || n.includes('pai')) return 'PAI';
+    if (n.includes('pancasila') || n.includes('ppkn') || n.includes('pkn')) return 'PKN';
+    if (n.includes('indonesia')) return 'B. INDONESIA';
+    if (n.includes('jasmani') || n.includes('olahraga') || n.includes('pjok')) return 'PJOK';
+    if (n.includes('sejarah')) return 'SEJARAH';
+    if (n.includes('seni') || n.includes('budaya')) return 'SENI BUDAYA';
+    if (n.includes('sunda')) return 'B. SUNDA';
+    if (n.includes('matematika') || n === 'mtk') return 'MTK';
+    if (n.includes('inggris')) return 'B. INGGRIS';
+    if (n.includes('informatika')) return 'INFORMATIKA';
+    if (n.includes('ipas') || n.includes('projek ipas')) return 'PROJEK IPAS';
+    if (n.includes('ddpk') || n.includes('dasar-dasar program keahlian') || n.includes('dasar program keahlian')) return 'DDPK';
+    if (n.includes('koding') || n.includes('coding') || n.includes('pemrograman')) return 'KODING';
+    if (n.includes('pkk') || n.includes('kreatif')) return 'PKK';
+    if (n.includes('konsentrasi') || n.includes('kk')) return 'KONSENTRASI';
+    if (n.includes('pkl')) return 'PKL';
+    return name.length > 15 ? name.substring(0, 14).toUpperCase() : name.toUpperCase();
   };
 
-  let colIdx = 4;
-  mapelList.forEach(() => {
-    colStyles[colIdx] = { cellWidth: mapelWidth, halign: 'center' };
-    colIdx++;
+  const mapelPalette: Array<[number, number, number]> = [
+    [245, 158, 11],  // PAI (amber/orange)
+    [21, 128, 61],   // PKN (green)
+    [37, 99, 235],   // B. INDONESIA (blue)
+    [147, 51, 234],  // PJOK (purple)
+    [30, 58, 138],   // SEJARAH (navy)
+    [217, 119, 6],   // SENI BUDAYA (amber)
+    [101, 163, 13],  // B. SUNDA (olive)
+    [234, 88, 12],   // MTK (coral)
+    [249, 115, 22],  // B. INGGRIS (orange)
+    [2, 132, 199],   // INFORMATIKA (sky)
+    [13, 148, 136],  // PROJEK IPAS (teal)
+    [59, 130, 246],  // DDPK (blue)
+    [51, 65, 85],    // KODING (slate)
+    [168, 85, 247],  // extra (purple)
+    [20, 184, 166],  // extra (teal)
+    [239, 68, 68],   // extra (red)
+  ];
+
+  const getSoftTint = (rgb: [number, number, number]): [number, number, number] => {
+    return [
+      Math.round(rgb[0] + (255 - rgb[0]) * 0.90),
+      Math.round(rgb[1] + (255 - rgb[1]) * 0.90),
+      Math.round(rgb[2] + (255 - rgb[2]) * 0.90),
+    ];
+  };
+
+  // Header construction (Single tall row with vertical mapel text)
+  const verticalHeadersMap: Record<number, { text: string; lines?: string[]; color: [number, number, number] }> = {};
+  const headerRow: any[] = [
+    { content: 'NO', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
+    { content: 'NAMA', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
+    { content: 'KELAS', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
+    { content: 'SEMESTER', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
+  ];
+
+  let currentColIdx = 4;
+  mapelList.forEach((m, idx) => {
+    const color = mapelPalette[idx % mapelPalette.length];
+    const shortName = getShortMapelName(m.nama_mapel, m.kode_mapel);
+    verticalHeadersMap[currentColIdx] = { text: shortName, color: [255, 255, 255] };
+    headerRow.push({
+      content: '',
+      styles: { fillColor: color },
+    });
+    currentColIdx++;
   });
 
-  colStyles[colIdx++] = { cellWidth: 6.5, halign: 'center' };   // S
-  colStyles[colIdx++] = { cellWidth: 6.5, halign: 'center' };   // I
-  colStyles[colIdx++] = { cellWidth: 8, halign: 'center' };     // A
-  colStyles[colIdx++] = { cellWidth: ekskulWidth, halign: 'left' }; // EKSKUL 1
-  colStyles[colIdx++] = { cellWidth: ekskulWidth, halign: 'left' }; // EKSKUL 2
-  colStyles[colIdx++] = { cellWidth: 12, halign: 'center', fontStyle: 'bold' }; // JML
-  colStyles[colIdx++] = { cellWidth: 12, halign: 'center', fontStyle: 'bold' }; // RATA-RATA
-  colStyles[colIdx++] = { cellWidth: 9.5, halign: 'center', fontStyle: 'bold' }; // PERINGKAT
+  // Ekstrakurikuler columns
+  headerRow.push(
+    { content: 'EKSKUL-1', styles: { fillColor: [55, 65, 81], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 6.2 } },
+    { content: 'EKSKUL-2', styles: { fillColor: [55, 65, 81], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', fontSize: 6.2 } }
+  );
+  currentColIdx += 2;
 
-  const studentRows = students.map((s: any, idx: number) => {
-    const mapelScores = mapelList.map((m: any) => {
-      const score = s.nilai?.[m.id];
-      return typeof score === 'number' ? score : (score || '-');
+  // Presensi columns (vertical text)
+  verticalHeadersMap[currentColIdx] = { text: 'SAKIT', color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [55, 65, 81] } });
+  currentColIdx++;
+
+  verticalHeadersMap[currentColIdx] = { text: 'IZIN', color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [55, 65, 81] } });
+  currentColIdx++;
+
+  verticalHeadersMap[currentColIdx] = { text: 'TANPA KETERANGAN', lines: ['TANPA', 'KETERANGAN'], color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [55, 65, 81] } });
+  currentColIdx++;
+
+  // Summary columns (vertical text, orange background)
+  verticalHeadersMap[currentColIdx] = { text: 'JUMLAH', color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [245, 158, 11] } });
+  currentColIdx++;
+
+  verticalHeadersMap[currentColIdx] = { text: 'RATA-RATA', color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [245, 158, 11] } });
+  currentColIdx++;
+
+  verticalHeadersMap[currentColIdx] = { text: 'RANKING', color: [255, 255, 255] };
+  headerRow.push({ content: '', styles: { fillColor: [245, 158, 11] } });
+  currentColIdx++;
+
+  // Body Rows Construction
+  const numStudents = students.length || 1;
+  const bodyRows = students.map((s, idx) => {
+    const mapelScores = mapelList.map((m, mIdx) => {
+      const score = s.grades?.[m.id];
+      const val = typeof score === 'number' && score > 0 ? score : '-';
+      const colColor = mapelPalette[mIdx % mapelPalette.length];
+      return {
+        content: val,
+        styles: { fillColor: getSoftTint(colColor), halign: 'center' },
+      };
     });
 
-    const ekskul1 = s.ekskul?.[0] ? `${s.ekskul[0].nama || s.ekskul[0].nama_ekskul || ''} (${s.ekskul[0].predikat || 'B'})` : '-';
-    const ekskul2 = s.ekskul?.[1] ? `${s.ekskul[1].nama || s.ekskul[1].nama_ekskul || ''} (${s.ekskul[1].predikat || 'B'})` : '-';
+    const rankVal = s.rank || idx + 1;
+    let rankBg: [number, number, number] = [254, 240, 138]; // yellow
+    if (rankVal <= 10) {
+      rankBg = [187, 247, 208]; // soft green
+    } else if (rankVal > Math.floor(numStudents * 0.7)) {
+      rankBg = [254, 202, 202]; // soft pink/red
+    }
 
     return [
       idx + 1,
-      (s.nama_siswa || '-').toUpperCase(),
+      s.nama_siswa || '-',
       klsText,
       semText,
       ...mapelScores,
-      s.absensi?.sakit ?? 0,
-      s.absensi?.izin ?? 0,
-      s.absensi?.alpa ?? 0,
-      ekskul1,
-      ekskul2,
-      s.total_nilai || 0,
-      s.rata_rata || '0.00',
-      s.ranking || idx + 1,
+      s.ekskul_1 || '',
+      s.ekskul_2 || '',
+      s.sakit > 0 ? s.sakit : '-',
+      s.izin > 0 ? s.izin : '-',
+      s.alpa > 0 ? s.alpa : '-',
+      { content: s.total ?? 0, styles: { fillColor: [254, 249, 195], fontStyle: 'bold', halign: 'center' } },
+      { content: s.rata_rata ? Math.round(s.rata_rata) : 0, styles: { fillColor: [254, 215, 170], fontStyle: 'bold', halign: 'center' } },
+      { content: rankVal, styles: { fillColor: rankBg, fontStyle: 'bold', halign: 'center' } },
     ];
   });
 
-  const aggregateMapelAvg = mapelList.map((m: any) => {
-    let sum = 0;
-    let count = 0;
-    students.forEach((s: any) => {
-      const val = Number(s.nilai?.[m.id]);
-      if (!isNaN(val) && val > 0) {
-        sum += val;
-        count++;
-      }
-    });
-    return count > 0 ? (sum / count).toFixed(1) : '-';
+  const columnStyles: Record<number, any> = {
+    0: { cellWidth: 6, halign: 'center' },
+    1: { cellWidth: namaWidth, halign: 'left' },
+    2: { cellWidth: 12, halign: 'center' },
+    3: { cellWidth: 13, halign: 'center' },
+  };
+
+  let cIdx = 4;
+  mapelList.forEach(() => {
+    columnStyles[cIdx] = { cellWidth: mapelWidth, halign: 'center' };
+    cIdx++;
   });
 
-  let grandTotalRata = 0;
-  let countRata = 0;
-  students.forEach((s: any) => {
-    const r = parseFloat(String(s.rata_rata || 0));
-    if (!isNaN(r) && r > 0) {
-      grandTotalRata += r;
-      countRata++;
-    }
-  });
-  const classAvgOfAvg = countRata > 0 ? (grandTotalRata / countRata).toFixed(2) : '-';
+  columnStyles[cIdx] = { cellWidth: ekskulWidth, halign: 'center', fontSize: 5.5 }; // EKSKUL-1
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: ekskulWidth, halign: 'center', fontSize: 5.5 }; // EKSKUL-2
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 6.5, halign: 'center' }; // SAKIT
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 6.5, halign: 'center' }; // IZIN
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 8, halign: 'center' }; // TANPA KET
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 12, halign: 'center' }; // JUMLAH
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 12, halign: 'center' }; // RATA-RATA
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 9.5, halign: 'center' }; // RANKING
 
-  const footerRow: any[] = [
-    { content: 'RATA-RATA', colSpan: 4, styles: { halign: 'center', fontStyle: 'bold', fillColor: [243, 244, 246] } },
-    ...aggregateMapelAvg.map((avg) => ({
-      content: avg,
-      styles: { halign: 'center', fontStyle: 'bold', fillColor: [243, 244, 246] }
-    })),
-    { content: '-', colSpan: 3, styles: { halign: 'center', fillColor: [243, 244, 246] } },
-    { content: '-', colSpan: 2, styles: { halign: 'center', fillColor: [243, 244, 246] } },
-    { content: '-', styles: { halign: 'center', fillColor: [243, 244, 246] } },
-    { content: classAvgOfAvg, styles: { halign: 'center', fontStyle: 'bold', fillColor: [243, 244, 246] } },
-    { content: '-', styles: { halign: 'center', fillColor: [243, 244, 246] } },
-  ];
+  // Strict Single-Page Row Heights
+  const isLargeClass = numStudents > 40;
+  const bodyFontSize = isLargeClass ? 5.7 : (numStudents > 30 ? 6.0 : 6.3);
+  const cellPadY = isLargeClass ? 0.22 : 0.32;
+  const rowMinHeight = isLargeClass ? 2.45 : (numStudents > 30 ? 2.65 : 2.85);
+  const headHeight = isLargeClass ? 18 : 19.5;
 
   autoTable(doc, {
-    startY: 17.5,
-    margin: { left: tableMarginLeft, right: tableMarginLeft },
-    head: [headRow1, headRow2],
-    body: [...studentRows, footerRow],
+    startY: 16.5,
+    margin: { left: tableMarginLeft, right: tableMarginLeft, top: 4, bottom: 4 },
+    pageBreak: 'avoid',
+    head: [headerRow],
+    body: bodyRows,
     theme: 'grid',
     styles: {
       font: 'Helvetica',
       fontSize: bodyFontSize,
-      cellPadding: { top: cellPadY, bottom: cellPadY, left: 1, right: 1 },
+      cellPadding: { top: cellPadY, bottom: cellPadY, left: 0.3, right: 0.3 },
       textColor: [17, 24, 39],
-      lineColor: [100, 116, 139],
+      lineColor: [75, 85, 99],
       lineWidth: 0.15,
       valign: 'middle',
+      minCellHeight: rowMinHeight,
     },
     headStyles: {
-      fillColor: [226, 232, 240],
-      textColor: [15, 23, 42],
-      fontStyle: 'bold',
-      fontSize: numRows > 32 ? 5.8 : 6.4,
+      valign: 'middle',
+      minCellHeight: headHeight,
+      lineColor: [55, 65, 81],
       lineWidth: 0.15,
-      lineColor: [100, 116, 139],
     },
-    columnStyles: colStyles,
-    didParseCell: (data) => {
-      if (data.section === 'head') {
-        const row = data.row.index;
-        const col = data.column.index;
-        if (row === 1 && col >= 4 && col < 4 + numMapels) {
-          data.cell.styles.cellPadding = { top: 1.0, bottom: 1.0, left: 0.2, right: 0.2 };
-          data.cell.styles.fontSize = Math.min(5.6, mapelWidth * 0.85);
-        }
-      }
-      if (data.section === 'body') {
-        if (data.row.index % 2 === 1 && data.row.index !== studentRows.length) {
-          data.cell.styles.fillColor = [248, 250, 252];
-        }
-        if (data.column.index === 1) {
-          data.cell.styles.fontStyle = 'bold';
+    columnStyles,
+    didDrawCell: (data) => {
+      if (data.section === 'head' && data.row.index === 0) {
+        const vMeta = verticalHeadersMap[data.column.index];
+        if (vMeta) {
+          const cell = data.cell;
+          doc.saveGraphicsState();
+          doc.setFont('Helvetica', 'bold');
+          doc.setFontSize(5.8);
+          doc.setTextColor(vMeta.color[0], vMeta.color[1], vMeta.color[2]);
+
+          const lines = vMeta.lines || [vMeta.text];
+          if (lines.length > 1) {
+            const lineSpacing = 2.6;
+            const startX = cell.x + (cell.width - (lines.length - 1) * lineSpacing) / 2 + 0.3;
+            const textY = cell.y + cell.height - 1.8;
+            lines.forEach((lineText, lIdx) => {
+              doc.text(lineText, startX + lIdx * lineSpacing, textY, { angle: 90 });
+            });
+          } else {
+            const textX = cell.x + (cell.width / 2) + 1.0;
+            const textY = cell.y + cell.height - 1.8;
+            doc.text(lines[0], textX, textY, { angle: 90 });
+          }
+          doc.restoreGraphicsState();
         }
       }
     },
   });
 
-  const finalTableY = (doc as any).lastAutoTable?.finalY || 165;
-  const maxSafeSignY = 182;
-  const signStartY = Math.min(finalTableY + 4, maxSafeSignY);
-
-  if (signStartY > maxSafeSignY && (finalTableY + 26) > 200) {
-    doc.addPage();
+  // Guarantee strictly 1 page
+  while (doc.getNumberOfPages() > 1) {
+    doc.deletePage(2);
   }
+
+  // Signatures Block (Landscape, strictly fits bottom of page 1, aligned with table width)
+  const finalY = (doc as any).lastAutoTable?.finalY || 160;
+  const signStartY = Math.max(finalY + 3.5, 163);
 
   const leftSignX = tableMarginLeft + 6;
   const rightSignX = tableMarginLeft + actualTotalWidth - 68;
