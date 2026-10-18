@@ -1657,7 +1657,7 @@ export const generateLegerPdf = async (options: {
   };
 
   // Header construction (Single tall row with vertical mapel text)
-  const verticalHeadersMap: Record<number, { text: string; color: [number, number, number] }> = {};
+  const verticalHeadersMap: Record<number, { text: string; lines?: string[]; color: [number, number, number] }> = {};
   const headerRow: any[] = [
     { content: 'NO', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
     { content: 'NAMA', styles: { fillColor: [136, 19, 55], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center' } },
@@ -1693,7 +1693,7 @@ export const generateLegerPdf = async (options: {
   headerRow.push({ content: '', styles: { fillColor: [55, 65, 81] } });
   currentColIdx++;
 
-  verticalHeadersMap[currentColIdx] = { text: 'TANPA KETERANGAN', color: [255, 255, 255] };
+  verticalHeadersMap[currentColIdx] = { text: 'TANPA KETERANGAN', lines: ['TANPA', 'KETERANGAN'], color: [255, 255, 255] };
   headerRow.push({ content: '', styles: { fillColor: [55, 65, 81] } });
   currentColIdx++;
 
@@ -1817,9 +1817,20 @@ export const generateLegerPdf = async (options: {
           doc.setFont('Helvetica', 'bold');
           doc.setFontSize(5.8);
           doc.setTextColor(vMeta.color[0], vMeta.color[1], vMeta.color[2]);
-          const textX = cell.x + (cell.width / 2) + 1.0;
-          const textY = cell.y + cell.height - 1.8;
-          doc.text(vMeta.text, textX, textY, { angle: 90 });
+
+          const lines = vMeta.lines || [vMeta.text];
+          if (lines.length > 1) {
+            const lineSpacing = 2.6;
+            const startX = cell.x + (cell.width - (lines.length - 1) * lineSpacing) / 2 + 0.3;
+            const textY = cell.y + cell.height - 1.8;
+            lines.forEach((lineText, lIdx) => {
+              doc.text(lineText, startX + lIdx * lineSpacing, textY, { angle: 90 });
+            });
+          } else {
+            const textX = cell.x + (cell.width / 2) + 1.0;
+            const textY = cell.y + cell.height - 1.8;
+            doc.text(lines[0], textX, textY, { angle: 90 });
+          }
           doc.restoreGraphicsState();
         }
       }
