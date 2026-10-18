@@ -609,7 +609,7 @@ export default React.memo(function CetakRaporPage() {
             totalStudents={filteredStudents.length}
             isBatchPrinting={isBatchPrinting}
             onBatchPrintRapor={handleBatchPrintRapor}
-            onPrintLeger={() => printLeger(selectedKelas)}
+            onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
             onExportLeger={handleExportLeger}
             isJenjangSmk={isJenjangSmk}
             onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
@@ -643,7 +643,7 @@ export default React.memo(function CetakRaporPage() {
             onPrintP5={handlePrintP5}
             onPrintRaporPkl={handlePrintRaporPkl}
             onPrintSertifikatPkl={handleOpenSertifikat}
-            onPrintLeger={() => printLeger(selectedKelas)}
+            onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
             onExportLeger={handleExportLeger}
             onBatchPrintRapor={handleBatchPrintRapor}
             isBatchPrinting={isBatchPrinting}

@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { raporApi } from '../../../api/rapor.api';
 import { sekolahApi } from '../../../api/academic/sekolah.api';
+import { getKelasDetail } from '../../../api/academic/kelas.api';
 import { getMyTenant } from '../../../api/tenants.api';
 import { drawKopSurat } from '../pdfGeneric';
 import { getBase64ImageFromUrl } from '../../cooperative/coopDocUtils';
@@ -1514,19 +1515,21 @@ export const generateLegerPdf = async (options: {
   semesterNama?: string;
   kelasNama?: string;
 }): Promise<{ blobUrl: string; filename: string }> => {
-  const { kelasId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Kelas' } = options;
+  const { kelasId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama } = options;
 
-  const [legerRes, sekolahRes, tenantRes, settingsRes] = await Promise.allSettled([
+  const [legerRes, sekolahRes, tenantRes, settingsRes, kelasRes] = await Promise.allSettled([
     raporApi.getLeger({ kelas_id: kelasId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
     sekolahApi.getProfile(),
     getMyTenant().catch(() => null),
     raporApi.getRaporSettings().catch(() => null),
+    kelasId ? getKelasDetail(kelasId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const legerData = legerRes.status === 'fulfilled' ? (legerRes.value?.data || legerRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
   const settingsData = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
+  const kelasDetailData = kelasRes.status === 'fulfilled' ? (kelasRes.value as any) : null;
 
   if (!legerData) {
     throw new Error('Gagal memuat data buku leger dari server.');
@@ -1538,7 +1541,13 @@ export const generateLegerPdf = async (options: {
   const effectiveKota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
   const tpText = tahunPelajaranNama || legerData?.tahun_pelajaran?.tahun || '2025 / 2026';
   const semText = semesterNama || legerData?.semester?.nama_semester || 'Ganjil';
-  const klsText = kelasNama || legerData?.kelas?.nama_kelas || 'X TE 3';
+
+  // Smart Academic Class Resolution (Prioritize actual class name from DB/Leger/API over generic 'Kelas')
+  const rawOption = (kelasNama && kelasNama.trim().toLowerCase() !== 'kelas') ? kelasNama.trim() : '';
+  const rawLeger = (legerData?.kelas?.nama_kelas && legerData.kelas.nama_kelas.trim().toLowerCase() !== 'kelas') ? legerData.kelas.nama_kelas.trim() : '';
+  const rawApi = (kelasDetailData?.nama_kelas || kelasDetailData?.data?.nama_kelas) ? (kelasDetailData?.nama_kelas || kelasDetailData?.data?.nama_kelas).trim() : '';
+  const rawStudent = (legerData?.students?.[0]?.kelas && legerData.students[0].kelas.trim().toLowerCase() !== 'kelas') ? legerData.students[0].kelas.trim() : '';
+  const klsText = rawOption || rawLeger || rawApi || rawStudent || 'X TE 3';
 
   // Smart Academic Fallback for titimangsa date
   const isGenap = Boolean(semText.toLowerCase().includes('genap') || semText.includes('2'));
@@ -1566,16 +1575,36 @@ export const generateLegerPdf = async (options: {
   doc.setFontSize(9.5);
   doc.text(`TAHUN PELAJARAN ${tpText.toUpperCase()}`, pageWidth / 2, 14.5, { align: 'center' });
 
-  // Top Right Orange Badge
+  const mapelList: any[] = legerData.mapel_list || [];
+  const students: any[] = legerData.students || [];
+
+  // Dynamic column width calculation for perfect horizontal centering on A4 Landscape (297 mm)
+  const numMapels = mapelList.length || 1;
+  const targetTotalWidth = 281; // gives equal 8 mm margins on left and right
+  const fixedColsWidth = 85.5;  // NO(6) + KELAS(12) + SEMESTER(13) + SAKIT(6.5) + IZIN(6.5) + TANPA(8) + JML(12) + RATA(12) + RANK(9.5)
+  const remainingForFlex = targetTotalWidth - fixedColsWidth; // 195.5 mm
+
+  // Dynamically allocate width per mapel (fills space proportionately)
+  const mapelWidth = Number(Math.min(9.5, Math.max(6.0, 104 / numMapels)).toFixed(1));
+  const totalMapelWidth = mapelWidth * numMapels;
+
+  // Remaining for NAMA and 2 EKSKUL columns
+  const remainingForNamesAndEskul = remainingForFlex - totalMapelWidth;
+  const namaWidth = Math.max(42, Math.round(remainingForNamesAndEskul * 0.50));
+  const ekskulWidth = Number(((remainingForNamesAndEskul - namaWidth) / 2).toFixed(1));
+
+  const actualTotalWidth = fixedColsWidth + totalMapelWidth + namaWidth + (ekskulWidth * 2);
+  const tableMarginLeft = Math.max(6, Number(((pageWidth - actualTotalWidth) / 2).toFixed(1)));
+
+  // Top Right Orange Badge (aligned with table right edge)
+  const badgeWidth = 42;
+  const badgeX = tableMarginLeft + actualTotalWidth - badgeWidth;
   doc.setFillColor(249, 115, 22); // vibrant orange #f97316
-  doc.roundedRect(248, 5.5, 42, 9.5, 1.2, 1.2, 'F');
+  doc.roundedRect(badgeX, 5.5, badgeWidth, 9.5, 1.2, 1.2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(klsText.toUpperCase(), 269, 12, { align: 'center' });
-
-  const mapelList: any[] = legerData.mapel_list || [];
-  const students: any[] = legerData.students || [];
+  doc.text(klsText.toUpperCase(), badgeX + (badgeWidth / 2), 12, { align: 'center' });
 
   // Helper mapel abbreviation
   const getShortMapelName = (name: string, code?: string): string => {
@@ -1719,37 +1748,34 @@ export const generateLegerPdf = async (options: {
     ];
   });
 
-  // Calculate dynamic column widths (Available width = 285 mm)
-  const numMapels = mapelList.length || 1;
-  const mapelWidth = Math.min(7.2, Math.max(5.5, 84 / numMapels));
   const columnStyles: Record<number, any> = {
-    0: { cellWidth: 5.5, halign: 'center' },
-    1: { cellWidth: 42, halign: 'left' },
-    2: { cellWidth: 10.5, halign: 'center' },
-    3: { cellWidth: 11, halign: 'center' },
+    0: { cellWidth: 6, halign: 'center' },
+    1: { cellWidth: namaWidth, halign: 'left' },
+    2: { cellWidth: 12, halign: 'center' },
+    3: { cellWidth: 13, halign: 'center' },
   };
 
-  let colIdx = 4;
+  let cIdx = 4;
   mapelList.forEach(() => {
-    columnStyles[colIdx] = { cellWidth: mapelWidth, halign: 'center' };
-    colIdx++;
+    columnStyles[cIdx] = { cellWidth: mapelWidth, halign: 'center' };
+    cIdx++;
   });
 
-  columnStyles[colIdx] = { cellWidth: 17.5, halign: 'center', fontSize: 5.5 }; // EKSKUL-1
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 17.5, halign: 'center', fontSize: 5.5 }; // EKSKUL-2
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 5.5, halign: 'center' }; // SAKIT
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 5.5, halign: 'center' }; // IZIN
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 6.5, halign: 'center' }; // TANPA KET
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 10, halign: 'center' }; // JUMLAH
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 10, halign: 'center' }; // RATA-RATA
-  colIdx++;
-  columnStyles[colIdx] = { cellWidth: 8, halign: 'center' }; // RANKING
+  columnStyles[cIdx] = { cellWidth: ekskulWidth, halign: 'center', fontSize: 5.5 }; // EKSKUL-1
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: ekskulWidth, halign: 'center', fontSize: 5.5 }; // EKSKUL-2
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 6.5, halign: 'center' }; // SAKIT
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 6.5, halign: 'center' }; // IZIN
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 8, halign: 'center' }; // TANPA KET
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 12, halign: 'center' }; // JUMLAH
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 12, halign: 'center' }; // RATA-RATA
+  cIdx++;
+  columnStyles[cIdx] = { cellWidth: 9.5, halign: 'center' }; // RANKING
 
   // Strict Single-Page Row Heights
   const isLargeClass = numStudents > 40;
@@ -1760,7 +1786,7 @@ export const generateLegerPdf = async (options: {
 
   autoTable(doc, {
     startY: 16.5,
-    margin: { left: 6, right: 6, top: 4, bottom: 4 },
+    margin: { left: tableMarginLeft, right: tableMarginLeft, top: 4, bottom: 4 },
     pageBreak: 'avoid',
     head: [headerRow],
     body: bodyRows,
@@ -1805,12 +1831,12 @@ export const generateLegerPdf = async (options: {
     doc.deletePage(2);
   }
 
-  // Signatures Block (Landscape, strictly fits bottom of page 1)
+  // Signatures Block (Landscape, strictly fits bottom of page 1, aligned with table width)
   const finalY = (doc as any).lastAutoTable?.finalY || 160;
   const signStartY = Math.max(finalY + 3.5, 163);
 
-  const leftSignX = 14;
-  const rightSignX = 215;
+  const leftSignX = tableMarginLeft + 6;
+  const rightSignX = tableMarginLeft + actualTotalWidth - 68;
   const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
   const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '197111022008011001';
   const walasNama = legerData?.walas?.nama || 'YULI ANISA FATRIA, S.Pd.';

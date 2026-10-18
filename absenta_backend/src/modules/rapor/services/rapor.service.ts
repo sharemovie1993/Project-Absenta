@@ -499,9 +499,18 @@ export class RaporService {
     return await cacheService.getOrSet(
       cacheKey,
       async () => {
-    const kelas = await prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } });
-    const tp = await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } });
-    const sem = await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } });
+    let kelas = await prisma.kelas.findFirst({ where: { id: params.kelas_id, tenant_id: tenantId } });
+    if (!kelas) {
+      kelas = await prisma.kelas.findUnique({ where: { id: params.kelas_id } });
+    }
+    let tp = await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } });
+    if (!tp) {
+      tp = await prisma.tahunPelajaran.findUnique({ where: { id: params.tahun_pelajaran_id } });
+    }
+    let sem = await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } });
+    if (!sem) {
+      sem = await prisma.semester.findUnique({ where: { id: params.semester_id } });
+    }
 
     if (!kelas || !tp || !sem) {
       throw new Error('Data parameter kelas, tahun pelajaran, atau semester tidak ditemukan');
