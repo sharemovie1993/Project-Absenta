@@ -61,10 +61,13 @@ export class PdfRaporService {
     kelasId?: string | null,
     params?: { tahun_pelajaran_id?: string; semester_id?: string }
   ) {
-    const [sekolah, tenant, raporSettings] = await Promise.all([
+    const [sekolah, tenant, raporSettings, logoDaerahConfig] = await Promise.all([
       prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
       prisma.tenant.findUnique({ where: { id: tenantId } }),
       RaporService.getSettings(tenantId, params),
+      prisma.config.findFirst({
+        where: { tenant_id: tenantId, key: 'logo_daerah_url' },
+      }),
     ]);
 
     let walasNama = '...................................................';
@@ -136,7 +139,8 @@ export class PdfRaporService {
       schoolName: sekolah?.nama || tenant?.name || 'SMK NEGERI 1 PLERED',
       schoolAddress: sekolah?.alamat || 'Jl. Rawasari, Plered',
       npsn: sekolah?.npsn || '-',
-      logoUrl: tenant?.logo_url || null,
+      logoUrl: tenant?.logo_url || (sekolah as any)?.logo_url || null,
+      logoDaerahUrl: logoDaerahConfig?.value || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || null,
       walas: { nama: walasNama, nip: walasNip },
       kepsek: { nama: kepsekNama, nip: kepsekNip, status: kepsekStatus, kota },
       dateStr,
@@ -162,8 +166,12 @@ export class PdfRaporService {
     const isSmk = tingkat >= 10 && Boolean(student.Kelas?.jurusan_id || (student as any).jurusan);
     const jenjangTitle = isSmk ? 'SEKOLAH MENENGAH KEJURUAN<br>(SMK)' : 'SEKOLAH MENENGAH ATAS<br>(SMA)';
 
+    const topLogoHtml = schoolMeta.logoDaerahUrl
+      ? `<img src="${schoolMeta.logoDaerahUrl}" style="max-height: 120px; max-width: 140px; object-fit: contain;" />`
+      : JABAR_LOGO_SVG;
+
     const schoolLogoHtml = schoolMeta.logoUrl
-      ? `<img src="${schoolMeta.logoUrl}" style="max-height: 110px; max-width: 150px; object-fit: contain;" />`
+      ? `<img src="${schoolMeta.logoUrl}" style="max-height: 130px; max-width: 150px; object-fit: contain;" />`
       : `
         <div style="display: inline-block; padding: 16px; border: 2px solid #0284c7; border-radius: 50%; width: 100px; height: 100px; line-height: 20px; font-weight: bold; font-size: 11px; color: #0369a1; text-align: center;">
           <div style="margin-top: 15px;">LOGO</div>
@@ -173,33 +181,30 @@ export class PdfRaporService {
 
     const html = `
       <div style="min-height: 94vh; display: flex; flex-direction: column; justify-content: space-between; text-align: center; padding: 25mm 15mm 15mm 15mm;">
-        <!-- Top Emblem: Jabar Prov -->
+        <!-- Top Emblem: Logo Daerah dari Pengaturan Kop -->
         <div>
           <div style="margin-bottom: 25px;">
-            ${JABAR_LOGO_SVG}
+            ${topLogoHtml}
           </div>
           <div style="font-size: 16px; font-weight: bold; letter-spacing: 1px; line-height: 1.5; color: #111; text-transform: uppercase;">
             ${jenjangTitle}
           </div>
         </div>
 
-        <!-- School Logo -->
+        <!-- School Logo (No text underneath) -->
         <div style="margin: 30px 0;">
           ${schoolLogoHtml}
-          <div style="font-size: 13px; font-weight: bold; margin-top: 12px; color: #1e293b; text-transform: uppercase;">
-            ${schoolMeta.schoolName}
-          </div>
         </div>
 
         <!-- Student Box -->
-        <div style="margin: 20px auto; width: 85%;">
-          <div style="font-size: 12px; margin-bottom: 8px; font-weight: 500;">Nama Peserta Didik :</div>
-          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; background: #fafafa;">
+        <div style="margin: 20px auto; width: 75%;">
+          <div style="font-size: 12px; margin-bottom: 8px; font-weight: bold;">Nama Peserta Didik :</div>
+          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; background: #fff;">
             ${student.nama_siswa}
           </div>
 
-          <div style="font-size: 12px; margin-top: 25px; margin-bottom: 8px; font-weight: 500;">NIS / NISN :</div>
-          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; letter-spacing: 1px; background: #fafafa;">
+          <div style="font-size: 12px; margin-top: 25px; margin-bottom: 8px; font-weight: bold;">NIS / NISN :</div>
+          <div style="border: 1.5px solid #111; padding: 10px 15px; font-size: 14px; font-weight: bold; letter-spacing: 1px; background: #fff;">
             ${student.nis} / ${student.nisn || '-'}
           </div>
         </div>
