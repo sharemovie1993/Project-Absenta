@@ -252,19 +252,19 @@ export function renderSignaturesBlock(params: {
 
   return `
     <div style="margin-top: 30px; page-break-inside: avoid; font-size: 11px;">
-      <div style="text-align: right; margin-bottom: 8px; padding-right: 25px;">
-        ${dateText}
-      </div>
-      <table style="width: 100%; border-collapse: collapse; text-align: center;">
+      <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          ${includeOrtu ? '<td style="width: 50%; padding-bottom: 55px; vertical-align: top;">Orang Tua/Wali Siswa,</td>' : ''}
-          <td style="${includeOrtu ? 'width: 50%;' : 'width: 100%;'} padding-bottom: 55px; vertical-align: top;">Wali Kelas,</td>
+          ${includeOrtu ? '<td style="width: 50%; padding-bottom: 55px; vertical-align: top; text-align: left; padding-left: 20px;">Orang Tua/Wali Siswa,</td>' : ''}
+          <td style="${includeOrtu ? 'width: 50%;' : 'width: 100%;'} padding-bottom: 55px; vertical-align: top; text-align: left; padding-left: 45px;">
+            <div>${dateText}</div>
+            <div style="margin-top: 4px;">Wali Kelas,</div>
+          </td>
         </tr>
         <tr>
-          ${includeOrtu ? '<td>...................................................</td>' : ''}
-          <td>
+          ${includeOrtu ? '<td style="text-align: left; padding-left: 20px;">...................................................</td>' : ''}
+          <td style="text-align: left; padding-left: 45px;">
             <div style="font-weight: bold; text-decoration: underline;">${walasNama}</div>
-            <div style="font-size: 10px; color: #333;">${walasNip}</div>
+            <div style="font-size: 10px; color: #333; margin-top: 3px;">${walasNip}</div>
           </td>
         </tr>
       </table>

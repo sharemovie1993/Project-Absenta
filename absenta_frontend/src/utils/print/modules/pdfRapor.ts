@@ -703,6 +703,11 @@ export const renderStudentRaporPages = (
     doc.text(`${kenaikanNumeral}. KENAIKAN KELAS`, 15, y);
     y += 5;
 
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('Keputusan :', 15, y);
+    y += 4.2;
+
     const tingkat = Number(siswa.tingkat || 10);
     const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
     const curKelas = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
@@ -811,25 +816,28 @@ export const renderStudentRaporPages = (
     : 'NIP. -';
 
   // Row 1: Orang Tua & Wali Kelas
+  const leftBlockX = 22;
+  const rightBlockX = 135;
+
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text('Orang Tua/Wali Siswa,', 25, y, { align: 'left' });
-  doc.text(`${kota}, ${dateStr}`, pageWidth - 25, y, { align: 'right' });
-  doc.text('Wali Kelas,', pageWidth - 25, y + 4.5, { align: 'right' });
+  doc.text('Orang Tua/Wali Siswa,', leftBlockX, y);
+  doc.text(`${kota}, ${dateStr}`, rightBlockX, y);
+  doc.text('Wali Kelas,', rightBlockX, y + 4.5);
 
   y += 20;
-  doc.text('......................................................', 25, y, { align: 'left' });
+  doc.text('......................................................', leftBlockX, y);
   doc.setFont('Helvetica', 'bold');
-  doc.text(waliKelasNama, pageWidth - 25, y, { align: 'right' });
+  doc.text(waliKelasNama, rightBlockX, y);
 
-  // Underline nama Wali Kelas
+  // Underline nama Wali Kelas (rata kiri di rightBlockX)
   const walasWidth = doc.getTextWidth(waliKelasNama);
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.35);
-  doc.line(pageWidth - 25 - walasWidth, y + 0.8, pageWidth - 25, y + 0.8);
+  doc.line(rightBlockX, y + 0.8, rightBlockX + walasWidth, y + 0.8);
 
   doc.setFont('Helvetica', 'normal');
-  doc.text(waliKelasNip, pageWidth - 25, y + 4.5, { align: 'right' });
+  doc.text(waliKelasNip, rightBlockX, y + 4.5);
 
   // Row 2: Kepala Sekolah (Centered)
   y += 12;

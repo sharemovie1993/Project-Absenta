@@ -826,6 +826,7 @@ export class PdfRaporService {
       kenaikanKelasHtml = `
         <div style="margin-bottom: 14px; page-break-inside: avoid;">
           <div style="font-weight: bold; font-size: 11px; margin-bottom: 4px;">${kenaikanTitle}</div>
+          <div style="font-weight: bold; font-size: 10px; margin-bottom: 3px;">Keputusan :</div>
           <div style="font-size: 10px; line-height: 1.5;">
             <div>Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan</div>
             <div style="margin-left: 2px;">
