@@ -340,6 +340,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.list',
     'academic.structures.view.tree',
     'academic.homeroom.manage',
+    'academic.activities.grades.view',
     'hubin.pkl.view.list',
     'hubin.absensi.view.history',
     'hubin.absensi.recap',
@@ -409,6 +410,14 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.students.view.list',
     'academic.students.view.detail',
     'academic.activities.types.view',
+    'academic.activities.view.list',
+    'academic.years.view.list',
+    'academic.semesters.view.list',
+
+    // Penilaian & Rekap Rapor Ekstrakurikuler
+    'academic.activities.grades.manage',
+    'academic.activities.grades.view',
+    'kesiswaan.schedules.view.list',
 
     // Sesi Presensi Latihan Eskul
     'attendance.sessions.view.list',
@@ -502,6 +511,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.subjects.view.list', 'academic.subjects.view.detail', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
     'academic.teaching.view', 'academic.teaching.manage',
     'academic.homeroom.manage',
+    'academic.activities.grades.manage', 'academic.activities.grades.view',
     'academic.teachers.view.list', 'academic.teachers.view.detail', 'academic.teachers.view.history',
     'academic.students.view.list', 'academic.students.view.detail',
 
@@ -565,6 +575,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.structures.view.list',
     'academic.activities.types.view',
     'academic.activities.types.manage',
+    'academic.activities.grades.manage',
+    'academic.activities.grades.view',
     'attendance.schedules.view.list',
     'attendance.schedules.manage',
     'attendance.schedules.create',
@@ -709,6 +721,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
 
     // Supervisi Akademik Utama
     'curriculum.supervision.view.schedule', 'curriculum.supervision.view.report', 'curriculum.supervision.create.record', 'curriculum.supervision.update.record', 'curriculum.supervision.delete.record',
+    'academic.activities.grades.view',
 
     // Executive Monitoring Modul
     'affairs.violations.view.list', 'affairs.violations.view.detail',

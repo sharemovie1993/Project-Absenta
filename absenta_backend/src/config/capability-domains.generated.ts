@@ -187,6 +187,8 @@ export const CAPABILITY_DOMAIN_MAP: Record<string, string> = {
   "bk.recyclebin.restore": "ORGANIZATIONAL",
   "attendance.piket.manage": "TENANT",
   "academic.activities.types.view": "TENANT",
+  "academic.activities.grades.manage": "ORGANIZATIONAL",
+  "academic.activities.grades.view": "TENANT",
   "dashboard.view.hubin": "SHARED",
   "academic.teaching.rekap": "TENANT",
   "hubin.pkl.manage": "ORGANIZATIONAL",

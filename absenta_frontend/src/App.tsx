@@ -993,7 +993,7 @@ function App() {
                       </ProtectedRoute>
                     } />
                     <Route path="/rapor/eskul" element={
-                      <ProtectedRoute requiredCapability={['academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic', 'kesiswaan.schedules.view.list', 'dashboard.view.kepsek']}>
+                      <ProtectedRoute requiredCapability={['academic.activities.grades.manage', 'academic.activities.grades.view', 'academic.teaching.view', 'academic.homeroom.manage', 'academic.manage.academic', 'kesiswaan.schedules.view.list', 'dashboard.view.kepsek']}>
                         <NilaiEskulPage />
                       </ProtectedRoute>
                     } />

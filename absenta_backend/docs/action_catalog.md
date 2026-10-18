@@ -10,6 +10,8 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 
 - academic.activities.create
 - academic.activities.delete
+- academic.activities.grades.manage
+- academic.activities.grades.view
 - academic.activities.types.manage
 - academic.activities.types.view
 - academic.activities.update

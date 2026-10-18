@@ -5,6 +5,8 @@ import { RoleName } from '../../../constants/enums';
 
 export default async function eskulRoutes(fastify: any) {
   const readCaps = [
+    'academic.activities.grades.view',
+    'academic.activities.grades.manage',
     'academic.teaching.view',
     'academic.homeroom.manage',
     'academic.manage.academic',
@@ -13,6 +15,7 @@ export default async function eskulRoutes(fastify: any) {
   ];
 
   const writeCaps = [
+    'academic.activities.grades.manage',
     'academic.teaching.view',
     'academic.homeroom.manage',
     'academic.manage.academic',
@@ -46,7 +49,7 @@ export default async function eskulRoutes(fastify: any) {
   // 4. Ringkasan Nilai Eskul untuk Wali Kelas
   fastify.get('/wali-overview', {
     preHandler: [
-      requireCapability(['academic.homeroom.manage', 'academic.view.wali.kelas', 'academic.manage.academic', 'dashboard.view.kepsek'], { exemptRoles: [RoleName.GURU] }),
+      requireCapability(['academic.activities.grades.view', 'academic.homeroom.manage', 'academic.view.wali.kelas', 'academic.manage.academic', 'dashboard.view.kepsek'], { exemptRoles: [RoleName.GURU] }),
       determineDataScope(),
     ],
   }, EskulController.getWaliOverview);
