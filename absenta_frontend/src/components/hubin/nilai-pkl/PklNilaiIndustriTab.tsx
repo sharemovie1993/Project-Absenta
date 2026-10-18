@@ -47,6 +47,7 @@ export interface PklNilaiIndustriTabProps {
   handleApplyToSameMitra: (mitraNama: string, instruktur: string, pic: string) => void;
   handleSyncFromDailyAttendance: () => void;
   onPrintSertifikat: (row: ScoreRow) => void;
+  hideFilterCard?: boolean;
 }
 
 export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
@@ -89,11 +90,13 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   handleApplyToSameMitra,
   handleSyncFromDailyAttendance,
   onPrintSertifikat,
+  hideFilterCard = false,
 }) => {
   return (
     <div className="space-y-4">
       {/* Filter & Action Card */}
-      <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+      {!hideFilterCard && (
+        <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
         {/* Top Scoping & Status Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           {canManageAll && activeGuruId ? (
@@ -259,6 +262,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           </div>
         </div>
       </Card>
+      )}
 
       {/* Grid Table */}
       <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">

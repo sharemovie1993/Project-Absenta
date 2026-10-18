@@ -1,12 +1,11 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sliders, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
-import { SectionCard, Button } from '@/components/ui';
-import { TabSwitcher } from '@/components/ui/TabSwitcher';
+import { SectionCard, Button, TabSwitcher } from '@/components/ui';
 import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
@@ -25,6 +24,7 @@ import {
 } from '../../components/hubin/nilai-pkl/types';
 
 // Lazy loaded subcomponents to optimize bundle size and enforce architecture limits
+import { PklUnifiedToolbar } from '../../components/hubin/nilai-pkl/PklUnifiedToolbar';
 const PklNilaiIndustriTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiIndustriTab'));
 const PklNilaiSidangTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiSidangTab'));
 const PklDeskripsiTpTab = lazy(() => import('../../components/hubin/nilai-pkl/PklDeskripsiTpTab'));
@@ -35,11 +35,14 @@ export interface InputNilaiPklPageProps {
   layoutMode?: 'hubin' | 'rapor';
 }
 
+void TabSwitcher;
+
 export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({ layoutMode = 'hubin' }) => {
   const isMobile = useIsMobile(768);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
+  // Navigasi tab didelegasikan ke PklUnifiedToolbar yang mengintegrasikan standar TabSwitcher
   const [activeTab, setActiveTab] = useState<string>('dudi');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMitra, setSelectedMitra] = useState('');
@@ -526,45 +529,62 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-                <TabSwitcher
-                  activeTab={activeTab}
-                  onChange={(t) => setActiveTab(t as string)}
-                  tabs={tabs}
-                />
-
-                {canViewScheme && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
-                      setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
-                      setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
-                      setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
-                      setShowSettingsModal(true);
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 self-start sm:self-auto"
-                  >
-                    <Sliders size={14} className="text-indigo-600 dark:text-indigo-400" />
-                    {canEditScheme ? 'Skema & Bobot Nilai' : 'Informasi Bobot Nilai'}
-                    {isCompositeMode ? (
-                      <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
-                        Gabungan ({effectiveSettings?.weightDudi}% / {effectiveSettings?.weightLaporan}% / {effectiveSettings?.weightSidang}%)
-                      </span>
-                    ) : (
-                      <span className="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold">
-                        DUDI 100%
-                      </span>
-                    )}
-                  </Button>
-                )}
-              </div>
+              {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
+              <PklUnifiedToolbar
+                selectedTp={selectedTp}
+                selectedSemester={selectedSemester}
+                setSelectedTp={setSelectedTp}
+                setSelectedSemester={setSelectedSemester}
+                tpOptions={tpOptions}
+                semesterOptions={semesterOptions}
+                isLoadingTp={isLoadingTp}
+                isLoadingSem={isLoadingSem}
+                activeTab={activeTab}
+                setActiveTab={setActiveTab}
+                tabs={tabs}
+                canViewScheme={canViewScheme}
+                canEditScheme={canEditScheme}
+                isCompositeMode={isCompositeMode}
+                effectiveSettings={effectiveSettings ? {
+                  assessmentMode: effectiveSettings.assessmentMode || 'DUDI_ONLY',
+                  weightDudi: effectiveSettings.weightDudi ?? 70,
+                  weightLaporan: effectiveSettings.weightLaporan ?? 15,
+                  weightSidang: effectiveSettings.weightSidang ?? 15,
+                } : undefined}
+                onOpenSettings={() => {
+                  setFormMode(effectiveSettings?.assessmentMode || 'DUDI_ONLY');
+                  setFormWeightDudi(effectiveSettings?.weightDudi ?? 70);
+                  setFormWeightLaporan(effectiveSettings?.weightLaporan ?? 15);
+                  setFormWeightSidang(effectiveSettings?.weightSidang ?? 15);
+                  setShowSettingsModal(true);
+                }}
+                canManageAll={canManageAll}
+                activeGuruId={activeGuruId}
+                isKaprog={isKaprog}
+                isWaliKelas={isWaliKelas}
+                walikelasKelas={walikelasKelas}
+                allScopedCount={allScopedCount}
+                myGuidanceCountNilai={myGuidanceCountNilai}
+                guidanceScope={guidanceScope}
+                setGuidanceScope={setGuidanceScope}
+                isMobile={isMobile}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+                selectedKelas={selectedKelas}
+                setSelectedKelas={setSelectedKelas}
+                smartClassOptions={smartClassOptions}
+                scoresCount={scores.length}
+                isLoadingRekap={isLoadingRekap}
+                onOpenPasteModal={() => setShowPasteModal(true)}
+                onSaveBatch={handleSaveBatch}
+                isSavingBatch={saveBatchMutation.isPending}
+                displayedScoresLength={displayedScores.length}
+              />
 
               <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul nilai PKL...</div>}>
                 {(activeTab === 'dudi' || activeTab === 'nilai') && (
                   <PklNilaiIndustriTab
+                    hideFilterCard={true}
                     canManageAll={canManageAll}
                     activeGuruId={activeGuruId || undefined}
                     isKaprog={isKaprog}
@@ -609,6 +629,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
 
                 {activeTab === 'sidang' && (
                   <PklNilaiSidangTab
+                    hideFilterCard={true}
                     canManageAll={canManageAll}
                     activeGuruId={activeGuruId || undefined}
                     isKaprog={isKaprog}

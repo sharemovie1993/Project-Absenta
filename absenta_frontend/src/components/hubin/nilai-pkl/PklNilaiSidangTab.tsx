@@ -50,6 +50,7 @@ export interface PklNilaiSidangTabProps {
   setItemsPerPage: (n: number) => void;
   setCurrentPage: (updater: number | ((prev: number) => number)) => void;
   handleScoreChange: (siswaPklId: string, field: keyof ScoreRow, value: string | number | null) => void;
+  hideFilterCard?: boolean;
 }
 
 export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
@@ -90,11 +91,13 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   setItemsPerPage,
   setCurrentPage,
   handleScoreChange,
+  hideFilterCard = false,
 }) => {
   return (
     <div className="space-y-4">
       {/* Filter & Action Card */}
-      <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+      {!hideFilterCard && (
+        <Card className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
         {/* Top Scoping & Status Filter Bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           {canManageAll && activeGuruId ? (
@@ -274,6 +277,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           </div>
         </div>
       </Card>
+      )}
 
       {/* Sidang Table */}
       <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">
