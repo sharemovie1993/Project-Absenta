@@ -83,7 +83,7 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
               <th className="p-3.5 text-center">Rata-Rata</th>
               <th className="p-3.5 text-center">Presensi (S/I/A)</th>
               <th className="p-3.5 text-center">Catatan Wali</th>
-              <th className="p-3.5 text-right pr-4">Aksi Dokumen</th>
+              <th className="p-3.5 text-right pr-4">Aksi Cetak</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

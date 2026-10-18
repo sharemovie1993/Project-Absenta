@@ -940,10 +940,135 @@ export const generateBiodataSiswaPdf = async (options: {
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const pageWidth = 210;
 
+  // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
+  const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
+  const npsn = sekolah?.npsn || tenantInfo?.npsn || '-';
+  const alamatSekolah = sekolah?.alamat || tenantInfo?.address || '-';
+  const provinsi = sekolah?.provinsi || tenantInfo?.province || 'Jawa Barat';
+
+  const tingkatNum = Number(siswa.tingkat || 10);
+  const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
+  let jenjangJudul = 'SEKOLAH MENENGAH KEJURUAN (SMK)';
+  if (jenjangRaw.includes('SD') || jenjangRaw.includes('MI') || (tingkatNum >= 1 && tingkatNum <= 6)) {
+    jenjangJudul = 'SEKOLAH DASAR (SD)';
+  } else if (jenjangRaw.includes('SMP') || jenjangRaw.includes('MTS') || (tingkatNum >= 7 && tingkatNum <= 9)) {
+    jenjangJudul = 'SEKOLAH MENENGAH PERTAMA (SMP)';
+  } else if (jenjangRaw.includes('SMA') || jenjangRaw.includes('MA')) {
+    jenjangJudul = 'SEKOLAH MENENGAH ATAS (SMA)';
+  }
+
+  // Double Decorative Border Frame Cover
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(1.2);
+  doc.rect(10, 10, 190, 277);
+  doc.setLineWidth(0.4);
+  doc.rect(12.5, 12.5, 185, 272);
+
+  // Header Dinas / Pemerintah Daerah
+  let coverY = 28;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`PEMERINTAH DAERAH PROVINSI ${(provinsi || 'JAWA BARAT').toUpperCase()}`, pageWidth / 2, coverY, { align: 'center' });
+  coverY += 5;
+  doc.text('DINAS PENDIDIKAN', pageWidth / 2, coverY, { align: 'center' });
+
+  // Judul Rapor
+  coverY += 18;
+  doc.setFontSize(18);
+  doc.text('RAPOR PESERTA DIDIK', pageWidth / 2, coverY, { align: 'center' });
+  coverY += 7;
+  doc.setFontSize(13);
+  doc.text(jenjangJudul, pageWidth / 2, coverY, { align: 'center' });
+
+  // Logo Sekolah
+  coverY += 15;
+  const logoUrl = sekolah?.logo_url || tenantInfo?.logo_url;
+  let logoLoaded = false;
+  if (logoUrl) {
+    try {
+      const logoBase64 = await getBase64ImageFromUrl(logoUrl);
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', (pageWidth - 36) / 2, coverY, 36, 36);
+        logoLoaded = true;
+      }
+    } catch {
+      logoLoaded = false;
+    }
+  }
+  if (!logoLoaded) {
+    doc.setDrawColor(71, 85, 105);
+    doc.setLineWidth(0.8);
+    doc.circle(pageWidth / 2, coverY + 18, 18);
+    doc.setFontSize(9);
+    doc.setFont('Helvetica', 'bold');
+    doc.text('LOGO', pageWidth / 2, coverY + 17, { align: 'center' });
+    doc.text('SEKOLAH', pageWidth / 2, coverY + 22, { align: 'center' });
+  }
+
+  coverY += 45;
+
+  // Nama Sekolah & Identitas Lembaga
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text(namaSekolah.toUpperCase(), pageWidth / 2, coverY, { align: 'center' });
+  coverY += 5.5;
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.text(`NPSN: ${npsn}`, pageWidth / 2, coverY, { align: 'center' });
+  coverY += 4.5;
+  doc.setFontSize(8.5);
+  doc.text(alamatSekolah, pageWidth / 2, coverY, { align: 'center', maxWidth: 140 });
+
+  // Kotak Identitas Siswa
+  coverY += 28;
+  const boxWidth = 145;
+  const boxX = (pageWidth - boxWidth) / 2;
+
+  // Label Nama
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Nama Peserta Didik :', boxX, coverY);
+  coverY += 3;
+  // Box Nama
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.8);
+  doc.rect(boxX, coverY, boxWidth, 12, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text((siswa.nama_siswa || '-').toUpperCase(), pageWidth / 2, coverY + 7.8, { align: 'center', maxWidth: boxWidth - 8 });
+
+  coverY += 19;
+  // Label NIS / NISN
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('NIS / NISN :', boxX, coverY);
+  coverY += 3;
+  // Box NIS / NISN
+  doc.setFillColor(248, 250, 252);
+  doc.rect(boxX, coverY, boxWidth, 12, 'FD');
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text(`${siswa.nis || '-'} / ${siswa.nisn || '-'}`, pageWidth / 2, coverY + 7.8, { align: 'center' });
+
+  // Footer Kementerian
+  coverY = 265;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(30, 41, 59);
+  doc.text('KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI', pageWidth / 2, coverY, { align: 'center' });
+  coverY += 5;
+  doc.text('REPUBLIK INDONESIA', pageWidth / 2, coverY, { align: 'center' });
+
+  // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
+  doc.addPage();
+
   // Header Title
   let currentY = 16;
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(12);
+  doc.setTextColor(17, 24, 39);
   doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
 
   const fullAlamatSiswa = [
