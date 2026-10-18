@@ -1522,10 +1522,10 @@ export const generateBiodataSiswaPdf = async (options: {
   doc.addPage();
   const pageWidth = 210;
 
-  // Header Title - Cambria 14 Bold
-  let currentY = 16;
+  // Header Title - Cambria 16 Bold
+  let currentY = 15;
   doc.setFont(fontFamily, 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
   doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
 
@@ -1632,13 +1632,13 @@ export const generateBiodataSiswaPdf = async (options: {
 
   autoTable(doc, {
     startY: currentY + 5,
-    margin: { left: 16, right: 16 },
+    margin: { left: 16, right: 16, bottom: 5 },
     body: tableBody,
     theme: 'plain',
     styles: {
       font: fontFamily,
-      fontSize: 8.5,
-      cellPadding: { top: 0.8, bottom: 0.8, left: 0.8, right: 0.8 },
+      fontSize: 12,
+      cellPadding: { top: 1.8, bottom: 1.8, left: 0.8, right: 0.8 },
       textColor: [0, 0, 0],
       overflow: 'linebreak',
     },
@@ -1655,21 +1655,21 @@ export const generateBiodataSiswaPdf = async (options: {
     },
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 180;
-  const photoY = Math.min(Math.max(finalY + 10, 185), 235);
+  const finalY = (doc as any).lastAutoTable?.finalY || 240;
+  const photoY = Math.min(finalY + 4, 252);
 
   // Kotak Pas Foto 3x4 (Centered in left half, matching Gambar 2)
   const photoX = 62;
-  const photoW = 30;
-  const photoH = 40;
+  const photoW = 28;
+  const photoH = 36;
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.4);
   doc.rect(photoX, photoY, photoW, photoH);
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text('Pas Foto', photoX + photoW / 2, photoY + 18, { align: 'center' });
-  doc.text('3x4', photoX + photoW / 2, photoY + 24, { align: 'center' });
+  doc.text('Pas Foto', photoX + photoW / 2, photoY + 16, { align: 'center' });
+  doc.text('3x4', photoX + photoW / 2, photoY + 22, { align: 'center' });
 
   // Tanda Tangan Kepala Sekolah (Right, matching Gambar 2)
   const rightX = 125;
@@ -1678,22 +1678,22 @@ export const generateBiodataSiswaPdf = async (options: {
   const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
 
   doc.setFont(fontFamily, 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
-  doc.text(titimangsa, rightX, photoY + 6);
-  doc.text('Kepala Sekolah', rightX, photoY + 12);
+  doc.text(titimangsa, rightX, photoY + 5);
+  doc.text('Kepala Sekolah', rightX, photoY + 10);
 
   // Nama Kepala Sekolah (Bold with Underline)
   doc.setFont(fontFamily, 'bold');
-  doc.text(kepalaSekolahNama, rightX, photoY + 33);
+  doc.text(kepalaSekolahNama, rightX, photoY + 30);
   const kepsekWidth = doc.getTextWidth(kepalaSekolahNama);
   doc.setDrawColor(0, 0, 0);
   doc.setLineWidth(0.35);
-  doc.line(rightX, photoY + 33.8, rightX + kepsekWidth, photoY + 33.8);
+  doc.line(rightX, photoY + 30.8, rightX + kepsekWidth, photoY + 30.8);
 
   doc.setFont(fontFamily, 'normal');
-  doc.setFontSize(8.5);
-  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 38);
+  doc.setFontSize(9.5);
+  doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 35);
 
   const filename = `Biodata_Siswa_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
