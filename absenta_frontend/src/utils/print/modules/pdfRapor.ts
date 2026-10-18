@@ -128,8 +128,10 @@ export const renderStudentRaporPages = (
   tahunPelajaranNama: string,
   semesterNama: string,
   isFirstStudent = true,
-  raporSettings?: any
+  raporSettings?: any,
+  fontFamily: string = 'Cambria'
 ): void => {
+  const font = fontFamily || 'Cambria';
   const siswa = data?.siswa || {};
   const effectiveSettings = raporSettings || data?.rapor_settings;
 
@@ -208,16 +210,16 @@ export const renderStudentRaporPages = (
 
     let leftY = startY;
     topInfo.forEach(([label, value]) => {
-      startDoc.setFont('Helvetica', 'normal');
+      startDoc.setFont(font, 'normal');
       startDoc.text(label, leftColX, leftY);
       startDoc.text(':', leftColX + colValOffset - 2, leftY);
-      startDoc.setFont('Helvetica', label === 'Nama Peserta Didik' ? 'bold' : 'normal');
+      startDoc.setFont(font, label === 'Nama Peserta Didik' ? 'bold' : 'normal');
       startDoc.text(String(value), leftColX + colValOffset, leftY);
       leftY += 4.2;
     });
 
     // Left column: Alamat (Wrapped cleanly to prevent colliding with right column, followed by an enter/gap)
-    startDoc.setFont('Helvetica', 'normal');
+    startDoc.setFont(font, 'normal');
     startDoc.text('Alamat', leftColX, leftY);
     startDoc.text(':', leftColX + colValOffset - 2, leftY);
     const alamatLines = startDoc.splitTextToSize(alamatSekolah, maxLeftValWidth);
@@ -240,7 +242,7 @@ export const renderStudentRaporPages = (
     }
 
     vocationalInfo.forEach(([label, value]) => {
-      startDoc.setFont('Helvetica', 'normal');
+      startDoc.setFont(font, 'normal');
       startDoc.text(label, leftColX, leftY);
       startDoc.text(':', leftColX + colValOffset - 2, leftY);
       const valLines = startDoc.splitTextToSize(String(value), maxLeftValWidth);
@@ -258,10 +260,10 @@ export const renderStudentRaporPages = (
 
     let rightY = startY;
     rightInfo.forEach(([label, value]) => {
-      startDoc.setFont('Helvetica', 'normal');
+      startDoc.setFont(font, 'normal');
       startDoc.text(label, rightColX, rightY);
       startDoc.text(':', rightColX + rightValOffset - 2, rightY);
-      startDoc.setFont('Helvetica', label === 'Kelas' ? 'bold' : 'normal');
+      startDoc.setFont(font, label === 'Kelas' ? 'bold' : 'normal');
       startDoc.text(String(value), rightColX + rightValOffset, rightY);
       rightY += 4.2;
     });
@@ -279,7 +281,7 @@ export const renderStudentRaporPages = (
   // ── PAGE 1 ──
 
   // Title Header (Centered)
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.setFontSize(12);
   doc.text('LAPORAN HASIL BELAJAR', pageWidth / 2, y, { align: 'center' });
   y += 5;
@@ -290,7 +292,7 @@ export const renderStudentRaporPages = (
   y = drawStudentMetadataGrid(doc, y);
 
   // Section I: INTRA KURIKULER
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.setFontSize(10);
   doc.text('I. INTRA KURIKULER', 15, y);
   y += 5;
@@ -299,7 +301,7 @@ export const renderStudentRaporPages = (
   const nilaiAkademik: any[] = data?.nilai_akademik || [];
   
   if (nilaiAkademik.length === 0) {
-    doc.setFont('Helvetica', 'italic');
+    doc.setFont(font, 'italic');
     doc.setFontSize(9);
     doc.text('Belum ada data mata pelajaran terdaftar pada semester ini.', pageWidth / 2, y + 4, { align: 'center' });
     y += 12;
@@ -552,6 +554,9 @@ export const renderStudentRaporPages = (
       head: [['No', 'Mata Pelajaran', 'Nilai', 'Capaian Kompetensi']],
       body: tableRows,
       theme: 'grid',
+      styles: {
+        font,
+      },
       headStyles: {
         fillColor: [205, 205, 205],
         textColor: 0,
@@ -597,7 +602,7 @@ export const renderStudentRaporPages = (
 
   // Section II: KOKURIKULER (Hanya jika tampilkan_kokurikuler aktif)
   if (showKokurikuler) {
-    doc.setFont('Helvetica', 'bold');
+    doc.setFont(font, 'bold');
     doc.setFontSize(10);
     doc.text('II. KOKURIKULER', 15, y);
     y += 4;
@@ -610,7 +615,7 @@ export const renderStudentRaporPages = (
     doc.setLineWidth(0.3);
     doc.rect(15, y, 180, kokurikulerBoxHeight);
 
-    doc.setFont('Helvetica', 'normal');
+    doc.setFont(font, 'normal');
     doc.setFontSize(8.5);
     const kokurikulerLines = doc.splitTextToSize(kokurikulerText, 174);
     doc.text(kokurikulerLines.slice(0, 4), 18, y + 4.5);
@@ -620,7 +625,7 @@ export const renderStudentRaporPages = (
 
   // Section: EKSTRA KURIKULER
   const ekskulNumeral = sectionIdx === 3 ? 'III' : 'II';
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.setFontSize(10);
   doc.text(`${ekskulNumeral}. EKSTRA KURIKULER`, 15, y);
   y += 4;
@@ -638,6 +643,7 @@ export const renderStudentRaporPages = (
     head: [['No', 'Ekstrakurikuler', 'Keterangan']],
     body: ekskulRows,
     theme: 'grid',
+    styles: { font },
     headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center' },
     bodyStyles: { fontSize: 8.5, cellPadding: 3.5 },
     columnStyles: {
@@ -653,7 +659,7 @@ export const renderStudentRaporPages = (
   // Section: KETIDAKHADIRAN & CATATAN WALI KELAS
   const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI'];
   const presensiNumeral = romanNumerals[sectionIdx - 1] || 'IV';
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.setFontSize(10);
   doc.text(`${presensiNumeral}. KETIDAKHADIRAN`, 15, y);
   y += 4;
@@ -686,6 +692,7 @@ export const renderStudentRaporPages = (
       ],
     ],
     theme: 'grid',
+    styles: { font },
     headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center', valign: 'middle', minCellHeight: 8 },
     bodyStyles: { fontSize: 8.5, cellPadding: 3.5, textColor: 0, valign: 'middle', minCellHeight: 9 },
     columnStyles: {
@@ -701,12 +708,12 @@ export const renderStudentRaporPages = (
   // Section: KENAIKAN KELAS (Khusus Semester Genap)
   if (isGenap) {
     const kenaikanNumeral = romanNumerals[sectionIdx - 1] || 'V';
-    doc.setFont('Helvetica', 'bold');
+    doc.setFont(font, 'bold');
     doc.setFontSize(10);
     doc.text(`${kenaikanNumeral}. KENAIKAN KELAS`, 15, y);
     y += 5;
 
-    doc.setFont('Helvetica', 'bold');
+    doc.setFont(font, 'bold');
     doc.setFontSize(8.5);
     doc.text('Keputusan :', 15, y);
     y += 4.2;
@@ -721,7 +728,7 @@ export const renderStudentRaporPages = (
     const textNaik = tingkat >= 12 ? 'Lulus' : `Naik ke kelas ${targetNext}`;
     const textTinggal = (tingkat >= 12 ? 'Tidak Lulus' : `Tinggal di kelas ${curKelas}`) + '  *)';
 
-    doc.setFont('Helvetica', 'normal');
+    doc.setFont(font, 'normal');
     doc.setFontSize(8.5);
     doc.text('Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan', 15, y);
     y += 4.5;
@@ -729,14 +736,14 @@ export const renderStudentRaporPages = (
     // Baris 1: Naik
     const textNaikX = 15;
     if (isMenetap) {
-      doc.setFont('Helvetica', 'normal');
+      doc.setFont(font, 'normal');
       doc.text(textNaik, textNaikX, y);
       const wNaik = doc.getTextWidth(textNaik);
       doc.setDrawColor(40, 40, 40);
       doc.setLineWidth(0.35);
       doc.line(textNaikX, y - 1.1, textNaikX + wNaik, y - 1.1);
     } else {
-      doc.setFont('Helvetica', 'bold');
+      doc.setFont(font, 'bold');
       doc.text(textNaik, textNaikX, y);
     }
     y += 4.2;
@@ -744,14 +751,14 @@ export const renderStudentRaporPages = (
     // Baris 2: Tinggal (dengan tanda *)
     const textTinggalX = 15;
     if (!isMenetap) {
-      doc.setFont('Helvetica', 'normal');
+      doc.setFont(font, 'normal');
       doc.text(textTinggal, textTinggalX, y);
       const wTinggal = doc.getTextWidth(textTinggal);
       doc.setDrawColor(40, 40, 40);
       doc.setLineWidth(0.35);
       doc.line(textTinggalX, y - 1.1, textTinggalX + wTinggal, y - 1.1);
     } else {
-      doc.setFont('Helvetica', 'bold');
+      doc.setFont(font, 'bold');
       doc.text(textTinggal, textTinggalX, y);
     }
     y += 11;
@@ -822,7 +829,7 @@ export const renderStudentRaporPages = (
   const leftBlockX = 22;
   const rightBlockX = 135;
 
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(font, 'normal');
   doc.setFontSize(8.5);
   doc.text('Orang Tua/Wali Siswa,', leftBlockX, y);
   doc.text(`${kota}, ${dateStr}`, rightBlockX, y);
@@ -830,7 +837,7 @@ export const renderStudentRaporPages = (
 
   y += 20;
   doc.text('......................................................', leftBlockX, y);
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.text(waliKelasNama, rightBlockX, y);
 
   // Underline nama Wali Kelas (rata kiri di rightBlockX)
@@ -839,7 +846,7 @@ export const renderStudentRaporPages = (
   doc.setLineWidth(0.35);
   doc.line(rightBlockX, y + 0.8, rightBlockX + walasWidth, y + 0.8);
 
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(font, 'normal');
   doc.text(waliKelasNip, rightBlockX, y + 4.5);
 
   // Row 2: Kepala Sekolah (Centered)
@@ -847,7 +854,7 @@ export const renderStudentRaporPages = (
   doc.text('Mengetahui;', pageWidth / 2, y, { align: 'center' });
   doc.text('Kepala Sekolah,', pageWidth / 2, y + 4.5, { align: 'center' });
   y += 20;
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
   doc.text(kepalaSekolahNama, pageWidth / 2, y, { align: 'center' });
 
   // Underline nama Kepala Sekolah
@@ -857,7 +864,7 @@ export const renderStudentRaporPages = (
   doc.setLineWidth(0.35);
   doc.line(kepsekStartX, y + 0.8, kepsekStartX + kepsekWidth, y + 0.8);
 
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(font, 'normal');
   doc.text(`NIP. ${kepalaSekolahNip}`, pageWidth / 2, y + 4.5, { align: 'center' });
 };
 
@@ -895,7 +902,8 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
 
   // 3. Create PDF document & render 2 pages
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-  renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings);
+  const fontFamily = await ensureCambriaFont(doc);
+  renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings, fontFamily);
 
   const siswa = data?.siswa || {};
   const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${resolvedSemesterNama || 'Semester'}.pdf`;
@@ -1062,6 +1070,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
 
   // 2. Initialize single jsPDF document for entire class
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
   let renderedCount = 0;
   let lastError: any = null;
 
@@ -1076,7 +1085,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
         semester_id: semesterId,
       });
       const data = raporRes?.data?.data || raporRes?.data || raporRes;
-      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0, raporSettings);
+      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0, raporSettings, fontFamily);
       renderedCount++;
     } catch (err: any) {
       console.warn(`Gagal memuat rapor untuk ${student.nama_siswa}:`, err);
@@ -1180,6 +1189,54 @@ const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<
   return getBase64ImageFromUrl(trimmed).catch(() => null);
 };
 
+let cachedCambriaRegular: string | null = null;
+let cachedCambriaBold: string | null = null;
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  const chunkSize = 8192;
+  let binary = '';
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len));
+    binary += String.fromCharCode.apply(null, chunk as unknown as number[]);
+  }
+  return window.btoa(binary);
+};
+
+export const ensureCambriaFont = async (doc: jsPDF): Promise<string> => {
+  try {
+    if (!cachedCambriaRegular || !cachedCambriaBold) {
+      const [regRes, boldRes] = await Promise.all([
+        fetch('/fonts/cambria.ttf'),
+        fetch('/fonts/cambria-bold.ttf'),
+      ]);
+      if (regRes.ok && boldRes.ok) {
+        const [regBuf, boldBuf] = await Promise.all([
+          regRes.arrayBuffer(),
+          boldRes.arrayBuffer(),
+        ]);
+        cachedCambriaRegular = arrayBufferToBase64(regBuf);
+        cachedCambriaBold = arrayBufferToBase64(boldBuf);
+      }
+    }
+    if (cachedCambriaRegular && cachedCambriaBold) {
+      if (!doc.existsFileInVFS('Cambria.ttf')) {
+        doc.addFileToVFS('Cambria.ttf', cachedCambriaRegular);
+        doc.addFont('Cambria.ttf', 'Cambria', 'normal');
+      }
+      if (!doc.existsFileInVFS('Cambria-Bold.ttf')) {
+        doc.addFileToVFS('Cambria-Bold.ttf', cachedCambriaBold);
+        doc.addFont('Cambria-Bold.ttf', 'Cambria', 'bold');
+      }
+      return 'Cambria';
+    }
+  } catch (err) {
+    console.warn('Fallback font rapor:', err);
+  }
+  return 'Times';
+};
+
 interface RenderCoverRaporOptions {
   namaSiswa: string;
   nis: string;
@@ -1188,10 +1245,12 @@ interface RenderCoverRaporOptions {
   jenjangLine2: string;
   topLogoBase64: string | null;
   midLogoBase64: string | null;
+  fontFamily?: string;
 }
 
 const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions) => {
   const pageWidth = 210;
+  const font = opts.fontFamily || 'Cambria';
 
   // 1. Logo Daerah / Yayasan (Top Logo dari Logo Kiri Kop Surat)
   const topLogoW = 32;
@@ -1207,12 +1266,12 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
     }
   }
 
-  // 2. Jenjang Title (e.g. SEKOLAH MENENGAH KEJURUAN / (SMK))
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(14);
+  // 2. Jenjang Title (e.g. SEKOLAH MENENGAH KEJURUAN / (SMK)) - Cambria 16 Bold
+  doc.setFont(font, 'bold');
+  doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
   doc.text(opts.jenjangLine1, pageWidth / 2, 72, { align: 'center' });
-  doc.text(opts.jenjangLine2, pageWidth / 2, 79, { align: 'center' });
+  doc.text(opts.jenjangLine2, pageWidth / 2, 80, { align: 'center' });
 
   // 3. Logo Sekolah (Middle Logo dari Logo Kanan Kop Surat)
   const midLogoW = 46;
@@ -1227,6 +1286,7 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
       doc.setDrawColor(100, 116, 139);
       doc.setLineWidth(0.6);
       doc.circle(pageWidth / 2, midLogoY + 23, 22);
+      doc.setFont(font, 'normal');
       doc.setFontSize(9);
       doc.text('LOGO', pageWidth / 2, midLogoY + 21, { align: 'center' });
       doc.text('SEKOLAH', pageWidth / 2, midLogoY + 27, { align: 'center' });
@@ -1235,19 +1295,20 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
     doc.setDrawColor(100, 116, 139);
     doc.setLineWidth(0.6);
     doc.circle(pageWidth / 2, midLogoY + 23, 22);
+    doc.setFont(font, 'normal');
     doc.setFontSize(9);
     doc.text('LOGO', pageWidth / 2, midLogoY + 21, { align: 'center' });
     doc.text('SEKOLAH', pageWidth / 2, midLogoY + 27, { align: 'center' });
   }
 
-  // 4. Kotak Identitas Siswa
+  // 4. Kotak Identitas Siswa - Cambria 14 & 16 Bold
   const boxW = 145;
-  const boxH = 12;
+  const boxH = 14;
   const boxX = (pageWidth - boxW) / 2;
 
   // Nama Peserta Didik
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFont(font, 'bold');
+  doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
   doc.text('Nama Peserta Didik :', pageWidth / 2, 163, { align: 'center' });
 
@@ -1255,24 +1316,24 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
   doc.setLineWidth(0.6);
   doc.rect(boxX, 168, boxW, boxH);
 
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(opts.namaSiswa, pageWidth / 2, 168 + 7.8, { align: 'center', maxWidth: boxW - 8 });
+  doc.setFont(font, 'bold');
+  doc.setFontSize(16);
+  doc.text(opts.namaSiswa, pageWidth / 2, 168 + 9.2, { align: 'center', maxWidth: boxW - 8 });
 
   // NIS / NISN
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(font, 'bold');
+  doc.setFontSize(14);
+  doc.text('NIS / NISN :', pageWidth / 2, 194, { align: 'center' });
+
+  doc.rect(boxX, 199, boxW, boxH);
+
+  doc.setFont(font, 'bold');
+  doc.setFontSize(16);
+  doc.text(`${opts.nis} / ${opts.nisn}`, pageWidth / 2, 199 + 9.2, { align: 'center' });
+
+  // 5. Footer Kementerian - Cambria 11 Bold
+  doc.setFont(font, 'bold');
   doc.setFontSize(11);
-  doc.text('NIS / NISN :', pageWidth / 2, 192, { align: 'center' });
-
-  doc.rect(boxX, 197, boxW, boxH);
-
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(`${opts.nis} / ${opts.nisn}`, pageWidth / 2, 197 + 7.8, { align: 'center' });
-
-  // 5. Footer Kementerian
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(10.5);
   doc.setTextColor(0, 0, 0);
   doc.text('KEMENTERIAN PENDIDIKAN, KEBUDAYAAN, RISET, DAN TEKNOLOGI', pageWidth / 2, 258, { align: 'center' });
   doc.text('REPUBLIK INDONESIA', pageWidth / 2, 264, { align: 'center' });
@@ -1348,6 +1409,7 @@ export const generateCoverRaporPdf = async (options: {
   ]);
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
 
   const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
   const nis = siswa.nis || siswaDirect?.nis || '-';
@@ -1361,6 +1423,7 @@ export const generateCoverRaporPdf = async (options: {
     jenjangLine2,
     topLogoBase64,
     midLogoBase64,
+    fontFamily,
   });
 
   const filename = `Cover_Rapor_${namaSiswa.replace(/\s+/g, '_')}.pdf`;
@@ -1414,6 +1477,7 @@ export const generateBiodataSiswaPdf = async (options: {
   const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
 
   // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
   const tingkatNum = Number(siswa.tingkat || 10);
@@ -1451,16 +1515,17 @@ export const generateBiodataSiswaPdf = async (options: {
     jenjangLine2,
     topLogoBase64,
     midLogoBase64,
+    fontFamily,
   });
 
   // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
   doc.addPage();
   const pageWidth = 210;
 
-  // Header Title
+  // Header Title - Cambria 14 Bold
   let currentY = 16;
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFont(fontFamily, 'bold');
+  doc.setFontSize(14);
   doc.setTextColor(17, 24, 39);
   doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
 
@@ -1503,7 +1568,7 @@ export const generateBiodataSiswaPdf = async (options: {
     body: tableBody,
     theme: 'plain',
     styles: {
-      font: 'Helvetica',
+      font: fontFamily,
       fontSize: 8.5,
       cellPadding: 1.4,
       textColor: [17, 24, 39],
@@ -1525,7 +1590,7 @@ export const generateBiodataSiswaPdf = async (options: {
   doc.setLineWidth(0.6);
   doc.rect(25, photoY, 30, 40);
   doc.setFontSize(8);
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(fontFamily, 'normal');
   doc.setTextColor(100, 116, 139);
   doc.text('Pas Foto', 40, photoY + 18, { align: 'center' });
   doc.text('3 x 4 cm', 40, photoY + 23, { align: 'center' });
@@ -1536,15 +1601,15 @@ export const generateBiodataSiswaPdf = async (options: {
   const kepalaSekolahNip = sekolah?.nip_kepala_sekolah || tenantInfo?.nip_kepala_sekolah || '-';
   const titimangsa = `${kota}, ${formatIndoDate(new Date())}`;
 
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9);
   doc.setTextColor(17, 24, 39);
   doc.text(titimangsa, rightX, photoY + 4);
   doc.text('Kepala Sekolah,', rightX, photoY + 9);
 
-  doc.setFont('Helvetica', 'bold');
+  doc.setFont(fontFamily, 'bold');
   doc.text(kepalaSekolahNama, rightX, photoY + 34);
-  doc.setFont('Helvetica', 'normal');
+  doc.setFont(fontFamily, 'normal');
   doc.setFontSize(8.5);
   doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 38.5);
 
