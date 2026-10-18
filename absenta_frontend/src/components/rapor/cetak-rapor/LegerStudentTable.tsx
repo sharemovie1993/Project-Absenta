@@ -9,6 +9,9 @@ import {
   Building2,
   FileSpreadsheet,
   ChevronDown,
+  UserCheck,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -33,6 +36,10 @@ interface LegerStudentTableProps {
   onPrintLeger?: () => void;
   onExportLeger?: () => void;
   onBatchPrintRapor?: () => void;
+  onBatchPrintBiodata?: () => void;
+  onBatchPrintRaporSumatif?: () => void;
+  onBatchPrintP5?: () => void;
+  onBatchPrintBundelLengkap?: () => void;
   isBatchPrinting?: boolean;
   onBatchPrintRaporPkl?: () => void;
   isBatchPklPrinting?: boolean;
@@ -60,6 +67,10 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   onPrintLeger,
   onExportLeger,
   onBatchPrintRapor,
+  onBatchPrintBiodata,
+  onBatchPrintRaporSumatif,
+  onBatchPrintP5,
+  onBatchPrintBundelLengkap,
   isBatchPrinting = false,
   onBatchPrintRaporPkl,
   isBatchPklPrinting = false,
@@ -70,22 +81,27 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   modeCetakRapor = 'CP_ONLY',
 }) => {
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
+  const [isCetakSekaligusMenuOpen, setIsCetakSekaligusMenuOpen] = useState(false);
   const batchMenuRef = useRef<HTMLDivElement>(null);
+  const cetakSekaligusMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close batch menu on outside click
+  // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (batchMenuRef.current && !batchMenuRef.current.contains(event.target as Node)) {
         setIsBatchMenuOpen(false);
       }
+      if (cetakSekaligusMenuRef.current && !cetakSekaligusMenuRef.current.contains(event.target as Node)) {
+        setIsCetakSekaligusMenuOpen(false);
+      }
     };
-    if (isBatchMenuOpen) {
+    if (isBatchMenuOpen || isCetakSekaligusMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isBatchMenuOpen]);
+  }, [isBatchMenuOpen, isCetakSekaligusMenuOpen]);
 
   if (isLoading) {
     return (
@@ -118,13 +134,13 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
 
         {/* Sisi Kanan: Cetak Sekaligus & Buku Leger */}
         <div className="flex items-center gap-2 shrink-0">
-          {/* Tombol Utama: Cetak Sekaligus */}
-          {onBatchPrintRapor && (
+          {/* Dropdown Utama: Cetak Sekaligus */}
+          <div className="relative inline-block text-left" ref={cetakSekaligusMenuRef}>
             <Button
-              onClick={onBatchPrintRapor}
+              onClick={() => setIsCetakSekaligusMenuOpen((prev) => !prev)}
               disabled={isBatchPrinting || !hasLegerData || isLoading}
               className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs transition-all h-[36px] px-3.5 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer text-xs"
-              title="Cetak seluruh rapor siswa sekelas dalam 1 file PDF gabungan"
+              title="Pilihan cetak dokumen rapor sekelas dalam 1 file PDF gabungan"
             >
               {isBatchPrinting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -132,8 +148,168 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                 <Printer className="w-4 h-4" />
               )}
               <span>Cetak Sekaligus</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isCetakSekaligusMenuOpen ? 'rotate-180' : ''}`} />
             </Button>
-          )}
+
+            {isCetakSekaligusMenuOpen && (
+              <div className="absolute right-0 mt-2 w-72 origin-top-right rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xl z-50 py-1.5 divide-y divide-slate-100 dark:divide-slate-800 animate-in fade-in zoom-in-95 duration-100">
+                <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    PILIHAN CETAK MASSAL ({students.length} SISWA)
+                  </p>
+                </div>
+
+                <div className="p-1 space-y-0.5">
+                  {/* 1. BIODATA & COVER */}
+                  {onBatchPrintBiodata && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintBiodata();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <UserCheck size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+                          Biodata &amp; Sampul Rapor
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Cover &amp; 17 Butir Data Diri (2 Hal/Siswa)
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 2. RAPOR SEMESTER CK1-CK2 */}
+                  {onBatchPrintRapor && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintRapor();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <FileText size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+                          Rapor Semester (CK1 &amp; CK2)
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Intrakurikuler, Ekskul, Presensi &amp; Catatan
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 3. RAPOR SUMATIF */}
+                  {onBatchPrintRaporSumatif && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintRaporSumatif();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Award size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">
+                          Rapor Penilaian Sumatif
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Daftar Nilai Sumatif Lingkup Materi
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 4. RAPOR P5 */}
+                  {onBatchPrintP5 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintP5();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Sparkles size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-purple-700 dark:group-hover:text-purple-300">
+                          Rapor Projek (P5)
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Kokurikuler Profil Pelajar Pancasila
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* 5. RAPOR PKL (SMK) */}
+                  {isJenjangSmk && onBatchPrintRaporPkl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintRaporPkl();
+                      }}
+                      disabled={isBatchPklPrinting}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-teal-50 dark:hover:bg-teal-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group disabled:opacity-50"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        {isBatchPklPrinting ? <Loader2 size={14} className="animate-spin" /> : <Building2 size={14} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300">
+                          Rapor PKL (Praktik Kerja Lapangan)
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Kompilasi Penilaian DUDI Sekelas
+                        </div>
+                      </div>
+                    </button>
+                  )}
+                </div>
+
+                {/* 6. BUNDEL LENGKAP */}
+                {onBatchPrintBundelLengkap && (
+                  <div className="p-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCetakSekaligusMenuOpen(false);
+                        onBatchPrintBundelLengkap();
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Layers size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                          Bundel Rapor Lengkap Sekelas
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate">
+                          Cover + Biodata + Nilai CK1-CK2 Terpadu
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Dropdown Aksi Sekunder: Buku Leger */}
           {onPrintLeger && (

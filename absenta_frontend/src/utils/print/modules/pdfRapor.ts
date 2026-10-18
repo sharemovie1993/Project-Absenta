@@ -912,36 +912,23 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
 };
 
 /**
- * Generate P5 Rapor PDF (client-side via jsPDF).
+ * 🌟 Render Halaman Rapor P5 untuk 1 Siswa
  */
-export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
-  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
-
-  // Fetch P5 data
-  const p5Res = await raporApi.getP5Nilai({ siswa_id: siswaId });
-  const allP5: any[] = p5Res?.data || p5Res || [];
-
-  // Fetch rapor detail for student info
-  const raporRes = await raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId });
-  const raporData = raporRes?.data || raporRes;
-  const siswa = raporData?.siswa || {};
-
-  // Fetch school info
-  const [sekolahRes, tenantRes] = await Promise.allSettled([
-    sekolahApi.getProfile(),
-    getMyTenant().catch(() => null)
-  ]);
-  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
-
-  let logoDaerahBase64: string | null = null;
-  let logoSekolahBase64: string | null = null;
-  const logoUrl = sekolah?.logo_url || tenantInfo?.logo_url;
-  const daerahUrl = sekolah?.logo_daerah_url || tenantInfo?.logo_daerah_url;
-  if (daerahUrl) logoDaerahBase64 = await getBase64ImageFromUrl(daerahUrl).catch(() => null);
-  if (logoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(logoUrl).catch(() => null);
-
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+export const renderOfficialP5Page = (
+  doc: jsPDF,
+  allP5: any[],
+  siswa: any,
+  sekolah: any,
+  tenantInfo: any,
+  tahunPelajaranNama: string,
+  semesterNama: string,
+  logoDaerahBase64: string | null,
+  logoSekolahBase64: string | null,
+  isFirstStudent: boolean
+) => {
+  if (!isFirstStudent) {
+    doc.addPage();
+  }
   const pageWidth = 210;
   let y = drawKopSurat(doc, pageWidth, sekolah, tenantInfo, logoDaerahBase64, logoSekolahBase64, true);
 
@@ -1033,6 +1020,51 @@ export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ 
       pIdx++;
     });
   }
+};
+
+/**
+ * Generate P5 Rapor PDF (client-side via jsPDF).
+ */
+export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
+
+  // Fetch P5 data
+  const p5Res = await raporApi.getP5Nilai({ siswa_id: siswaId });
+  const allP5: any[] = p5Res?.data || p5Res || [];
+
+  // Fetch rapor detail for student info
+  const raporRes = await raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId });
+  const raporData = raporRes?.data || raporRes;
+  const siswa = raporData?.siswa || {};
+
+  // Fetch school info
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null)
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+
+  let logoDaerahBase64: string | null = null;
+  let logoSekolahBase64: string | null = null;
+  const logoUrl = sekolah?.logo_url || tenantInfo?.logo_url;
+  const daerahUrl = sekolah?.logo_daerah_url || tenantInfo?.logo_daerah_url;
+  if (daerahUrl) logoDaerahBase64 = await getBase64ImageFromUrl(daerahUrl).catch(() => null);
+  if (logoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(logoUrl).catch(() => null);
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  renderOfficialP5Page(
+    doc,
+    allP5,
+    siswa,
+    sekolah,
+    tenantInfo,
+    tahunPelajaranNama,
+    semesterNama,
+    logoDaerahBase64,
+    logoSekolahBase64,
+    true
+  );
 
   const filename = `P5_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
@@ -1102,6 +1134,75 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
   }
 
   const filename = `Rapor_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 🌟 Cetak Massal Rapor P5 Sekelas dalam 1 Berkas PDF Gabungan
+ */
+export const generateP5KelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas', onProgress } = options;
+  if (!students || students.length === 0) {
+    throw new Error('Tidak ada data siswa untuk dicetak.');
+  }
+
+  // Preload school & tenant info ONCE
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+
+  let logoDaerahBase64: string | null = null;
+  let logoSekolahBase64: string | null = null;
+  const logoUrl = sekolah?.logo_url || tenantInfo?.logo_url;
+  const daerahUrl = sekolah?.logo_daerah_url || tenantInfo?.logo_daerah_url;
+  if (daerahUrl) logoDaerahBase64 = await getBase64ImageFromUrl(daerahUrl).catch(() => null);
+  if (logoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(logoUrl).catch(() => null);
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  let renderedCount = 0;
+  let lastError: any = null;
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    onProgress?.(i + 1, students.length, student.nama_siswa || 'Siswa');
+
+    try {
+      const [p5Res, raporRes] = await Promise.allSettled([
+        raporApi.getP5Nilai({ siswa_id: student.id }),
+        raporApi.getRaporDetail({ siswa_id: student.id, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+      ]);
+      const allP5 = p5Res.status === 'fulfilled' ? (p5Res.value?.data || p5Res.value || []) : [];
+      const raporData = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+      const siswa = raporData?.siswa || student;
+
+      renderOfficialP5Page(
+        doc,
+        allP5,
+        siswa,
+        sekolah,
+        tenantInfo,
+        tahunPelajaranNama,
+        semesterNama,
+        logoDaerahBase64,
+        logoSekolahBase64,
+        renderedCount === 0
+      );
+      renderedCount++;
+    } catch (err: any) {
+      console.warn(`Gagal memuat rapor P5 untuk ${student.nama_siswa}:`, err);
+      lastError = err;
+    }
+  }
+
+  if (renderedCount === 0) {
+    throw new Error(lastError?.message || 'Gagal memproses pembuatan PDF batch P5.');
+  }
+
+  const filename = `Rapor_P5_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };
@@ -1479,8 +1580,8 @@ export const generateBiodataSiswaPdf = async (options: {
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const fontFamily = await ensureCambriaFont(doc);
 
-  // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
-  const tingkatNum = Number(siswa.tingkat || 10);
+export const resolveJenjangLines = (sekolah: any, tenantInfo: any, siswa: any) => {
+  const tingkatNum = Number(siswa?.tingkat || 10);
   const jenjangRaw = String(sekolah?.jenjang || tenantInfo?.jenjang || siswa?.jenjang || '').toUpperCase();
   let jenjangLine1 = 'SEKOLAH MENENGAH KEJURUAN';
   let jenjangLine2 = '(SMK)';
@@ -1494,32 +1595,69 @@ export const generateBiodataSiswaPdf = async (options: {
     jenjangLine1 = 'SEKOLAH MENENGAH ATAS';
     jenjangLine2 = '(SMA)';
   }
+  return { jenjangLine1, jenjangLine2 };
+};
 
-  const logoDaerahUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || DEFAULT_JABAR_LOGO_SVG;
-  const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
+export const formatAlamatDuaBaris = (
+  rawAlamat?: string,
+  dusun?: string,
+  rt?: string,
+  rw?: string,
+  kelurahan?: string,
+  kecamatan?: string,
+  kabupaten?: string
+): string => {
+  if (rawAlamat && (/kec\b|kecamatan\b/i.test(rawAlamat) || /kab\b|kabupaten\b/i.test(rawAlamat))) {
+    const splitMatch = rawAlamat.split(/(?=\b(?:Kec|Kecamatan)\b)/i);
+    if (splitMatch.length >= 2) {
+      return `${splitMatch[0].trim()}\n${splitMatch.slice(1).join('').trim()}`;
+    }
+  }
+  const p1 = [
+    rawAlamat || '',
+    dusun ? `Dusun ${dusun}` : '',
+    (rt || rw) ? `RT ${rt || '01'} RW ${rw || '01'}` : '',
+    kelurahan ? `Desa ${kelurahan}` : '',
+  ].filter(Boolean).map(s => s.trim()).filter(Boolean);
 
-  const [topLogoBase64, midLogoBase64] = await Promise.all([
-    resolveCoverImageBase64(logoDaerahUrl),
-    resolveCoverImageBase64(logoSekolahUrl),
-  ]);
+  const p2 = [
+    kecamatan ? `Kecamatan ${kecamatan.replace(/^kec(amatan)?\.?\s*/i, '')}` : '',
+    kabupaten ? `Kabupaten ${kabupaten.replace(/^kab(upaten)?\.?\s*/i, '')}` : '',
+  ].filter(Boolean).map(s => s.trim()).filter(Boolean);
 
-  const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
-  const nis = siswa.nis || siswaDirect?.nis || '-';
-  const nisn = siswa.nisn || siswaDirect?.nisn || '-';
+  let l1 = p1.join(' ');
+  let l2 = p2.join(' ');
+  if (l1 && l2) return `${l1}\n${l2}`;
+  const comb = l1 || l2 || '-';
+  if (comb.length > 40 && comb.includes(' ')) {
+    const words = comb.split(' ');
+    const half = Math.ceil(words.length / 2);
+    return `${words.slice(0, half).join(' ')}\n${words.slice(half).join(' ')}`;
+  }
+  return comb;
+};
 
-  renderOfficialCoverRaporPage(doc, {
-    namaSiswa,
-    nis,
-    nisn,
-    jenjangLine1,
-    jenjangLine2,
-    topLogoBase64,
-    midLogoBase64,
-    fontFamily,
-  });
+export const formatAnakKe = (val: any): string => {
+  if (!val) return '-';
+  const num = parseInt(String(val), 10);
+  const words = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh'];
+  if (!isNaN(num) && num >= 1 && num <= 10) {
+    return `${num} (${words[num]})`;
+  }
+  return String(val);
+};
 
-  // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
-  doc.addPage();
+/**
+ * 📇 Render Halaman Biodata Siswa 17 Butir Resmi
+ */
+export const renderOfficialBiodataPage = (
+  doc: jsPDF,
+  siswa: any,
+  sekolah: any,
+  tenantInfo: any,
+  kota: string,
+  fontFamily: string
+) => {
   const pageWidth = 210;
 
   // Header Title - Cambria 16 Bold
@@ -1528,55 +1666,6 @@ export const generateBiodataSiswaPdf = async (options: {
   doc.setFontSize(16);
   doc.setTextColor(0, 0, 0);
   doc.text('KETERANGAN TENTANG DIRI PESERTA DIDIK', pageWidth / 2, currentY, { align: 'center' });
-
-  const formatAlamatDuaBaris = (
-    rawAlamat?: string,
-    dusun?: string,
-    rt?: string,
-    rw?: string,
-    kelurahan?: string,
-    kecamatan?: string,
-    kabupaten?: string
-  ): string => {
-    if (rawAlamat && (/kec\b|kecamatan\b/i.test(rawAlamat) || /kab\b|kabupaten\b/i.test(rawAlamat))) {
-      const splitMatch = rawAlamat.split(/(?=\b(?:Kec|Kecamatan)\b)/i);
-      if (splitMatch.length >= 2) {
-        return `${splitMatch[0].trim()}\n${splitMatch.slice(1).join('').trim()}`;
-      }
-    }
-    const p1 = [
-      rawAlamat || '',
-      dusun ? `Dusun ${dusun}` : '',
-      (rt || rw) ? `RT ${rt || '01'} RW ${rw || '01'}` : '',
-      kelurahan ? `Desa ${kelurahan}` : '',
-    ].filter(Boolean).map(s => s.trim()).filter(Boolean);
-
-    const p2 = [
-      kecamatan ? `Kecamatan ${kecamatan.replace(/^kec(amatan)?\.?\s*/i, '')}` : '',
-      kabupaten ? `Kabupaten ${kabupaten.replace(/^kab(upaten)?\.?\s*/i, '')}` : '',
-    ].filter(Boolean).map(s => s.trim()).filter(Boolean);
-
-    let l1 = p1.join(' ');
-    let l2 = p2.join(' ');
-    if (l1 && l2) return `${l1}\n${l2}`;
-    const comb = l1 || l2 || '-';
-    if (comb.length > 40 && comb.includes(' ')) {
-      const words = comb.split(' ');
-      const half = Math.ceil(words.length / 2);
-      return `${words.slice(0, half).join(' ')}\n${words.slice(half).join(' ')}`;
-    }
-    return comb;
-  };
-
-  const formatAnakKe = (val: any): string => {
-    if (!val) return '-';
-    const num = parseInt(String(val), 10);
-    const words = ['', 'Satu', 'Dua', 'Tiga', 'Empat', 'Lima', 'Enam', 'Tujuh', 'Delapan', 'Sembilan', 'Sepuluh'];
-    if (!isNaN(num) && num >= 1 && num <= 10) {
-      return `${num} (${words[num]})`;
-    }
-    return String(val);
-  };
 
   const alamatSiswaDuaBaris = formatAlamatDuaBaris(
     siswa.alamat,
@@ -1603,7 +1692,7 @@ export const generateBiodataSiswaPdf = async (options: {
   const tglMasuk = formatIndoDate(siswa.tanggal_masuk);
 
   const tableBody: Array<[string, string, string, string]> = [
-    ['1.', 'Nama Peserta Didik Lengkap', ':', (siswa.nama_siswa || '-').toUpperCase()],
+    ['1.', 'Nama Peserta Didik Lengkap', ':', (siswa.nama_siswa || siswa.nama || '-').toUpperCase()],
     ['2.', 'Nomor Induk Siswa / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`],
     ['3.', 'Tempat Tanggal Lahir', ':', ttl],
     ['4.', 'Jenis Kelamin', ':', jk],
@@ -1694,8 +1783,240 @@ export const generateBiodataSiswaPdf = async (options: {
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9.5);
   doc.text(`NIP. ${kepalaSekolahNip}`, rightX, photoY + 35);
+};
 
-  const filename = `Biodata_Siswa_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}.pdf`;
+  // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
+  const { jenjangLine1, jenjangLine2 } = resolveJenjangLines(sekolah, tenantInfo, siswa);
+
+  const logoDaerahUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || DEFAULT_JABAR_LOGO_SVG;
+  const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
+
+  const [topLogoBase64, midLogoBase64] = await Promise.all([
+    resolveCoverImageBase64(logoDaerahUrl),
+    resolveCoverImageBase64(logoSekolahUrl),
+  ]);
+
+  const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
+  const nis = siswa.nis || siswaDirect?.nis || '-';
+  const nisn = siswa.nisn || siswaDirect?.nisn || '-';
+
+  renderOfficialCoverRaporPage(doc, {
+    namaSiswa,
+    nis,
+    nisn,
+    jenjangLine1,
+    jenjangLine2,
+    topLogoBase64,
+    midLogoBase64,
+    fontFamily,
+  });
+
+  // ── HALAMAN 2: BIODATA SISWA 17 BUTIR RESMI ──
+  doc.addPage();
+  renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+
+  const filename = `Biodata_Siswa_${namaSiswa.replace(/\s+/g, '_')}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📇 Cetak Massal Biodata & Cover Rapor Sekelas dalam 1 Berkas PDF Gabungan
+ */
+export const generateBiodataKelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { students, tahunPelajaranId, semesterId, kelasNama = 'Sekelas', onProgress } = options;
+  if (!students || students.length === 0) {
+    throw new Error('Tidak ada data siswa untuk dicetak.');
+  }
+
+  // Preload sekolah & tenant info ONCE
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const currentUser = useAuthStore.getState().user;
+  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && currentUser?.tenant_id) {
+    try {
+      const resById = await getTenantById(currentUser.tenant_id);
+      if (resById?.data) tenantData = { ...(tenantData || {}), ...resById.data };
+    } catch {}
+  }
+  const tenantInfo = {
+    ...((currentUser as any)?.tenant || {}),
+    ...(tenantData || {}),
+  };
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  // Preload and cache logos base64 ONCE
+  const logoDaerahUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || DEFAULT_JABAR_LOGO_SVG;
+  const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
+  const [topLogoBase64, midLogoBase64] = await Promise.all([
+    resolveCoverImageBase64(logoDaerahUrl),
+    resolveCoverImageBase64(logoSekolahUrl),
+  ]);
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
+  let renderedCount = 0;
+  let lastError: any = null;
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    onProgress?.(i + 1, students.length, student.nama_siswa || 'Siswa');
+
+    try {
+      const [raporRes, siswaRes] = await Promise.allSettled([
+        raporApi.getRaporDetail({ siswa_id: student.id, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+        siswaApi.getById(student.id),
+      ]);
+      const raporRaw = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+      const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
+      const siswa = {
+        ...(siswaDirect || {}),
+        ...(raporRaw?.siswa || {}),
+        ...student,
+      };
+
+      const { jenjangLine1, jenjangLine2 } = resolveJenjangLines(sekolah, tenantInfo, siswa);
+      const namaSiswa = (siswa.nama_siswa || siswa.nama || '-').toUpperCase();
+      const nis = siswa.nis || '-';
+      const nisn = siswa.nisn || '-';
+
+      if (renderedCount > 0) {
+        doc.addPage();
+      }
+      // Halaman 1: Cover
+      renderOfficialCoverRaporPage(doc, {
+        namaSiswa,
+        nis,
+        nisn,
+        jenjangLine1,
+        jenjangLine2,
+        topLogoBase64,
+        midLogoBase64,
+        fontFamily,
+      });
+
+      // Halaman 2: Biodata
+      doc.addPage();
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+      renderedCount++;
+    } catch (err: any) {
+      console.warn(`Gagal memuat biodata untuk ${student.nama_siswa}:`, err);
+      lastError = err;
+    }
+  }
+
+  if (renderedCount === 0) {
+    throw new Error(lastError?.message || 'Gagal memproses pembuatan PDF batch biodata.');
+  }
+
+  const filename = `Biodata_Cover_Sekelas_${kelasNama.replace(/\s+/g, '_')}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📦 Cetak Massal Bundel Lengkap Rapor Sekelas (Cover + Biodata + Rapor Semester CK1/CK2)
+ */
+export const generateBundelRaporKelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas', onProgress } = options;
+  if (!students || students.length === 0) {
+    throw new Error('Tidak ada data siswa untuk dicetak.');
+  }
+
+  // Preload settings, profile, tenant, logos & font ONCE
+  const [sekolahRes, tenantRes, settingsRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+    raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const currentUser = useAuthStore.getState().user;
+  let tenantData = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+  if ((!tenantData?.logo_url && !tenantData?.logo_daerah_url) && currentUser?.tenant_id) {
+    try {
+      const resById = await getTenantById(currentUser.tenant_id);
+      if (resById?.data) tenantData = { ...(tenantData || {}), ...resById.data };
+    } catch {}
+  }
+  const tenantInfo = {
+    ...((currentUser as any)?.tenant || {}),
+    ...(tenantData || {}),
+  };
+  const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
+  const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+
+  const logoDaerahUrl = tenantInfo?.logo_daerah_url || (sekolah as any)?.logo_daerah_url || (sekolah as any)?.logo_daerah || DEFAULT_JABAR_LOGO_SVG;
+  const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
+  const [topLogoBase64, midLogoBase64] = await Promise.all([
+    resolveCoverImageBase64(logoDaerahUrl),
+    resolveCoverImageBase64(logoSekolahUrl),
+  ]);
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const fontFamily = await ensureCambriaFont(doc);
+  let renderedCount = 0;
+  let lastError: any = null;
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    onProgress?.(i + 1, students.length, student.nama_siswa || 'Siswa');
+
+    try {
+      const [raporRes, siswaRes] = await Promise.allSettled([
+        raporApi.getRaporDetail({ siswa_id: student.id, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+        siswaApi.getById(student.id),
+      ]);
+      const data = raporRes.status === 'fulfilled' ? (raporRes.value?.data?.data || raporRes.value?.data || raporRes.value) : null;
+      const siswaDirect = siswaRes.status === 'fulfilled' ? (siswaRes.value?.data || siswaRes.value) : null;
+      const siswa = {
+        ...(siswaDirect || {}),
+        ...(data?.siswa || {}),
+        ...student,
+      };
+
+      const { jenjangLine1, jenjangLine2 } = resolveJenjangLines(sekolah, tenantInfo, siswa);
+      const namaSiswa = (siswa.nama_siswa || siswa.nama || '-').toUpperCase();
+      const nis = siswa.nis || '-';
+      const nisn = siswa.nisn || '-';
+
+      // 1. Cover
+      if (renderedCount > 0) doc.addPage();
+      renderOfficialCoverRaporPage(doc, {
+        namaSiswa,
+        nis,
+        nisn,
+        jenjangLine1,
+        jenjangLine2,
+        topLogoBase64,
+        midLogoBase64,
+        fontFamily,
+      });
+
+      // 2. Biodata
+      doc.addPage();
+      renderOfficialBiodataPage(doc, siswa, sekolah, tenantInfo, kota, fontFamily);
+
+      // 3. Rapor Semester (CK1-CK2)
+      if (data) {
+        renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, false, raporSettings, fontFamily);
+      }
+
+      renderedCount++;
+    } catch (err: any) {
+      console.warn(`Gagal memuat bundel rapor untuk ${student.nama_siswa}:`, err);
+      lastError = err;
+    }
+  }
+
+  if (renderedCount === 0) {
+    throw new Error(lastError?.message || 'Gagal memproses pembuatan PDF bundel sekelas.');
+  }
+
+  const filename = `Bundel_Rapor_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };
@@ -2090,24 +2411,20 @@ export const generateLegerPdf = async (options: {
 };
 
 /**
- * 📑 4. Generate Rapor Penilaian Sumatif PDF (Client-side jsPDF)
+ * 📊 Render Halaman Rapor Penilaian Sumatif untuk 1 Siswa
  */
-export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
-  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
-
-  const [raporRes, sekolahRes, tenantRes] = await Promise.allSettled([
-    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
-    sekolahApi.getProfile(),
-    getMyTenant().catch(() => null),
-  ]);
-
-  const raporData = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
-  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
-  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
-
-  if (!raporData) throw new Error('Data rapor sumatif tidak ditemukan.');
-
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+export const renderOfficialSumatifPage = (
+  doc: jsPDF,
+  raporData: any,
+  sekolah: any,
+  tenantInfo: any,
+  tahunPelajaranNama: string,
+  semesterNama: string,
+  isFirstStudent: boolean
+) => {
+  if (!isFirstStudent) {
+    doc.addPage();
+  }
   const pageWidth = 210;
   const siswa = raporData.siswa || {};
   const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
@@ -2125,7 +2442,7 @@ export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promi
   // Metadata Table
   const metaRows = [
     ['Nama Peserta Didik', ':', (siswa.nama_siswa || '-').toUpperCase(), 'Kelas', ':', siswa.kelas || '-'],
-    ['NIS / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`, 'Fase', ':', siswa.tingkat <= 10 ? 'E' : 'F'],
+    ['NIS / NISN', ':', `${siswa.nis || '-'} / ${siswa.nisn || '-'}`, 'Fase', ':', Number(siswa.tingkat || 10) <= 10 ? 'E' : 'F'],
     ['Tahun Pelajaran', ':', tahunPelajaranNama || '2025/2026', 'Semester', ':', semesterNama || 'Ganjil'],
   ];
 
@@ -2194,8 +2511,82 @@ export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promi
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
   doc.text(`NIP. ${kepalaSekolahNip}`, 140, targetSignY + 28);
+};
 
+/**
+ * 📑 4. Generate Rapor Penilaian Sumatif PDF (Client-side jsPDF)
+ */
+export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
+
+  const [raporRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+
+  const raporData = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+
+  if (!raporData) throw new Error('Data rapor sumatif tidak ditemukan.');
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  renderOfficialSumatifPage(doc, raporData, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true);
+
+  const siswa = raporData.siswa || {};
   const filename = `Rapor_Sumatif_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * 📊 Cetak Massal Rapor Penilaian Sumatif Sekelas dalam 1 Berkas PDF Gabungan
+ */
+export const generateRaporSumatifKelasBatchPdf = async (options: PrintRaporBatchOptions): Promise<{ blobUrl: string; filename: string }> => {
+  const { students, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '', kelasNama = 'Sekelas', onProgress } = options;
+  if (!students || students.length === 0) {
+    throw new Error('Tidak ada data siswa untuk dicetak.');
+  }
+
+  // Preload school & tenant info ONCE
+  const [sekolahRes, tenantRes] = await Promise.allSettled([
+    sekolahApi.getProfile(),
+    getMyTenant().catch(() => null),
+  ]);
+  const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
+  const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
+
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  let renderedCount = 0;
+  let lastError: any = null;
+
+  for (let i = 0; i < students.length; i++) {
+    const student = students[i];
+    onProgress?.(i + 1, students.length, student.nama_siswa || 'Siswa');
+
+    try {
+      const raporRes = await raporApi.getRaporDetail({
+        siswa_id: student.id,
+        tahun_pelajaran_id: tahunPelajaranId,
+        semester_id: semesterId,
+      });
+      const raporData = raporRes?.data?.data || raporRes?.data || raporRes;
+      if (raporData) {
+        renderOfficialSumatifPage(doc, raporData, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0);
+        renderedCount++;
+      }
+    } catch (err: any) {
+      console.warn(`Gagal memuat rapor sumatif untuk ${student.nama_siswa}:`, err);
+      lastError = err;
+    }
+  }
+
+  if (renderedCount === 0) {
+    throw new Error(lastError?.message || 'Gagal memproses pembuatan PDF batch rapor sumatif.');
+  }
+
+  const filename = `Rapor_Sumatif_Sekelas_${kelasNama.replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
   const blobUrl = URL.createObjectURL(doc.output('blob'));
   return { blobUrl, filename };
 };

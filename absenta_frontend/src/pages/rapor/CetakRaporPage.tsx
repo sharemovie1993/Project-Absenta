@@ -540,6 +540,10 @@ export default React.memo(function CetakRaporPage() {
     handlePrintP5,
     handleExportLeger,
     handleBatchPrintRapor,
+    handleBatchPrintBiodata,
+    handleBatchPrintRaporSumatif,
+    handleBatchPrintP5,
+    handleBatchPrintBundelLengkap,
   } = useCetakRaporActions({
     selectedKelas,
     activeYear,
@@ -646,6 +650,10 @@ export default React.memo(function CetakRaporPage() {
             onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
             onExportLeger={handleExportLeger}
             onBatchPrintRapor={handleBatchPrintRapor}
+            onBatchPrintBiodata={handleBatchPrintBiodata}
+            onBatchPrintRaporSumatif={handleBatchPrintRaporSumatif}
+            onBatchPrintP5={handleBatchPrintP5}
+            onBatchPrintBundelLengkap={handleBatchPrintBundelLengkap}
             isBatchPrinting={isBatchPrinting}
             onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
             isBatchPklPrinting={isBatchPklPrinting}
