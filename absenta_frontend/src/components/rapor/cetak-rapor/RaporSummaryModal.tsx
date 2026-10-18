@@ -33,7 +33,7 @@ export const RaporSummaryModal: React.FC<RaporSummaryModalProps> = React.memo(({
   onFormChange,
   onSubmit,
   isSaving,
-  tampilkanKokurikuler = true,
+  tampilkanKokurikuler = false,
 }) => {
   if (!isOpen || !selectedStudent) return null;
 

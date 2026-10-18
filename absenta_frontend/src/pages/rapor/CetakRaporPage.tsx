@@ -341,25 +341,29 @@ export default React.memo(function CetakRaporPage() {
   }, [academicActiveSemester]);
 
   // Query Settings Rapor (untuk saklar kokurikuler, arsip sumatif, dll)
+  const effectiveTpId = selectedTahunPelajaran || academicActiveYear?.id;
+  const effectiveSemId = selectedSemester || academicActiveSemester?.id;
+
   const { data: settingsRes } = useQuery({
-    queryKey: ['rapor-settings', selectedTahunPelajaran, selectedSemester],
+    queryKey: ['rapor-settings', effectiveTpId, effectiveSemId],
     queryFn: () =>
       raporApi.getRaporSettings({
-        tahun_pelajaran_id: selectedTahunPelajaran,
-        semester_id: selectedSemester,
+        tahun_pelajaran_id: effectiveTpId,
+        semester_id: effectiveSemId,
       }),
-    enabled: Boolean(selectedTahunPelajaran),
+    enabled: Boolean(effectiveTpId),
   });
 
   const tampilkanKokurikuler = useMemo(() => {
     if (settingsRes?.data?.tampilkan_kokurikuler !== undefined) {
       return Boolean(settingsRes.data.tampilkan_kokurikuler);
     }
-    const rawYear = academicActiveYear?.tahun || '';
+    const currentYearObj = tpOptions?.find((t) => t.value === effectiveTpId)?.raw as { tahun?: string; nama?: string } | undefined;
+    const rawYear = currentYearObj?.tahun || currentYearObj?.nama || academicActiveYear?.tahun || '';
     const match = rawYear.match(/^(\d{4})/);
     const startYear = match ? parseInt(match[1], 10) : 2025;
     return startYear >= 2025;
-  }, [settingsRes, academicActiveYear]);
+  }, [settingsRes, tpOptions, effectiveTpId, academicActiveYear]);
 
   const modeCetakRapor = useMemo<'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY'>(() => {
     return settingsRes?.data?.mode_cetak_rapor || 'CP_ONLY';

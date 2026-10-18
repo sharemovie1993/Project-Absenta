@@ -21,8 +21,12 @@ export default async function raporRoutes(fastify: any) {
   fastify.get('/detail', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.getDetail);
   fastify.get('/leger', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.getLeger);
   fastify.get('/leger/export', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.exportLeger);
-  fastify.get('/transkrip', { preHandler: [requireCapability(academicStaffCaps), determineDataScope()]}, RaporController.getTranskrip);
-  fastify.get('/settings', { preHandler: [requireCapability(['academic.manage.academic', 'dashboard.view.kepsek', 'core.sekolah.update.profile']), determineDataScope()] }, RaporController.getSettings);
+  const settingsReadCaps = [
+    ...academicStaffCaps,
+    'core.sekolah.update.profile',
+  ];
+
+  fastify.get('/settings', { preHandler: [requireCapability(settingsReadCaps), determineDataScope()] }, RaporController.getSettings);
   fastify.put('/settings', { preHandler: [requireCapability(['academic.manage.academic', 'dashboard.view.kepsek', 'core.sekolah.update.profile']), determineDataScope()] }, RaporController.updateSettings);
 
   // ── Rapor Staging Hub (Google Sheet Integrator) ──

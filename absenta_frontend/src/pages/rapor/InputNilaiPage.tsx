@@ -211,25 +211,29 @@ export default React.memo(function InputNilaiPage() {
   });
 
   // Query Settings Rapor (untuk saklar kokurikuler, format cetak, dll)
+  const effectiveTpId = selectedTahunPelajaran || activeYear?.id;
+  const effectiveSemId = selectedSemester || activeSemester?.id;
+
   const { data: settingsRes } = useQuery({
-    queryKey: ['rapor-settings', selectedTahunPelajaran, selectedSemester],
+    queryKey: ['rapor-settings', effectiveTpId, effectiveSemId],
     queryFn: () =>
       raporApi.getRaporSettings({
-        tahun_pelajaran_id: selectedTahunPelajaran,
-        semester_id: selectedSemester,
+        tahun_pelajaran_id: effectiveTpId,
+        semester_id: effectiveSemId,
       }),
-    enabled: Boolean(selectedTahunPelajaran),
+    enabled: Boolean(effectiveTpId),
   });
 
   const tampilkanKokurikuler = useMemo(() => {
     if (settingsRes?.data?.tampilkan_kokurikuler !== undefined) {
       return Boolean(settingsRes.data.tampilkan_kokurikuler);
     }
-    const rawYear = activeYear?.nama || '';
+    const currentYearObj = tpOptions?.find((t) => t.value === effectiveTpId)?.raw as { tahun?: string; nama?: string } | undefined;
+    const rawYear = currentYearObj?.tahun || currentYearObj?.nama || activeYear?.nama || '';
     const match = rawYear.match(/^(\d{4})/);
     const startYear = match ? parseInt(match[1], 10) : 2025;
     return startYear >= 2025;
-  }, [settingsRes, activeYear]);
+  }, [settingsRes, tpOptions, effectiveTpId, activeYear]);
 
   const classes: ClassItem[] = useMemo(() => (classList as unknown as ClassItem[]) || [], [classList]);
   const subjects: SubjectItem[] = useMemo(() => (mapelList as unknown as SubjectItem[]) || [], [mapelList]);
