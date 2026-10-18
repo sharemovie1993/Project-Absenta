@@ -320,40 +320,74 @@ export const renderStudentRaporPages = (
 
     const dedupedList = Array.from(dedupedMapelMap.values());
 
-    // 2. Group into standard e-Rapor categories with intelligent SMK vocational classifier
+    // 2. Group into standard 4-Sekat Kurikulum Merdeka (Permendikbudristek No 12/2024 & e-Rapor 2025/2026):
+    // - Mata Pelajaran Umum
+    // - Mata Pelajaran Kejuruan (di SMK mencakup MTK, B. Inggris, Informatika, IPAS, & Kejuruan)
+    // - Mata Pelajaran Pilihan (misal: Koding & AI)
+    // - Muatan Lokal (misal: Bahasa Sunda, Bahasa Daerah)
     const groupedMapel = new Map<string, any[]>();
     dedupedList.forEach((n: any) => {
-      let group = n.kelompok_mapel || 'Mata Pelajaran Umum';
+      let group = 'Mata Pelajaran Umum';
+      const rawGrp = (n.kelompok_mapel || '').toLowerCase();
       const mapelNameLower = (n.mapel_name || '').toLowerCase();
 
-      // Intelligent vocational classification for SMK
-      if (jenjang === 'SMK') {
-        const isVocationalKeyword = 
+      // Priority 1: Muatan Lokal
+      if (
+        rawGrp.includes('lokal') ||
+        rawGrp.includes('mulok') ||
+        mapelNameLower.includes('sunda') ||
+        mapelNameLower.includes('jawa') ||
+        mapelNameLower.includes('madura') ||
+        mapelNameLower.includes('daerah') ||
+        mapelNameLower.includes('plh') ||
+        mapelNameLower.includes('lingkungan hidup')
+      ) {
+        group = 'Muatan Lokal';
+      }
+      // Priority 2: Mata Pelajaran Pilihan
+      else if (
+        rawGrp.includes('pilihan') ||
+        rawGrp.includes('peminatan') ||
+        mapelNameLower.includes('pilihan') ||
+        mapelNameLower.includes('koding') ||
+        mapelNameLower.includes('kecerdasan artifisial') ||
+        mapelNameLower.includes('kecerdasan buatan') ||
+        mapelNameLower.includes('ai') ||
+        mapelNameLower.includes('robotika')
+      ) {
+        group = 'Mata Pelajaran Pilihan';
+      }
+      // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
+      else if (
+        rawGrp.includes('kejuruan') ||
+        (jenjang === 'SMK' && (
+          mapelNameLower.includes('matematika') ||
+          mapelNameLower.includes('inggris') ||
+          mapelNameLower.includes('informatika') ||
+          mapelNameLower.includes('ipas') ||
+          (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
+          mapelNameLower.includes('dasar') ||
+          mapelNameLower.includes('program keahlian') ||
+          mapelNameLower.includes('konsentrasi') ||
+          mapelNameLower.includes('kejuruan') ||
+          mapelNameLower.includes('pkk') ||
+          mapelNameLower.includes('kewirausahaan') ||
+          mapelNameLower.includes('pkl') ||
+          mapelNameLower.includes('praktik kerja') ||
           mapelNameLower.includes('gtm') ||
           mapelNameLower.includes('pdtm') ||
           mapelNameLower.includes('dptm') ||
           mapelNameLower.includes('gambar teknik') ||
-          mapelNameLower.includes('pekerjaan dasar') ||
-          mapelNameLower.includes('dasar perancangan') ||
-          mapelNameLower.includes('dasar-dasar') ||
-          mapelNameLower.includes('dasar program keahlian') ||
-          mapelNameLower.includes('kejuruan') ||
-          mapelNameLower.includes('konsentrasi keahlian') ||
-          mapelNameLower.includes('teknik pemesinan') ||
-          mapelNameLower.includes('teknik mesin') ||
-          mapelNameLower.includes('teknik otomotif') ||
-          mapelNameLower.includes('teknik pengelasan') ||
-          mapelNameLower.includes('pkk') ||
-          mapelNameLower.includes('kreatif dan kewirausahaan') ||
-          mapelNameLower.includes('praktik kerja') ||
-          mapelNameLower.includes('pkl');
-
-        if (isVocationalKeyword) {
-          group = 'Mata Pelajaran Kejuruan';
-        }
+          mapelNameLower.includes('pemesinan') ||
+          mapelNameLower.includes('otomotif') ||
+          mapelNameLower.includes('pengelasan') ||
+          mapelNameLower.includes('elektronika')
+        ))
+      ) {
+        group = 'Mata Pelajaran Kejuruan';
       }
-
-      if (!group.toLowerCase().includes('umum') && !group.toLowerCase().includes('kejuruan') && !group.toLowerCase().includes('pilihan') && !group.toLowerCase().includes('muatan')) {
+      // Priority 4: Default ke Mata Pelajaran Umum
+      else {
         group = 'Mata Pelajaran Umum';
       }
 

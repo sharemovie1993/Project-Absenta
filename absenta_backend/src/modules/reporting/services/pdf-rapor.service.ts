@@ -490,36 +490,127 @@ export class PdfRaporService {
     const mapelMulok: any[] = [];
 
     listMapel.forEach((m: any) => {
-      const g = (m.kelompok_mapel || '').toUpperCase();
-      const n = (m.mapel_name || '').toUpperCase();
+      const g = (m.kelompok_mapel || '').toLowerCase();
+      const n = (m.mapel_name || '').toLowerCase();
 
-      if (g.includes('PILIHAN') || n.includes('KODING') || n.includes('KECERDASAN') || n.includes('ROBOTIKA')) {
-        mapelPilihan.push(m);
-      } else if (g.includes('LOKAL') || g.includes('MULOK') || n.includes('SUNDA') || n.includes('JAWA') || n.includes('DAERAH')) {
+      // Priority 1: Muatan Lokal
+      if (
+        g.includes('lokal') ||
+        g.includes('mulok') ||
+        n.includes('sunda') ||
+        n.includes('jawa') ||
+        n.includes('madura') ||
+        n.includes('daerah') ||
+        n.includes('plh') ||
+        n.includes('lingkungan hidup')
+      ) {
         mapelMulok.push(m);
-      } else if (
-        g.includes('KEJURUAN') ||
-        n.includes('MATEMATIKA') ||
-        n.includes('INGGRIS') ||
-        n.includes('INFORMATIKA') ||
-        n.includes('IPAS') ||
-        n.includes('DASAR') ||
-        n.includes('KONSENTRASI')
+      }
+      // Priority 2: Mata Pelajaran Pilihan (Kurikulum Merdeka 2024/2025 - 2026)
+      else if (
+        g.includes('pilihan') ||
+        g.includes('peminatan') ||
+        n.includes('pilihan') ||
+        n.includes('koding') ||
+        n.includes('kecerdasan artifisial') ||
+        n.includes('kecerdasan buatan') ||
+        n.includes('ai') ||
+        n.includes('robotika')
+      ) {
+        mapelPilihan.push(m);
+      }
+      // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
+      else if (
+        g.includes('kejuruan') ||
+        n.includes('matematika') ||
+        n.includes('inggris') ||
+        n.includes('informatika') ||
+        n.includes('ipas') ||
+        (n.includes('alam') && n.includes('sosial')) ||
+        n.includes('dasar') ||
+        n.includes('program keahlian') ||
+        n.includes('konsentrasi') ||
+        n.includes('kejuruan') ||
+        n.includes('pkk') ||
+        n.includes('kewirausahaan') ||
+        n.includes('kreatif') ||
+        n.includes('pkl') ||
+        n.includes('praktik kerja') ||
+        n.includes('gtm') ||
+        n.includes('pdtm') ||
+        n.includes('dptm') ||
+        n.includes('gambar teknik') ||
+        n.includes('pemesinan') ||
+        n.includes('otomotif') ||
+        n.includes('pengelasan') ||
+        n.includes('elektronika')
       ) {
         mapelKejuruan.push(m);
-      } else {
+      }
+      // Priority 4: Default ke Mata Pelajaran Umum
+      else {
         mapelUmum.push(m);
       }
     });
 
+    const getSortPriority = (item: any, grp: string) => {
+      if (typeof item.urutan === 'number' && item.urutan > 0 && item.urutan < 900) return item.urutan;
+      const name = (item.mapel_name || '').toLowerCase();
+      if (grp.includes('Umum')) {
+        if (name.includes('agama') || name.includes('budi pekerti') || name.includes('pai')) return 10;
+        if (name.includes('pancasila') || name.includes('ppkn')) return 20;
+        if (name.includes('bahasa indonesia') || name === 'indonesia') return 30;
+        if (name.includes('jasmani') || name.includes('olahraga') || name.includes('pjok') || name.includes('penjas')) return 40;
+        if (name.includes('sejarah')) return 50;
+        if (name.includes('seni') || name.includes('budaya') || name.includes('prakarya')) return 60;
+        return 100;
+      }
+      if (grp.includes('Kejuruan')) {
+        if (name.includes('matematika')) return 10;
+        if (name.includes('inggris')) return 20;
+        if (name.includes('informatika') || name.includes('tik') || name.includes('komputer')) return 30;
+        if (name.includes('ipas') || (name.includes('alam') && name.includes('sosial'))) return 40;
+        if (name.includes('dasar') || name.includes('program keahlian')) return 50;
+        if (name.includes('gtm') || name.includes('gambar teknik')) return 52;
+        if (name.includes('pdtm') || name.includes('pekerjaan dasar')) return 54;
+        if (name.includes('dptm') || name.includes('dasar perancangan')) return 56;
+        if (name.includes('konsentrasi') || name.includes('kejuruan')) return 60;
+        if (name.includes('pkk') || name.includes('kreatif') || name.includes('kewirausahaan')) return 70;
+        if (name.includes('pkl') || name.includes('praktik kerja')) return 80;
+        return 100;
+      }
+      if (grp.includes('Pilihan')) {
+        if (name.includes('koding') || name.includes('kecerdasan') || name.includes('ai') || name.includes('artificial')) return 10;
+        return 50;
+      }
+      if (grp.includes('Lokal') || grp.includes('Mulok')) {
+        if (name.includes('sunda')) return 10;
+        if (name.includes('jawa')) return 20;
+        if (name.includes('daerah')) return 30;
+        if (name.includes('lingkungan') || name.includes('plh')) return 40;
+        return 50;
+      }
+      return 100;
+    };
+
+    const sortGroupItems = (items: any[], grp: string) => {
+      return [...items].sort((a, b) => {
+        const pA = getSortPriority(a, grp);
+        const pB = getSortPriority(b, grp);
+        if (pA !== pB) return pA - pB;
+        return (a.mapel_name || '').localeCompare(b.mapel_name || '');
+      });
+    };
+
     const renderTableGroup = (groupTitle: string, items: any[]) => {
-      if (items.length === 0) return '';
+      const sorted = sortGroupItems(items, groupTitle);
+      if (sorted.length === 0) return '';
       let rows = `
         <tr style="background-color: #ffffff; font-weight: bold;">
           <td colspan="4" style="padding: 4px 8px; font-size: 11px; text-align: left; vertical-align: middle;">${groupTitle}</td>
         </tr>
       `;
-      items.forEach((item, idx) => {
+      sorted.forEach((item, idx) => {
         const hasScore = (item.nilai_akhir && item.nilai_akhir > 0) || (item.nilai_components && item.nilai_components.length > 0);
         const cp = item.catatan_kompetensi ||
           (hasScore
