@@ -498,19 +498,6 @@ export const P5Page: React.FC = React.memo(() => {
         description="Lembar penilaian kualitatif karakter dan capaian dimensi Profil Pelajar Pancasila Kurikulum Merdeka."
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="p5_rapor_page"
-        topSlot={
-          <AcademicContextBar
-            tahunPelajaranId={academicCtx.selectedTahunPelajaran}
-            semesterId={academicCtx.selectedSemester}
-            onTahunPelajaranChange={academicCtx.handleTpChange}
-            onSemesterChange={academicCtx.handleSemesterChange}
-            tpOptions={academicCtx.tpOptions}
-            semesterOptions={academicCtx.semesterOptions}
-            isLoadingTp={academicCtx.isLoadingTp}
-            isLoadingSem={academicCtx.isLoadingSem}
-            variant="toolbar"
-          />
-        }
         instruction={{
           title: 'Panduan Asesmen Projek P5 Matriks Kolom',
           description: 'Penilaian kualitatif karakter siswa tersaji secara simultan dalam kolom-kolom dimensi target projek.',
@@ -524,110 +511,140 @@ export const P5Page: React.FC = React.memo(() => {
         }}
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-          <div className="space-y-6 pb-12 w-full min-w-0 max-w-full">
-            {/* ── 1. Role Navigation Tabs & Settings Shortcut ── */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <TabSwitcher
-                activeTab={activeRoleTab}
-                onChange={(id) => setActiveRoleTab(id as any)}
-                tabs={roleTabs}
-              />
-              {canSupervise && (
-                <Button
-                  type="button"
-                  variant="toolbarOutline"
-                  size="toolbar"
-                  onClick={() => navigate('/rapor/settings?tab=tim_p5')}
-                  className="font-bold rounded-xl shrink-0 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
-                >
-                  <Settings2 className="w-3.5 h-3.5 mr-1.5" />
-                  Pengaturan Tema & Tim P5
-                </Button>
-              )}
-            </div>
-
-            {/* ── 2. Read-Only Notice Banner ── */}
-            {isReadOnly && (
-              <div className="p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl flex items-center gap-3 text-xs text-amber-800 dark:text-amber-300">
-                <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
-                <span>{readOnlyReason}</span>
-              </div>
-            )}
-
-            {/* ── 3. Main Grading Interface (Projek Saya / Supervisi / Wali Kelas) ── */}
-            <div className="space-y-6">
-              {/* Filter Card: Hanya Projek & Kelas */}
-              <Card className="p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm bg-white dark:bg-slate-900 space-y-4 w-full min-w-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label htmlFor="p5-filter-projek" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                      <Target size={12} className="text-indigo-500" />
-                      1. Projek P5 {activeRoleTab === 'my_tasks' && '(Binaan)'}
-                    </label>
-                    <SearchableSelect
-                      id="p5-filter-projek"
-                      value={selectedProjek}
-                      onValueChange={setSelectedProjek}
-                      options={smartProjekOptions}
-                      placeholder="Pilih Projek"
-                      isLoading={isLoadingMyProjects || isLoadingAllProjek}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label htmlFor="p5-filter-kelas" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                      <Bookmark size={12} className="text-indigo-500" />
-                      2. Rombongan Belajar (Kelas)
-                    </label>
-                    <SearchableSelect
-                      id="p5-filter-kelas"
-                      value={selectedKelas}
-                      onValueChange={setSelectedKelas}
-                      options={smartKelasOptions}
-                      placeholder="Pilih Kelas"
-                      disabled={activeRoleTab === 'wali_kelas'}
-                    />
+          <div className="space-y-4 pb-12 w-full min-w-0 max-w-full">
+            {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
+              {/* Hardening Guard Alert: Mode Terkunci / Hanya Baca */}
+              {isReadOnly && (
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                      <Lock size={16} />
+                    </div>
+                    <div>
+                      <div className="font-bold flex items-center gap-2">
+                        <span>Mode Terkunci</span>
+                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                          Hanya Baca
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                        {readOnlyReason}
+                      </p>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* Banner Ringkasan Metadata Projek Terpilih */}
-                {selectedProjek && selectedProjekObj && (
-                  <div className="p-3.5 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-slate-900 dark:text-white">
-                          {selectedProjekObj.judul}
-                        </span>
-                        <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50">
-                          {currentProjekMeta.tema}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] font-semibold border-slate-200 text-slate-600 dark:text-slate-400">
-                          {currentProjekMeta.fase}
-                        </Badge>
-                      </div>
-                      {currentProjekMeta.cleanDesc && (
-                        <p className="text-[11px] text-slate-500 line-clamp-1">
-                          {currentProjekMeta.cleanDesc}
-                        </p>
-                      )}
-                    </div>
+              {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role & Pengaturan di kanan */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="w-full md:w-auto">
+                  <AcademicContextBar
+                    id="p5-rapor"
+                    tahunPelajaranId={academicCtx.selectedTahunPelajaran}
+                    semesterId={academicCtx.selectedSemester}
+                    onTahunPelajaranChange={academicCtx.handleTpChange}
+                    onSemesterChange={academicCtx.handleSemesterChange}
+                    tpOptions={academicCtx.tpOptions}
+                    semesterOptions={academicCtx.semesterOptions}
+                    isLoadingTp={academicCtx.isLoadingTp}
+                    isLoadingSem={academicCtx.isLoadingSem}
+                    variant="toolbar"
+                  />
+                </div>
 
-                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 mr-1">
-                        Dimensi Kolom ({targetDimensions.length}):
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto flex-wrap">
+                  <TabSwitcher
+                    activeTab={activeRoleTab}
+                    onChange={(id) => setActiveRoleTab(id as any)}
+                    tabs={roleTabs}
+                  />
+                  {canSupervise && (
+                    <Button
+                      type="button"
+                      variant="toolbarOutline"
+                      size="toolbar"
+                      onClick={() => navigate('/rapor/settings?tab=tim_p5')}
+                      className="font-bold rounded-xl shrink-0 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                    >
+                      <Settings2 className="w-3.5 h-3.5 mr-1.5" />
+                      Pengaturan Tema & Tim P5
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Baris 2: Seleksi Projek & Rombel (Kelas) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label htmlFor="p5-filter-projek" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                    <Target size={12} className="text-indigo-500" />
+                    1. Projek P5 {activeRoleTab === 'my_tasks' && '(Binaan)'}
+                  </label>
+                  <SearchableSelect
+                    id="p5-filter-projek"
+                    value={selectedProjek}
+                    onValueChange={setSelectedProjek}
+                    options={smartProjekOptions}
+                    placeholder="Pilih Projek"
+                    isLoading={isLoadingMyProjects || isLoadingAllProjek}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="p5-filter-kelas" className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                    <Bookmark size={12} className="text-indigo-500" />
+                    2. Rombongan Belajar (Kelas)
+                  </label>
+                  <SearchableSelect
+                    id="p5-filter-kelas"
+                    value={selectedKelas}
+                    onValueChange={setSelectedKelas}
+                    options={smartKelasOptions}
+                    placeholder="Pilih Kelas"
+                    disabled={activeRoleTab === 'wali_kelas'}
+                  />
+                </div>
+              </div>
+
+              {/* Baris 3: Banner Ringkasan Metadata Projek Terpilih */}
+              {selectedProjek && selectedProjekObj && (
+                <div className="p-3 bg-slate-50/80 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-slate-900 dark:text-white">
+                        {selectedProjekObj.judul}
                       </span>
-                      {targetDimensions.map((dim) => (
-                        <span
-                          key={dim}
-                          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs"
-                        >
-                          {dim}
-                        </span>
-                      ))}
+                      <Badge variant="outline" className="text-[10px] font-bold border-indigo-200 text-indigo-700 dark:text-indigo-300 bg-indigo-50/50">
+                        {currentProjekMeta.tema}
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] font-semibold border-slate-200 text-slate-600 dark:text-slate-400">
+                        {currentProjekMeta.fase}
+                      </Badge>
                     </div>
+                    {currentProjekMeta.cleanDesc && (
+                      <p className="text-[11px] text-slate-500 line-clamp-1">
+                        {currentProjekMeta.cleanDesc}
+                      </p>
+                    )}
                   </div>
-                )}
-              </Card>
+
+                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 mr-1">
+                      Dimensi Kolom ({targetDimensions.length}):
+                    </span>
+                    {targetDimensions.map((dim) => (
+                      <span
+                        key={dim}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-indigo-700 dark:text-indigo-300 shadow-2xs"
+                      >
+                        {dim}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
               {/* ── Scoring Area (MATRIKS KOLOM TERBUKA PENUH TANPA PAGINASI) ── */}
               {!selectedProjek || !selectedKelas ? (
@@ -925,8 +942,7 @@ export const P5Page: React.FC = React.memo(() => {
                 </div>
               )}
             </div>
-          </div>
-        </SectionCard>
+          </SectionCard>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
