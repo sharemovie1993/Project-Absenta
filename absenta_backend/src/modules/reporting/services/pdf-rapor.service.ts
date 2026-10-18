@@ -481,76 +481,120 @@ export class PdfRaporService {
       tahunPelajaran: tpYearStr,
     };
 
-    // Grouping 4 Kategori Kurikulum Merdeka SMK:
-    // 1. Umum, 2. Kejuruan, 3. Pilihan, 4. Muatan Lokal
+    // Grouping Adaptive Kurikulum Merdeka (Legacy 2 Sekat vs 2025+ 4 Sekat):
+    const isLegacyEra = startYear < 2025;
     const listMapel = data.nilai_akademik || [];
-    const mapelUmum: any[] = [];
-    const mapelKejuruan: any[] = [];
-    const mapelPilihan: any[] = [];
-    const mapelMulok: any[] = [];
+    const groupedMapel = new Map<string, any[]>();
 
     listMapel.forEach((m: any) => {
       const g = (m.kelompok_mapel || '').toLowerCase();
       const n = (m.mapel_name || '').toLowerCase();
+      let groupCategory = 'Kelompok Umum';
 
-      // Priority 1: Muatan Lokal
-      if (
-        g.includes('lokal') ||
-        g.includes('mulok') ||
-        n.includes('sunda') ||
-        n.includes('jawa') ||
-        n.includes('madura') ||
-        n.includes('daerah') ||
-        n.includes('plh') ||
-        n.includes('lingkungan hidup')
-      ) {
-        mapelMulok.push(m);
+      if (isLegacyEra) {
+        // --- ERA 2022 - 2024 (2 SEKAT: KELOMPOK UMUM & KELOMPOK KEJURUAN) ---
+        const isKejuruanLegacy =
+          g.includes('kejuruan') ||
+          g.includes('pilihan') ||
+          g.includes('lokal') ||
+          g.includes('mulok') ||
+          n.includes('matematika') ||
+          n.includes('inggris') ||
+          n.includes('informatika') ||
+          n.includes('ipas') ||
+          (n.includes('alam') && n.includes('sosial')) ||
+          n.includes('dasar') ||
+          n.includes('program keahlian') ||
+          n.includes('konsentrasi') ||
+          n.includes('kejuruan') ||
+          n.includes('pkk') ||
+          n.includes('kewirausahaan') ||
+          n.includes('kreatif') ||
+          n.includes('pkl') ||
+          n.includes('praktik kerja') ||
+          n.includes('gtm') ||
+          n.includes('pdtm') ||
+          n.includes('dptm') ||
+          n.includes('gambar teknik') ||
+          n.includes('pemesinan') ||
+          n.includes('otomotif') ||
+          n.includes('pengelasan') ||
+          n.includes('elektronika') ||
+          n.includes('pilihan') ||
+          n.includes('koding') ||
+          n.includes('kecerdasan') ||
+          n.includes('sunda') ||
+          n.includes('jawa') ||
+          n.includes('daerah') ||
+          n.includes('plh');
+
+        groupCategory = isKejuruanLegacy ? 'Kelompok Kejuruan' : 'Kelompok Umum';
+      } else {
+        // --- ERA 2025/2026 DST (4 SEKAT: UMUM, KEJURUAN, PILIHAN, MUATAN LOKAL) ---
+        // Priority 1: Muatan Lokal
+        if (
+          g.includes('lokal') ||
+          g.includes('mulok') ||
+          n.includes('sunda') ||
+          n.includes('jawa') ||
+          n.includes('madura') ||
+          n.includes('daerah') ||
+          n.includes('plh') ||
+          n.includes('lingkungan hidup')
+        ) {
+          groupCategory = 'Muatan Lokal';
+        }
+        // Priority 2: Mata Pelajaran Pilihan
+        else if (
+          g.includes('pilihan') ||
+          g.includes('peminatan') ||
+          n.includes('pilihan') ||
+          n.includes('koding') ||
+          n.includes('kecerdasan artifisial') ||
+          n.includes('kecerdasan buatan') ||
+          n.includes('ai') ||
+          n.includes('robotika')
+        ) {
+          groupCategory = 'Mata Pelajaran Pilihan';
+        }
+        // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
+        else if (
+          g.includes('kejuruan') ||
+          n.includes('matematika') ||
+          n.includes('inggris') ||
+          n.includes('informatika') ||
+          n.includes('ipas') ||
+          (n.includes('alam') && n.includes('sosial')) ||
+          n.includes('dasar') ||
+          n.includes('program keahlian') ||
+          n.includes('konsentrasi') ||
+          n.includes('kejuruan') ||
+          n.includes('pkk') ||
+          n.includes('kewirausahaan') ||
+          n.includes('kreatif') ||
+          n.includes('pkl') ||
+          n.includes('praktik kerja') ||
+          n.includes('gtm') ||
+          n.includes('pdtm') ||
+          n.includes('dptm') ||
+          n.includes('gambar teknik') ||
+          n.includes('pemesinan') ||
+          n.includes('otomotif') ||
+          n.includes('pengelasan') ||
+          n.includes('elektronika')
+        ) {
+          groupCategory = 'Mata Pelajaran Kejuruan';
+        }
+        // Priority 4: Default ke Mata Pelajaran Umum
+        else {
+          groupCategory = 'Mata Pelajaran Umum';
+        }
       }
-      // Priority 2: Mata Pelajaran Pilihan (Kurikulum Merdeka 2024/2025 - 2026)
-      else if (
-        g.includes('pilihan') ||
-        g.includes('peminatan') ||
-        n.includes('pilihan') ||
-        n.includes('koding') ||
-        n.includes('kecerdasan artifisial') ||
-        n.includes('kecerdasan buatan') ||
-        n.includes('ai') ||
-        n.includes('robotika')
-      ) {
-        mapelPilihan.push(m);
+
+      if (!groupedMapel.has(groupCategory)) {
+        groupedMapel.set(groupCategory, []);
       }
-      // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
-      else if (
-        g.includes('kejuruan') ||
-        n.includes('matematika') ||
-        n.includes('inggris') ||
-        n.includes('informatika') ||
-        n.includes('ipas') ||
-        (n.includes('alam') && n.includes('sosial')) ||
-        n.includes('dasar') ||
-        n.includes('program keahlian') ||
-        n.includes('konsentrasi') ||
-        n.includes('kejuruan') ||
-        n.includes('pkk') ||
-        n.includes('kewirausahaan') ||
-        n.includes('kreatif') ||
-        n.includes('pkl') ||
-        n.includes('praktik kerja') ||
-        n.includes('gtm') ||
-        n.includes('pdtm') ||
-        n.includes('dptm') ||
-        n.includes('gambar teknik') ||
-        n.includes('pemesinan') ||
-        n.includes('otomotif') ||
-        n.includes('pengelasan') ||
-        n.includes('elektronika')
-      ) {
-        mapelKejuruan.push(m);
-      }
-      // Priority 4: Default ke Mata Pelajaran Umum
-      else {
-        mapelUmum.push(m);
-      }
+      groupedMapel.get(groupCategory)!.push(m);
     });
 
     const getSortPriority = (item: any, grp: string) => {
@@ -577,6 +621,8 @@ export class PdfRaporService {
         if (name.includes('konsentrasi') || name.includes('kejuruan')) return 60;
         if (name.includes('pkk') || name.includes('kreatif') || name.includes('kewirausahaan')) return 70;
         if (name.includes('pkl') || name.includes('praktik kerja')) return 80;
+        if (name.includes('koding') || name.includes('kecerdasan') || name.includes('ai') || name.includes('artificial')) return 85;
+        if (name.includes('sunda') || name.includes('jawa') || name.includes('daerah') || name.includes('mulok')) return 90;
         return 100;
       }
       if (grp.includes('Pilihan')) {
@@ -630,11 +676,20 @@ export class PdfRaporService {
       return rows;
     };
 
+    const standardOrder = isLegacyEra
+      ? ['Kelompok Umum', 'Kelompok Kejuruan']
+      : ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
+
+    const activeGroups = standardOrder.filter((grp) => (groupedMapel.get(grp) || []).length > 0);
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
     let tableBody = '';
-    tableBody += renderTableGroup('Mata Pelajaran Umum', mapelUmum);
-    tableBody += renderTableGroup('Mata Pelajaran Kejuruan', mapelKejuruan);
-    tableBody += renderTableGroup('Mata Pelajaran Pilihan', mapelPilihan);
-    tableBody += renderTableGroup('Muatan Lokal', mapelMulok);
+    activeGroups.forEach((groupCategory, groupIdx) => {
+      const items = groupedMapel.get(groupCategory) || [];
+      const letterPrefix = letters[groupIdx] ? `${letters[groupIdx]}. ` : '';
+      const displayTitle = `${letterPrefix}${groupCategory}`;
+      tableBody += renderTableGroup(displayTitle, items);
+    });
 
     if (listMapel.length === 0) {
       tableBody = `<tr><td colspan="4" style="text-align: center; font-style: italic; padding: 20px;">Belum ada data nilai semester ini</td></tr>`;

@@ -84,6 +84,8 @@ export const getMapelCanonicalPriority = (
     if (name.includes('konsentrasi') || name.includes('kejuruan')) return 60;
     if (name.includes('kreatif') || name.includes('kewirausahaan') || name.includes('pkk')) return 70;
     if (name.includes('pkl') || name.includes('praktik kerja')) return 80;
+    if (name.includes('koding') || name.includes('kecerdasan') || name.includes('ai') || name.includes('artificial')) return 85;
+    if (name.includes('sunda') || name.includes('jawa') || name.includes('daerah') || name.includes('mulok')) return 90;
     return 150;
   }
 
@@ -320,105 +322,154 @@ export const renderStudentRaporPages = (
 
     const dedupedList = Array.from(dedupedMapelMap.values());
 
-    // 2. Group into standard 4-Sekat Kurikulum Merdeka (Permendikbudristek No 12/2024 & e-Rapor 2025/2026):
-    // - Mata Pelajaran Umum
-    // - Mata Pelajaran Kejuruan (di SMK mencakup MTK, B. Inggris, Informatika, IPAS, & Kejuruan)
-    // - Mata Pelajaran Pilihan (misal: Koding & AI)
-    // - Muatan Lokal (misal: Bahasa Sunda, Bahasa Daerah)
+    // Adaptive Era Detection based on Academic Year:
+    // - Legacy Era (< 2025: 2022/2023, 2023/2024, 2024/2025 - Kepmendikbudristek 262/M/2022):
+    //   2 Sekat: A. Kelompok Umum & B. Kelompok Kejuruan (Pilihan & Mulok melebur ke Kejuruan)
+    // - New Era (>= 2025: 2025/2026 dst. - Permendikbudristek 12/2024):
+    //   4 Sekat: A. Mata Pelajaran Umum, B. Mata Pelajaran Kejuruan, C. Mata Pelajaran Pilihan, D. Muatan Lokal
+    const matchYear = String(displayTahunPelajaran || '').match(/^(\d{4})/);
+    const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+    const isLegacyEra = startYear < 2025;
+
     const groupedMapel = new Map<string, any[]>();
     dedupedList.forEach((n: any) => {
-      let group = 'Mata Pelajaran Umum';
+      let groupCategory = 'Kelompok Umum';
       const rawGrp = (n.kelompok_mapel || '').toLowerCase();
       const mapelNameLower = (n.mapel_name || '').toLowerCase();
 
-      // Priority 1: Muatan Lokal
-      if (
-        rawGrp.includes('lokal') ||
-        rawGrp.includes('mulok') ||
-        mapelNameLower.includes('sunda') ||
-        mapelNameLower.includes('jawa') ||
-        mapelNameLower.includes('madura') ||
-        mapelNameLower.includes('daerah') ||
-        mapelNameLower.includes('plh') ||
-        mapelNameLower.includes('lingkungan hidup')
-      ) {
-        group = 'Muatan Lokal';
-      }
-      // Priority 2: Mata Pelajaran Pilihan
-      else if (
-        rawGrp.includes('pilihan') ||
-        rawGrp.includes('peminatan') ||
-        mapelNameLower.includes('pilihan') ||
-        mapelNameLower.includes('koding') ||
-        mapelNameLower.includes('kecerdasan artifisial') ||
-        mapelNameLower.includes('kecerdasan buatan') ||
-        mapelNameLower.includes('ai') ||
-        mapelNameLower.includes('robotika')
-      ) {
-        group = 'Mata Pelajaran Pilihan';
-      }
-      // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
-      else if (
-        rawGrp.includes('kejuruan') ||
-        (jenjang === 'SMK' && (
-          mapelNameLower.includes('matematika') ||
-          mapelNameLower.includes('inggris') ||
-          mapelNameLower.includes('informatika') ||
-          mapelNameLower.includes('ipas') ||
-          (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
-          mapelNameLower.includes('dasar') ||
-          mapelNameLower.includes('program keahlian') ||
-          mapelNameLower.includes('konsentrasi') ||
-          mapelNameLower.includes('kejuruan') ||
-          mapelNameLower.includes('pkk') ||
-          mapelNameLower.includes('kewirausahaan') ||
-          mapelNameLower.includes('pkl') ||
-          mapelNameLower.includes('praktik kerja') ||
-          mapelNameLower.includes('gtm') ||
-          mapelNameLower.includes('pdtm') ||
-          mapelNameLower.includes('dptm') ||
-          mapelNameLower.includes('gambar teknik') ||
-          mapelNameLower.includes('pemesinan') ||
-          mapelNameLower.includes('otomotif') ||
-          mapelNameLower.includes('pengelasan') ||
-          mapelNameLower.includes('elektronika')
-        ))
-      ) {
-        group = 'Mata Pelajaran Kejuruan';
-      }
-      // Priority 4: Default ke Mata Pelajaran Umum
-      else {
-        group = 'Mata Pelajaran Umum';
+      if (isLegacyEra) {
+        // --- ERA 2022 - 2024 (2 SEKAT: KELOMPOK UMUM & KELOMPOK KEJURUAN) ---
+        const isKejuruanLegacy =
+          rawGrp.includes('kejuruan') ||
+          rawGrp.includes('pilihan') ||
+          rawGrp.includes('lokal') ||
+          rawGrp.includes('mulok') ||
+          (jenjang === 'SMK' && (
+            mapelNameLower.includes('matematika') ||
+            mapelNameLower.includes('inggris') ||
+            mapelNameLower.includes('informatika') ||
+            mapelNameLower.includes('ipas') ||
+            (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
+            mapelNameLower.includes('dasar') ||
+            mapelNameLower.includes('program keahlian') ||
+            mapelNameLower.includes('konsentrasi') ||
+            mapelNameLower.includes('kejuruan') ||
+            mapelNameLower.includes('pkk') ||
+            mapelNameLower.includes('kewirausahaan') ||
+            mapelNameLower.includes('pkl') ||
+            mapelNameLower.includes('praktik kerja') ||
+            mapelNameLower.includes('gtm') ||
+            mapelNameLower.includes('pdtm') ||
+            mapelNameLower.includes('dptm') ||
+            mapelNameLower.includes('gambar teknik') ||
+            mapelNameLower.includes('pemesinan') ||
+            mapelNameLower.includes('otomotif') ||
+            mapelNameLower.includes('pengelasan') ||
+            mapelNameLower.includes('elektronika') ||
+            mapelNameLower.includes('pilihan') ||
+            mapelNameLower.includes('koding') ||
+            mapelNameLower.includes('kecerdasan') ||
+            mapelNameLower.includes('sunda') ||
+            mapelNameLower.includes('jawa') ||
+            mapelNameLower.includes('daerah') ||
+            mapelNameLower.includes('plh')
+          ));
+
+        groupCategory = isKejuruanLegacy ? 'Kelompok Kejuruan' : 'Kelompok Umum';
+      } else {
+        // --- ERA 2025/2026 DST (4 SEKAT: UMUM, KEJURUAN, PILIHAN, MUATAN LOKAL) ---
+        // Priority 1: Muatan Lokal
+        if (
+          rawGrp.includes('lokal') ||
+          rawGrp.includes('mulok') ||
+          mapelNameLower.includes('sunda') ||
+          mapelNameLower.includes('jawa') ||
+          mapelNameLower.includes('madura') ||
+          mapelNameLower.includes('daerah') ||
+          mapelNameLower.includes('plh') ||
+          mapelNameLower.includes('lingkungan hidup')
+        ) {
+          groupCategory = 'Muatan Lokal';
+        }
+        // Priority 2: Mata Pelajaran Pilihan
+        else if (
+          rawGrp.includes('pilihan') ||
+          rawGrp.includes('peminatan') ||
+          mapelNameLower.includes('pilihan') ||
+          mapelNameLower.includes('koding') ||
+          mapelNameLower.includes('kecerdasan artifisial') ||
+          mapelNameLower.includes('kecerdasan buatan') ||
+          mapelNameLower.includes('ai') ||
+          mapelNameLower.includes('robotika')
+        ) {
+          groupCategory = 'Mata Pelajaran Pilihan';
+        }
+        // Priority 3: Mata Pelajaran Kejuruan (Khusus SMK)
+        else if (
+          rawGrp.includes('kejuruan') ||
+          (jenjang === 'SMK' && (
+            mapelNameLower.includes('matematika') ||
+            mapelNameLower.includes('inggris') ||
+            mapelNameLower.includes('informatika') ||
+            mapelNameLower.includes('ipas') ||
+            (mapelNameLower.includes('alam') && mapelNameLower.includes('sosial')) ||
+            mapelNameLower.includes('dasar') ||
+            mapelNameLower.includes('program keahlian') ||
+            mapelNameLower.includes('konsentrasi') ||
+            mapelNameLower.includes('kejuruan') ||
+            mapelNameLower.includes('pkk') ||
+            mapelNameLower.includes('kewirausahaan') ||
+            mapelNameLower.includes('pkl') ||
+            mapelNameLower.includes('praktik kerja') ||
+            mapelNameLower.includes('gtm') ||
+            mapelNameLower.includes('pdtm') ||
+            mapelNameLower.includes('dptm') ||
+            mapelNameLower.includes('gambar teknik') ||
+            mapelNameLower.includes('pemesinan') ||
+            mapelNameLower.includes('otomotif') ||
+            mapelNameLower.includes('pengelasan') ||
+            mapelNameLower.includes('elektronika')
+          ))
+        ) {
+          groupCategory = 'Mata Pelajaran Kejuruan';
+        }
+        // Priority 4: Default ke Mata Pelajaran Umum
+        else {
+          groupCategory = 'Mata Pelajaran Umum';
+        }
       }
 
-      if (!groupedMapel.has(group)) {
-        groupedMapel.set(group, []);
+      if (!groupedMapel.has(groupCategory)) {
+        groupedMapel.set(groupCategory, []);
       }
-      groupedMapel.get(group)!.push(n);
+      groupedMapel.get(groupCategory)!.push(n);
     });
 
     const tableRows: any[] = [];
-    const groupOrder = ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
-    const sortedGroups = Array.from(groupedMapel.keys()).sort((a, b) => {
-      const idxA = groupOrder.findIndex(g => a.toLowerCase().includes(g.toLowerCase()));
-      const idxB = groupOrder.findIndex(g => b.toLowerCase().includes(g.toLowerCase()));
-      return (idxA !== -1 ? idxA : 99) - (idxB !== -1 ? idxB : 99);
-    });
+    const standardOrder = isLegacyEra
+      ? ['Kelompok Umum', 'Kelompok Kejuruan']
+      : ['Mata Pelajaran Umum', 'Mata Pelajaran Kejuruan', 'Mata Pelajaran Pilihan', 'Muatan Lokal'];
 
-    sortedGroups.forEach((groupName) => {
-      const items = groupedMapel.get(groupName) || [];
+    // Hanya ambil kelompok yang ada datanya
+    const activeGroups = standardOrder.filter((grp) => (groupedMapel.get(grp) || []).length > 0);
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+    activeGroups.forEach((groupCategory, groupIdx) => {
+      const items = groupedMapel.get(groupCategory) || [];
+      const letterPrefix = letters[groupIdx] ? `${letters[groupIdx]}. ` : '';
+      const displayTitle = `${letterPrefix}${groupCategory}`;
 
       // Urutkan mapel secara presisi sesuai urutan baku e-Rapor Multi-Jenjang
       items.sort((a, b) => {
-        const pA = getMapelCanonicalPriority(a.mapel_name || '', groupName, jenjang, a.urutan);
-        const pB = getMapelCanonicalPriority(b.mapel_name || '', groupName, jenjang, b.urutan);
+        const pA = getMapelCanonicalPriority(a.mapel_name || '', groupCategory, jenjang, a.urutan);
+        const pB = getMapelCanonicalPriority(b.mapel_name || '', groupCategory, jenjang, b.urutan);
         if (pA !== pB) return pA - pB;
         return (a.mapel_name || '').localeCompare(b.mapel_name || '');
       });
 
       tableRows.push([
         {
-          content: groupName,
+          content: displayTitle,
           colSpan: 4,
           styles: {
             fontStyle: 'bold',
