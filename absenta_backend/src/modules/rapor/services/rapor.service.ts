@@ -208,6 +208,11 @@ export class RaporService {
       predikat: string;
       catatan_kompetensi?: string;
       urutan?: number;
+      sumatif_1?: number | null;
+      sumatif_2?: number | null;
+      sumatif_3?: number | null;
+      rata_rata_sumatif?: number | null;
+      nilai_akhir_sumatif?: number | null;
     }> = {};
 
     // Map nama mapel ternormalisasi -> primary mapel_id untuk mencegah duplikasi jika ada duplikat di DB
@@ -245,6 +250,11 @@ export class RaporService {
         predikat: '-',
         catatan_kompetensi: '',
         urutan,
+        sumatif_1: null,
+        sumatif_2: null,
+        sumatif_3: null,
+        rata_rata_sumatif: null,
+        nilai_akhir_sumatif: null,
       };
       return mId;
     };
@@ -281,6 +291,11 @@ export class RaporService {
         if (note) {
           mapelGrades[primaryId].catatan_kompetensi = note;
         }
+        if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[primaryId].sumatif_1 = n.sumatif_1;
+        if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[primaryId].sumatif_2 = n.sumatif_2;
+        if (n.sumatif_3 !== null && n.sumatif_3 !== undefined) mapelGrades[primaryId].sumatif_3 = n.sumatif_3;
+        if (n.rata_rata_sumatif !== null && n.rata_rata_sumatif !== undefined) mapelGrades[primaryId].rata_rata_sumatif = n.rata_rata_sumatif;
+        if (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined) mapelGrades[primaryId].nilai_akhir_sumatif = n.nilai_akhir_sumatif;
       } else if (strukturList.length === 0) {
         // Fallback darurat HANYA jika sekolah sama sekali belum mengonfigurasi StrukturKurikulum
         if (!mapelGrades[n.mapel_id] && n.Mapel) {
@@ -303,6 +318,11 @@ export class RaporService {
           if (note) {
             mapelGrades[targetId].catatan_kompetensi = note;
           }
+          if (n.sumatif_1 !== null && n.sumatif_1 !== undefined) mapelGrades[targetId].sumatif_1 = n.sumatif_1;
+          if (n.sumatif_2 !== null && n.sumatif_2 !== undefined) mapelGrades[targetId].sumatif_2 = n.sumatif_2;
+          if (n.sumatif_3 !== null && n.sumatif_3 !== undefined) mapelGrades[targetId].sumatif_3 = n.sumatif_3;
+          if (n.rata_rata_sumatif !== null && n.rata_rata_sumatif !== undefined) mapelGrades[targetId].rata_rata_sumatif = n.rata_rata_sumatif;
+          if (n.nilai_akhir_sumatif !== null && n.nilai_akhir_sumatif !== undefined) mapelGrades[targetId].nilai_akhir_sumatif = n.nilai_akhir_sumatif;
         }
       }
     });

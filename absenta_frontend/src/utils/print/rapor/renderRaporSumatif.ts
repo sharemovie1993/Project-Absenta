@@ -107,17 +107,32 @@ export const renderOfficialSumatifPage = (
 
   const buildRow = (m: any, idx: number) => {
     let rincianText = '';
-    if (m.nilai_components && Array.isArray(m.nilai_components) && m.nilai_components.length > 0) {
-      rincianText = m.nilai_components
-        .map((c: any) => `Nilai  :  ${c.nilai ?? ''}`)
-        .join('   ,   ');
+    const hasSumatif = m.sumatif_1 != null || m.sumatif_2 != null || m.sumatif_3 != null;
+
+    if (hasSumatif) {
+      const s1 = m.sumatif_1 != null ? String(m.sumatif_1) : '';
+      const s2 = m.sumatif_2 != null ? String(m.sumatif_2) : '';
+      const s3 = m.sumatif_3 != null ? String(m.sumatif_3) : '';
+      rincianText = `Nilai  :  ${s1}   ,   Nilai  :  ${s2}   ,   Nilai  :  ${s3}`;
+    } else if (m.nilai_components && Array.isArray(m.nilai_components) && m.nilai_components.length > 0) {
+      if (m.nilai_components.length === 1) {
+        const val = m.nilai_components[0]?.nilai ?? m.nilai_akhir ?? '';
+        rincianText = `Nilai  :  ${val}   ,   Nilai  :     ,   Nilai  :  `;
+      } else {
+        rincianText = m.nilai_components
+          .map((c: any) => `Nilai  :  ${c.nilai ?? ''}`)
+          .join('   ,   ');
+      }
     } else if (m.nilai_akhir && m.nilai_akhir > 0) {
-      rincianText = `Nilai  :  ${m.nilai_akhir}`;
+      rincianText = `Nilai  :  ${m.nilai_akhir}   ,   Nilai  :     ,   Nilai  :  `;
     } else {
-      rincianText = '-';
+      rincianText = 'Nilai  :     ,   Nilai  :     ,   Nilai  :  ';
     }
 
-    const rerata = m.nilai_akhir && m.nilai_akhir > 0 ? String(m.nilai_akhir) : '-';
+    const rerata = m.rata_rata_sumatif != null && m.rata_rata_sumatif > 0
+      ? String(Math.round(m.rata_rata_sumatif))
+      : (m.nilai_akhir && m.nilai_akhir > 0 ? String(Math.round(m.nilai_akhir)) : '-');
+
     return [idx + 1, m.mapel_name || '-', rerata, rincianText];
   };
 
