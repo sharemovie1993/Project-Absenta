@@ -222,7 +222,15 @@ export const renderStudentRaporPages = (
     startDoc.setFont(font, 'normal');
     startDoc.text('Alamat', leftColX, leftY);
     startDoc.text(':', leftColX + colValOffset - 2, leftY);
-    const alamatLines = startDoc.splitTextToSize(alamatSekolah, maxLeftValWidth);
+
+    let formattedAlamat = (alamatSekolah || '-').trim();
+    if (/(?:,\s*|\s+)(?=(?:Kab\.|Kabupaten|Kota\b))/i.test(formattedAlamat)) {
+      formattedAlamat = formattedAlamat.replace(/(?:,\s*|\s+)(?=(?:Kab\.|Kabupaten|Kota\b))/i, (match) => {
+        return match.includes(',') ? ',\n' : '\n';
+      });
+    }
+
+    const alamatLines = startDoc.splitTextToSize(formattedAlamat, maxLeftValWidth);
     startDoc.text(alamatLines, leftColX + colValOffset, leftY);
     leftY += Math.max(alamatLines.length * 4.0, 4.2);
 
