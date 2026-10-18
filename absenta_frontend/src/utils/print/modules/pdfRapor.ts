@@ -901,7 +901,7 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
     '';
 
   // 3. Create PDF document & render 2 pages
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
   renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings, fontFamily);
 
@@ -1052,7 +1052,7 @@ export const generateP5RaporPdf = async (options: PrintRaporOptions): Promise<{ 
   if (daerahUrl) logoDaerahBase64 = await getBase64ImageFromUrl(daerahUrl).catch(() => null);
   if (logoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(logoUrl).catch(() => null);
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   renderOfficialP5Page(
     doc,
     allP5,
@@ -1101,7 +1101,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
   const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
 
   // 2. Initialize single jsPDF document for entire class
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
   let renderedCount = 0;
   let lastError: any = null;
@@ -1162,7 +1162,7 @@ export const generateP5KelasBatchPdf = async (options: PrintRaporBatchOptions): 
   if (daerahUrl) logoDaerahBase64 = await getBase64ImageFromUrl(daerahUrl).catch(() => null);
   if (logoUrl) logoSekolahBase64 = await getBase64ImageFromUrl(logoUrl).catch(() => null);
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   let renderedCount = 0;
   let lastError: any = null;
 
@@ -1225,13 +1225,54 @@ const DEFAULT_JABAR_LOGO_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(
   `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg"><path d="M50 5 C75 5, 92 18, 92 48 C92 82, 68 108, 50 115 C32 108, 8 82, 8 48 C8 18, 25 5, 50 5 Z" fill="#057835" stroke="#FFD700" stroke-width="4"/><path d="M50 18 C52 24, 55 35, 50 50 C46 38, 48 24, 50 18 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1.5"/><circle cx="50" cy="30" r="3" fill="#FFFFFF"/><path d="M30 45 C30 25, 45 20, 50 20 C55 20, 70 25, 70 45 C70 65, 55 75, 50 75 C45 75, 30 65, 30 45 Z" stroke="#FFD700" stroke-width="2" stroke-dasharray="3,3" fill="none"/><path d="M20 78 C30 92, 42 98, 50 100 C58 98, 70 92, 80 78 Z" fill="#002D62"/><rect x="28" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="44" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="60" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="36" y="86" width="8" height="6" fill="#FFFFFF"/><rect x="52" y="86" width="8" height="6" fill="#FFFFFF"/><path d="M15 102 C30 112, 70 112, 85 102 C80 115, 20 115, 15 102 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1"/></svg>`
 );
 
+const downscaleCanvasImage = (img: HTMLImageElement, maxDim = 500): string | null => {
+  try {
+    const naturalW = img.naturalWidth || img.width || 200;
+    const naturalH = img.naturalHeight || img.height || 200;
+    let targetW = naturalW;
+    let targetH = naturalH;
+    if (targetW > maxDim || targetH > maxDim) {
+      if (targetW >= targetH) {
+        targetH = Math.max(1, Math.round((targetH * maxDim) / targetW));
+        targetW = maxDim;
+      } else {
+        targetW = Math.max(1, Math.round((targetW * maxDim) / targetH));
+        targetH = maxDim;
+      }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, targetW, targetH);
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('Image downscaling failed:', err);
+    return null;
+  }
+};
+
 const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<string | null> => {
   if (!url || !url.trim()) return null;
   const trimmed = url.trim();
 
   // If already base64 data URL
-  if (trimmed.startsWith('data:image/png') || trimmed.startsWith('data:image/jpeg')) {
-    return trimmed;
+  if (trimmed.startsWith('data:image/png') || trimmed.startsWith('data:image/jpeg') || trimmed.startsWith('data:image/webp')) {
+    if (trimmed.length < 100000) {
+      return trimmed;
+    }
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scaled = downscaleCanvasImage(img, 500);
+        resolve(scaled || trimmed);
+      };
+      img.onerror = () => resolve(trimmed);
+      img.src = trimmed;
+    });
   }
 
   // Handle SVG data URI by rendering to canvas PNG
@@ -1239,20 +1280,8 @@ const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || 200;
-          canvas.height = img.naturalHeight || 240;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/png'));
-          } else {
-            resolve(null);
-          }
-        } catch {
-          resolve(null);
-        }
+        const scaled = downscaleCanvasImage(img, 500);
+        resolve(scaled);
       };
       img.onerror = () => resolve(null);
       img.src = trimmed;
@@ -1264,21 +1293,8 @@ const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || img.width || 200;
-        canvas.height = img.naturalHeight || img.height || 200;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/png'));
-        } else {
-          resolve(null);
-        }
-      } catch (err) {
-        console.warn('Canvas export failed, falling back:', err);
-        resolve(null);
-      }
+      const scaled = downscaleCanvasImage(img, 500);
+      resolve(scaled);
     };
     img.onerror = () => resolve(null);
     img.src = trimmed;
@@ -1287,8 +1303,21 @@ const resolveCoverImageBase64 = async (url: string | null | undefined): Promise<
   if (fromCanvas) return fromCanvas;
 
   // 2. Fallback via getBase64ImageFromUrl
-  return getBase64ImageFromUrl(trimmed).catch(() => null);
+  const rawBase64 = await getBase64ImageFromUrl(trimmed).catch(() => null);
+  if (rawBase64 && rawBase64.length > 100000) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scaled = downscaleCanvasImage(img, 500);
+        resolve(scaled || rawBase64);
+      };
+      img.onerror = () => resolve(rawBase64);
+      img.src = rawBase64;
+    });
+  }
+  return rawBase64;
 };
+
 
 let cachedCambriaRegular: string | null = null;
 let cachedCambriaBold: string | null = null;
@@ -1361,7 +1390,7 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
 
   if (opts.topLogoBase64) {
     try {
-      doc.addImage(opts.topLogoBase64, 'PNG', topLogoX, topLogoY, topLogoW, topLogoH);
+      doc.addImage(opts.topLogoBase64, 'PNG', topLogoX, topLogoY, topLogoW, topLogoH, 'cover_top_logo', 'FAST');
     } catch (e) {
       console.warn('Failed rendering top logo on cover:', e);
     }
@@ -1382,7 +1411,7 @@ const renderOfficialCoverRaporPage = (doc: jsPDF, opts: RenderCoverRaporOptions)
 
   if (opts.midLogoBase64) {
     try {
-      doc.addImage(opts.midLogoBase64, 'PNG', midLogoX, midLogoY, midLogoW, midLogoH);
+      doc.addImage(opts.midLogoBase64, 'PNG', midLogoX, midLogoY, midLogoW, midLogoH, 'cover_mid_logo', 'FAST');
     } catch {
       doc.setDrawColor(100, 116, 139);
       doc.setLineWidth(0.6);
@@ -1509,7 +1538,7 @@ export const generateCoverRaporPdf = async (options: {
     resolveCoverImageBase64(logoSekolahUrl),
   ]);
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
 
   const namaSiswa = (siswa.nama_siswa || siswa.nama || siswaDirect?.nama_siswa || siswaDirect?.nama || '-').toUpperCase();
@@ -1782,7 +1811,7 @@ export const generateBiodataSiswaPdf = async (options: {
   };
   const kota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
 
   // ── HALAMAN 1: COVER / SAMPUL RESMI RAPOR (MERGER KE BIODATA) ──
@@ -1857,7 +1886,7 @@ export const generateBiodataKelasBatchPdf = async (options: PrintRaporBatchOptio
     resolveCoverImageBase64(logoSekolahUrl),
   ]);
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
   let renderedCount = 0;
   let lastError: any = null;
@@ -1956,7 +1985,7 @@ export const generateBundelRaporKelasBatchPdf = async (options: PrintRaporBatchO
     resolveCoverImageBase64(logoSekolahUrl),
   ]);
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const fontFamily = await ensureCambriaFont(doc);
   let renderedCount = 0;
   let lastError: any = null;
@@ -2052,7 +2081,7 @@ export const generateLegerPdf = async (options: {
     throw new Error('Gagal memuat data buku leger dari server.');
   }
 
-  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = 297;
   const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SMKN 1 PLERED';
   const effectiveKota = sekolah?.kota || tenantInfo?.city || 'Purwakarta';
@@ -2531,7 +2560,7 @@ export const generateRaporSumatifPdf = async (options: PrintRaporOptions): Promi
 
   if (!raporData) throw new Error('Data rapor sumatif tidak ditemukan.');
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   renderOfficialSumatifPage(doc, raporData, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true);
 
   const siswa = raporData.siswa || {};
@@ -2557,7 +2586,7 @@ export const generateRaporSumatifKelasBatchPdf = async (options: PrintRaporBatch
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   let renderedCount = 0;
   let lastError: any = null;
 
@@ -2609,7 +2638,7 @@ export const generateTranskripPdf = async (options: {
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? ((tenantRes.value as any)?.data || tenantRes.value) : null;
 
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = 210;
   const siswa = transkripData?.siswa || {};
   const namaSekolah = sekolah?.nama || tenantInfo?.name || 'SEKOLAH';
