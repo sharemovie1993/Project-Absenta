@@ -821,6 +821,13 @@ export const renderStudentRaporPages = (
   doc.text('......................................................', 25, y, { align: 'left' });
   doc.setFont('Helvetica', 'bold');
   doc.text(waliKelasNama, pageWidth - 25, y, { align: 'right' });
+
+  // Underline nama Wali Kelas
+  const walasWidth = doc.getTextWidth(waliKelasNama);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.line(pageWidth - 25 - walasWidth, y + 0.8, pageWidth - 25, y + 0.8);
+
   doc.setFont('Helvetica', 'normal');
   doc.text(waliKelasNip, pageWidth - 25, y + 4.5, { align: 'right' });
 
@@ -831,6 +838,14 @@ export const renderStudentRaporPages = (
   y += 20;
   doc.setFont('Helvetica', 'bold');
   doc.text(kepalaSekolahNama, pageWidth / 2, y, { align: 'center' });
+
+  // Underline nama Kepala Sekolah
+  const kepsekWidth = doc.getTextWidth(kepalaSekolahNama);
+  const kepsekStartX = (pageWidth / 2) - (kepsekWidth / 2);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.line(kepsekStartX, y + 0.8, kepsekStartX + kepsekWidth, y + 0.8);
+
   doc.setFont('Helvetica', 'normal');
   doc.text(`NIP. ${kepalaSekolahNip}`, pageWidth / 2, y + 4.5, { align: 'center' });
 };
