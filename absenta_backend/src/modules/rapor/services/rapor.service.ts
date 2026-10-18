@@ -361,7 +361,49 @@ export class RaporService {
       else if (st === 'ALPA' || st === 'A') referensiAbsensiHarian.alpa += count;
     });
 
-    // 7. Seluruh mapel yang terhubung ke rombel disajikan lengkap terlepas sudah dinilai atau belum
+    // 7. Resolusi Nama & NIP Wali Kelas Aktif untuk rombel ini
+    let walasNama = 'Wali Kelas';
+    let walasNip = '-';
+
+    if (effectiveKelas?.id) {
+      const waliAssignment = await prisma.organizationalAssignment.findFirst({
+        where: {
+          tenant_id: tenantId,
+          kelas_id: effectiveKelas.id,
+          is_active: true,
+          Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
+        },
+        include: {
+          User: {
+            include: {
+              Guru: true,
+            },
+          },
+        },
+      });
+
+      if (waliAssignment?.User?.Guru) {
+        walasNama = waliAssignment.User.Guru.nama_guru;
+        walasNip = waliAssignment.User.Guru.nip || '-';
+      } else if (waliAssignment?.User?.full_name) {
+        walasNama = waliAssignment.User.full_name;
+        walasNip = '-';
+      } else {
+        // Fallback dari RaporStagingSheet jika ada histori impor
+        const stagingSheet = await prisma.raporStagingSheet.findFirst({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: effectiveKelas.id,
+            wali_kelas_nama: { not: null },
+          },
+          orderBy: { updated_at: 'desc' },
+        });
+        if (stagingSheet?.wali_kelas_nama) {
+          walasNama = stagingSheet.wali_kelas_nama;
+        }
+      }
+    }
+
     const finalAkademikList = Object.values(mapelGrades);
 
     return {
@@ -411,6 +453,12 @@ export class RaporService {
       catatan_kokurikuler: kokurikulerCfg?.value || '',
       tampilkan_kokurikuler: raporSettings?.tampilkan_kokurikuler ?? true,
       rapor_settings: raporSettings,
+      wali_kelas_nama: walasNama,
+      wali_kelas_nip: walasNip,
+      wali_kelas: {
+        nama: walasNama,
+        nip: walasNip,
+      },
       semester: semRecord
         ? {
             id: semRecord.id,

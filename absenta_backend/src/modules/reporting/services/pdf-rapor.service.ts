@@ -76,7 +76,7 @@ export class PdfRaporService {
           tenant_id: tenantId,
           kelas_id: kelasId,
           is_active: true,
-          Position: { code: 'WALIKELAS' },
+          Position: { OR: [{ code: 'WALIKELAS' }, { name: { contains: 'Wali', mode: 'insensitive' } }] },
         },
         include: {
           User: {
@@ -93,6 +93,19 @@ export class PdfRaporService {
       } else if (waliAssignment?.User?.full_name) {
         walasNama = waliAssignment.User.full_name;
         walasNip = 'NIP. -';
+      } else {
+        const stagingSheet = await prisma.raporStagingSheet.findFirst({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: kelasId,
+            wali_kelas_nama: { not: null },
+          },
+          orderBy: { updated_at: 'desc' },
+        });
+        if (stagingSheet?.wali_kelas_nama) {
+          walasNama = stagingSheet.wali_kelas_nama;
+          walasNip = 'NIP. -';
+        }
       }
     }
 

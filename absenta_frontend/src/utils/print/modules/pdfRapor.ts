@@ -791,8 +791,11 @@ export const renderStudentRaporPages = (
 
   const kepalaSekolahNama = effectiveSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
   const kepalaSekolahNip = effectiveSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
-  const waliKelasNama = data?.wali_kelas_nama || 'Wali Kelas';
-  const waliKelasNip = data?.wali_kelas_nip ? `NIP. ${data.wali_kelas_nip}` : 'NIP. -';
+  const waliKelasNama = data?.wali_kelas_nama || data?.wali_kelas?.nama || data?.walas?.nama || 'Wali Kelas';
+  const rawWalasNip = data?.wali_kelas_nip || data?.wali_kelas?.nip || data?.walas?.nip;
+  const waliKelasNip = rawWalasNip && rawWalasNip !== '-' 
+    ? (rawWalasNip.startsWith('NIP.') ? rawWalasNip : `NIP. ${rawWalasNip}`)
+    : 'NIP. -';
 
   // Row 1: Orang Tua & Wali Kelas
   doc.setFont('Helvetica', 'normal');
