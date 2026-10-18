@@ -1,11 +1,11 @@
-import React, { useMemo, useState, useCallback, lazy, Suspense } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, UserCheck, Sparkles } from 'lucide-react';
+import React, { useMemo, useState, useCallback, useRef, useEffect, lazy, Suspense } from 'react';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { GraduationCap, Layers } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard } from '../../components/ui/SectionCard';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { SearchableSelectOption } from '../../components/ui/SearchableSelect';
+import { TabOption } from '../../components/ui/TabSwitcher';
 import { raporApi } from '../../api/rapor.api';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -17,25 +17,24 @@ import { useJenjang } from '../../hooks/useJenjang';
 import { useGuruMe } from '../../hooks/useGuruMe';
 import { useRekapBulananSiswa } from '../../hooks/attendance/useRekapAbsensi';
 import { toast } from 'sonner';
-import { generateRaporPdf, generateP5RaporPdf, generateRaporKelasBatchPdf } from '../../utils/print/modules/pdfRapor';
 import { useRaporPdf } from '../../hooks/useRaporPdf';
+import type { InstructionData } from '../../contexts/InstructionContext';
 
-// Import Hardened Types, Subcomponents & Schemas
+// Import Hardened Types, Subcomponents & Custom Hooks
 import {
   LegerStudent,
   RawStudent,
   RawLegerEntry,
-  SummaryFormData,
-  SummaryFormSchema,
   AcademicYear,
   Semester,
   TranskripNilaiData,
 } from '../../types/cetakRapor.types';
 import { LegerStudentTable } from '../../components/rapor/cetak-rapor/LegerStudentTable';
-import { ClassSubjectProgressCard } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
 import { CetakRaporHeaderCard } from '../../components/rapor/cetak-rapor/CetakRaporHeaderCard';
 import { useRaporPklPrint, KelasOptionItem } from '../../components/rapor/cetak-rapor/useRaporPklPrint';
-import { useRaporRenderStore } from '../../store/raporRenderStore';
+import { useRaporSummaryManager } from '../../components/rapor/cetak-rapor/useRaporSummaryManager';
+import { useCetakRaporActions } from '../../components/rapor/cetak-rapor/useCetakRaporActions';
+import type { ClassSubjectProgressData } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
 
 // Lazy-loaded modals for architectural compliance & performance
 const RaporSummaryModal = lazy(() =>
@@ -50,35 +49,64 @@ const SertifikatPklModal = lazy(() =>
 const RaporRenderProgressModal = lazy(() =>
   import('../../components/rapor/cetak-rapor/RaporRenderProgressModal').then((m) => ({ default: m.RaporRenderProgressModal }))
 );
+const MonitoringMapelRombelModal = lazy(() =>
+  import('../../components/rapor/input-nilai/MonitoringMapelRombelModal').then((m) => ({ default: m.MonitoringMapelRombelModal }))
+);
+
+// ── Smart Session & Context Persistence Constants ──
+const CETAK_RAPOR_SESSION_KEY = 'absenta_rapor_cetak_context';
+
+interface SavedCetakContext {
+  tab?: 'wali_kelas' | 'supervisi';
+  kelasId?: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+}
+
+const getSavedCetakContext = (): SavedCetakContext | null => {
+  try {
+    const raw = sessionStorage.getItem(CETAK_RAPOR_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveCetakContext = (ctx: SavedCetakContext) => {
+  try {
+    sessionStorage.setItem(CETAK_RAPOR_SESSION_KEY, JSON.stringify(ctx));
+  } catch {}
+};
+
+// Static Instruction Constant to eliminate infinite re-render loops
+const CETAK_RAPOR_INSTRUCTION: InstructionData = {
+  title: 'Panduan Cetak Rapor & Leger',
+  description: 'Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pencetakan lembar e-Rapor resmi.',
+  items: [
+    { text: 'Pilih Rombel / Kelas untuk merekap ranking leger dan absensi.' },
+    { text: 'Klik Catatan untuk mengisi catatan wali kelas dan status transisi.' },
+    { text: 'Gunakan Cetak Sekaligus untuk mengunduh seluruh rapor dalam 1 file PDF.' },
+    { text: 'Ekspor Leger ke spreadsheet Excel untuk kebutuhan arsip dan administrasi.' },
+  ],
+};
+
+interface ExtendedUserContext {
+  guru_profile?: {
+    wali_kelas_di?: {
+      id?: string;
+    };
+  };
+  wali_kelas_kelas_id?: string;
+  kelas_id?: string;
+  assigned_kelas_id?: string;
+}
 
 export default React.memo(function CetakRaporPage() {
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isCurrentRoute = location.pathname.toLowerCase().replace(/\/$/, '') === '/rapor/cetak';
   const { isHomeroomTeacher, isKurikulum, isKepalaSekolah, isAdmin, walikelasKelas, walikelasKelasIds } = useCapabilities();
-
-  // ── URL Search Params ──
-  const [searchParams] = useSearchParams();
-  const kelasParam = searchParams.get('kelas_id') || searchParams.get('kelas') || '';
-  const tpParam = searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || '';
-  const semParam = searchParams.get('semester_id') || searchParams.get('sem_id') || '';
-
-  // ── State ──
-  const [selectedKelas, setSelectedKelas] = useState<string>(() => kelasParam);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<LegerStudent | null>(null);
-  const [summaryForm, setSummaryForm] = useState<SummaryFormData>({
-    sakit: 0,
-    izin: 0,
-    alpa: 0,
-    catatan_wali: '',
-    keputusan_transisi: '',
-    catatan_kokurikuler: '',
-  });
-  const [formErrors, setFormErrors] = useState<Partial<Record<keyof SummaryFormData, string>>>({});
-  const [pdfLoading, setPdfLoading] = useState<Record<string, boolean>>({});
-  const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
-  const [isBatchPrinting, setIsBatchPrinting] = useState(false);
+  const canSupervise = isAdmin || isKurikulum || isKepalaSekolah;
 
   // ── User Auth & Wali Kelas Operational Context ──
   const { user } = useAuthStore();
@@ -98,11 +126,86 @@ export default React.memo(function CetakRaporPage() {
     );
   }, [walikelasKelas, walikelasKelasIds, guruProfile, user]);
 
+  const waliKelasNama = walikelasKelas?.nama_kelas || (walikelasKelas as unknown as { nama?: string })?.nama || 'Kelas Binaan';
+  const hasWaliKelas = Boolean(userKelasId);
+
   // Wali Kelas murni: guru yang ditugaskan sebagai wali kelas tapi bukan admin/kurikulum/kepsek
   const isPureWaliKelas = useMemo(() => {
     if (isAdmin || isKurikulum || isKepalaSekolah) return false;
     return isHomeroomTeacher || Boolean(userKelasId);
   }, [isAdmin, isKurikulum, isKepalaSekolah, isHomeroomTeacher, userKelasId]);
+
+  // ── URL Search Params & Initial Context (Once-Only Guard) ──
+  const [searchParams, setSearchParams] = useSearchParams();
+  const lastSyncedParamsRef = useRef<string>('');
+
+  const initialContextRef = useRef<{
+    tab: 'wali_kelas' | 'supervisi';
+    kelasId: string;
+    tpId: string;
+    semId: string;
+  } | null>(null);
+
+  if (!initialContextRef.current) {
+    const saved = getSavedCetakContext();
+    const urlTab = searchParams.get('tab') as 'wali_kelas' | 'supervisi' | null;
+    let defaultTab: 'wali_kelas' | 'supervisi' = 'wali_kelas';
+    if (!hasWaliKelas && canSupervise) {
+      defaultTab = 'supervisi';
+    }
+    const validTab = urlTab && ['wali_kelas', 'supervisi'].includes(urlTab) ? urlTab : saved?.tab || defaultTab;
+
+    initialContextRef.current = {
+      tab: validTab,
+      kelasId: searchParams.get('kelas_id') || searchParams.get('kelas') || (validTab === 'wali_kelas' && userKelasId ? userKelasId : saved?.kelasId || ''),
+      tpId: searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || saved?.tahunPelajaranId || '',
+      semId: searchParams.get('semester_id') || searchParams.get('sem_id') || saved?.semesterId || '',
+    };
+  }
+
+  const initialContext = initialContextRef.current;
+
+  // ── State ──
+  const [activeRoleTab, setActiveRoleTab] = useState<'wali_kelas' | 'supervisi'>(initialContext.tab);
+  const [selectedKelas, setSelectedKelas] = useState<string>(initialContext.kelasId);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTranskripStudent, setSelectedTranskripStudent] = useState<LegerStudent | null>(null);
+  const [showMonitoringModal, setShowMonitoringModal] = useState(false);
+
+  // Tab Options (Disimplifikasi 1-2 kata agar kompak dan tidak overflow)
+  const tabOptions: TabOption[] = useMemo(() => {
+    const opts: TabOption[] = [];
+
+    if (hasWaliKelas) {
+      opts.push({
+        id: 'wali_kelas',
+        label: 'Kelas Binaan',
+        icon: GraduationCap,
+      });
+    }
+
+    if (canSupervise) {
+      opts.push({
+        id: 'supervisi',
+        label: 'Supervisi',
+        icon: Layers,
+      });
+    }
+
+    return opts;
+  }, [hasWaliKelas, canSupervise]);
+
+  const handleRoleTabChange = useCallback((id: string) => {
+    const newTab = id as 'wali_kelas' | 'supervisi';
+    setActiveRoleTab(newTab);
+
+    if (newTab === 'wali_kelas' && userKelasId) {
+      setSelectedKelas(userKelasId);
+      toast.info(`Beralih ke Kelas Binaan (${waliKelasNama})`);
+    } else if (newTab === 'supervisi') {
+      toast.info('Beralih ke Mode Supervisi Seluruh Rombel');
+    }
+  }, [userKelasId, waliKelasNama]);
 
   // ── Centralized System Hooks ──
   const { isJenjangSmk: hookIsSmk } = useJenjang();
@@ -114,35 +217,30 @@ export default React.memo(function CetakRaporPage() {
   const { rawList: studentList } = useSiswaOptions({
     kelasId: selectedKelas,
     onlyActive: false,
+    enabled: Boolean(selectedKelas),
   });
 
   const typedClassList = useMemo<KelasOptionItem[]>(() => {
     return (classList as unknown as KelasOptionItem[]) || [];
   }, [classList]);
 
-  // Auto-select class: prioritize URL param, then Wali Kelas assigned class, fallback to first class
-  React.useEffect(() => {
-    if (kelasParam && (typedClassList ?? []).some((k) => k.id === kelasParam)) {
-      setSelectedKelas(kelasParam);
+  // Auto-select class logic
+  useEffect(() => {
+    if (activeRoleTab === 'wali_kelas' && userKelasId) {
+      if (selectedKelas !== userKelasId) setSelectedKelas(userKelasId);
       return;
     }
-    if (userKelasId && (typedClassList ?? []).some((k) => k.id === userKelasId)) {
-      if (isPureWaliKelas) {
-        setSelectedKelas(userKelasId);
-        return;
-      }
-      if (!selectedKelas) {
-        setSelectedKelas(userKelasId);
-      }
-    } else if (!selectedKelas && (typedClassList ?? []).length > 0) {
+    if (!selectedKelas && (typedClassList ?? []).length > 0) {
       setSelectedKelas(typedClassList[0].id);
     }
-  }, [typedClassList, selectedKelas, userKelasId, isPureWaliKelas, kelasParam]);
+  }, [activeRoleTab, userKelasId, selectedKelas, typedClassList]);
 
   // ── Konteks Akademik (TP + Semester) — via hook reusable ──
   const {
     selectedTahunPelajaran,
+    setSelectedTahunPelajaran,
     selectedSemester,
+    setSelectedSemester,
     handleTpChange: handleAcademicTpChange,
     handleSemesterChange,
     tpOptions,
@@ -152,9 +250,85 @@ export default React.memo(function CetakRaporPage() {
     activeYear: academicActiveYear,
     activeSemester: academicActiveSemester,
   } = useAcademicContext({
-    initialTpId: tpParam,
-    initialSemId: semParam,
+    initialTpId: initialContext.tpId,
+    initialSemId: initialContext.semId,
   });
+
+  // ── Two-Way Reactive URL & Smart Session Persistence ──
+  useEffect(() => {
+    if (!isCurrentRoute) return;
+
+    const currentTab = activeRoleTab;
+    const currentKelas = selectedKelas;
+    const currentTp = selectedTahunPelajaran || academicActiveYear?.id || '';
+    const currentSem = selectedSemester || academicActiveSemester?.id || '';
+
+    // 1. Simpan konteks ke Session Storage
+    saveCetakContext({
+      tab: currentTab,
+      kelasId: currentKelas,
+      tahunPelajaranId: currentTp,
+      semesterId: currentSem,
+    });
+
+    // 2. Sinkronkan ke URL searchParams secara aman tanpa reload menggunakan functional updater
+    setSearchParams((prevParams) => {
+      const newParams = new URLSearchParams(prevParams);
+      if (currentTab) newParams.set('tab', currentTab);
+      else newParams.delete('tab');
+
+      if (currentKelas) newParams.set('kelas_id', currentKelas);
+      else newParams.delete('kelas_id');
+
+      if (currentTp) newParams.set('tahun_pelajaran_id', currentTp);
+      else newParams.delete('tahun_pelajaran_id');
+
+      if (currentSem) newParams.set('semester_id', currentSem);
+      else newParams.delete('semester_id');
+
+      // Hapus legacy params
+      newParams.delete('kelas');
+      newParams.delete('tp_id');
+      newParams.delete('sem_id');
+
+      const nextQueryString = newParams.toString();
+      if (prevParams.toString() === nextQueryString) {
+        return prevParams;
+      }
+      lastSyncedParamsRef.current = nextQueryString;
+      return newParams;
+    }, { replace: true });
+  }, [
+    isCurrentRoute,
+    activeRoleTab,
+    selectedKelas,
+    selectedTahunPelajaran,
+    selectedSemester,
+    academicActiveYear?.id,
+    academicActiveSemester?.id,
+    setSearchParams,
+  ]);
+
+  // Sinkronisasi state HANYA saat tombol Back/Forward browser ditekan (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get('tab') as 'wali_kelas' | 'supervisi' | null;
+      const urlKelas = params.get('kelas_id') || params.get('kelas') || '';
+      const urlTp = params.get('tahun_pelajaran_id') || params.get('tp_id') || '';
+      const urlSem = params.get('semester_id') || params.get('sem_id') || '';
+
+      if (urlTab && ['wali_kelas', 'supervisi'].includes(urlTab)) {
+        setActiveRoleTab(urlTab);
+      }
+      setSelectedKelas(urlKelas);
+      if (urlTp) setSelectedTahunPelajaran(urlTp);
+      if (urlSem) setSelectedSemester(urlSem);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setSelectedTahunPelajaran, setSelectedSemester]);
 
   const activeYear = useMemo<AcademicYear | null>(() => {
     if (!academicActiveYear) return null;
@@ -208,9 +382,6 @@ export default React.memo(function CetakRaporPage() {
     jurusanId: currentKelasObj?.jurusan_id || currentKelasObj?.jurusan?.id,
   });
 
-  // ── Rekap Absensi custom hook ──
-  const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id, undefined, activeYear?.id);
-
   // ── Leger query ──
   const { data: leger, isLoading: isLoadingLeger } = useQuery({
     queryKey: ['leger', selectedKelas, activeYear?.id, activeSemester?.id],
@@ -263,24 +434,36 @@ export default React.memo(function CetakRaporPage() {
     });
   }, [typedClassList, userKelasId, isPureWaliKelas]);
 
-  // ── Filtered students ──
+  // ── Filtered students with defensive optional chaining & strict typing ──
   const filteredStudents = useMemo<LegerStudent[]>(() => {
     if (!selectedKelas) return [];
 
-    const safeStudentList: RawStudent[] = Array.isArray(studentList) ? studentList : [];
     const safeLegerStudents: RawLegerEntry[] = Array.isArray(leger?.data?.students)
       ? (leger.data.students as RawLegerEntry[])
       : [];
+    const safeStudentList: RawStudent[] = Array.isArray(studentList) ? studentList : [];
 
-    const baseList: RawStudent[] =
-      safeStudentList.length > 0
-        ? safeStudentList
-        : (safeLegerStudents ?? [])?.map((ls) => ({
+    // Prioritaskan daftar siswa dari leger jika ada (karena leger menghormati konteks Tahun Pelajaran & Semester historis)
+    const baseList: Array<{
+      id: string;
+      nama_siswa?: string;
+      nama?: string;
+      nama_lengkap?: string;
+      nis?: string;
+      sakit?: number;
+      izin?: number;
+      alpa?: number;
+    }> =
+      safeLegerStudents.length > 0
+        ? (safeLegerStudents ?? [])?.map((ls) => ({
             id: ls.siswa_id ?? ls.id ?? '',
+            nama_siswa: ls.nama_siswa ?? ls.nama ?? '',
+            nis: ls.nis ?? '',
             sakit: ls.sakit,
             izin: ls.izin,
             alpa: ls.alpa,
-          }));
+          }))
+        : safeStudentList;
 
     if (!(baseList ?? []).length) return [];
 
@@ -289,10 +472,10 @@ export default React.memo(function CetakRaporPage() {
     return (baseList ?? [])
       ?.map((s): LegerStudent => {
         const found = (safeLegerStudents ?? [])?.find(
-          (ls) => ls.id === s.id || ls.siswa_id === s.id
+          (ls) => (ls.siswa_id ?? ls.id) === s.id
         );
-        const nama = s.nama_siswa ?? s.nama ?? s.nama_lengkap ?? '—';
-        const nis = s.nis ?? '—';
+        const nama = found?.nama_siswa ?? s.nama_siswa ?? s.nama ?? s.nama_lengkap ?? '—';
+        const nis = found?.nis ?? s.nis ?? '—';
         return {
           id: s.id,
           nama_siswa: nama,
@@ -316,249 +499,42 @@ export default React.memo(function CetakRaporPage() {
       });
   }, [selectedKelas, studentList, leger, searchQuery]);
 
-  // ── Summary mutation ──
-  const summaryMutation = useMutation({
-    mutationFn: raporApi.upsertRaporSummary,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leger'] });
-      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
-      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
-      toast.success('Rekap absensi & catatan wali kelas berhasil disimpan');
-      setIsSummaryModalOpen(false);
-    },
-    onError: (err: Error) => {
-      toast.error(`Gagal menyimpan catatan: ${err.message}`);
-    },
+  // ── Custom Hook: Summary & Form Validation Manager ──
+  const {
+    isSummaryModalOpen,
+    setIsSummaryModalOpen,
+    selectedStudent,
+    summaryForm,
+    formErrors,
+    handleOpenSummaryModal,
+    handleSummaryFormChange,
+    handleSummarySubmit,
+    isSavingSummary,
+  } = useRaporSummaryManager({
+    selectedKelas,
+    activeYear,
+    activeSemester,
   });
 
-  const handleOpenSummaryModal = useCallback((student: LegerStudent) => {
-    setSelectedStudent(student);
-    setSummaryForm({
-      sakit: student.sakit ?? 0,
-      izin: student.izin ?? 0,
-      alpa: student.alpa ?? 0,
-      catatan_wali: student.catatan_wali ?? '',
-      keputusan_transisi: student.keputusan_transisi ?? '',
-      catatan_kokurikuler: student.catatan_kokurikuler ?? '',
-    });
-    setFormErrors({});
-    setIsSummaryModalOpen(true);
-  }, []);
+  // ── Rekap Absensi custom hook untuk modal summary ──
+  const { data: rekapSiswaData } = useRekapBulananSiswa(selectedStudent?.id, undefined, activeYear?.id);
 
-  const handleSummaryFormChange = useCallback((field: keyof SummaryFormData, val: string | number) => {
-    setSummaryForm((prev) => ({ ...prev, [field]: val }));
-    setFormErrors((prev) => ({ ...prev, [field]: undefined }));
-  }, []);
-
-  const handleSummarySubmit = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!selectedStudent || !activeYear?.id || !activeSemester?.id) {
-        toast.error('Data kelas / semester belum lengkap');
-        return;
-      }
-      const validation = SummaryFormSchema.safeParse(summaryForm);
-      if (!validation.success) {
-        const errors: Partial<Record<keyof SummaryFormData, string>> = {};
-        (validation.error.errors ?? []).forEach((err) => {
-          if (err.path[0]) {
-            errors[err.path[0] as keyof SummaryFormData] = err.message;
-          }
-        });
-        setFormErrors(errors);
-        toast.error('Mohon periksa kembali input form Anda');
-        return;
-      }
-
-      summaryMutation.mutate({
-        siswa_id: selectedStudent.id,
-        kelas_id: selectedKelas,
-        tahun_pelajaran_id: activeYear.id,
-        semester_id: activeSemester.id,
-        sakit: validation.data.sakit,
-        izin: validation.data.izin,
-        alpa: validation.data.alpa,
-        catatan_wali: validation.data.catatan_wali,
-        keputusan_transisi: validation.data.keputusan_transisi,
-        catatan_kokurikuler: validation.data.catatan_kokurikuler,
-      });
-    },
-    [selectedStudent, activeYear, activeSemester, summaryForm, selectedKelas, summaryMutation]
-  );
-
-  const handlePrintRapor = useCallback(
-    async (student: LegerStudent) => {
-      if (!activeYear?.id || !activeSemester?.id) {
-        toast.error('Tahun pelajaran / semester belum tersedia');
-        return;
-      }
-      const key = `rapor_${student.id}`;
-      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
-      setPdfLoading((prev) => ({ ...prev, [key]: true }));
-      startRender(`Rapor Semester - ${student.nama_siswa}`, 1, `Mengambil data capaian ${student.nama_siswa}...`);
-      updateProgress({ stage: 'fetching', progressPercent: 25 });
-      try {
-        updateProgress({ stage: 'processing', stageText: 'Menyusun narasi Capaian Pembelajaran & nilai...', progressPercent: 60 });
-        const { blobUrl, filename } = await generateRaporPdf({
-          siswaId: student.id,
-          tahunPelajaranId: activeYear.id,
-          semesterId: activeSemester.id,
-          tahunPelajaranNama: activeYear.nama ?? '',
-          semesterNama: activeSemester.nama ?? '',
-        });
-        updateProgress({ stage: 'rendering', stageText: 'Merender tata letak 2 halaman PDF...', progressPercent: 90 });
-        finishRender(blobUrl, filename, `Rapor Semester ${student.nama_siswa} siap!`);
-        toast.success(`Pratinjau Rapor ${student.nama_siswa} dibuka di tab baru`);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        failRender(msg);
-        toast.error(`Gagal membuat PDF Rapor: ${msg}`);
-      } finally {
-        setPdfLoading((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-      }
-    },
-    [activeYear, activeSemester]
-  );
-
-  const handlePrintP5 = useCallback(
-    async (student: LegerStudent) => {
-      if (!activeYear?.id || !activeSemester?.id) {
-        toast.error('Tahun pelajaran / semester belum tersedia');
-        return;
-      }
-      const key = `p5_${student.id}`;
-      const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
-      setPdfLoading((prev) => ({ ...prev, [key]: true }));
-      startRender(`Rapor P5 - ${student.nama_siswa}`, 1, 'Mengambil dimensi & instrumen projek P5...');
-      updateProgress({ stage: 'fetching', progressPercent: 30 });
-      try {
-        updateProgress({ stage: 'processing', stageText: 'Menghitung capaian elemen profil kelulusan...', progressPercent: 65 });
-        const { blobUrl, filename } = await generateP5RaporPdf({
-          siswaId: student.id,
-          tahunPelajaranId: activeYear.id,
-          semesterId: activeSemester.id,
-          tahunPelajaranNama: activeYear.nama ?? '',
-          semesterNama: activeSemester.nama ?? '',
-        });
-        updateProgress({ stage: 'rendering', stageText: 'Merender tata letak matriks P5...', progressPercent: 90 });
-        finishRender(blobUrl, filename, `Rapor P5 ${student.nama_siswa} siap!`);
-        toast.success(`Pratinjau Rapor P5 ${student.nama_siswa} dibuka di tab baru`);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        failRender(msg);
-        toast.error(`Gagal membuat PDF P5: ${msg}`);
-      } finally {
-        setPdfLoading((prev) => {
-          const next = { ...prev };
-          delete next[key];
-          return next;
-        });
-      }
-    },
-    [activeYear, activeSemester]
-  );
-
-  const handleExportLeger = useCallback(async () => {
-    if (!selectedKelas || !activeYear?.id || !activeSemester?.id) {
-      toast.error('Pilih kelas, tahun pelajaran, dan semester terlebih dahulu');
-      return;
-    }
-    toast.info('Menyiapkan ekspor file Excel Leger Kelas...');
-    try {
-      const response = await raporApi.exportLegerBlob({
-        kelas_id: selectedKelas,
-        tahun_pelajaran_id: activeYear.id,
-        semester_id: activeSemester.id,
-      });
-
-      const blob = new Blob([response.data], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      const kelasName = currentKelasObj?.nama_kelas || currentKelasObj?.nama || 'Kelas';
-      const cleanTpName = activeYear.nama?.replace(/[/\\?%*:|"<>]/g, '-') || 'TP';
-      const cleanSemName = activeSemester.nama || 'Sem';
-      link.download = `Leger_${kelasName}_TP_${cleanTpName}_Sem_${cleanSemName}.xlsx`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
-      toast.success('File Excel Leger Kelas berhasil diunduh');
-    } catch (err: unknown) {
-      let msg = 'Gagal mengekspor file Excel Leger Kelas.';
-      const typedErr = err as {
-        response?: { data?: Blob | { message?: string } };
-        message?: string;
-      };
-      if (typedErr?.response?.data instanceof Blob) {
-        try {
-          const rawText = await typedErr.response.data.text();
-          const parsed = JSON.parse(rawText);
-          if (parsed?.message) {
-            msg = parsed.message;
-          }
-        } catch {
-          // Fallback to default
-        }
-      } else if (typeof typedErr?.response?.data === 'object' && typedErr?.response?.data !== null && 'message' in typedErr.response.data) {
-        msg = typedErr.response.data.message || msg;
-      } else if (typedErr?.message) {
-        msg = typedErr.message;
-      }
-      toast.error(msg);
-    }
-  }, [selectedKelas, activeYear, activeSemester, currentKelasObj]);
-
-  const handleBatchPrintRapor = useCallback(async () => {
-    if (!selectedKelas || !activeYear?.id || !activeSemester?.id) {
-      toast.error('Pilih kelas, tahun pelajaran, dan semester terlebih dahulu');
-      return;
-    }
-    if (!filteredStudents || filteredStudents.length === 0) {
-      toast.error('Tidak ada siswa di kelas ini untuk dicetak.');
-      return;
-    }
-    const { startRender, updateProgress, finishRender, failRender } = useRaporRenderStore.getState();
-    setIsBatchPrinting(true);
-    startRender('Kompilasi Rapor Sekelas', filteredStudents.length, `Menyiapkan kompilasi cetak massal ${filteredStudents.length} siswa...`);
-    updateProgress({ stage: 'fetching', progressPercent: 10 });
-    toast.info(`Memproses cetak massal ${filteredStudents.length} Rapor Siswa...`);
-    try {
-      const { blobUrl, filename } = await generateRaporKelasBatchPdf({
-        students: filteredStudents,
-        tahunPelajaranId: activeYear.id,
-        semesterId: activeSemester.id,
-        tahunPelajaranNama: activeYear.nama,
-        semesterNama: activeSemester.nama,
-        kelasNama: currentKelasObj?.nama_kelas || 'Sekelas',
-        onProgress: (current, total, studentName) => {
-          const percent = Math.min(99, 10 + Math.round((current / total) * 88));
-          updateProgress({
-            stage: 'rendering',
-            stageText: `Merender Rapor Siswa (${current}/${total})...`,
-            progressPercent: percent,
-            current,
-            total,
-            detail: `Siswa: ${studentName}`,
-          });
-        },
-      });
-      finishRender(blobUrl, filename, `Kompilasi Rapor Sekelas (${filteredStudents.length} Siswa) berhasil dibuat!`);
-      toast.success(`Pratinjau Rapor Sekelas (${filteredStudents.length} Siswa) dibuka di tab baru`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      failRender(msg);
-      toast.error(`Gagal membuat PDF Batch Rapor: ${msg}`);
-    } finally {
-      setIsBatchPrinting(false);
-    }
-  }, [selectedKelas, activeYear, activeSemester, filteredStudents, currentKelasObj]);
+  // ── Custom Hook: Cetak & Export Actions Manager ──
+  const {
+    pdfLoading,
+    setPdfLoading,
+    isBatchPrinting,
+    handlePrintRapor,
+    handlePrintP5,
+    handleExportLeger,
+    handleBatchPrintRapor,
+  } = useCetakRaporActions({
+    selectedKelas,
+    activeYear,
+    activeSemester,
+    currentKelasObj,
+    filteredStudents,
+  });
 
   // ── Hook Cetak Rapor PKL Terisolasi ──
   const { handlePrintRaporPkl, handleBatchPrintRaporPkl, handleOpenSertifikatPkl, isBatchPklPrinting } = useRaporPklPrint({
@@ -592,73 +568,16 @@ export default React.memo(function CetakRaporPage() {
       title="Leger Kelas & Cetakan Rapor"
       description="Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pratinjau PDF lembar e-Rapor resmi di tab baru."
       breadcrumbs={breadcrumbs}
-      instruction={{
-        title: 'Panduan Cetak Rapor & Leger',
-        description: 'Penyusunan ranking kelas, rekapitulasi absensi wali kelas, serta pencetakan lembar e-Rapor resmi.',
-        items: [
-          { text: 'Pilih Rombel / Kelas untuk merekap ranking leger dan absensi.' },
-          { text: 'Klik Ringkasan untuk mengisi catatan wali kelas dan status transisi.' },
-          { text: 'Gunakan Cetak Sekaligus untuk mengunduh seluruh rapor dalam 1 file PDF.' },
-          { text: 'Ekspor Leger ke spreadsheet Excel untuk kebutuhan arsip dan administrasi.' },
-        ],
-      }}
+      instruction={CETAK_RAPOR_INSTRUCTION}
       hardeningModuleKey="cetakraporpage"
-      topSlot={
-        <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
-          {/* Kiri: Dropdown TP & Semester + Navigasi Cepat Antarmuka e-Rapor */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <AcademicContextBar
-              id="cetak-rapor"
-              tahunPelajaranId={selectedTahunPelajaran}
-              semesterId={selectedSemester}
-              onTahunPelajaranChange={handleAcademicTpChange}
-              onSemesterChange={handleSemesterChange}
-              tpOptions={tpOptions}
-              semesterOptions={semesterOptions}
-              isLoadingTp={isLoadingTp}
-              isLoadingSem={isLoadingSem}
-              variant="toolbar"
-            />
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  `/rapor/input-nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
-                )
-              }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-              title="Buka Lembar Input Nilai e-Rapor"
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Lembar Input Nilai</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/kurikulum/wali-kelas')}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
-              title="Buka Hub Manajemen Wali Kelas"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="hidden sm:inline">Hub Wali Kelas</span>
-            </button>
-          </div>
-
-          {/* Kanan: Badge Kurikulum */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Kurikulum Merdeka</span>
-          </div>
-        </div>
-      }
     >
       <SectionCard fullWidth className="border-none shadow-none bg-transparent p-0">
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
-          {/* Selector Header Subcomponent */}
+        <div className="space-y-4 animate-in fade-in duration-500 pb-10 w-full max-w-full min-w-0">
+          {/* Unified Selector Header Card with Integrated Toolbar & Action Bar */}
           <CetakRaporHeaderCard
             selectedKelas={selectedKelas}
             onSelectKelas={setSelectedKelas}
+            activeRoleTab={activeRoleTab}
             kelasOptions={kelasOptions}
             isLoadingClasses={isLoadingClasses}
             selectedTahunPelajaran={selectedTahunPelajaran}
@@ -667,6 +586,10 @@ export default React.memo(function CetakRaporPage() {
             onSemesterChange={handleSemesterChange}
             tpOptions={tpOptions}
             semesterOptions={semesterOptions}
+            isLoadingTp={isLoadingTp}
+            isLoadingSem={isLoadingSem}
+            tabOptions={tabOptions}
+            onRoleTabChange={handleRoleTabChange}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
             hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
@@ -684,22 +607,13 @@ export default React.memo(function CetakRaporPage() {
             kurikulumStrukturListLength={kurikulumStrukturList?.length}
             kurikulumTotalJp={kurikulumTotalJp}
             modeCetakRapor={modeCetakRapor}
+            onOpenMonitoringModal={() => setShowMonitoringModal(true)}
             onNavigateInputNilai={() =>
               navigate(
-                `/rapor/input-nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+                `/rapor/nilai?kelas_id=${selectedKelas || ''}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
               )
             }
           />
-
-          {/* Monitoring Kelengkapan Nilai Mata Pelajaran Kelas Binaan */}
-          {selectedKelas && (
-            <ClassSubjectProgressCard
-              data={classProgressData}
-              isLoading={isLoadingClassProgress}
-              tahunPelajaranId={activeYear?.id}
-              semesterId={activeSemester?.id}
-            />
-          )}
 
           {/* Student List & Leger Table */}
           <LegerStudentTable
@@ -734,8 +648,29 @@ export default React.memo(function CetakRaporPage() {
             formErrors={formErrors}
             onFormChange={handleSummaryFormChange}
             onSubmit={handleSummarySubmit}
-            isSaving={summaryMutation.isPending}
+            isSaving={isSavingSummary}
             tampilkanKokurikuler={tampilkanKokurikuler}
+          />
+        </Suspense>
+
+        {/* Monitoring & Rincian Mapel Rombel Modal (Lazy-Loaded) */}
+        <Suspense fallback={null}>
+          <MonitoringMapelRombelModal
+            isOpen={showMonitoringModal}
+            onClose={() => setShowMonitoringModal(false)}
+            data={classProgressData}
+            isLoading={isLoadingClassProgress}
+            selectedKelas={selectedKelas}
+            kelasOptions={kelasOptions}
+            onSelectKelas={setSelectedKelas}
+            onSelectMapel={(mId, kId) => {
+              navigate(
+                `/rapor/nilai?kelas_id=${kId || selectedKelas}&mapel_id=${mId}&tahun_pelajaran_id=${selectedTahunPelajaran || ''}&semester_id=${selectedSemester || ''}`
+              );
+            }}
+            activeYearNama={activeYear?.nama}
+            activeSemesterNama={activeSemester?.nama}
+            kelasNama={currentKelasObj?.nama_kelas || waliKelasNama}
           />
         </Suspense>
 

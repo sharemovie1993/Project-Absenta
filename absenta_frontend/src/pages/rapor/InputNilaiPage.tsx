@@ -1,21 +1,22 @@
-import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import type { InstructionData } from '../../contexts/InstructionContext';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
-  Sparkles,
   Printer,
   UserCheck,
   BookOpen,
   Layers,
   GraduationCap,
-  Info
+  Info,
+  BarChart3
 } from 'lucide-react';
 import { TabSwitcher, TabOption } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
-import { SearchableSelectOption } from '../../components/ui/SearchableSelect';
+import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { AcademicContextBar } from '../../components/common/AcademicContextBar';
 import { raporApi } from '../../api/rapor.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
@@ -31,10 +32,9 @@ import { TeacherTaskItem, ClassItem, SubjectItem } from '../../types/inputNilai.
 // Subcomponents & Custom Hook
 import { TeacherProgressCard } from '../../components/rapor/input-nilai/TeacherProgressCard';
 import { ScoreGridTable } from '../../components/rapor/input-nilai/ScoreGridTable';
-import { SupervisiSelectorCard } from '../../components/rapor/input-nilai/SupervisiSelectorCard';
-import { WaliKelasSelectorCard } from '../../components/rapor/input-nilai/WaliKelasSelectorCard';
 import { useScoreSheetManager, ApiSiswaRecord, ApiGradeRecord } from '../../components/rapor/input-nilai/useScoreSheetManager';
-import { ClassSubjectItem } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
+import { ClassSubjectProgressData, ClassSubjectItem } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
+import { MonitoringMapelRombelModal } from '../../components/rapor/input-nilai/MonitoringMapelRombelModal';
 
 // Lazy Loaded Modal for Hardening Performance
 const ExcelPasteModal = lazy(() => import('../../components/rapor/input-nilai/ExcelPasteModal').then(m => ({ default: m.ExcelPasteModal })));
@@ -46,16 +46,79 @@ interface ClassSubjectProgressResponse {
   };
 }
 
+// ── Smart Session & Context Persistence Constants ──
+const INPUT_NILAI_SESSION_KEY = 'absenta_rapor_nilai_context';
+
+interface SavedNilaiContext {
+  tab?: 'my_tasks' | 'supervisi' | 'wali_kelas';
+  kelasId?: string;
+  mapelId?: string;
+  tahunPelajaranId?: string;
+  semesterId?: string;
+}
+
+const getSavedNilaiContext = (): SavedNilaiContext | null => {
+  try {
+    const raw = sessionStorage.getItem(INPUT_NILAI_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const saveNilaiContext = (ctx: SavedNilaiContext) => {
+  try {
+    sessionStorage.setItem(INPUT_NILAI_SESSION_KEY, JSON.stringify(ctx));
+  } catch {}
+};
+
+// Static Instruction Constant to guarantee reference equality and zero re-renders
+const INPUT_NILAI_INSTRUCTION: InstructionData = {
+  title: 'Panduan Lembar Input Nilai e-Rapor',
+  description: 'Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara terintegrasi.',
+  items: [
+    { text: 'Pilih Kelas dan Mata Pelajaran untuk membuka lembar pengisian.' },
+    { text: 'Gunakan mode Sumatif atau Kategori sesuai format kurikulum sekolah.' },
+    { text: 'Fitur Copy CP dan Paste Excel memudahkan pengisian nilai massal.' },
+    { text: 'Simpan nilai secara berkala atau unduh berkas format e-Rapor Kemendikbud.' },
+  ],
+};
+
+const EMPTY_STUDENT_LIST: ApiSiswaRecord[] = Object.freeze([]);
+const EMPTY_GRADES_LIST: ApiGradeRecord[] = Object.freeze([]);
+
 export default React.memo(function InputNilaiPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isMobile = useIsMobile();
-  const [searchParams] = useSearchParams();
-  const kelasParam = searchParams.get('kelas_id') || searchParams.get('kelas') || '';
-  const mapelParam = searchParams.get('mapel_id') || searchParams.get('mapel') || '';
-  const tpParam = searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || '';
-  const semParam = searchParams.get('semester_id') || searchParams.get('sem_id') || '';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isCurrentRoute = location.pathname.toLowerCase().replace(/\/$/, '') === '/rapor/nilai';
+  const lastSyncedParamsRef = useRef<string>('');
 
-  const tabParam = searchParams.get('tab') as 'my_tasks' | 'supervisi' | 'wali_kelas' | null;
+  // Initial context diambil HANYA SEKALI saat mount dari URL atau Session Storage
+  const initialContextRef = useRef<{
+    tab: 'my_tasks' | 'supervisi' | 'wali_kelas';
+    kelasId: string;
+    mapelId: string;
+    tpId: string;
+    semId: string;
+  } | null>(null);
+
+  if (!initialContextRef.current) {
+    const saved = getSavedNilaiContext();
+    const urlTab = searchParams.get('tab') as 'my_tasks' | 'supervisi' | 'wali_kelas' | null;
+    const validTab = urlTab && ['my_tasks', 'supervisi', 'wali_kelas'].includes(urlTab) ? urlTab : saved?.tab || 'my_tasks';
+
+    initialContextRef.current = {
+      tab: validTab,
+      kelasId: searchParams.get('kelas_id') || searchParams.get('kelas') || saved?.kelasId || '',
+      mapelId: searchParams.get('mapel_id') || searchParams.get('mapel') || saved?.mapelId || '',
+      tpId: searchParams.get('tahun_pelajaran_id') || searchParams.get('tp_id') || saved?.tahunPelajaranId || '',
+      semId: searchParams.get('semester_id') || searchParams.get('sem_id') || saved?.semesterId || '',
+    };
+  }
+
+  const initialContext = initialContextRef.current;
 
   const { 
     isAdmin, 
@@ -71,19 +134,15 @@ export default React.memo(function InputNilaiPage() {
   const waliKelasId = walikelasKelas?.id || (walikelasKelasIds && walikelasKelasIds.length > 0 ? walikelasKelasIds[0] : null);
   const waliKelasNama = walikelasKelas?.nama_kelas || (walikelasKelas as unknown as { nama?: string })?.nama || 'Kelas Binaan';
 
-  const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi' | 'wali_kelas'>(() => {
-    if (tabParam && ['my_tasks', 'supervisi', 'wali_kelas'].includes(tabParam)) {
-      return tabParam;
-    }
-    return 'my_tasks';
-  });
-  const [selectedKelas, setSelectedKelas] = useState<string>(() => kelasParam);
-  const [selectedMapel, setSelectedMapel] = useState<string>(() => mapelParam);
+  const [activeRoleTab, setActiveRoleTab] = useState<'my_tasks' | 'supervisi' | 'wali_kelas'>(initialContext.tab);
+  const [selectedKelas, setSelectedKelas] = useState<string>(initialContext.kelasId);
+  const [selectedMapel, setSelectedMapel] = useState<string>(initialContext.mapelId);
   const selectedJenisNilai = '';
   // Platform hanya menggunakan Kurikulum Merdeka — mode sumatif dikunci
   const entryMode = 'sumatif' as const;
 
   const [showProgressDetail, setShowProgressDetail] = useState<boolean>(false);
+  const [showMonitoringModal, setShowMonitoringModal] = useState<boolean>(false);
 
   // Task Search & Filter State
   const [taskSearchQuery, setTaskSearchQuery] = useState<string>('');
@@ -112,8 +171,8 @@ export default React.memo(function InputNilaiPage() {
     activeYear,
     activeSemester,
   } = useAcademicContext({
-    initialTpId: tpParam,
-    initialSemId: semParam,
+    initialTpId: initialContext.tpId,
+    initialSemId: initialContext.semId,
     onTpChange: useCallback(() => {
       if (activeRoleTab === 'wali_kelas' && waliKelasId) {
         setSelectedKelas(waliKelasId);
@@ -179,9 +238,9 @@ export default React.memo(function InputNilaiPage() {
     return selectedKelas;
   }, [activeRoleTab, waliKelasId, selectedKelas]);
 
-  // Query Jadwal KBM & Progres Mapel Kelas
+  // Query Jadwal KBM & Progres Mapel Kelas (Shared cache key with CetakRaporPage)
   const { data: classSubjectProgressRes, isLoading: isLoadingClassSubjects } = useQuery({
-    queryKey: ['class-subject-progress-input', targetClassForSubjects, activeYear?.id, activeSemester?.id],
+    queryKey: ['class-subject-progress', targetClassForSubjects, activeYear?.id, activeSemester?.id],
     queryFn: async () => {
       if (!targetClassForSubjects) return null;
       try {
@@ -193,8 +252,14 @@ export default React.memo(function InputNilaiPage() {
         return null;
       }
     },
-    enabled: !!targetClassForSubjects && (activeRoleTab === 'supervisi' || activeRoleTab === 'wali_kelas'),
+    enabled: !!targetClassForSubjects && (activeRoleTab === 'supervisi' || activeRoleTab === 'wali_kelas' || showMonitoringModal),
   });
+
+  const classProgressData = useMemo<ClassSubjectProgressData | null>(() => {
+    if (!classSubjectProgressRes) return null;
+    const typed = classSubjectProgressRes as unknown as { data?: ClassSubjectProgressData } & ClassSubjectProgressData;
+    return typed.data || typed;
+  }, [classSubjectProgressRes]);
 
   const classSubjectList = useMemo<ClassSubjectItem[]>(() => {
     if (!classSubjectProgressRes) return [];
@@ -310,63 +375,57 @@ export default React.memo(function InputNilaiPage() {
     return `Mode Hanya Baca (Read-Only): Anda tidak terdaftar sebagai Guru Pengampu untuk mata pelajaran ini di kelas terpilih. Pengubahan nilai hanya dapat dilakukan oleh ${guruLabel}.`;
   }, [isReadOnly, activeRoleTab, currentClassSubjectDetail?.nama_guru]);
 
-  // Build Tab Options dynamically based on persona & capabilities
+  // Build Tab Options dynamically based on persona & capabilities (Disimplifikasi 1-2 kata agar kompak)
   const tabOptions: TabOption[] = useMemo(() => {
     const opts: TabOption[] = [];
 
-    // Tab 1: Tugas Mengajar Saya (jika punya jadwal mengajar atau bukan kurikulum murni)
+    // Tab 1: Tugas Saya
     if (hasTeachingTasks || !canSupervise) {
       opts.push({
         id: 'my_tasks',
-        label: isMobile ? 'Tugas Saya' : 'Tugas Mengajar Saya',
+        label: 'Tugas Saya',
         icon: BookOpen,
       });
     }
 
-    // Tab 2: Supervisi Seluruh Sekolah (Khusus Kurikulum / Admin / Kepsek)
+    // Tab 2: Supervisi
     if (canSupervise) {
       opts.push({
         id: 'supervisi',
-        label: isMobile ? 'Supervisi Sekolah' : 'Supervisi Seluruh Sekolah',
+        label: 'Supervisi',
         icon: Layers,
       });
     }
 
-    // Tab 3: Kelas Binaan (Wali Kelas)
+    // Tab 3: Kelas Binaan
     if (isWaliKelas) {
       opts.push({
         id: 'wali_kelas',
-        label: isMobile ? `Kelas Binaan (${waliKelasNama})` : `Kelas Binaan: ${waliKelasNama}`,
+        label: 'Kelas Binaan',
         icon: GraduationCap,
       });
     }
 
     return opts;
-  }, [hasTeachingTasks, canSupervise, isWaliKelas, waliKelasNama, isMobile]);
+  }, [hasTeachingTasks, canSupervise, isWaliKelas]);
 
-  // Inisialisasi awal tab aktif secara cerdas
+  // Inisialisasi awal tab aktif jika pengguna belum memilih konteks apapun
   const [tabInitialized, setTabInitialized] = useState(false);
   useEffect(() => {
     if (!tabInitialized && teacherProgressData !== undefined) {
       setTabInitialized(true);
-      if (kelasParam && mapelParam) {
-        const isPersonal = (teachingTasks ?? []).some(
-          (t) => t.kelas_id === kelasParam && t.mapel_id === mapelParam
-        );
-        if (isPersonal) {
-          setActiveRoleTab('my_tasks');
-        } else if (isWaliKelas && waliKelasId && kelasParam === waliKelasId) {
-          setActiveRoleTab('wali_kelas');
-        } else if (canSupervise) {
-          setActiveRoleTab('supervisi');
-        } else {
-          setActiveRoleTab('my_tasks');
-        }
-      } else if (!hasTeachingTasks && canSupervise) {
+
+      // Jika URL / Session sudah menentukan tab non-default, pertahankan!
+      if (initialContext.tab && initialContext.tab !== 'my_tasks') {
+        return;
+      }
+
+      // Jika di tab tugas mengajar tapi tidak punya jadwal KBM dan user punya hak supervisi:
+      if (!hasTeachingTasks && canSupervise && !initialContext.kelasId) {
         setActiveRoleTab('supervisi');
       }
     }
-  }, [tabInitialized, teacherProgressData, kelasParam, mapelParam, teachingTasks, canSupervise, hasTeachingTasks, isWaliKelas, waliKelasId]);
+  }, [tabInitialized, teacherProgressData, initialContext, hasTeachingTasks, canSupervise]);
 
   const handleRoleTabChange = useCallback((id: string) => {
     const newTab = id as 'my_tasks' | 'supervisi' | 'wali_kelas';
@@ -393,26 +452,105 @@ export default React.memo(function InputNilaiPage() {
     }
   }, [waliKelasId, waliKelasNama, teachingTasks, selectedKelas, selectedMapel]);
 
-  // Sync URL searchParams jika berubah
+  // Sinkronisasi state HANYA saat tombol Back/Forward browser ditekan (popstate)
   useEffect(() => {
-    if (kelasParam) setSelectedKelas(kelasParam);
-    if (mapelParam) setSelectedMapel(mapelParam);
-    if (tpParam) setSelectedTahunPelajaran(tpParam);
-    if (semParam) setSelectedSemester(semParam);
-  }, [kelasParam, mapelParam, tpParam, semParam]);
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get('tab') as 'my_tasks' | 'supervisi' | 'wali_kelas' | null;
+      const urlKelas = params.get('kelas_id') || params.get('kelas') || '';
+      const urlMapel = params.get('mapel_id') || params.get('mapel') || '';
+      const urlTp = params.get('tahun_pelajaran_id') || params.get('tp_id') || '';
+      const urlSem = params.get('semester_id') || params.get('sem_id') || '';
+
+      if (urlTab && ['my_tasks', 'supervisi', 'wali_kelas'].includes(urlTab)) {
+        setActiveRoleTab(urlTab);
+      }
+      setSelectedKelas(urlKelas);
+      setSelectedMapel(urlMapel);
+      if (urlTp) setSelectedTahunPelajaran(urlTp);
+      if (urlSem) setSelectedSemester(urlSem);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [setSelectedTahunPelajaran, setSelectedSemester]);
+
+  // ── Two-Way Reactive URL & Smart Session Persistence ──
+  useEffect(() => {
+    // Kritis: Jangan lakukan update searchParams jika rute saat ini bukan /rapor/nilai (mencegah pembatalan navigasi)
+    if (!isCurrentRoute) return;
+
+    const currentTab = activeRoleTab;
+    const currentKelas = selectedKelas;
+    const currentMapel = selectedMapel;
+    const currentTp = selectedTahunPelajaran || activeYear?.id || '';
+    const currentSem = selectedSemester || activeSemester?.id || '';
+
+    // 1. Simpan konteks terkini ke Session Storage browser
+    saveNilaiContext({
+      tab: currentTab,
+      kelasId: currentKelas,
+      mapelId: currentMapel,
+      tahunPelajaranId: currentTp,
+      semesterId: currentSem,
+    });
+
+    // 2. Sinkronkan ke URL searchParams secara aman tanpa reload menggunakan functional updater
+    setSearchParams((prevParams) => {
+      const newParams = new URLSearchParams(prevParams);
+      if (currentTab) newParams.set('tab', currentTab);
+      else newParams.delete('tab');
+
+      if (currentKelas) newParams.set('kelas_id', currentKelas);
+      else newParams.delete('kelas_id');
+
+      if (currentMapel) newParams.set('mapel_id', currentMapel);
+      else newParams.delete('mapel_id');
+
+      if (currentTp) newParams.set('tahun_pelajaran_id', currentTp);
+      else newParams.delete('tahun_pelajaran_id');
+
+      if (currentSem) newParams.set('semester_id', currentSem);
+      else newParams.delete('semester_id');
+
+      // Hapus legacy params
+      newParams.delete('kelas');
+      newParams.delete('mapel');
+      newParams.delete('tp_id');
+      newParams.delete('sem_id');
+
+      const nextQueryString = newParams.toString();
+      if (prevParams.toString() === nextQueryString) {
+        return prevParams;
+      }
+      lastSyncedParamsRef.current = nextQueryString;
+      return newParams;
+    }, { replace: true });
+  }, [
+    isCurrentRoute,
+    activeRoleTab,
+    selectedKelas,
+    selectedMapel,
+    selectedTahunPelajaran,
+    selectedSemester,
+    activeYear?.id,
+    activeSemester?.id,
+    setSearchParams,
+  ]);
 
   // Auto-select first class-mapel task when progressInfo is loaded hanya jika belum ada yang terpilih dan tidak ada di URL
   useEffect(() => {
-    if (activeRoleTab === 'my_tasks' && !selectedKelas && !kelasParam && progressInfo?.tasks && progressInfo.tasks.length > 0) {
+    if (activeRoleTab === 'my_tasks' && !selectedKelas && !initialContext.kelasId && progressInfo?.tasks && progressInfo.tasks.length > 0) {
       setSelectedKelas(progressInfo.tasks[0].kelas_id);
       setSelectedMapel(progressInfo.tasks[0].mapel_id);
     }
-  }, [activeRoleTab, selectedKelas, kelasParam, progressInfo]);
+  }, [activeRoleTab, selectedKelas, initialContext.kelasId, progressInfo]);
 
-  // Query students for selected class via centralized system hook
+  // Query students for selected class via centralized system hook (hanya saat kelas dipilih)
   const { rawList: studentListHook, isLoading: isLoadingStudents } = useSiswaOptions({
     kelasId: selectedKelas,
     onlyActive: true,
+    enabled: Boolean(selectedKelas),
   });
 
   // Query existing grades
@@ -432,6 +570,16 @@ export default React.memo(function InputNilaiPage() {
   const selectedMapelObj = useMemo(() => (subjects ?? []).find(m => m.id === selectedMapel), [subjects, selectedMapel]);
 
   // ── Custom Hook Pengelola Grid Nilai & Aksi Terpadu ──
+  const memoizedStudentList = useMemo(() => {
+    if (!selectedKelas) return EMPTY_STUDENT_LIST;
+    return (studentListHook as unknown as ApiSiswaRecord[]) || EMPTY_STUDENT_LIST;
+  }, [selectedKelas, studentListHook]);
+
+  const memoizedExistingGrades = useMemo(() => {
+    if (!selectedKelas || !selectedMapel) return EMPTY_GRADES_LIST;
+    return (existingGradesData?.data as unknown as ApiGradeRecord[]) || EMPTY_GRADES_LIST;
+  }, [selectedKelas, selectedMapel, existingGradesData?.data]);
+
   const {
     scores,
     setScores,
@@ -465,8 +613,8 @@ export default React.memo(function InputNilaiPage() {
     classes,
     subjects,
     isReadOnly,
-    studentList: (studentListHook as unknown as ApiSiswaRecord[]) || [],
-    existingGrades: (existingGradesData?.data as unknown as ApiGradeRecord[]) || [],
+    studentList: memoizedStudentList,
+    existingGrades: memoizedExistingGrades,
   });
 
   const breadcrumbs = useMemo(() => [
@@ -479,154 +627,315 @@ export default React.memo(function InputNilaiPage() {
       title="Lembar Input Nilai e-Rapor"
       description="Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara cepat, fleksibel, dan terintegrasi."
       breadcrumbs={breadcrumbs}
-      instruction={{
-        title: 'Panduan Lembar Input Nilai e-Rapor',
-        description: 'Pengisian Nilai Rapor Kurikulum Merdeka & K-13 secara terintegrasi.',
-        items: [
-          { text: 'Pilih Kelas dan Mata Pelajaran untuk membuka lembar pengisian.' },
-          { text: 'Gunakan mode Sumatif atau Kategori sesuai format kurikulum sekolah.' },
-          { text: 'Fitur Copy CP dan Paste Excel memudahkan pengisian nilai massal.' },
-          { text: 'Simpan nilai secara berkala atau unduh berkas format e-Rapor Kemendikbud.' }
-        ]
-      }}
+      instruction={INPUT_NILAI_INSTRUCTION}
       hardeningModuleKey="InputNilaiPage"
-      topSlot={
-        <div className="flex items-center justify-between gap-2 flex-wrap pb-2">
-          {/* Kiri: Dropdown TP & Semester + navigasi cepat */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <AcademicContextBar
-              id="input-nilai"
-              tahunPelajaranId={selectedTahunPelajaran}
-              semesterId={selectedSemester}
-              onTahunPelajaranChange={handleTpChange}
-              onSemesterChange={handleSemesterChange}
-              tpOptions={tpOptions}
-              semesterOptions={semesterOptions}
-              isLoadingTp={isLoadingTp}
-              isLoadingSem={isLoadingSem}
-              variant="toolbar"
-            />
-
-            <button
-              type="button"
-              onClick={() => navigate('/rapor/cetak')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-              title="Buka Preview & Cetak Rapor Siswa"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Preview &amp; Cetak Rapor</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/kurikulum/wali-kelas')}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
-              title="Buka Hub Manajemen Wali Kelas"
-            >
-              <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
-              <span className="hidden sm:inline">Hub Wali Kelas</span>
-            </button>
-          </div>
-
-          {/* Kanan: Badge Kurikulum */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
-            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Kurikulum Merdeka</span>
-          </div>
-        </div>
-      }
     >
       <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-        <div className="space-y-6">
+        <div className="space-y-4">
 
-          {/* Tab Switcher per Role (Pilar 27 Hardening) */}
-          {tabOptions.length > 1 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1">
-              <TabSwitcher
-                options={tabOptions}
-                activeTab={activeRoleTab}
-                onChange={handleRoleTabChange}
-              />
-
-              <div className="text-[11px] text-slate-400 font-medium flex items-center gap-1.5">
-                <Info size={12} className="text-slate-400 shrink-0" />
-                <span>
-                  {activeRoleTab === 'my_tasks' && 'Jadwal KBM & rombel yang ditugaskan kepada Anda.'}
-                  {activeRoleTab === 'supervisi' && 'Mode Supervisi: Akses penuh memantau & input nilai seluruh sekolah.'}
-                  {activeRoleTab === 'wali_kelas' && `Mode Wali Kelas: Memantau nilai siswa pada ${waliKelasNama}.`}
-                </span>
+          {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3.5">
+            {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role di kanan */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2 flex-wrap">
+                <AcademicContextBar
+                  id="input-nilai"
+                  tahunPelajaranId={selectedTahunPelajaran}
+                  semesterId={selectedSemester}
+                  onTahunPelajaranChange={handleTpChange}
+                  onSemesterChange={handleSemesterChange}
+                  tpOptions={tpOptions}
+                  semesterOptions={semesterOptions}
+                  isLoadingTp={isLoadingTp}
+                  isLoadingSem={isLoadingSem}
+                  variant="toolbar"
+                />
               </div>
+
+              {tabOptions.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <TabSwitcher
+                    options={tabOptions}
+                    activeTab={activeRoleTab}
+                    onChange={handleRoleTabChange}
+                  />
+                </div>
+              )}
             </div>
-          )}
 
-          {/* VIEW TAB 1: Tugas Mengajar Saya */}
+            {/* Baris 2: Seleksi Rombel / Mapel & Tombol Aksi */}
+            {activeRoleTab === 'supervisi' && canSupervise && (
+              <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 flex-1">
+                  <div>
+                    <label htmlFor="supervisi-select-kelas" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Kelas Rombel:
+                    </label>
+                    <SearchableSelect
+                      id="supervisi-select-kelas"
+                      aria-label="Pilih kelas rombel supervisi"
+                      options={kelasOptions}
+                      value={selectedKelas}
+                      onValueChange={(val) => {
+                        setSelectedKelas(val);
+                        setSelectedMapel('');
+                        setScores([]);
+                      }}
+                      placeholder="-- Pilih Kelas --"
+                      isLoading={isLoadingClasses}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="supervisi-select-mapel" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Mata Pelajaran:
+                    </label>
+                    <SearchableSelect
+                      id="supervisi-select-mapel"
+                      aria-label="Pilih mata pelajaran supervisi"
+                      options={smartMapelOptions}
+                      value={selectedMapel}
+                      onValueChange={(val) => {
+                        setSelectedMapel(val);
+                        setScores([]);
+                      }}
+                      placeholder={
+                        !selectedKelas
+                          ? '⚠️ Pilih Kelas dahulu'
+                          : isLoadingClassSubjects
+                          ? 'Memuat mapel...'
+                          : smartMapelOptions.length === 0
+                          ? 'Tidak ada mapel terjadwal'
+                          : '-- Pilih Mata Pelajaran --'
+                      }
+                      disabled={!selectedKelas || isLoadingClassSubjects}
+                      isLoading={isLoadingClassSubjects}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowMonitoringModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    title="Buka Status Monitoring Pengisian Mapel Rombel"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
+                    <span>Monitoring Mapel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (selectedKelas) params.set('kelas_id', selectedKelas);
+                      params.set('tab', 'supervisi');
+                      if (selectedTahunPelajaran || activeYear?.id) params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
+                      if (selectedSemester || activeSemester?.id) params.set('semester_id', selectedSemester || activeSemester?.id || '');
+                      const q = params.toString();
+                      navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    title="Buka Cetak Rapor Siswa"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Rapor</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/rapor/dashboard')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                    title="Buka Dashboard Monitoring Rapor"
+                  >
+                    <span>Dashboard</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeRoleTab === 'wali_kelas' && isWaliKelas && (
+              <div className="space-y-3">
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+                  <div className="flex-1 max-w-xl">
+                    <label htmlFor="walikelas-select-mapel" className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Mata Pelajaran di Kelas {waliKelasNama}:
+                    </label>
+                    <SearchableSelect
+                      id="walikelas-select-mapel"
+                      aria-label="Pilih mata pelajaran kelas binaan"
+                      options={smartMapelOptions}
+                      value={selectedMapel}
+                      onValueChange={(val) => {
+                        if (waliKelasId) setSelectedKelas(waliKelasId);
+                        setSelectedMapel(val);
+                        setScores([]);
+                      }}
+                      placeholder={
+                        isLoadingClassSubjects
+                          ? 'Memuat mata pelajaran...'
+                          : smartMapelOptions.length === 0
+                          ? 'Tidak ada mapel terjadwal di kelas ini'
+                          : '-- Pilih Mata Pelajaran --'
+                      }
+                      disabled={!waliKelasId || isLoadingClassSubjects}
+                      isLoading={isLoadingClassSubjects}
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setShowMonitoringModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                      title="Buka Status Monitoring Pengisian Mapel Kelas Binaan"
+                    >
+                      <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
+                      <span>Monitoring Mapel</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
+                        )
+                      }
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                      title="Buka Lembar Pengisian Catatan Rapor Siswa"
+                    >
+                      <UserCheck className="w-3.5 h-3.5" />
+                      <span>Isi Catatan</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
+                        )
+                      }
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                      title="Buka Leger & Cetak Rapor"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Cetak Rapor</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info kelengkapan rapor kelas binaan */}
+                <div className="p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-indigo-950 dark:text-indigo-200">
+                    <Info size={14} className="text-indigo-600 shrink-0" />
+                    <span className="text-[11px]">
+                      {tampilkanKokurikuler
+                        ? 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, Catatan, & Evaluasi Kokurikuler.'
+                        : 'Wali kelas bertugas mengisi Nilai Mapel, Presensi, & Catatan Wali Kelas.'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
+                    {tampilkanKokurikuler ? 'Kokurikuler: Aktif' : 'Kokurikuler: Nonaktif'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {activeRoleTab === 'my_tasks' && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    {selectedKelas && selectedMapel ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold">
+                          Rombel Terpilih: {selectedKelasObj?.nama || selectedKelas}
+                        </span>
+                      </span>
+                    ) : (
+                      <span>Pilih salah satu rombel mengajar di bawah untuk memulai penginputan nilai.</span>
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowMonitoringModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    title="Buka Status Monitoring Pengisian Mapel Rombel"
+                  >
+                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
+                    <span>Monitoring Mapel</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const params = new URLSearchParams();
+                      if (selectedKelas) params.set('kelas_id', selectedKelas);
+                      if (selectedTahunPelajaran || activeYear?.id) params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
+                      if (selectedSemester || activeSemester?.id) params.set('semester_id', selectedSemester || activeSemester?.id || '');
+                      const q = params.toString();
+                      navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                    title="Buka Cetak Rapor Siswa"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Cetak Rapor</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* VIEW TAB 1: Daftar Rombel Guru (Khusus Mode Tugas Mengajar) */}
           {activeRoleTab === 'my_tasks' && (
-            <TeacherProgressCard
-              progressInfo={progressInfo}
-              showProgressDetail={showProgressDetail}
-              onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
-              taskStatusFilter={taskStatusFilter}
-              onSetTaskStatusFilter={setTaskStatusFilter}
-              taskSearchQuery={taskSearchQuery}
-              onSetTaskSearchQuery={setTaskSearchQuery}
-              filteredTasks={filteredTasks}
-              selectedKelas={selectedKelas}
-              selectedMapel={selectedMapel}
-              onSelectTask={(kId, mId, kNama, mNama) => {
-                setSelectedKelas(kId);
-                setSelectedMapel(mId);
-                toast.info(`Memilih ${kNama} — ${mNama}`);
-              }}
-            />
-          )}
-
-          {/* VIEW TAB 2: Supervisi Seluruh Sekolah (Khusus Kurikulum / Admin / Kepsek) */}
-          {activeRoleTab === 'supervisi' && canSupervise && (
-            <SupervisiSelectorCard
-              selectedKelas={selectedKelas}
-              onSelectKelas={(val) => {
-                setSelectedKelas(val);
-                setSelectedMapel('');
-                setScores([]);
-              }}
-              selectedMapel={selectedMapel}
-              onSelectMapel={(val) => {
-                setSelectedMapel(val);
-                setScores([]);
-              }}
-              kelasOptions={kelasOptions}
-              isLoadingClasses={isLoadingClasses}
-              smartMapelOptions={smartMapelOptions}
-              isLoadingClassSubjects={isLoadingClassSubjects}
-              selectedKelasObj={selectedKelasObj}
-              activeYear={activeYear}
-              activeSemester={activeSemester}
-              onNavigateDashboard={() => navigate('/rapor/dashboard')}
-            />
-          )}
-
-          {/* VIEW TAB 3: Kelas Binaan (Wali Kelas) */}
-          {activeRoleTab === 'wali_kelas' && isWaliKelas && (
-            <WaliKelasSelectorCard
-              waliKelasNama={waliKelasNama}
-              waliKelasId={waliKelasId}
-              selectedMapel={selectedMapel}
-              onSelectMapel={(val) => {
-                if (waliKelasId) setSelectedKelas(waliKelasId);
-                setSelectedMapel(val);
-                setScores([]);
-              }}
-              smartMapelOptions={smartMapelOptions}
-              isLoadingClassSubjects={isLoadingClassSubjects}
-              tampilkanKokurikuler={tampilkanKokurikuler}
-              activeYear={activeYear}
-              activeSemester={activeSemester}
-              onNavigateCetak={() =>
-                navigate(
-                  `/rapor/cetak?kelas_id=${waliKelasId || ''}&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
-                )
-              }
-            />
+            hasTeachingTasks ? (
+              <TeacherProgressCard
+                progressInfo={progressInfo}
+                showProgressDetail={showProgressDetail}
+                onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
+                taskStatusFilter={taskStatusFilter}
+                onSetTaskStatusFilter={setTaskStatusFilter}
+                taskSearchQuery={taskSearchQuery}
+                onSetTaskSearchQuery={setTaskSearchQuery}
+                filteredTasks={filteredTasks}
+                selectedKelas={selectedKelas}
+                selectedMapel={selectedMapel}
+                onSelectTask={(kId, mId, kNama, mNama) => {
+                  setSelectedKelas(kId);
+                  setSelectedMapel(mId);
+                  toast.info(`Memilih ${kNama} — ${mNama}`);
+                }}
+              />
+            ) : (
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                  <BookOpen size={24} />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                  Belum Ada Jadwal KBM pada Periode Ini
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
+                  Tidak ditemukan jadwal mengajar aktif pada Tahun Pelajaran / Semester terpilih.
+                  {canSupervise
+                    ? ' Sebagai Kurikulum/Administrator, Anda dapat beralih ke Mode Supervisi untuk memantau atau menginput nilai seluruh rombel sekolah.'
+                    : ' Silakan berkoordinasi dengan Tim Kurikulum apabila jadwal KBM Anda belum selesai diplot.'}
+                </p>
+                {canSupervise && (
+                  <button
+                    type="button"
+                    onClick={() => handleRoleTabChange('supervisi')}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
+                  >
+                    <Layers size={14} />
+                    <span>Buka Supervisi Seluruh Sekolah</span>
+                  </button>
+                )}
+              </div>
+            )
           )}
 
           {saveSuccessMsg && (
@@ -706,6 +1015,30 @@ export default React.memo(function InputNilaiPage() {
               onProcessPaste={handleProcessPaste}
             />
           </Suspense>
+
+          {/* Modal Monitoring Status Pengisian Mapel Rombel */}
+          <MonitoringMapelRombelModal
+            isOpen={showMonitoringModal}
+            onClose={() => setShowMonitoringModal(false)}
+            data={classProgressData}
+            isLoading={isLoadingClassSubjects}
+            selectedKelas={targetClassForSubjects}
+            kelasOptions={kelasOptions}
+            onSelectKelas={(kId) => {
+              setSelectedKelas(kId);
+              setSelectedMapel('');
+            }}
+            onSelectMapel={(mId, kId) => {
+              if (kId && kId !== selectedKelas) {
+                setSelectedKelas(kId);
+              }
+              setSelectedMapel(mId);
+              toast.info('Beralih ke lembar nilai mapel terpilih');
+            }}
+            activeYearNama={activeYear?.nama}
+            activeSemesterNama={activeSemester?.nama}
+            kelasNama={selectedKelasObj?.nama_kelas || (activeRoleTab === 'wali_kelas' ? waliKelasNama : undefined)}
+          />
 
         </div>
       </SectionCard>
