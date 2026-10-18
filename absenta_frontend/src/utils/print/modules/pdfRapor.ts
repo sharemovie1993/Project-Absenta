@@ -129,9 +129,9 @@ export const renderStudentRaporPages = (
   semesterNama: string,
   isFirstStudent = true,
   raporSettings?: any,
-  fontFamily: string = 'Cambria'
+  fontFamily: string = 'Helvetica'
 ): void => {
-  const font = fontFamily || 'Cambria';
+  const font = fontFamily || 'Helvetica';
   const siswa = data?.siswa || {};
   const effectiveSettings = raporSettings || data?.rapor_settings;
 
@@ -902,8 +902,7 @@ export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ bl
 
   // 3. Create PDF document & render 2 pages
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-  const fontFamily = await ensureCambriaFont(doc);
-  renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings, fontFamily);
+  renderStudentRaporPages(doc, data, sekolah, tenantInfo, resolvedTahunPelajaranNama, resolvedSemesterNama, true, raporSettings, 'Helvetica');
 
   const siswa = data?.siswa || {};
   const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${resolvedSemesterNama || 'Semester'}.pdf`;
@@ -1102,7 +1101,6 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
 
   // 2. Initialize single jsPDF document for entire class
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-  const fontFamily = await ensureCambriaFont(doc);
   let renderedCount = 0;
   let lastError: any = null;
 
@@ -1117,7 +1115,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
         semester_id: semesterId,
       });
       const data = raporRes?.data?.data || raporRes?.data || raporRes;
-      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0, raporSettings, fontFamily);
+      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0, raporSettings, 'Helvetica');
       renderedCount++;
     } catch (err: any) {
       console.warn(`Gagal memuat rapor untuk ${student.nama_siswa}:`, err);
@@ -2031,7 +2029,7 @@ export const generateBundelRaporKelasBatchPdf = async (options: PrintRaporBatchO
 
       // 3. Rapor Semester (CK1-CK2)
       if (data) {
-        renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, false, raporSettings, fontFamily);
+        renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, false, raporSettings, 'Helvetica');
       }
 
       renderedCount++;
