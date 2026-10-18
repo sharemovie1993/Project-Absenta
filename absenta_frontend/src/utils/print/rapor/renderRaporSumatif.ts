@@ -198,18 +198,18 @@ export const renderOfficialSumatifPage = (
     },
     bodyStyles: {
       font: 'Helvetica',
-      fontSize: 8,
-      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
+      fontSize: 7.6,
+      cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
       valign: 'middle',
     },
     columnStyles: {
-      0: { cellWidth: 10, halign: 'center' },
-      1: { cellWidth: 60 },
-      2: { cellWidth: 24, halign: 'center', fontStyle: 'bold' },
-      3: { cellWidth: 88 },
+      0: { cellWidth: 8, halign: 'center' },
+      1: { cellWidth: 78 }, // Dilebarkan dari 60mm ke 78mm agar seluruh teks nama mapel tersaji dalam 1 baris
+      2: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+      3: { cellWidth: 78 },
     },
     didDrawCell: (data) => {
       if (data.section === 'body' && data.column.index === 3) {
@@ -221,19 +221,19 @@ export const renderOfficialSumatifPage = (
           const textY = cell.y + (cell.height / 2) + 1.1;
 
           doc.setFont('Helvetica', 'normal');
-          doc.setFontSize(8);
+          doc.setFontSize(7.6);
           doc.setTextColor(0, 0, 0);
 
           // Slot 1 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s1}`, cell.x + 2.5, textY);
-          doc.text(',', cell.x + slotWidth - 3, textY);
+          doc.text(`Nilai  :  ${sumatif.s1}`, cell.x + 2, textY);
+          doc.text(',', cell.x + slotWidth - 2.5, textY);
 
           // Slot 2 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s2}`, cell.x + slotWidth + 2.5, textY);
-          doc.text(',', cell.x + (2 * slotWidth) - 3, textY);
+          doc.text(`Nilai  :  ${sumatif.s2}`, cell.x + slotWidth + 2, textY);
+          doc.text(',', cell.x + (2 * slotWidth) - 2.5, textY);
 
           // Slot 3 (Bagi rata persis 1/3 lebar kolom)
-          doc.text(`Nilai  :  ${sumatif.s3}`, cell.x + (2 * slotWidth) + 2.5, textY);
+          doc.text(`Nilai  :  ${sumatif.s3}`, cell.x + (2 * slotWidth) + 2, textY);
         }
       }
     },
