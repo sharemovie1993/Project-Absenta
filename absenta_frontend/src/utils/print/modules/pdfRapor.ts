@@ -1644,9 +1644,9 @@ export const generateBiodataSiswaPdf = async (options: {
     },
     columnStyles: {
       0: { cellWidth: 8, halign: 'left' },
-      1: { cellWidth: 54, halign: 'left' },
+      1: { cellWidth: 69, halign: 'left' },
       2: { cellWidth: 4, halign: 'center' },
-      3: { cellWidth: 112, halign: 'left' },
+      3: { cellWidth: 97, halign: 'left' },
     },
     didParseCell: (data) => {
       if (data.section === 'body' && data.row.index === 0 && data.column.index === 3) {
