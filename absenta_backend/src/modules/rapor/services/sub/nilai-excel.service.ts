@@ -3,6 +3,7 @@ import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { NilaiCrudService } from './nilai-crud.service';
 
 export class NilaiExcelService {
   static async exportErafor(
@@ -242,6 +243,12 @@ export class NilaiExcelService {
     if (!rawData || rawData.length === 0) {
       throw new Error('File Excel kosong atau format header tidak terbaca');
     }
+
+    await NilaiCrudService.assertTahunPelajaranAktif(
+      tenantId,
+      metadata.tahun_pelajaran_id,
+      metadata.semester_id
+    );
 
     const students = await prisma.siswa.findMany({
       where: { tenant_id: tenantId, status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] } }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { StudentScoreItem, ClassItem, SubjectItem } from '../../../types/inputNilai.types';
-import { KkmThresholdSchema, BulkPasteTextSchema } from '../../../schemas/inputNilai.schema';
+import { KkmThresholdSchema } from '../../../schemas/inputNilai.schema';
 import { raporApi } from '../../../api/rapor.api';
 import { generateStyledExcelTemplate } from '../../../utils/excel-advanced.utils';
 import { AcademicYear, Semester } from '../../../types/cetakRapor.types';
@@ -18,6 +18,11 @@ export interface ApiSiswaRecord {
 
 export interface ApiGradeRecord {
   siswa_id: string;
+  Siswa?: {
+    id: string;
+    nama_siswa?: string;
+    nis?: string;
+  };
   sumatif_1?: number | null;
   sumatif_2?: number | null;
   sumatif_3?: number | null;
@@ -42,6 +47,7 @@ export interface UseScoreSheetManagerProps {
   classes: ClassItem[];
   subjects: SubjectItem[];
   isReadOnly: boolean;
+  readOnlyReason?: string;
   studentList: ApiSiswaRecord[] | null | undefined;
   existingGrades: ApiGradeRecord[] | null | undefined;
 }
@@ -56,6 +62,7 @@ export function useScoreSheetManager({
   classes,
   subjects,
   isReadOnly,
+  readOnlyReason,
   studentList,
   existingGrades,
 }: UseScoreSheetManagerProps) {
@@ -63,10 +70,6 @@ export function useScoreSheetManager({
   const [scores, setScores] = useState<StudentScoreItem[]>([]);
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [kkmThreshold, setKkmThreshold] = useState<number>(70);
-
-  // Modal Paste State
-  const [showPasteModal, setShowPasteModal] = useState<boolean>(false);
-  const [pasteRawText, setPasteRawText] = useState<string>('');
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   // Persistent KKM Threshold Sync per selected mapel
@@ -93,10 +96,57 @@ export function useScoreSheetManager({
 
   // Combine students and existing grades into scores state
   useEffect(() => {
-    if (studentList && studentList.length > 0) {
-      const gradesList = existingGrades || [];
+    // GUARD KRUSIAL: Jika kelas atau mapel belum dipilih, scores WAJIB KOSONG dan hentikan eksekusi
+    if (!selectedKelas || !selectedMapel) {
+      setScores((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
 
-      const initialScores: StudentScoreItem[] = (studentList ?? []).map((s: ApiSiswaRecord) => {
+    const gradesList = existingGrades || [];
+    const activeList = studentList || [];
+    const activeStudentIds = new Set(activeList.map((s) => s.id));
+
+    let effectiveStudents: ApiSiswaRecord[] = [];
+
+    // Evaluasi irisan siswa: periksa berapa siswa di existingGrades yang cocok dengan studentList aktif
+    const gradesStudentIds = new Set(gradesList.map((g) => g.siswa_id).filter(Boolean));
+    const matchingCount = Array.from(gradesStudentIds).filter((id) => activeStudentIds.has(id)).length;
+
+    // Jika existingGrades memiliki data dan mayoritas/seluruhnya bukan siswa kelas aktif saat ini
+    // (misal data riwayat arsip lampau di mana siswa saat ini sudah naik kelas),
+    // maka gunakan HANYA siswa yang tercatat di existingGrades agar tidak tercampur dengan angkatan saat ini.
+    if (gradesList.length > 0 && matchingCount === 0) {
+      const seenIds = new Set<string>();
+      gradesList.forEach((g) => {
+        if (g.siswa_id && !seenIds.has(g.siswa_id)) {
+          seenIds.add(g.siswa_id);
+          effectiveStudents.push({
+            id: g.siswa_id,
+            nama_siswa: g.Siswa?.nama_siswa || '—',
+            nis: g.Siswa?.nis || '—',
+          });
+        }
+      });
+    } else {
+      // Kelas aktif berjalan: gunakan daftar siswa aktif saat ini
+      effectiveStudents = [...activeList];
+
+      // Jika ada siswa tambahan di existingGrades yang belum masuk di activeList namun beririsan
+      const currentIds = new Set(effectiveStudents.map((s) => s.id));
+      gradesList.forEach((g) => {
+        if (g.siswa_id && !currentIds.has(g.siswa_id)) {
+          effectiveStudents.push({
+            id: g.siswa_id,
+            nama_siswa: g.Siswa?.nama_siswa || '—',
+            nis: g.Siswa?.nis || '—',
+          });
+          currentIds.add(g.siswa_id);
+        }
+      });
+    }
+
+    if (effectiveStudents.length > 0) {
+      const initialScores: StudentScoreItem[] = effectiveStudents.map((s: ApiSiswaRecord) => {
         const found = gradesList.find((g: ApiGradeRecord) => g.siswa_id === s.id);
         const studentName = s.nama_siswa || s.nama_lengkap || s.nama || '—';
         const studentNis = s.nis || s.nisn || '—';
@@ -131,9 +181,30 @@ export function useScoreSheetManager({
         };
       });
 
-      setScores(initialScores);
+      initialScores.sort((a, b) => a.nama.localeCompare(b.nama));
+      setScores((prev) => {
+        if (prev.length === initialScores.length) {
+          const isIdentical = prev.every((p, idx) => {
+            const n = initialScores[idx];
+            return (
+              p.siswa_id === n.siswa_id &&
+              p.sumatif_1 === n.sumatif_1 &&
+              p.sumatif_2 === n.sumatif_2 &&
+              p.sumatif_3 === n.sumatif_3 &&
+              p.sumatif_akhir === n.sumatif_akhir &&
+              p.deskripsi_cp === n.deskripsi_cp &&
+              p.nilai === n.nilai &&
+              p.nilai_rapor_final === n.nilai_rapor_final
+            );
+          });
+          if (isIdentical) return prev;
+        }
+        return initialScores;
+      });
+    } else {
+      setScores((prev) => (prev.length === 0 ? prev : []));
     }
-  }, [studentList, existingGrades]);
+  }, [selectedKelas, selectedMapel, studentList, existingGrades]);
 
   // Score Input Change Handler with Range Checks
   const handleScoreChange = useCallback((index: number, field: keyof StudentScoreItem, val: string | number | null) => {
@@ -280,7 +351,10 @@ export function useScoreSheetManager({
 
   const handleSaveSubmit = useCallback(() => {
     if (isReadOnly) {
-      toast.error('Akses ditolak: Anda berada dalam Mode Hanya Baca (Read-Only). Hanya Guru Pengampu yang berhak menyimpan nilai.');
+      toast.error(
+        readOnlyReason ||
+          'Akses ditolak: Anda berada dalam Mode Hanya Baca (Read-Only). Hanya Guru Pengampu yang berhak menyimpan nilai.'
+      );
       return;
     }
 
@@ -340,50 +414,6 @@ export function useScoreSheetManager({
       bulkSaveMutation.mutate(payload);
     }
   }, [isReadOnly, selectedKelas, selectedMapel, entryMode, activeYear, activeSemester, scores, selectedJenisNilai, sumatifSaveMutation, bulkSaveMutation]);
-
-  // Excel Paste Process Handler
-  const handleProcessPaste = useCallback(() => {
-    if (isReadOnly) {
-      toast.error('Akses ditolak: Anda berada dalam Mode Hanya Baca (Read-Only).');
-      return;
-    }
-
-    const parseRes = BulkPasteTextSchema.safeParse(pasteRawText);
-    if (!parseRes.success) {
-      toast.error(parseRes.error.errors[0]?.message || 'Teks paste kosong.');
-      return;
-    }
-
-    const lines = pasteRawText.trim().split('\n');
-    let matchedCount = 0;
-
-    setScores((prev) => {
-      const nextScores = [...prev];
-      (lines ?? []).forEach((line) => {
-        const cols = line.split('\t');
-        if (cols.length >= 2) {
-          const key = cols[0].trim();
-          const targetIndex = nextScores.findIndex((s) => s.nis === key || s.nama.toLowerCase().includes(key.toLowerCase()));
-          if (targetIndex !== -1) {
-            matchedCount++;
-            nextScores[targetIndex] = {
-              ...nextScores[targetIndex],
-              sumatif_1: cols[1]?.trim() || nextScores[targetIndex].sumatif_1,
-              sumatif_2: cols[2]?.trim() || nextScores[targetIndex].sumatif_2,
-              sumatif_3: cols[3]?.trim() || nextScores[targetIndex].sumatif_3,
-              sumatif_akhir: cols[4]?.trim() || nextScores[targetIndex].sumatif_akhir,
-              deskripsi_cp: cols[5]?.trim() || nextScores[targetIndex].deskripsi_cp,
-            };
-          }
-        }
-      });
-      return nextScores;
-    });
-
-    setShowPasteModal(false);
-    setPasteRawText('');
-    toast.success(`Berhasil mencocokkan dan memasang nilai untuk ${matchedCount} siswa!`);
-  }, [isReadOnly, pasteRawText]);
 
   // Excel Styled Template Download Handler
   const handleDownloadTemplate = useCallback(async () => {
@@ -522,11 +552,6 @@ export function useScoreSheetManager({
     handleClearCpAll,
     handleKeyDownGrid,
     getScoreInputStyle,
-    showPasteModal,
-    setShowPasteModal,
-    pasteRawText,
-    setPasteRawText,
-    handleProcessPaste,
     handleSaveSubmit,
     handleDownloadTemplate,
     handleExportEraporKemendikbud,

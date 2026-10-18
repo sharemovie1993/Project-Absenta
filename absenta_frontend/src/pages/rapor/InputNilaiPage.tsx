@@ -9,7 +9,9 @@ import {
   Layers,
   GraduationCap,
   Info,
-  BarChart3
+  BarChart3,
+  Lock,
+  ShieldAlert,
 } from 'lucide-react';
 import { TabSwitcher, TabOption } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -35,9 +37,6 @@ import { ScoreGridTable } from '../../components/rapor/input-nilai/ScoreGridTabl
 import { useScoreSheetManager, ApiSiswaRecord, ApiGradeRecord } from '../../components/rapor/input-nilai/useScoreSheetManager';
 import { ClassSubjectProgressData, ClassSubjectItem } from '../../components/rapor/cetak-rapor/ClassSubjectProgressCard';
 import { MonitoringMapelRombelModal } from '../../components/rapor/input-nilai/MonitoringMapelRombelModal';
-
-// Lazy Loaded Modal for Hardening Performance
-const ExcelPasteModal = lazy(() => import('../../components/rapor/input-nilai/ExcelPasteModal').then(m => ({ default: m.ExcelPasteModal })));
 
 interface ClassSubjectProgressResponse {
   subjects?: ClassSubjectItem[];
@@ -79,7 +78,7 @@ const INPUT_NILAI_INSTRUCTION: InstructionData = {
   items: [
     { text: 'Pilih Kelas dan Mata Pelajaran untuk membuka lembar pengisian.' },
     { text: 'Gunakan mode Sumatif atau Kategori sesuai format kurikulum sekolah.' },
-    { text: 'Fitur Copy CP dan Paste Excel memudahkan pengisian nilai massal.' },
+    { text: 'Fitur 1-Klik Salin CP memudahkan pengisian capaian kompetensi massal.' },
     { text: 'Simpan nilai secara berkala atau unduh berkas format e-Rapor Kemendikbud.' },
   ],
 };
@@ -170,25 +169,31 @@ export default React.memo(function InputNilaiPage() {
     isLoadingSem,
     activeYear,
     activeSemester,
+    isCurrentTpActive,
   } = useAcademicContext({
     initialTpId: initialContext.tpId,
     initialSemId: initialContext.semId,
-    onTpChange: useCallback(() => {
-      if (activeRoleTab === 'wali_kelas' && waliKelasId) {
-        setSelectedKelas(waliKelasId);
-      } else {
-        setSelectedKelas('');
-      }
+    onTpChange: useCallback((newTpId: string) => {
+      // Isolasi Akademik: Reset pilihan kelas dan mapel saat berganti tahun pelajaran
+      setSelectedKelas('');
       setSelectedMapel('');
-    }, [activeRoleTab, waliKelasId]),
-    onSemesterChange: useCallback(() => {
-      if (activeRoleTab === 'wali_kelas' && waliKelasId) {
-        setSelectedKelas(waliKelasId);
-      } else {
-        setSelectedKelas('');
-      }
+      saveNilaiContext({
+        tab: activeRoleTab,
+        kelasId: '',
+        mapelId: '',
+        tahunPelajaranId: newTpId,
+      });
+    }, [activeRoleTab]),
+    onSemesterChange: useCallback((newSemId: string) => {
+      setSelectedKelas('');
       setSelectedMapel('');
-    }, [activeRoleTab, waliKelasId]),
+      saveNilaiContext({
+        tab: activeRoleTab,
+        kelasId: '',
+        mapelId: '',
+        semesterId: newSemId,
+      });
+    }, [activeRoleTab]),
   });
 
   const { data: teacherProgressData } = useQuery({
@@ -359,10 +364,22 @@ export default React.memo(function InputNilaiPage() {
     return false;
   }, [selectedKelas, selectedMapel, teachingTasks, activeGuruId, currentClassSubjectDetail]);
 
-  const isReadOnly = !isSubjectTeacher;
+  // ── Mode Arsip Akademik (Safeguard Integritas Rapor) ──
+  // Jika Tahun Pelajaran yang dibuka bukan tahun ajaran aktif (lampau/masa depan),
+  // seluruh lembar penilaian dikunci dalam mode Hanya Baca (Read-Only) untuk mencegah
+  // human error yang dapat merusak atau menimpa arsip nilai e-Rapor sekolah.
+  const isArchivedAcademic = !isCurrentTpActive;
+
+  const isReadOnly = !isSubjectTeacher || isArchivedAcademic;
 
   const readOnlyReason = useMemo(() => {
     if (!isReadOnly) return '';
+
+    if (isArchivedAcademic) {
+      const namaTp = activeYear?.nama || 'Tahun Pelajaran Terpilih';
+      return `Mode Arsip Akademik (Tutup Buku): ${namaTp} berstatus Non-Aktif / Tutup Buku. Pengisian, pengeditan, dan penyimpanan nilai dikunci secara permanen untuk melindungi integritas riwayat kelulusan dan arsip e-Rapor sekolah. Seluruh data hanya dapat dilihat dan dicetak.`;
+    }
+
     const guruPengampu = currentClassSubjectDetail?.nama_guru;
     const guruLabel = guruPengampu ? `Guru Pengampu (${guruPengampu})` : 'Guru Pengampu mata pelajaran ini';
 
@@ -373,7 +390,7 @@ export default React.memo(function InputNilaiPage() {
       return `Mode Supervisi Kurikulum & Manajemen (Hanya Baca): Berdasarkan regulasi asesmen pendidikan nasional, pengisian dan pengubahan nilai merupakan kewenangan profesional ${guruLabel}. Manajemen sekolah melakukan pemantauan ketuntasan nilai melalui lembar ini.`;
     }
     return `Mode Hanya Baca (Read-Only): Anda tidak terdaftar sebagai Guru Pengampu untuk mata pelajaran ini di kelas terpilih. Pengubahan nilai hanya dapat dilakukan oleh ${guruLabel}.`;
-  }, [isReadOnly, activeRoleTab, currentClassSubjectDetail?.nama_guru]);
+  }, [isReadOnly, isArchivedAcademic, activeYear?.nama, activeRoleTab, currentClassSubjectDetail?.nama_guru]);
 
   // Build Tab Options dynamically based on persona & capabilities (Disimplifikasi 1-2 kata agar kompak)
   const tabOptions: TabOption[] = useMemo(() => {
@@ -567,6 +584,15 @@ export default React.memo(function InputNilaiPage() {
   });
 
   const selectedKelasObj = useMemo(() => (classes ?? []).find(k => k.id === selectedKelas), [classes, selectedKelas]);
+  const selectedKelasNama = useMemo(() => {
+    if (!selectedKelas) return '';
+    const found = (classes ?? []).find(k => k.id === selectedKelas);
+    if (found) return found.nama_kelas || (found as any).nama || '';
+    const fromTask = (teachingTasks ?? []).find(t => t.kelas_id === selectedKelas);
+    if (fromTask) return fromTask.nama_kelas || '';
+    if (activeRoleTab === 'wali_kelas') return waliKelasNama;
+    return '';
+  }, [classes, selectedKelas, teachingTasks, activeRoleTab, waliKelasNama]);
   const selectedMapelObj = useMemo(() => (subjects ?? []).find(m => m.id === selectedMapel), [subjects, selectedMapel]);
 
   // ── Custom Hook Pengelola Grid Nilai & Aksi Terpadu ──
@@ -590,11 +616,6 @@ export default React.memo(function InputNilaiPage() {
     handleClearCpAll,
     handleKeyDownGrid,
     getScoreInputStyle,
-    showPasteModal,
-    setShowPasteModal,
-    pasteRawText,
-    setPasteRawText,
-    handleProcessPaste,
     handleSaveSubmit,
     handleDownloadTemplate,
     handleExportEraporKemendikbud,
@@ -613,6 +634,7 @@ export default React.memo(function InputNilaiPage() {
     classes,
     subjects,
     isReadOnly,
+    readOnlyReason,
     studentList: memoizedStudentList,
     existingGrades: memoizedExistingGrades,
   });
@@ -621,6 +643,25 @@ export default React.memo(function InputNilaiPage() {
     { label: 'Rapor', path: '/rapor/dashboard' },
     { label: 'Input Nilai' }
   ], []);
+
+  const handleNavigateCetakRapor = useCallback(() => {
+    const params = new URLSearchParams();
+    if (activeRoleTab === 'wali_kelas') {
+      if (waliKelasId) params.set('kelas_id', waliKelasId);
+      params.set('tab', 'wali_kelas');
+    } else {
+      if (selectedKelas) params.set('kelas_id', selectedKelas);
+      if (activeRoleTab === 'supervisi') params.set('tab', 'supervisi');
+    }
+    if (selectedTahunPelajaran || activeYear?.id) {
+      params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
+    }
+    if (selectedSemester || activeSemester?.id) {
+      params.set('semester_id', selectedSemester || activeSemester?.id || '');
+    }
+    const q = params.toString();
+    navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
+  }, [activeRoleTab, waliKelasId, selectedKelas, selectedTahunPelajaran, activeYear?.id, selectedSemester, activeSemester?.id, navigate]);
 
   return (
     <AcademicPageLayout
@@ -635,8 +676,30 @@ export default React.memo(function InputNilaiPage() {
 
           {/* Unified Control Toolbar Container (1 Frame Box Rapi & Hemat Ruang Vertikal) */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
+            {/* Hardening Guard Alert: Banner Mode Arsip Akademik */}
+            {isArchivedAcademic && (
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                    <Lock size={16} />
+                  </div>
+                  <div>
+                    <div className="font-bold flex items-center gap-2">
+                      <span>Mode Arsip Akademik (Tutup Buku)</span>
+                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-amber-200/80 dark:bg-amber-900 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700">
+                        Hanya Baca
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 mt-0.5">
+                      {activeYear?.nama || 'Tahun Pelajaran Terpilih'} berstatus Non-Aktif. Pengisian, pengeditan, dan penyimpanan nilai dikunci secara otomatis untuk melindungi keaslian arsip riwayat nilai siswa.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role di kanan */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${activeRoleTab !== 'my_tasks' ? 'pb-3 border-b border-slate-100 dark:border-slate-800' : ''}`}>
               <div className="w-full md:w-auto">
                 <AcademicContextBar
                   id="input-nilai"
@@ -652,7 +715,7 @@ export default React.memo(function InputNilaiPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto">
+              <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto flex-wrap">
                 {tabOptions.length > 1 && (
                   <TabSwitcher
                     options={tabOptions}
@@ -661,32 +724,15 @@ export default React.memo(function InputNilaiPage() {
                   />
                 )}
 
-                {/* Quick Nav: Cetak Rapor (Pindah ke atas disamping TabSwitcher) */}
+                {/* Tombol Monitoring Pengisian Mapel Seluruh Rombel */}
                 <button
                   type="button"
-                  onClick={() => {
-                    const params = new URLSearchParams();
-                    if (activeRoleTab === 'wali_kelas') {
-                      if (waliKelasId) params.set('kelas_id', waliKelasId);
-                      params.set('tab', 'wali_kelas');
-                    } else {
-                      if (selectedKelas) params.set('kelas_id', selectedKelas);
-                      if (activeRoleTab === 'supervisi') params.set('tab', 'supervisi');
-                    }
-                    if (selectedTahunPelajaran || activeYear?.id) {
-                      params.set('tahun_pelajaran_id', selectedTahunPelajaran || activeYear?.id || '');
-                    }
-                    if (selectedSemester || activeSemester?.id) {
-                      params.set('semester_id', selectedSemester || activeSemester?.id || '');
-                    }
-                    const q = params.toString();
-                    navigate(`/rapor/cetak${q ? `?${q}` : ''}`);
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3.5 h-[38px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
-                  title="Buka Cetak Rapor Siswa"
+                  onClick={() => setShowMonitoringModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 h-[38px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs shadow-2xs transition-all cursor-pointer shrink-0"
+                  title="Buka Status Monitoring Pengisian Mapel Seluruh Rombel"
                 >
-                  <Printer className="w-4 h-4 text-indigo-500 shrink-0" />
-                  <span>Cetak Rapor</span>
+                  <BarChart3 className="w-4 h-4 text-indigo-500 shrink-0" />
+                  <span>Monitoring</span>
                 </button>
               </div>
             </div>
@@ -741,18 +787,6 @@ export default React.memo(function InputNilaiPage() {
                     />
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setShowMonitoringModal(true)}
-                    className="flex items-center gap-1.5 px-3.5 h-[38px] rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
-                    title="Buka Status Monitoring Pengisian Mapel Rombel"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
-                    <span>Monitoring Mapel</span>
-                  </button>
-                </div>
               </div>
             )}
 
@@ -788,16 +822,6 @@ export default React.memo(function InputNilaiPage() {
                   <div className="flex items-center gap-2 shrink-0 self-end lg:self-auto flex-wrap">
                     <button
                       type="button"
-                      onClick={() => setShowMonitoringModal(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
-                      title="Buka Status Monitoring Pengisian Mapel Kelas Binaan"
-                    >
-                      <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
-                      <span>Monitoring Mapel</span>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() =>
                         navigate(
                           `/rapor/cetak?kelas_id=${waliKelasId || ''}&tab=wali_kelas&tahun_pelajaran_id=${activeYear?.id || ''}&semester_id=${activeSemester?.id || ''}`
@@ -825,36 +849,6 @@ export default React.memo(function InputNilaiPage() {
                   <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0">
                     {tampilkanKokurikuler ? 'Kokurikuler: Aktif' : 'Kokurikuler: Nonaktif'}
                   </span>
-                </div>
-              </div>
-            )}
-
-            {activeRoleTab === 'my_tasks' && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
-                    {selectedKelas && selectedMapel ? (
-                      <span className="inline-flex items-center gap-2">
-                        <span className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold">
-                          Rombel Terpilih: {selectedKelasObj?.nama || selectedKelas}
-                        </span>
-                      </span>
-                    ) : (
-                      <span>Pilih salah satu rombel mengajar di bawah untuk memulai penginputan nilai.</span>
-                    )}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setShowMonitoringModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-xs shadow-xs transition-all cursor-pointer"
-                    title="Buka Status Monitoring Pengisian Mapel Rombel"
-                  >
-                    <BarChart3 className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
-                    <span>Monitoring Mapel</span>
-                  </button>
                 </div>
               </div>
             )}
@@ -952,7 +946,7 @@ export default React.memo(function InputNilaiPage() {
                 scores={scores}
                 entryMode={entryMode}
                 subjectName={currentClassSubjectDetail?.nama_mapel || selectedMapelObj?.nama_mapel}
-                className={selectedKelasObj?.nama_kelas || (activeRoleTab === 'wali_kelas' ? waliKelasNama : undefined)}
+                className={selectedKelasNama || undefined}
                 teacherName={currentClassSubjectDetail?.nama_guru || undefined}
                 kkmThreshold={kkmThreshold}
                 onKkmThresholdChange={handleKkmThresholdChange}
@@ -961,11 +955,11 @@ export default React.memo(function InputNilaiPage() {
                 onClearCpAll={handleClearCpAll}
                 onKeyDownGrid={handleKeyDownGrid}
                 getScoreInputStyle={getScoreInputStyle}
-                onShowPasteModal={() => setShowPasteModal(true)}
                 onSaveSubmit={handleSaveSubmit}
                 onDownloadTemplate={handleDownloadTemplate}
                 onExportEraporKemendikbud={handleExportEraporKemendikbud}
                 onUploadSubmit={handleUploadSubmit}
+                onNavigateCetakRapor={handleNavigateCetakRapor}
                 isUploading={isUploading}
                 isSaving={isSaving}
                 isLoading={isLoadingStudents || isLoadingGrades}
@@ -974,17 +968,6 @@ export default React.memo(function InputNilaiPage() {
               />
             </div>
           )}
-
-          {/* Modal Paste dari Excel (Lazy loaded) */}
-          <Suspense fallback={null}>
-            <ExcelPasteModal
-              isOpen={showPasteModal}
-              onClose={() => setShowPasteModal(false)}
-              rawText={pasteRawText}
-              onRawTextChange={setPasteRawText}
-              onProcessPaste={handleProcessPaste}
-            />
-          </Suspense>
 
           {/* Modal Monitoring Status Pengisian Mapel Rombel */}
           <MonitoringMapelRombelModal

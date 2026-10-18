@@ -22,10 +22,32 @@ interface InstructionContextType {
 const InstructionContext = createContext<InstructionContextType | undefined>(undefined);
 
 export const InstructionProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [instructionData, setInstructionData] = useState<InstructionData | null>(null);
+  const [instructionData, setInstructionDataState] = useState<InstructionData | null>(null);
+
+  const setInstructionData = React.useCallback((nextData: InstructionData | null) => {
+    setInstructionDataState((prev) => {
+      if (prev === nextData) return prev;
+      if (!prev && !nextData) return null;
+      if (prev && nextData) {
+        const isSameTitle = prev.title === nextData.title;
+        const isSameDesc = typeof prev.description === 'string' && typeof nextData.description === 'string'
+          ? prev.description === nextData.description
+          : prev.description === nextData.description;
+        const isSameItems = JSON.stringify(prev.items) === JSON.stringify(nextData.items);
+        const isSameTips = JSON.stringify(prev.tips) === JSON.stringify(nextData.tips);
+
+        if (isSameTitle && isSameDesc && isSameItems && isSameTips) {
+          return prev;
+        }
+      }
+      return nextData;
+    });
+  }, []);
+
+  const value = React.useMemo(() => ({ instructionData, setInstructionData }), [instructionData, setInstructionData]);
 
   return (
-    <InstructionContext.Provider value={{ instructionData, setInstructionData }}>
+    <InstructionContext.Provider value={value}>
       {children}
     </InstructionContext.Provider>
   );

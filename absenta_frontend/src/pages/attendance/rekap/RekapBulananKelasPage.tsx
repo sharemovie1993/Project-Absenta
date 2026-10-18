@@ -164,7 +164,7 @@ export function RekapBulananKelasContent({ initialKelasId }: { initialKelasId?: 
           if (a.value === waliClassId) return -1;
           if (b.value === waliClassId) return 1;
           return 0;
-        }).map(k => k.value === waliClassId ? { ...k, label: `⭐ ${k.label} (Kelas Binaan Anda)` } : k);
+        }).map(k => k.value === waliClassId ? { ...k, label: `${k.label} ⭐` } : k);
         setKelasOptions(sorted);
         if (!kelasId || !rawKelas.some(k => k.value === kelasId)) {
           setKelasId(waliClassId);

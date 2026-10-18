@@ -183,8 +183,21 @@ export default React.memo(function RaporStagingPage() {
       });
     },
     onSuccess: (res) => {
+      // Invalidate staging sheets
       queryClient.invalidateQueries({ queryKey: ['rapor-staging-sheets'] });
+      // Invalidate Leger & Cetak Rapor
+      queryClient.invalidateQueries({ queryKey: ['leger'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor-leger-list'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress'] });
+      // Invalidate Lembar Input Nilai & Monitoring
+      queryClient.invalidateQueries({ queryKey: ['grades'] });
+      queryClient.invalidateQueries({ queryKey: ['class-subject-progress-input'] });
+      queryClient.invalidateQueries({ queryKey: ['school-teacher-progress'] });
       queryClient.invalidateQueries({ queryKey: ['school-teacher-monitoring'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-progress'] });
+      queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-options-list'] });
+      queryClient.invalidateQueries({ queryKey: ['kelas-options-list'] });
       setPreSyncTargetId(null);
       const { totalNilaiSynced, totalRaporSynced, autoProvisionedCount, unmappedStudents } = res?.data || {};
 

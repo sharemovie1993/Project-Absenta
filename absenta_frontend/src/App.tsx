@@ -1658,6 +1658,17 @@ function App() {
                         </Suspense>
                       </ProtectedRoute>
                     } />
+                    <Route path="/rapor/input-nilai" element={
+                      <ProtectedRoute requiredCapability="academic.teaching.view">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <InputNilaiPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
                     <Route path="/kurikulum/evaluasi-kinerja" element={
                       <ProtectedRoute>
                         <Suspense fallback={

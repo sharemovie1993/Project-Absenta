@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
+import { cacheService } from '@/utils/cache.service';
+import { CACHE_TTL } from '@/constants/cache-keys';
 
 export class NilaiMonitoringService {
   /**
@@ -10,9 +12,14 @@ export class NilaiMonitoringService {
     tenantId: string,
     params: { tahun_pelajaran_id?: string; semester_id?: string }
   ) {
-    const tp = params.tahun_pelajaran_id
-      ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
-      : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+    const cacheKey = `rapor:${tenantId}:progress:school:${params.tahun_pelajaran_id || 'active'}:${params.semester_id || 'active'}`;
+
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const tp = params.tahun_pelajaran_id
+          ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
+          : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
 
     const sem = params.semester_id
       ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
@@ -242,22 +249,25 @@ export class NilaiMonitoringService {
       'School-wide teacher progress evaluated'
     );
 
-    return {
-      meta: {
-        tahun_pelajaran: { id: tp.id, tahun: tp.tahun },
-        semester: { id: sem.id, nama_semester: sem.nama_semester },
-        total_guru: teacherProgressList.length,
-        guru_completed: schoolGuruCompleted,
-        guru_partial: schoolGuruPartial,
-        guru_empty: schoolGuruEmpty,
-        total_tasks: schoolTotalTasks,
-        completed_tasks: schoolCompletedTasks,
-        total_siswa: schoolTotalSiswa,
-        siswa_terisi: schoolFilledSiswa,
-        percentage: schoolPercentage,
+        return {
+          meta: {
+            tahun_pelajaran: { id: tp.id, tahun: tp.tahun },
+            semester: { id: sem.id, nama_semester: sem.nama_semester },
+            total_guru: teacherProgressList.length,
+            guru_completed: schoolGuruCompleted,
+            guru_partial: schoolGuruPartial,
+            guru_empty: schoolGuruEmpty,
+            total_tasks: schoolTotalTasks,
+            completed_tasks: schoolCompletedTasks,
+            total_siswa: schoolTotalSiswa,
+            siswa_terisi: schoolFilledSiswa,
+            percentage: schoolPercentage,
+          },
+          teachers: teacherProgressList,
+        };
       },
-      teachers: teacherProgressList,
-    };
+      CACHE_TTL.DYNAMIC
+    );
   }
 
   /**
@@ -268,16 +278,21 @@ export class NilaiMonitoringService {
     kelasId: string,
     params: { tahun_pelajaran_id?: string; semester_id?: string }
   ) {
-    const tp = params.tahun_pelajaran_id
-      ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
-      : (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }))
-        || (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } }));
+    const cacheKey = `rapor:${tenantId}:progress:kelas:${kelasId}:${params.tahun_pelajaran_id || 'active'}:${params.semester_id || 'active'}`;
 
-    const sem = params.semester_id
-      ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
-      : (await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }))
-        || (tp ? await prisma.semester.findFirst({ where: { tenant_id: tenantId, tahun_pelajaran_id: tp.id } }) : null)
-        || (await prisma.semester.findFirst({ where: { tenant_id: tenantId } }));
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const tp = params.tahun_pelajaran_id
+          ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
+          : (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } }))
+            || (await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } }));
+
+        const sem = params.semester_id
+          ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
+          : (await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } }))
+            || (tp ? await prisma.semester.findFirst({ where: { tenant_id: tenantId, tahun_pelajaran_id: tp.id } }) : null)
+            || (await prisma.semester.findFirst({ where: { tenant_id: tenantId } }));
 
     const kelas = await prisma.kelas.findFirst({
       where: { id: kelasId, tenant_id: tenantId },
@@ -323,17 +338,48 @@ export class NilaiMonitoringService {
       ? { nama_guru: waliAssignment.User.full_name, nip: '' }
       : null;
 
-    // 1. Ambil seluruh siswa aktif di kelas ini
-    const students = await prisma.siswa.findMany({
+    // 1. Ambil daftar siswa untuk kelas, tahun pelajaran, dan semester ini.
+    // Utamakan data riwayat akademik resmi (RaporSiswa / SiswaAkademik) agar ketika membuka tahun lampau,
+    // siswa yang terambil adalah siswa yang memang berada di kelas tersebut pada masa itu.
+    const historicalRapor = await prisma.raporSiswa.findMany({
       where: {
         tenant_id: tenantId,
         kelas_id: kelasId,
-        status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] },
+        tahun_pelajaran_id: tp.id,
+        semester_id: sem.id,
       },
-      select: { id: true },
+      select: { siswa_id: true },
     });
-    const totalSiswa = students.length;
-    const studentIds = students.map((s) => s.id);
+
+    let studentIds: string[] = [];
+    if (historicalRapor.length > 0) {
+      studentIds = Array.from(new Set(historicalRapor.map((r) => r.siswa_id)));
+    } else {
+      const historicalAkademik = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: kelasId,
+          tahun_pelajaran_id: tp.id,
+          semester_id: sem.id,
+          siswa: { tenant_id: tenantId },
+        },
+        select: { siswa_id: true },
+      });
+      if (historicalAkademik.length > 0) {
+        studentIds = Array.from(new Set(historicalAkademik.map((a) => a.siswa_id)));
+      } else {
+        // Fallback untuk tahun ajaran aktif berjalan jika belum dibuat lembar rapor
+        const currentStudents = await prisma.siswa.findMany({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: kelasId,
+            status: { in: ['AKTIF', 'ACTIVE', 'Aktif', 'active'] },
+          },
+          select: { id: true },
+        });
+        studentIds = currentStudents.map((s) => s.id);
+      }
+    }
+    const totalSiswa = studentIds.length;
 
     // 2. Ambil seluruh mapel yang dijadwalkan di kelas ini via JadwalKBM
     let schedules = await prisma.jadwalKBM.findMany({
@@ -427,8 +473,8 @@ export class NilaiMonitoringService {
           }
         }
       });
-    } else {
-      // Fallback darurat jika sekolah belum mengisi Struktur Kurikulum sama sekali
+    } else if (schedules.length > 0) {
+      // Fallback darurat jika sekolah belum mengisi Struktur Kurikulum sama sekali tapi ada JadwalKBM
       schedules.forEach((s) => {
         if (s.mapel_id && s.Mapel) {
           if (!mapelTaskMap.has(s.mapel_id)) {
@@ -442,6 +488,38 @@ export class NilaiMonitoringService {
               no_telepon_guru: s.Guru?.no_hp || null,
             });
           }
+        }
+      });
+    } else if (studentIds.length > 0) {
+      // Fallback data arsip lampau / data sinkronisasi staging sheet:
+      // Ambil daftar mapel nyata yang nilainya sudah tersimpan di NilaiSiswa untuk siswa-siswa di kelas ini
+      const existingGradesMapels = await prisma.nilaiSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tp.id,
+          semester_id: sem.id,
+          siswa_id: { in: studentIds },
+        },
+        select: {
+          mapel_id: true,
+          Mapel: {
+            select: { id: true, nama_mapel: true, kode_mapel: true },
+          },
+        },
+        distinct: ['mapel_id'],
+      });
+
+      existingGradesMapels.forEach((eg) => {
+        if (eg.mapel_id && eg.Mapel && !mapelTaskMap.has(eg.mapel_id)) {
+          mapelTaskMap.set(eg.mapel_id, {
+            mapel_id: eg.mapel_id,
+            nama_mapel: eg.Mapel.nama_mapel,
+            kode_mapel: eg.Mapel.kode_mapel,
+            guru_id: null,
+            nama_guru: null,
+            nip_guru: null,
+            no_telepon_guru: null,
+          });
         }
       });
     }
@@ -507,23 +585,26 @@ export class NilaiMonitoringService {
     const totalMapel = subjectList.length;
     const percentage = totalMapel > 0 ? Number(((completedCount / totalMapel) * 100).toFixed(1)) : 0;
 
-    return {
-      kelas: {
-        id: kelas.id,
-        nama_kelas: kelas.nama_kelas,
-        tingkat: kelas.tingkat,
-        jurusan: kelas.Jurusan?.nama || null,
-        wali_kelas: waliKelasInfo,
+        return {
+          kelas: {
+            id: kelas.id,
+            nama_kelas: kelas.nama_kelas,
+            tingkat: kelas.tingkat,
+            jurusan: kelas.Jurusan?.nama || null,
+            wali_kelas: waliKelasInfo,
+          },
+          tahun_pelajaran: { id: tp.id, tahun: tp.tahun },
+          semester: { id: sem.id, nama_semester: sem.nama_semester },
+          total_siswa: totalSiswa,
+          total_mapel: totalMapel,
+          mapel_completed: completedCount,
+          mapel_partial: partialCount,
+          mapel_empty: emptyCount,
+          percentage,
+          subjects: subjectList.sort((a, b) => a.nama_mapel.localeCompare(b.nama_mapel)),
+        };
       },
-      tahun_pelajaran: { id: tp.id, tahun: tp.tahun },
-      semester: { id: sem.id, nama_semester: sem.nama_semester },
-      total_siswa: totalSiswa,
-      total_mapel: totalMapel,
-      mapel_completed: completedCount,
-      mapel_partial: partialCount,
-      mapel_empty: emptyCount,
-      percentage,
-      subjects: subjectList.sort((a, b) => a.nama_mapel.localeCompare(b.nama_mapel)),
-    };
+      CACHE_TTL.DYNAMIC
+    );
   }
 }

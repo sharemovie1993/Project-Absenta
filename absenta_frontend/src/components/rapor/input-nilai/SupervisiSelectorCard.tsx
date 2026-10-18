@@ -17,6 +17,7 @@ export interface SupervisiSelectorCardProps {
   activeYear: AcademicYear | null;
   activeSemester: Semester | null;
   onNavigateDashboard: () => void;
+  onOpenMonitoringModal?: () => void;
 }
 
 export const SupervisiSelectorCard: React.FC<SupervisiSelectorCardProps> = memo(({
@@ -32,6 +33,7 @@ export const SupervisiSelectorCard: React.FC<SupervisiSelectorCardProps> = memo(
   activeYear,
   activeSemester,
   onNavigateDashboard,
+  onOpenMonitoringModal,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-indigo-100 dark:border-indigo-950/60 shadow-xs space-y-3">
@@ -77,14 +79,26 @@ export const SupervisiSelectorCard: React.FC<SupervisiSelectorCardProps> = memo(
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+          {onOpenMonitoringModal && (
+            <button
+              type="button"
+              onClick={onOpenMonitoringModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200/60 dark:border-indigo-800 transition-all cursor-pointer"
+              title="Buka Status Monitoring Pengisian Mapel Rombel Ini"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Monitoring Mapel</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onNavigateDashboard}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
             title="Buka Dashboard Monitoring Rapor"
           >
-            <BarChart3 className="w-3.5 h-3.5 text-indigo-500" />
+            <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
             <span>Dashboard Monitoring</span>
           </button>
         </div>

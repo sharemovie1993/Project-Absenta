@@ -101,10 +101,25 @@ export const useRaporRenderStore = create<RaporRenderState>((set, get) => ({
 
     // Proactive automatic preview attempt in new tab
     if (blobUrl) {
+      let openedTab: Window | null = null;
       try {
-        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        openedTab = window.open(blobUrl, '_blank');
       } catch {
-        // If popup blocked, user will use the primary action button on the visible modal
+        // Pop-up blocked by browser
+      }
+
+      // Jika tab baru berhasil dibuka otomatis:
+      // Beri animasi sukses 100% sejenak (800ms), lalu tutup modal secara otomatis.
+      // Ini mencegah modal menggantung di tab utama saat pengguna kembali dari tab PDF.
+      if (openedTab) {
+        setTimeout(() => {
+          if (get().isOpen && get().stage === 'ready') {
+            set({
+              isOpen: false,
+              stage: 'idle',
+            });
+          }
+        }, 800);
       }
     }
   },
@@ -120,11 +135,14 @@ export const useRaporRenderStore = create<RaporRenderState>((set, get) => ({
   closeModal: () => {
     const currentBlob = get().blobUrl;
     if (currentBlob) {
-      try {
-        window.URL.revokeObjectURL(currentBlob);
-      } catch {
-        // Ignore
-      }
+      // Tunda revoke blob URL selama 60 detik agar tab PDF yang sedang terbuka tidak mendadak error
+      setTimeout(() => {
+        try {
+          window.URL.revokeObjectURL(currentBlob);
+        } catch {
+          // Ignore
+        }
+      }, 60000);
     }
     set({
       isOpen: false,

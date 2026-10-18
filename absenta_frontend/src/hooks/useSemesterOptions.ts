@@ -38,7 +38,7 @@ export function useSemesterOptions(params: UseSemesterOptionsParams = {}) {
       const displayName = /^\d+$/.test(cleanName) ? `Semester ${cleanName}` : (cleanName || 'Semester');
       return {
         value: s.id,
-        label: `${displayName}${s.is_active ? ' ⭐ [AKTIF]' : ''}`,
+        label: `${displayName}${s.is_active ? ' ⭐' : ''}`,
         raw: s
       };
     });

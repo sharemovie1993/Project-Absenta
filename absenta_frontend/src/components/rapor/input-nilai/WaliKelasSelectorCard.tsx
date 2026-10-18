@@ -15,6 +15,7 @@ export interface WaliKelasSelectorCardProps {
   activeYear: AcademicYear | null;
   activeSemester: Semester | null;
   onNavigateCetak: () => void;
+  onOpenMonitoringModal?: () => void;
 }
 
 export const WaliKelasSelectorCard: React.FC<WaliKelasSelectorCardProps> = memo(({
@@ -28,6 +29,7 @@ export const WaliKelasSelectorCard: React.FC<WaliKelasSelectorCardProps> = memo(
   activeYear,
   activeSemester,
   onNavigateCetak,
+  onOpenMonitoringModal,
 }) => {
   return (
     <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-blue-100 dark:border-blue-950/60 shadow-xs space-y-3">
@@ -55,6 +57,18 @@ export const WaliKelasSelectorCard: React.FC<WaliKelasSelectorCardProps> = memo(
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
+          {onOpenMonitoringModal && (
+            <button
+              type="button"
+              onClick={onOpenMonitoringModal}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-bold text-xs border border-blue-200/60 dark:border-blue-800 transition-all cursor-pointer"
+              title="Buka Status Monitoring Pengisian Mapel Kelas Binaan"
+            >
+              <BarChart3 size={14} className="text-blue-600 dark:text-blue-400" />
+              <span>Monitoring Mapel</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onNavigateCetak}

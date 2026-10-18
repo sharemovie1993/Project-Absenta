@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -170,13 +170,21 @@ export const AcademicPageLayout: React.FC<AcademicPageLayoutProps> = React.memo(
     return canViewProp;
   }, [isAdmin, canViewProp, user]);
 
-  // Set Instruction Panel Content
+  // Set Instruction Panel Content safely to prevent infinite re-render loops
+  const instructionRef = useRef<InstructionData | undefined>(instruction);
+  instructionRef.current = instruction;
+
+  const instructionKey = useMemo(() => {
+    if (!instruction) return '';
+    return `${instruction.title || ''}|${instruction.items?.length || 0}|${instruction.tips?.length || 0}`;
+  }, [instruction?.title, instruction?.items?.length, instruction?.tips?.length]);
+
   useEffect(() => {
-    if (instruction) {
-      setInstructionData(instruction);
+    if (instructionRef.current) {
+      setInstructionData(instructionRef.current);
     }
     return () => setInstructionData(null);
-  }, [instruction, setInstructionData]);
+  }, [instructionKey, setInstructionData]);
 
   const navigate = useNavigate();
   const location = useLocation();

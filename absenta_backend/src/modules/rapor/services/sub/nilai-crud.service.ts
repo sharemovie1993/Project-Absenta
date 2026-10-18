@@ -3,6 +3,8 @@ import { getTenantTimezone } from '@/utils/timezone.utils';
 import { appLogger } from '@/utils/app-logger';
 import { prisma } from '@/utils/prisma';
 import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
+import { cacheService } from '@/utils/cache.service';
+import { CACHE_TTL } from '@/constants/cache-keys';
 
 export class NilaiCrudService {
   static async getNilai(
@@ -16,7 +18,7 @@ export class NilaiCrudService {
       kelas_id?: string; // Filter berdasarkan siswa di kelas tertentu
     }
   ) {
-    return prisma.nilaiSiswa.findMany({
+    const records = await prisma.nilaiSiswa.findMany({
       where: {
         tenant_id: tenantId,
         ...(filter.siswa_id ? { siswa_id: filter.siswa_id } : {}),
@@ -26,9 +28,31 @@ export class NilaiCrudService {
         ...(filter.jenis_nilai_id ? { jenis_nilai_id: filter.jenis_nilai_id } : {}),
         ...(filter.kelas_id
           ? {
-              Siswa: {
-                kelas_id: filter.kelas_id,
-              },
+              OR: [
+                { Siswa: { kelas_id: filter.kelas_id } },
+                {
+                  Siswa: {
+                    RaporSiswa: {
+                      some: {
+                        kelas_id: filter.kelas_id,
+                        ...(filter.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
+                        ...(filter.semester_id ? { semester_id: filter.semester_id } : {}),
+                      },
+                    },
+                  },
+                },
+                {
+                  Siswa: {
+                    SiswaAkademik: {
+                      some: {
+                        kelas_id: filter.kelas_id,
+                        ...(filter.tahun_pelajaran_id ? { tahun_pelajaran_id: filter.tahun_pelajaran_id } : {}),
+                        ...(filter.semester_id ? { semester_id: filter.semester_id } : {}),
+                      },
+                    },
+                  },
+                },
+              ],
             }
           : {}),
       },
@@ -56,6 +80,47 @@ export class NilaiCrudService {
     }));
   }
 
+  /**
+   * 🛡️ DEFENSIVE GUARD: Integritas Akademik & Anti-Overwriting Data Arsip
+   * Mencegah mutasi nilai pada Tahun Pelajaran / Semester yang telah ditutup (Non-Aktif/Arsip).
+   */
+  static async assertTahunPelajaranAktif(
+    tenantId: string,
+    tahunPelajaranId: string,
+    semesterId?: string
+  ) {
+    if (!tahunPelajaranId) {
+      throw new Error('Parameter tahun_pelajaran_id wajib disertakan.');
+    }
+
+    const tp = await prisma.tahunPelajaran.findFirst({
+      where: { id: tahunPelajaranId, tenant_id: tenantId },
+      select: { id: true, tahun: true, is_active: true },
+    });
+
+    if (!tp) {
+      throw new Error('Tahun Pelajaran tidak ditemukan pada data sekolah.');
+    }
+
+    if (!tp.is_active) {
+      throw new Error(
+        `Tahun Pelajaran ${tp.tahun} telah ditutup (Arsip/Non-Aktif). Pengisian atau pengubahan nilai dikunci secara permanen untuk menjaga integritas data akademik sekolah.`
+      );
+    }
+
+    if (semesterId) {
+      const sem = await prisma.semester.findFirst({
+        where: { id: semesterId, tenant_id: tenantId, tahun_pelajaran_id: tahunPelajaranId },
+        select: { id: true, nama_semester: true, is_active: true },
+      });
+      if (sem && !sem.is_active) {
+        throw new Error(
+          `Semester ${sem.nama_semester} pada Tahun Pelajaran ${tp.tahun} berstatus Non-Aktif. Pengisian nilai hanya diizinkan pada semester yang aktif.`
+        );
+      }
+    }
+  }
+
   static async upsertNilai(
     tenantId: string,
     data: {
@@ -69,6 +134,8 @@ export class NilaiCrudService {
       sesi_absensi_id?: string | null;
     }
   ) {
+    await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
+
     const result = await prisma.nilaiSiswa.upsert({
       where: {
         siswa_id_mapel_id_tahun_pelajaran_id_semester_id: {
@@ -117,6 +184,8 @@ export class NilaiCrudService {
       }>;
     }
   ) {
+    await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
+
     const operations = data.scores.map((score) => {
       return prisma.nilaiSiswa.upsert({
         where: {
@@ -179,6 +248,8 @@ export class NilaiCrudService {
       }>;
     }
   ) {
+    await this.assertTahunPelajaranAktif(tenantId, data.tahun_pelajaran_id, data.semester_id);
+
     // 1. Cek otoritas pengaturan sumber nilai rapor (MURNI_CP_MANUAL vs FORMULA_SUMATIF)
     const [tpSumberCfg, globalSumberCfg, tp] = await Promise.all([
       prisma.config.findFirst({
@@ -287,20 +358,25 @@ export class NilaiCrudService {
     user: { id: string; roleName: string },
     params: { tahun_pelajaran_id?: string; semester_id?: string }
   ) {
-    const tp = params.tahun_pelajaran_id 
-      ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
-      : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+    const cacheKey = `rapor:${tenantId}:progress:guru:${user.id}:${params.tahun_pelajaran_id || 'active'}:${params.semester_id || 'active'}`;
 
-    const sem = params.semester_id
-      ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
-      : await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        const tp = params.tahun_pelajaran_id 
+          ? await prisma.tahunPelajaran.findFirst({ where: { id: params.tahun_pelajaran_id, tenant_id: tenantId } })
+          : await prisma.tahunPelajaran.findFirst({ where: { tenant_id: tenantId, is_active: true } });
 
-    if (!tp || !sem) {
-      return {
-        total_tasks: 0,
-        completed_tasks: 0,
-        partial_tasks: 0,
-        empty_tasks: 0,
+        const sem = params.semester_id
+          ? await prisma.semester.findFirst({ where: { id: params.semester_id, tenant_id: tenantId } })
+          : await prisma.semester.findFirst({ where: { tenant_id: tenantId, is_active: true } });
+
+        if (!tp || !sem) {
+          return {
+            total_tasks: 0,
+            completed_tasks: 0,
+            partial_tasks: 0,
+            empty_tasks: 0,
         percentage: 0,
         tasks: []
       };
@@ -455,15 +531,18 @@ export class NilaiCrudService {
       ? Number(((totalSiswaTerisiAll / totalSiswaAll) * 100).toFixed(1)) 
       : 0;
 
-    return {
-      total_tasks: totalTasks,
-      completed_tasks: completedTasks,
-      partial_tasks: partialTasks,
-      empty_tasks: emptyTasks,
-      total_siswa: totalSiswaAll,
-      siswa_terisi: totalSiswaTerisiAll,
-      percentage,
-      tasks: detailedTasks
-    };
+        return {
+          total_tasks: totalTasks,
+          completed_tasks: completedTasks,
+          partial_tasks: partialTasks,
+          empty_tasks: emptyTasks,
+          total_siswa: totalSiswaAll,
+          siswa_terisi: totalSiswaTerisiAll,
+          percentage,
+          tasks: detailedTasks
+        };
+      },
+      CACHE_TTL.DYNAMIC
+    );
   }
 }

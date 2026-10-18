@@ -102,9 +102,19 @@ export class RaporService {
       }),
     ]);
 
+    // Resolusi Kelas Historis: Jika ada catatan rapor di periode ini, gunakan kelas tersebut
+    let effectiveKelas = siswa.Kelas;
+    if (raporSummary?.kelas_id) {
+      const histKelas = await prisma.kelas.findFirst({
+        where: { id: raporSummary.kelas_id, tenant_id: tenantId },
+        include: { Jurusan: true },
+      });
+      if (histKelas) effectiveKelas = histKelas;
+    }
+
     // 3. Ambil Struktur Kurikulum untuk tingkat & jurusan siswa
-    const kelasJurusanId = siswa.Kelas.jurusan_id;
-    const kelasTingkat = siswa.Kelas.tingkat;
+    const kelasJurusanId = effectiveKelas.jurusan_id;
+    const kelasTingkat = effectiveKelas.tingkat;
 
     let strukturList = await prisma.strukturKurikulum.findMany({
       where: {
@@ -350,8 +360,8 @@ export class RaporService {
         nis: siswa.nis,
         nisn: siswa.nisn,
         nama_siswa: siswa.nama_siswa,
-        kelas: siswa.Kelas.nama_kelas,
-        tingkat: siswa.Kelas.tingkat,
+        kelas: effectiveKelas.nama_kelas,
+        tingkat: effectiveKelas.tingkat,
         tempat_lahir: (siswa as any).tempat_lahir || null,
         tanggal_lahir: (siswa as any).tanggal_lahir || null,
         jenis_kelamin: (siswa as any).jenis_kelamin || null,
@@ -376,9 +386,9 @@ export class RaporService {
         nama_wali: (siswa as any).nama_wali || null,
         pekerjaan_wali: (siswa as any).pekerjaan_wali || null,
         alamat_wali: (siswa as any).alamat_wali || null,
-        bidang_keahlian: (siswa.Kelas as any)?.Jurusan?.bidang_keahlian || (siswa as any).bidang_keahlian || null,
-        program_keahlian: (siswa.Kelas as any)?.Jurusan?.program_keahlian || (siswa as any).program_keahlian || null,
-        konsentrasi_keahlian: (siswa.Kelas as any)?.Jurusan?.nama_jurusan || (siswa as any).konsentrasi_keahlian || null,
+        bidang_keahlian: (effectiveKelas as any)?.Jurusan?.bidang_keahlian || (siswa as any).bidang_keahlian || null,
+        program_keahlian: (effectiveKelas as any)?.Jurusan?.program_keahlian || (siswa as any).program_keahlian || null,
+        konsentrasi_keahlian: (effectiveKelas as any)?.Jurusan?.nama_jurusan || (siswa as any).konsentrasi_keahlian || null,
       },
       absensi: {
         sakit: raporSummary?.sakit || 0,
@@ -414,10 +424,49 @@ export class RaporService {
       throw new Error('Data parameter kelas, tahun pelajaran, atau semester tidak ditemukan');
     }
 
-    const listSiswa = await prisma.siswa.findMany({
-      where: { tenant_id: tenantId, kelas_id: params.kelas_id, status: 'AKTIF' },
-      orderBy: { nama_siswa: 'asc' },
+    // Resolusi siswa: Utamakan siswa historis yang tercatat di RaporSiswa / SiswaAkademik untuk tahun & semester ini
+    const historicalRapor = await prisma.raporSiswa.findMany({
+      where: {
+        tenant_id: tenantId,
+        kelas_id: params.kelas_id,
+        tahun_pelajaran_id: params.tahun_pelajaran_id,
+        semester_id: params.semester_id,
+      },
+      include: {
+        Siswa: true,
+      },
     });
+
+    let listSiswa: any[] = [];
+    if (historicalRapor.length > 0) {
+      listSiswa = historicalRapor
+        .map((r) => r.Siswa)
+        .filter((s): s is NonNullable<typeof s> => !!s)
+        .sort((a, b) => (a.nama_siswa || '').localeCompare(b.nama_siswa || ''));
+    } else {
+      const historicalAkademik = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: params.kelas_id,
+          tahun_pelajaran_id: params.tahun_pelajaran_id,
+          semester_id: params.semester_id,
+          siswa: { tenant_id: tenantId },
+        },
+        include: {
+          siswa: true,
+        },
+      });
+      if (historicalAkademik.length > 0) {
+        listSiswa = historicalAkademik
+          .map((a) => a.siswa)
+          .filter((s): s is NonNullable<typeof s> => !!s)
+          .sort((a, b) => (a.nama_siswa || '').localeCompare(b.nama_siswa || ''));
+      } else {
+        listSiswa = await prisma.siswa.findMany({
+          where: { tenant_id: tenantId, kelas_id: params.kelas_id, status: 'AKTIF' },
+          orderBy: { nama_siswa: 'asc' },
+        });
+      }
+    }
 
     const listNilai = await prisma.nilaiSiswa.findMany({
       where: {
@@ -921,147 +970,137 @@ export class RaporService {
     const ganjilId = ganjilSem?.id;
     const genapId = genapSem?.id;
 
-    const [
-      sekolah,
-      tempatTerbitCfg,
-      tanggalRaporCfg,
-      tanggalP5Cfg,
-      tanggalPtsCfg,
-      tanggalPlenoCfg,
-      // Ganjil
-      raporGanjilCfg,
-      p5GanjilCfg,
-      ptsGanjilCfg,
-      // Genap
-      raporGenapCfg,
-      p5GenapCfg,
-      ptsGenapCfg,
-      plenoGenapCfg,
-      kelulusanCfg,
-      // Pejabat
-      kepsekStatusCfg,
-      kepsekNamaCfg,
-      kepsekNipCfg,
-      // Format (TP-scoped)
-      kertasTpCfg,
-      kopTpCfg,
-      qrTpCfg,
-      kokurikulerTpCfg,
-      modeCetakTpCfg,
-      sumberNilaiTpCfg,
-      // Format (Global Fallback)
-      kertasGlobalCfg,
-      kopGlobalCfg,
-      qrGlobalCfg,
-      kokurikulerGlobalCfg,
-      modeCetakGlobalCfg,
-      sumberNilaiGlobalCfg,
-    ] = await Promise.all([
-      prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TEMPAT_TERBIT_${tpId}` } }) : null,
-      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${semId}` } }) : null,
-      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${semId}` } }) : null,
-      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${semId}` } }) : null,
-      (tpId && semId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PLENO_${tpId}_${semId}` } }) : null,
-      // Ganjil
-      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}` } }) : null,
-      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${ganjilId}` } }) : null,
-      (tpId && ganjilId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}` } }) : null,
-      // Genap
-      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}` } }) : null,
-      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_P5_${tpId}_${genapId}` } }) : null,
-      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PTS_${tpId}_${genapId}` } }) : null,
-      (tpId && genapId) ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_PLENO_${tpId}_${genapId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TANGGAL_KELULUSAN_${tpId}` } }) : null,
-      // Pejabat
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_STATUS_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NAMA_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_KEPSEK_NIP_${tpId}` } }) : null,
-      // Format (TP-scoped)
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_UKURAN_KERTAS_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_KOP_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_TAMPILKAN_QR_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SHOW_KOKURIKULER_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_MODE_CETAK_${tpId}` } }) : null,
-      tpId ? prisma.config.findFirst({ where: { tenant_id: tenantId, key: `RAPOR_SUMBER_NILAI_${tpId}` } }) : null,
-      // Format (Global Fallback)
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_UKURAN_KERTAS' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_KOP' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_TAMPILKAN_QR' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SHOW_KOKURIKULER' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_MODE_CETAK' } }),
-      prisma.config.findFirst({ where: { tenant_id: tenantId, key: 'RAPOR_SUMBER_NILAI' } }),
-    ]);
+    const cacheKey = `rapor:${tenantId}:settings:${tpId || 'all'}:${semId || 'all'}`;
 
-    const resolvedUkuranKertas = (kertasTpCfg?.value || kertasGlobalCfg?.value || 'A4') as 'A4' | 'F4';
-    const resolvedTampilkanKop = kopTpCfg ? kopTpCfg.value === 'true' : (kopGlobalCfg ? kopGlobalCfg.value === 'true' : true);
-    const resolvedTampilkanQr = qrTpCfg ? qrTpCfg.value === 'true' : (qrGlobalCfg ? qrGlobalCfg.value === 'true' : true);
+    return await cacheService.getOrSet(
+      cacheKey,
+      async () => {
+        // High-performance query: Batch load all configs in a single query
+        const [sekolah, allConfigs] = await Promise.all([
+          prisma.sekolah.findFirst({ where: { tenant_id: tenantId } }),
+          prisma.config.findMany({ where: { tenant_id: tenantId } }),
+        ]);
 
-    let resolvedTampilkanKokurikuler: boolean;
-    if (kokurikulerTpCfg) {
-      resolvedTampilkanKokurikuler = kokurikulerTpCfg.value === 'true';
-    } else if (kokurikulerGlobalCfg) {
-      resolvedTampilkanKokurikuler = kokurikulerGlobalCfg.value === 'true';
-    } else {
-      // Smart Academic Default: <= 2024/2025 is false (tanpa kokurikuler), >= 2025/2026 is true
-      resolvedTampilkanKokurikuler = startYear >= 2025;
-    }
+        const cfgMap = new Map<string, string>();
+        allConfigs.forEach((c) => {
+          if (c.key && c.value !== null && c.value !== undefined) {
+            cfgMap.set(c.key, c.value);
+          }
+        });
 
-    let resolvedModeCetakRapor: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
-    if (modeCetakTpCfg?.value) {
-      resolvedModeCetakRapor = modeCetakTpCfg.value as any;
-    } else if (modeCetakGlobalCfg?.value) {
-      resolvedModeCetakRapor = modeCetakGlobalCfg.value as any;
-    } else {
-      // Smart Academic Default: 2023 & 2024 = SUMATIF_AND_CP. Tahun lainnya = CP_ONLY
-      resolvedModeCetakRapor = (startYear === 2023 || startYear === 2024) ? 'SUMATIF_AND_CP' : 'CP_ONLY';
-    }
+        const getCfg = (k?: string | null) => (k ? cfgMap.get(k) : undefined);
 
-    // Turunan otomatis dari mode cetak: aktifkan sumatif jika bukan CP_ONLY
-    const resolvedAktifkanSumatifArsip = resolvedModeCetakRapor !== 'CP_ONLY';
+        const tempatTerbitCfgVal = getCfg(`RAPOR_TEMPAT_TERBIT_${tpId}`);
+        const tanggalRaporCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${semId}`) : undefined;
+        const tanggalP5CfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${semId}`) : undefined;
+        const tanggalPtsCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${semId}`) : undefined;
+        const tanggalPlenoCfgVal = (tpId && semId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${semId}`) : undefined;
 
-    let resolvedSumberNilaiRapor: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
-    if (sumberNilaiTpCfg?.value) {
-      resolvedSumberNilaiRapor = sumberNilaiTpCfg.value as any;
-    } else if (sumberNilaiGlobalCfg?.value) {
-      resolvedSumberNilaiRapor = sumberNilaiGlobalCfg.value as any;
-    } else {
-      // Smart Academic Default: <= 2023 adalah rapor legacy manual -> MURNI_CP_MANUAL
-      resolvedSumberNilaiRapor = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
-    }
+        // Ganjil
+        const raporGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${ganjilId}`) : undefined;
+        const p5GanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${ganjilId}`) : undefined;
+        const ptsGanjilCfgVal = (tpId && ganjilId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${ganjilId}`) : undefined;
 
-    return {
-      tahun_pelajaran_id: tpId || null,
-      semester_id: semId || null,
-      tempat_terbit: tempatTerbitCfg?.value || sekolah?.kota || 'Purwakarta',
-      tanggal_rapor: tanggalRaporCfg?.value || '',
-      tanggal_rapor_p5: tanggalP5Cfg?.value || '',
-      tanggal_rapor_pts: tanggalPtsCfg?.value || '',
-      tanggal_pleno: tanggalPlenoCfg?.value || '',
+        // Genap
+        const raporGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_RAPOR_${tpId}_${genapId}`) : undefined;
+        const p5GenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_P5_${tpId}_${genapId}`) : undefined;
+        const ptsGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PTS_${tpId}_${genapId}`) : undefined;
+        const plenoGenapCfgVal = (tpId && genapId) ? getCfg(`RAPOR_TANGGAL_PLENO_${tpId}_${genapId}`) : undefined;
+        const kelulusanCfgVal = tpId ? getCfg(`RAPOR_TANGGAL_KELULUSAN_${tpId}`) : undefined;
 
-      // Explicit Ganjil & Genap
-      ganjil_semester_id: ganjilId || null,
-      genap_semester_id: genapId || null,
-      tanggal_rapor_ganjil: raporGanjilCfg?.value || '',
-      tanggal_p5_ganjil: p5GanjilCfg?.value || '',
-      tanggal_pts_ganjil: ptsGanjilCfg?.value || '',
-      tanggal_rapor_genap: raporGenapCfg?.value || '',
-      tanggal_p5_genap: p5GenapCfg?.value || '',
-      tanggal_pts_genap: ptsGenapCfg?.value || '',
-      tanggal_pleno_genap: plenoGenapCfg?.value || '',
-      tanggal_kelulusan: kelulusanCfg?.value || '',
+        // Pejabat
+        const kepsekStatusCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_STATUS_${tpId}`) : undefined;
+        const kepsekNamaCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_NAMA_${tpId}`) : undefined;
+        const kepsekNipCfgVal = tpId ? getCfg(`RAPOR_KEPSEK_NIP_${tpId}`) : undefined;
 
-      kepsek_status: (kepsekStatusCfg?.value || 'DEFINITIF') as 'DEFINITIF' | 'PLT',
-      kepsek_nama: kepsekNamaCfg?.value || sekolah?.kepala_sekolah || '',
-      kepsek_nip: kepsekNipCfg?.value || sekolah?.nip_kepala || '',
-      ukuran_kertas: resolvedUkuranKertas,
-      tampilkan_kop: resolvedTampilkanKop,
-      tampilkan_qr: resolvedTampilkanQr,
-      tampilkan_kokurikuler: resolvedTampilkanKokurikuler,
-      aktifkan_sumatif_arsip: resolvedAktifkanSumatifArsip,
-      mode_cetak_rapor: resolvedModeCetakRapor,
-      sumber_nilai_rapor: resolvedSumberNilaiRapor,
-    };
+        // Format (TP-scoped)
+        const kertasTpCfgVal = tpId ? getCfg(`RAPOR_UKURAN_KERTAS_${tpId}`) : undefined;
+        const kopTpCfgVal = tpId ? getCfg(`RAPOR_TAMPILKAN_KOP_${tpId}`) : undefined;
+        const qrTpCfgVal = tpId ? getCfg(`RAPOR_TAMPILKAN_QR_${tpId}`) : undefined;
+        const kokurikulerTpCfgVal = tpId ? getCfg(`RAPOR_SHOW_KOKURIKULER_${tpId}`) : undefined;
+        const modeCetakTpCfgVal = tpId ? getCfg(`RAPOR_MODE_CETAK_${tpId}`) : undefined;
+        const sumberNilaiTpCfgVal = tpId ? getCfg(`RAPOR_SUMBER_NILAI_${tpId}`) : undefined;
+
+        // Format (Global Fallback)
+        const kertasGlobalCfgVal = getCfg('RAPOR_UKURAN_KERTAS');
+        const kopGlobalCfgVal = getCfg('RAPOR_TAMPILKAN_KOP');
+        const qrGlobalCfgVal = getCfg('RAPOR_TAMPILKAN_QR');
+        const kokurikulerGlobalCfgVal = getCfg('RAPOR_SHOW_KOKURIKULER');
+        const modeCetakGlobalCfgVal = getCfg('RAPOR_MODE_CETAK');
+        const sumberNilaiGlobalCfgVal = getCfg('RAPOR_SUMBER_NILAI');
+
+        const resolvedUkuranKertas = (kertasTpCfgVal || kertasGlobalCfgVal || 'A4') as 'A4' | 'F4';
+        const resolvedTampilkanKop = kopTpCfgVal ? kopTpCfgVal === 'true' : (kopGlobalCfgVal ? kopGlobalCfgVal === 'true' : true);
+        const resolvedTampilkanQr = qrTpCfgVal ? qrTpCfgVal === 'true' : (qrGlobalCfgVal ? qrGlobalCfgVal === 'true' : true);
+
+        let resolvedTampilkanKokurikuler: boolean;
+        if (kokurikulerTpCfgVal !== undefined) {
+          resolvedTampilkanKokurikuler = kokurikulerTpCfgVal === 'true';
+        } else if (kokurikulerGlobalCfgVal !== undefined) {
+          resolvedTampilkanKokurikuler = kokurikulerGlobalCfgVal === 'true';
+        } else {
+          // Smart Academic Default: <= 2024/2025 is false (tanpa kokurikuler), >= 2025/2026 is true
+          resolvedTampilkanKokurikuler = startYear >= 2025;
+        }
+
+        let resolvedModeCetakRapor: 'CP_ONLY' | 'SUMATIF_AND_CP' | 'SUMATIF_ONLY';
+        if (modeCetakTpCfgVal) {
+          resolvedModeCetakRapor = modeCetakTpCfgVal as any;
+        } else if (modeCetakGlobalCfgVal) {
+          resolvedModeCetakRapor = modeCetakGlobalCfgVal as any;
+        } else {
+          // Smart Academic Default: 2023 & 2024 = SUMATIF_AND_CP. Tahun lainnya = CP_ONLY
+          resolvedModeCetakRapor = (startYear === 2023 || startYear === 2024) ? 'SUMATIF_AND_CP' : 'CP_ONLY';
+        }
+
+        // Turunan otomatis dari mode cetak: aktifkan sumatif jika bukan CP_ONLY
+        const resolvedAktifkanSumatifArsip = resolvedModeCetakRapor !== 'CP_ONLY';
+
+        let resolvedSumberNilaiRapor: 'FORMULA_SUMATIF' | 'MURNI_CP_MANUAL';
+        if (sumberNilaiTpCfgVal) {
+          resolvedSumberNilaiRapor = sumberNilaiTpCfgVal as any;
+        } else if (sumberNilaiGlobalCfgVal) {
+          resolvedSumberNilaiRapor = sumberNilaiGlobalCfgVal as any;
+        } else {
+          // Smart Academic Default: <= 2023 adalah rapor legacy manual -> MURNI_CP_MANUAL
+          resolvedSumberNilaiRapor = startYear <= 2023 ? 'MURNI_CP_MANUAL' : 'FORMULA_SUMATIF';
+        }
+
+        return {
+          tahun_pelajaran_id: tpId || null,
+          semester_id: semId || null,
+          tempat_terbit: tempatTerbitCfgVal || sekolah?.kota || 'Purwakarta',
+          tanggal_rapor: tanggalRaporCfgVal || '',
+          tanggal_rapor_p5: tanggalP5CfgVal || '',
+          tanggal_rapor_pts: tanggalPtsCfgVal || '',
+          tanggal_pleno: tanggalPlenoCfgVal || '',
+
+          // Explicit Ganjil & Genap
+          ganjil_semester_id: ganjilId || null,
+          genap_semester_id: genapId || null,
+          tanggal_rapor_ganjil: raporGanjilCfgVal || '',
+          tanggal_p5_ganjil: p5GanjilCfgVal || '',
+          tanggal_pts_ganjil: ptsGanjilCfgVal || '',
+          tanggal_rapor_genap: raporGenapCfgVal || '',
+          tanggal_p5_genap: p5GenapCfgVal || '',
+          tanggal_pts_genap: ptsGenapCfgVal || '',
+          tanggal_pleno_genap: plenoGenapCfgVal || '',
+          tanggal_kelulusan: kelulusanCfgVal || '',
+
+          kepsek_status: (kepsekStatusCfgVal || 'DEFINITIF') as 'DEFINITIF' | 'PLT',
+          kepsek_nama: kepsekNamaCfgVal || sekolah?.kepala_sekolah || '',
+          kepsek_nip: kepsekNipCfgVal || sekolah?.nip_kepala || '',
+          ukuran_kertas: resolvedUkuranKertas,
+          tampilkan_kop: resolvedTampilkanKop,
+          tampilkan_qr: resolvedTampilkanQr,
+          tampilkan_kokurikuler: resolvedTampilkanKokurikuler,
+          aktifkan_sumatif_arsip: resolvedAktifkanSumatifArsip,
+          mode_cetak_rapor: resolvedModeCetakRapor,
+          sumber_nilai_rapor: resolvedSumberNilaiRapor,
+        };
+      },
+      CACHE_TTL.SEMI_STATIC
+    );
   }
 
   static async updateSettings(

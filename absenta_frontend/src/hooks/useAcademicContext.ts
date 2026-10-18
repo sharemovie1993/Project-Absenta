@@ -22,9 +22,17 @@ export interface AcademicContextValue {
 
   // ── Derived "active" objects ──
   /** Objek TP yang sedang dipilih (atau aktif jika belum dipilih). */
-  activeYear: { id: string; tahun: string; nama: string } | null;
+  activeYear: { id: string; tahun: string; nama: string; is_active: boolean } | null;
   /** Objek Semester yang sedang dipilih (atau aktif jika belum dipilih). */
-  activeSemester: { id: string; nama_semester: string; nama: string } | null;
+  activeSemester: { id: string; nama_semester: string; nama: string; is_active: boolean } | null;
+
+  // ── Status Aktif & Safeguard ──
+  /** True jika Tahun Pelajaran terpilih berstatus aktif (bukan arsip lampau / masa depan). */
+  isCurrentTpActive: boolean;
+  /** True jika Semester terpilih berstatus aktif. */
+  isCurrentSemesterActive: boolean;
+  /** True jika kedua Tahun Pelajaran dan Semester berstatus aktif. */
+  isAcademicActive: boolean;
 
   // ── Raw lists (jika komponen butuh akses mendalam) ──
   tpRawList: ReturnType<typeof useTahunPelajaranOptions>['rawList'];
@@ -117,7 +125,8 @@ export function useAcademicContext({
     if (!id) return null;
     const found = tpRawList.find((y) => y.id === id);
     const tahun = found?.tahun || (found as any)?.nama || activeTp?.tahun || id;
-    return { id, tahun, nama: `TP ${tahun}` };
+    const isActive = Boolean(found ? found.is_active : id === activeTp?.id);
+    return { id, tahun, nama: `TP ${tahun}`, is_active: isActive };
   }, [activeTp, selectedTahunPelajaran, tpRawList]);
 
   // ── Derived: activeSemester ──
@@ -126,8 +135,13 @@ export function useAcademicContext({
     if (!id) return null;
     const found = semesterRawList.find((s) => s.id === id);
     const namaSemester = found?.nama_semester || activeSem?.nama_semester || id;
-    return { id, nama_semester: namaSemester, nama: `Semester ${namaSemester}` };
+    const isActive = Boolean(found ? found.is_active : id === activeSem?.id);
+    return { id, nama_semester: namaSemester, nama: `Semester ${namaSemester}`, is_active: isActive };
   }, [activeSem, selectedSemester, semesterRawList]);
+
+  const isCurrentTpActive = Boolean(activeYear?.is_active);
+  const isCurrentSemesterActive = Boolean(activeSemester?.is_active);
+  const isAcademicActive = isCurrentTpActive && isCurrentSemesterActive;
 
   return {
     selectedTahunPelajaran,
@@ -142,6 +156,9 @@ export function useAcademicContext({
     isLoadingSem,
     activeYear,
     activeSemester,
+    isCurrentTpActive,
+    isCurrentSemesterActive,
+    isAcademicActive,
     tpRawList,
     semesterRawList,
   };

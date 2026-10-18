@@ -1,6 +1,7 @@
 import { prisma } from '@/utils/prisma';
 import { appLogger } from '@/utils/app-logger';
 import { GoogleSheetRaporParserService, ParsedRaporClassData } from './google-sheet-rapor-parser.service';
+import { cacheInvalidationService } from '@/utils/cache-invalidation.service';
 
 // Rapor Staging Hub Service - Maps to rapor_staging_sheets PostgreSQL table
 export interface StagingFilter {
@@ -63,19 +64,9 @@ export class RaporStagingService {
             const namaKelas = parsed.metadata.kelas.trim() || 'Kelas Belum Ditentukan';
 
             // Auto-match master IDs jika sudah ada di DB
-            const [matchedTp, matchedSem, candidateClasses] = await Promise.all([
-              prisma.tahunPelajaran.findFirst({
-                where: {
-                  tenant_id: tenantId,
-                  tahun: { contains: tahunPelajaranNama.split('/')[0].trim(), mode: 'insensitive' },
-                },
-              }),
-              prisma.semester.findFirst({
-                where: {
-                  tenant_id: tenantId,
-                  nama_semester: { equals: semesterNama, mode: 'insensitive' },
-                },
-              }),
+            const matchedTp = await RaporStagingService.resolveTahunPelajaran(tenantId, tahunPelajaranNama);
+            const [matchedSem, candidateClasses] = await Promise.all([
+              RaporStagingService.resolveSemester(tenantId, matchedTp?.id, semesterNama),
               prisma.kelas.findMany({
                 where: {
                   tenant_id: tenantId,
@@ -529,6 +520,87 @@ export class RaporStagingService {
   }
 
   /**
+   * ── RESOLVER CERDAS TAHUN PELAJARAN ──
+   * Mencocokkan string tahun ajaran seperti "2024 / 2025" atau "2023/2024"
+   * secara presisi tanpa tertukar dengan tahun ajaran bersebelahan.
+   */
+  static async resolveTahunPelajaran(tenantId: string, rawTpName?: string | null) {
+    if (!rawTpName) return null;
+    const cleanTp = rawTpName.replace(/\s+/g, '').trim().toLowerCase(); // e.g. "2024/2025"
+
+    const allTp = await prisma.tahunPelajaran.findMany({
+      where: { tenant_id: tenantId },
+    });
+
+    if (!allTp.length) return null;
+
+    // 1. Exact match (bersih dari spasi)
+    const exact = allTp.find((tp) => tp.tahun.replace(/\s+/g, '').toLowerCase() === cleanTp);
+    if (exact) return exact;
+
+    // 2. Jika mengandung dua 4-digit tahun (misal [2024, 2025])
+    const years = cleanTp.match(/\d{4}/g);
+    if (years && years.length >= 2) {
+      const y1 = years[0];
+      const y2 = years[1];
+      const matched = allTp.find((tp) => {
+        const clean = tp.tahun.replace(/\s+/g, '');
+        return clean.includes(y1) && clean.includes(y2);
+      });
+      if (matched) return matched;
+    }
+
+    // 3. Fallback: jika hanya 1 angka 4-digit (misal "2024")
+    if (years && years.length === 1) {
+      const y = years[0];
+      const matched = allTp.find((tp) => tp.tahun.includes(y));
+      if (matched) return matched;
+    }
+
+    return null;
+  }
+
+  /**
+   * ── RESOLVER CERDAS SEMESTER DENGAN RELASI TAHUN PELAJARAN ──
+   * Memastikan semester yang dipilih benar-benar terikat pada Tahun Pelajaran yang dituju.
+   */
+  static async resolveSemester(tenantId: string, tpId: string | null | undefined, rawSemName?: string | null) {
+    if (!rawSemName) return null;
+    const cleanSem = rawSemName.trim().toLowerCase();
+    const isGenap = cleanSem.includes('genap') || cleanSem === '2';
+    const targetSem = isGenap ? 'Genap' : 'Ganjil';
+
+    // 1. Cari semester spesifik pada Tahun Pelajaran tersebut
+    if (tpId) {
+      let sem = await prisma.semester.findFirst({
+        where: {
+          tenant_id: tenantId,
+          tahun_pelajaran_id: tpId,
+          nama_semester: { equals: rawSemName.trim(), mode: 'insensitive' },
+        },
+      });
+      if (!sem) {
+        sem = await prisma.semester.findFirst({
+          where: {
+            tenant_id: tenantId,
+            tahun_pelajaran_id: tpId,
+            nama_semester: { contains: targetSem, mode: 'insensitive' },
+          },
+        });
+      }
+      if (sem) return sem;
+    }
+
+    // 2. Fallback global jika tpId tidak ditemukan
+    return prisma.semester.findFirst({
+      where: {
+        tenant_id: tenantId,
+        nama_semester: { contains: targetSem, mode: 'insensitive' },
+      },
+    });
+  }
+
+  /**
    * ── PRE-SYNC CHECK: PEMERIKSAAN KESIAPAN SLOT ──
    * Memvalidasi ketersediaan slot Tahun Pelajaran, Semester, Kelas, Siswa, dan Mapel
    * sebelum sinkronisasi permanen dieksekusi ke database produksi.
@@ -542,25 +614,13 @@ export class RaporStagingService {
       throw new Error('Data staging tidak ditemukan');
     }
 
-    // 1. Cek Slot Tahun Pelajaran
+    // 1. Cek Slot Tahun Pelajaran Cerdas & Presisi
     const tpRaw = sheet.tahun_pelajaran_nama;
-    const tp = await prisma.tahunPelajaran.findFirst({
-      where: {
-        tenant_id: tenantId,
-        tahun: { contains: tpRaw.split('/')[0].trim(), mode: 'insensitive' },
-      },
-      select: { id: true, tahun: true },
-    });
+    const tp = await RaporStagingService.resolveTahunPelajaran(tenantId, tpRaw);
 
-    // 2. Cek Slot Semester
+    // 2. Cek Slot Semester Terikat pada Tahun Pelajaran
     const semRaw = sheet.semester;
-    const sem = await prisma.semester.findFirst({
-      where: {
-        tenant_id: tenantId,
-        nama_semester: { equals: semRaw, mode: 'insensitive' },
-      },
-      select: { id: true, nama_semester: true },
-    });
+    const sem = await RaporStagingService.resolveSemester(tenantId, tp?.id, semRaw);
 
     // 3. Cek Slot Kelas Cerdas Berbasis Nama & Konsentrasi Keahlian / Jurusan
     const kelasRaw = sheet.nama_kelas;
@@ -764,26 +824,21 @@ export class RaporStagingService {
       throw new Error('Data staging tidak ditemukan');
     }
 
-    // 1. Resolve Target Tahun Pelajaran & Semester
-    let tpId = sheet.tahun_pelajaran_id;
-    if (!tpId) {
-      const tp = await prisma.tahunPelajaran.findFirst({
-        where: {
-          tenant_id: tenantId,
-          tahun: { contains: sheet.tahun_pelajaran_nama.split('/')[0].trim(), mode: 'insensitive' },
-        },
+    // 1. Resolve Target Tahun Pelajaran & Semester secara presisi
+    const resolvedTp = await RaporStagingService.resolveTahunPelajaran(tenantId, sheet.tahun_pelajaran_nama);
+    let tpId = resolvedTp?.id || sheet.tahun_pelajaran_id || null;
+
+    // Jika staging sheet sebelumnya memiliki tahun_pelajaran_id yang tidak sesuai, koreksi di staging juga
+    if (resolvedTp?.id && sheet.tahun_pelajaran_id !== resolvedTp.id) {
+      await prisma.raporStagingSheet.update({
+        where: { id: sheet.id },
+        data: { tahun_pelajaran_id: resolvedTp.id },
       });
-      tpId = tp?.id || null;
+      tpId = resolvedTp.id;
     }
 
-    let semId: string | null = null;
-    const semester = await prisma.semester.findFirst({
-      where: {
-        tenant_id: tenantId,
-        nama_semester: { equals: sheet.semester, mode: 'insensitive' },
-      },
-    });
-    semId = semester?.id || null;
+    const semester = await RaporStagingService.resolveSemester(tenantId, tpId, sheet.semester);
+    const semId = semester?.id || null;
 
     if (!tpId || !semId) {
       throw new Error(
@@ -1136,6 +1191,13 @@ export class RaporStagingService {
         } as any,
       },
     });
+
+    // 8. Invalidate seluruh cache modul rapor, leger, transkrip, & nilai kelas
+    try {
+      await cacheInvalidationService.invalidateRaporCache(tenantId, kelasId || undefined);
+    } catch (err: any) {
+      appLogger.warn({ err: err?.message }, 'Failed to invalidate rapor cache after staging sync');
+    }
 
     return {
       success: true,

@@ -425,7 +425,7 @@ export default React.memo(function CetakRaporPage() {
       const namePart = k.nama_kelas || k.nama || k.nama_lengkap || 'Rombel';
       const tingkatPart = k.tingkat ? `Kelas ${k.tingkat} - ` : '';
       const jurusanPart = k.jurusan?.kode_jurusan ? ` (${k.jurusan.kode_jurusan})` : (k.kode_jurusan ? ` (${k.kode_jurusan})` : '');
-      const label = `${tingkatPart}${namePart}${jurusanPart}${isWali ? ' ⭐ [KELAS BINAAN ANDA]' : ''}`;
+      const label = `${tingkatPart}${namePart}${jurusanPart}${isWali ? ' ⭐' : ''}`;
       return {
         value: k.id,
         label,
@@ -631,6 +631,11 @@ export default React.memo(function CetakRaporPage() {
             onPrintSertifikatPkl={handleOpenSertifikat}
             onPrintLeger={() => printLeger(selectedKelas)}
             onExportLeger={handleExportLeger}
+            onBatchPrintRapor={handleBatchPrintRapor}
+            isBatchPrinting={isBatchPrinting}
+            onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
+            isBatchPklPrinting={isBatchPklPrinting}
+            hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
             onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
             getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
             getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
