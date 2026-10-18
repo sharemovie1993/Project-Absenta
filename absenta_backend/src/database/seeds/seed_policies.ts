@@ -578,6 +578,7 @@ function buildRoleBaselines(allPermissionIds: string[]): Record<string, string[]
         id === 'cooperative.rat.view' ||
         id === 'cooperative.rat.vote' ||
         id === 'academic.activities.types.view' ||
+        id === 'academic.activities.grades.manage' ||
         id === 'cooperative.reports.view.daily' ||
         id === 'cooperative.reports.view.monthly' ||
         id === 'attendance.recap.view.global' ||
