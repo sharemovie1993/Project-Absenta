@@ -251,10 +251,14 @@ export const renderOfficialSumatifPage = (
 
   // 5. Presensi / Ketidakhadiran Table (Lebar ~80mm rata kiri sesuai Gambar 2)
   const absensi = raporData.absensi || {};
+  const sakitVal = absensi.sakit !== undefined && absensi.sakit !== null ? `${absensi.sakit} hari` : '- hari';
+  const izinVal = absensi.izin !== undefined && absensi.izin !== null ? `${absensi.izin} hari` : '- hari';
+  const alpaVal = absensi.alpa !== undefined && absensi.alpa !== null ? `${absensi.alpa} hari` : '- hari';
+
   const presensiRows = [
-    ['Sakit', ':', `${absensi.sakit ?? '-'} hari`],
-    ['Izin', ':', `${absensi.izin ?? '-'} hari`],
-    ['Tanpa Keterangan', ':', `${absensi.alpa ?? '-'} hari`],
+    ['Sakit', ':', sakitVal],
+    ['Izin', ':', izinVal],
+    ['Tanpa Keterangan', ':', alpaVal],
   ];
 
   autoTable(doc, {
@@ -266,15 +270,16 @@ export const renderOfficialSumatifPage = (
     styles: {
       font: 'Helvetica',
       fontSize: 8,
-      cellPadding: { top: 1.5, bottom: 1.5, left: 3, right: 3 },
+      cellPadding: { top: 2, bottom: 2, left: 3, right: 3 },
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
+      valign: 'middle',
     },
     columnStyles: {
-      0: { cellWidth: 36 },
-      1: { cellWidth: 6, halign: 'center' },
-      2: { cellWidth: 38, halign: 'center' },
+      0: { cellWidth: 36, valign: 'middle' },
+      1: { cellWidth: 8, halign: 'center', valign: 'middle', cellPadding: { top: 2, bottom: 2, left: 0, right: 0 } },
+      2: { cellWidth: 36, halign: 'center', valign: 'middle' },
     },
   });
 
