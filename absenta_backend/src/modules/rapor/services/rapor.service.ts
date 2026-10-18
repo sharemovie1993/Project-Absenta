@@ -84,8 +84,8 @@ export class RaporService {
       throw new Error('Siswa belum memiliki kelas');
     }
 
-    // 2. Ambil catatan, kehadiran & kokurikuler rapor
-    const [raporSummary, kokurikulerCfg] = await Promise.all([
+    // 2. Ambil catatan, kehadiran & kokurikuler rapor serta pengaturan rapor
+    const [raporSummary, kokurikulerCfg, raporSettings] = await Promise.all([
       prisma.raporSiswa.findFirst({
         where: {
           tenant_id: tenantId,
@@ -99,6 +99,10 @@ export class RaporService {
           tenant_id: tenantId,
           key: `RAPOR_KOKURIKULER_${filter.tahun_pelajaran_id}_${filter.semester_id}_${filter.siswa_id}`,
         },
+      }),
+      this.getSettings(tenantId, {
+        tahun_pelajaran_id: filter.tahun_pelajaran_id,
+        semester_id: filter.semester_id,
       }),
     ]);
 
@@ -399,6 +403,8 @@ export class RaporService {
       catatan_wali: raporSummary?.catatan_wali || '',
       keputusan_transisi: raporSummary?.keputusan_transisi || '',
       catatan_kokurikuler: kokurikulerCfg?.value || '',
+      tampilkan_kokurikuler: raporSettings?.tampilkan_kokurikuler ?? true,
+      rapor_settings: raporSettings,
       nilai_akademik: finalAkademikList,
     };
   }

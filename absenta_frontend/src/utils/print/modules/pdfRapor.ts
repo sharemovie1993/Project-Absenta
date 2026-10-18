@@ -122,7 +122,8 @@ export const renderStudentRaporPages = (
   tenantInfo: any,
   tahunPelajaranNama: string,
   semesterNama: string,
-  isFirstStudent = true
+  isFirstStudent = true,
+  raporSettings?: any
 ): void => {
   const siswa = data?.siswa || {};
   const tingkatNum = Number(siswa.tingkat || 10);
@@ -418,30 +419,45 @@ export const renderStudentRaporPages = (
   // Student Info Grid Header on Page 2
   y = drawStudentMetadataGrid(doc, y);
 
-  // Section II: KOKURIKULER
+  const effectiveSettings = raporSettings || data?.rapor_settings;
+  const tpYearStr = tahunPelajaranNama || '';
+  const matchYear = tpYearStr.match(/^(\d{4})/);
+  const startYear = matchYear ? parseInt(matchYear[1], 10) : 2025;
+
+  const showKokurikuler = effectiveSettings?.tampilkan_kokurikuler !== undefined
+    ? Boolean(effectiveSettings.tampilkan_kokurikuler)
+    : (data?.tampilkan_kokurikuler !== undefined ? Boolean(data.tampilkan_kokurikuler) : startYear >= 2025);
+
+  let sectionIdx = 2;
+
+  // Section II: KOKURIKULER (Hanya jika tampilkan_kokurikuler aktif)
+  if (showKokurikuler) {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('II. KOKURIKULER', 15, y);
+    y += 4;
+
+    const kokurikulerText = data?.catatan_kokurikuler ||
+      'Peserta didik menunjukkan sikap disiplin dan tanggung jawab (Mandiri), mampu bekerja sama dan saling menghargai (Gotong Royong), serta menerapkan nilai-nilai akhlak mulia dalam kegiatan sekolah (Beriman dan Bertakwa kepada Tuhan YME serta Berakhlak Mulia).';
+
+    const kokurikulerBoxHeight = 22;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(15, y, 180, kokurikulerBoxHeight);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8.5);
+    const kokurikulerLines = doc.splitTextToSize(kokurikulerText, 174);
+    doc.text(kokurikulerLines.slice(0, 4), 18, y + 4.5);
+    y += kokurikulerBoxHeight + 6;
+    sectionIdx = 3;
+  }
+
+  // Section: EKSTRA KURIKULER
+  const ekskulNumeral = sectionIdx === 3 ? 'III' : 'II';
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('II. KOKURIKULER', 15, y);
-  y += 4;
-
-  const kokurikulerText = data?.catatan_kokurikuler ||
-    'Peserta didik menunjukkan sikap disiplin dan tanggung jawab (Mandiri), mampu bekerja sama dan saling menghargai (Gotong Royong), serta menerapkan nilai-nilai akhlak mulia dalam kegiatan sekolah (Beriman dan Bertakwa kepada Tuhan YME serta Berakhlak Mulia).';
-
-  const kokurikulerBoxHeight = 25;
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.rect(15, y, 180, kokurikulerBoxHeight);
-
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(8.5);
-  const kokurikulerLines = doc.splitTextToSize(kokurikulerText, 174);
-  doc.text(kokurikulerLines.slice(0, 4), 18, y + 5);
-  y += kokurikulerBoxHeight + 8;
-
-  // Section III: EKSTRA KURIKULER
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('III. EKSTRA KURIKULER', 15, y);
+  doc.text(`${ekskulNumeral}. EKSTRA KURIKULER`, 15, y);
   y += 4;
 
   const ekskulList: any[] = data?.ekskul || [];
@@ -458,7 +474,7 @@ export const renderStudentRaporPages = (
     body: ekskulRows,
     theme: 'grid',
     headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center' },
-    bodyStyles: { fontSize: 8.5, cellPadding: 4 },
+    bodyStyles: { fontSize: 8.5, cellPadding: 3.5 },
     columnStyles: {
       0: { halign: 'center', cellWidth: 12 },
       1: { cellWidth: 55 },
@@ -466,17 +482,20 @@ export const renderStudentRaporPages = (
     },
     margin: { left: 15, right: 15 },
   });
-  y = (doc as any).lastAutoTable.finalY + 8;
+  y = (doc as any).lastAutoTable.finalY + 6;
+  sectionIdx++;
 
-  // Section IV: KETIDAKHADIRAN & CATATAN WALI KELAS
+  // Section: KETIDAKHADIRAN & CATATAN WALI KELAS
+  const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI'];
+  const presensiNumeral = romanNumerals[sectionIdx - 1] || 'IV';
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('IV. KETIDAKHADIRAN', 15, y);
+  doc.text(`${presensiNumeral}. KETIDAKHADIRAN`, 15, y);
   y += 4;
 
   const absensi = data?.absensi || {};
   const catatanWali = data?.catatan_wali ||
-    'Anakku yang tercinta, dengan senang hati Bapak sampaikan bahwa di rapor ini tergambar betapa gigihnya kamu dalam mengejar ilmu. Semoga hasil ini menjadi ladang pahala yang melimpah dari Allah. Tetaplah berusaha dengan niat tulus karena ilmu yang kamu raih adalah amal jariyah untukmu. Barakallahu fikum.';
+    'Pertahankan prestasi akademik dan terus kembangkan potensi diri dengan penuh disiplin serta semangat pantang menyerah.';
 
   autoTable(doc, {
     startY: y,
@@ -489,41 +508,96 @@ export const renderStudentRaporPages = (
     ],
     theme: 'grid',
     headStyles: { fillColor: [205, 205, 205], textColor: 0, fontSize: 9, fontStyle: 'bold', halign: 'center' },
-    bodyStyles: { fontSize: 8.5, cellPadding: 4 },
+    bodyStyles: { fontSize: 8.5, cellPadding: 3.5 },
     columnStyles: {
       0: { cellWidth: 60 },
       1: { cellWidth: 120 },
     },
     margin: { left: 15, right: 15 },
   });
-  y = (doc as any).lastAutoTable.finalY + 14;
+  y = (doc as any).lastAutoTable.finalY + 6;
+  sectionIdx++;
+
+  // Section: KENAIKAN KELAS (Khusus Semester Genap)
+  const isGenap = Boolean(semesterNama.toLowerCase().includes('genap') || semesterNama.includes('2'));
+  if (isGenap) {
+    const kenaikanNumeral = romanNumerals[sectionIdx - 1] || 'V';
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(`${kenaikanNumeral}. KENAIKAN KELAS`, 15, y);
+    y += 4;
+
+    const tingkat = Number(siswa.tingkat || 10);
+    const targetNext = tingkat === 10 ? 'XI (Sebelas)' : tingkat === 11 ? 'XII (Dua Belas)' : 'Lulus';
+    let keputusanDesc = '';
+    const rawKep = (data.keputusan_transisi || '').trim().toUpperCase();
+    if (rawKep === 'NAIK') {
+      keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
+    } else if (rawKep === 'MENETAP' || rawKep === 'TINGGAL') {
+      const curKelasLabel = tingkat === 10 ? 'X (Sepuluh)' : tingkat === 11 ? 'XI (Sebelas)' : String(tingkat);
+      keputusanDesc = tingkat >= 12 ? 'Tidak lulus dari satuan pendidikan' : `Tinggal di kelas ${curKelasLabel}`;
+    } else if (data.keputusan_transisi) {
+      keputusanDesc = data.keputusan_transisi.replace(/_/g, ' ');
+    } else {
+      keputusanDesc = tingkat >= 12 ? 'Lulus dari satuan pendidikan' : `Naik ke kelas ${targetNext}`;
+    }
+
+    const kenaikanBoxHeight = 16;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.rect(15, y, 180, kenaikanBoxHeight);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('Berdasarkan hasil yang dicapai pada semester 1 dan 2, peserta didik ditetapkan:', 18, y + 5);
+    doc.setFont('Helvetica', 'bold');
+    doc.text(keputusanDesc, 18, y + 10.5);
+    y += kenaikanBoxHeight + 8;
+  } else {
+    y += 4;
+  }
 
   // Signatures Section (Orang Tua, Wali Kelas, Kepala Sekolah)
-  const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const kepalaSekolahNama = sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
-  const kepalaSekolahNip = sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
-  const waliKelasNama = data?.wali_kelas_nama || 'ERWIN BEGASI BUDI SAMPURNO, S.T.';
-  const waliKelasNip = data?.wali_kelas_nip || '198107112022211006';
+  const kota = effectiveSettings?.tempat_terbit || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
+  const effectiveDateVal = isGenap
+    ? (effectiveSettings?.tanggal_rapor_genap || effectiveSettings?.tanggal_rapor)
+    : (effectiveSettings?.tanggal_rapor_ganjil || effectiveSettings?.tanggal_rapor);
+
+  let dateStr = '';
+  if (effectiveDateVal) {
+    try {
+      dateStr = new Date(effectiveDateVal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch {
+      dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+  } else {
+    dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  }
+
+  const kepalaSekolahNama = effectiveSettings?.kepsek_nama || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'WAHYU TAMIMBARKAH, S.Pd.';
+  const kepalaSekolahNip = effectiveSettings?.kepsek_nip || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+  const waliKelasNama = data?.wali_kelas_nama || 'Wali Kelas';
+  const waliKelasNip = data?.wali_kelas_nip ? `NIP. ${data.wali_kelas_nip}` : 'NIP. -';
 
   // Row 1: Orang Tua & Wali Kelas
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8.5);
   doc.text('Orang Tua/Wali Siswa,', 25, y, { align: 'left' });
-  doc.text(`Purwakarta, ${dateStr}`, pageWidth - 25, y, { align: 'right' });
+  doc.text(`${kota}, ${dateStr}`, pageWidth - 25, y, { align: 'right' });
   doc.text('Wali Kelas,', pageWidth - 25, y + 4.5, { align: 'right' });
 
-  y += 24;
+  y += 20;
   doc.text('......................................................', 25, y, { align: 'left' });
   doc.setFont('Helvetica', 'bold');
   doc.text(waliKelasNama, pageWidth - 25, y, { align: 'right' });
   doc.setFont('Helvetica', 'normal');
-  doc.text(`NIP. ${waliKelasNip}`, pageWidth - 25, y + 4.5, { align: 'right' });
+  doc.text(waliKelasNip, pageWidth - 25, y + 4.5, { align: 'right' });
 
   // Row 2: Kepala Sekolah (Centered)
-  y += 14;
+  y += 12;
   doc.text('Mengetahui;', pageWidth / 2, y, { align: 'center' });
   doc.text('Kepala Sekolah,', pageWidth / 2, y + 4.5, { align: 'center' });
-  y += 24;
+  y += 20;
   doc.setFont('Helvetica', 'bold');
   doc.text(kepalaSekolahNama, pageWidth / 2, y, { align: 'center' });
   doc.setFont('Helvetica', 'normal');
@@ -537,21 +611,21 @@ export const renderStudentRaporPages = (
 export const generateRaporPdf = async (options: PrintRaporOptions): Promise<{ blobUrl: string; filename: string }> => {
   const { siswaId, tahunPelajaranId, semesterId, tahunPelajaranNama = '', semesterNama = '' } = options;
 
-  // 1. Fetch data rapor detail via authenticated API
-  const raporRes = await raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId });
-  const data = raporRes?.data || raporRes;
-
-  // 2. Fetch school & tenant info for Multi-Tenant customization
-  const [sekolahRes, tenantRes] = await Promise.allSettled([
+  // 1. Fetch data rapor detail via authenticated API, plus settings and school info
+  const [raporRes, settingsRes, sekolahRes, tenantRes] = await Promise.allSettled([
+    raporApi.getRaporDetail({ siswa_id: siswaId, tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
+    raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
     sekolahApi.getProfile(),
     getMyTenant().catch(() => null)
   ]);
+  const data = raporRes.status === 'fulfilled' ? (raporRes.value?.data || raporRes.value) : null;
+  const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
 
   // 3. Create PDF document & render 2 pages
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-  renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true);
+  renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, true, raporSettings);
 
   const siswa = data?.siswa || {};
   const filename = `RAPOR_${(siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_')}_${semesterNama || 'Semester'}.pdf`;
@@ -706,13 +780,15 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
     throw new Error('Tidak ada data siswa untuk dicetak.');
   }
 
-  // 1. Fetch school & tenant info once for whole batch compilation
-  const [sekolahRes, tenantRes] = await Promise.allSettled([
+  // 1. Fetch school, tenant & settings info once for whole batch compilation
+  const [sekolahRes, tenantRes, settingsRes] = await Promise.allSettled([
     sekolahApi.getProfile(),
-    getMyTenant().catch(() => null)
+    getMyTenant().catch(() => null),
+    raporApi.getRaporSettings({ tahun_pelajaran_id: tahunPelajaranId, semester_id: semesterId }),
   ]);
   const sekolah = sekolahRes.status === 'fulfilled' ? (sekolahRes.value?.data || sekolahRes.value) : null;
   const tenantInfo = tenantRes.status === 'fulfilled' ? tenantRes.value : null;
+  const raporSettings = settingsRes.status === 'fulfilled' ? (settingsRes.value?.data || settingsRes.value) : null;
 
   // 2. Initialize single jsPDF document for entire class
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
@@ -730,7 +806,7 @@ export const generateRaporKelasBatchPdf = async (options: PrintRaporBatchOptions
         semester_id: semesterId,
       });
       const data = raporRes?.data?.data || raporRes?.data || raporRes;
-      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0);
+      renderStudentRaporPages(doc, data, sekolah, tenantInfo, tahunPelajaranNama, semesterNama, renderedCount === 0, raporSettings);
       renderedCount++;
     } catch (err: any) {
       console.warn(`Gagal memuat rapor untuk ${student.nama_siswa}:`, err);
