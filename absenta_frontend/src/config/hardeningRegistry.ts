@@ -1702,6 +1702,83 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         details: 'Staging sync controller dan service terisolasi dengan validasi kurikulum.'
       }
     ]
+  },
+
+  // ─── Penilaian PKL (Hubin & Rapor) ──────────────────────────────────────────
+  hubin_input_nilai_pkl: {
+    moduleName: 'hubin_input_nilai_pkl',
+    displayName: 'Penilaian & Sertifikasi PKL (Hubin)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (Fault Isolation)',
+        description: 'Halaman dibungkus dengan InfraErrorBoundary agar kegagalan rendering parsial tidak merusak visual antarmuka sistem.',
+        status: 'VERIFIED',
+        details: 'InputNilaiPklPage dibungkus dalam InfraErrorBoundary.'
+      },
+      {
+        id: 'academic_context_integration',
+        name: 'Integrasi Konteks Akademik Terpusat',
+        description: 'Menyinkronkan rekap data penilaian PKL dengan Tahun Pelajaran dan Semester aktif melalui AcademicContextBar varian toolbar.',
+        status: 'VERIFIED',
+        details: 'AcademicContextBar terpasang di dalam container PklUnifiedToolbar.'
+      },
+      {
+        id: 'unified_control_toolbar',
+        name: 'Toolbar Kontrol Terpadu & Hemat Vertikal',
+        description: 'Menyatukan TabSwitcher (DUDI, Sidang, Deskripsi TP), filter status, scoping pembimbing/wali kelas, dan aksi simpan dalam 1 frame box rapi.',
+        status: 'VERIFIED',
+        details: 'PklUnifiedToolbar membungkus seluruh aksi dan navigasi tab dalam 1 container terpadu.'
+      },
+      {
+        id: 'role_scoping_guard',
+        name: 'Sistem Scoping Otorisasi Peran Berjenjang',
+        description: 'Menyesuaikan cakupan siswa yang tampil secara otomatis untuk Kaprog (jurusan), Wali Kelas (kelas binaan), Guru Pembimbing, dan Admin Hubin.',
+        status: 'VERIFIED',
+        details: 'Logic scoping guidanceScope (ALL vs MY_GUIDANCE) dan banner proteksi peran terintegrasi.'
+      },
+      {
+        id: 'excel_clipboard_paste',
+        name: 'Impor Cepat Paste Excel Interaktif',
+        description: 'Menyediakan modal paste data nilai instan dari Microsoft Excel/Spreadsheet instruktur DUDI dengan validasi kolom.',
+        status: 'VERIFIED',
+        details: 'PklNilaiPasteModal terintegrasi dengan validasi angka desimal/koma.'
+      },
+      {
+        id: 'zod_schema_validation',
+        name: 'Validasi Input Zod (Schema Guard)',
+        description: 'Setiap nilai TP DUDI dan filter kontrol dilindungi validasi Zod (scoreFieldSchema & pklToolbarFilterSchema).',
+        status: 'VERIFIED',
+        details: 'scoreFieldSchema dan pklToolbarFilterSchema aktif pada form entri nilai PKL.'
+      }
+    ]
+  },
+  rapor_pkl: {
+    moduleName: 'rapor_pkl',
+    displayName: 'Nilai PKL Rapor (Facade Proxy)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation)',
+        description: 'Halaman proxy rapor dibungkus dengan InfraErrorBoundary.',
+        status: 'VERIFIED',
+        details: 'RaporPklPage terbungkus dalam InfraErrorBoundary.'
+      },
+      {
+        id: 'dry_facade_architecture',
+        name: 'Arsitektur Proxy Tanpa Duplikasi Logika (DRY)',
+        description: 'Menyajikan penilaian PKL di dalam modul Rapor tanpa menduplikasi komponen bisnis melalui layoutMode="rapor".',
+        status: 'VERIFIED',
+        details: 'RaporPklPage bertindak sebagai facade view ke InputNilaiPklPage.'
+      },
+      {
+        id: 'unified_control_toolbar',
+        name: 'Toolbar Kontrol Terpadu & Hemat Vertikal',
+        description: 'Menyatukan TabSwitcher, filter status, dan aksi simpan dalam 1 frame box rapi.',
+        status: 'VERIFIED',
+        details: 'PklUnifiedToolbar terintegrasi pada mode rapor.'
+      }
+    ]
   }
 };
 

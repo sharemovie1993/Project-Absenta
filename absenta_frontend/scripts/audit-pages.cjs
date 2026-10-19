@@ -56,6 +56,8 @@ function getRegistryKey(filepath, content) {
   if (filename === 'GuruPage') return 'academic_guru';
   if (filename === 'KelasPage') return 'academic_kelas';
   if (filename === 'SiswaPage') return 'academic_siswa';
+  if (filename === 'InputNilaiPklPage') return 'hubin_input_nilai_pkl';
+  if (filename === 'RaporPklPage') return 'rapor_pkl';
   
   return filename.toLowerCase();
 }
@@ -607,6 +609,14 @@ walkDir(targetDir, (filepath) => {
     issues
   });
 });
+
+// Alias untuk backward compatibility dan proxy lookup
+if (jsonResults['hubin_input_nilai_pkl']) {
+  jsonResults['inputnilaipklpage'] = jsonResults['hubin_input_nilai_pkl'];
+}
+if (jsonResults['rapor_pkl']) {
+  jsonResults['raporpklpage'] = jsonResults['rapor_pkl'];
+}
 
 // Tulis hasil audit JSON untuk inspector runtime
 fs.writeFileSync(outputJsonPath, JSON.stringify(jsonResults, null, 2), 'utf8');
