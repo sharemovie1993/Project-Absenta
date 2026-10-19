@@ -28,13 +28,15 @@ import { TahunPelajaranInfoSection } from './form/TahunPelajaranInfoSection';
 
 interface TahunPelajaranFormProps {
   tahunPelajaranId?: string;
-  onSuccess?: () => void;
+  initialTahun?: string;
+  onSuccess?: (createdId?: string) => void;
   onCancel?: () => void;
   mode?: 'create' | 'edit' | 'view';
 }
 
 export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(({
   tahunPelajaranId,
+  initialTahun,
   onSuccess,
   onCancel,
   mode = 'create'
@@ -59,10 +61,20 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
   } = useForm<CreateTahunPelajaranSchema>({
     resolver: zodResolver(createTahunPelajaranSchema),
     defaultValues: {
-      tahun: '',
+      tahun: initialTahun || '',
       is_active: false
     }
   });
+
+  // Pre-fill initial year if provided in create mode
+  useEffect(() => {
+    if (initialTahun && mode === 'create') {
+      reset({
+        tahun: initialTahun,
+        is_active: false
+      });
+    }
+  }, [initialTahun, mode, reset]);
 
   // Load active year for validation/warning
   useEffect(() => {
@@ -160,7 +172,7 @@ export const TahunPelajaranForm: React.FC<TahunPelajaranFormProps> = React.memo(
       toast.success(
         isEditMode ? 'Tahun pelajaran berhasil diperbarui' : 'Tahun pelajaran berhasil dibuat'
       );
-      onSuccess?.();
+      onSuccess?.(targetId);
     } catch (error: any) {
       console.error('Error submitting form:', error);
       setSubmitError(

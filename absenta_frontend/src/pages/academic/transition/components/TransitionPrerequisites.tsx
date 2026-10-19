@@ -7,7 +7,8 @@ import { isChronologicallyAfter } from '../utils';
 
 interface StepAction {
   label: string;
-  path: string;
+  path?: string;
+  onClick?: () => void;
 }
 
 interface StepItem {
@@ -24,6 +25,7 @@ interface Props {
   semesterBaruGanjil?: boolean;
   activeSemester?: Semester;
   tahunBaruSelected?: boolean;
+  onCreateTapel?: () => void;
 }
 
 const TransitionPrerequisites: React.FC<Props> = React.memo(({
@@ -32,6 +34,7 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
   tahunBaru,
   semesterBaruGanjil = false,
   activeSemester,
+  onCreateTapel,
 }) => {
   const currentSemester = semesterAktif || activeSemester;
   const isSemesterGenap = currentSemester 
@@ -69,7 +72,11 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
         : !isChronological 
         ? `Salah: ${tahunBaru.tahun} tidak boleh lebih lama dari ${tahunAktif?.tahun || 'tahun aktif'}.`
         : `Siap: ${tahunBaru.tahun}`,
-      action: (!tahunBaru || !isChronological) ? { label: 'Buat Tahun', path: '/academic/tahun-pelajaran' } : undefined
+      action: (!tahunBaru || !isChronological) ? { 
+        label: 'Buat Tahun Baru', 
+        onClick: onCreateTapel,
+        path: '/academic/tahun-pelajaran' 
+      } : undefined
     },
     {
       label: 'Semester Baru (Ganjil)',
@@ -125,7 +132,13 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  onClick={() => window.open(step.action?.path, '_blank')}
+                  onClick={() => {
+                    if (step.action?.onClick) {
+                      step.action.onClick();
+                    } else if (step.action?.path) {
+                      window.open(step.action.path, '_blank');
+                    }
+                  }}
                   className="w-full justify-between h-9 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-900/30 px-3 rounded-xl border border-rose-200 dark:border-rose-800"
                 >
                   <span>{step.action.label}</span>

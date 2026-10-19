@@ -19,6 +19,7 @@ interface Props {
   onSelectTahunBaru?: (val: string) => void;
   onNext?: () => void;
   loadingYears?: boolean;
+  onCreateTapel?: () => void;
 }
 
 const TransitionForm: React.FC<Props> = React.memo(({ 
@@ -33,6 +34,7 @@ const TransitionForm: React.FC<Props> = React.memo(({
   onSelectTahunBaru,
   onNext,
   loadingYears = false,
+  onCreateTapel,
 }) => {
   const handleTahunLamaChange = onTahunLamaChange || onSelectTahunLama || (() => {});
   const handleTahunBaruChange = onTahunBaruChange || onSelectTahunBaru || (() => {});
@@ -157,10 +159,22 @@ const TransitionForm: React.FC<Props> = React.memo(({
             </div>
           </div>
           
-            <div className="space-y-3">
-            <Label className="text-[10px] uppercase font-black text-blue-400 tracking-widest flex items-center gap-2">
-               Tahun Pelajaran Baru <span className="text-rose-500">*</span>
-            </Label>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-[10px] uppercase font-black text-blue-400 tracking-widest flex items-center gap-2">
+                Tahun Pelajaran Baru <span className="text-rose-500">*</span>
+              </Label>
+              {onCreateTapel && (
+                <button
+                  type="button"
+                  onClick={onCreateTapel}
+                  className="text-[10px] font-black text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <PlusCircle className="w-3 h-3" />
+                  + Buat Tapel Baru
+                </button>
+              )}
+            </div>
             <SearchableSelect
               aria-label="Pilih opsi transisi tahun baru"
               value={selectedTahunBaruId}
@@ -205,12 +219,11 @@ const TransitionForm: React.FC<Props> = React.memo(({
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => window.open('/academic/tahun-pelajaran', '_blank')}
+                  onClick={onCreateTapel || (() => window.open('/academic/tahun-pelajaran', '_blank'))}
                   className="w-full h-8 text-[10px] font-bold gap-1.5 border-amber-300 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg justify-center"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  Buat Tahun Pelajaran Baru
-                  <ExternalLink className="w-3 h-3 ml-auto" />
+                  Buat Tahun Pelajaran Baru {suggestedNextYear ? `(${suggestedNextYear})` : ''}
                 </Button>
               </div>
             )}

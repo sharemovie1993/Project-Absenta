@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Button, SectionCard } from '../../../components/ui';
+import { Button, SectionCard, Modal } from '../../../components/ui';
 import { Check, Settings, Map, Eye, ShieldAlert, Clock, Target, RefreshCw, ArrowRight, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
@@ -16,7 +16,7 @@ import { useCapabilities } from '../../../hooks/useCapabilities';
 import type { TahunPelajaran, Semester, Kelas } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import type { ScopeMode } from './components/TransitionForm';
-import { isChronologicallyAfter } from './utils';
+import { isChronologicallyAfter, getSuggestedNextTahun } from './utils';
 
 // Lazy loading subcomponents (Pilar 11)
 const TransitionForm = lazy(() => import('./components/TransitionForm'));
@@ -25,6 +25,7 @@ const TransitionMapping = lazy(() => import('./components/TransitionMapping'));
 const TransitionPreview = lazy(() => import('./components/TransitionPreview'));
 const TransitionConfirm = lazy(() => import('./components/TransitionConfirm'));
 const TransitionPrerequisites = lazy(() => import('./components/TransitionPrerequisites'));
+const TahunPelajaranForm = lazy(() => import('../../../components/academic/tahun-pelajaran/TahunPelajaranForm'));
 
 // Zod Schema Validation Guard (Pilar 25)
 const transitionFormSchema = z.object({
@@ -52,6 +53,9 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
   // Selection State
   const [selectedTahunLamaId, setSelectedTahunLamaId] = useState<string>('');
   const [selectedTahunBaruId, setSelectedTahunBaruId] = useState<string>('');
+
+  // Modal Proxy State: Buat Tahun Pelajaran Baru
+  const [isCreateTapelModalOpen, setIsCreateTapelModalOpen] = useState<boolean>(false);
 
   // Scope Mode State
   const [scopeMode, setScopeMode] = useState<ScopeMode>('ALL');
@@ -263,6 +267,22 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
   const selectedTahunLamaObj = useMemo(() => (tahunPelajaran ?? []).find(t => t.id === selectedTahunLamaId), [tahunPelajaran, selectedTahunLamaId]);
   const selectedTahunBaruObj = useMemo(() => (tahunPelajaran ?? []).find(t => t.id === selectedTahunBaruId), [tahunPelajaran, selectedTahunBaruId]);
 
+  const suggestedNextYear = useMemo(() => {
+    return getSuggestedNextTahun(selectedTahunLamaObj?.tahun);
+  }, [selectedTahunLamaObj]);
+
+  const handleCreateTapelSuccess = useCallback((createdId?: string) => {
+    setIsCreateTapelModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran-transition'] });
+    queryClient.invalidateQueries({ queryKey: ['tahun-pelajaran'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
+
+    if (createdId) {
+      setSelectedTahunBaruId(createdId);
+    }
+    toast.success('Tahun pelajaran baru berhasil dibuat dan langsung dipilih sebagai target kenaikan kelas!');
+  }, [queryClient]);
+
   const academicStats = useMemo(() => [
     { 
       title: "Tahun Berjalan", 
@@ -342,6 +362,7 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
                       tahunBaru={selectedTahunBaruObj}
                       semesterBaruGanjil={semesterBaruGanjil}
                       tahunBaruSelected={Boolean(selectedTahunBaruId)}
+                      onCreateTapel={() => setIsCreateTapelModalOpen(true)}
                     />
                     <TransitionForm
                       tahunAktif={tahunAktif}
@@ -355,6 +376,7 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
                       onSelectTahunBaru={setSelectedTahunBaruId}
                       onNext={handleFormNext}
                       loadingYears={loadingYears}
+                      onCreateTapel={() => setIsCreateTapelModalOpen(true)}
                     />
                   </div>
                 </Suspense>
@@ -427,6 +449,25 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
             </div>
           </div>
         </SectionCard>
+
+        {/* Modal Proxy Pembuatan Tahun Pelajaran Baru In-Place */}
+        <Modal
+          isOpen={isCreateTapelModalOpen}
+          onClose={() => setIsCreateTapelModalOpen(false)}
+          title="Buat Tahun Pelajaran Baru"
+          size="lg"
+        >
+          {isCreateTapelModalOpen && (
+            <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat formulir...</div>}>
+              <TahunPelajaranForm
+                mode="create"
+                initialTahun={suggestedNextYear}
+                onSuccess={handleCreateTapelSuccess}
+                onCancel={() => setIsCreateTapelModalOpen(false)}
+              />
+            </Suspense>
+          )}
+        </Modal>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );
