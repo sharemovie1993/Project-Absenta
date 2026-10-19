@@ -523,6 +523,7 @@ export interface PlansResponse {
   success: boolean;
   message: string;
   data: Plan[];
+  is_license_server_offline?: boolean;
 }
 
 export interface PlanResponse {

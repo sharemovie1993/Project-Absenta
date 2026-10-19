@@ -30,12 +30,14 @@ export const planController = {
   async getPublicActivePlans(_request: any, reply: any) {
     try {
       const plans = await planService.getAllPlans(false);
+      const isOffline = Boolean((plans as any).isLicenseServerOffline);
 
       reply.status(200);
       return {
         success: true,
         message: 'Active plans retrieved successfully',
         data: plans,
+        is_license_server_offline: isOffline
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve active plans';

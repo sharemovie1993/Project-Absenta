@@ -8,6 +8,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { UnifiedCatalog } from '@/components/billing/UnifiedCatalog';
 import { useQuery } from '@tanstack/react-query';
 import { getMySubscription } from '@/api/mySubscription.api';
+import { getPublicPlans } from '@/api/plans.api';
 
 export const CatalogPage: React.FC = React.memo(() => {
   const navigate = useNavigate();
@@ -21,6 +22,15 @@ export const CatalogPage: React.FC = React.memo(() => {
     staleTime: 60 * 1000
   });
 
+  const plansQuery = useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => {
+      const res = await getPublicPlans();
+      return res;
+    },
+    staleTime: 60 * 1000
+  });
+
   const activeAcademicTier = subQuery.data?.data?.active_academic_tier || 'CORE_PLATFORM';
   const services = useMemo(() => {
     const raw = subQuery.data?.data?.services || subQuery.data?.data?.all_subscriptions || [];
@@ -29,7 +39,8 @@ export const CatalogPage: React.FC = React.memo(() => {
 
   const isLicenseServerOffline = Boolean(
     subQuery.data?.is_license_server_offline || 
-    (subQuery.data?.data as any)?.is_license_server_offline
+    (subQuery.data?.data as any)?.is_license_server_offline ||
+    plansQuery.data?.is_license_server_offline
   );
 
   const instructionData = useMemo(() => ({

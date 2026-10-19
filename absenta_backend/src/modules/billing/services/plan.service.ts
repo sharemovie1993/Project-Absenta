@@ -90,8 +90,8 @@ export class PlanService {
     try {
       const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
 
-      // Satu request ke product_id=cakola — mencakup software + hardware
-      const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 8000 });
+      // Request ke server lisensi pusat — timeout dipersingkat ke 2500ms untuk graceful degradation
+      const res = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages?product_id=cakola`, { timeout: 2500 });
 
       if (res.data?.success && Array.isArray(res.data.data) && res.data.data.length > 0) {
         const localModules = await prisma.module.findMany();
@@ -103,7 +103,7 @@ export class PlanService {
           PHYSICAL_SERVICE:  { name: 'Kartu & Cetak',     icon: 'CreditCard'  },
         };
 
-        return res.data.data.map((plan: any) => {
+        const mappedPlans = res.data.data.map((plan: any) => {
           let features = plan.features_json;
           if (typeof features === 'string') {
             try { features = JSON.parse(features); } catch { features = []; }
@@ -153,12 +153,49 @@ export class PlanService {
             _count:         { subscriptions: 0 }
           };
         });
+
+        (mappedPlans as any).isLicenseServerOffline = false;
+        return mappedPlans;
       }
 
       throw new Error('Data paket dari Licensing Server kosong atau tidak valid.');
     } catch (err: any) {
-      console.error('[PLAN SERVICE] Gagal mengambil katalog paket dari Licensing Server:', err.message || err);
-      throw new Error(`Katalog paket tidak dapat dimuat dari Licensing Server: ${err.message || 'Layanan tidak dapat dijangkau'}`);
+      console.warn('[PLAN SERVICE] Server lisensi offline / tidak dapat dijangkau, menggunakan data katalog lokal:', err.message);
+
+      const localPlans = await prisma.plan.findMany({
+        where: _includeInactive ? {} : { is_active: true },
+        include: { Module: true }
+      });
+
+      const fallbackPlans = localPlans.map((plan: any) => ({
+        id:            plan.id,
+        name:          plan.name,
+        price_monthly: plan.price_monthly || 0,
+        price_onetime: plan.price_onetime || 0,
+        weight_grams:  plan.weight_grams || 0,
+        image_url:     plan.image_url || null,
+        module_id:     plan.module_id || null,
+        module:        plan.Module ? { id: plan.Module.id, name: plan.Module.name, icon: plan.Module.icon } : null,
+        max_user:      plan.max_user || null,
+        features_json: plan.features_json || [],
+        description:   plan.description ?? null,
+        price_yearly:  plan.price_yearly ?? null,
+        trial_days:    plan.trial_days || 0,
+        absensi_mode:  plan.absensi_mode || undefined,
+        billing_period: plan.billing_period || 'MONTH',
+        currency:       plan.currency || 'IDR',
+        is_active:      plan.is_active,
+        size_label:     this.getPlanSizeLabel(plan),
+        tier:           this.getPlanSizeLabel(plan),
+        service_code:   plan.service_code || this.resolveServiceCode(plan.name, plan.features_json),
+        metadata:       plan.metadata || null,
+        created_at:     plan.created_at,
+        updated_at:     plan.updated_at,
+        _count:         { subscriptions: 0 }
+      }));
+
+      (fallbackPlans as any).isLicenseServerOffline = true;
+      return fallbackPlans;
     }
   }
 

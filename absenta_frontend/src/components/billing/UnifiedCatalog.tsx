@@ -87,9 +87,10 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   });
 
   const serverOffline = Boolean(
-    isLicenseServerOffline ?? 
-    subQuery.data?.is_license_server_offline ?? 
-    (subQuery.data?.data as any)?.is_license_server_offline ?? 
+    isLicenseServerOffline || 
+    plansQuery.data?.isLicenseServerOffline ||
+    subQuery.data?.is_license_server_offline || 
+    (subQuery.data?.data as any)?.is_license_server_offline || 
     false
   );
 
@@ -187,7 +188,10 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       const plans: any[] = Array.isArray((res.data as any)?.plans)
         ? (res.data as any).plans
         : Array.isArray(res.data) ? res.data : [];
-      return plans;
+      return {
+        plans,
+        isLicenseServerOffline: Boolean((res as any)?.is_license_server_offline)
+      };
     },
     staleTime: 1000 * 60 * 5,
   });
@@ -202,7 +206,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     staleTime: 1000 * 60 * 60,
   });
 
-  const catalogPlans = plansQuery.data || [];
+  const catalogPlans = plansQuery.data?.plans || [];
 
   const extractSizeLabel = (plan: any): string => {
     return extractPlanSizeLabel(plan);
