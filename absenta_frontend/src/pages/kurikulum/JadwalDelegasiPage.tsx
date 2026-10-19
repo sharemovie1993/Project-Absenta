@@ -85,7 +85,7 @@ export default function JadwalDelegasiPage() {
   const [targetPelaksanaId, setTargetPelaksanaId] = useState<string>('');
 
   // 1. Fetch Master Data
-  const { data: kelasOptions = [] } = useKelasOptions();
+  const { options: kelasOptions = [] } = useKelasOptions();
 
   const { data: guruListRes, isLoading: loadingGuru } = useQuery({
     queryKey: ['guru-all-delegasi'],
@@ -237,7 +237,7 @@ export default function JadwalDelegasiPage() {
     setCurrentPage(1);
   }, []);
 
-  // Metrics for AcademicPageLayout statCards
+  // Metrics for AcademicPageLayout statCards (Interactive clickable filters)
   const statCards = useMemo(() => {
     const totalBlocks = mergedBlocksList.length;
     const delegatedBlocks = mergedBlocksList.filter((j) => Boolean(j.guru_pelaksana_id)).length;
@@ -246,35 +246,43 @@ export default function JadwalDelegasiPage() {
 
     return [
       {
-        title: "Total Pertemuan KBM",
+        title: "Semua Jadwal",
         value: totalBlocks,
         icon: <Layers size={14} />,
-        gradient: "from-blue-600 to-indigo-600",
-        subtitle: `${rawJadwalList.length} total JP semester aktif`
+        gradient: !onlyDelegated 
+          ? "from-blue-600 to-indigo-600 ring-2 ring-blue-400 ring-offset-2" 
+          : "from-blue-600 to-indigo-600 opacity-80 hover:opacity-100",
+        subtitle: `${rawJadwalList.length} total JP semester aktif`,
+        onClick: () => handleFilterChange(setOnlyDelegated, false),
       },
       {
-        title: "Sesi Didelegasikan",
+        title: "Delegasi Aktif",
         value: delegatedBlocks,
         icon: <ArrowRightLeft size={14} />,
-        gradient: delegatedBlocks > 0 ? "from-amber-500 to-orange-600" : "from-emerald-500 to-teal-600",
-        subtitle: delegatedBlocks > 0 ? `${delegatedBlocks} sesi memiliki proxy` : "Semua diajar guru resmi"
+        gradient: onlyDelegated 
+          ? "from-amber-500 to-orange-600 ring-2 ring-amber-400 ring-offset-2" 
+          : "from-amber-500 to-orange-600 opacity-80 hover:opacity-100",
+        subtitle: delegatedBlocks > 0 ? `${delegatedBlocks} sesi dialihkan` : "Belum ada delegasi",
+        onClick: () => handleFilterChange(setOnlyDelegated, true),
       },
       {
-        title: "Guru SK Terbantu",
+        title: "Guru Utama (SK)",
         value: officialTeachers,
         icon: <UserCheck size={14} />,
-        gradient: "from-slate-500 to-slate-700",
-        subtitle: "Guru resmi yang didelegasikan"
+        gradient: "from-slate-600 to-slate-800 opacity-80 hover:opacity-100",
+        subtitle: "Pengampu resmi SK",
+        onClick: () => handleFilterChange(setOnlyDelegated, false),
       },
       {
-        title: "Pengajar Bantuan Aktif",
+        title: "Guru Pengganti",
         value: proxyTeachers,
         icon: <Users size={14} />,
-        gradient: "from-purple-500 to-indigo-600",
-        subtitle: "Staf / guru pengganti riil"
+        gradient: "from-purple-600 to-indigo-700 opacity-80 hover:opacity-100",
+        subtitle: proxyTeachers > 0 ? `${proxyTeachers} guru bantuan riil` : "Belum ada pengganti",
+        onClick: () => handleFilterChange(setOnlyDelegated, true),
       }
     ];
-  }, [mergedBlocksList, rawJadwalList]);
+  }, [mergedBlocksList, rawJadwalList, onlyDelegated, handleFilterChange]);
 
   // 3. Mutation: Update Guru Pelaksana (Teaching Proxy) untuk seluruh slot dalam blok KBM
   const updateDelegasiMutation = useMutation({
@@ -335,23 +343,24 @@ export default function JadwalDelegasiPage() {
   const columns: Column[] = useMemo(() => [
     {
       key: 'waktu_kelas',
-      label: 'WAKTU & KELAS',
+      label: 'Jadwal & Kelas',
       render: (_val: unknown, item: JadwalDelegasiBlock) => {
         const slotText = item.slot_start === item.slot_end 
           ? `Jam ke-${item.slot_start}`
           : `Jam ke-${item.slot_start} s/d ${item.slot_end}`;
 
         return (
-          <div className="space-y-1">
+          <div className="space-y-0.5">
             <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">
               {item.Kelas?.nama_kelas || '-'}
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5 flex-wrap">
-              <span className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300">
+              <span className="flex items-center gap-1 font-semibold text-slate-600 dark:text-slate-300 whitespace-nowrap">
                 <Clock className="w-3 h-3 text-indigo-400 shrink-0" />
-                <span>{item.hari}, {slotText} ({item.jam_mulai} - {item.jam_selesai})</span>
+                <span>{item.hari}, {slotText}</span>
               </span>
-              <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+              <span className="text-[10px] text-slate-400 whitespace-nowrap">({item.jam_mulai} - {item.jam_selesai})</span>
+              <span className="inline-flex items-center px-1.5 py-0.2 rounded-md text-[10px] font-extrabold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 whitespace-nowrap">
                 {item.jp_count} JP
               </span>
             </div>
@@ -361,69 +370,69 @@ export default function JadwalDelegasiPage() {
     },
     {
       key: 'mapel',
-      label: 'MATA PELAJARAN',
+      label: 'Mata Pelajaran',
       render: (_val: unknown, item: JadwalDelegasiBlock) => (
-        <div className="flex items-center gap-2 font-bold text-slate-700 dark:text-slate-200">
+        <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-200">
           <div className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 shrink-0">
             <BookOpen className="w-3.5 h-3.5" />
           </div>
-          <span className="truncate max-w-[220px] text-sm">{item.Mapel?.nama_mapel || '-'}</span>
+          <span className="truncate max-w-[210px] text-sm font-semibold">{item.Mapel?.nama_mapel || '-'}</span>
         </div>
       ),
     },
     {
       key: 'guru_sk',
-      label: 'GURU SK RESMI (DAPODIK)',
+      label: 'Guru Utama',
       render: (_val: unknown, item: JadwalDelegasiBlock) => (
         <div>
-          <div className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+          <div className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate max-w-[170px]">
             {item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru'}
           </div>
-          <span className="text-[10px] font-medium text-slate-400">Pengampu Utama (SK)</span>
+          <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">Pengampu Resmi (SK)</span>
         </div>
       ),
     },
     {
       key: 'guru_pelaksana',
-      label: 'PENGAJAR PELAKSANA (LAPANGAN)',
+      label: 'Pengajar Riil',
       render: (_val: unknown, item: JadwalDelegasiBlock) => {
         const hasProxy = Boolean(item.guru_pelaksana_id);
         return hasProxy ? (
           <div className="space-y-0.5">
-            <div className="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5 text-sm">
+            <div className="font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5 text-sm whitespace-nowrap">
               <ArrowRightLeft className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>{item.GuruPelaksana?.nama_guru || item.GuruPelaksana?.User?.full_name}</span>
+              <span className="truncate max-w-[160px]">{item.GuruPelaksana?.nama_guru || item.GuruPelaksana?.User?.full_name}</span>
             </div>
-            <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-300/60 dark:border-amber-800/60">
-              Guru/Staf Pengganti Riil
+            <span className="inline-block text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-300/60 dark:border-amber-800/60 whitespace-nowrap">
+              Pengganti Lapangan
             </span>
           </div>
         ) : (
-          <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-            <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="italic">Sesuai Guru SK (Langsung)</span>
+          <div className="flex items-center gap-1.5 text-slate-400 text-xs whitespace-nowrap">
+            <UserCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="italic text-slate-500 dark:text-slate-400 text-[11px]">Sesuai Guru Utama</span>
           </div>
         );
       },
     },
     {
       key: 'status',
-      label: 'STATUS',
-      className: 'text-center',
+      label: 'Status',
+      className: 'text-center whitespace-nowrap',
       render: (_val: unknown, item: JadwalDelegasiBlock) => {
         const hasProxy = Boolean(item.guru_pelaksana_id);
         return hasProxy ? (
-          <div className="flex items-center justify-center">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300/80 dark:border-amber-800/80 shadow-2xs">
+          <div className="flex items-center justify-center whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-300/80 dark:border-amber-800/80 shadow-2xs whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
               Delegasi Aktif
             </span>
           </div>
         ) : (
-          <div className="flex items-center justify-center">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300/70 dark:border-emerald-800/70">
+          <div className="flex items-center justify-center whitespace-nowrap">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300/70 dark:border-emerald-800/70 whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-              Normal (Guru SK)
+              Normal
             </span>
           </div>
         );
@@ -431,17 +440,17 @@ export default function JadwalDelegasiPage() {
     },
     {
       key: 'aksi',
-      label: 'AKSI',
-      className: 'text-right',
+      label: 'Aksi',
+      className: 'text-right whitespace-nowrap',
       render: (_val: unknown, item: JadwalDelegasiBlock) => {
         const hasProxy = Boolean(item.guru_pelaksana_id);
         return (
-          <div className="flex items-center justify-end gap-1.5">
+          <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
             <Button
               size="sm"
               variant={hasProxy ? 'outline' : 'default'}
               onClick={() => handleOpenAssignModal(item)}
-              className="text-xs font-bold rounded-xl h-8 px-3"
+              className="text-xs font-bold rounded-xl h-8 px-3 whitespace-nowrap"
             >
               {hasProxy ? 'Ubah Pengganti' : 'Tugaskan Pengganti'}
             </Button>
