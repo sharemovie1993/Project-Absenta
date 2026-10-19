@@ -461,12 +461,18 @@ export const RABPrintableProposalView: React.FC<{
 export const RABCalculatorModal: React.FC<RABCalculatorModalProps> = ({
   isOpen,
   onClose,
-  availablePlans = [],
+  availablePlans: rawPlans = [],
   onApplyOrder
 }) => {
   const [activeView, setActiveView] = useState<'FORM' | 'PREVIEW'>('FORM');
   const [schoolNameInput, setSchoolNameInput] = useState<string>('Sekolah / Panitia Pengadaan');
   const [totalStudentsCount, setTotalStudentsCount] = useState<number>(600);
+
+  const availablePlans = useMemo(() => {
+    if (Array.isArray(rawPlans)) return rawPlans;
+    if (Array.isArray((rawPlans as any)?.plans)) return (rawPlans as any).plans;
+    return [];
+  }, [rawPlans]);
 
   // Categorize catalog items
   const serverPlans = useMemo(() => {

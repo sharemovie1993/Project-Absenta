@@ -643,7 +643,7 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
           <RABCalculatorModal
             isOpen={isRABModalOpen}
             onClose={() => setIsRABModalOpen(false)}
-            availablePlans={plansQuery.data || []}
+            availablePlans={catalogPlans}
             onApplyOrder={(items) => {
               items.forEach(item => {
                 addItemToCart({
