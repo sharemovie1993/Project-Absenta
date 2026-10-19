@@ -39,6 +39,7 @@ import { usePiketGuruOptions } from '../../../../hooks/usePiketGuruOptions';
 import { getStrukturList } from '../../../../api/academic/strukturOrganisasi.api';
 import { getSesiAbsensiList } from '../../../../api/attendanceGerbang.api';
 import { toLocalDate } from '../../../../utils/attendance/time';
+import { formatDate } from '../../../../utils/date.utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 
@@ -134,6 +135,15 @@ export const StaffPiketOperasionalTab: React.FC<StaffPiketOperasionalTabProps> =
   const isAuthorized = isAssignedPiketToday || isStrukturPiket || isManagement;
   const canAccessPiket = isAuthorized || isBypassed;
   const isLoading = loadingPiketJadwal || loadingStruktur;
+
+  const formattedTodayDate = useMemo(() => {
+    return formatDate(new Date(), {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }, []);
 
   const hasGerbangDuty = isGerbang ||
     (user as any)?.role === 'GERBANG' ||
