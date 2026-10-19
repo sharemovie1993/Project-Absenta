@@ -13,12 +13,14 @@ export interface MyInvoicesResponse {
   success: boolean;
   message: string;
   data: Invoice[];
+  is_license_server_offline?: boolean;
 }
 
 export interface MyPaymentsResponse {
   success: boolean;
   message: string;
   data: Payment[];
+  is_license_server_offline?: boolean;
 }
 
 export async function getMySubscription(): Promise<MySubscriptionResponse> {

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Badge, Loader } from '../ui';
-import { Receipt, CheckCircle, Box, Printer } from 'lucide-react';
+import { Receipt, CheckCircle, Box, Printer, AlertTriangle } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import type { Invoice } from '../../types/invoice';
 import { formatCurrency, getServiceStyle } from '@/lib/billingUtils';
@@ -28,6 +28,7 @@ interface BillingInvoicesSectionProps {
   handleCancelInvoice?: (invoiceId: string) => Promise<void> | void;
   isLoading?: boolean;
   onRefresh?: () => void;
+  isLicenseServerOffline?: boolean;
 }
 
 export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
@@ -36,7 +37,8 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
   handleViewInvoice,
   handleCancelInvoice,
   isLoading,
-  onRefresh
+  onRefresh,
+  isLicenseServerOffline = false
 }) => {
   const navigate = useNavigate();
 
@@ -65,6 +67,27 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Offline Alert Banner */}
+      {isLicenseServerOffline && (
+        <div className="flex items-start gap-3.5 p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl text-amber-900 dark:text-amber-200 shadow-xs">
+          <div className="p-2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-xl shrink-0 mt-0.5">
+            <AlertTriangle size={18} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+              Server Lisensi Cloud Offline / Pemeliharaan
+            </h4>
+            <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-medium">
+              Riwayat tagihan &amp; transaksi online dari server lisensi pusat sementara tidak dapat dimuat karena server lisensi pusat sedang dalam pemeliharaan/offline.
+              <strong className="block mt-1 font-bold text-amber-950 dark:text-amber-100">
+                ✅ Seluruh modul dan lisensi aktif yang telah Anda miliki tetap berjalan 100% normal di server sekolah.
+              </strong>
+              Riwayat invoice dan transaksi akan otomatis tampil kembali segera setelah server pusat online.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* 1. Active Invoices */}
       <Card className="p-0 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm bg-white dark:bg-slate-900 rounded-xl">
         <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
@@ -95,7 +118,9 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
               {activeInvoices?.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-slate-400 font-medium italic text-xs">
-                    Tidak ada tagihan aktif saat ini.
+                    {isLicenseServerOffline
+                      ? 'Tidak dapat memuat tagihan aktif saat ini (Server lisensi pusat offline).'
+                      : 'Tidak ada tagihan aktif saat ini.'}
                   </td>
                 </tr>
               ) : (
@@ -216,7 +241,9 @@ export const BillingInvoicesSection: React.FC<BillingInvoicesSectionProps> = ({
               {transactionHistory?.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-12 text-center text-slate-400 font-medium italic text-xs">
-                    Belum ada riwayat transaksi.
+                    {isLicenseServerOffline
+                      ? 'Riwayat transaksi online sementara tidak tersedia (Server lisensi pusat offline).'
+                      : 'Belum ada riwayat transaksi.'}
                   </td>
                 </tr>
               ) : (

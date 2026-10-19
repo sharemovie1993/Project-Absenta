@@ -257,10 +257,25 @@ function resolveServiceMetadata(planTitle: string, productId: string) {
   };
 }
 
+// Status konektivitas realtime ke server lisensi pusat (Graceful Degradation Tracking)
+let lastLicenseServerStatus = {
+  isOnline: true,
+  lastChecked: new Date(),
+  error: null as string | null
+};
+
+export function getLicenseServerConnectivity() {
+  return lastLicenseServerStatus;
+}
+
 export async function getInvoicesByTenantQuery(_tenantId: string) {
   const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
   const coreKey = process.env.LICENSE_KEY || '';
-  if (!coreKey) return [];
+  if (!coreKey) {
+    const empty: any[] = [];
+    (empty as any).isLicenseServerOffline = false;
+    return empty;
+  }
 
   try {
     const tenant = await prisma.tenant.findUnique({
@@ -270,7 +285,9 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
     const slug = tenant?.subdomain?.toLowerCase();
     const tenantName = tenant?.name?.toLowerCase();
 
-    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
+    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 2500 });
+    lastLicenseServerStatus = { isOnline: true, lastChecked: new Date(), error: null };
+
     if (response.data?.success && response.data?.data?.invoices) {
       let rawInvoices = response.data.data.invoices;
 
@@ -289,7 +306,7 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
         });
       }
 
-      return rawInvoices.map((inv: any) => {
+      const mappedList: any[] = rawInvoices.map((inv: any) => {
         const mappedStatus = String(inv.status).toUpperCase();
         let status = 'SENT';
         if (mappedStatus === 'PAID') status = 'PAID';
@@ -329,17 +346,30 @@ export async function getInvoicesByTenantQuery(_tenantId: string) {
           }
         };
       });
+
+      (mappedList as any).isLicenseServerOffline = false;
+      return mappedList;
     }
   } catch (err: any) {
-    console.error('[getInvoicesByTenantQuery] Failed to fetch invoices from licensing server:', err.message);
+    lastLicenseServerStatus = { isOnline: false, lastChecked: new Date(), error: err.message };
+    console.warn('[getInvoicesByTenantQuery] Server lisensi pusat offline/unreachable:', err.message);
+    const fallbackList: any[] = [];
+    (fallbackList as any).isLicenseServerOffline = true;
+    return fallbackList;
   }
-  return [];
+  const empty: any[] = [];
+  (empty as any).isLicenseServerOffline = false;
+  return empty;
 }
 
 export async function getPaymentsByTenantQuery(_tenantId: string) {
   const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || 'https://api.absenta.id';
   const coreKey = process.env.LICENSE_KEY || '';
-  if (!coreKey) return [];
+  if (!coreKey) {
+    const empty: any[] = [];
+    (empty as any).isLicenseServerOffline = false;
+    return empty;
+  }
 
   try {
     const tenant = await prisma.tenant.findUnique({
@@ -349,7 +379,9 @@ export async function getPaymentsByTenantQuery(_tenantId: string) {
     const slug = tenant?.subdomain?.toLowerCase();
     const tenantName = tenant?.name?.toLowerCase();
 
-    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 8000 });
+    const response = await axios.get(`${LICENSE_SERVER_URL}/api/license/history-by-core-key/${coreKey}`, { timeout: 2500 });
+    lastLicenseServerStatus = { isOnline: true, lastChecked: new Date(), error: null };
+
     if (response.data?.success && response.data?.data?.invoices) {
       let rawInvoices = response.data.data.invoices;
 
@@ -368,7 +400,7 @@ export async function getPaymentsByTenantQuery(_tenantId: string) {
         });
       }
 
-      return rawInvoices
+      const mappedList: any[] = rawInvoices
         .filter((inv: any) => inv.paid_at)
         .map((inv: any) => {
           const meta = resolveServiceMetadata(inv.plan_title || inv.planTitle || '', inv.product_id || inv.productId || '');
@@ -378,24 +410,33 @@ export async function getPaymentsByTenantQuery(_tenantId: string) {
             currency: 'IDR',
             status: 'SUCCESS',
             payment_method: inv.payment_method || 'TRIPAY',
-            paid_at: inv.paid_at,
-            created_at: inv.paid_at,
-            invoice_number: inv.invoice_number,
-            plan_name: meta.plan_name,
-            Subscription: {
-              service_code: meta.service_code,
-              Plan: {
-                name: meta.plan_name,
-                Module: {
-                  name: meta.module_name
+            created_at: inv.paid_at || inv.created_at,
+            Invoice: {
+              invoice_number: inv.invoice_number,
+              Subscription: {
+                service_code: meta.service_code,
+                Plan: {
+                  name: meta.plan_name,
+                  Module: {
+                    name: meta.module_name
+                  }
                 }
               }
             }
           };
         });
+
+      (mappedList as any).isLicenseServerOffline = false;
+      return mappedList;
     }
   } catch (err: any) {
-    console.error('[getPaymentsByTenantQuery] Failed to fetch payments from licensing server:', err.message);
+    lastLicenseServerStatus = { isOnline: false, lastChecked: new Date(), error: err.message };
+    console.warn('[getPaymentsByTenantQuery] Server lisensi pusat offline/unreachable:', err.message);
+    const fallbackList: any[] = [];
+    (fallbackList as any).isLicenseServerOffline = true;
+    return fallbackList;
   }
-  return [];
+  const empty: any[] = [];
+  (empty as any).isLicenseServerOffline = false;
+  return empty;
 }

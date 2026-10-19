@@ -192,10 +192,19 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     queryKey: ['my-invoices-list'],
     queryFn: async () => {
       const res = await getMyInvoices();
-      return res.data || [];
+      return {
+        items: (res.data || []) as ServiceInvoice[],
+        isLicenseServerOffline: Boolean(res.is_license_server_offline)
+      };
     },
     staleTime: 60 * 1000
   });
+
+  const invoicesList = useMemo(() => {
+    return invoicesQuery.data?.items || [];
+  }, [invoicesQuery.data]);
+
+  const isLicenseServerOffline = Boolean(invoicesQuery.data?.isLicenseServerOffline);
 
   const paymentsQuery = useQuery({
     queryKey: ['my-payments-list'],
@@ -391,13 +400,13 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
     },
     {
       title: "Tagihan Berjalan",
-      value: String(invoicesQuery.data?.filter(i => i.status === 'UNPAID' || i.status === 'PENDING').length || 0),
+      value: isLicenseServerOffline ? '-' : String(invoicesList.filter(i => i.status === 'UNPAID' || i.status === 'PENDING').length || 0),
       icon: <History size={16} className="text-purple-600" />,
       variant: 'card' as const,
       gradient: "from-purple-500 to-violet-600",
-      subtitle: "Menunggu pembayaran"
+      subtitle: isLicenseServerOffline ? "Server lisensi offline" : "Menunggu pembayaran"
     }
-  ], [services, activeAcademicTier, invoicesQuery.data]);
+  ], [services, activeAcademicTier, invoicesList, isLicenseServerOffline]);
 
   const tabs = useMemo(() => [
     { id: 'services', label: 'Status Lisensi & Modul Aktif', icon: LayoutGrid },
@@ -405,9 +414,9 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
   ], []);
 
   const pendingInvoice = useMemo(() => {
-    const list = invoicesQuery.data || [];
+    const list = invoicesList;
     return list.find((inv: any) => !['PAID', 'CANCELLED', 'OVERDUE'].includes(String(inv.status).toUpperCase()));
-  }, [invoicesQuery.data]);
+  }, [invoicesList]);
 
   const handleExtend = useCallback((planId: string) => {
     navigate(`/billing/checkout?plan_id=${planId}`);
@@ -638,6 +647,21 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
               activeTab={activeTab === 'catalog' ? 'services' : activeTab}
               onChange={handleTabChange}
             />
+
+            {/* Cloud Server Status Banner */}
+            {isLicenseServerOffline && (
+              <div className="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <span className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                    Koneksi ke Server Lisensi Cloud sedang offline / pemeliharaan. Seluruh modul lokal Anda tetap aktif dan beroperasi 100% normal.
+                  </span>
+                </div>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 shrink-0">
+                  Cloud Offline
+                </span>
+              </div>
+            )}
 
             {/* Pending Invoice Notification Banner */}
             {pendingInvoice && (
@@ -946,12 +970,13 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
               <div className="w-full min-w-0">
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat riwayat tagihan...</div>}>
                   <BillingInvoicesSection
-                    invoices={(invoicesQuery.data as ServiceInvoice[]) || []}
+                    invoices={(invoicesList as ServiceInvoice[]) || []}
                     isLoading={invoicesQuery.isLoading}
                     onRefresh={() => invoicesQuery.refetch()}
                     handleViewInvoice={handleViewInvoice}
                     handleCancelInvoice={handleCancelInvoice}
                     actionLoading={cancellingInvoiceId}
+                    isLicenseServerOffline={isLicenseServerOffline}
                   />
                 </Suspense>
               </div>

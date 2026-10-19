@@ -78,7 +78,8 @@ export const mySubscriptionController = {
     return reply.send({
       success: true,
       message: 'Invoices retrieved',
-      data: invoices
+      data: invoices,
+      is_license_server_offline: (invoices as any).isLicenseServerOffline ?? false
     });
   },
 
@@ -145,9 +146,10 @@ export const mySubscriptionController = {
     const payments = await getPaymentsByTenantQuery(tenantId);
 
     return reply.send({
-        success: true,
-        message: 'Payments retrieved',
-        data: payments
+      success: true,
+      message: 'Payments retrieved',
+      data: payments,
+      is_license_server_offline: (payments as any).isLicenseServerOffline ?? false
     });
   },
 
