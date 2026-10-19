@@ -1,47 +1,74 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   History, 
   CheckCircle2, 
   Clock, 
   Calendar, 
-  ShieldCheck, 
   User, 
-  ArrowUpRight,
-  Sparkles,
-  Key,
-  Copy,
-  Check
+  Sparkles, 
+  Key, 
+  Copy, 
+  Check 
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { formatDate } from '../../utils/layoutUtils';
+import { formatDate } from '@/utils/layoutUtils';
 import { formatCurrency } from '@/lib/billingUtils';
-import type { SubscriptionItem } from './ServiceCenterPage';
 
-interface SubscriptionHistoryModalProps {
+export interface SubscriptionCycleItem {
+  id: string;
+  plan_id?: string;
+  license_key?: string | null;
+  service_code?: string;
+  status: string;
+  end_date: string;
+  start_date?: string;
+  auto_renew?: boolean;
+  plan_name?: string | null;
+  plan_snapshot?: { name?: string; price_monthly?: number } | null;
+  Plan?: {
+    name: string;
+    service_code?: string;
+    price_monthly?: number;
+    price_yearly?: number;
+    max_user?: number;
+    features_json?: string[];
+  } | null;
+}
+
+export interface SubscriptionCycleHistoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   serviceTitle: string;
-  currentSubscription?: SubscriptionItem | null;
-  historyItems: SubscriptionItem[];
+  currentSubscription?: SubscriptionCycleItem | null;
+  historyItems: SubscriptionCycleItem[];
 }
 
-export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> = ({
+export const SubscriptionCycleHistoryModal: React.FC<SubscriptionCycleHistoryModalProps> = ({
   isOpen,
   onClose,
   serviceTitle,
   currentSubscription,
   historyItems = []
 }) => {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
   // Gabungkan langganan saat ini dan riwayat terdahulu dalam 1 urutan timeline
   const allCycles = React.useMemo(() => {
-    const list: { item: SubscriptionItem; isCurrent: boolean }[] = [];
+    const list: { item: SubscriptionCycleItem; isCurrent: boolean }[] = [];
     if (currentSubscription) {
       list.push({ item: currentSubscription, isCurrent: true });
     }
-    historyItems.forEach(h => {
+    (historyItems ?? []).forEach(h => {
       // Pastikan bukan id yang sama persis dengan current
       if (h.id !== currentSubscription?.id) {
         list.push({ item: h, isCurrent: false });
@@ -60,11 +87,12 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
     navigator.clipboard.writeText(key);
     setCopiedKey(key);
     toast.success('Kode lisensi disalin ke clipboard!');
-    setTimeout(() => setCopiedKey(null), 2500);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setCopiedKey(null), 2500);
   }, []);
 
   // Ambil primary license key jika ada
-  const primaryLicenseKey = currentSubscription?.license_key || allCycles.find(c => c.item.license_key)?.item.license_key;
+  const primaryLicenseKey = currentSubscription?.license_key || (allCycles ?? []).find(c => c.item.license_key)?.item.license_key;
 
   return (
     <Modal
@@ -88,9 +116,9 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
         </div>
       }
     >
-      <div className="p-4 sm:p-5 pt-1 space-y-4 text-left">
+      <div className="p-4 sm:p-5 pt-1 space-y-4 text-left w-full max-w-full min-w-0">
         {/* Ringkasan Siklus & Kode Lisensi */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2 text-xs w-full">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={15} className="text-indigo-600" />
@@ -107,7 +135,7 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
             <div className="flex items-center justify-between pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
               <div className="flex items-center gap-1.5 min-w-0">
                 <Key size={13} className="text-amber-500 shrink-0" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kunci Lisensi Produk:</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kunci Lisensi:</span>
                 <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 truncate" title={primaryLicenseKey}>
                   {primaryLicenseKey}
                 </span>
@@ -135,8 +163,8 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
         </div>
 
         {/* Linimasa Timeline */}
-        <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800">
-          {allCycles.map(({ item, isCurrent }, idx) => {
+        <div className="space-y-3 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200 dark:before:bg-slate-800 w-full">
+          {(allCycles ?? [])?.map(({ item, isCurrent }, idx) => {
             const planName = item.Plan?.name || item.plan_snapshot?.name || item.plan_name || 'Layanan Absenta';
             const price = item.Plan?.price_monthly || item.plan_snapshot?.price_monthly || 0;
             const maxUser = item.Plan?.max_user;
@@ -145,7 +173,7 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
             const itemKey = item.license_key || primaryLicenseKey;
 
             return (
-              <div key={item.id || idx} className="relative flex items-start gap-3 pl-1">
+              <div key={item.id || idx} className="relative flex items-start gap-3 pl-1 w-full">
                 {/* Bullet Icon */}
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 ${
                   isCurrent 
@@ -198,8 +226,8 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
                     </div>
                   </div>
 
-                  {/* Periode & Kapasitas */}
-                  <div className="grid grid-cols-2 gap-2 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
+                  {/* Periode & Kapasitas (Responsive Grid Pilar 30) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-[11px]">
                     <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
                       <Calendar size={12} className="text-slate-400 shrink-0" />
                       <span>
@@ -211,7 +239,7 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5 text-slate-600 dark:text-slate-300">
+                    <div className="flex items-center justify-start sm:justify-end gap-1.5 text-slate-600 dark:text-slate-300">
                       <User size={12} className="text-slate-400 shrink-0" />
                       <span>{maxUser ? `${maxUser.toLocaleString('id-ID')} Pengguna` : 'Unlimited'}</span>
                     </div>
@@ -223,7 +251,7 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800 w-full">
           <Button
             type="button"
             variant="outline"
@@ -238,3 +266,4 @@ export const SubscriptionHistoryModal: React.FC<SubscriptionHistoryModalProps> =
     </Modal>
   );
 };
+export default SubscriptionCycleHistoryModal;

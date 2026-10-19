@@ -58,6 +58,7 @@ function getRegistryKey(filepath, content) {
   if (filename === 'SiswaPage') return 'academic_siswa';
   if (filename === 'InputNilaiPklPage') return 'hubin_input_nilai_pkl';
   if (filename === 'RaporPklPage') return 'rapor_pkl';
+  if (filename === 'JadwalDelegasiPage') return 'kurikulum_jadwal_delegasi';
   
   return filename.toLowerCase();
 }

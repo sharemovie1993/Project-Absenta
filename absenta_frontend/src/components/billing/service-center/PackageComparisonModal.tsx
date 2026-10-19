@@ -2,24 +2,19 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Check, 
-  X, 
   Crown, 
   Layers, 
-  Users, 
-  ShieldCheck, 
   ArrowRight, 
   Loader2,
   Table as TableIcon,
-  LayoutGrid,
-  ChevronRight,
-  Info
+  LayoutGrid
 } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { getMySubscriptionMatrix, type PackageMatrixData } from '@/api/mySubscription.api';
 
-interface PackageComparisonModalProps {
+export interface PackageComparisonModalProps {
   isOpen: boolean;
   onClose: () => void;
   serviceId?: string | null;
@@ -71,15 +66,19 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
   const columns = matrixData?.columns || FALLBACK_MODULE_COLUMNS;
   const tiers = matrixData?.tiers || [];
 
-  // Sinkronkan tab mobile awal ke varian aktif tenant jika data termuat
+  // Sinkronkan tab mobile awal ke varian aktif tenant jika data termuat dengan return cleanup
   React.useEffect(() => {
-    if (matrixData?.context?.variant) {
+    let active = true;
+    if (matrixData?.context?.variant && active) {
       setMobileTab(matrixData.context.variant);
     }
+    return () => {
+      active = false;
+    };
   }, [matrixData?.context?.variant]);
 
   const selectedMobileRow = useMemo(() => {
-    return tiers.find(t => t.tier.toLowerCase() === mobileTab.toLowerCase()) || tiers[0];
+    return (tiers ?? []).find(t => t.tier.toLowerCase() === mobileTab.toLowerCase()) || tiers[0];
   }, [tiers, mobileTab]);
 
   return (
@@ -104,9 +103,9 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
         </div>
       }
     >
-      <div className="p-3 sm:p-6 pt-1 sm:pt-2 space-y-4 sm:space-y-6 text-left">
+      <div className="p-3 sm:p-6 pt-1 sm:pt-2 space-y-4 sm:space-y-6 text-left w-full max-w-full min-w-0">
         {/* ACTIVE STATUS BANNER */}
-        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-transparent border border-indigo-200 dark:border-indigo-900/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-transparent border border-indigo-200 dark:border-indigo-900/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 w-full max-w-full min-w-0">
           <div className="flex items-start sm:items-center gap-3 min-w-0">
             <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-xs shrink-0 mt-0.5 sm:mt-0">
               <Crown size={18} />
@@ -165,7 +164,7 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
         {/* CONTROLS: MOBILE VIEW SWITCHER */}
         {!isLoading && tiers.length > 0 && (
-          <div className="flex sm:hidden items-center justify-between gap-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl">
+          <div className="flex sm:hidden items-center justify-between gap-2 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl w-full">
             <button
               type="button"
               onClick={() => setViewMode('table')}
@@ -195,10 +194,10 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
         {/* MOBILE CARD VIEW (< SM) */}
         {!isLoading && tiers.length > 0 && viewMode === 'cards' && (
-          <div className="block sm:hidden space-y-3">
+          <div className="block sm:hidden space-y-3 w-full">
             {/* TIER TABS SELECTOR */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-              {tiers.map((t) => {
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar flex-nowrap pb-1">
+              {(tiers ?? [])?.map((t) => {
                 const isSelected = t.tier.toLowerCase() === mobileTab.toLowerCase();
                 const isTenantActive = t.is_current_tier;
 
@@ -207,7 +206,7 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                     key={t.tier}
                     type="button"
                     onClick={() => setMobileTab(t.tier)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap border transition-all flex items-center gap-1 ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap border transition-all flex items-center gap-1 shrink-0 ${
                       isSelected
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
                         : isTenantActive
@@ -226,7 +225,7 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
             {/* SELECTED TIER CARD */}
             {selectedMobileRow && (
-              <div className={`p-4 rounded-2xl border transition-all ${
+              <div className={`p-4 rounded-2xl border transition-all w-full ${
                 selectedMobileRow.is_current_tier 
                   ? 'bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-300 dark:border-indigo-800 shadow-xs' 
                   : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
@@ -255,14 +254,13 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                   </div>
                 </div>
 
-
                 {/* MODULE CHECKLIST FOR MOBILE */}
-                <div className="space-y-2 mt-3">
+                <div className="space-y-2 mt-3 w-full">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                     Cakupan Akses Modul:
                   </span>
-                  <div className="grid grid-cols-1 gap-1.5">
-                    {columns.map((col) => {
+                  <div className="grid grid-cols-1 gap-1.5 w-full">
+                    {(columns ?? [])?.map((col) => {
                       const modStatus = selectedMobileRow.modules[col.id];
                       const statusCode = modStatus?.status_code || 'UNSUBSCRIBED';
                       const isActive = statusCode === 'ACTIVE' || statusCode === 'CROSS_ACTIVE';
@@ -310,23 +308,23 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
 
         {/* FULL MATRIX TABLE (DESKTOP OR MOBILE TABLE VIEW) */}
         {!isLoading && tiers.length > 0 && (viewMode === 'table' || typeof window !== 'undefined') && (
-          <div className={`${viewMode === 'cards' ? 'hidden sm:block' : 'block'} space-y-1.5`}>
+          <div className={`${viewMode === 'cards' ? 'hidden sm:block' : 'block'} space-y-1.5 w-full`}>
             {/* MOBILE SWIPE HINT */}
             <div className="flex sm:hidden items-center justify-between text-[11px] text-slate-400 px-1 font-semibold">
               <span>Geser tabel untuk melihat semua modul</span>
               <span className="text-indigo-500 animate-pulse">Geser ↔</span>
             </div>
 
-            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs bg-white dark:bg-slate-900">
+            <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs bg-white dark:bg-slate-900 w-full">
               <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                 <table className="w-full text-left border-collapse min-w-[850px] lg:min-w-[960px]">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-850/90 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       {/* STICKY FIRST COLUMN: KAPASITAS SISWA */}
-                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-850 z-20 p-3.5 pl-4 w-36 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
+                      <th className="sticky left-0 bg-slate-50 dark:bg-slate-900 z-20 p-3.5 pl-4 w-36 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
                         Kapasitas Siswa
                       </th>
-                      {columns.map((col, idx) => (
+                      {(columns ?? [])?.map((col, idx) => (
                         <th key={col.id || idx} className="p-3 text-center min-w-[110px] border-r border-slate-100 dark:border-slate-800 last:border-r-0" title={col.shortDesc}>
                           <span className="block leading-tight font-extrabold text-slate-800 dark:text-slate-200">{col.name}</span>
                           <span className="text-[9.5px] font-medium text-slate-400 lowercase hidden md:block mt-0.5">
@@ -337,15 +335,13 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs text-slate-700 dark:text-slate-300">
-                    {tiers.map((row) => {
-                      const isCurrentTier = row.is_current_tier;
-
+                    {(tiers ?? [])?.map((row) => {
                       return (
                         <tr 
                           key={row.tier}
                           className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors"
                         >
-                          {/* STICKY KAPASITAS COLUMN (BERSIH & MINIMALIS) */}
+                          {/* STICKY KAPASITAS COLUMN */}
                           <td className="sticky left-0 z-10 p-3.5 pl-4 bg-white dark:bg-slate-900 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.06)] border-r border-slate-200/60 dark:border-slate-800">
                             <div className="flex flex-col gap-0.5">
                               <span className="text-xs font-black text-slate-800 dark:text-slate-100 leading-snug">
@@ -358,14 +354,13 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                           </td>
 
                           {/* MODULE CELLS WITH REPEATED TIER NAME */}
-                          {columns.map((col) => {
+                          {(columns ?? [])?.map((col) => {
                             const modStatus = row.modules[col.id];
                             const statusCode = modStatus?.status_code || 'UNSUBSCRIBED';
 
                             return (
                               <td key={col.id} className="p-3 text-center border-r border-slate-100 dark:border-slate-800 last:border-r-0">
                                 {statusCode === 'ACTIVE' || statusCode === 'CROSS_ACTIVE' ? (
-                                  /* MODUL & VARIAN AKTIF: BADGE HIJAU SIMPEL DENGAN CEKLIS */
                                   <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || `Varian ${row.tier} Aktif`}>
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-[11px] shadow-xs border border-emerald-400 transition-all">
                                       <Check size={13} strokeWidth={3} />
@@ -373,7 +368,6 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
                                     </div>
                                   </div>
                                 ) : (
-                                  /* MODUL / VARIAN TIDAK AKTIF: BADGE ABU-ABU REDUP DENGAN KATA (NONAKTIF) */
                                   <div className="inline-flex items-center justify-center" title={modStatus?.tooltip || `Varian ${row.tier} Nonaktif`}>
                                     <div className="inline-flex items-center justify-center px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-slate-400 dark:text-slate-500 font-semibold text-[11px] border border-dashed border-slate-200 dark:border-slate-700/60 opacity-60">
                                       <span>{row.tier} (Nonaktif)</span>
@@ -394,7 +388,7 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
         )}
 
         {/* FOOTER & LEGEND */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 w-full">
           <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px]">
               <span className="p-0.5 rounded bg-emerald-500 text-white">
@@ -424,3 +418,4 @@ export const PackageComparisonModal: React.FC<PackageComparisonModalProps> = ({
     </Modal>
   );
 };
+export default PackageComparisonModal;

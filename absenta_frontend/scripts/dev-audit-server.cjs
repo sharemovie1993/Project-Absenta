@@ -23,7 +23,8 @@ const registryPaths = {
   gate_security_audit: 'src/pages/attendance/LogAksesGerbangPage.tsx',
   coop_rat: 'src/pages/cooperative/RatMeetingPage.tsx',
   hubin_input_nilai_pkl: 'src/pages/hubin/InputNilaiPklPage.tsx',
-  rapor_pkl: 'src/pages/rapor/RaporPklPage.tsx'
+  rapor_pkl: 'src/pages/rapor/RaporPklPage.tsx',
+  kurikulum_jadwal_delegasi: 'src/pages/kurikulum/JadwalDelegasiPage.tsx'
 };
 
 // Fungsi pencarian dinamis cerdas untuk mendeteksi lokasi file secara otomatis

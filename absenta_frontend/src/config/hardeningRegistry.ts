@@ -1082,7 +1082,34 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         name: 'Pemisahan Kode Dinamis (Code Splitting / lazy)',
         description: 'Memecah JS bundle subkomponen berat menggunakan React.lazy & Suspense.',
         status: 'VERIFIED',
-        details: 'Subkomponen BillingInvoicesSection, OrderReviewSidebar, dan AutoRenewModal dimuat secara lazy loading.'
+        details: 'Subkomponen BillingInvoicesSection, OrderReviewSidebar, AutoRenewModal, PackageComparisonModal, SubscriptionCycleHistoryModal, dan ServiceCardsGrid dimuat secara lazy loading.'
+      }
+    ]
+  },
+  servicecenterpage: {
+    moduleName: 'servicecenterpage',
+    displayName: 'Pusat Layanan Sekolah (Billing)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan React Error Boundary mandiri.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Penyaringan data, list layanan, dan callback handlers dimemosisasi dengan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada data lists dan click handlers.'
+      },
+      {
+        id: 'code_splitting',
+        name: 'Pemisahan Kode Dinamis (Code Splitting / lazy)',
+        description: 'Memecah JS bundle subkomponen berat menggunakan React.lazy & Suspense.',
+        status: 'VERIFIED',
+        details: 'Subkomponen BillingInvoicesSection, OrderReviewSidebar, AutoRenewModal, PackageComparisonModal, SubscriptionCycleHistoryModal, dan ServiceCardsGrid dimuat secara lazy loading.'
       }
     ]
   },
@@ -1425,6 +1452,54 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
         description: 'Mengintegrasikan komponen tabel shared Tabular yang dimodernisasi dari eskul page untuk penayangan data roster / list.',
         status: 'VERIFIED',
         details: 'Tabel penugasan kelas-kelas kini menggunakan komponen shared Tabular.tsx dengan view switcher (Diagram vs Tabel).'
+      }
+    ]
+  },
+  kurikulum_jadwal_delegasi: {
+    moduleName: 'kurikulum_jadwal_delegasi',
+    displayName: 'Delegasi Pengajar KBM (Teaching Proxy)',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan (AcademicPageLayout & Error Boundary)',
+        description: 'Membungkus halaman delegasi pengajar dengan AcademicPageLayout dan penanganan error mutasi toast terpadu.',
+        status: 'VERIFIED',
+        details: 'Terintegrasi di dalam AcademicPageLayout dengan fallback aman dan Sonner toast.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (useMemo + useCallback)',
+        description: 'Komputasi penggabungan blok sesi KBM berurutan, metrik statistik, dan pemfilteran jadwal dioptimasi dengan memoization penuh.',
+        status: 'VERIFIED',
+        details: 'useMemo terpasang pada mergedBlocksList, filteredJadwalList, statCards, dan toolbar renderer; useCallback pada filter & modal handlers.'
+      },
+      {
+        id: 'cache_invalidation',
+        name: 'Sinkronisasi Cache & Invalidation (TanStack Query)',
+        description: 'Invalidasi otomatis cache TanStack Query untuk jadwal-kbm-delegasi, jadwal-kbm-grid, dan jadwal-guru-timeline saat terjadi delegasi/pembatalan.',
+        status: 'VERIFIED',
+        details: 'queryClient.invalidateQueries terpasang pada onSuccess mutation update delegasi.'
+      },
+      {
+        id: 'architectural_user_guidance',
+        name: 'Sistem Panduan Pengguna Interaktif',
+        description: 'Menyediakan panduan operasional langkah-demi-langkah bagi kurikulum dalam menugaskan guru pengganti riil di lapangan.',
+        status: 'VERIFIED',
+        details: 'Properti instruction terpasang pada AcademicPageLayout dengan 4 poin panduan operasional.'
+      },
+      {
+        id: 'architectural_table_toolbar_standard',
+        name: 'Standarisasi Terpadu Table & Toolbar Responsive',
+        description: 'Mengintegrasikan filter pencarian, filter kelas, filter hari, switch delegasi, dan tombol aksi ke dalam toolbar standar dengan varian affordance toolbar.',
+        status: 'VERIFIED',
+        details: 'Toolbar responsif terintegrasi di Table toolbarLeft dengan size=toolbar dan MobileAcademicList untuk tampilan layar ponsel.'
+      },
+      {
+        id: 'batch_consecutive_block_merge',
+        name: 'Penggabungan Blok KBM Berurutan (Consecutive Slots Merging)',
+        description: 'Menggabungkan jam pelajaran berurutan yang diajar guru & mapel sama menjadi 1 kartu/baris blok KBM utuh secara visual dengan batch mutation.',
+        status: 'VERIFIED',
+        details: 'Blok jam ke-1 s/d 3 di-merge menjadi 1 entri dan mutasi delegasi dieksekusi simultan untuk semua ID slot terkait.'
       }
     ]
   },
