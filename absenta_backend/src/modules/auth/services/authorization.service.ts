@@ -31,9 +31,10 @@ export class AuthorizationService {
 
   async resolveUserCapabilities(userId: string, context?: { user?: any }): Promise<string[]> {
     const directFromUser = this.parseCapabilityList(context?.user?.capabilities);
-    const roleNameFromUser = context?.user?.roleName || context?.user?.Role?.name || context?.user?.role?.name;
+    const rawRole = context?.user?.roleName || context?.user?.Role?.name || (typeof context?.user?.role === 'string' ? context?.user?.role : context?.user?.role?.name);
+    let roleNameFromUser = String(rawRole || '').trim().toUpperCase();
 
-    if (roleNameFromUser === RoleName.SUPERADMIN) {
+    if (roleNameFromUser === RoleName.SUPERADMIN || roleNameFromUser === 'SUPERADMIN') {
       return ['system.platform.full_access'];
     }
 
@@ -41,7 +42,9 @@ export class AuthorizationService {
 
     if (directFromUser.length > 0) {
       directFromUser.forEach((c) => caps.add(c));
-    } else {
+    }
+    
+    if (directFromUser.length === 0 || roleNameFromUser === 'ADMIN') {
       const user: any = await prisma.user.findUnique({
         where: { id: userId },
         select: {
@@ -56,6 +59,9 @@ export class AuthorizationService {
       });
 
       if (user) {
+        if (!roleNameFromUser && user.Role?.name) {
+          roleNameFromUser = String(user.Role.name).trim().toUpperCase();
+        }
         const roleCaps = Array.isArray(user?.Role?.rolePermissions)
           ? user.Role.rolePermissions.map((rp: any) => rp?.Permission?.id).filter(Boolean)
           : [];
@@ -87,9 +93,26 @@ export class AuthorizationService {
     context?: { user?: any }
   ): Promise<{ allowed: boolean; reason?: string }> {
     const user = context?.user;
-    const roleName = user?.roleName || user?.Role?.name || user?.role?.name;
+    const rawRole = user?.roleName || user?.Role?.name || (typeof user?.role === 'string' ? user?.role : user?.role?.name);
+    let roleName = String(rawRole || '').trim().toUpperCase();
 
-    if (roleName === RoleName.SUPERADMIN) return { allowed: true };
+    if (!roleName && userId) {
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { Role: { select: { name: true } } }
+        });
+        if (dbUser?.Role?.name) {
+          roleName = String(dbUser.Role.name).trim().toUpperCase();
+        }
+      } catch {}
+    }
+
+    if (roleName === RoleName.SUPERADMIN || roleName === 'SUPERADMIN') return { allowed: true };
+    if (roleName === RoleName.ADMIN || roleName === 'ADMIN') {
+      const hasCoop = requiredCapabilities.some(cap => cap.startsWith('cooperative.'));
+      if (!hasCoop) return { allowed: true };
+    }
 
     const required = this.unique(requiredCapabilities);
     if (required.length === 0) return { allowed: true };
