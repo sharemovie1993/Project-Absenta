@@ -160,42 +160,12 @@ export class PlanService {
 
       throw new Error('Data paket dari Licensing Server kosong atau tidak valid.');
     } catch (err: any) {
-      console.warn('[PLAN SERVICE] Server lisensi offline / tidak dapat dijangkau, menggunakan data katalog lokal:', err.message);
+      console.warn('[PLAN SERVICE] Server lisensi pusat offline / tidak dapat dijangkau:', err.message);
 
-      const localPlans = await prisma.plan.findMany({
-        where: _includeInactive ? {} : { is_active: true },
-        include: { Module: true }
-      });
-
-      const fallbackPlans = localPlans.map((plan: any) => ({
-        id:            plan.id,
-        name:          plan.name,
-        price_monthly: plan.price_monthly || 0,
-        price_onetime: plan.price_onetime || 0,
-        weight_grams:  plan.weight_grams || 0,
-        image_url:     plan.image_url || null,
-        module_id:     plan.module_id || null,
-        module:        plan.Module ? { id: plan.Module.id, name: plan.Module.name, icon: plan.Module.icon } : null,
-        max_user:      plan.max_user || null,
-        features_json: plan.features_json || [],
-        description:   plan.description ?? null,
-        price_yearly:  plan.price_yearly ?? null,
-        trial_days:    plan.trial_days || 0,
-        absensi_mode:  plan.absensi_mode || undefined,
-        billing_period: plan.billing_period || 'MONTH',
-        currency:       plan.currency || 'IDR',
-        is_active:      plan.is_active,
-        size_label:     this.getPlanSizeLabel(plan),
-        tier:           this.getPlanSizeLabel(plan),
-        service_code:   plan.service_code || this.resolveServiceCode(plan.name, plan.features_json),
-        metadata:       plan.metadata || null,
-        created_at:     plan.created_at,
-        updated_at:     plan.updated_at,
-        _count:         { subscriptions: 0 }
-      }));
-
-      (fallbackPlans as any).isLicenseServerOffline = true;
-      return fallbackPlans;
+      // Sesuai arsitektur: katalog murni realtime dari server pusat guna menghindari produk usang & transaksi gagal saat offline
+      const emptyList: PlanResponse[] = [];
+      (emptyList as any).isLicenseServerOffline = true;
+      return emptyList;
     }
   }
 

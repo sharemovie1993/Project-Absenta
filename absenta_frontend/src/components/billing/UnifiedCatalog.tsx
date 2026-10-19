@@ -16,7 +16,9 @@ import {
   Calculator,
   CheckCircle2,
   FilterX,
-  AlertTriangle
+  AlertTriangle,
+  CloudOff,
+  RefreshCw
 } from 'lucide-react';
 
 import { Button } from '../ui';
@@ -460,27 +462,64 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
     );
   }
 
-  return (
-    <div className="space-y-4">
-      {/* Offline Alert Banner */}
-      {serverOffline && (
-        <div className="flex items-start gap-3.5 p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl text-amber-900 dark:text-amber-200 shadow-xs">
-          <div className="p-2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-xl shrink-0 mt-0.5">
-            <AlertTriangle size={18} />
+  if (serverOffline) {
+    return (
+      <div className="w-full min-w-0 py-6">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xs flex flex-col items-center text-center max-w-2xl mx-auto space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs">
+            <CloudOff size={32} />
           </div>
-          <div className="space-y-1">
-            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
-              Server Lisensi Cloud Offline / Pemeliharaan
-            </h4>
-            <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-medium">
-              Etalase katalog modul dan simulasi anggaran BOS ARKAS tetap dapat Anda akses secara normal. Namun, proses pemesanan &amp; pembuatan tagihan online baru sementara ditangguhkan hingga server lisensi pusat kembali online.
-              <strong className="block mt-1 font-bold text-amber-950 dark:text-amber-100">
-                ✅ Seluruh modul berlisensi aktif yang telah Anda miliki di server sekolah tetap berjalan 100% normal tanpa kendala.
-              </strong>
+
+          <div className="space-y-2 max-w-lg">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              <span>Server Lisensi Cloud Offline</span>
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
+              Etalase Katalog Pengadaan Sementara Ditutup
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+              Katalog produk modul dan pengadaan lisensi baru ditarik langsung secara realtime dari server lisensi pusat (api.absenta.id) guna menjamin keaslian varian, harga resmi, dan aktivasi.
+              Saat ini server lisensi pusat sedang dalam pemeliharaan/offline sehingga etalase produk dan transaksi baru sementara ditutup guna menghindari ketidaksesuaian data.
             </p>
           </div>
+
+          <div className="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-4 text-left flex items-start gap-3">
+            <div className="p-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5">
+              <CheckCircle2 size={16} />
+            </div>
+            <div className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
+              <strong className="block font-bold">Modul &amp; Lisensi Aktif Anda Berjalan Normal</strong>
+              Seluruh modul dan lisensi yang telah aktif di server sekolah Anda tetap berjalan 100% normal tanpa gangguan operasional harian.
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2 w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="default"
+              onClick={() => navigate('/service-center')}
+              className="w-full sm:w-auto rounded-xl font-bold text-xs h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+            >
+              Lihat Modul &amp; Lisensi Aktif
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => plansQuery.refetch()}
+              className="w-full sm:w-auto rounded-xl font-bold text-xs h-10 px-4 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={13} className={plansQuery.isFetching ? 'animate-spin' : ''} />
+              <span>Coba Hubungkan Kembali</span>
+            </Button>
+          </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
 
       {/* ── 1. COMPACT 1-ROW FILTER & ACTION TOOLBAR (NO GREETING BANNER) ── */}
       <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5">
