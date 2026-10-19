@@ -7,6 +7,7 @@ import semesterRoutes from '../semester/routes/semester.routes';
 import jurusanRoutes from '../jurusan/routes/jurusan.routes';
 import jenisKegiatanMasterRoutes from '../jenis-kegiatan-master/routes/jenis-kegiatan-master.routes';
 import transitionRoutes from '../transition/routes/transition.routes';
+import academicPlenoRoutes from '../pleno/routes/academic-pleno.routes';
 import strukturOrganisasiRoutes from '../struktur-organisasi/routes/struktur-organisasi.routes';
 import { studentCardConfigRoutes } from '../student-card-config/routes/student-card-config.routes';
 import { organizationalRoutes } from '../organizational/routes/organizational.routes';
@@ -31,6 +32,7 @@ export async function academicRoutes(fastify: any) {
   await fastify.register(jurusanRoutes, { prefix: '/jurusan' });
   await fastify.register(jenisKegiatanMasterRoutes, { prefix: '/jenis-kegiatan-master' });
   await fastify.register(transitionRoutes, { prefix: '/transition' });
+  await fastify.register(academicPlenoRoutes, { prefix: '/pleno' });
   await fastify.register(strukturOrganisasiRoutes, { prefix: '/struktur-organisasi' });
   await fastify.register(organizationalRoutes);
   await fastify.register(studentCardConfigRoutes, { prefix: '/student-card-config' });

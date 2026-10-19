@@ -22,6 +22,10 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.backups.view.list
 - academic.homeroom.manage
 - academic.manage.academic
+- academic.pleno.attend
+- academic.pleno.finalize
+- academic.pleno.manage
+- academic.pleno.view
 - academic.promotions.manage
 - academic.schedules.create
 - academic.schedules.delete

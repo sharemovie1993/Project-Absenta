@@ -20,7 +20,8 @@ import {
   Network,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Gavel
 } from "lucide-react";
 import { Card, CardContent, Button, Badge } from '../../components/ui';
 import { AcademicPageLayout } from "../../components/academic/AcademicPageLayout";
@@ -140,6 +141,16 @@ const AcademicDashboard: React.FC = React.memo(() => {
       path: '/academic/transition',
       gradient: 'from-indigo-600 to-purple-700',
       color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950/30'
+    },
+    {
+      title: 'Sidang Pleno Kenaikan',
+      description: 'Rapat pleno dewan guru, kuorum & BAP',
+      icon: Gavel,
+      path: '/academic/pleno',
+      gradient: 'from-amber-600 to-rose-700',
+      color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30',
+      featured: true,
+      badge: 'PLENO'
     },
     {
       title: 'Log Aktivitas Staf',

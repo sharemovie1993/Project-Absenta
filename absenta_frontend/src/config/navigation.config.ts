@@ -483,6 +483,7 @@ export const ROLE_WORKSPACES: RoleWorkspaceConfig[] = [
       '/academic/ppdb-mapping',
       '/academic/struktur-organisasi',
       '/academic/transition',
+      '/academic/pleno',
       '/academic/siswa-cards',
       '/academic/staff-logs',
       '/users',

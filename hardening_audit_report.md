@@ -8,16 +8,36 @@ Dokumen ini adalah **Rincian Refaktor Hardening** terpusat yang dihasilkan secar
 
 | Metrik Evaluasi | Hasil Peminidaian | Persentase | Status |
 |---|---|---|---|
-| **Total Halaman Utama** | **217 Halaman** | 100% | - |
-| **✅ Lolos Sempurna (Hardened)** | **163 Halaman** | 75% | **Sangat Baik** |
+| **Total Halaman Utama** | **219 Halaman** | 100% | - |
+| **✅ Lolos Sempurna (Hardened)** | **164 Halaman** | 75% | **Sangat Baik** |
 | **⚠️ Sebagian Terstandar (Partial)** | **52 Halaman** | 24% | **Butuh Sentuhan Ringan** |
-| **❌ Belum Terstandar (Non-Compliant)** | **2 Halaman** | 1% | **Prioritas Utama Refaktor** |
+| **❌ Belum Terstandar (Non-Compliant)** | **3 Halaman** | 1% | **Prioritas Utama Refaktor** |
 
 ---
 
 ## 🛠️ DAFTAR RINCIAN REFAKTOR PER-HALAMAN
 
 Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halaman utama:
+
+### 📄 Halaman: `AcademicPlenoPage.tsx`
+* **Lokasi File:** [AcademicPlenoPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/pleno/AcademicPlenoPage.tsx)
+* **Status Kepatuhan:** 🔴 **BELUM TERSTANDAR (Prioritas Hardening Utama!)**
+* **Rincian Temuan Masalah & Rekomendasi:**
+  * ❌ Belum menggunakan AcademicPageLayout atau InfraErrorBoundary (Kerentanan Visual Halaman Total)
+  * ❌ Pemetaan data tidak aman (.map tanpa pertahanan ?.map). Gunakan optional chaining untuk mencegah crash rendering jika data bernilai null/undefined.
+  * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
+  * ⚠️  Elemen/komponen form ditemukan (input, select, textarea, Input, Select, Textarea, SearchableSelect) tetapi tidak memiliki atribut aksesibilitas aria-label atau relasi label htmlFor (Pelanggaran Aksesibilitas Web)
+  * ❌ Aksi utama halaman (onAdd, onImport, dll.) terdeteksi tetapi tidak diletakkan pada properti toolbar Table (Wajib: 'toolbarLeft' atau 'toolbarRight').
+  * ❌ Menggunakan dialog alert() atau confirm() bawaan browser. Gunakan hook useToast() untuk feedback pesan, atau useConfirm() untuk dialog konfirmasi modern.
+  * ⚠️  Ditemukan elemen seleksi (<select> atau <Select>) tetapi belum menggunakan SearchableSelect (UX Dropdown Terbatas)
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 1791 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [AcademicPlenoPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/academic/pleno/AcademicPlenoPage.tsx) (1791 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Terdeteksi elemen form input tetapi belum dilindungi oleh Zod Schema Validation Guard. Wajib melakukan refaktor secara best-practice: (1) Impor 'z' dari 'zod' dan buat skema validasi z.object({...}) yang memetakan seluruh field input secara riil. (2) Lakukan validasi menggunakan schema.safeParse(formData) di dalam handler sebelum memproses data atau mengirimkannya ke API. (3) DILARANG KERAS mem-bypass audit statis dengan menyisipkan komentar kosong atau skema kosong! Seluruh modul proyek ini wajib mematuhi standar Google Platform Standards demi integritas tipe data dan sistem pertahanan berlapis (defense-in-depth) yang andal.
+  * ❌ Belum menggunakan komponen reusable TabSwitcher untuk navigasi tab. Ganti TabsList atau tombol switcher manual dengan komponen <TabSwitcher />.
+  * ❌ Terdeteksi manipulasi tanggal tetapi belum mematuhi standarisasi format tanggal nasional '05 Jul 2026' (toLocaleDateString dengan 'id-ID' & options day: '2-digit', month: 'short', year: 'numeric') dan belum terintegrasi dengan proteksi timezone tenant.
+  * ❌ Terdeteksi isu responsivitas pada antarmuka (Pelanggaran Pilar 30 Adaptabilitas Responsif Multi-Perangkat). Wajib melakukan refaktor secara best-practice: (1) Pada Topbar (<640px), sembunyikan badge status redundan 'hidden sm:block' agar judul halaman mendapatkan 100% ruang lebar penuh tanpa terpotong kaku. (2) Pada TabSwitcher, gunakan container touch-scroll 'overflow-x-auto no-scrollbar flex-nowrap' dengan item 'whitespace-nowrap'. (3) Pada Kartu Statistik, gunakan varian Mobile-Mini/Compact Premium ('variant="compact-premium"' atau 'mobileCompact={true}') agar hemat 50% ruang vertikal di layar ponsel dan sediakan fitur collapsible. (4) Pada Form & Input, pastikan seluruh container memiliki kelas 'w-full max-w-full min-w-0' agar elemen input dan ikon tidak terpotong (zero-clipping).
+  * ❌ Terdeteksi penggunaan raw useEffect untuk pengambilan data (Pelanggaran Pilar 31 Optimasi Data Fetching). Wajib dilindungi/migrasi ke React Query (useQuery / useMutation) atau Custom Options Hook terstandar untuk mendukung caching, auto-refetch, dan performa data terpusat.
+
+---
 
 ### 📄 Halaman: `BukuAgendaTemplatePage.tsx`
 * **Lokasi File:** [BukuAgendaTemplatePage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/correspondence/BukuAgendaTemplatePage.tsx)
@@ -1159,6 +1179,13 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 
 ### 📄 Halaman: `JenisPelanggaranPage.tsx`
 * **Lokasi File:** [JenisPelanggaranPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/JenisPelanggaranPage.tsx)
+* **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
+* **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
+
+---
+
+### 📄 Halaman: `PembiasaanDhuhaPage.tsx`
+* **Lokasi File:** [PembiasaanDhuhaPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/kesiswaan/PembiasaanDhuhaPage.tsx)
 * **Status Kepatuhan:** 🟢 **TERSTANDARISASI (Lolos Audit)**
 * **Keterangan:** Halaman telah mematuhi 10 parameter audit hardening kelas dunia. Sudah siap rilis produksi!
 

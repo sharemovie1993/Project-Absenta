@@ -347,6 +347,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.schedules.view.list',
     'affairs.schedules.view.list',
     'attendance.schedules.view.list',
+    'academic.pleno.view',
+    'academic.pleno.attend',
   ],
 
   // BPBK (Guru Bimbingan Konseling / Konselor Sekolah)
@@ -400,6 +402,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'affairs.achievements.create',
     'attendance.piket.view',
     'attendance.piket.manage',
+    'academic.pleno.view',
+    'academic.pleno.attend',
   ],
 
   // Pembina Eskul (Pembina Ekstrakurikuler)
@@ -505,6 +509,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active',
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active',
     'academic.promotions.manage', 'academic.transitions.manage',
+    'academic.pleno.view', 'academic.pleno.manage', 'academic.pleno.attend', 'academic.pleno.finalize',
     'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete',
     'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
 
@@ -595,6 +600,8 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Monitoring BK
     'bk.cases.view.list',
     'bk.cases.view.detail',                // Ringkasan status kasus (tanpa isi curhat sensitif BK)
+    'academic.pleno.view',
+    'academic.pleno.attend',
   ],
 
   // Waka Hubin (Hubungan Industri / Humas)
@@ -698,6 +705,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'documents.view.list', 'documents.view.detail',
     'sarpras.inventory.view.list', 'sarpras.loans.view.list',
     'academic.promotions.manage', 'academic.transitions.manage', 'academic.homeroom.manage',
+    'academic.pleno.view', 'academic.pleno.attend',
     'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active', 'academic.years.manage',
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active', 'academic.semesters.manage',
     'academic.subjects.view.list', 'academic.subjects.create', 'academic.subjects.update', 'academic.subjects.delete', 'academic.subjects.manage',
@@ -744,6 +752,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.set.active',
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.set.active',
     'academic.promotions.manage', 'academic.transitions.manage',
+    'academic.pleno.view', 'academic.pleno.manage', 'academic.pleno.attend', 'academic.pleno.finalize',
   ],
 
   // ═══════════════════════════════════════════════════════════════════

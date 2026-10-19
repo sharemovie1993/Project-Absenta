@@ -600,6 +600,7 @@ export const Sidebar = React.memo(({ isOpen, onClose, onToggle, isInline = false
             p === '/academic/ppdb-mapping' ||
             p === '/academic/struktur-organisasi' ||
             p === '/academic/transition' ||
+            p === '/academic/pleno' ||
             p === '/academic/siswa-cards' ||
             p === '/academic/staff-logs' ||
             p === '/users' ||

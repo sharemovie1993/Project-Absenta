@@ -36,9 +36,11 @@ import {
   ShoppingCart,
   Zap,
   Bell,
-  MessageSquare,
   Vote,
-  FolderTree
+  FolderTree,
+  Gavel,
+  Shield,
+  Moon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -103,6 +105,8 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Piket & Izin Keluar', shortLabel: 'Piket', path: '/kesiswaan/piket', icon: ShieldCheck },
       { label: 'Jadwal Kegiatan', shortLabel: 'Kegiatan', path: '/kesiswaan/jadwal-kegiatan', icon: Calendar },
       { label: 'Pembina Upacara', shortLabel: 'Upacara', path: '/kesiswaan/pembina-upacara', icon: UserCheck },
+      { label: 'Program Ketarunaan', shortLabel: 'Ketarunaan', path: '/kesiswaan/program-ketarunaan', icon: Shield },
+      { label: 'Pembiasaan Dhuha', shortLabel: 'Dhuha', path: '/kesiswaan/program-dhuha', icon: Moon },
     ]
   },
   // 5. Grup Sarpras & Fasilitas
@@ -197,6 +201,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       p.startsWith('/academic/jenis-kegiatan') ||
       p.startsWith('/academic/siswa-cards') ||
       p.startsWith('/academic/transition') ||
+      p.startsWith('/academic/pleno') ||
       p.startsWith('/academic/struktur-organisasi') ||
       p.startsWith('/academic/prep-checklist') ||
       p.startsWith('/academic/staff-logs')
@@ -205,6 +210,7 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       { label: 'Jenis Kegiatan', shortLabel: 'Kegiatan', path: '/academic/jenis-kegiatan', icon: Activity },
       { label: 'Kartu Siswa', shortLabel: 'Kartu Siswa', path: '/academic/siswa-cards', icon: CheckCircle2 },
       { label: 'Kenaikan Kelas', shortLabel: 'Kenaikan', path: '/academic/transition', icon: Layers },
+      { label: 'Sidang Pleno', shortLabel: 'Pleno', path: '/academic/pleno', icon: Gavel },
       { label: 'Struktur Organisasi', shortLabel: 'Struktur Org', path: '/academic/struktur-organisasi', icon: Building2 },
       { label: 'Cetak Berkas', shortLabel: 'Cetak', path: '/academic/prep-checklist', icon: Printer },
       { label: 'Log Aktivitas Staf', shortLabel: 'Log Staf', path: '/academic/staff-logs', icon: Clock },

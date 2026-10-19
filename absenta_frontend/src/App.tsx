@@ -87,6 +87,7 @@ const WhatsAppChatLogPage = lazy(() => import('./pages/notifications/WhatsAppCha
 const WhatsAppOnboardingPage = lazy(() => import('./pages/notifications/WhatsAppOnboardingPage').then(m => ({ default: m.WhatsAppOnboardingPage })));
 const AcademicDashboard = lazy(() => import('./pages/academic/AcademicDashboard'));
 const AcademicTransitionPage = lazy(() => import('./pages/academic/transition/AcademicTransitionPage'));
+const AcademicPlenoPage = lazy(() => import('./pages/academic/pleno/AcademicPlenoPage'));
 const CetakBerkasPage = lazy(() => import('./pages/academic/CetakBerkasPage').then(m => ({ default: m.CetakBerkasPage })));
 const CetakBerkasKurikulumPage = lazy(() => import('./pages/kurikulum/CetakBerkasKurikulumPage').then(m => ({ default: m.CetakBerkasKurikulumPage })));
 const CetakBerkasKesiswaanPage = lazy(() => import('./pages/kesiswaan/CetakBerkasKesiswaanPage').then(m => ({ default: m.CetakBerkasKesiswaanPage })));
@@ -202,6 +203,7 @@ const PelanggaranPage = lazy(() => import('./pages/kesiswaan/PelanggaranPage'));
 const JenisPelanggaranPage = lazy(() => import('./pages/kesiswaan/JenisPelanggaranPage'));
 const MonitoringKesiswaanPage = lazy(() => import('./pages/kesiswaan/MonitoringKesiswaanPage'));
 const ProgramKetarunaanPage = lazy(() => import('./pages/kesiswaan/ProgramKetarunaanPage'));
+const PembiasaanDhuhaPage = lazy(() => import('./pages/kesiswaan/PembiasaanDhuhaPage'));
 
 
 const SuratMasukPage = lazy(() => import('./pages/correspondence/SuratMasukPage'));
@@ -591,6 +593,12 @@ function App() {
                         <AcademicTransitionPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/academic/pleno" element={
+                      <ProtectedRoute requiredCapability="academic.pleno.view">
+                        <AcademicPlenoPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/academic/rapat-kenaikan-kelas" element={<Navigate to="/academic/pleno" replace />} />
                     <Route path="/academic/cetak-berkas" element={
                       <ProtectedRoute requiredCapability="academic.years.view.list">
                         <CetakBerkasPage />
@@ -648,6 +656,11 @@ function App() {
                     <Route path="/kesiswaan/program-ketarunaan" element={
                       <ProtectedRoute requiredCapability="attendance.sessions.view.list">
                         <ProgramKetarunaanPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/kesiswaan/program-dhuha" element={
+                      <ProtectedRoute requiredCapability="attendance.sessions.view.list">
+                        <PembiasaanDhuhaPage />
                       </ProtectedRoute>
                     } />
 
