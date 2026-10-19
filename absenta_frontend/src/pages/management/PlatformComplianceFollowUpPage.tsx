@@ -1,21 +1,33 @@
 import React, { useState, useMemo, useCallback, lazy, Suspense } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
+import {
+  Users,
+  CheckCircle2,
+  GraduationCap,
+  UserCheck,
+  Search,
+  Phone,
+  Download,
+  RefreshCw,
+  TrendingUp
+} from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
-import { Card, SectionCard, SearchableSelect, Input } from '@/components/ui';
-import { TabSwitcher } from '@/components/ui/TabSwitcher';
+import { SectionCard, SearchableSelect, Input, Button, TabSwitcher } from '@/components/ui';
 import { getGuruList } from '@/api/academic/guru.api';
 import { getSiswaList } from '@/api/academic/siswa.api';
 import type { Guru, Siswa } from '@/types/academic';
 import type { NudgeModalTarget } from '@/components/management/compliance/ComplianceNudgeModal';
-import { ComplianceStatsCards } from '@/components/management/compliance/ComplianceStatsCards';
 import {
   type TeacherComplianceItem,
   type StudentComplianceItem,
-  computeComplianceScore
+  computeComplianceScore,
+  formatLastLogin
 } from '@/components/management/compliance/complianceHelpers';
+import { exportDataToExcel } from '@/utils/export.utils';
 import { formatDate } from '@/utils/date.utils';
 
 // Lazy Loaded Subcomponents (Pilar 13 & Pilar 21)
@@ -71,10 +83,15 @@ function sortComplianceItems<T extends TeacherComplianceItem | StudentCompliance
 }
 
 export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
-  const [activeTab, setActiveTab] = useState<string>('GURU');
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<'GURU' | 'SISWA' | 'TREND'>('GURU');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT'>('ALL');
   const [selectedIssueFilter, setSelectedIssueFilter] = useState<string>('ALL');
+
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState<Set<string>>(new Set());
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
+  const [isExporting, setIsExporting] = useState(false);
 
   const [teacherPage, setTeacherPage] = useState(1);
   const [teacherLimit, setTeacherLimit] = useState(10);
@@ -92,8 +109,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     queryKey: ['compliance-guru-list'],
     queryFn: async () => {
       const res = await getGuruList(1, 1000);
-      const items = Array.isArray(res) ? res : res?.data || [];
-      return items;
+      return Array.isArray(res) ? res : res?.data || [];
     },
     staleTime: 60 * 1000,
   });
@@ -102,8 +118,7 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     queryKey: ['compliance-siswa-list'],
     queryFn: async () => {
       const res = await getSiswaList(1, 5000, '', '', 'AKTIF');
-      const items = Array.isArray(res) ? res : res?.data || [];
-      return items;
+      return Array.isArray(res) ? res : res?.data || [];
     },
     staleTime: 60 * 1000,
   });
@@ -278,6 +293,39 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     };
   }, [processedTeachers, processedStudents]);
 
+  const statCards = useMemo(() => {
+    return [
+      {
+        title: "RFID GURU",
+        value: `${stats.teacherRfidPct}%`,
+        icon: <Users size={14} />,
+        gradient: "from-blue-600 to-indigo-600",
+        subtitle: `Dari ${stats.totalGuru} Guru Terdata`
+      },
+      {
+        title: "WA GURU",
+        value: `${stats.teacherWaPct}%`,
+        icon: <CheckCircle2 size={14} />,
+        gradient: "from-emerald-500 to-teal-600",
+        subtitle: "Nomor WhatsApp Valid"
+      },
+      {
+        title: "RFID SISWA",
+        value: `${stats.studentRfidPct}%`,
+        icon: <GraduationCap size={14} />,
+        gradient: "from-slate-600 to-slate-800",
+        subtitle: `Dari ${stats.totalSiswa} Siswa Terdaftar`
+      },
+      {
+        title: "WA WALI SISWA",
+        value: `${stats.studentWaPct}%`,
+        icon: <UserCheck size={14} />,
+        gradient: "from-indigo-600 to-purple-600",
+        subtitle: "Terhubung Notifikasi WA"
+      }
+    ];
+  }, [stats]);
+
   const handleOpenNudgeTeacher = useCallback((guru: TeacherComplianceItem) => {
     setNudgeModalTarget({
       nama: guru.nama,
@@ -296,23 +344,193 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
     });
   }, []);
 
+  const handleRefresh = useCallback(() => {
+    toast('Memperbarui data kepatuhan...');
+    queryClient.invalidateQueries({ queryKey: ['compliance-guru-list'] });
+    queryClient.invalidateQueries({ queryKey: ['compliance-siswa-list'] });
+  }, [queryClient]);
+
+  const handleExport = useCallback(async () => {
+    try {
+      setIsExporting(true);
+      toast('Menyiapkan file laporan kepatuhan...');
+      if (activeTab === 'GURU') {
+        exportDataToExcel(
+          filteredTeachers,
+          [
+            { header: 'Nama Guru', accessor: (r) => r.nama, width: 28 },
+            { header: 'NIP/Identitas', accessor: (r) => r.nip, width: 20 },
+            { header: 'Jabatan / Mapel', accessor: (r) => `${r.jabatan} - ${r.mapel}`, width: 25 },
+            { header: 'No. WhatsApp', accessor: (r) => r.noWa || 'Belum Ada', width: 18 },
+            { header: 'Kartu RFID', accessor: (r) => r.rfidEnrolled ? 'Terdaftar' : 'Belum Ada', width: 15 },
+            { header: 'Akun Portal', accessor: (r) => r.hasUserAccount ? 'Aktif' : 'Belum Aktif', width: 15 },
+            { header: 'Login Terakhir', accessor: (r) => formatLastLogin(r.lastLogin).text, width: 20 },
+            { header: 'Skor (%)', accessor: (r) => `${r.complianceScore}%`, width: 12 },
+            { header: 'Catatan Kendala', accessor: (r) => (r.issues ?? [])?.join('; '), width: 35 },
+          ],
+          `Laporan_Kepatuhan_Guru_${new Date().toISOString().split('T')[0]}`,
+          'Laporan Evaluasi Kepatuhan & Kelengkapan Data Guru'
+        );
+      } else {
+        exportDataToExcel(
+          filteredStudents,
+          [
+            { header: 'Nama Siswa', accessor: (r) => r.nama, width: 28 },
+            { header: 'NISN', accessor: (r) => r.nisn, width: 18 },
+            { header: 'Kelas', accessor: (r) => r.kelas, width: 15 },
+            { header: 'WhatsApp Wali', accessor: (r) => r.noWaOrtu || 'Belum Ada', width: 18 },
+            { header: 'Kartu RFID', accessor: (r) => r.rfidEnrolled ? 'Terdaftar' : 'Belum Ada', width: 15 },
+            { header: 'Akun Portal', accessor: (r) => r.hasUserAccount ? 'Aktif' : 'Belum Aktif', width: 15 },
+            { header: 'Login Terakhir', accessor: (r) => formatLastLogin(r.lastLogin).text, width: 20 },
+            { header: 'Skor (%)', accessor: (r) => `${r.complianceScore}%`, width: 12 },
+            { header: 'Catatan Kendala', accessor: (r) => (r.issues ?? [])?.join('; '), width: 35 },
+          ],
+          `Laporan_Kepatuhan_Siswa_${new Date().toISOString().split('T')[0]}`,
+          'Laporan Evaluasi Kepatuhan & Kelengkapan Data Siswa'
+        );
+      }
+      toast.success('Laporan berhasil diekspor!');
+    } catch {
+      toast.error('Gagal mengekspor laporan');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [activeTab, filteredTeachers, filteredStudents]);
+
+  const selectedCount = activeTab === 'GURU' ? selectedTeacherIds.size : selectedStudentIds.size;
+
+  const handleBulkNudge = useCallback(() => {
+    if (activeTab === 'GURU') {
+      const selected = filteredTeachers.filter(t => selectedTeacherIds.has(t.id));
+      const target = selected.find(t => t.issues.length > 0) || selected[0];
+      if (target) {
+        handleOpenNudgeTeacher(target);
+      } else {
+        toast.error('Pilih setidaknya satu guru dari tabel untuk di-nudge');
+      }
+    } else {
+      const selected = filteredStudents.filter(s => selectedStudentIds.has(s.id));
+      const target = selected.find(s => s.issues.length > 0) || selected[0];
+      if (target) {
+        handleOpenNudgeStudent(target);
+      } else {
+        toast.error('Pilih setidaknya satu siswa dari tabel untuk di-nudge');
+      }
+    }
+  }, [activeTab, filteredTeachers, filteredStudents, selectedTeacherIds, selectedStudentIds, handleOpenNudgeTeacher, handleOpenNudgeStudent]);
+
   const breadcrumbs = useMemo(() => [
     { label: 'System Utilities' },
     { label: 'Evaluasi Kepatuhan Platform' }
   ], []);
 
-  const tabs = useMemo(() => [
-    { id: 'GURU', label: `Guru (${filteredTeachers.length})` },
-    { id: 'SISWA', label: `Siswa (${filteredStudents.length})` },
-    { id: 'TREND', label: 'Tren Adopsi' }
-  ], [filteredTeachers.length, filteredStudents.length]);
+  const toolbarNode = useMemo(() => (
+    <div className="flex flex-col w-full gap-4 p-4">
+      {/* Context Switcher Pill (Guru / Siswa / Tren Adopsi) */}
+      <TabSwitcher
+        activeTab={activeTab}
+        onChange={(val) => setActiveTab(val as 'GURU' | 'SISWA' | 'TREND')}
+        tabs={[
+          { id: 'GURU', label: `Guru (${filteredTeachers.length})`, icon: Users },
+          { id: 'SISWA', label: `Siswa (${filteredStudents.length})`, icon: GraduationCap },
+          { id: 'TREND', label: 'Tren Adopsi', icon: TrendingUp }
+        ]}
+      />
+
+      {/* Row 1: Search & Filters */}
+      <div className="flex flex-col md:flex-row gap-4 items-center w-full">
+        <div className="flex-1 w-full">
+          <Input
+            type="text"
+            placeholder={activeTab === 'GURU' ? "Cari nama, NIP, atau mata pelajaran..." : "Cari nama, NISN, atau kelas..."}
+            aria-label="Cari entitas kepatuhan"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            leftIcon={<Search className="h-4 w-4 text-gray-400" />}
+            className="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
+          />
+        </div>
+        
+        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+          <div className="w-full md:w-52">
+            <SearchableSelect
+              value={statusFilter}
+              onValueChange={(val) => setStatusFilter(val as 'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT')}
+              options={[
+                { label: 'Semua Status Kepatuhan', value: 'ALL' },
+                { label: 'Lengkap (≥80%)', value: 'ACTIVE' },
+                { label: 'Sebagian (50-79%)', value: 'PASSIVE' },
+                { label: 'Belum Lengkap (<50%)', value: 'DORMANT' }
+              ]}
+              placeholder="Semua Status"
+              searchPlaceholder="Cari Status..."
+              className="w-full"
+              triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+
+          <div className="w-full md:w-52">
+            <SearchableSelect
+              value={selectedIssueFilter}
+              onValueChange={setSelectedIssueFilter}
+              options={[
+                { label: 'Semua Kendala', value: 'ALL' },
+                { label: 'Belum Ada Kartu RFID', value: 'NO_RFID' },
+                { label: 'Belum Ada WhatsApp', value: 'NO_WA' }
+              ]}
+              placeholder="Semua Kendala"
+              searchPlaceholder="Cari Kendala..."
+              className="w-full"
+              triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Row 2: Secondary Actions Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-gray-100 dark:border-gray-800 w-full">
+        <Button
+          variant="toolbarPrimary"
+          size="toolbar"
+          onClick={handleBulkNudge}
+          disabled={selectedCount === 0}
+        >
+          <Phone className="w-4 h-4 mr-1.5" />
+          Nudge WhatsApp {selectedCount > 0 ? `(${selectedCount})` : ''}
+        </Button>
+
+        <Button
+          variant="toolbarOutline"
+          size="toolbar"
+          onClick={handleExport}
+          disabled={isExporting}
+          className="rounded-xl"
+        >
+          <Download className="w-3.5 h-3.5 mr-1.5" />
+          Export Excel
+        </Button>
+
+        <Button
+          variant="toolbarOutline"
+          size="toolbarIcon"
+          onClick={handleRefresh}
+          aria-label="Refresh Data"
+          className="rounded-xl"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+    </div>
+  ), [activeTab, filteredTeachers.length, filteredStudents.length, searchTerm, statusFilter, selectedIssueFilter, selectedCount, handleBulkNudge, handleExport, isExporting, handleRefresh]);
 
   return (
     <InfraErrorBoundary>
       <AcademicPageLayout
         title="Pusat Evaluasi Kepatuhan & Kelengkapan Data"
-        description="Alat kendali IT & Pimpinan untuk memantau kelengkapan RFID, kontak WhatsApp, aktivasi akun, dan melakukan follow-up instan."
+        description="Direktori & pemantauan kelengkapan RFID presensi, nomor kontak WhatsApp, dan akun portal mandiri."
         breadcrumbs={breadcrumbs}
+        stats={statCards}
+        isLoadingStats={loadingGurus || loadingSiswa}
         hardeningModuleKey="platform_compliance"
         instruction={{
           title: 'Pusat Evaluasi Kepatuhan & Kelengkapan Data',
@@ -324,115 +542,74 @@ export const PlatformComplianceFollowUpPage: React.FC = React.memo(() => {
           ]
         }}
       >
-        <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0 pb-24">
-          <div className="space-y-4 sm:space-y-6 w-full min-w-0 max-w-full">
-            
-            {/* ── METRIC STATS SUMMARY CARDS (Pilar 23 & Pilar 30) ── */}
-            <ComplianceStatsCards stats={stats} />
-
-            {/* Filter Bar (Zero-clipping input container) */}
-            <Card className="p-3 sm:p-4 bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 rounded-2xl shadow-xs w-full min-w-0 max-w-full">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 w-full min-w-0 max-w-full">
-                <div className="flex-1 max-w-sm w-full min-w-0">
-                  <Input
-                    id="compliance-search-input"
-                    aria-label="Cari nama atau identitas"
-                    placeholder="Cari nama, NIP, atau NISN..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="rounded-xl text-xs w-full h-9 sm:h-10"
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 w-full sm:w-auto min-w-0">
-                  <div className="w-full sm:w-48 min-w-0">
-                    <SearchableSelect
-                      id="status-filter-select"
-                      aria-label="Filter status kelengkapan"
-                      value={statusFilter}
-                      onValueChange={(val) => setStatusFilter(val as 'ALL' | 'ACTIVE' | 'PASSIVE' | 'DORMANT')}
-                      options={[
-                        { value: 'ALL', label: 'Semua Status' },
-                        { value: 'ACTIVE', label: 'Lengkap (≥80%)' },
-                        { value: 'PASSIVE', label: 'Sebagian (50-79%)' },
-                        { value: 'DORMANT', label: 'Belum Lengkap (<50%)' },
-                      ]}
-                      placeholder="Pilih Status"
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* Tab Switcher (Touch-scrollable no-scrollbar flex-nowrap) */}
-            <TabSwitcher
-              activeTab={activeTab}
-              onChange={setActiveTab}
-              tabs={tabs}
-            />
-
-            {/* Teacher List (Lazy loaded Subcomponent Pilar 13 & 21) */}
+        <div className="space-y-6">
+          <SectionCard fullWidth noPadding>
             {activeTab === 'GURU' && (
-              <div className="rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs w-full min-w-0 max-w-full">
-                <Suspense fallback={
-                  <div className="flex justify-center items-center py-16 w-full">
-                    <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                  </div>
-                }>
-                  <TeacherComplianceList
-                    data={paginatedTeachers}
-                    loading={loadingGurus}
-                    totalItems={filteredTeachers.length}
-                    currentPage={teacherPage}
-                    itemsPerPage={teacherLimit}
-                    sortBy={teacherSortBy}
-                    sortOrder={teacherSortOrder}
-                    onSort={(col, dir) => { setTeacherSortBy(col); setTeacherSortOrder(dir); }}
-                    onPageChange={setTeacherPage}
-                    onLimitChange={(limit) => { setTeacherLimit(limit); setTeacherPage(1); }}
-                    onNudge={handleOpenNudgeTeacher}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Student List (Lazy loaded Subcomponent Pilar 13 & 21) */}
-            {activeTab === 'SISWA' && (
-              <div className="rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs w-full min-w-0 max-w-full">
-                <Suspense fallback={
-                  <div className="flex justify-center items-center py-16 w-full">
-                    <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
-                  </div>
-                }>
-                  <StudentComplianceList
-                    data={paginatedStudents}
-                    loading={loadingSiswa}
-                    totalItems={filteredStudents.length}
-                    currentPage={studentPage}
-                    itemsPerPage={studentLimit}
-                    sortBy={studentSortBy}
-                    sortOrder={studentSortOrder}
-                    onSort={(col, dir) => { setStudentSortBy(col); setStudentSortOrder(dir); }}
-                    onPageChange={setStudentPage}
-                    onLimitChange={(limit) => { setStudentLimit(limit); setStudentPage(1); }}
-                    onNudge={handleOpenNudgeStudent}
-                  />
-                </Suspense>
-              </div>
-            )}
-
-            {/* Trends Tab */}
-            {activeTab === 'TREND' && (
               <Suspense fallback={
                 <div className="flex justify-center items-center py-16 w-full">
                   <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
                 </div>
               }>
-                <ComplianceTrendsView stats={stats} />
+                <TeacherComplianceList
+                  data={paginatedTeachers}
+                  loading={loadingGurus}
+                  totalItems={filteredTeachers.length}
+                  currentPage={teacherPage}
+                  itemsPerPage={teacherLimit}
+                  sortBy={teacherSortBy}
+                  sortOrder={teacherSortOrder}
+                  onSort={(col, dir) => { setTeacherSortBy(col); setTeacherSortOrder(dir); }}
+                  onPageChange={setTeacherPage}
+                  onLimitChange={(limit) => { setTeacherLimit(limit); setTeacherPage(1); }}
+                  onNudge={handleOpenNudgeTeacher}
+                  toolbarLeft={toolbarNode}
+                  selectedRowKeys={selectedTeacherIds}
+                  onSelectedRowKeysChange={setSelectedTeacherIds}
+                />
               </Suspense>
             )}
-          </div>
-        </SectionCard>
+
+            {activeTab === 'SISWA' && (
+              <Suspense fallback={
+                <div className="flex justify-center items-center py-16 w-full">
+                  <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                </div>
+              }>
+                <StudentComplianceList
+                  data={paginatedStudents}
+                  loading={loadingSiswa}
+                  totalItems={filteredStudents.length}
+                  currentPage={studentPage}
+                  itemsPerPage={studentLimit}
+                  sortBy={studentSortBy}
+                  sortOrder={studentSortOrder}
+                  onSort={(col, dir) => { setStudentSortBy(col); setStudentSortOrder(dir); }}
+                  onPageChange={setStudentPage}
+                  onLimitChange={(limit) => { setStudentLimit(limit); setStudentPage(1); }}
+                  onNudge={handleOpenNudgeStudent}
+                  toolbarLeft={toolbarNode}
+                  selectedRowKeys={selectedStudentIds}
+                  onSelectedRowKeysChange={setSelectedStudentIds}
+                />
+              </Suspense>
+            )}
+
+            {activeTab === 'TREND' && (
+              <div className="flex flex-col w-full">
+                {toolbarNode}
+                <div className="p-4 sm:p-6 border-t border-gray-100 dark:border-gray-800">
+                  <Suspense fallback={
+                    <div className="flex justify-center items-center py-16 w-full">
+                      <div className="w-8 h-8 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin" />
+                    </div>
+                  }>
+                    <ComplianceTrendsView stats={stats} />
+                  </Suspense>
+                </div>
+              </div>
+            )}
+          </SectionCard>
+        </div>
 
         {/* ── MODAL NUDGE WHATSAPP (LAZY LOADED) ── */}
         {nudgeModalTarget && (

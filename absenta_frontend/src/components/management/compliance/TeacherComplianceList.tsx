@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback } from 'react';
 import { Phone } from 'lucide-react';
 import { Table, type Column } from '@/components/ui/Table';
-import { Button, Badge } from '@/components/ui';
+import { Button } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import {
@@ -22,6 +23,9 @@ interface TeacherComplianceListProps {
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   onNudge: (item: TeacherComplianceItem) => void;
+  toolbarLeft?: React.ReactNode;
+  selectedRowKeys?: Set<string>;
+  onSelectedRowKeysChange?: (keys: Set<string>) => void;
 }
 
 export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
@@ -35,19 +39,22 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
   onSort,
   onPageChange,
   onLimitChange,
-  onNudge
+  onNudge,
+  toolbarLeft,
+  selectedRowKeys,
+  onSelectedRowKeysChange
 }) => {
   const isMobile = useIsMobile();
 
   const columns: Column[] = useMemo(() => [
     {
       key: 'nama',
-      label: 'Guru & Identitas',
+      label: 'Nama Guru & Identitas',
       sortable: true,
       render: (_: unknown, row: TeacherComplianceItem) => (
         <div>
-          <p className="font-bold text-xs text-slate-900 dark:text-white">{row.nama}</p>
-          <p className="text-[10px] text-slate-400">NIP/NIK: {row.nip} • {row.mapel}</p>
+          <div className="font-semibold text-gray-900 dark:text-gray-100">{row.nama}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">NIP: {row.nip || '-'} • {row.mapel || row.jabatan}</div>
         </div>
       )
     },
@@ -56,19 +63,24 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
       label: 'Kontak WhatsApp',
       sortable: true,
       render: (value: unknown) => (
-        <span className="text-xs text-slate-700 dark:text-slate-300 font-mono">
-          {String(value) && String(value).length >= 8 ? String(value) : <span className="text-rose-500 font-sans italic text-[11px]">Belum Ada</span>}
+        <span className="text-xs font-mono font-medium text-slate-700 dark:text-slate-300">
+          {String(value) && String(value).length >= 8 ? String(value) : <span className="text-rose-500 font-sans italic text-xs">Belum Ada</span>}
         </span>
       )
     },
     {
       key: 'rfidEnrolled',
-      label: 'Kartu RFID Presensi',
+      label: 'Kartu RFID',
       sortable: true,
       render: (value: unknown) => (
-        <Badge variant={value ? 'success' : 'destructive'} className="text-[9px] font-bold">
+        <span className={cn(
+          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+          value 
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/60"
+            : "bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+        )}>
           {value ? 'Terdaftar' : 'Belum Ada'}
-        </Badge>
+        </span>
       )
     },
     {
@@ -76,9 +88,14 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
       label: 'Akun Portal',
       sortable: true,
       render: (value: unknown) => (
-        <Badge variant={value ? 'success' : 'outline'} className="text-[9px] font-bold">
+        <span className={cn(
+          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
+          value 
+            ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800/60"
+            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800/60"
+        )}>
           {value ? 'Aktif' : 'Belum'}
-        </Badge>
+        </span>
       )
     },
     {
@@ -88,7 +105,7 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
       render: (value: unknown) => {
         const { text, isRecent } = formatLastLogin(value as string);
         if (text === 'Belum Pernah') {
-          return <span className="text-amber-600 dark:text-amber-400 font-sans italic text-[11px]">Belum Pernah</span>;
+          return <span className="text-slate-400 font-sans italic text-xs">Belum Pernah</span>;
         }
         return (
           <div className="flex items-center gap-1.5">
@@ -100,13 +117,16 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
     },
     {
       key: 'complianceScore',
-      label: 'Kelengkapan Data',
+      label: 'Status Kepatuhan',
       sortable: true,
       render: (value: unknown) => {
         const score = Number(value || 0);
         const badge = getComplianceBadge(score);
         return (
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${badge.bg} ${badge.color} ${badge.border}`}>
+          <span className={cn(
+            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border",
+            badge.bg, badge.color, badge.border
+          )}>
             {badge.grade} ({score}%)
           </span>
         );
@@ -114,17 +134,18 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
     },
     {
       key: 'actions',
-      label: 'Aksi Follow-Up',
+      label: 'Aksi',
+      className: 'text-right',
       render: (_: unknown, row: TeacherComplianceItem) => (
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-1">
           <Button
             type="button"
-            size="toolbar"
-            variant="toolbarPrimary"
+            size="xs"
+            variant="outline"
             onClick={() => onNudge(row)}
-            className="text-[10px] font-bold rounded-lg cursor-pointer flex items-center gap-1"
+            className="rounded-xl px-2.5 py-1 font-bold text-xs border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer flex items-center gap-1"
           >
-            <Phone size={11} />
+            <Phone size={12} />
             Nudge WA
           </Button>
         </div>
@@ -145,7 +166,7 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
             <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">{guru.nama}</h4>
             <p className="text-[10px] text-slate-400 font-mono font-medium">NIP: {guru.nip || '-'}</p>
           </div>
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0 ${badge.bg} ${badge.color} ${badge.border}`}>
+          <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0", badge.bg, badge.color, badge.border)}>
             {badge.grade} ({guru.complianceScore}%)
           </span>
         </div>
@@ -209,6 +230,11 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
   if (isMobile) {
     return (
       <div className="p-4 space-y-4 w-full max-w-full min-w-0">
+        {toolbarLeft && (
+          <div className="w-full">
+            {toolbarLeft}
+          </div>
+        )}
         <MobileAcademicList
           title="Kelengkapan Data Guru"
           data={data}
@@ -233,17 +259,14 @@ export const TeacherComplianceList: React.FC<TeacherComplianceListProps> = ({
     <Table
       columns={columns}
       data={data}
+      compact={true}
       sortBy={sortBy}
       sortOrder={sortOrder}
       onSort={onSort}
       emptyMessage="Tidak ada data guru yang sesuai filter."
-      toolbarLeft={
-        <div className="flex items-center gap-2 w-full max-w-full min-w-0">
-          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-            Daftar Guru ({totalItems})
-          </span>
-        </div>
-      }
+      toolbarLeft={toolbarLeft}
+      selectedRowKeys={selectedRowKeys}
+      onSelectedRowKeysChange={onSelectedRowKeysChange}
       pagination={{
         currentPage,
         totalPages: Math.max(1, Math.ceil(totalItems / itemsPerPage)),
