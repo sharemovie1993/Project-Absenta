@@ -299,6 +299,9 @@ export const subscriptionOrdersController = {
         if (error.response.data && error.response.data.message) {
           msg = error.response.data.message;
         }
+      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT' || error?.code === 'ENOTFOUND' || /timeout/i.test(msg)) {
+        statusCode = 503;
+        msg = 'Server lisensi pusat sedang offline / dalam pemeliharaan. Pemesanan modul baru sementara ditangguhkan sampai server pusat pulih kembali. Seluruh modul aktif Anda tetap berjalan normal.';
       }
       
       reply.status(statusCode);
@@ -352,6 +355,9 @@ export const subscriptionOrdersController = {
         if (error.response.data && error.response.data.message) {
           msg = error.response.data.message;
         }
+      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ETIMEDOUT' || error?.code === 'ENOTFOUND' || /timeout/i.test(msg)) {
+        statusCode = 503;
+        msg = 'Server lisensi pusat sedang offline / dalam pemeliharaan. Pemesanan modul baru sementara ditangguhkan sampai server pusat pulih kembali. Seluruh modul aktif Anda tetap berjalan normal.';
       }
       reply.status(statusCode);
       return { success: false, message: msg };

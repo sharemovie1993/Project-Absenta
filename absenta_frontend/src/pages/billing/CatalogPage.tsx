@@ -16,16 +16,21 @@ export const CatalogPage: React.FC = React.memo(() => {
     queryKey: ['my-subscription-details'],
     queryFn: async () => {
       const res = await getMySubscription();
-      return res.data;
+      return res;
     },
     staleTime: 60 * 1000
   });
 
-  const activeAcademicTier = subQuery.data?.active_academic_tier || 'CORE_PLATFORM';
+  const activeAcademicTier = subQuery.data?.data?.active_academic_tier || 'CORE_PLATFORM';
   const services = useMemo(() => {
-    const raw = subQuery.data?.services || subQuery.data?.all_subscriptions || [];
+    const raw = subQuery.data?.data?.services || subQuery.data?.data?.all_subscriptions || [];
     return Array.isArray(raw) ? raw : [];
   }, [subQuery.data]);
+
+  const isLicenseServerOffline = Boolean(
+    subQuery.data?.is_license_server_offline || 
+    (subQuery.data?.data as any)?.is_license_server_offline
+  );
 
   const instructionData = useMemo(() => ({
     title: "Panduan Katalog & Pengadaan Layanan",
@@ -46,15 +51,23 @@ export const CatalogPage: React.FC = React.memo(() => {
         breadcrumbs={[{ label: 'Katalog Layanan' }]}
         hardeningModuleKey="catalogpage"
         toolbar={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/service-center')}
-            className="rounded-xl border-slate-200 dark:border-slate-800 h-9 px-3 font-bold text-xs flex items-center gap-1.5"
-          >
-            <ShieldCheck size={14} className="text-indigo-600" />
-            <span>Status Langganan Aktif</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            {isLicenseServerOffline && (
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/60 flex items-center gap-1.5 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span>Cloud Offline</span>
+              </span>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/service-center')}
+              className="rounded-xl border-slate-200 dark:border-slate-800 h-9 px-3 font-bold text-xs flex items-center gap-1.5"
+            >
+              <ShieldCheck size={14} className="text-indigo-600" />
+              <span>Status Langganan Aktif</span>
+            </Button>
+          </div>
         }
       >
         <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
@@ -63,6 +76,7 @@ export const CatalogPage: React.FC = React.memo(() => {
               mode="private"
               activeAcademicTier={activeAcademicTier}
               ownedServices={services}
+              isLicenseServerOffline={isLicenseServerOffline}
             />
           </div>
         </SectionCard>

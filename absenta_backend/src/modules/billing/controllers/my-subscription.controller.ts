@@ -1,7 +1,7 @@
 import { toHttpError } from '../../../utils/error';
 import { isSystemSuperAdmin } from '../../../utils/rbac';
 import { subscriptionService } from '../services/subscription.service';
-import { getInvoicesByTenantQuery, getPaymentsByTenantQuery } from '../services/queries/subscription-overview.query';
+import { getInvoicesByTenantQuery, getPaymentsByTenantQuery, getLicenseServerConnectivity } from '../services/queries/subscription-overview.query';
 import { syncLocalSubscriptionsWithLicensingServer } from './subscription.controller';
 import { billingDb as prisma } from '../services/repositories/billing.db';
 
@@ -28,11 +28,17 @@ export const mySubscriptionController = {
     });
 
     const responseData = await subscriptionService.getMySubscriptionOverview(tenantId);
+    const connectivity = getLicenseServerConnectivity();
+    const isOffline = connectivity.isOnline === false;
+    if (responseData) {
+      (responseData as any).is_license_server_offline = isOffline;
+    }
 
     return reply.send({
       success: true,
       message: 'Subscription data retrieved',
       data: responseData,
+      is_license_server_offline: isOffline,
     });
   },
 

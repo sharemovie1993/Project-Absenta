@@ -7,6 +7,7 @@ export interface MySubscriptionResponse {
   success: boolean;
   message: string;
   data: Subscription | null;
+  is_license_server_offline?: boolean;
 }
 
 export interface MyInvoicesResponse {

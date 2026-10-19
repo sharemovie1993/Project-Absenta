@@ -15,12 +15,14 @@ import {
   Server,
   Calculator,
   CheckCircle2,
-  FilterX
+  FilterX,
+  AlertTriangle
 } from 'lucide-react';
 
 import { Button } from '../ui';
 import { getPublicPlans } from '../../api/plans.api';
 import { getPublicModules } from '../../api/module.api';
+import { getMySubscription } from '../../api/mySubscription.api';
 import { 
   formatCurrency, 
   getServiceIcon,
@@ -42,6 +44,7 @@ interface UnifiedCatalogProps {
   ownedServices?: any[];
   onSelectPlan?: (plan: any) => void;
   activeAcademicTier?: string;
+  isLicenseServerOffline?: boolean;
 }
 
 const CATEGORY_TABS = [
@@ -63,13 +66,32 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   mode = 'private', 
   ownedServices = [],
   onSelectPlan,
-  activeAcademicTier = 'Micro'
+  activeAcademicTier = 'Micro',
+  isLicenseServerOffline
 }) => {
   const navigate = useNavigate();
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRABModalOpen, setIsRABModalOpen] = useState(false);
+
+  // Auto-detect status offline server lisensi dari subQuery jika tidak disediakan caller
+  const subQuery = useQuery({
+    queryKey: ['my-subscription-details'],
+    queryFn: async () => {
+      const res = await getMySubscription();
+      return res;
+    },
+    staleTime: 60 * 1000,
+    enabled: mode === 'private' && isLicenseServerOffline === undefined
+  });
+
+  const serverOffline = Boolean(
+    isLicenseServerOffline ?? 
+    subQuery.data?.is_license_server_offline ?? 
+    (subQuery.data?.data as any)?.is_license_server_offline ?? 
+    false
+  );
 
   // Deteksi apakah tenant memiliki langganan Paket Lengkap aktif
   const activeBundleSubscription = useMemo(() => {
@@ -93,6 +115,10 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   const handleConfirmSaaSOrder = async () => {
     if (!activeOrder) return;
+    if (serverOffline) {
+      toast.error('Server lisensi cloud sedang offline / pemeliharaan. Pemesanan modul baru sementara ditangguhkan sampai server pusat pulih.', { duration: 6000 });
+      return;
+    }
     setCheckoutProcessing(true);
     const toastId = toast.loading('Membuat invoice langganan SaaS...');
     try {
@@ -143,6 +169,10 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       setCartOpen(true);
       toast.success('Hardware berhasil dimasukkan ke Keranjang Belanja!');
     } else {
+      if (serverOffline) {
+        toast.error('Server lisensi cloud sedang offline / pemeliharaan. Pemesanan modul baru sementara ditangguhkan sampai server pusat pulih kembali.', { duration: 6000 });
+        return;
+      }
       // Direct navigate to Absenta's Checkout Wizard Page
       const cycle = payload.period === 'YEAR' ? 'YEAR' : 'MONTH';
       navigate(`/billing/checkout?plan_id=${encodeURIComponent(payload.id)}&cycle=${cycle}`);
@@ -363,7 +393,25 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   if (selectedGroup) {
     return (
-      <div className="w-full min-w-0">
+      <div className="w-full min-w-0 space-y-4">
+        {serverOffline && (
+          <div className="flex items-start gap-3.5 p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl text-amber-900 dark:text-amber-200 shadow-xs">
+            <div className="p-2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-xl shrink-0 mt-0.5">
+              <AlertTriangle size={18} />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                Server Lisensi Cloud Offline / Pemeliharaan
+              </h4>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-medium">
+                Pemesanan online untuk modul ini sementara ditangguhkan hingga server lisensi pusat kembali online. 
+                <strong className="block mt-1 font-bold text-amber-950 dark:text-amber-100">
+                  ✅ Seluruh modul berlisensi aktif yang telah Anda miliki di server sekolah tetap berjalan 100% normal tanpa kendala.
+                </strong>
+              </p>
+            </div>
+          </div>
+        )}
         <ShopeeProductDetail
           group={selectedGroup}
           onBack={() => setSelectedGroup(null)}
@@ -410,6 +458,26 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Offline Alert Banner */}
+      {serverOffline && (
+        <div className="flex items-start gap-3.5 p-4 bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl text-amber-900 dark:text-amber-200 shadow-xs">
+          <div className="p-2 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 rounded-xl shrink-0 mt-0.5">
+            <AlertTriangle size={18} />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-200">
+              Server Lisensi Cloud Offline / Pemeliharaan
+            </h4>
+            <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed font-medium">
+              Etalase katalog modul dan simulasi anggaran BOS ARKAS tetap dapat Anda akses secara normal. Namun, proses pemesanan &amp; pembuatan tagihan online baru sementara ditangguhkan hingga server lisensi pusat kembali online.
+              <strong className="block mt-1 font-bold text-amber-950 dark:text-amber-100">
+                ✅ Seluruh modul berlisensi aktif yang telah Anda miliki di server sekolah tetap berjalan 100% normal tanpa kendala.
+              </strong>
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── 1. COMPACT 1-ROW FILTER & ACTION TOOLBAR (NO GREETING BANNER) ── */}
       <div className="bg-white dark:bg-slate-900 p-3 sm:p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-2xs space-y-2.5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
