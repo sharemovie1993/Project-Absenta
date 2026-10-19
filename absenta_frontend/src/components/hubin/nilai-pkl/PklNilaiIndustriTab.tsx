@@ -90,7 +90,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
   handleScoreChange,
   handleApplyToSameMitra,
   handleSyncFromDailyAttendance,
-  onPrintSertifikat,
+  onNavigateCetakRapor,
   hideFilterCard = false,
 }) => {
   return (

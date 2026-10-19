@@ -984,6 +984,7 @@ function App() {
                         <CetakRaporPage />
                       </ProtectedRoute>
                     } />
+                    <Route path="/rapor/cetak-rapor" element={<Navigate to="/rapor/cetak" replace />} />
                     <Route path="/rapor/staging" element={
                       <ProtectedRoute requiredCapability={['academic.homeroom.manage', 'academic.teaching.view', 'academic.manage.academic']}>
                         <RaporStagingPage />

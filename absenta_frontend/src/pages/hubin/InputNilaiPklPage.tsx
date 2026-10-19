@@ -385,7 +385,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     if (selectedTp) params.set('tahun_pelajaran_id', selectedTp);
     if (selectedSemester) params.set('semester_id', selectedSemester);
     const qs = params.toString();
-    navigate(`/rapor/cetak-rapor${qs ? `?${qs}` : ''}`);
+    navigate(`/rapor/cetak${qs ? `?${qs}` : ''}`);
   }, [navigate, selectedKelas, selectedTp, selectedSemester]);
 
   const handleSaveBatch = useCallback(() => {

@@ -62,7 +62,8 @@ export class UnifiedKegiatanService {
    * 1. Guard Status: Cek ketersediaan Jadwal Kegiatan aktif sesuai jenisnya (default: KETARUNAAN)
    */
   async getGuardStatus(tenantId: string, jenisKegiatan: string = 'KETARUNAAN') {
-    const jadwal = await prisma.jadwalKegiatan.findFirst({
+    // 1. Prioritaskan jadwal yang berstatus aktif
+    let jadwal = await prisma.jadwalKegiatan.findFirst({
       where: {
         tenant_id: tenantId,
         aktif: true,
@@ -71,8 +72,22 @@ export class UnifiedKegiatanService {
           { jenis_kegiatan: { contains: jenisKegiatan, mode: 'insensitive' } },
         ],
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { updated_at: 'desc' },
     });
+
+    // 2. Jika tidak ada yang aktif, cari record terakhir yang pernah dibuat untuk tenant ini
+    if (!jadwal) {
+      jadwal = await prisma.jadwalKegiatan.findFirst({
+        where: {
+          tenant_id: tenantId,
+          OR: [
+            { nama: { contains: jenisKegiatan, mode: 'insensitive' } },
+            { jenis_kegiatan: { contains: jenisKegiatan, mode: 'insensitive' } },
+          ],
+        },
+        orderBy: { updated_at: 'desc' },
+      });
+    }
 
     if (!jadwal) {
       return {

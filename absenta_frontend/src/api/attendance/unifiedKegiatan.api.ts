@@ -137,21 +137,89 @@ export interface UnifiedLaporanKelasRow {
 export async function getUnifiedGuardStatus(params?: {
   jenis_kegiatan?: string;
 }): Promise<UnifiedGuardStatus> {
-  return requestWithFallback<UnifiedGuardStatus>(
-    'get',
-    '/attendance/unified-kegiatan/guard-status',
-    {
-      params,
-      headers: { 'X-Skip-403-Redirect': 'true' }
+  const jenisTarget = (params?.jenis_kegiatan || 'KETARUNAAN').toUpperCase();
+
+  // 1. Coba endpoint utama Unified Kegiatan
+  try {
+    const res = await requestWithFallback<any>(
+      'get',
+      '/attendance/unified-kegiatan/guard-status',
+      {
+        params,
+        headers: { 'X-Skip-403-Redirect': 'true' },
+        unwrapData: true,
+      }
+    );
+    const unwrapped = (res?.data && typeof res.data === 'object' && 'is_active' in res.data)
+      ? res.data
+      : (res && typeof res === 'object' && 'is_active' in res ? res : null);
+
+    if (unwrapped) {
+      return unwrapped as UnifiedGuardStatus;
     }
-  ).catch(() => ({
+  } catch {
+    // Abaikan dan gunakan fallback
+  }
+
+  // 2. Coba endpoint adapter lama Program Ketarunaan
+  try {
+    const res = await requestWithFallback<any>(
+      'get',
+      '/kesiswaan/program-ketarunaan/guard-status',
+      {
+        params,
+        headers: { 'X-Skip-403-Redirect': 'true' },
+        unwrapData: true,
+      }
+    );
+    const unwrapped = (res?.data && typeof res.data === 'object' && 'is_active' in res.data)
+      ? res.data
+      : (res && typeof res === 'object' && 'is_active' in res ? res : null);
+
+    if (unwrapped) {
+      return unwrapped as UnifiedGuardStatus;
+    }
+  } catch {
+    // Abaikan dan gunakan fallback jadwal
+  }
+
+  // 3. Fallback tangguh: Ambil langsung dari daftar Jadwal Kegiatan aktif sekolah
+  try {
+    const allRes = await requestWithFallback<any>(
+      'get',
+      '/kesiswaan/jadwal-kegiatan',
+      { params: { aktif: true }, headers: { 'X-Skip-403-Redirect': 'true' }, unwrapData: true }
+    );
+    const list = allRes?.data || (Array.isArray(allRes) ? allRes : []);
+    const jadwal = list.find((j: any) =>
+      j.nama?.toUpperCase().includes(jenisTarget) ||
+      j.jenis_kegiatan?.toUpperCase().includes(jenisTarget) ||
+      j.tipe?.toUpperCase() === jenisTarget
+    );
+    if (jadwal) {
+      return {
+        is_active: Boolean(jadwal.aktif),
+        jadwal_kegiatan_id: jadwal.id,
+        jadwal_nama: jadwal.nama,
+        jadwal_waktu_mulai: jadwal.waktu_mulai,
+        jadwal_waktu_selesai: jadwal.waktu_selesai,
+        hari_aktif: Array.isArray(jadwal.hari)
+          ? jadwal.hari
+          : (typeof jadwal.hari === 'string' ? jadwal.hari.split(',').map((h: string) => h.trim()) : []),
+      };
+    }
+  } catch {
+    // Semua fallback gagal
+  }
+
+  return {
     is_active: false,
     jadwal_kegiatan_id: null,
     jadwal_nama: null,
     jadwal_waktu_mulai: null,
     jadwal_waktu_selesai: null,
     hari_aktif: [],
-  }));
+  };
 }
 
 export async function getUnifiedSesiHariIni(params?: {
