@@ -287,10 +287,56 @@ export class TransitionService {
     const items: TransitionPreviewItem[] = [];
     let countNAIK = 0, countTINGGAL = 0, countPINDAH = 0, countLULUS = 0;
 
+    // Auto-detect Academic Pleno Session for this academic year
+    const plenoSession = await prisma.academicPlenoSession.findFirst({
+      where: {
+        tenant_id: tahunLama.tenant_id,
+        tahun_pelajaran_id: tahunLama.id,
+      },
+      include: {
+        decisions: {
+          select: {
+            siswa_id: true,
+            keputusan_akhir: true,
+          },
+        },
+      },
+      orderBy: [
+        { status: 'desc' }, // FINALIZED first
+        { created_at: 'desc' },
+      ],
+    });
+
+    const plenoDecisionsMap = new Map<string, string>();
+    if (plenoSession?.decisions && plenoSession.decisions.length > 0) {
+      for (const d of plenoSession.decisions) {
+        plenoDecisionsMap.set(d.siswa_id, d.keputusan_akhir);
+      }
+      if (plenoSession.status === 'FINALIZED') {
+        warnings.push(
+          `Hasil Sidang Pleno Resmi (No. BAP: ${plenoSession.nomor_bap || 'Final'}) otomatis terhubung. Siswa tinggal kelas & naik bersyarat disesuaikan menurut ketetapan dewan guru.`
+        );
+      } else {
+        warnings.push(
+          `Terdeteksi Sidang Pleno Dewan Guru ("${plenoSession.title}"). Rekomendasi ketuntasan siswa disinkronkan ke tabel evaluasi transisi.`
+        );
+      }
+    }
+
     for (const c of candidates) {
       const fromKelas = byId.get(c.kelas_id);
       const override = overrides.get(c.siswa_id);
-      let status: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
+
+      let defaultStatus: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' =
+        map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK';
+      const plenoDec = plenoDecisionsMap.get(c.siswa_id);
+      if (plenoDec === 'TINGGAL_KELAS') {
+        defaultStatus = 'TINGGAL';
+      } else if (plenoDec === 'LULUS') {
+        defaultStatus = 'LULUS';
+      }
+
+      let status: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' = override?.status || defaultStatus;
       let toKelasId: string | null = null;
       if (status === 'TINGGAL') {
         toKelasId = c.kelas_id;
@@ -345,11 +391,48 @@ export class TransitionService {
     const mappedFromKelasIds = input.mappingKelas?.map(m => m.fromKelasId).filter(Boolean);
     const candidates = await this.getCandidates(tahunLama.tenant_id, tahunLama.id, semesterAktifLama.id, mappedFromKelasIds);
 
+    // Auto-detect Academic Pleno Session for this academic year
+    const plenoSession = await prisma.academicPlenoSession.findFirst({
+      where: {
+        tenant_id: tahunLama.tenant_id,
+        tahun_pelajaran_id: tahunLama.id,
+      },
+      include: {
+        decisions: {
+          select: {
+            siswa_id: true,
+            keputusan_akhir: true,
+          },
+        },
+      },
+      orderBy: [
+        { status: 'desc' },
+        { created_at: 'desc' },
+      ],
+    });
+
+    const plenoDecisionsMap = new Map<string, string>();
+    if (plenoSession?.decisions && plenoSession.decisions.length > 0) {
+      for (const d of plenoSession.decisions) {
+        plenoDecisionsMap.set(d.siswa_id, d.keputusan_akhir);
+      }
+    }
+
     const invalids: string[] = [];
     for (const c of candidates) {
       const fromKelas = byId.get(c.kelas_id);
       const override = overrides.get(c.siswa_id);
-      const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
+
+      let defaultStatus: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' =
+        map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK';
+      const plenoDec = plenoDecisionsMap.get(c.siswa_id);
+      if (plenoDec === 'TINGGAL_KELAS') {
+        defaultStatus = 'TINGGAL';
+      } else if (plenoDec === 'LULUS') {
+        defaultStatus = 'LULUS';
+      }
+
+      const status = override?.status || defaultStatus;
       const toKelasId = status === 'TINGGAL' || status === 'LULUS' ? c.kelas_id : map.get(c.kelas_id) || null;
       if (!fromKelas || ((status === 'NAIK' || status === 'PINDAH') && !toKelasId)) {
         invalids.push(c.siswa_id);
@@ -371,7 +454,17 @@ export class TransitionService {
       let count = 0;
       for (const c of candidates) {
         const override = overrides.get(c.siswa_id);
-        const status = override?.status || (map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK');
+
+        let defaultStatus: 'NAIK' | 'TINGGAL' | 'PINDAH' | 'LULUS' =
+          map.get(c.kelas_id) === 'LULUS' ? 'LULUS' : 'NAIK';
+        const plenoDec = plenoDecisionsMap.get(c.siswa_id);
+        if (plenoDec === 'TINGGAL_KELAS') {
+          defaultStatus = 'TINGGAL';
+        } else if (plenoDec === 'LULUS') {
+          defaultStatus = 'LULUS';
+        }
+
+        const status = override?.status || defaultStatus;
         
         // 1. Update/create historical status in the old year's academic record
         await tx.siswaAkademik.upsert({

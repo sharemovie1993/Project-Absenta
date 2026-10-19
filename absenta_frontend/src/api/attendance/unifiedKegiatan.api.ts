@@ -42,6 +42,10 @@ export interface UnifiedGuardStatus {
   jadwal_waktu_mulai: string | null;
   jadwal_waktu_selesai: string | null;
   hari_aktif: string[];
+  today_hari?: string;
+  is_today_scheduled_day?: boolean;
+  is_within_time_window?: boolean;
+  current_time?: string;
 }
 
 export interface UnifiedTapPayload {

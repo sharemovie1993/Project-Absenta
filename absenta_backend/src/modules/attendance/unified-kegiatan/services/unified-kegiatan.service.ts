@@ -109,13 +109,35 @@ export class UnifiedKegiatanService {
       };
     }
 
+    const hariAktifList = Array.isArray(jadwal.hari) ? (jadwal.hari as string[]) : [];
+    const todayHari = this.getHariEnum();
+    const isTodayScheduledDay = hariAktifList.length > 0 ? hariAktifList.includes(todayHari) : true;
+
+    // Hitung waktu sekarang WIB (HH:mm)
+    const now = new Date();
+    const wibNow = new Date(now.getTime() + 7 * 3600 * 1000);
+    const currentHours = String(wibNow.getUTCHours()).padStart(2, '0');
+    const currentMinutes = String(wibNow.getUTCMinutes()).padStart(2, '0');
+    const currentTimeStr = `${currentHours}:${currentMinutes}`;
+
+    let isWithinTimeWindow = false;
+    if (jadwal.waktu_mulai && jadwal.waktu_selesai) {
+      const s = jadwal.waktu_mulai.slice(0, 5);
+      const e = jadwal.waktu_selesai.slice(0, 5);
+      isWithinTimeWindow = currentTimeStr >= s && currentTimeStr <= e;
+    }
+
     return {
       is_active: Boolean(jadwal.aktif),
       jadwal_kegiatan_id: jadwal.id,
       jadwal_nama: jadwal.nama,
       jadwal_waktu_mulai: jadwal.waktu_mulai,
       jadwal_waktu_selesai: jadwal.waktu_selesai,
-      hari_aktif: Array.isArray(jadwal.hari) ? jadwal.hari : [],
+      hari_aktif: hariAktifList,
+      today_hari: todayHari,
+      is_today_scheduled_day: isTodayScheduledDay,
+      is_within_time_window: isWithinTimeWindow,
+      current_time: currentTimeStr,
     };
   }
 
@@ -200,10 +222,42 @@ export class UnifiedKegiatanService {
     const hariEnum = this.getHariEnum(targetDateStr);
     const jenis = params.jenis_kegiatan || 'KETARUNAAN';
 
+    // Ambil jadwalKegiatan untuk tahu hari dan jam resmi
+    let jadwalKegiatan = null;
+    if (params.jadwal_kegiatan_id) {
+      jadwalKegiatan = await prisma.jadwalKegiatan.findUnique({
+        where: { id: params.jadwal_kegiatan_id },
+      });
+    }
+    if (!jadwalKegiatan) {
+      jadwalKegiatan = await prisma.jadwalKegiatan.findFirst({
+        where: {
+          tenant_id: tenantId,
+          aktif: true,
+          OR: [
+            { nama: { contains: jenis, mode: 'insensitive' } },
+            { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
+          ],
+        },
+      });
+    }
+
+    const hariAktifList = Array.isArray(jadwalKegiatan?.hari) ? (jadwalKegiatan.hari as string[]) : [];
+    const todayHari = this.getHariEnum();
+    const isTodayScheduledDay = hariAktifList.length > 0 ? hariAktifList.includes(todayHari) : true;
+
+    // Tentukan hari query KBM:
+    // Jika params.tanggal diberikan (melihat tanggal spesifik), gunakan hari dari tanggal itu.
+    // Jika tidak diberikan dan hari ini bukan hari jadwal, gunakan hari jadwal utama (misal JUMAT) sebagai preview!
+    let kbmHariQuery: Hari = hariEnum;
+    if (!params.tanggal && !isTodayScheduledDay && hariAktifList.length > 0) {
+      kbmHariQuery = hariAktifList[0] as Hari;
+    }
+
     // Cari atau pastikan sesi kegiatan
     let sesiId = params.sesi_id;
-    let kegiatanWaktuMulai = '06:30';
-    let kegiatanWaktuSelesai = '08:00';
+    let kegiatanWaktuMulai = jadwalKegiatan?.waktu_mulai || '06:30';
+    let kegiatanWaktuSelesai = jadwalKegiatan?.waktu_selesai || '08:00';
 
     if (!sesiId) {
       const sesi = await this.getSesiHariIni(tenantId, { tanggal: targetDateStr, jadwal_kegiatan_id: params.jadwal_kegiatan_id, jenis_kegiatan: jenis });
@@ -334,11 +388,11 @@ export class UnifiedKegiatanService {
       });
     }
 
-    // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan Hari Ini
+    // 4. Guru Mapel KBM yang Jadwalnya BERIRISAN Jam dengan Kegiatan
     const allKbmHariIni = await prisma.jadwalKBM.findMany({
       where: {
         tenant_id: tenantId,
-        hari: hariEnum,
+        hari: kbmHariQuery,
         guru_id: { not: null },
       },
       include: {
@@ -397,6 +451,10 @@ export class UnifiedKegiatanService {
     return {
       data: result,
       sesi_id: sesiId || null,
+      is_today_scheduled_day: isTodayScheduledDay,
+      schedule_day_used: kbmHariQuery,
+      today_hari: todayHari,
+      is_active_session: Boolean(sesiId),
     };
   }
 

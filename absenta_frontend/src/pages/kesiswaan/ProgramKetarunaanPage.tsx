@@ -244,102 +244,131 @@ const ProgramKetarunaanPage: React.FC = () => {
           ],
         }}
       >
-        {!guard?.is_active ? (
-          <SectionCard fullWidth className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm p-0">
-            <GuardState navigate={navigate} />
-          </SectionCard>
-        ) : (
-          <div className="space-y-6">
-            {/* Strip info jadwal aktif */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border border-amber-200/80 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
-                  <Medal className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-amber-900 dark:text-amber-100">
-                      {guard?.jadwal_nama || 'Program Ketarunaan'}
-                    </h3>
-                    <Badge variant="success" className="text-[10px] font-bold">
-                      Jadwal Aktif
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-amber-700/90 dark:text-amber-300/80 mt-0.5">
-                    {hariAktifLabel && `${hariAktifLabel} • `}
-                    {formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
-                    {sesiId && (
-                      <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">
-                        ● Sesi Hari Ini Berjalan
-                      </span>
-                    )}
-                  </p>
-                </div>
+        <div className="space-y-6">
+          {/* Strip info jadwal aktif / standby */}
+          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border rounded-2xl p-4 shadow-sm ${
+            !guard?.is_active
+              ? 'bg-gradient-to-r from-slate-50 to-amber-50 dark:from-slate-900/60 dark:to-amber-950/20 border-amber-200/80 dark:border-amber-800/60'
+              : guard?.is_today_scheduled_day && guard?.is_within_time_window
+                ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border-amber-200/80 dark:border-amber-800/60'
+                : 'bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-900/40 dark:to-blue-950/20 border-slate-200/80 dark:border-slate-800/60'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                !guard?.is_active
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                  : guard?.is_today_scheduled_day && guard?.is_within_time_window
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+              }`}>
+                <Medal className="w-5 h-5" />
               </div>
-
-              <div className="flex items-center gap-2 sm:self-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="gap-1.5 text-xs bg-white/80 dark:bg-slate-900/80"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" /> Segarkan
-                </Button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">
+                    {guard?.jadwal_nama || 'Program Ketarunaan'}
+                  </h3>
+                  {!guard?.is_active ? (
+                    <Badge variant="outline" className="text-[10px] font-bold border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40">
+                      Agenda Nonaktif
+                    </Badge>
+                  ) : guard?.is_today_scheduled_day && guard?.is_within_time_window ? (
+                    <Badge variant="success" className="text-[10px] font-bold">
+                      Sesi Aktif Berlangsung
+                    </Badge>
+                  ) : guard?.is_today_scheduled_day ? (
+                    <Badge variant="info" className="text-[10px] font-bold">
+                      Hari Pelaksanaan (Standby)
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] font-bold border-slate-300 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
+                      Mode Siaga (Di Luar Hari Jadwal)
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  {hariAktifLabel && `${hariAktifLabel} • `}
+                  {formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
+                  {sesiId ? (
+                    <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">
+                      ● Sesi Hari Ini Berjalan
+                    </span>
+                  ) : !guard?.is_today_scheduled_day ? (
+                    <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">
+                      (Hari ini {guard?.today_hari ? HARI_LABEL[guard.today_hari] || guard.today_hari : ''} bukan hari kegiatan)
+                    </span>
+                  ) : null}
+                </p>
               </div>
             </div>
 
-            {/* Container Tab Utama serasi SiswaPage */}
-            <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-100 dark:border-slate-800">
-              <div className="px-4 sm:px-6 pt-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="overflow-x-auto no-scrollbar">
-                  <TabSwitcher
-                    options={tabOptionsMemo}
-                    activeTab={activeTab}
-                    onChange={handleTabChange}
-                  />
-                </div>
-              </div>
+            <div className="flex items-center gap-2 sm:self-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="gap-1.5 text-xs bg-white/80 dark:bg-slate-900/80"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Segarkan
+              </Button>
+            </div>
+          </div>
 
-              <div className="bg-white dark:bg-slate-900">
-                <Suspense
-                  fallback={
-                    <div className="p-6 space-y-3">
-                      {[1, 2, 3, 4]?.map((itemKey) => (
-                        <Skeleton key={itemKey} className="h-12 rounded-2xl" />
-                      ))}
-                    </div>
-                  }
-                >
-                  {activeTab === 'kepanitiaan' && (
+          {/* Container Tab Utama serasi SiswaPage */}
+          <SectionCard fullWidth noPadding className="overflow-hidden border border-slate-100 dark:border-slate-800">
+            <div className="px-4 sm:px-6 pt-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="overflow-x-auto no-scrollbar">
+                <TabSwitcher
+                  options={tabOptionsMemo}
+                  activeTab={activeTab}
+                  onChange={handleTabChange}
+                />
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900">
+              <Suspense
+                fallback={
+                  <div className="p-6 space-y-3">
+                    {[1, 2, 3, 4]?.map((itemKey) => (
+                      <Skeleton key={itemKey} className="h-12 rounded-2xl" />
+                    ))}
+                  </div>
+                }
+              >
+                {activeTab === 'kepanitiaan' && (
+                  !guard?.is_active ? (
+                    <GuardState navigate={navigate} />
+                  ) : (
                     <KetarunaanKepanitiaanTab
                       jadwalKegiatanId={jadwalKegiatanId}
                       sesiId={sesiId}
                       refetchSesi={refetchSesi}
+                      guard={guard}
                     />
-                  )}
-                  {activeTab === 'statistik' && (
-                    <KetarunaanStatistikTab
-                      jadwalKegiatanId={jadwalKegiatanId}
-                    />
-                  )}
-                  {activeTab === 'laporan_tim' && (
-                    <KetarunaanLaporanTimTab
-                      jadwalKegiatanId={jadwalKegiatanId}
-                      sesiId={sesiId}
-                    />
-                  )}
-                  {activeTab === 'laporan_kelas' && (
-                    <KetarunaanLaporanKelasTab
-                      jadwalKegiatanId={jadwalKegiatanId}
-                      sesiId={sesiId}
-                    />
-                  )}
-                </Suspense>
-              </div>
-            </SectionCard>
-          </div>
-        )}
+                  )
+                )}
+                {activeTab === 'statistik' && (
+                  <KetarunaanStatistikTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                  />
+                )}
+                {activeTab === 'laporan_tim' && (
+                  <KetarunaanLaporanTimTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                  />
+                )}
+                {activeTab === 'laporan_kelas' && (
+                  <KetarunaanLaporanKelasTab
+                    jadwalKegiatanId={jadwalKegiatanId}
+                    sesiId={sesiId}
+                  />
+                )}
+              </Suspense>
+            </div>
+          </SectionCard>
+        </div>
       </AcademicPageLayout>
     </InfraErrorBoundary>
   );

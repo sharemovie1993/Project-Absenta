@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Gavel,
   Users,
@@ -28,6 +29,9 @@ import {
   PlusCircle,
   Eye,
   SlidersHorizontal,
+  ExternalLink,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import {
   listPlenoSessions,
@@ -61,6 +65,8 @@ import { getSemesterList, Semester } from '../../../api/academic/semester.api';
 import { getKelasList, Kelas } from '../../../api/academic/kelas.api';
 
 export const AcademicPlenoPage: React.FC = () => {
+  const navigate = useNavigate();
+
   // Master state
   const [sessions, setSessions] = useState<PlenoSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -1251,55 +1257,192 @@ export const AcademicPlenoPage: React.FC = () => {
       {/* ═════════════════════════════════════════════════════════════════ */}
       {/* 6. TAB CONTENT: SINKRONISASI TRANSISI                           */}
       {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
+      {/* 6. TAB CONTENT: SINKRONISASI TRANSISI & KENAIKAN KELAS          */}
+      {/* ═════════════════════════════════════════════════════════════════ */}
       {activeTab === 'transition' && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">
-              Sinkronisasi Keputusan Sidang Pleno ke Database Transisi Kelas
-            </h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Mengeksekusi penempatan kelas baru untuk siswa yang NAIK, NAIK BERSYARAT, atau TINGGAL KELAS sesuai Berita
-              Acara Pleno resmi.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-              <label className="text-xs font-semibold text-slate-700 block mb-1.5">
-                Tahun Pelajaran Tujuan (Tahun Baru)
-              </label>
-              <select
-                value={targetTransitionTahunId}
-                onChange={(e) => setTargetTransitionTahunId(e.target.value)}
-                className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
-              >
-                <option value="">-- Pilih Tahun Pelajaran Baru --</option>
-                {tahunPelajaranList.map((tp) => (
-                  <option key={tp.id} value={tp.id}>
-                    {tp.tahun}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="md:col-span-2 p-4 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between">
-              <div>
-                <h4 className="text-xs font-bold text-indigo-900">Validasi Status Sidang</h4>
-                <p className="text-[11px] text-indigo-700 mt-0.5">
-                  {sessionDetail?.status === 'FINALIZED'
-                    ? 'Sidang telah difinalisasi. Siap untuk sinkronisasi resmi.'
-                    : 'Peringatan: Sidang belum difinalisasi. Disarankan finalisasi sebelum sinkronisasi permanen.'}
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                    <Layers className="w-5 h-5" />
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Jembatan Integrasi: Sidang Pleno &amp; Kenaikan Kelas
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 max-w-2xl">
+                  Sidang Pleno Dewan Guru adalah penetap keputusan yuridis akhir mengenai ketuntasan peserta didik. Hasil
+                  putusan sidang ini menjadi landasan primer bagi modul <strong>Kenaikan Kelas (Rollover Akademik)</strong> untuk
+                  memindahkan rombel siswa ke Tahun Ajaran Baru.
                 </p>
               </div>
 
-              <button
-                onClick={handleSyncToTransition}
-                disabled={actionLoading || !targetTransitionTahunId}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg shadow-sm transition"
-              >
-                <ArrowRightCircle className="w-4 h-4" />
-                Eksekusi Transisi
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate('/academic/transition')}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Buka Wizard Kenaikan Kelas
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Stat Highlights */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-slate-100">
+              <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Siswa Terdaftar</p>
+                <p className="text-xl font-black text-slate-900 mt-1">{totalGreen + totalYellow + totalRed} Siswa</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{rombels.length} Rombongan Belajar</p>
+              </div>
+              <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">🟢 Siap Naik Tingkat</p>
+                <p className="text-xl font-black text-emerald-950 mt-1">{totalGreen} Siswa</p>
+                <p className="text-[10px] text-emerald-700 mt-0.5">Memenuhi seluruh KKTP</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-3 border border-amber-200">
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">🟡 Naik Bersyarat</p>
+                <p className="text-xl font-black text-amber-950 mt-1">{totalYellow} Siswa</p>
+                <p className="text-[10px] text-amber-700 mt-0.5">Dengan klausul pendampingan</p>
+              </div>
+              <div className="bg-rose-50 rounded-xl p-3 border border-rose-200">
+                <p className="text-[10px] font-bold text-rose-800 uppercase tracking-wider">🔴 Tinggal Kelas</p>
+                <p className="text-xl font-black text-rose-950 mt-1">{totalRed} Siswa</p>
+                <p className="text-[10px] text-rose-700 mt-0.5">Tetap di tingkat rombel lama</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Execution Bar */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h4 className="text-sm font-bold text-slate-900 mb-2 flex items-center gap-2">
+              <ArrowRightCircle className="w-4 h-4 text-indigo-600" />
+              Eksekusi Transisi Langsung dari Sidang Pleno
+            </h4>
+            <p className="text-xs text-slate-500 mb-4">
+              Pilih Tahun Pelajaran Baru untuk mengeksekusi penempatan siswa secara langsung berdasarkan putusan sidang pleno saat ini.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                  Tahun Pelajaran Tujuan (Tahun Baru)
+                </label>
+                <select
+                  value={targetTransitionTahunId}
+                  onChange={(e) => setTargetTransitionTahunId(e.target.value)}
+                  className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500 font-medium"
+                >
+                  <option value="">-- Pilih Tahun Pelajaran Baru --</option>
+                  {tahunPelajaranList.map((tp) => (
+                    <option key={tp.id} value={tp.id}>
+                      {tp.tahun}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2 p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="text-xs font-bold text-indigo-950">Validasi Legalitas Sidang Pleno</h4>
+                  <p className="text-[11px] text-indigo-700 mt-0.5">
+                    {sessionDetail?.status === 'FINALIZED'
+                      ? `Sidang Resmi Difinalisasi (No. BAP: ${sessionDetail.nomor_bap || 'Tersedia'}). Transisi aman dieksekusi.`
+                      : 'Peringatan: Sidang belum difinalisasi. Disarankan finalisasi sebelum sinkronisasi permanen.'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSyncToTransition}
+                  disabled={actionLoading || !targetTransitionTahunId}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-xl shadow-sm transition shrink-0"
+                >
+                  <ArrowRightCircle className="w-4 h-4" />
+                  Eksekusi Transisi Sekarang
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Rombel Mapping Preview Table */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">
+                  Pratinjau Pemetaan Rombel Kenaikan Kelas ({rombels.length} Rombel)
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Proyeksi kenaikan tingkat siswa dari rombel asal ke jenjang tingkat berikutnya pada Tahun Ajaran Baru.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3">Rombel Asal</th>
+                    <th className="py-2.5 px-3">Tingkat</th>
+                    <th className="py-2.5 px-3">Wali Kelas</th>
+                    <th className="py-2.5 px-3">Total Siswa</th>
+                    <th className="py-2.5 px-3">Komposisi Putusan</th>
+                    <th className="py-2.5 px-3">Rute Kenaikan Prediksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rombels.map((r) => {
+                    const tingkat = Number(r.Kelas?.tingkat || 10);
+                    const isGraduating = tingkat >= 12;
+                    const nextTingkat = isGraduating ? 'LULUS' : `Tingkat ${tingkat + 1}`;
+
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50/70 transition">
+                        <td className="py-2.5 px-3 font-bold text-slate-900">
+                          {r.Kelas?.nama_kelas}
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            Tingkat {tingkat}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-600">
+                          {r.wali_kelas ? (
+                            <span className="font-medium text-slate-800">{r.wali_kelas.nama_lengkap}</span>
+                          ) : (
+                            <span className="text-slate-400 italic">Belum ditugaskan</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-slate-900">
+                          {r.total_students} Siswa
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2 text-[11px] font-semibold">
+                            <span className="text-emerald-700">🟢 {r.green_count} Naik</span>
+                            <span className="text-amber-700">🟡 {r.yellow_count} Syarat</span>
+                            <span className="text-rose-700">🔴 {r.red_count} Tinggal</span>
+                          </div>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                              isGraduating
+                                ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            }`}
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                            {isGraduating ? 'Kelulusan (Alumni)' : `Promosi ke ${nextTingkat}`}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

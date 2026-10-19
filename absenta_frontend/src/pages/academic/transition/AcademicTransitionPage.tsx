@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState, useCallback, lazy, Suspense } from
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, SectionCard, Modal } from '../../../components/ui';
-import { Check, Settings, Map, Eye, ShieldAlert, Clock, Target, RefreshCw, ArrowRight, Layers } from 'lucide-react';
+import { Check, Settings, Map, Eye, ShieldAlert, Clock, Target, RefreshCw, ArrowRight, Layers, Gavel } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import { previewTransition, executeTransition, type TransitionPreviewInput, type TransitionPreviewResponse, type ClassMapping, type OverrideItem } from '../../../api/academic/transition.api';
+import { listPlenoSessions } from '../../../api/academic/pleno.api';
 import { getTahunPelajaranList as fetchTahunPelajaran } from '../../../api/academic/tahunPelajaran.api';
 import { getSemesterList as fetchSemester } from '../../../api/academic/semester.api';
 import { getGuruList as fetchGuru } from '../../../api/academic/guru.api';
@@ -117,6 +118,21 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
       return tingkats;
     },
     staleTime: 5 * 60 * 1000,
+  });
+
+  // 3. Fetch Pleno Session for Selected Tahun Lama
+  const { data: activePlenoSession } = useQuery({
+    queryKey: ['active-pleno-session', selectedTahunLamaId],
+    queryFn: async () => {
+      if (!selectedTahunLamaId) return null;
+      try {
+        const res = await listPlenoSessions({ tahun_pelajaran_id: selectedTahunLamaId });
+        return res?.data?.[0] || null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(selectedTahunLamaId),
   });
 
   // Fetch Active Semester when Tahun Lama is selected
@@ -355,6 +371,48 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
               {step === 1 && (
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat formulir...</div>}>
                   <div className="space-y-6">
+                    {/* Pleno Integration Alert Banner */}
+                    {activePlenoSession && (
+                      <div className="bg-indigo-50/80 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-300">
+                        <div className="flex items-start sm:items-center gap-3.5">
+                          <div className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-sm shrink-0">
+                            <Gavel className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-slate-900 tracking-tight">
+                                Terhubung dengan Sidang Pleno Kenaikan Kelas
+                              </h4>
+                              <span
+                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                  activePlenoSession.status === 'FINALIZED'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : 'bg-amber-100 text-amber-800'
+                                }`}
+                              >
+                                {activePlenoSession.status === 'FINALIZED' ? 'Resmi Final' : 'Draf Sidang'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 mt-0.5">
+                              {activePlenoSession.nomor_bap ? `No. BAP: ${activePlenoSession.nomor_bap} • ` : ''}
+                              Keputusan dewan guru mengenai siswa yang tinggal kelas dan naik bersyarat otomatis
+                              disinkronkan ke dalam evaluasi kenaikan kelas ini.
+                            </p>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="toolbarOutline"
+                          size="toolbar"
+                          onClick={() => navigate('/academic/pleno')}
+                          className="shrink-0 text-xs font-bold text-indigo-700 bg-white border-indigo-200 hover:bg-indigo-50"
+                        >
+                          <Eye size={12} className="mr-1.5" /> Buka Sidang Pleno
+                        </Button>
+                      </div>
+                    )}
+
                     <TransitionPrerequisites
                       tahunAktif={selectedTahunLamaObj}
                       semesterAktif={activeSemester}

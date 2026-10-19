@@ -29,6 +29,7 @@ interface DhuhaKepanitiaanTabProps {
   jadwalKegiatanId: string | null;
   sesiId: string | null;
   refetchSesi: () => void;
+  guard?: any;
 }
 
 function statusBadge(status: string) {
@@ -57,9 +58,13 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
   jadwalKegiatanId,
   sesiId,
   refetchSesi,
+  guard,
 }) => {
   const qc = useQueryClient();
   const [rfidModalOpen, setRfidModalOpen] = useState(false);
+  const [forceIncidentalMode, setForceIncidentalMode] = useState(false);
+
+  const isScheduledDay = guard?.is_today_scheduled_day ?? true;
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['dhuha-pendamping', sesiId, jadwalKegiatanId],
@@ -102,9 +107,21 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
     refetchSesi();
   }, [refetch, refetchSesi]);
 
+  const handleOpenRfid = useCallback(() => {
+    if (!isScheduledDay && !forceIncidentalMode) {
+      toast.error('Hari ini di luar jadwal reguler Dhuha. Klik "Buka Sesi Khusus / Insidental" terlebih dahulu jika ingin merekam absensi hari ini.');
+      return;
+    }
+    setRfidModalOpen(true);
+  }, [isScheduledDay, forceIncidentalMode]);
+
   const handleTap = useCallback((guruId: string, status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR' | 'ALPA' = 'HADIR') => {
+    if (!isScheduledDay && !forceIncidentalMode) {
+      toast.error('Hari ini di luar jadwal reguler Dhuha. Aktifkan Mode Sesi Khusus / Insidental terlebih dahulu.');
+      return;
+    }
     tapMutation.mutate({ guru_id: guruId, status });
-  }, [tapMutation]);
+  }, [tapMutation, isScheduledDay, forceIncidentalMode]);
 
   // Pisahkan Guru Mapel Beririsan dengan Unsur Pembina/Struktural
   const guruMapelList = useMemo(() => {
@@ -172,16 +189,66 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => setRfidModalOpen(true)}
-            className="gap-2 text-xs font-black bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-sm"
+            onClick={handleOpenRfid}
+            className={`gap-2 text-xs font-black text-white shadow-sm ${
+              !isScheduledDay && !forceIncidentalMode
+                ? 'bg-slate-600 hover:bg-slate-700 opacity-90'
+                : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'
+            }`}
           >
             <Scan className="w-4 h-4" /> Mode Scan RFID (POS)
+            {!isScheduledDay && !forceIncidentalMode && (
+              <span className="text-[10px] bg-slate-800/80 px-1.5 py-0.5 rounded font-mono ml-1">Siaga</span>
+            )}
           </Button>
           <Button variant="ghost" size="sm" onClick={handleRefresh} className="gap-1.5 text-xs font-bold">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh Status
           </Button>
         </div>
       </div>
+
+      {/* Banner Siaga Saat Di Luar Hari Pelaksanaan */}
+      {!isScheduledDay && (
+        <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0 mt-0.5">
+              <Clock className="w-4 h-4" />
+            </div>
+            <div className="text-xs text-amber-900 dark:text-amber-200">
+              <span className="font-black uppercase tracking-wider block mb-0.5">
+                Mode Siaga (Standby) — Di Luar Hari Pelaksanaan Reguler
+              </span>
+              <p className="leading-relaxed">
+                Hari ini bukan jadwal reguler Pembiasaan Dhuha. Kartu di bawah menyajikan <strong>pratinjau guru mapel yang mengajar pada hari pelaksanaan ({guard?.hari_aktif?.join(', ') || "Jum'at"})</strong>.
+              </p>
+              {!forceIncidentalMode ? (
+                <p className="text-amber-700 dark:text-amber-300 mt-1 font-medium">
+                  Terminal RFID dan tombol presensi berada dalam kondisi siaga terkunci agar tidak mengganggu KBM normal hari ini.
+                </p>
+              ) : (
+                <p className="text-emerald-700 dark:text-emerald-300 font-bold mt-1">
+                  ● Mode Sesi Khusus / Insidental Aktif: Terminal RFID dan tombol presensi dibuka untuk sesi hari ini.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="shrink-0 self-end sm:self-center">
+            <Button
+              variant={forceIncidentalMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setForceIncidentalMode(prev => !prev)}
+              className={`text-xs font-bold gap-1.5 ${
+                forceIncidentalMode
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                  : 'border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300'
+              }`}
+            >
+              {forceIncidentalMode ? 'Kunci Kembali Siaga' : 'Buka Sesi Khusus / Insidental'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Banner Penjelasan 1 Tap 2 Record */}
       <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/70 via-teal-50/40 to-slate-50 border border-emerald-100 dark:from-emerald-950/20 dark:via-teal-950/10 dark:to-slate-900 dark:border-emerald-900/40 shadow-sm">
@@ -285,7 +352,7 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
                           size="sm"
                           variant="outline"
                           className="h-8 px-2 text-[11px] text-slate-500 hover:text-slate-800"
-                          disabled={tapMutation.isPending}
+                          disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
                           onClick={() => handleTap(p.guru_id, 'IZIN')}
                         >
                           Izin
@@ -293,8 +360,12 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
                         <Button
                           size="sm"
                           variant="default"
-                          className="h-8 px-3 text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
-                          disabled={tapMutation.isPending}
+                          className={`h-8 px-3 text-xs font-bold gap-1.5 shadow-sm ${
+                            !isScheduledDay && !forceIncidentalMode
+                              ? 'bg-slate-300 text-slate-500 dark:bg-slate-800 dark:text-slate-400 cursor-not-allowed'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                          }`}
+                          disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
                           onClick={() => handleTap(p.guru_id, 'HADIR')}
                         >
                           {tapMutation.isPending ? (
@@ -302,7 +373,7 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
                           ) : (
                             <Zap className="w-3.5 h-3.5 text-amber-300" />
                           )}
-                          Tap Hadir & Buka KBM
+                          {!isScheduledDay && !forceIncidentalMode ? 'Siaga' : 'Tap Hadir & Buka KBM'}
                         </Button>
                       </div>
                     ) : (
@@ -364,7 +435,7 @@ export const DhuhaKepanitiaanTab: React.FC<DhuhaKepanitiaanTabProps> = ({
                           size="sm"
                           variant="outline"
                           className="h-7 px-2.5 text-[11px] font-bold border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-700 dark:text-emerald-400"
-                          disabled={tapMutation.isPending}
+                          disabled={tapMutation.isPending || (!isScheduledDay && !forceIncidentalMode)}
                           onClick={() => handleTap(p.guru_id, 'HADIR')}
                         >
                           {tapMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
