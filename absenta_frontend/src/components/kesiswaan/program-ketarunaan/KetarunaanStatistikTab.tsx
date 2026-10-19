@@ -99,11 +99,13 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
 
   // Sorting rombel kelas
   const sortedKelas = useMemo(() => {
-    if (!kelasList.length) return { top: [], attention: [] };
+    if (!kelasList.length) return { top: [], attention: [], hasData: false };
+    const hasData = kelasList.some((k) => (k.hadir || 0) > 0);
     const sorted = [...kelasList].sort((a, b) => b.persen - a.persen);
     return {
       top: sorted.slice(0, 3),
       attention: sorted.slice(-3).reverse(),
+      hasData,
     };
   }, [kelasList]);
 
@@ -234,7 +236,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
                 </div>
               </div>
               <span className="text-2xl font-black text-slate-800 dark:text-slate-100">
-                {ringkasan?.total_sesi ?? trendList.length} Sesi
+                {ringkasan?.total_sesi ?? trendList.length} Pertemuan
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
                 Tercatat resmi dalam rentang waktu
@@ -272,11 +274,11 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
                   Perkembangan Pertemuan Program Ketarunaan
                 </h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Progres kehadiran taruna dan tim pembina dari sesi ke sesi
+                  Progres kehadiran taruna dan tim pembina dari pertemuan ke pertemuan
                 </p>
               </div>
               <Badge variant="outline" className="text-xs font-bold border-slate-200 dark:border-slate-800">
-                {trendList.length} Sesi Terdata
+                {trendList.length} Pertemuan Terdata
               </Badge>
             </div>
 
@@ -284,7 +286,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50/80 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black text-slate-500 uppercase tracking-wider">
-                    <th className="text-left px-4 py-3">Sesi</th>
+                    <th className="text-left px-4 py-3">Pertemuan</th>
                     <th className="text-left px-4 py-3">Tanggal Pelaksanaan</th>
                     <th className="text-center px-4 py-3">Kehadiran Taruna</th>
                     <th className="text-center px-4 py-3">Perubahan (Δ)</th>
@@ -300,7 +302,7 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
                     return (
                       <tr key={item.tanggal} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                         <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200">
-                          #{item.sesi_ke}
+                          Pertemuan #{item.sesi_ke}
                         </td>
                         <td className="px-4 py-3 text-slate-600 dark:text-slate-300 font-medium text-xs">
                           {formatTanggal(item.tanggal)}
@@ -386,31 +388,45 @@ export const KetarunaanStatistikTab: React.FC<KetarunaanStatistikTabProps> = ({ 
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5" /> Top 3 Kelas Paling Disiplin
-                  </span>
-                  {sortedKelas.top.map((k) => (
-                    <div key={k.kelas_id} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/60 dark:border-emerald-900/30">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{k.kelas_nama}</span>
-                      <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{k.persen}% Hadir</span>
-                    </div>
-                  ))}
+              {!sortedKelas.hasData ? (
+                <div className="py-8 px-4 text-center rounded-xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+                  <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                    <Sparkles className="w-5 h-5 opacity-40" />
+                  </div>
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Belum Ada Rekaman Tap Siswa
+                  </p>
+                  <p className="text-[11px] text-slate-400 max-w-xs mx-auto mt-1">
+                    Evaluasi kepatuhan rombel otomatis terpetakan begitu taruna mulai melakukan presensi pada sesi ketarunaan.
+                  </p>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" /> Top 3 Kelas Paling Disiplin
+                    </span>
+                    {sortedKelas.top.map((k) => (
+                      <div key={k.kelas_id} className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100/60 dark:border-emerald-900/30">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{k.kelas_nama}</span>
+                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{k.persen}% Hadir</span>
+                      </div>
+                    ))}
+                  </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5" /> Kelas Perlu Pembinaan Khusus
-                  </span>
-                  {sortedKelas.attention.map((k) => (
-                    <div key={k.kelas_id} className="flex items-center justify-between p-2.5 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100/60 dark:border-rose-900/30">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{k.kelas_nama}</span>
-                      <span className="text-xs font-black text-rose-600 dark:text-rose-400">{k.persen}% Hadir</span>
-                    </div>
-                  ))}
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> Kelas Perlu Pembinaan Khusus
+                    </span>
+                    {sortedKelas.attention.map((k) => (
+                      <div key={k.kelas_id} className="flex items-center justify-between p-2.5 rounded-xl bg-rose-50/40 dark:bg-rose-950/20 border border-rose-100/60 dark:border-rose-900/30">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{k.kelas_nama}</span>
+                        <span className="text-xs font-black text-rose-600 dark:text-rose-400">{k.persen}% Hadir</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </>

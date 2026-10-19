@@ -1,7 +1,15 @@
 import { requestWithFallback } from '../apiUtils';
 
 export type PlenoStatus = 'DRAFT' | 'PRE_TRIAGE' | 'IN_PROGRESS' | 'FINALIZED' | 'CANCELLED';
-export type DecisionType = 'NAIK' | 'NAIK_BERSYARAT' | 'TINGGAL_KELAS' | 'LULUS' | 'TIDAK_LULUS' | 'MUTASI';
+export type DecisionType =
+  | 'NAIK'
+  | 'NAIK_BERSYARAT'
+  | 'TINGGAL_KELAS'
+  | 'LULUS'
+  | 'TIDAK_LULUS'
+  | 'MUTASI'
+  | 'KELUAR'
+  | 'MENINGGAL';
 export type TriageZone = 'GREEN' | 'YELLOW' | 'RED';
 
 export interface PlenoSession {
@@ -65,6 +73,7 @@ export interface PlenoRombel {
   green_count: number;
   yellow_count: number;
   red_count: number;
+  mutasi_count?: number;
   reviewed_at?: string | null;
   notes?: string | null;
   Kelas: {
@@ -87,11 +96,15 @@ export interface PlenoCandidate {
   siswa_id: string;
   triage_zone: TriageZone;
   triage_reasons?: string | null;
+  is_hanging_status?: boolean;
   rekomendasi_awal: DecisionType;
   keputusan_akhir: DecisionType;
   target_kelas_id?: string | null;
   alasan_keputusan?: string | null;
   catatan_pendampingan?: string | null;
+  mutasi_sekolah_tujuan?: string | null;
+  mutasi_no_surat?: string | null;
+  mutasi_tanggal?: string | null;
   is_disputed: boolean;
   voted_by_consensus: boolean;
   voting_yes?: number | null;
@@ -227,6 +240,9 @@ export interface DecideStudentInput {
   target_kelas_id?: string;
   alasan_keputusan?: string;
   catatan_pendampingan?: string;
+  mutasi_sekolah_tujuan?: string;
+  mutasi_no_surat?: string;
+  mutasi_tanggal?: string;
   is_disputed?: boolean;
   voted_by_consensus?: boolean;
   voting_yes?: number;

@@ -144,16 +144,17 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
           const kelas = sInfo?.kelas && sInfo.kelas !== '-' ? ` - ${sInfo.kelas}` : '';
           const msg = `BYPASS BERHASIL: ${nama}${kelas}`;
           
-          toast.success(msg, { position: 'bottom-center' });
+          toast.success(msg, { id: 'gate-tap-toast', duration: 1500, position: 'bottom-center' });
           addTapFeedback('success', msg, timeStr);
-          await playBeep('success');
-          await refreshStats();
+          playBeep('success').catch(() => {});
+          refreshStats().catch(() => {});
           onTapSuccess?.();
           onTapSuccessMetadata?.({ name: nama });
         } else {
           const errMsg = (res as Record<string, unknown>).message || 'Gagal memproses bypass';
-          toast.error(errMsg, { position: 'bottom-center' });
+          toast.error(errMsg, { id: 'gate-tap-toast', duration: 1800, position: 'bottom-center' });
           addTapFeedback('error', errMsg, timeStr);
+          playBeep('error').catch(() => {});
         }
         return;
       }
@@ -185,21 +186,25 @@ const GateInputModuleComponent: React.FC<GateInputModuleProps> = ({
             : (tapRes as Record<string, unknown>).message || `PRESENSI BERHASIL: ${personName}`;
         }
 
-        toast.success(successMsg, { position: 'bottom-center', icon: isAudit ? '🔒' : undefined });
+        toast.success(successMsg, { id: 'gate-tap-toast', duration: 1500, position: 'bottom-center', icon: isAudit ? '🔒' : undefined });
         addTapFeedback('success', successMsg, timeStr);
-        await playBeep('success');
-        await refreshStats();
+        playBeep('success').catch(() => {});
+        // Fire-and-forget: refreshStats dijalankan async agar scanner langsung siap menerima tap berikutnya (<50ms)
+        refreshStats().catch(() => {});
         onTapSuccess?.();
         onTapSuccessMetadata?.({ name: personName });
       } else {
         const errMsg = (tapRes as Record<string, unknown>).message || 'Gagal mencatat tap';
-        toast.error(errMsg, { position: 'bottom-center' });
+        toast.error(errMsg, { id: 'gate-tap-toast', duration: 1800, position: 'bottom-center' });
         addTapFeedback('error', errMsg, timeStr);
+        playBeep('error').catch(() => {});
       }
     } catch (e: unknown) {
-      const errMsg = e.response?.data?.message || e.message || 'Gagal mencatat tap';
-      toast.error(errMsg, { position: 'bottom-center' });
+      const errObj = e as { response?: { data?: { message?: string } }; message?: string };
+      const errMsg = errObj.response?.data?.message || errObj.message || 'Gagal mencatat tap';
+      toast.error(errMsg, { id: 'gate-tap-toast', duration: 1800, position: 'bottom-center' });
       addTapFeedback('error', errMsg, new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      playBeep('error').catch(() => {});
     } finally {
       setHidToken('');
       isProcessingRef.current = false;

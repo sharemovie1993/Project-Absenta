@@ -9,6 +9,7 @@ import { parseSafeDate } from '../sesi-absensi.schema';
 import { sesiReminderService } from '../sesi-reminder.service';
 import { sesiCloseNotifyService } from '../sesi-close-notify.service';
 import { sesiHelperService } from '../sesi-helper.service';
+import { propagateGateAbsencesForNewSessionCommand } from '../commands/propagate-gate-absences-batch.command';
 
 /**
  * Load shift_jam_pelajaran config for a tenant.
@@ -440,6 +441,26 @@ export class SesiCreatorService {
         note,
         kelas_id
       );
+    }
+
+    // 🛡️ PEWARISAN KETIDAKHADIRAN GERBANG (SAKIT, IZIN, ALPA, DISPEN):
+    // Siswa yang di gerbang tercatat SAKIT, IZIN, ALPA, atau DISPEN otomatis diwariskan ke sesi baru
+    if (kelas_id) {
+      const dayStart = new Date(sessionDate);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(sessionDate);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      await propagateGateAbsencesForNewSessionCommand({
+        tenantId,
+        startDay: dayStart,
+        endDay: dayEnd,
+        kelasId: kelas_id,
+        session: sesi,
+        waktuMulaiFallback: parsedStart,
+      }).catch(err => {
+        console.warn('[createSesi] Failed to propagate gate non-attendance:', err);
+      });
     }
 
     emitDomainEvent({

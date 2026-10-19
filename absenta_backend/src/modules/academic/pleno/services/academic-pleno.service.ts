@@ -638,7 +638,10 @@ export class AcademicPlenoService {
         const alpaPercent = totalDays > 0 ? (alpa / totalDays) * 100 : 0;
         const presencePercent = totalDays > 0 ? (hadir / totalDays) * 100 : 100;
 
-        if (alpaPercent > 15 || alpa >= 10) {
+        const isHanging = alpaPercent >= 40 || alpa >= 25;
+        if (isHanging) {
+          reasons.push(`⚠️ Indikasi Status Menggantung (Alpa ${alpa} hari / ${alpaPercent.toFixed(1)}% - Verifikasi Mutasi/DO)`);
+        } else if (alpaPercent > 15 || alpa >= 10) {
           reasons.push(`Alpa tinggi: ${alpa} hari (${alpaPercent.toFixed(1)}%)`);
         } else if (presencePercent < 80) {
           reasons.push(`Kehadiran di bawah 80% (${presencePercent.toFixed(1)}%)`);
@@ -798,6 +801,9 @@ export class AcademicPlenoService {
       rombel,
       candidates: decisions.map((d: any) => ({
         ...d,
+        is_hanging_status:
+          (d.triage_reasons || '').includes('Indikasi Status Menggantung') ||
+          (d.triage_reasons || '').includes('Verifikasi Mutasi/DO'),
         Siswa: {
           ...d.Siswa,
           nama_lengkap: d.Siswa.nama_siswa,
@@ -1080,14 +1086,26 @@ export class AcademicPlenoService {
       where: { session_id: sessionId, siswa_id: siswaId },
     });
 
+    let record: any;
+    let targetRombelId = '';
+
+    const mutasiData: any = {};
+    if (data.mutasi_sekolah_tujuan !== undefined) mutasiData.mutasi_sekolah_tujuan = data.mutasi_sekolah_tujuan;
+    if (data.mutasi_no_surat !== undefined) mutasiData.mutasi_no_surat = data.mutasi_no_surat;
+    if (data.mutasi_tanggal !== undefined) {
+      mutasiData.mutasi_tanggal = data.mutasi_tanggal ? new Date(data.mutasi_tanggal) : null;
+    }
+
     if (existing) {
-      const updated = await prisma.academicPlenoDecision.update({
+      targetRombelId = existing.rombel_id;
+      record = await prisma.academicPlenoDecision.update({
         where: { id: existing.id },
         data: {
           keputusan_akhir: data.keputusan_akhir,
           target_kelas_id: data.target_kelas_id,
           alasan_keputusan: data.alasan_keputusan,
           catatan_pendampingan: data.catatan_pendampingan,
+          ...mutasiData,
           is_disputed: data.is_disputed !== undefined ? data.is_disputed : false,
           voted_by_consensus: data.voted_by_consensus !== undefined ? data.voted_by_consensus : true,
           voting_yes: data.voting_yes,
@@ -1096,14 +1114,14 @@ export class AcademicPlenoService {
           decided_at: new Date(),
         },
       });
-      return updated;
     } else {
       // Find rombel
       const rombel = await prisma.academicPlenoRombel.findFirst({
         where: { session_id: sessionId, kelas_id: siswa.kelas_id || '' },
       });
+      targetRombelId = rombel?.id || '';
 
-      const created = await prisma.academicPlenoDecision.create({
+      record = await prisma.academicPlenoDecision.create({
         data: {
           session_id: sessionId,
           rombel_id: rombel?.id || '',
@@ -1114,6 +1132,7 @@ export class AcademicPlenoService {
           target_kelas_id: data.target_kelas_id,
           alasan_keputusan: data.alasan_keputusan,
           catatan_pendampingan: data.catatan_pendampingan,
+          ...mutasiData,
           is_disputed: data.is_disputed || false,
           voted_by_consensus: data.voted_by_consensus !== undefined ? data.voted_by_consensus : true,
           voting_yes: data.voting_yes,
@@ -1122,8 +1141,36 @@ export class AcademicPlenoService {
           decided_at: new Date(),
         },
       });
-      return created;
     }
+
+    // Refresh Rombel breakdown counters
+    if (targetRombelId) {
+      const counts = await prisma.academicPlenoDecision.groupBy({
+        by: ['keputusan_akhir'],
+        where: { session_id: sessionId, rombel_id: targetRombelId },
+        _count: true,
+      });
+
+      let green = 0, yellow = 0, red = 0, mutasi = 0;
+      for (const c of counts) {
+        if (c.keputusan_akhir === 'NAIK') green += c._count;
+        else if (c.keputusan_akhir === 'NAIK_BERSYARAT') yellow += c._count;
+        else if (c.keputusan_akhir === 'TINGGAL_KELAS') red += c._count;
+        else if (['MUTASI', 'KELUAR', 'MENINGGAL'].includes(c.keputusan_akhir as string)) mutasi += c._count;
+      }
+
+      await prisma.academicPlenoRombel.update({
+        where: { id: targetRombelId },
+        data: {
+          green_count: green,
+          yellow_count: yellow,
+          red_count: red,
+          mutasi_count: mutasi,
+        },
+      });
+    }
+
+    return record;
   }
 
   /**
@@ -1192,6 +1239,7 @@ export class AcademicPlenoService {
     let promotedCount = 0;
     let retainedCount = 0;
     let conditionalCount = 0;
+    let mutatedCount = 0;
 
     for (const d of session.decisions) {
       if (d.keputusan_akhir === PlenoDecisionType.NAIK || d.keputusan_akhir === PlenoDecisionType.NAIK_BERSYARAT) {
@@ -1210,6 +1258,22 @@ export class AcademicPlenoService {
       } else if (d.keputusan_akhir === PlenoDecisionType.TINGGAL_KELAS) {
         // Retained in same class level
         retainedCount++;
+      } else if (
+        d.keputusan_akhir === PlenoDecisionType.MUTASI ||
+        (d.keputusan_akhir as string) === 'KELUAR' ||
+        (d.keputusan_akhir as string) === 'MENINGGAL'
+      ) {
+        const newStatus = (d.keputusan_akhir as string) === 'KELUAR' ? 'KELUAR' : 'PINDAH';
+        await prisma.siswa.update({
+          where: { id: d.siswa_id },
+          data: {
+            status: newStatus,
+            tanggal_keluar: (d as any).mutasi_tanggal || new Date(),
+            alasan_keluar: d.alasan_keputusan || 'Putusan Sidang Pleno Kenaikan Kelas',
+            kelas_id: null,
+          },
+        });
+        mutatedCount++;
       }
     }
 
@@ -1218,6 +1282,7 @@ export class AcademicPlenoService {
       promoted_count: promotedCount,
       conditional_count: conditionalCount,
       retained_count: retainedCount,
+      mutated_count: mutatedCount,
     };
   }
 

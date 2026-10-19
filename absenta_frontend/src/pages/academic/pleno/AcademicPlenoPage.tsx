@@ -97,7 +97,7 @@ export const AcademicPlenoPage: React.FC = () => {
 
   // Search & Filters
   const [candidateSearch, setCandidateSearch] = useState<string>('');
-  const [triageFilter, setTriageFilter] = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED'>('ALL');
+  const [triageFilter, setTriageFilter] = useState<'ALL' | 'GREEN' | 'YELLOW' | 'RED' | 'HANGING' | 'MUTASI'>('ALL');
 
   // New Session Form State
   const [newTitle, setNewTitle] = useState<string>('Sidang Pleno Kenaikan Kelas & Kelulusan');
@@ -116,6 +116,11 @@ export const AcademicPlenoPage: React.FC = () => {
   const [formConsensus, setFormConsensus] = useState<boolean>(true);
   const [formVoteYes, setFormVoteYes] = useState<number>(0);
   const [formVoteNo, setFormVoteNo] = useState<number>(0);
+
+  // Form Mutasi & Kasus Administratif
+  const [formMutasiSekolah, setFormMutasiSekolah] = useState<string>('');
+  const [formMutasiNoSurat, setFormMutasiNoSurat] = useState<string>('');
+  const [formMutasiTanggal, setFormMutasiTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Minute Form
   const [newMinuteTopic, setNewMinuteTopic] = useState<string>('');
@@ -356,6 +361,13 @@ export const AcademicPlenoPage: React.FC = () => {
           setFormTargetKelasId(res.data.decision.target_kelas_id || '');
           setFormAlasan(res.data.decision.alasan_keputusan || '');
           setFormPendampingan(res.data.decision.catatan_pendampingan || '');
+          setFormMutasiSekolah((res.data.decision as any)?.mutasi_sekolah_tujuan || '');
+          setFormMutasiNoSurat((res.data.decision as any)?.mutasi_no_surat || '');
+          setFormMutasiTanggal(
+            (res.data.decision as any)?.mutasi_tanggal
+              ? new Date((res.data.decision as any).mutasi_tanggal).toISOString().split('T')[0]
+              : new Date().toISOString().split('T')[0]
+          );
           setFormConsensus(res.data.decision.voted_by_consensus);
           setFormVoteYes(res.data.decision.voting_yes || 0);
           setFormVoteNo(res.data.decision.voting_no || 0);
@@ -364,6 +376,9 @@ export const AcademicPlenoPage: React.FC = () => {
           setFormTargetKelasId('');
           setFormAlasan(res.data.triage.reasons.join(', '));
           setFormPendampingan('');
+          setFormMutasiSekolah('');
+          setFormMutasiNoSurat('');
+          setFormMutasiTanggal(new Date().toISOString().split('T')[0]);
           setFormConsensus(true);
           setFormVoteYes(0);
           setFormVoteNo(0);
@@ -380,11 +395,15 @@ export const AcademicPlenoPage: React.FC = () => {
     if (!selectedSessionId || !selectedSiswaId) return;
     try {
       setActionLoading(true);
+      const isMutasiType = ['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision);
       await decideStudentCandidate(selectedSessionId, selectedSiswaId, {
         keputusan_akhir: formDecision,
-        target_kelas_id: formTargetKelasId || undefined,
+        target_kelas_id: isMutasiType ? undefined : formTargetKelasId || undefined,
         alasan_keputusan: formAlasan,
         catatan_pendampingan: formPendampingan,
+        mutasi_sekolah_tujuan: isMutasiType ? formMutasiSekolah : undefined,
+        mutasi_no_surat: isMutasiType ? formMutasiNoSurat : undefined,
+        mutasi_tanggal: isMutasiType ? formMutasiTanggal : undefined,
         voted_by_consensus: formConsensus,
         voting_yes: formConsensus ? undefined : Number(formVoteYes),
         voting_no: formConsensus ? undefined : Number(formVoteNo),
@@ -515,10 +534,25 @@ export const AcademicPlenoPage: React.FC = () => {
       const matchSearch =
         nama.toLowerCase().includes(candidateSearch.toLowerCase()) ||
         nis.toLowerCase().includes(candidateSearch.toLowerCase());
-      const matchTriage = triageFilter === 'ALL' || c.triage_zone === triageFilter;
+
+      let matchTriage = true;
+      if (triageFilter === 'ALL') {
+        matchTriage = true;
+      } else if (triageFilter === 'HANGING') {
+        matchTriage = Boolean(c.is_hanging_status);
+      } else if (triageFilter === 'MUTASI') {
+        matchTriage = ['MUTASI', 'KELUAR', 'MENINGGAL'].includes(c.keputusan_akhir);
+      } else {
+        matchTriage = c.triage_zone === triageFilter;
+      }
+
       return matchSearch && matchTriage;
     });
   }, [candidates, candidateSearch, triageFilter]);
+
+  const hangingCandidatesCount = useMemo(() => {
+    return candidates.filter((c) => c.is_hanging_status).length;
+  }, [candidates]);
 
   // Selected Rombel
   const activeRombel = useMemo(() => {
@@ -958,23 +992,54 @@ export const AcademicPlenoPage: React.FC = () => {
                   </div>
 
                   {/* Triage Filter Buttons */}
-                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs">
-                    {(['ALL', 'GREEN', 'YELLOW', 'RED'] as const).map((z) => (
+                  <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg text-xs overflow-x-auto">
+                    {(
+                      [
+                        { id: 'ALL', label: 'Semua' },
+                        { id: 'GREEN', label: '🟢 Hijau' },
+                        { id: 'YELLOW', label: '🟡 Kuning' },
+                        { id: 'RED', label: '🔴 Merah' },
+                        { id: 'HANGING', label: `⚠️ Menggantung (${hangingCandidatesCount})` },
+                        { id: 'MUTASI', label: '📤 Mutasi/DO' },
+                      ] as const
+                    ).map((t) => (
                       <button
-                        key={z}
-                        onClick={() => setTriageFilter(z)}
-                        className={`px-2.5 py-1 rounded-md font-semibold transition ${
-                          triageFilter === z
+                        key={t.id}
+                        onClick={() => setTriageFilter(t.id as any)}
+                        className={`px-2.5 py-1 rounded-md font-semibold transition shrink-0 ${
+                          triageFilter === t.id
                             ? 'bg-white text-slate-900 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        {z === 'ALL' ? 'Semua' : z === 'GREEN' ? '🟢 Hijau' : z === 'YELLOW' ? '🟡 Kuning' : '🔴 Merah'}
+                        {t.label}
                       </button>
                     ))}
                   </div>
                 </div>
               </div>
+
+              {/* Alert: Siswa Indikasi Menggantung */}
+              {hangingCandidatesCount > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                    <div>
+                      <span className="font-bold text-amber-950">Perhatian Evaluasi Wali Kelas: </span>
+                      <span className="text-amber-800">
+                        Terdeteksi <strong>{hangingCandidatesCount} siswa</strong> dengan indikasi status menggantung
+                        (alpa tinggi / tidak aktif). Silakan periksa dan usulkan status Mutasi Keluar atau Drop Out.
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setTriageFilter(triageFilter === 'HANGING' ? 'ALL' : 'HANGING')}
+                    className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg shrink-0 text-[11px] transition shadow-sm"
+                  >
+                    {triageFilter === 'HANGING' ? 'Tampilkan Semua Siswa' : 'Filter Siswa Menggantung'}
+                  </button>
+                </div>
+              )}
 
               {/* Candidate Table */}
               <div className="overflow-x-auto">
@@ -989,69 +1054,96 @@ export const AcademicPlenoPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {filteredCandidates.map((c) => (
-                      <tr key={c.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900">
-                            {c.Siswa?.nama_lengkap || c.Siswa?.nama_siswa || 'Siswa'}
-                          </div>
-                          <div className="text-[11px] text-slate-500">
-                            NIS: {c.Siswa?.nis || '-'} • {c.Siswa?.jenis_kelamin || ''}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                              c.triage_zone === 'GREEN'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : c.triage_zone === 'YELLOW'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {c.triage_zone === 'GREEN'
-                              ? '🟢 HIJAU'
-                              : c.triage_zone === 'YELLOW'
-                              ? '🟡 KUNING'
-                              : '🔴 MERAH'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 max-w-xs truncate text-slate-600">
-                          {c.triage_reasons || <span className="text-slate-400">Tidak ada kendala</span>}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span
-                            className={`font-semibold text-xs px-2.5 py-1 rounded-lg ${
-                              c.keputusan_akhir === 'NAIK'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : c.keputusan_akhir === 'NAIK_BERSYARAT'
-                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                            }`}
-                          >
-                            {c.keputusan_akhir === 'NAIK'
-                              ? 'Naik Tingkat'
-                              : c.keputusan_akhir === 'NAIK_BERSYARAT'
-                              ? 'Naik Bersyarat'
-                              : 'Tinggal Kelas'}
-                          </span>
-                          {c.catatan_pendampingan && (
-                            <div className="text-[10px] text-amber-700 mt-1 truncate max-w-[200px]">
-                              Pendampingan: {c.catatan_pendampingan}
+                    {filteredCandidates.map((c) => {
+                      const isMutasiType = ['MUTASI', 'KELUAR', 'MENINGGAL'].includes(c.keputusan_akhir);
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/70 transition">
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900">
+                                {c.Siswa?.nama_lengkap || c.Siswa?.nama_siswa || 'Siswa'}
+                              </span>
+                              {c.is_hanging_status && (
+                                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                  ⚠️ Indikasi Menggantung
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <button
-                            onClick={() => handleOpenDossier(c.siswa_id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            Dossier 360°
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                            <div className="text-[11px] text-slate-500">
+                              NIS: {c.Siswa?.nis || '-'} • {c.Siswa?.jenis_kelamin || ''}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                                c.triage_zone === 'GREEN'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : c.triage_zone === 'YELLOW'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-rose-100 text-rose-800'
+                              }`}
+                            >
+                              {c.triage_zone === 'GREEN'
+                                ? '🟢 HIJAU'
+                                : c.triage_zone === 'YELLOW'
+                                ? '🟡 KUNING'
+                                : '🔴 MERAH'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 max-w-xs truncate text-slate-600">
+                            {c.triage_reasons || <span className="text-slate-400">Tidak ada kendala</span>}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span
+                              className={`font-semibold text-xs px-2.5 py-1 rounded-lg ${
+                                c.keputusan_akhir === 'NAIK'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : c.keputusan_akhir === 'NAIK_BERSYARAT'
+                                  ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  : c.keputusan_akhir === 'TINGGAL_KELAS'
+                                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : c.keputusan_akhir === 'MUTASI'
+                                  ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                                  : c.keputusan_akhir === 'KELUAR'
+                                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                  : 'bg-slate-200 text-slate-800 border border-slate-300'
+                              }`}
+                            >
+                              {c.keputusan_akhir === 'NAIK'
+                                ? 'Naik Tingkat'
+                                : c.keputusan_akhir === 'NAIK_BERSYARAT'
+                                ? 'Naik Bersyarat'
+                                : c.keputusan_akhir === 'TINGGAL_KELAS'
+                                ? 'Tinggal Kelas'
+                                : c.keputusan_akhir === 'MUTASI'
+                                ? 'Mutasi Keluar'
+                                : c.keputusan_akhir === 'KELUAR'
+                                ? 'Keluar / D.O'
+                                : 'Meninggal Dunia'}
+                            </span>
+                            {c.catatan_pendampingan && (
+                              <div className="text-[10px] text-amber-700 mt-1 truncate max-w-[200px]">
+                                Pendampingan: {c.catatan_pendampingan}
+                              </div>
+                            )}
+                            {isMutasiType && (c as any).mutasi_sekolah_tujuan && (
+                              <div className="text-[10px] text-purple-700 mt-1 truncate max-w-[200px]">
+                                Tujuan: {(c as any).mutasi_sekolah_tujuan}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={() => handleOpenDossier(c.siswa_id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              Dossier 360°
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {filteredCandidates.length === 0 && (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-slate-400">
@@ -1643,41 +1735,113 @@ export const AcademicPlenoPage: React.FC = () => {
                           <option value="NAIK">NAIK KELAS (Tuntas Prima)</option>
                           <option value="NAIK_BERSYARAT">NAIK KELAS BERSYARAT (Dengan Pendampingan)</option>
                           <option value="TINGGAL_KELAS">TINGGAL KELAS (Intervensi Ekstrem)</option>
-                          <option value="MUTASI">MUTASI / PINDAH SEKOLAH</option>
+                          <option value="MUTASI">MUTASI KELUAR (Pindah Sekolah)</option>
+                          <option value="KELUAR">DROP OUT / KELUAR (Mengundurkan Diri)</option>
+                          <option value="MENINGGAL">MENINGGAL DUNIA</option>
                         </select>
                       </div>
 
+                      {!['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision) ? (
+                        <div>
+                          <label className="text-xs font-semibold text-slate-700 block mb-1">
+                            Target Kelas Lanjutan (Jika Naik)
+                          </label>
+                          <select
+                            value={formTargetKelasId}
+                            onChange={(e) => setFormTargetKelasId(e.target.value)}
+                            className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
+                          >
+                            <option value="">-- Tetapkan Nanti / Otomatis --</option>
+                            {allKelasList.map((k) => (
+                              <option key={k.id} value={k.id}>
+                                {k.nama_kelas} (Tingkat {k.tingkat})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="p-2.5 bg-purple-50/70 rounded-lg border border-purple-200 flex flex-col justify-center">
+                          <span className="text-[11px] font-bold text-purple-900">
+                            ⚙️ Dampak Kenaikan Kelas & Rollover
+                          </span>
+                          <span className="text-[10px] text-purple-700">
+                            Siswa akan dinonaktifkan dari rombel baru. Kapasitas & daya tampung kelas baru akan disesuaikan otomatis tanpa beban input manual TU.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Form Dinamis: Mutasi / Keluar / Meninggal */}
+                    {['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision) && (
+                      <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200 space-y-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-purple-950">
+                          <AlertTriangle className="w-4 h-4 text-purple-600" />
+                          Detail Administrasi Status Keluar / Mutasi
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              {formDecision === 'MUTASI'
+                                ? 'Sekolah Tujuan'
+                                : formDecision === 'KELUAR'
+                                ? 'Alasan Keluar / D.O'
+                                : 'Keterangan'}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder={
+                                formDecision === 'MUTASI'
+                                  ? 'Misal: SMAN 1 Bandung'
+                                  : formDecision === 'KELUAR'
+                                  ? 'Misal: Bekerja / Mengundurkan Diri'
+                                  : 'Keterangan Wafat'
+                              }
+                              value={formMutasiSekolah}
+                              onChange={(e) => setFormMutasiSekolah(e.target.value)}
+                              className="w-full text-xs p-2 bg-white border border-purple-200 rounded-lg focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              Nomor Surat Keterangan / BAP
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Misal: 421/045/Disdik/2026"
+                              value={formMutasiNoSurat}
+                              onChange={(e) => setFormMutasiNoSurat(e.target.value)}
+                              className="w-full text-xs p-2 bg-white border border-purple-200 rounded-lg focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              Tanggal Efektif Status
+                            </label>
+                            <input
+                              type="date"
+                              value={formMutasiTanggal}
+                              onChange={(e) => setFormMutasiTanggal(e.target.value)}
+                              className="w-full text-xs p-2 bg-white border border-purple-200 rounded-lg focus:ring-1 focus:ring-purple-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision) && (
                       <div>
                         <label className="text-xs font-semibold text-slate-700 block mb-1">
-                          Target Kelas Lanjutan (Jika Naik)
+                          Catatan Pendampingan Khusus (Kurikulum Merdeka)
                         </label>
-                        <select
-                          value={formTargetKelasId}
-                          onChange={(e) => setFormTargetKelasId(e.target.value)}
+                        <input
+                          type="text"
+                          placeholder="Misal: Penuntasan materi Aljabar & Konseling Kehadiran bersama Guru Kelas XI"
+                          value={formPendampingan}
+                          onChange={(e) => setFormPendampingan(e.target.value)}
                           className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
-                        >
-                          <option value="">-- Tetapkan Nanti / Otomatis --</option>
-                          {allKelasList.map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.nama_kelas} (Tingkat {k.tingkat})
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-semibold text-slate-700 block mb-1">
-                        Catatan Pendampingan Khusus (Kurikulum Merdeka)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Misal: Penuntasan materi Aljabar & Konseling Kehadiran bersama Guru Kelas XI"
-                        value={formPendampingan}
-                        onChange={(e) => setFormPendampingan(e.target.value)}
-                        className="w-full text-xs p-2.5 bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-indigo-500"
-                      />
-                    </div>
+                    )}
 
                     <div>
                       <label className="text-xs font-semibold text-slate-700 block mb-1">
@@ -1739,10 +1903,16 @@ export const AcademicPlenoPage: React.FC = () => {
               <button
                 onClick={handleSaveDecision}
                 disabled={actionLoading || dossierLoading}
-                className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition"
+                className={`inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white rounded-lg shadow transition ${
+                  ['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision)
+                    ? 'bg-purple-600 hover:bg-purple-700'
+                    : 'bg-indigo-600 hover:bg-indigo-700'
+                }`}
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Simpan Putusan Pleno
+                {['MUTASI', 'KELUAR', 'MENINGGAL'].includes(formDecision)
+                  ? '🔨 Sahkan Status Administratif (Putihkan Siswa)'
+                  : 'Simpan Putusan Pleno'}
               </button>
             </div>
           </div>

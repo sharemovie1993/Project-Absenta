@@ -167,6 +167,7 @@ export default React.memo(function ModeMultiSesiView({
     fetchNotPresent,
     miniStats,
     refreshStats,
+    removePendingStudent,
   } = useGerbangAttendanceData({
     tenantId,
     selectedKelasId,
@@ -315,6 +316,7 @@ export default React.memo(function ModeMultiSesiView({
                   userRole={user?.role?.name}
                   socketConnected={isConnected}
                   refreshData={handleRefreshData}
+                  removePendingStudent={removePendingStudent}
                 />
               </section>
             )}

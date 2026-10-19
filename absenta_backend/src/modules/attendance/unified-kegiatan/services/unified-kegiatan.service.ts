@@ -557,11 +557,70 @@ export class UnifiedKegiatanService {
       );
 
       if (overlappingKbm) {
+        // Multi-JP Slot Resolution: Cari seluruh slot berurutan untuk kelas, guru, mapel ini
+        const relatedSlots = await prisma.jadwalKBM.findMany({
+          where: {
+            tenant_id: tenantId,
+            kelas_id: overlappingKbm.kelas_id,
+            guru_id: overlappingKbm.guru_id,
+            mapel_id: overlappingKbm.mapel_id,
+            hari: hariEnum,
+          },
+          orderBy: { slot_index: 'asc' },
+        });
+
+        // Bentuk grup slot yang contiguous / berurutan (gap antar-slot <= 35 menit)
+        const groups: (typeof relatedSlots)[] = [];
+        let currentGroup: typeof relatedSlots = [];
+
+        for (const slot of relatedSlots) {
+          if (currentGroup.length === 0) {
+            currentGroup.push(slot);
+          } else {
+            const prev = currentGroup[currentGroup.length - 1];
+            const isConsecutiveSlot = (slot.slot_index !== undefined && prev.slot_index !== undefined && slot.slot_index === prev.slot_index + 1);
+
+            const [prevH, prevM] = (prev.jam_selesai || '').split(':').map(Number);
+            const [currH, currM] = (slot.jam_mulai || '').split(':').map(Number);
+            const prevMins = (prevH || 0) * 60 + (prevM || 0);
+            const currMins = (currH || 0) * 60 + (currM || 0);
+            const gap = currMins - prevMins;
+
+            if (isConsecutiveSlot || (gap >= 0 && gap <= 35)) {
+              currentGroup.push(slot);
+            } else {
+              groups.push(currentGroup);
+              currentGroup = [slot];
+            }
+          }
+        }
+        if (currentGroup.length > 0) {
+          groups.push(currentGroup);
+        }
+
+        const activeGroup = groups.find(g => g.some(s => s.id === overlappingKbm.id)) || [overlappingKbm];
+        const firstSlot = activeGroup[0];
+        const lastSlot = activeGroup[activeGroup.length - 1];
+        const activeScheduleIds = activeGroup.map(s => s.id);
+
+        const tz = await getTenantTimezone(tenantId);
+        const tzOffset = getTenantOffsetString(tz);
+
+        const waktuMulaiSesi = new Date(`${todayStr}T${firstSlot.jam_mulai}:00.000${tzOffset}`);
+        const waktuSelesaiSesi = new Date(`${todayStr}T${lastSlot.jam_selesai}:00.000${tzOffset}`);
+
         // Cari sesi KBM reguler kelas & mapel tersebut hari ini
         let kbmSesi = await prisma.sesiAbsensi.findFirst({
           where: {
             tenant_id: tenantId,
-            jadwal_kbm_id: overlappingKbm.id,
+            OR: [
+              { jadwal_kbm_id: { in: activeScheduleIds } },
+              {
+                kelas_id: overlappingKbm.kelas_id,
+                mapel_id: overlappingKbm.mapel_id,
+                jenis_kegiatan: 'KBM',
+              },
+            ],
             tanggal: new Date(todayStr),
           },
         });
@@ -571,7 +630,7 @@ export class UnifiedKegiatanService {
           kbmSesi = await prisma.sesiAbsensi.create({
             data: {
               tenant_id: tenantId,
-              jadwal_kbm_id: overlappingKbm.id,
+              jadwal_kbm_id: firstSlot.id,
               kelas_id: overlappingKbm.kelas_id,
               guru_id: overlappingKbm.guru_id,
               mapel_id: overlappingKbm.mapel_id,
@@ -580,23 +639,30 @@ export class UnifiedKegiatanService {
               jenis_kegiatan: 'KBM',
               status: 'BERLANGSUNG',
               tanggal: new Date(todayStr),
-              waktu_mulai: now,
+              waktu_mulai: waktuMulaiSesi,
+              waktu_selesai: waktuSelesaiSesi,
               foto_kegiatan: parentSesi.foto_kegiatan || undefined,
               created_at: now,
               updated_at: now,
             },
           });
-        } else if (kbmSesi.status === 'MENDATANG' || kbmSesi.status === 'BELUM_DIMULAI') {
-          // Buka sesi KBM yang masih MENDATANG menjadi BERLANGSUNG
-          kbmSesi = await prisma.sesiAbsensi.update({
-            where: { id: kbmSesi.id },
-            data: {
-              status: 'BERLANGSUNG',
-              waktu_mulai: kbmSesi.waktu_mulai || now,
-              foto_kegiatan: kbmSesi.foto_kegiatan || parentSesi.foto_kegiatan || undefined,
-              updated_at: now,
-            },
-          });
+        } else {
+          // Buka sesi KBM yang masih MENDATANG / BELUM_DIMULAI dan pastikan waktu_selesai presisi
+          const updateData: any = { updated_at: now };
+          if (kbmSesi.status === 'MENDATANG' || kbmSesi.status === 'BELUM_DIMULAI') {
+            updateData.status = 'BERLANGSUNG';
+            if (!kbmSesi.waktu_mulai) updateData.waktu_mulai = waktuMulaiSesi;
+            if (parentSesi.foto_kegiatan && !kbmSesi.foto_kegiatan) updateData.foto_kegiatan = parentSesi.foto_kegiatan;
+          }
+          if (!kbmSesi.waktu_selesai) {
+            updateData.waktu_selesai = waktuSelesaiSesi;
+          }
+          if (Object.keys(updateData).length > 1) {
+            kbmSesi = await prisma.sesiAbsensi.update({
+              where: { id: kbmSesi.id },
+              data: updateData,
+            });
+          }
         }
 
         // Upsert AbsenGuru di sesi KBM reguler
@@ -629,61 +695,77 @@ export class UnifiedKegiatanService {
           },
         });
 
-        // 3. SINKRONISASI PEWARISAN GERBANG SISWA:
-        // Seluruh siswa di kelas KBM tersebut yang sudah tap di gerbang hari ini otomatis ter-record di sesi KBM
+        // 🛡️ PEWARISAN KETIDAKHADIRAN GERBANG (SAKIT, IZIN, ALPA, DISPEN):
+        // Siswa yang di gerbang tercatat SAKIT, IZIN, ALPA, atau DISPEN otomatis diwariskan ke sesi KBM.
+        // Siswa yang berstatus HADIR / TERLAMBAT di gerbang TIDAK diwariskan (wajib diverifikasi fisik di kelas).
         try {
-          const tz = await getTenantTimezone(tenantId);
-          const tzOffset = getTenantOffsetString(tz);
           const startOfDay = new Date(`${todayStr}T00:00:00.000${tzOffset}`);
           const endOfDay = new Date(`${todayStr}T23:59:59.999${tzOffset}`);
 
-          // Ambil seluruh siswa aktif di kelas KBM
-          const siswaKelas = await prisma.siswaAkademik.findMany({
+          const gateAbsences = await prisma.absenGerbangSiswa.findMany({
             where: {
-              kelas_id: overlappingKbm.kelas_id,
+              tenant_id: tenantId,
+              created_at: { gte: startOfDay, lte: endOfDay },
+              status: { in: ['SAKIT', 'IZIN', 'ALPA', 'ALFA', 'DISPEN'] },
+              OR: [
+                { kelas_id_snapshot: overlappingKbm.kelas_id },
+                { Siswa: { kelas_id: overlappingKbm.kelas_id } }
+              ],
             },
-            select: { id: true, siswa_id: true }
+            select: {
+              siswa_id: true,
+              status: true,
+              waktu_tap: true,
+              catatan: true,
+            },
           });
 
-          if (siswaKelas.length > 0) {
-            const siswaIds = siswaKelas.map(s => s.siswa_id);
-            const gateRecords = await prisma.absenGerbangSiswa.findMany({
+          for (const ga of gateAbsences) {
+            const sa = await prisma.siswaAkademik.findFirst({
               where: {
-                tenant_id: tenantId,
-                siswa_id: { in: siswaIds },
-                created_at: { gte: startOfDay, lte: endOfDay }
-              }
+                siswa_id: ga.siswa_id,
+                kelas_id: overlappingKbm.kelas_id,
+                status: 'AKTIF',
+              },
+              select: { id: true },
+            });
+            if (!sa) continue;
+
+            const normalizedStatus = String(ga.status || '').toUpperCase() === 'ALFA' ? 'ALPA' : ga.status;
+
+            const existing = await prisma.absenSiswa.findFirst({
+              where: { sesi_id: kbmSesi.id, siswa_akademik_id: sa.id },
             });
 
-            const gateMap = new Map(gateRecords.map(g => [g.siswa_id, g]));
-
-            for (const sa of siswaKelas) {
-              const gate = gateMap.get(sa.siswa_id);
-              if (gate) {
-                const existing = await prisma.absenSiswa.findFirst({
-                  where: { sesi_id: kbmSesi.id, siswa_akademik_id: sa.id }
-                });
-
-                if (!existing) {
-                  await prisma.absenSiswa.create({
-                    data: {
-                      tenant_id: tenantId,
-                      sesi_id: kbmSesi.id,
-                      siswa_akademik_id: sa.id,
-                      status: (gate.status === 'TERLAMBAT' ? 'HADIR' : (gate.status as any)) || 'HADIR',
-                      waktu_tap: gate.waktu_tap || now,
-                      asal_gerbang: true,
-                      kelas_id_snapshot: overlappingKbm.kelas_id,
-                      tahun_pelajaran_id_snapshot: overlappingKbm.tahun_pelajaran_id,
-                      catatan: `Hadir Gerbang (${gate.status}) - Terhubung via Kegiatan ${namaKegiatan}`,
-                    }
-                  });
-                }
-              }
+            if (existing) {
+              await prisma.absenSiswa.update({
+                where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
+                data: {
+                  status: normalizedStatus as any,
+                  waktu_tap: ga.waktu_tap || waktuMulaiSesi,
+                  asal_gerbang: true,
+                  catatan: ga.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
+                  updated_at: now,
+                },
+              });
+            } else {
+              await prisma.absenSiswa.create({
+                data: {
+                  tenant_id: tenantId,
+                  sesi_id: kbmSesi.id,
+                  siswa_akademik_id: sa.id,
+                  status: normalizedStatus as any,
+                  waktu_tap: ga.waktu_tap || waktuMulaiSesi,
+                  asal_gerbang: true,
+                  kelas_id_snapshot: overlappingKbm.kelas_id,
+                  tahun_pelajaran_id_snapshot: overlappingKbm.tahun_pelajaran_id,
+                  catatan: ga.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
+                },
+              });
             }
           }
         } catch (gateSyncErr: any) {
-          console.warn('[UnifiedKegiatanService] Gate sync to KBM warning:', gateSyncErr?.message);
+          console.warn('[UnifiedKegiatanService] Gate non-present sync warning:', gateSyncErr?.message);
         }
 
         syncedKbm = true;
@@ -782,11 +864,17 @@ export class UnifiedKegiatanService {
       ],
     };
 
+    const activeTp = params?.tahun_pelajaran_id
+      ? { id: params.tahun_pelajaran_id }
+      : await prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+        });
+
+    if (activeTp?.id) {
+      sesiWhere.tahun_pelajaran_id = activeTp.id;
+    }
     if (params?.jadwal_kegiatan_id) {
       sesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
-    }
-    if (params?.tahun_pelajaran_id) {
-      sesiWhere.tahun_pelajaran_id = params.tahun_pelajaran_id;
     }
     if (params?.tanggal_mulai || params?.tanggal_selesai) {
       sesiWhere.tanggal = {};
@@ -811,8 +899,12 @@ export class UnifiedKegiatanService {
       orderBy: { tanggal: 'asc' },
     });
 
-    const totalSiswaMaster = await prisma.siswa.count({
-      where: { tenant_id: tenantId },
+    const totalSiswaMaster = await prisma.siswaAkademik.count({
+      where: {
+        status: 'AKTIF',
+        ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+        siswa: { status: 'AKTIF', tenant_id: tenantId },
+      },
     });
 
     if (sesiList.length === 0) {
@@ -844,24 +936,82 @@ export class UnifiedKegiatanService {
       };
     }
 
+    const sesiIds = sesiList.map(s => s.id);
+
+    // Ambil rekap kehadiran nyata dari AbsenSiswa untuk seluruh sesi kegiatan ini (SSOT)
+    const hadirPerSesiList = await prisma.absenSiswa.groupBy({
+      by: ['sesi_id'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+        status: 'HADIR',
+      },
+      _count: { id: true },
+    });
+    const hadirPerSesiMap = new Map<string, number>();
+    for (const item of hadirPerSesiList) {
+      hadirPerSesiMap.set(item.sesi_id, item._count.id);
+    }
+
+    // Ambil rekap kehadiran nyata dari AbsenGuru untuk seluruh sesi kegiatan ini (SSOT)
+    const hadirGuruPerSesiList = await prisma.absenGuru.groupBy({
+      by: ['sesi_id'],
+      where: {
+        sesi_id: { in: sesiIds },
+        tenant_id: tenantId,
+        status: 'HADIR',
+      },
+      _count: { id: true },
+    });
+    const hadirGuruPerSesiMap = new Map<string, number>();
+    for (const item of hadirGuruPerSesiList) {
+      hadirGuruPerSesiMap.set(item.sesi_id, item._count.id);
+    }
+
+    // Kelompokkan sesi per tanggal unik (Satu hari kegiatan sekolah = Satu Pertemuan Terpadu)
+    const sesiByTanggal = new Map<string, typeof sesiList>();
+    for (const s of sesiList) {
+      const tglKey = s.tanggal.toISOString().split('T')[0];
+      const arr = sesiByTanggal.get(tglKey) || [];
+      arr.push(s);
+      sesiByTanggal.set(tglKey, arr);
+    }
+
+    const sortedTanggalKeys = Array.from(sesiByTanggal.keys()).sort();
     const trend: Array<any> = [];
     let prevPersenSiswa = 0;
     let prevPersenGuru = 0;
 
-    for (let i = 0; i < sesiList.length; i++) {
-      const s = sesiList[i];
-      const hadirSiswa = await prisma.absenSiswa.count({
-        where: { sesi_id: s.id, status: 'HADIR' },
-      });
-      const hadirGuru = await prisma.absenGuru.count({
-        where: { sesi_id: s.id, status: 'HADIR' },
-      });
+    for (let i = 0; i < sortedTanggalKeys.length; i++) {
+      const tglKey = sortedTanggalKeys[i];
+      const sesiHariIni = sesiByTanggal.get(tglKey) || [];
 
-      const totalSiswa = s._count.AbsenSiswa || 1;
-      const totalGuru = s._count.AbsenGuru || 1;
+      let totalSiswaHariIni = 0;
+      let hadirSiswaHariIni = 0;
+      let totalGuruHariIni = 0;
+      let hadirGuruHariIni = 0;
 
-      const persenSiswa = (hadirSiswa / totalSiswa) * 100;
-      const persenGuru = (hadirGuru / totalGuru) * 100;
+      for (const s of sesiHariIni) {
+        totalSiswaHariIni += s._count.AbsenSiswa > 0 ? s._count.AbsenSiswa : 0;
+        hadirSiswaHariIni += hadirPerSesiMap.get(s.id) || 0;
+        totalGuruHariIni += s._count.AbsenGuru > 0 ? s._count.AbsenGuru : 0;
+        hadirGuruHariIni += hadirGuruPerSesiMap.get(s.id) || 0;
+      }
+
+      // Jika kuota AbsenSiswa belum digenerate di sesi, gunakan total siswa aktif sekolah sebagai kuota target
+      if (totalSiswaHariIni === 0) {
+        totalSiswaHariIni = totalSiswaMaster;
+      }
+      if (totalGuruHariIni === 0) {
+        totalGuruHariIni = Math.max(sesiHariIni.length, 1);
+      }
+
+      const persenSiswa = totalSiswaHariIni > 0 && hadirSiswaHariIni > 0
+        ? (hadirSiswaHariIni / totalSiswaHariIni) * 100
+        : 0;
+      const persenGuru = totalGuruHariIni > 0 && hadirGuruHariIni > 0
+        ? (hadirGuruHariIni / totalGuruHariIni) * 100
+        : 0;
 
       const deltaSiswa = i > 0 ? persenSiswa - prevPersenSiswa : 0;
       const deltaGuru = i > 0 ? persenGuru - prevPersenGuru : 0;
@@ -870,13 +1020,13 @@ export class UnifiedKegiatanService {
       prevPersenGuru = persenGuru;
 
       trend.push({
-        tanggal: s.tanggal.toISOString().split('T')[0],
+        tanggal: tglKey,
         sesi_ke: i + 1,
-        total_siswa: totalSiswa,
-        hadir_siswa: hadirSiswa,
+        total_siswa: totalSiswaHariIni,
+        hadir_siswa: hadirSiswaHariIni,
         persen_hadir_siswa: Math.round(persenSiswa),
-        total_pendamping: totalGuru,
-        hadir_guru: hadirGuru,
+        total_pendamping: totalGuruHariIni,
+        hadir_guru: hadirGuruHariIni,
         persen_hadir_guru: Math.round(persenGuru),
         delta_siswa: Number(deltaSiswa.toFixed(1)),
         delta_guru: Number(deltaGuru.toFixed(1)),
@@ -892,15 +1042,40 @@ export class UnifiedKegiatanService {
 
     const byKelas: Array<any> = [];
     for (const k of allKelas) {
-      const countSiswa = await prisma.siswa.count({
-        where: { kelas_id: k.id, tenant_id: tenantId },
+      const countSiswa = await prisma.siswaAkademik.count({
+        where: {
+          kelas_id: k.id,
+          status: 'AKTIF',
+          ...(activeTp?.id ? { tahun_pelajaran_id: activeTp.id } : {}),
+          siswa: { status: 'AKTIF', tenant_id: tenantId },
+        },
       });
+
+      // Hitung kehadiran riil rombel ini pada sesi-sesi kegiatan pembiasaan ini
+      const sesiForClass = sesiList.filter(s => s.kelas_id === k.id);
+      let hadirKelas = 0;
+      let targetKelas = 0;
+
+      if (sesiForClass.length > 0) {
+        for (const s of sesiForClass) {
+          hadirKelas += hadirPerSesiMap.get(s.id) || 0;
+          targetKelas += s._count.AbsenSiswa > 0 ? s._count.AbsenSiswa : countSiswa;
+        }
+      } else {
+        targetKelas = countSiswa * Math.max(sesiList.length, 1);
+        hadirKelas = 0;
+      }
+
+      const persenKelas = targetKelas > 0 && hadirKelas > 0 
+        ? Math.round((hadirKelas / targetKelas) * 100) 
+        : 0;
+
       byKelas.push({
         kelas_id: k.id,
         kelas_nama: k.nama_kelas,
         total: countSiswa,
-        hadir: Math.round(countSiswa * ((latest?.persen_hadir_siswa || 85) / 100)),
-        persen: latest?.persen_hadir_siswa || 85,
+        hadir: hadirKelas,
+        persen: persenKelas,
       });
     }
 
@@ -955,7 +1130,7 @@ export class UnifiedKegiatanService {
       tingkat,
       total: val.total,
       hadir: val.hadir,
-      persen: val.total > 0 ? Math.round((val.hadir / val.total) * 100) : 0,
+      persen: val.total > 0 && val.hadir > 0 ? Math.round((val.hadir / val.total) * 100) : 0,
     }));
 
     return {
@@ -1004,16 +1179,25 @@ export class UnifiedKegiatanService {
   /**
    * 7. Laporan Per Kelas (Scope Rombel) — Data Nyata dari AbsenSiswa SSOT
    */
-  async getLaporanKelas(tenantId: string, params: { tanggal?: string; kelas_id?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {
+  async getLaporanKelas(tenantId: string, params: { tanggal?: string; kelas_id?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string; tahun_pelajaran_id?: string }) {
     const targetDateStr = params.tanggal || this.getTodayDateStr();
     const jenis = params.jenis_kegiatan || 'KETARUNAAN';
     const dateRange = this.getDateRange(targetDateStr);
+
+    const activeTp = params.tahun_pelajaran_id
+      ? { id: params.tahun_pelajaran_id }
+      : await prisma.tahunPelajaran.findFirst({
+          where: { tenant_id: tenantId, is_active: true },
+        });
 
     // Ambil semua sesi kegiatan pada tanggal ini
     let sesiWhere: any = {
       tenant_id: tenantId,
       tanggal: { gte: dateRange.gte, lte: dateRange.lte },
     };
+    if (activeTp?.id) {
+      sesiWhere.tahun_pelajaran_id = activeTp.id;
+    }
     if (params.jadwal_kegiatan_id) {
       sesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
     } else {
@@ -1025,11 +1209,11 @@ export class UnifiedKegiatanService {
 
     const sesiList = await prisma.sesiAbsensi.findMany({
       where: sesiWhere,
-      select: { id: true, kelas_id: true },
+      select: { id: true, kelas_id: true, status: true },
     });
-    const sesiByKelas = new Map<string, string>();
+    const sesiByKelas = new Map<string, { id: string; status: string }>();
     for (const s of sesiList) {
-      if (s.kelas_id) sesiByKelas.set(s.kelas_id, s.id);
+      if (s.kelas_id) sesiByKelas.set(s.kelas_id, { id: s.id, status: s.status });
     }
 
     // Ambil posisi struktural untuk kaprog dan walikelas
@@ -1051,6 +1235,14 @@ export class UnifiedKegiatanService {
       }
     });
 
+    const siswaAkademikWhere: any = {
+      status: 'AKTIF',
+      siswa: { status: 'AKTIF' },
+    };
+    if (activeTp?.id) {
+      siswaAkademikWhere.tahun_pelajaran_id = activeTp.id;
+    }
+
     const kelasWhere: any = { tenant_id: tenantId, is_active: true };
     if (params.kelas_id) kelasWhere.id = params.kelas_id;
 
@@ -1059,9 +1251,12 @@ export class UnifiedKegiatanService {
       orderBy: { nama_kelas: 'asc' },
       include: {
         SiswaAkademik: {
-          where: { status: 'AKTIF' },
+          where: siswaAkademikWhere,
           include: {
             siswa: { select: { id: true, nama_siswa: true, nis: true } },
+          },
+          orderBy: {
+            siswa: { nama_siswa: 'asc' },
           },
         },
       },
@@ -1071,7 +1266,9 @@ export class UnifiedKegiatanService {
 
     for (let idx = 0; idx < kelasList.length; idx++) {
       const k = kelasList[idx];
-      const sesiId = sesiByKelas.get(k.id);
+      const sesiData = sesiByKelas.get(k.id);
+      const sesiId = sesiData?.id;
+      const isSesiSelesai = sesiData?.status === 'SELESAI';
 
       // Ambil AbsenSiswa nyata jika ada sesi
       const absenSiswaMap = new Map<string, any>();
@@ -1090,6 +1287,26 @@ export class UnifiedKegiatanService {
         }
       }
 
+      // Ambil data gerbang non-hadir (SAKIT, IZIN, ALPA, DISPEN) hari ini untuk kelas ini
+      const gateAbsenceList = await prisma.absenGerbangSiswa.findMany({
+        where: {
+          tenant_id: tenantId,
+          created_at: { gte: dateRange.gte, lte: dateRange.lte },
+          status: { in: ['SAKIT', 'IZIN', 'ALPA', 'ALFA', 'DISPEN'] },
+          OR: [
+            { kelas_id_snapshot: k.id },
+            { Siswa: { kelas_id: k.id } },
+          ],
+        },
+        select: {
+          siswa_id: true,
+          status: true,
+          waktu_tap: true,
+          catatan: true,
+        },
+      });
+      const gateAbsenceMap = new Map(gateAbsenceList.map(g => [g.siswa_id, g]));
+
       const rawSiswaAkademikList = (k.SiswaAkademik || []) as any[];
       const siswaAkademikList = [...rawSiswaAkademikList].sort((a, b) => {
         const nameA = a.siswa?.nama_siswa || '';
@@ -1097,23 +1314,43 @@ export class UnifiedKegiatanService {
         return nameA.localeCompare(nameB);
       });
 
-      let hadir = 0, sakit = 0, izin = 0, alpa = 0;
+      let hadir = 0, sakit = 0, izin = 0, alpa = 0, belum = 0;
 
       const siswaRows = siswaAkademikList.map((sa: any, sIdx: number) => {
         const absen = absenSiswaMap.get(sa.id);
-        const status = absen?.status || 'ALPA';
+        const sId = sa.siswa_id || sa.siswa?.id;
+        const gateAbsence = sId ? gateAbsenceMap.get(sId) : null;
+        let status = 'BELUM_TAP';
+        let catatan = absen?.catatan || null;
+        let waktuTap = absen?.waktu_tap ? absen.waktu_tap.toISOString() : null;
+
+        if (absen?.status) {
+          status = absen.status;
+        } else if (gateAbsence) {
+          // 🛡️ Mewarisi status ketidakhadiran resmi dari gerbang
+          const norm = String(gateAbsence.status || '').toUpperCase() === 'ALFA' ? 'ALPA' : gateAbsence.status;
+          status = norm;
+          waktuTap = gateAbsence.waktu_tap ? gateAbsence.waktu_tap.toISOString() : null;
+          catatan = gateAbsence.catatan || `Tercatat ${norm} di Gerbang`;
+        } else if (isSesiSelesai) {
+          status = 'ALPA';
+        } else {
+          status = 'BELUM_TAP';
+        }
+
         if (status === 'HADIR') hadir++;
         else if (status === 'SAKIT') sakit++;
         else if (status === 'IZIN') izin++;
-        else alpa++;
+        else if (status === 'ALPA') alpa++;
+        else belum++;
 
         return {
           no: sIdx + 1,
           nama_siswa: sa.siswa?.nama_siswa || sa.Siswa?.nama_siswa || '-',
           nis: sa.siswa?.nis || sa.Siswa?.nis || '-',
           status,
-          waktu_tap: absen?.waktu_tap ? absen.waktu_tap.toISOString() : null,
-          catatan: absen?.catatan || null,
+          waktu_tap: waktuTap,
+          catatan,
         };
       });
 
@@ -1135,6 +1372,7 @@ export class UnifiedKegiatanService {
         no: idx + 1,
         kelas_id: k.id,
         kelas_nama: k.nama_kelas,
+        status_sesi: sesiData?.status || 'TIDAK_ADA_SESI',
         wali_kelas: wali_kelas_info,
         siswa: siswaRows,
         rekap: {
@@ -1142,6 +1380,7 @@ export class UnifiedKegiatanService {
           sakit,
           izin,
           alpa,
+          belum,
           total: siswaAkademikList.length,
         },
       });

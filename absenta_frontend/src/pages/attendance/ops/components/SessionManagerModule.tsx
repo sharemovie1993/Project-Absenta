@@ -25,6 +25,7 @@ import { type Student } from '../../../../components/common/SmartStudentPicker';
 import ConfirmDialog from '../../../../components/ui/ConfirmDialog';
 import { AttendanceErrorBoundary } from '../../../../components/attendance/AttendanceErrorBoundary';
 import PremiumFeatureGate from '../../../../components/auth/PremiumFeatureGate';
+import { useAudioFeedback } from '../../../../hooks/useAudioFeedback';
 // Lazy Loaded Modals & Lists (Pilar 13)
 const SessionTimelineList = lazy(() => import('./SessionTimelineList'));
 const SesiCreateModal = lazy(() => import('../../../../components/attendance/sesi/SesiCreateModal').then(m => ({ default: m.SesiCreateModal })));
@@ -53,6 +54,7 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { isAdmin, isStudent, isKepalaSekolah, isKurikulum, isKesiswaan, can } = useCapabilities();
+  const { playBeep } = useAudioFeedback();
   const isReadOnlyExecutive = isKepalaSekolah || isKurikulum || isKesiswaan;
   const invalidateAllKbmQueries = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
@@ -236,26 +238,50 @@ export const SessionManagerModule: React.FC<SessionManagerModuleProps> = React.m
       setScanLoading(false);
     }
   }, [photoGuruTarget, invalidateAllKbmQueries]);
-  const submitScan = useCallback(async (token: string, mode: 'MASUK' | 'PULANG' | 'TERLAMBAT' = 'MASUK', directStudentData?: Student | null) => {
-    if (!inputModalSesiId || !token) return;
+  const submitScan = useCallback(async (
+    token?: string, 
+    isGuruOrMode?: boolean | 'HADIR' | 'MASUK' | 'PULANG' | 'TERLAMBAT', 
+    directStudentData?: Student | null
+  ) => {
+    const rawToken = token || scannerInput;
+    if (!inputModalSesiId || !rawToken) return;
     setScanLoading(true);
     try {
-      const res = await tapSiswaKeSesi(inputModalSesiId, {
-        token,
-        status: mode,
-        tipe: 'QRIS',
-        siswa_id: directStudentData?.id
-      });
-      toast.success(res.message || 'Presensi siswa berhasil dicatat');
+      const isGuru = typeof isGuruOrMode === 'boolean' ? isGuruOrMode : false;
+      let finalStatus: 'HADIR' | 'TERLAMBAT' = 'HADIR';
+      if (typeof isGuruOrMode === 'string' && (isGuruOrMode === 'HADIR' || isGuruOrMode === 'TERLAMBAT')) {
+        finalStatus = isGuruOrMode;
+      }
+
+      if (isGuru) {
+        const targetGuruId = directStudentData?.id || rawToken;
+        await updateAbsenGuru(inputModalSesiId, targetGuruId, {
+          status: 'HADIR',
+          waktu_tap: new Date().toISOString()
+        });
+        toast.success('Kehadiran guru berhasil dicatat', { id: 'sesi-tap-toast', duration: 1500 });
+      } else {
+        const targetSiswaId = directStudentData?.id || rawToken;
+        const res = await tapSiswaKeSesi(inputModalSesiId, {
+          siswa_id: targetSiswaId,
+          status: finalStatus,
+          rfid: rawToken,
+        });
+        toast.success(res.message || 'Presensi siswa berhasil dicatat', { id: 'sesi-tap-toast', duration: 1500 });
+      }
+
+      playBeep('success').catch(() => {});
       setScannerInput('');
       invalidateAllKbmQueries();
     } catch (e: unknown) {
+      playBeep('error').catch(() => {});
       const err = e as { response?: { data?: { message?: string } }; message?: string };
-      toast.error(err.response?.data?.message || err.message || 'Gagal scan kehadiran');
+      const msg = err.response?.data?.message || err.message || 'Gagal scan kehadiran';
+      toast.error(msg, { id: 'sesi-tap-toast', duration: 2500 });
     } finally {
       setScanLoading(false);
     }
-  }, [inputModalSesiId, invalidateAllKbmQueries]);
+  }, [inputModalSesiId, scannerInput, invalidateAllKbmQueries, playBeep]);
   const handleGenerateFromTemplate = useCallback(async () => {
     try {
       setGeneratingTemplate(true);

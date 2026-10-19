@@ -17,11 +17,26 @@ function formatWaktu(w?: string | null) {
 }
 
 function statusBadge(status: string) {
-  if (status === 'HADIR') return <Badge variant="success" className="text-[10px]">Hadir</Badge>;
-  if (status === 'IZIN') return <Badge variant="warning" className="text-[10px]">Izin</Badge>;
-  if (status === 'SAKIT') return <Badge variant="warning" className="text-[10px]">Sakit</Badge>;
-  if (status === 'ALPA') return <Badge variant="error" className="text-[10px]">Alpa</Badge>;
-  return <Badge variant="outline" className="text-[10px]">Belum</Badge>;
+  const s = String(status || '').trim().toUpperCase();
+  if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
+    return <Badge variant="success" className="text-[10px]">Hadir</Badge>;
+  }
+  if (s === 'TERLAMBAT') {
+    return <Badge variant="warning" className="text-[10px]">Terlambat</Badge>;
+  }
+  if (s === 'IZIN') {
+    return <Badge variant="info" className="text-[10px]">Izin</Badge>;
+  }
+  if (s === 'SAKIT') {
+    return <Badge variant="warning" className="text-[10px]">Sakit</Badge>;
+  }
+  if (s === 'DISPEN' || s === 'PENUGASAN') {
+    return <Badge variant="secondary" className="text-[10px]">Dispen</Badge>;
+  }
+  if (s === 'ALPA') {
+    return <Badge variant="error" className="text-[10px]">Alpa</Badge>;
+  }
+  return <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">Belum Tap</Badge>;
 }
 
 export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps> = ({
@@ -126,20 +141,23 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
                   <div>
                     {/* Rekap singkat guru pendamping/wali kelas/kaprog */}
                     {(kelas.kaprog || kelas.wali_kelas || (kelas.guru_mapel_beririsan && kelas.guru_mapel_beririsan.length > 0)) && (
-                      <div className="px-4 py-2.5 bg-amber-50/50 dark:bg-amber-900/10 border-b border-slate-100 dark:border-slate-800 flex flex-wrap gap-3 text-xs">
+                      <div className="px-4 py-2.5 bg-amber-50/50 dark:bg-amber-900/10 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3 text-xs">
                         {kelas.kaprog && (
-                          <span className="text-slate-600 dark:text-slate-300">
-                            <span className="font-bold">Kaprog:</span> {kelas.kaprog.nama_guru} — {kelas.kaprog.status}
+                          <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                            <span className="font-bold">Kaprog:</span> {kelas.kaprog.nama_guru}
+                            {statusBadge(kelas.kaprog.status)}
                           </span>
                         )}
                         {kelas.wali_kelas && (
-                          <span className="text-slate-600 dark:text-slate-300">
-                            <span className="font-bold">Wali Kelas:</span> {kelas.wali_kelas.nama_guru} — {kelas.wali_kelas.status}
+                          <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                            <span className="font-bold">Wali Kelas:</span> {kelas.wali_kelas.nama_guru}
+                            {statusBadge(kelas.wali_kelas.status)}
                           </span>
                         )}
                         {kelas.guru_mapel_beririsan?.map((g, i) => (
-                          <span key={i} className="text-slate-600 dark:text-slate-300">
-                            <span className="font-bold">{g.mapel}:</span> {g.nama_guru} — {g.status}
+                          <span key={i} className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
+                            <span className="font-bold">{g.mapel}:</span> {g.nama_guru}
+                            {statusBadge(g.status)}
                           </span>
                         ))}
                       </div>
@@ -174,12 +192,13 @@ export const KetarunaanLaporanKelasTab: React.FC<KetarunaanLaporanKelasTabProps>
                       </tbody>
                     </table>
                     {/* Rekap */}
-                    <div className="flex gap-4 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-xs font-bold">
+                    <div className="flex flex-wrap gap-4 px-4 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800 text-xs font-bold">
                       <span className="text-emerald-600">Hadir: {kelas.rekap.hadir}</span>
                       <span className="text-amber-600">Sakit: {kelas.rekap.sakit}</span>
                       <span className="text-blue-600">Izin: {kelas.rekap.izin}</span>
-                      <span className="text-rose-600">Alpa: {kelas.rekap.alpa}</span>
-                      <span className="text-slate-500">Total: {kelas.rekap.total}</span>
+                      {(kelas.rekap.alpa ?? 0) > 0 && <span className="text-rose-600">Alpa: {kelas.rekap.alpa}</span>}
+                      {((kelas.rekap as any).belum ?? 0) > 0 && <span className="text-slate-400">Belum Presensi: {(kelas.rekap as any).belum}</span>}
+                      <span className="text-slate-600 dark:text-slate-300 ml-auto">Total: {kelas.rekap.total}</span>
                     </div>
                   </div>
                 )}

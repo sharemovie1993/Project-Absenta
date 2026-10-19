@@ -40,6 +40,9 @@ export interface DecideStudentDTO {
   target_kelas_id?: string;
   alasan_keputusan?: string;
   catatan_pendampingan?: string;
+  mutasi_sekolah_tujuan?: string;
+  mutasi_no_surat?: string;
+  mutasi_tanggal?: string;
   is_disputed?: boolean;
   voted_by_consensus?: boolean;
   voting_yes?: number;

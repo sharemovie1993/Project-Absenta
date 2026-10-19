@@ -52,7 +52,7 @@ export async function propagateGateAbsenceToSessions(params: {
           gte: new Date(dayStart.getTime() - 12 * 3600 * 1000),
           lte: new Date(dayEnd.getTime() + 12 * 3600 * 1000),
         },
-        status: 'BERLANGSUNG',
+        status: { in: ['BERLANGSUNG', 'MENDATANG', 'BELUM_DIMULAI'] },
       } as any,
       select: { id: true, waktu_mulai: true, tahun_pelajaran_id: true, semester_id: true } as any,
     });

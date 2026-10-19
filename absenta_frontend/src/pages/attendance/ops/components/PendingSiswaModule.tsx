@@ -56,6 +56,7 @@ interface PendingSiswaModuleProps {
   userRole?: string;
   socketConnected: boolean;
   refreshData: () => Promise<void>;
+  removePendingStudent?: (siswaId: string) => void;
 }
 
 export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(({
@@ -69,9 +70,16 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   userRole,
   socketConnected,
   refreshData,
+  removePendingStudent,
 }) => {
   const [confirmEnabled, setConfirmEnabled] = useState<boolean>(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [removedIds, setRemovedIds] = useState<Set<string>>(new Set());
+
+  // Reset locally tracked removed IDs whenever fresh notPresent list arrives
+  useEffect(() => {
+    setRemovedIds(new Set());
+  }, [notPresent]);
 
   const inferredKelasId = useMemo(() => {
     if (selectedKelasId) return String(selectedKelasId);
@@ -80,12 +88,14 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   }, [selectedKelasId, kelasOptions]);
 
   const filteredNotPresent = useMemo(() => {
-    if (!inferredKelasId) return notPresent || [];
     return (notPresent || []).filter((x: PendingStudent) => {
+      const sId = String(x?.id);
+      if (removedIds.has(sId)) return false;
+      if (!inferredKelasId) return true;
       const k = x?.kelas_id ?? x?.kelasId ?? x?.Kelas?.id ?? '';
       return String(k) === String(inferredKelasId);
     });
-  }, [notPresent, inferredKelasId]);
+  }, [notPresent, inferredKelasId, removedIds]);
 
   const chartMasuk = isPetugasSiswa ? (selectedKelasId ? (miniStats.masuk || 0) : 0) : (miniStats.masuk || 0);
 
@@ -99,30 +109,63 @@ export const PendingSiswaModule: React.FC<PendingSiswaModuleProps> = React.memo(
   const handleMarkStatus = useCallback(async (siswaId: string, status: string, catatan?: string) => {
     const parsed = markStatusSchema.safeParse({ siswaId, status, catatan });
     if (!parsed.success) {
-      toast.error('Parameter status absensi tidak valid');
+      toast.error('Parameter status absensi tidak valid', { id: 'presensi-gate-action' });
       return;
     }
+
+    const targetId = parsed.data.siswaId;
+
+    // 1. Optimistic removal: langsung lenyap dari pandangan UI (0ms latency)
+    setRemovedIds(prev => new Set(prev).add(targetId));
+    if (removePendingStudent) {
+      removePendingStudent(targetId);
+    }
+
+    // 2. Single-instance toast notification: durasi singkat & tidak menumpuk menutupi layar
+    toast.success(`Status ${parsed.data.status} direkam`, {
+      id: 'presensi-gate-action',
+      duration: 1500,
+    });
+
+    logAttendanceMetric('GERBANG_MANUAL_STATUS', { 
+      role: userRole, 
+      kelasId: inferredKelasId || null, 
+      siswaId: targetId, 
+      status: parsed.data.status 
+    });
+
+    // 3. Asynchronous network sync di background tanpa memblokir klik berikutnya
     try {
-      await markGateAbsence({ siswa_id: parsed.data.siswaId, status: parsed.data.status, catatan: parsed.data.catatan });
-      toast.success(`Status ${parsed.data.status} direkam`);
-      logAttendanceMetric('GERBANG_MANUAL_STATUS', { role: userRole, kelasId: inferredKelasId || null, siswaId: parsed.data.siswaId, status: parsed.data.status });
-      await refreshData();
+      await markGateAbsence({ 
+        siswa_id: targetId, 
+        status: parsed.data.status, 
+        catatan: parsed.data.catatan 
+      });
+      // Sukses: biarkan sinkron di background tanpa refetch N x 3 request per klik!
     } catch (e: unknown) {
+      // Rollback jika request backend gagal
+      setRemovedIds(prev => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+      // Sinkronkan ulang data dari server
+      await refreshData();
+
       const errObj = e as { response?: { status?: number; data?: { message?: string } }; message?: string };
       const statusCode = errObj?.response?.status;
       const msg = errObj?.response?.data?.message || errObj?.message || 'Gagal merekam status';
       if (statusCode === 409) {
-        toast('Siswa ini sudah terekam sebelumnya', { icon: 'ℹ️' });
-        await refreshData();
+        toast('Siswa ini sudah terekam sebelumnya', { id: 'presensi-gate-action', icon: 'ℹ️', duration: 1800 });
       } else if (statusCode === 404) {
-        toast('Tidak ada sesi gerbang aktif hari ini', { icon: 'ℹ️' });
+        toast.error('Tidak ada sesi gerbang aktif hari ini', { id: 'presensi-gate-action' });
       } else if (statusCode === 403) {
-        toast('Akses ditolak untuk kelas ini', { icon: 'ℹ️' });
+        toast.error('Akses ditolak untuk kelas ini', { id: 'presensi-gate-action' });
       } else {
-        toast.error(String(msg));
+        toast.error(String(msg), { id: 'presensi-gate-action' });
       }
     }
-  }, [inferredKelasId, userRole, refreshData]);
+  }, [inferredKelasId, userRole, removePendingStudent, refreshData]);
 
 
   return (

@@ -1,5 +1,4 @@
 import { sesiDb as prisma } from '../repositories/sesi.db';
-import { JenisTap } from '@/constants/enums';
 
 export async function propagateGateAbsencesForNewSessionCommand(input: {
   tenantId: string;
@@ -12,18 +11,10 @@ export async function propagateGateAbsencesForNewSessionCommand(input: {
   const { tenantId, startDay, endDay, kelasId, session, waktuMulaiFallback } = input;
 
   try {
-    const gateSession = await prisma.sesiGerbang.findFirst({
-      where: { tenant_id: tenantId, tanggal: { gte: startDay, lte: endDay } },
-      select: { id: true },
-    });
-
-    if (!gateSession) return;
-
     const gateAbsences = await prisma.absenGerbangSiswa.findMany({
       where: {
         tenant_id: tenantId,
-        sesi_gerbang_id: gateSession.id,
-        arah: { in: [JenisTap.GERBANG_DATANG, 'MASUK'] },
+        created_at: { gte: startDay, lte: endDay },
         status: { in: ['SAKIT', 'IZIN', 'ALPA', 'ALFA', 'DISPEN'] },
         OR: [{ kelas_id_snapshot: kelasId }, { Siswa: { kelas_id: kelasId } }],
       },
@@ -31,6 +22,7 @@ export async function propagateGateAbsencesForNewSessionCommand(input: {
         siswa_id: true,
         status: true,
         waktu_tap: true,
+        catatan: true,
       },
     });
 
@@ -38,8 +30,8 @@ export async function propagateGateAbsencesForNewSessionCommand(input: {
       const sa = await prisma.siswaAkademik.findFirst({
         where: {
           siswa_id: a.siswa_id,
-          tahun_pelajaran_id: session.tahun_pelajaran_id,
-          semester_id: session.semester_id,
+          kelas_id: kelasId,
+          status: 'AKTIF',
         },
         select: { id: true },
       });
@@ -56,10 +48,11 @@ export async function propagateGateAbsencesForNewSessionCommand(input: {
         await prisma.absenSiswa.update({
           where: { id_created_at: { id: existing.id, created_at: (existing as any).created_at } },
           data: {
-            status: normalizedStatus,
+            status: normalizedStatus as any,
             siswa_id: a.siswa_id,
             waktu_tap: a.waktu_tap || waktuMulaiFallback,
             asal_gerbang: true,
+            catatan: a.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
             updated_at: new Date(),
           },
         });
@@ -75,6 +68,7 @@ export async function propagateGateAbsencesForNewSessionCommand(input: {
             asal_gerbang: true,
             kelas_id_snapshot: kelasId,
             tahun_pelajaran_id_snapshot: session.tahun_pelajaran_id || null,
+            catatan: a.catatan || `Tercatat ${normalizedStatus} dari Presensi Gerbang`,
           },
         });
       }

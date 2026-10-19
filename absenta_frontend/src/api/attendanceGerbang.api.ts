@@ -521,7 +521,7 @@ export async function updateAbsenGuru(
 
 export async function tapSiswaKeSesi(
   sesi_id: string,
-  payload: { siswa_id: string; status?: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN'; catatan?: string }
+  payload: { siswa_id: string; status?: 'HADIR' | 'TERLAMBAT' | 'SAKIT' | 'IZIN' | 'ALPA' | 'DISPEN'; catatan?: string; rfid?: string }
 ): Promise<{ success: boolean; message: string; data: any }> {
   const res = await requestWithFallback<{ success: boolean; message: string; data: any }>('post', `/attendance/sesi-absensi/${sesi_id}/tap-siswa`, { data: payload });
 

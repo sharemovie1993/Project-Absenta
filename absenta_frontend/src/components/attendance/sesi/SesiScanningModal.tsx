@@ -27,7 +27,7 @@ interface SesiScanningModalProps {
   scannerInput: string;
   setScannerInput: (val: string) => void;
   scanLoading: boolean;
-  onSubmitScan: (overrideId?: string, isGuruFromUniversal?: boolean) => void;
+  onSubmitScan: (overrideId?: string, isGuruFromUniversal?: boolean, directStudentData?: Student | null) => void;
   inputModalSesiId: string;
   sessionAttendanceRecords: SesiAttendanceRecord[];
   currentSession?: SesiDetail;
@@ -131,7 +131,36 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
       isGuru,
     });
 
-    onSubmitScan(item.id, isGuru);
+    onSubmitScan(item.id, isGuru, item);
+  };
+
+  const handleRawEnter = (rawToken: string) => {
+    const trimmed = (rawToken || '').trim();
+    if (!trimmed) return;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' WIB';
+
+    const matched = records.find(r => 
+      r.nis === trimmed || 
+      (r.Siswa && r.Siswa.nis === trimmed) || 
+      r.siswa_id === trimmed || 
+      r.id === trimmed
+    );
+
+    const sNama = matched?.Siswa?.nama_siswa || (matched as any)?.nama_siswa || `Kartu: ${trimmed}`;
+    const sNis = matched?.Siswa?.nis || (matched as any)?.nis || trimmed;
+
+    setLastTapped({
+      id: matched?.id || trimmed,
+      nama: sNama,
+      nis: sNis,
+      kelas: kelasInfo,
+      status: 'HADIR',
+      waktuTap: timeStr,
+      isGuru: false,
+    });
+
+    onSubmitScan(trimmed, false, matched ? { id: matched.siswa_id || matched.id, nama_siswa: sNama, nis: sNis } : null);
   };
 
   const modalTitle = (
@@ -176,6 +205,7 @@ const SesiScanningModalComponent: React.FC<SesiScanningModalProps> = ({
             ref={scannerInputRef}
             value={scannerInput}
             onChange={setScannerInput}
+            onEnter={handleRawEnter}
             placeholder="Tempelkan kartu RFID, scan barcode, atau ketik NIS / Nama..."
             disabled={scanLoading}
             mode="universal"

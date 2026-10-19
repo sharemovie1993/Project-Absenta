@@ -5502,6 +5502,8 @@ enum PlenoDecisionType {
   LULUS
   TIDAK_LULUS
   MUTASI
+  KELUAR
+  MENINGGAL
 }
 
 enum PlenoTriageZone {
@@ -5577,6 +5579,7 @@ model AcademicPlenoRombel {
   green_count        Int                  @default(0)
   yellow_count       Int                  @default(0)
   red_count          Int                  @default(0)
+  mutasi_count       Int                  @default(0)
   reviewed_at        DateTime?
   notes              String?              @db.Text
 
@@ -5603,6 +5606,10 @@ model AcademicPlenoDecision {
   
   alasan_keputusan     String?              @db.Text
   catatan_pendampingan String?              @db.Text
+  
+  mutasi_sekolah_tujuan String?
+  mutasi_no_surat       String?
+  mutasi_tanggal        DateTime?
   
   is_disputed          Boolean              @default(false)
   voted_by_consensus   Boolean              @default(true)

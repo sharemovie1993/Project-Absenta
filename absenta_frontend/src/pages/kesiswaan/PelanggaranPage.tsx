@@ -28,7 +28,8 @@ import {
   TrendingDown,
   Search,
   X,
-  Plus
+  Plus,
+  User
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Loader } from '../../components/ui/Loader';

@@ -186,6 +186,7 @@ export const SiswaDashboard: React.FC = () => {
     miniStats: miniStatsData = { masuk: 0, keluar: 0 },
     fetchNotPresent: refetchNotPresent,
     refreshStats: refetchMiniStats,
+    removePendingStudent,
   } = useGerbangAttendanceData({
     tenantId,
     selectedKelasId: siswaProfile?.kelas_id || '',
@@ -2580,6 +2581,7 @@ export const SiswaDashboard: React.FC = () => {
                     userRole="PETUGAS_KELAS"
                     socketConnected={true}
                     refreshData={async () => { await refetchMiniStats(); await refetchNotPresent(); }}
+                    removePendingStudent={removePendingStudent}
                   />
                 </Suspense>
               </div>
@@ -2590,7 +2592,11 @@ export const SiswaDashboard: React.FC = () => {
                   Presensi manual akan langsung tersinkron secara real-time.
                 </span>
                 <button
-                  onClick={() => setShowBelumAbsenModal(false)}
+                  onClick={() => {
+                    setShowBelumAbsenModal(false);
+                    refetchMiniStats();
+                    refetchNotPresent();
+                  }}
                   className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors shrink-0"
                 >
                   Selesai &amp; Tutup

@@ -64,7 +64,8 @@ export default React.memo(function ModeSimpleView({
     notPresentLoading, 
     fetchNotPresent, 
     miniStats, 
-    refreshStats 
+    refreshStats,
+    removePendingStudent,
   } = useGerbangAttendanceData({ tenantId, selectedKelasId, tanggal: today });
 
   // Additional Socket Events & Reconnection Room Join
@@ -170,6 +171,7 @@ export default React.memo(function ModeSimpleView({
               await refreshStats();
               await fetchNotPresent();
             }}
+            removePendingStudent={removePendingStudent}
           />
         </div>
       )}

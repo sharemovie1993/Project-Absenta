@@ -22,11 +22,26 @@ function formatTanggal(d?: string) {
 }
 
 function statusBadge(status: string) {
-  if (status === 'HADIR') return <Badge variant="success" className="text-[10px]">Hadir</Badge>;
-  if (status === 'IZIN') return <Badge variant="warning" className="text-[10px]">Izin</Badge>;
-  if (status === 'SAKIT') return <Badge variant="warning" className="text-[10px]">Sakit</Badge>;
-  if (status === 'ALPA') return <Badge variant="error" className="text-[10px]">Alpa</Badge>;
-  return <Badge variant="outline" className="text-[10px]">Belum</Badge>;
+  const s = String(status || '').trim().toUpperCase();
+  if (s === 'HADIR' || s === 'TEPAT_WAKTU') {
+    return <Badge variant="success" className="text-[10px]">Hadir</Badge>;
+  }
+  if (s === 'TERLAMBAT') {
+    return <Badge variant="warning" className="text-[10px]">Terlambat</Badge>;
+  }
+  if (s === 'IZIN') {
+    return <Badge variant="info" className="text-[10px]">Izin</Badge>;
+  }
+  if (s === 'SAKIT') {
+    return <Badge variant="warning" className="text-[10px]">Sakit</Badge>;
+  }
+  if (s === 'DISPEN' || s === 'PENUGASAN') {
+    return <Badge variant="secondary" className="text-[10px]">Dispen</Badge>;
+  }
+  if (s === 'ALPA') {
+    return <Badge variant="error" className="text-[10px]">Alpa</Badge>;
+  }
+  return <Badge variant="outline" className="text-[10px] text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">Belum Tap</Badge>;
 }
 
 export const KetarunaanLaporanTimTab: React.FC<KetarunaanLaporanTimTabProps> = ({
