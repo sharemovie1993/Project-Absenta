@@ -75,7 +75,33 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRABModalOpen, setIsRABModalOpen] = useState(false);
 
-  // Auto-detect status offline server lisensi dari subQuery jika tidak disediakan caller
+  // 1. Plans Query
+  const plansQuery = useQuery({
+    queryKey: ['public-plans'],
+    queryFn: async () => {
+      const res = await getPublicPlans();
+      const plans: any[] = Array.isArray((res.data as any)?.plans)
+        ? (res.data as any).plans
+        : Array.isArray(res.data) ? res.data : [];
+      return {
+        plans,
+        isLicenseServerOffline: Boolean((res as any)?.is_license_server_offline)
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // 2. Modules Query
+  const modulesQuery = useQuery({
+    queryKey: ['public-modules'],
+    queryFn: async () => {
+      const res = await getPublicModules();
+      return Array.isArray(res.data) ? res.data : [];
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+
+  // 3. Auto-detect status offline server lisensi dari subQuery jika tidak disediakan caller
   const subQuery = useQuery({
     queryKey: ['my-subscription-details'],
     queryFn: async () => {
@@ -179,32 +205,6 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
       navigate(`/billing/checkout?plan_id=${encodeURIComponent(payload.id)}&cycle=${cycle}`);
     }
   };
-
-  // 1. Plans Query
-  const plansQuery = useQuery({
-    queryKey: ['public-plans'],
-    queryFn: async () => {
-      const res = await getPublicPlans();
-      const plans: any[] = Array.isArray((res.data as any)?.plans)
-        ? (res.data as any).plans
-        : Array.isArray(res.data) ? res.data : [];
-      return {
-        plans,
-        isLicenseServerOffline: Boolean((res as any)?.is_license_server_offline)
-      };
-    },
-    staleTime: 1000 * 60 * 5,
-  });
-
-  // 2. Modules Query
-  const modulesQuery = useQuery({
-    queryKey: ['public-modules'],
-    queryFn: async () => {
-      const res = await getPublicModules();
-      return Array.isArray(res.data) ? res.data : [];
-    },
-    staleTime: 1000 * 60 * 60,
-  });
 
   const catalogPlans = plansQuery.data?.plans || [];
 
