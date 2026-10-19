@@ -102,7 +102,11 @@ export interface UnifiedStatsResponse {
 export interface UnifiedLaporanTimRow {
   no: number;
   jabatan: string;
+  jabatan_kode?: string;
   nama_guru: string;
+  kelas_nama?: string | null;
+  mapel_nama?: string | null;
+  jam_kbm?: string | null;
   status: string;
   waktu_tap?: string | null;
   keterangan: string;

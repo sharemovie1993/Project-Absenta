@@ -108,7 +108,7 @@ export const KetarunaanLaporanTimTab: React.FC<KetarunaanLaporanTimTabProps> = (
                     <td className="px-4 py-3 text-slate-800 dark:text-slate-100 font-bold text-xs">
                       {row.nama_guru}
                       {row.kelas_nama && (
-                        <span className="block text-[10px] text-slate-400 font-normal">Binaan: {row.kelas_nama}</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">Binaan/KBM: {row.kelas_nama}{row.mapel_nama ? ` — ${row.mapel_nama}` : ''}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{row.jabatan}</td>

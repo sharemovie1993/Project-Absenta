@@ -761,7 +761,11 @@ export class UnifiedKegiatanService {
     const rows = pendampingData.data.map((p, idx) => ({
       no: idx + 1,
       jabatan: p.jabatan,
+      jabatan_kode: p.jabatan_kode,
       nama_guru: p.nama_guru,
+      kelas_nama: p.kelas_nama,
+      mapel_nama: p.mapel_nama,
+      jam_kbm: p.jam_kbm,
       status: p.status,
       waktu_tap: p.waktu_tap,
       keterangan: p.catatan || (p.status === 'HADIR' ? 'Tercatat Hadir' : '-'),
@@ -775,10 +779,54 @@ export class UnifiedKegiatanService {
   }
 
   /**
-   * 7. Laporan Per Kelas (Scope Rombel)
+   * 7. Laporan Per Kelas (Scope Rombel) — Data Nyata dari AbsenSiswa SSOT
    */
   async getLaporanKelas(tenantId: string, params: { tanggal?: string; kelas_id?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {
     const targetDateStr = params.tanggal || this.getTodayDateStr();
+    const jenis = params.jenis_kegiatan || 'KETARUNAAN';
+    const dateRange = this.getDateRange(targetDateStr);
+
+    // Ambil semua sesi kegiatan pada tanggal ini
+    let sesiWhere: any = {
+      tenant_id: tenantId,
+      tanggal: { gte: dateRange.gte, lte: dateRange.lte },
+    };
+    if (params.jadwal_kegiatan_id) {
+      sesiWhere.jadwal_kegiatan_id = params.jadwal_kegiatan_id;
+    } else {
+      sesiWhere.OR = [
+        { jenis_kegiatan: { contains: jenis, mode: 'insensitive' } },
+        { JadwalKegiatan: { nama: { contains: jenis, mode: 'insensitive' } } },
+      ];
+    }
+
+    const sesiList = await prisma.sesiAbsensi.findMany({
+      where: sesiWhere,
+      select: { id: true, kelas_id: true },
+    });
+    const sesiByKelas = new Map<string, string>();
+    for (const s of sesiList) {
+      if (s.kelas_id) sesiByKelas.set(s.kelas_id, s.id);
+    }
+
+    // Ambil posisi struktural untuk kaprog dan walikelas
+    const waliPos = await prisma.organizationalPosition.findFirst({
+      where: { tenant_id: tenantId, code: 'WALIKELAS', is_active: true },
+      include: {
+        organizationalAssigns: {
+          where: { is_active: true },
+          include: { User: { include: { Guru: true } }, Kelas: { select: { id: true } } },
+        },
+      },
+    });
+
+    // Bangun map walikelas per kelas_id
+    const waliMap = new Map<string, { nama_guru: string; guru_id: string }>();
+    waliPos?.organizationalAssigns.forEach(a => {
+      if (a.Kelas?.id && a.User?.Guru) {
+        waliMap.set(a.Kelas.id, { nama_guru: a.User.Guru.nama_guru, guru_id: a.User.Guru.id });
+      }
+    });
 
     const kelasWhere: any = { tenant_id: tenantId, is_active: true };
     if (params.kelas_id) kelasWhere.id = params.kelas_id;
@@ -787,9 +835,11 @@ export class UnifiedKegiatanService {
       where: kelasWhere,
       orderBy: { nama_kelas: 'asc' },
       include: {
-        Siswa: {
-          select: { id: true, nama_siswa: true, nis: true },
-          orderBy: { nama_siswa: 'asc' },
+        SiswaAkademik: {
+          where: { status: 'AKTIF' },
+          include: {
+            siswa: { select: { id: true, nama_siswa: true, nis: true } },
+          },
         },
       },
     });
@@ -798,27 +848,78 @@ export class UnifiedKegiatanService {
 
     for (let idx = 0; idx < kelasList.length; idx++) {
       const k = kelasList[idx];
-      const siswaList = k.Siswa || [];
-      const siswaRows = siswaList.map((s: any, sIdx: number) => ({
-        no: sIdx + 1,
-        nama_siswa: s.nama_siswa,
-        nis: s.nis || '-',
-        status: 'HADIR',
-        waktu_tap: '06:45',
-        catatan: `Hadir mengikuti Kegiatan (${targetDateStr})`,
-      }));
+      const sesiId = sesiByKelas.get(k.id);
+
+      // Ambil AbsenSiswa nyata jika ada sesi
+      const absenSiswaMap = new Map<string, any>();
+      if (sesiId) {
+        const absenList = await prisma.absenSiswa.findMany({
+          where: { sesi_id: sesiId },
+          select: {
+            siswa_akademik_id: true,
+            status: true,
+            waktu_tap: true,
+            catatan: true,
+          },
+        });
+        for (const a of absenList) {
+          absenSiswaMap.set(a.siswa_akademik_id, a);
+        }
+      }
+
+      const rawSiswaAkademikList = (k.SiswaAkademik || []) as any[];
+      const siswaAkademikList = [...rawSiswaAkademikList].sort((a, b) => {
+        const nameA = a.siswa?.nama_siswa || '';
+        const nameB = b.siswa?.nama_siswa || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      let hadir = 0, sakit = 0, izin = 0, alpa = 0;
+
+      const siswaRows = siswaAkademikList.map((sa: any, sIdx: number) => {
+        const absen = absenSiswaMap.get(sa.id);
+        const status = absen?.status || 'ALPA';
+        if (status === 'HADIR') hadir++;
+        else if (status === 'SAKIT') sakit++;
+        else if (status === 'IZIN') izin++;
+        else alpa++;
+
+        return {
+          no: sIdx + 1,
+          nama_siswa: sa.siswa?.nama_siswa || sa.Siswa?.nama_siswa || '-',
+          nis: sa.siswa?.nis || sa.Siswa?.nis || '-',
+          status,
+          waktu_tap: absen?.waktu_tap ? absen.waktu_tap.toISOString() : null,
+          catatan: absen?.catatan || null,
+        };
+      });
+
+      // Wali kelas info
+      const wali = waliMap.get(k.id);
+      let wali_kelas_info: { nama_guru: string; status: string } | undefined;
+      if (wali && sesiId) {
+        const guruAbsen = await prisma.absenGuru.findFirst({
+          where: { sesi_id: sesiId, guru_id: wali.guru_id },
+          select: { status: true },
+        });
+        wali_kelas_info = {
+          nama_guru: wali.nama_guru,
+          status: (guruAbsen?.status as string) || 'BELUM_TAP',
+        };
+      }
 
       result.push({
         no: idx + 1,
         kelas_id: k.id,
         kelas_nama: k.nama_kelas,
+        wali_kelas: wali_kelas_info,
         siswa: siswaRows,
         rekap: {
-          hadir: siswaRows.length,
-          sakit: 0,
-          izin: 0,
-          alpa: 0,
-          total: siswaRows.length,
+          hadir,
+          sakit,
+          izin,
+          alpa,
+          total: siswaAkademikList.length,
         },
       });
     }
@@ -828,3 +929,4 @@ export class UnifiedKegiatanService {
 }
 
 export const unifiedKegiatanService = UnifiedKegiatanService.getInstance();
+

@@ -12,6 +12,7 @@ import {
   type UnifiedTapPayload,
   type UnifiedTapResponse,
   type UnifiedStatsResponse,
+  type UnifiedTrendItem,
   type UnifiedLaporanTimRow,
   type UnifiedLaporanKelasRow,
 } from '../attendance/unifiedKegiatan.api';
@@ -23,6 +24,7 @@ export type KetarunaanPendamping = UnifiedPendampingItem;
 export type KetarunaanGuardStatus = UnifiedGuardStatus;
 export type TapKetarunaanPayload = UnifiedTapPayload;
 export type KetarunaanStatsResponse = UnifiedStatsResponse;
+export type KetarunaanTrendItem = UnifiedTrendItem;
 export type KetarunaanLaporanTimRow = UnifiedLaporanTimRow;
 export type KetarunaanLaporanKelasRow = UnifiedLaporanKelasRow;
 
