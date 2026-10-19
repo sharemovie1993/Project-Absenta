@@ -795,17 +795,23 @@ export class UnifiedKegiatanService {
       orderBy: { tanggal: 'asc' },
     });
 
+    const totalSiswaMaster = await prisma.siswa.count({
+      where: { tenant_id: tenantId },
+    });
+
     if (sesiList.length === 0) {
       return {
         trend: [],
         latest: {
-          total_siswa: 0,
+          total_siswa: totalSiswaMaster,
           hadir_siswa: 0,
           persen_hadir_siswa: 0,
           total_pendamping: 0,
           hadir_pendamping: 0,
           persen_hadir_pendamping: 0,
+          is_empty_session: true,
         },
+        total_siswa_master: totalSiswaMaster,
         by_tingkat: [],
         by_kelas: [],
       };
@@ -874,13 +880,15 @@ export class UnifiedKegiatanService {
     return {
       trend,
       latest: {
-        total_siswa: latest?.total_siswa || 0,
+        total_siswa: latest?.total_siswa || totalSiswaMaster,
         hadir_siswa: latest?.hadir_siswa || 0,
         persen_hadir_siswa: latest?.persen_hadir_siswa || 0,
         total_pendamping: latest?.total_pendamping || 0,
         hadir_pendamping: latest?.hadir_guru || 0,
         persen_hadir_pendamping: latest?.persen_hadir_guru || 0,
+        is_empty_session: false,
       },
+      total_siswa_master: totalSiswaMaster,
       by_tingkat: [],
       by_kelas: byKelas,
     };
