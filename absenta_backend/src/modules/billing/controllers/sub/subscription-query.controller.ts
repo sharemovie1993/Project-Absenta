@@ -70,7 +70,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     try {
       const response = await axios.get(
         `${LICENSE_SERVER_URL}/api/license/my-subscriptions/${licenseKey.trim()}${slug ? `?tenant_slug=${slug}` : ''}`,
-        { timeout: 8000 }
+        { timeout: 2500 }
       );
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         remoteSubs = response.data.data;
@@ -92,7 +92,7 @@ export async function syncLocalSubscriptionsWithLicensingServer(tenantId: string
     let remotePlans: any[] = [];
     if (!isLicenseRevokedOrNotFound) {
       try {
-        const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages`, { timeout: 8000 });
+        const plansResponse = await axios.get(`${LICENSE_SERVER_URL}/api/license/packages`, { timeout: 2500 });
         if (plansResponse.data && plansResponse.data.success && Array.isArray(plansResponse.data.data)) {
           remotePlans = plansResponse.data.data;
         }
@@ -523,12 +523,10 @@ export const subscriptionQueryController = {
       const user = request.user!;
       const tenantId = user.tenant_id!;
 
-      // Automatically sync subscriptions with licensing server
-      try {
-        await syncLocalSubscriptionsWithLicensingServer(tenantId);
-      } catch (err: any) {
-        console.error('[SYNC] getActiveSubscription sync error:', err.message);
-      }
+      // Automatically sync subscriptions with licensing server in background (non-blocking)
+      syncLocalSubscriptionsWithLicensingServer(tenantId).catch((err: any) => {
+        console.warn('[SYNC] getActiveSubscription background sync warning:', err.message);
+      });
 
       const subscription = await subscriptionService.getActiveSubscriptionByTenant(tenantId);
 
@@ -562,12 +560,10 @@ export const subscriptionQueryController = {
       const user = request.user!;
       const tenantId = user.tenant_id!;
 
-      // Automatically sync subscriptions with licensing server
-      try {
-        await syncLocalSubscriptionsWithLicensingServer(tenantId);
-      } catch (err: any) {
-        console.error('[SYNC] getCurrentSubscription sync error:', err.message);
-      }
+      // Automatically sync subscriptions with licensing server in background (non-blocking)
+      syncLocalSubscriptionsWithLicensingServer(tenantId).catch((err: any) => {
+        console.warn('[SYNC] getCurrentSubscription background sync warning:', err.message);
+      });
 
       const subscription = await subscriptionService.getCurrentSubscriptionByTenant(tenantId);
 

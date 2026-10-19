@@ -22,11 +22,10 @@ export const mySubscriptionController = {
       });
     }
 
-    try {
-      await syncLocalSubscriptionsWithLicensingServer(tenantId);
-    } catch (err: any) {
+    // Non-blocking background sync (Graceful Degradation: tidak memblokir login/load saat server lisensi offline)
+    syncLocalSubscriptionsWithLicensingServer(tenantId).catch((err: any) => {
       console.warn('[getSubscription] Background sync warning:', err.message);
-    }
+    });
 
     const responseData = await subscriptionService.getMySubscriptionOverview(tenantId);
 

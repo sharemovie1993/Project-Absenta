@@ -352,7 +352,7 @@ export const heartbeatService = {
 
       const response = await axios.post(`${licenseServerUrl}/api/platform/heartbeat`, payload, {
         headers: requestHeaders,
-        timeout: 10000
+        timeout: 3000
       });
 
       if (response.status === 200 || response.status === 201) {
@@ -363,8 +363,8 @@ export const heartbeatService = {
     } catch (error: any) {
       if (error?.response?.status === 401) {
         console.warn(`[Heartbeat] Sync failed: LICENSE_KEY tidak valid atau belum terdaftar di ${licenseServerUrl} (HTTP 401 Unauthorized).`);
-      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ENOTFOUND') {
-        console.warn(`[Heartbeat] Server lisensi pusat (${licenseServerUrl}) tidak dapat dijangkau (${error.code}).`);
+      } else if (error?.code === 'ECONNREFUSED' || error?.code === 'ENOTFOUND' || error?.code === 'ETIMEDOUT' || error?.code === 'ECONNABORTED' || String(error?.message).includes('timeout')) {
+        console.warn(`[Heartbeat] Server lisensi pusat (${licenseServerUrl}) tidak dapat dijangkau / timeout (${error.code || 'TIMEOUT'}). Melewati siklus ini.`);
       } else {
         console.error('[Heartbeat] Sync failed:', error.message);
       }
