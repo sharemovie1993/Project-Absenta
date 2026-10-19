@@ -301,6 +301,8 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             </div>
           )}
         </div>
+      </div>
+
       {!isScheduledDay && !forceIncidentalMode ? (
         <div className="p-8 text-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
