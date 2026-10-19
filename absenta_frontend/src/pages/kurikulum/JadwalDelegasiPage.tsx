@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Search, ArrowRightLeft, UserCheck, Clock, BookOpen, Layers, X, Filter, RefreshCw, RotateCcw } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, Badge, Input, SearchableSelect, SectionCard, Table, type Column } from '../../components/ui';
+import { AcademicContextBar } from '../../components/common/AcademicContextBar';
+import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { getJadwalKBM, updateJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getGuruList } from '../../api/academic/guru.api';
@@ -13,6 +15,8 @@ import { z } from 'zod';
 
 // Lazy loading Subcomponents for Performance Optimization & God File Prevention
 const JadwalDelegasiModal = lazy(() => import('@/components/kurikulum/JadwalDelegasiModal'));
+import type { JadwalDelegasiBlock } from '@/components/kurikulum/JadwalDelegasiModal';
+export type { JadwalDelegasiBlock };
 
 const delegasiFormSchema = z.object({
   targetPelaksanaId: z.string().optional(),
@@ -27,47 +31,15 @@ interface RawGuruOption {
   };
 }
 
-export interface JadwalDelegasiBlock {
-  id: string; // Master / representative ID (first slot ID)
-  schedule_ids: string[]; // All merged slot IDs
-  tenant_id: string;
-  kelas_id: string;
-  hari: 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
-  slot_start: number;
-  slot_end: number;
-  jp_count: number;
-  jam_mulai: string;
-  jam_selesai: string;
-  mapel_id?: string;
-  guru_id?: string;
-  guru_pelaksana_id?: string | null;
-  Mapel?: {
-    nama_mapel: string;
-    kode_mapel: string;
-  };
-  Guru?: {
-    id: string;
-    nama_guru?: string;
-    User?: {
-      full_name: string;
-    };
-  };
-  GuruPelaksana?: {
-    id: string;
-    nama_guru?: string;
-    User?: {
-      full_name: string;
-    };
-  };
-  Kelas?: {
-    id: string;
-    nama_kelas: string;
-  };
-}
-
 export default function JadwalDelegasiPage() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+
+  // Academic Context (Tahun Pelajaran & Semester)
+  const academic = useAcademicContext({
+    onTpChange: () => setCurrentPage(1),
+    onSemesterChange: () => setCurrentPage(1),
+  });
 
   // Filters State
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
@@ -102,10 +74,14 @@ export default function JadwalDelegasiPage() {
     }));
   }, [guruListRes]);
 
-  // 2. Fetch Jadwal KBM (Server State via TanStack Query)
+  // 2. Fetch Jadwal KBM (Server State via TanStack Query dengan Filter Konteks Akademik)
   const { data: jadwalRes, isLoading: loadingJadwal, refetch: refetchJadwal } = useQuery({
-    queryKey: ['jadwal-kbm-delegasi', selectedKelasId],
-    queryFn: () => getJadwalKBM(selectedKelasId ? { kelas_id: selectedKelasId } : undefined),
+    queryKey: ['jadwal-kbm-delegasi', selectedKelasId, academic.selectedTahunPelajaran, academic.selectedSemester],
+    queryFn: () => getJadwalKBM({
+      ...(selectedKelasId ? { kelas_id: selectedKelasId } : {}),
+      ...(academic.selectedTahunPelajaran ? { tahun_pelajaran_id: academic.selectedTahunPelajaran } : {}),
+      ...(academic.selectedSemester ? { semester_id: academic.selectedSemester } : {}),
+    }),
     staleTime: 2 * 60 * 1000,
   });
 
@@ -139,19 +115,14 @@ export default function JadwalDelegasiPage() {
 
       sorted.forEach((item) => {
         const prev = result[result.length - 1];
-
         const isConsecutive = prev && (
           (item.slot_index !== undefined && item.slot_index === prev.slot_end + 1) ||
           (prev.jam_selesai && item.jam_mulai && prev.jam_selesai === item.jam_mulai)
         );
-
-        const isSameGroup = prev &&
-          prev.hari === item.hari &&
-          prev.kelas_id === item.kelas_id &&
+        const isSameGroup = prev && prev.hari === item.hari && prev.kelas_id === item.kelas_id &&
           String(prev.guru_id || '') === String(item.guru_id || '') &&
           String(prev.guru_pelaksana_id || '') === String(item.guru_pelaksana_id || '') &&
-          String(prev.mapel_id || '') === String(item.mapel_id || '') &&
-          isConsecutive;
+          String(prev.mapel_id || '') === String(item.mapel_id || '') && isConsecutive;
 
         if (isSameGroup) {
           prev.jam_selesai = item.jam_selesai;
@@ -160,29 +131,16 @@ export default function JadwalDelegasiPage() {
           prev.schedule_ids.push(item.id);
         } else {
           result.push({
-            id: item.id,
-            schedule_ids: [item.id],
-            tenant_id: item.tenant_id,
-            kelas_id: item.kelas_id,
-            hari: item.hari,
-            slot_start: item.slot_index ?? 0,
-            slot_end: item.slot_index ?? 0,
-            jp_count: 1,
-            jam_mulai: item.jam_mulai,
-            jam_selesai: item.jam_selesai,
-            mapel_id: item.mapel_id,
-            guru_id: item.guru_id,
-            guru_pelaksana_id: item.guru_pelaksana_id || null,
-            Mapel: item.Mapel,
-            Guru: item.Guru,
-            GuruPelaksana: item.GuruPelaksana,
-            Kelas: item.Kelas,
+            id: item.id, schedule_ids: [item.id], tenant_id: item.tenant_id, kelas_id: item.kelas_id,
+            hari: item.hari, slot_start: item.slot_index ?? 0, slot_end: item.slot_index ?? 0, jp_count: 1,
+            jam_mulai: item.jam_mulai, jam_selesai: item.jam_selesai, mapel_id: item.mapel_id, guru_id: item.guru_id,
+            guru_pelaksana_id: item.guru_pelaksana_id || null, Mapel: item.Mapel, Guru: item.Guru,
+            GuruPelaksana: item.GuruPelaksana, Kelas: item.Kelas,
           });
         }
       });
     });
 
-    // Urutkan hasil akhir berdasarkan hari sekolah & jam_mulai
     const DAY_ORDER = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU', 'MINGGU'];
     return result.sort((a, b) => {
       const dayDiff = DAY_ORDER.indexOf(a.hari) - DAY_ORDER.indexOf(b.hari);
@@ -330,13 +288,8 @@ export default function JadwalDelegasiPage() {
   };
 
   const HARI_FILTER_OPTIONS = [
-    { value: '', label: 'Semua Hari' },
-    { value: 'SENIN', label: 'Senin' },
-    { value: 'SELASA', label: 'Selasa' },
-    { value: 'RABU', label: 'Rabu' },
-    { value: 'KAMIS', label: 'Kamis' },
-    { value: 'JUMAT', label: 'Jumat' },
-    { value: 'SABTU', label: 'Sabtu' },
+    { value: '', label: 'Semua Hari' }, { value: 'SENIN', label: 'Senin' }, { value: 'SELASA', label: 'Selasa' },
+    { value: 'RABU', label: 'Rabu' }, { value: 'KAMIS', label: 'Kamis' }, { value: 'JUMAT', label: 'Jumat' }, { value: 'SABTU', label: 'Sabtu' },
   ];
 
   // 4. Desktop Table Columns
@@ -568,6 +521,29 @@ export default function JadwalDelegasiPage() {
   // Unified Filter & Action Toolbar (Identik dengan SiswaList Table toolbarLeft)
   const renderTableToolbar = useMemo(() => (
     <div className="flex flex-col w-full gap-4 p-4">
+      {/* Row 0: Academic Context Bar (Tahun Pelajaran & Semester) */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+        <div className="flex items-center gap-2">
+          <AcademicContextBar
+            id="delegasi"
+            tahunPelajaranId={academic.selectedTahunPelajaran}
+            semesterId={academic.selectedSemester}
+            onTahunPelajaranChange={academic.handleTpChange}
+            onSemesterChange={academic.handleSemesterChange}
+            tpOptions={academic.tpOptions}
+            semesterOptions={academic.semesterOptions}
+            isLoadingTp={academic.isLoadingTp}
+            isLoadingSem={academic.isLoadingSem}
+            variant="toolbar"
+          />
+        </div>
+        {academic.isAcademicActive && (
+          <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-300/70 text-[10px] font-bold py-1 px-2.5 whitespace-nowrap self-start sm:self-auto">
+            ● Semester Aktif
+          </Badge>
+        )}
+      </div>
+
       {/* Row 1: Search & Dropdown Filters */}
       <div className="flex flex-col md:flex-row gap-4 items-center">
         <div className="flex-1 w-full">
@@ -653,7 +629,7 @@ export default function JadwalDelegasiPage() {
         </div>
       </div>
     </div>
-  ), [searchQuery, selectedKelasId, kelasOptions, selectedHari, onlyDelegated, loadingJadwal, paginatedJadwalList.length, totalItems, handleFilterChange, refetchJadwal]);
+  ), [academic, searchQuery, selectedKelasId, kelasOptions, selectedHari, onlyDelegated, loadingJadwal, paginatedJadwalList.length, totalItems, handleFilterChange, refetchJadwal]);
 
   return (
     <AcademicPageLayout
@@ -685,6 +661,22 @@ export default function JadwalDelegasiPage() {
             <div className="space-y-4">
               {/* Mobile Search & Filter Toolbar */}
               <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
+                {/* Academic Context Selector Mobile */}
+                <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
+                  <AcademicContextBar
+                    id="delegasi-mobile"
+                    tahunPelajaranId={academic.selectedTahunPelajaran}
+                    semesterId={academic.selectedSemester}
+                    onTahunPelajaranChange={academic.handleTpChange}
+                    onSemesterChange={academic.handleSemesterChange}
+                    tpOptions={academic.tpOptions}
+                    semesterOptions={academic.semesterOptions}
+                    isLoadingTp={academic.isLoadingTp}
+                    isLoadingSem={academic.isLoadingSem}
+                    variant="toolbar"
+                  />
+                </div>
+
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input

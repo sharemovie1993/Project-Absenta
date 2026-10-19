@@ -2,17 +2,20 @@ import React from 'react';
 import { ArrowRightLeft } from 'lucide-react';
 import { Button, Modal, SearchableSelect, Label } from '@/components/ui';
 
-export interface JadwalDelegasiBlockSummary {
+export interface JadwalDelegasiBlock {
   id: string;
   schedule_ids: string[];
   tenant_id: string;
   kelas_id: string;
-  hari: string;
+  hari: 'SENIN' | 'SELASA' | 'RABU' | 'KAMIS' | 'JUMAT' | 'SABTU' | 'MINGGU';
   slot_start: number;
   slot_end: number;
   jp_count: number;
   jam_mulai: string;
   jam_selesai: string;
+  mapel_id?: string;
+  guru_id?: string;
+  guru_pelaksana_id?: string | null;
   Mapel?: {
     nama_mapel: string;
     kode_mapel: string;
@@ -40,7 +43,7 @@ export interface JadwalDelegasiBlockSummary {
 interface JadwalDelegasiModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedJadwal: JadwalDelegasiBlockSummary | null;
+  selectedJadwal: JadwalDelegasiBlock | null;
   targetPelaksanaId: string;
   onTargetPelaksanaChange: (val: string) => void;
   onSave: () => void;
