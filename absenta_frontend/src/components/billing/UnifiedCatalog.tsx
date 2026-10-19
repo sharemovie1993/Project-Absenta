@@ -464,53 +464,53 @@ export const UnifiedCatalog: React.FC<UnifiedCatalogProps> = ({
 
   if (serverOffline) {
     return (
-      <div className="w-full min-w-0 py-6">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-3xl p-6 sm:p-10 shadow-xs flex flex-col items-center text-center max-w-2xl mx-auto space-y-5">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xs">
-            <CloudOff size={32} />
+      <div className="w-full min-w-0 py-2 sm:py-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col items-center text-center max-w-lg mx-auto space-y-3.5">
+          {/* Compact Icon */}
+          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200/70 dark:border-amber-800/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+            <CloudOff size={24} />
           </div>
 
-          <div className="space-y-2 max-w-lg">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100/80 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/60">
+          {/* Heading & Short Description */}
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-wider bg-amber-100/70 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-              <span>Server Lisensi Cloud Offline</span>
+              <span>Server Lisensi Offline</span>
             </div>
-            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight">
-              Etalase Katalog Pengadaan Sementara Ditutup
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-white leading-tight">
+              Katalog Pengadaan Sementara Ditutup
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
-              Katalog produk modul dan pengadaan lisensi baru ditarik langsung secara realtime dari server lisensi pusat (api.absenta.id) guna menjamin keaslian varian, harga resmi, dan aktivasi.
-              Saat ini server lisensi pusat sedang dalam pemeliharaan/offline sehingga etalase produk dan transaksi baru sementara ditutup guna menghindari ketidaksesuaian data.
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-normal max-w-sm mx-auto">
+              Server lisensi pusat sedang offline/pemeliharaan. Pengadaan modul baru sementara tidak dapat diproses.
             </p>
           </div>
 
-          <div className="w-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl p-4 text-left flex items-start gap-3">
-            <div className="p-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0 mt-0.5">
-              <CheckCircle2 size={16} />
-            </div>
-            <div className="text-xs text-emerald-900 dark:text-emerald-200 leading-relaxed">
-              <strong className="block font-bold">Modul &amp; Lisensi Aktif Anda Berjalan Normal</strong>
-              Seluruh modul dan lisensi yang telah aktif di server sekolah Anda tetap berjalan 100% normal tanpa gangguan operasional harian.
-            </div>
+          {/* Reassurance Banner */}
+          <div className="w-full bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 rounded-xl px-3 py-2 text-left flex items-center gap-2.5">
+            <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <p className="text-[11px] text-emerald-800 dark:text-emerald-200 font-medium leading-snug">
+              <strong>Modul Aktif Berjalan Normal:</strong> Seluruh modul lokal sekolah tetap 100% aktif.
+            </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-2 w-full sm:w-auto">
+          {/* Mobile-Friendly Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center gap-2 pt-1 w-full">
             <Button
               type="button"
               variant="default"
               onClick={() => navigate('/service-center')}
-              className="w-full sm:w-auto rounded-xl font-bold text-xs h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
+              className="w-full sm:flex-1 rounded-xl font-bold text-xs h-9 bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs"
             >
-              Lihat Modul &amp; Lisensi Aktif
+              Lihat Modul Aktif
             </Button>
             <Button
               type="button"
               variant="outline"
               onClick={() => plansQuery.refetch()}
-              className="w-full sm:w-auto rounded-xl font-bold text-xs h-10 px-4 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto rounded-xl font-bold text-xs h-9 px-3.5 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 flex items-center justify-center gap-1.5"
             >
-              <RefreshCw size={13} className={plansQuery.isFetching ? 'animate-spin' : ''} />
-              <span>Coba Hubungkan Kembali</span>
+              <RefreshCw size={12} className={plansQuery.isFetching ? 'animate-spin' : ''} />
+              <span>Muat Ulang</span>
             </Button>
           </div>
         </div>
