@@ -504,6 +504,7 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     // Tahun Ajaran, Semester, & Struktur Sekolah
     'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.delete', 'academic.years.set.active',
     'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.delete', 'academic.semesters.set.active',
+    'academic.promotions.manage', 'academic.transitions.manage',
     'academic.structures.view.list', 'academic.structures.view.tree', 'academic.structures.create', 'academic.structures.update', 'academic.structures.delete',
     'academic.structures.assign.teacher', 'academic.structures.revoke.teacher', 'academic.structures.assign.student', 'academic.structures.revoke.student',
 
@@ -738,6 +739,11 @@ export const STRUKTUR_CAPABILITIES: Record<string, string[]> = {
     'correspondence.inbox.view',
     'correspondence.outbox.view',
     'correspondence.outbox.sign',           // ✍️ Penandatanganan Elektronik Kepsek
+
+    // Konfigurasi & Persetujuan Kalender Akademik & Transisi Siswa
+    'academic.years.view.list', 'academic.years.view.detail', 'academic.years.create', 'academic.years.update', 'academic.years.set.active',
+    'academic.semesters.view.list', 'academic.semesters.view.detail', 'academic.semesters.create', 'academic.semesters.update', 'academic.semesters.set.active',
+    'academic.promotions.manage', 'academic.transitions.manage',
   ],
 
   // ═══════════════════════════════════════════════════════════════════

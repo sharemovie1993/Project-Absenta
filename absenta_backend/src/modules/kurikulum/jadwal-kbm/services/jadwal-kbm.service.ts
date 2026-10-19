@@ -104,7 +104,10 @@ export class JadwalKBMService {
     let [jadwalList, piketList] = await Promise.all([
       prisma.jadwalKBM.findMany({
         where: {
-          guru_id: guruId,
+          OR: [
+            { guru_id: guruId },
+            { guru_pelaksana_id: guruId }
+          ],
           hari: hari as Hari,
           ...semFilter,
         },
@@ -126,7 +129,10 @@ export class JadwalKBMService {
       [jadwalList, piketList] = await Promise.all([
         prisma.jadwalKBM.findMany({
           where: {
-            guru_id: guruId,
+            OR: [
+              { guru_id: guruId },
+              { guru_pelaksana_id: guruId }
+            ],
             hari: hari as Hari,
           },
           include: { Kelas: true, Mapel: true },
@@ -220,7 +226,10 @@ export class JadwalKBMService {
     let [semuaJadwal, semuaPiket] = await Promise.all([
       prisma.jadwalKBM.findMany({
         where: {
-          guru_id: guruId,
+          OR: [
+            { guru_id: guruId },
+            { guru_pelaksana_id: guruId }
+          ],
           hari: { in: hariUrut as any[] },
           ...semFilter,
         },
@@ -241,7 +250,10 @@ export class JadwalKBMService {
       [semuaJadwal, semuaPiket] = await Promise.all([
         prisma.jadwalKBM.findMany({
           where: {
-            guru_id: guruId,
+            OR: [
+              { guru_id: guruId },
+              { guru_pelaksana_id: guruId }
+            ],
             hari: { in: hariUrut as any[] },
           },
           include: { Kelas: true, Mapel: true },

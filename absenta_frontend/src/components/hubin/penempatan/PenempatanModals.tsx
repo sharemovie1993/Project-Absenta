@@ -29,8 +29,8 @@ export interface PenempatanModalsProps {
   setMitraSearch: (val: string) => void;
   isLoadingGuru?: boolean;
   isLoadingMitra?: boolean;
-  selectedTpFilter?: string;
   filterJurusan?: string;
+  filterJurusanId?: string;
   canManage: boolean;
 }
 
@@ -52,6 +52,7 @@ export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
   isLoadingMitra,
   selectedTpFilter,
   filterJurusan,
+  filterJurusanId,
   canManage
 }) => {
   return (
@@ -116,6 +117,8 @@ export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
           isLoadingGuru={isLoadingGuru}
           isLoadingMitra={isLoadingMitra}
           selectedTpFilter={selectedTpFilter}
+          filterJurusanId={filterJurusanId}
+          jurusanNama={filterJurusan}
         />
       </Suspense>
 

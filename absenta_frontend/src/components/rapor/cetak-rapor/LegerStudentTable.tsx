@@ -12,6 +12,7 @@ import {
   UserCheck,
   Sparkles,
   Layers,
+  ShieldCheck,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
@@ -23,6 +24,8 @@ interface LegerStudentTableProps {
   students: LegerStudent[];
   isLoading: boolean;
   isJenjangSmk: boolean;
+  showLogoKananSertifikat?: boolean;
+  toggleShowLogoKananSertifikat?: () => void;
   pdfLoading?: Record<string, boolean>;
   tahunPelajaranId?: string;
   semesterId?: string;
@@ -43,6 +46,8 @@ interface LegerStudentTableProps {
   isBatchPrinting?: boolean;
   onBatchPrintRaporPkl?: () => void;
   isBatchPklPrinting?: boolean;
+  onBatchPrintSertifikatPkl?: () => void;
+  isBatchSertifikatPrinting?: boolean;
   hasLegerData?: boolean;
   onOpenTranskripModal: (student: LegerStudent) => void;
   getPdfSklUrl?: (siswaId: string) => string;
@@ -74,11 +79,15 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
   isBatchPrinting = false,
   onBatchPrintRaporPkl,
   isBatchPklPrinting = false,
+  onBatchPrintSertifikatPkl,
+  isBatchSertifikatPrinting = false,
   hasLegerData = true,
   onOpenTranskripModal,
   getPdfSklUrl,
   getPdfUkkUrl,
   modeCetakRapor = 'CP_ONLY',
+  showLogoKananSertifikat = false,
+  toggleShowLogoKananSertifikat,
 }) => {
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const [isCetakSekaligusMenuOpen, setIsCetakSekaligusMenuOpen] = useState(false);
@@ -132,8 +141,28 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
           </Badge>
         </div>
 
-        {/* Sisi Kanan: Cetak Sekaligus & Buku Leger */}
+        {/* Sisi Kanan: Cetak Sekaligus, Toggle Logo PKL, & Buku Leger */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Tombol Toggle Instan On-The-Fly: Logo Kanan Sertifikat PKL (SMK) */}
+          {isJenjangSmk && toggleShowLogoKananSertifikat && (
+            <button
+              type="button"
+              onClick={toggleShowLogoKananSertifikat}
+              title="Sakelar instan (on-the-fly): aktifkan atau nonaktifkan logo kanan (Logo Sekolah) pada kop Sertifikat PKL"
+              className={`hidden sm:flex items-center gap-1.5 h-[36px] px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                showLogoKananSertifikat
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                  : 'bg-slate-100 text-slate-500 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Logo Kanan Sertifikat:</span>
+              <span className={showLogoKananSertifikat ? 'text-emerald-600 dark:text-emerald-400 font-black' : 'text-slate-400 font-bold'}>
+                {showLogoKananSertifikat ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          )}
+
           {/* Dropdown Utama: Cetak Sekaligus */}
           <div className="relative inline-block text-left" ref={cetakSekaligusMenuRef}>
             <Button
@@ -280,6 +309,50 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                       </div>
                     </button>
                   )}
+
+                  {/* 6. SERTIFIKAT PKL (SMK) */}
+                  {isJenjangSmk && onBatchPrintSertifikatPkl && (
+                    <div className="flex items-center gap-1 group">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCetakSekaligusMenuOpen(false);
+                          onBatchPrintSertifikatPkl();
+                        }}
+                        disabled={isBatchSertifikatPrinting}
+                        className="flex-1 text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          {isBatchSertifikatPrinting ? <Loader2 size={14} className="animate-spin" /> : <Award size={14} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300">
+                            Sertifikat PKL (SMK)
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Kompilasi Piagam &amp; Transkrip Nilai DUDI Sekelas
+                          </div>
+                        </div>
+                      </button>
+                      {toggleShowLogoKananSertifikat && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleShowLogoKananSertifikat();
+                          }}
+                          title="Klik untuk Mengaktifkan/Menonaktifkan Logo Kanan Kop Surat pada Sertifikat PKL secara instan"
+                          className={`px-2 py-1 mr-1 text-[10px] font-bold rounded-md border transition-all cursor-pointer whitespace-nowrap ${
+                            showLogoKananSertifikat
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-500 border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 hover:bg-slate-200'
+                          }`}
+                        >
+                          Logo Kanan: {showLogoKananSertifikat ? 'ON' : 'OFF'}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 6. BUNDEL LENGKAP */}
@@ -396,6 +469,32 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                           </div>
                           <div className="text-[10px] text-slate-400 truncate">
                             Kompilasi PDF PKL
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {isJenjangSmk && onBatchPrintSertifikatPkl && (
+                    <div className="p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsBatchMenuOpen(false);
+                          onBatchPrintSertifikatPkl();
+                        }}
+                        disabled={isBatchSertifikatPrinting}
+                        className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg flex items-center gap-2.5 transition-colors cursor-pointer group disabled:opacity-50"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                          {isBatchSertifikatPrinting ? <Loader2 size={14} className="animate-spin" /> : <Award size={14} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300">
+                            Sertifikat PKL
+                          </div>
+                          <div className="text-[10px] text-slate-400 truncate">
+                            Kompilasi Piagam Sekelas
                           </div>
                         </div>
                       </button>

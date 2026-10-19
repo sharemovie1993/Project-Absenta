@@ -192,10 +192,12 @@ export class SesiQueryService {
       where.kelas_id = { in: parsedAllowedKelasIds };
     }
 
-    if (guru_id) {
-      where.guru_id = guru_id;
-    } else if (guruIdFilter) {
-      where.guru_id = guruIdFilter;
+    const targetGuruId = guru_id || guruIdFilter;
+    if (targetGuruId) {
+      where.OR = [
+        { guru_id: targetGuruId },
+        { guru_pelaksana_id: targetGuruId }
+      ];
     }
 
     if (status) where.status = status;
@@ -331,6 +333,8 @@ export class SesiQueryService {
         kelas_id: true,
         mapel_id: true,
         guru_id: true,
+        guru_pelaksana_id: true,
+        is_delegasi: true,
         jadwal_kbm_id: true,
         jadwal_kegiatan_id: true,
         jenis_kegiatan: true,
@@ -343,6 +347,7 @@ export class SesiQueryService {
         Kelas: { select: { id: true, nama_kelas: true } },
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
+        GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
         AbsenGuru: { select: { status: true, is_terlambat: true, waktu_tap: true, catatan: true } },
         ProgresMateri: { select: { id: true, judul_materi: true, deskripsi: true, pencapaian_persen: true, kendala: true, updated_at: true } }
       },
@@ -403,9 +408,14 @@ export class SesiQueryService {
         mapel_nama: item.Mapel?.nama_mapel || item.Mapel?.kode_mapel || null,
         guru_nama: item.Guru?.nama_guru || null,
         guru_no_hp: item.Guru?.no_hp || null,
+        guru_pengganti_nama: item.GuruPelaksana?.nama_guru || null,
+        guru_pengampu_nama: item.Guru?.nama_guru || null,
+        guru_pelaksana_id: item.guru_pelaksana_id || null,
+        is_delegasi: item.is_delegasi || Boolean(item.guru_pelaksana_id),
         guru_status: item.AbsenGuru?.[0]?.status || (item.status === 'SELESAI' ? 'ALPA' : 'BELUM_HADIR'),
         absenGuru: item.AbsenGuru?.[0] || null,
         AbsenGuru: item.AbsenGuru || [],
+        GuruPelaksana: item.GuruPelaksana || null,
       };
     });
 
@@ -439,10 +449,12 @@ export class SesiQueryService {
       scheduleWhere.kelas_id = { in: parsedAllowedKelasIds };
     }
 
-    if (guru_id) {
-      scheduleWhere.guru_id = guru_id;
-    } else if (guruIdFilter) {
-      scheduleWhere.guru_id = guruIdFilter;
+    const schedTargetGuruId = guru_id || guruIdFilter;
+    if (schedTargetGuruId) {
+      scheduleWhere.OR = [
+        { guru_id: schedTargetGuruId },
+        { guru_pelaksana_id: schedTargetGuruId }
+      ];
     }
 
     const [rawSchedulesFetched, activeLeavesToday] = await Promise.all([
@@ -451,7 +463,8 @@ export class SesiQueryService {
         include: {
           Kelas: { select: { id: true, nama_kelas: true } },
           Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
-          Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
+          Guru: { select: { id: true, nama_guru: true, nip: true, no_hp: true } },
+          GuruPelaksana: { select: { id: true, nama_guru: true, nip: true, no_hp: true } }
         },
         orderBy: [{ kelas_id: 'asc' }, { slot_index: 'asc' }, { jam_mulai: 'asc' }]
       }),
@@ -525,6 +538,9 @@ export class SesiQueryService {
             Kelas: item.Kelas,
             Mapel: item.Mapel,
             Guru: item.Guru,
+            GuruPelaksana: item.GuruPelaksana || null,
+            guru_pelaksana_id: item.guru_pelaksana_id || null,
+            is_delegasi: Boolean(item.guru_pelaksana_id),
           });
         }
       });
@@ -584,6 +600,11 @@ export class SesiQueryService {
           jam_ke_start: mRange.jam_ke_start,
           jam_ke_end: mRange.jam_ke_end,
           jam_label: jLabel,
+          GuruPelaksana: physicalMatch.GuruPelaksana || mRange.GuruPelaksana || null,
+          guru_pelaksana_id: physicalMatch.guru_pelaksana_id || mRange.guru_pelaksana_id || null,
+          guru_pengganti_nama: physicalMatch.GuruPelaksana?.nama_guru || mRange.GuruPelaksana?.nama_guru || physicalMatch.guru_pengganti_nama || null,
+          guru_pengampu_nama: physicalMatch.Guru?.nama_guru || mRange.Guru?.nama_guru || physicalMatch.guru_nama || null,
+          is_delegasi: physicalMatch.is_delegasi || Boolean(mRange.guru_pelaksana_id),
         };
       }
 
@@ -618,10 +639,15 @@ export class SesiQueryService {
         Kelas: mRange.Kelas,
         Mapel: mRange.Mapel,
         Guru: mRange.Guru,
+        GuruPelaksana: mRange.GuruPelaksana || null,
         kelas_nama: mRange.Kelas?.nama_kelas || null,
         mapel_nama: mRange.Mapel?.nama_mapel || mRange.Mapel?.kode_mapel || null,
         guru_nama: mRange.Guru?.nama_guru || null,
         guru_no_hp: mRange.Guru?.no_hp || null,
+        guru_pelaksana_id: mRange.guru_pelaksana_id || null,
+        guru_pengganti_nama: mRange.GuruPelaksana?.nama_guru || null,
+        guru_pengampu_nama: mRange.Guru?.nama_guru || null,
+        is_delegasi: Boolean(mRange.guru_pelaksana_id),
         summary: { total: 0, HADIR: 0, IZIN: 0, SAKIT: 0, ALPA: 0, TERLAMBAT: 0 }
       };
     });
@@ -837,6 +863,9 @@ export class SesiQueryService {
       const baseSummary = item.summary || {};
       const hadir = (baseSummary.HADIR || 0) + (baseSummary.TERLAMBAT || 0);
 
+      const guruPengganti = item.guru_inval_nama || item.guru_pengganti_nama || item.GuruPelaksana?.nama_guru || null;
+      const guruPengampu = item.guru_pengampu_nama || item.Guru?.nama_guru || item.guru_nama || null;
+
       return {
         ...item,
         isLive,
@@ -846,6 +875,8 @@ export class SesiQueryService {
         is_overdue: isOverdue,
         isUpcoming,
         guru_status: effectiveGuruStatus,
+        guru_pengganti_nama: guruPengganti,
+        guru_pengampu_nama: guruPengampu,
         _summary: {
           ...baseSummary,
           isLive,

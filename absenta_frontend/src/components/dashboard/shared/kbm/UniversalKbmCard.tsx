@@ -180,11 +180,29 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
     || item.kelas 
     || '';
 
-  const guruNama = item.guru_nama 
+  const guruPenggantiNama = item.guru_pengganti_nama
+    || item.guru_inval_nama
+    || item.GuruPelaksana?.nama_guru
+    || item.GuruInval?.nama_guru
+    || item.permohonan_izin?.guru_inval?.nama_guru
+    || item.session?.guru_pengganti_nama
+    || null;
+
+  const rawGuruPengampu = item.guru_pengampu_nama
+    || item.guru_nama 
     || item.Guru?.nama_guru 
     || item.nama_guru 
     || item.guru 
-    || 'Guru Pengampu';
+    || null;
+
+  const hasGuruPengganti = Boolean(
+    guruPenggantiNama &&
+    rawGuruPengampu &&
+    guruPenggantiNama.trim().toLowerCase() !== rawGuruPengampu.trim().toLowerCase() &&
+    guruPenggantiNama.trim() !== '-'
+  );
+
+  const guruNama = hasGuruPengganti ? guruPenggantiNama : (rawGuruPengampu || 'Guru Pengampu');
 
   const jamMulai = item.jam_mulai 
     || (item.waktu_mulai ? (typeof item.waktu_mulai === 'string' && item.waktu_mulai.includes('T') ? item.waktu_mulai.split('T')[1].substring(0, 5) : item.waktu_mulai) : '') 
@@ -494,25 +512,46 @@ const UniversalKbmCardComponent: React.FC<UniversalKbmCardProps> = ({
 
           {/* Nama Guru diletakkan di ATAS (untuk Siswa, Petugas, & Monitoring) */}
           {mode !== 'GURU' && (
-            <div className="flex items-center justify-between gap-2 pt-0.5 min-w-0">
-              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 min-w-0 truncate">
-                <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0">Guru:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">{guruNama}</span>
+            <div className="space-y-0.5 pt-0.5 min-w-0">
+              <div className="flex items-center justify-between gap-2 min-w-0">
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 min-w-0 truncate">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium shrink-0">
+                    {hasGuruPengganti ? 'Guru Pengganti:' : 'Guru:'}
+                  </span>
+                  <span className={cn(
+                    "truncate",
+                    hasGuruPengganti ? "font-extrabold text-amber-600 dark:text-amber-400" : "font-bold text-slate-800 dark:text-slate-200"
+                  )}>
+                    {hasGuruPengganti ? guruPenggantiNama : guruNama}
+                  </span>
+                  {hasGuruPengganti && (
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                      Pengganti
+                    </span>
+                  )}
+                </div>
+
+                {hasTask && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsTaskModalOpen(true);
+                    }}
+                    title="Lihat petunjuk/tugas yang dititipkan guru"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
+                  >
+                    <BookOpen size={11} className="text-blue-600 dark:text-blue-400" />
+                    <span>📝 Tugas Guru</span>
+                  </button>
+                )}
               </div>
 
-              {hasTask && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsTaskModalOpen(true);
-                  }}
-                  title="Lihat petunjuk/tugas yang dititipkan guru"
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/70 dark:hover:bg-blue-900/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 cursor-pointer shadow-xs transition-all active:scale-95 shrink-0"
-                >
-                  <BookOpen size={11} className="text-blue-600 dark:text-blue-400" />
-                  <span>📝 Tugas Guru</span>
-                </button>
+              {hasGuruPengganti && rawGuruPengampu && (
+                <div className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                  <span className="text-slate-400 dark:text-slate-500 font-medium">Pengampu Asli:</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 truncate">{rawGuruPengampu}</span>
+                </div>
               )}
             </div>
           )}

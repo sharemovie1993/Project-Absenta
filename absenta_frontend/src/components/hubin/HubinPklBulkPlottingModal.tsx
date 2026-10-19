@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Users, CheckSquare, Square, Calendar, Building2, User, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Users, CheckSquare, Square, Calendar, Building2, ShieldCheck, AlertTriangle, X, Trash2 } from 'lucide-react';
 import { Modal, Button, Input } from '../ui';
 import { SearchableSelect, type SearchableSelectOption } from '../ui/SearchableSelect';
 import { SimpleFormField } from '../ui/SimpleFormField';
@@ -8,6 +8,14 @@ import { kelasApi, siswaApi } from '../../api/academic.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
 import { useSemesterOptions } from '../../hooks/useSemesterOptions';
 import { toast } from 'react-hot-toast';
+
+export interface SelectedBulkStudent {
+  id: string;
+  nama_siswa: string;
+  nis: string;
+  kelas_id: string;
+  nama_kelas: string;
+}
 
 interface HubinPklBulkPlottingModalProps {
   isOpen: boolean;
@@ -24,13 +32,18 @@ interface HubinPklBulkPlottingModalProps {
     tahun_pelajaran_id?: string | null;
     semester_id?: string | null;
     kelas_id?: string | null;
+    items?: Array<{ siswa_id: string; kelas_id?: string | null }>;
   }) => void;
   isPending: boolean;
   onGuruSearch?: (val: string) => void;
+  onMitraSearch?: (val: string) => void;
   isLoadingGuru?: boolean;
   isLoadingMitra?: boolean;
   filterJurusanId?: string;
   jurusanNama?: string;
+  kelasOptions?: SearchableSelectOption[];
+  tpOptions?: SearchableSelectOption[];
+  selectedTpFilter?: string;
 }
 
 export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps> = React.memo(({
@@ -49,7 +62,8 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
   jurusanNama,
 }) => {
   const [selectedKelasId, setSelectedKelasId] = useState('');
-  const [selectedSiswaIds, setSelectedSiswaIds] = useState<string[]>([]);
+  // Entity map to support seamless cross-class (lintas rombel) selections
+  const [selectedStudents, setSelectedStudents] = useState<Record<string, SelectedBulkStudent>>({});
   const [selectedMitraId, setSelectedMitraId] = useState('');
   const [selectedPembimbingId, setSelectedPembimbingId] = useState('');
 
@@ -78,7 +92,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
   useEffect(() => {
     if (!isOpen) {
       setSelectedKelasId('');
-      setSelectedSiswaIds([]);
+      setSelectedStudents({});
       setSelectedMitraId('');
       setSelectedPembimbingId('');
       if (activeTahunPelajaran?.id) setSelectedTpId(activeTahunPelajaran.id);
@@ -86,14 +100,31 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
     }
   }, [isOpen, activeTahunPelajaran, activeSemester]);
 
+  // Derived student lists
+  const selectedStudentList = useMemo(() => Object.values(selectedStudents), [selectedStudents]);
+
+  // Summary of classes involved in the current bulk selection
+  const selectedClassesSummary = useMemo(() => {
+    const map = new Map<string, { nama_kelas: string; count: number }>();
+    selectedStudentList.forEach((s) => {
+      const existing = map.get(s.kelas_id);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(s.kelas_id, { nama_kelas: s.nama_kelas, count: 1 });
+      }
+    });
+    return Array.from(map.values());
+  }, [selectedStudentList]);
+
   const selectedMitra = useMemo(() => {
     return mitraOptions.find(m => m.value === selectedMitraId)?.raw as any;
   }, [mitraOptions, selectedMitraId]);
 
   const isOverQuota = useMemo(() => {
     if (!selectedMitra || !selectedMitra.kuota || selectedMitra.kuota === 0) return false;
-    return selectedSiswaIds.length > selectedMitra.sisa;
-  }, [selectedMitra, selectedSiswaIds.length]);
+    return selectedStudentList.length > selectedMitra.sisa;
+  }, [selectedMitra, selectedStudentList.length]);
 
   // Fetch Classes
   const { data: kelasResponse, isLoading: isLoadingKelas } = useQuery({
@@ -121,6 +152,10 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
     });
   }, [kelasList, filterJurusanId]);
 
+  const currentKelasObj = useMemo(() => {
+    return kelasList.find((k: any) => k.id === selectedKelasId);
+  }, [kelasList, selectedKelasId]);
+
   // Fetch Students for selected Class
   const { data: siswaResponse, isLoading: isLoadingSiswa } = useQuery({
     queryKey: ['siswa-by-kelas', selectedKelasId],
@@ -138,27 +173,80 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
     return siswaListRaw.filter((s: any) => !placedStudentIds.has(s.id));
   }, [siswaListRaw, placedStudentIds]);
 
-  // Handle select/deselect student
-  const handleToggleSiswa = (siswaId: string) => {
-    setSelectedSiswaIds((prev) =>
-      prev.includes(siswaId) ? prev.filter((id) => id !== siswaId) : [...prev, siswaId]
-    );
+  // Handle toggle single student selection (cross-class safe)
+  const handleToggleSiswa = (siswa: any) => {
+    setSelectedStudents((prev) => {
+      const next = { ...prev };
+      if (next[siswa.id]) {
+        delete next[siswa.id];
+      } else {
+        const kId = siswa.kelas_id || selectedKelasId;
+        const kNama = siswa.Kelas?.nama_kelas || currentKelasObj?.nama_kelas || 'Kelas';
+        next[siswa.id] = {
+          id: siswa.id,
+          nama_siswa: siswa.nama_siswa,
+          nis: siswa.nis || '-',
+          kelas_id: kId,
+          nama_kelas: kNama,
+        };
+      }
+      return next;
+    });
   };
 
-  // Handle select all / deselect all
-  const handleToggleSelectAll = () => {
-    if (selectedSiswaIds.length === filteredStudents.length) {
-      setSelectedSiswaIds([]);
-    } else {
-      setSelectedSiswaIds(filteredStudents.map((s: any) => s.id));
-    }
+  // Remove individual student from selected list
+  const handleRemoveStudent = (siswaId: string) => {
+    setSelectedStudents((prev) => {
+      const next = { ...prev };
+      delete next[siswaId];
+      return next;
+    });
+  };
+
+  // Clear all selected students across all classes
+  const handleClearAllSelected = () => {
+    setSelectedStudents({});
+  };
+
+  // Check if all students in the currently viewed class are selected
+  const isAllCurrentClassSelected = useMemo(() => {
+    if (filteredStudents.length === 0) return false;
+    return filteredStudents.every((s: any) => !!selectedStudents[s.id]);
+  }, [filteredStudents, selectedStudents]);
+
+  // Handle select all / deselect all in the current class without affecting other classes
+  const handleToggleSelectAllInCurrentClass = () => {
+    if (filteredStudents.length === 0) return;
+    setSelectedStudents((prev) => {
+      const next = { ...prev };
+      if (isAllCurrentClassSelected) {
+        // Deselect only students of this current class
+        filteredStudents.forEach((s: any) => {
+          delete next[s.id];
+        });
+      } else {
+        // Select all students of this class, keeping previous selections intact
+        const kId = selectedKelasId;
+        const kNama = currentKelasObj?.nama_kelas || 'Kelas';
+        filteredStudents.forEach((s: any) => {
+          next[s.id] = {
+            id: s.id,
+            nama_siswa: s.nama_siswa,
+            nis: s.nis || '-',
+            kelas_id: s.kelas_id || kId,
+            nama_kelas: s.Kelas?.nama_kelas || kNama,
+          };
+        });
+      }
+      return next;
+    });
   };
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    if (selectedSiswaIds.length === 0) {
+    if (selectedStudentList.length === 0) {
       toast.error('Mohon pilih minimal satu siswa untuk di-plot');
       return;
     }
@@ -170,8 +258,13 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
     const tMulai = formData.get('tanggal_mulai') as string;
     const tSelesai = formData.get('tanggal_selesai') as string;
 
+    const items = selectedStudentList.map((s) => ({
+      siswa_id: s.id,
+      kelas_id: s.kelas_id,
+    }));
+
     onSubmit({
-      siswa_ids: selectedSiswaIds,
+      siswa_ids: selectedStudentList.map((s) => s.id),
       mitra_id: selectedMitraId,
       pembimbing_id: selectedPembimbingId || null,
       tanggal_mulai: tMulai ? new Date(tMulai).toISOString() : new Date().toISOString(),
@@ -179,6 +272,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       tahun_pelajaran_id: selectedTpId || activeTahunPelajaran?.id || null,
       semester_id: selectedSemesterId || activeSemester?.id || null,
       kelas_id: selectedKelasId || null,
+      items,
     });
   };
 
@@ -190,13 +284,13 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
       title={
         <div className="flex items-center gap-2">
           <Users size={20} className="text-indigo-600" />
-          <span>Plotting Penempatan PKL Kolektif (Bulk)</span>
+          <span>Plotting Penempatan PKL Kolektif (Lintas Kelas)</span>
         </div>
       }
     >
       <form onSubmit={handleFormSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Rombel / Kelas Selector */}
+          {/* Rombel / Kelas Selector & Students List */}
           <div className="md:col-span-1 border-r border-slate-150 dark:border-slate-800 pr-4 space-y-3">
             {/* Konteks Tahun Pelajaran & Semester */}
             <div className="p-3 bg-slate-50/80 dark:bg-slate-900/40 rounded-xl border border-slate-200/70 dark:border-slate-800/80 space-y-2.5">
@@ -254,7 +348,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
                 onValueChange={(val) => {
                   setSelectedKelasId(val);
-                  setSelectedSiswaIds([]);
+                  // Do NOT clear selectedStudents; keep cross-class selections intact!
                 }}
                 value={selectedKelasId}
                 isLoading={isLoadingKelas}
@@ -270,15 +364,15 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 {filteredStudents.length > 0 && (
                   <button
                     type="button"
-                    onClick={handleToggleSelectAll}
-                    className="text-[10px] font-bold text-indigo-650 hover:text-indigo-755 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    onClick={handleToggleSelectAllInCurrentClass}
+                    className="text-[10px] font-bold text-indigo-650 hover:text-indigo-755 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
                   >
-                    {selectedSiswaIds.length === filteredStudents.length ? 'Batal Semua' : 'Pilih Semua'}
+                    {isAllCurrentClassSelected ? 'Batal Semua di Kelas Ini' : 'Pilih Semua di Kelas Ini'}
                   </button>
                 )}
               </div>
 
-              <div className="h-[280px] overflow-y-auto overflow-x-hidden border border-slate-150 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 p-2 space-y-1.5">
+              <div className="h-[260px] overflow-y-auto overflow-x-hidden border border-slate-150 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-950/20 p-2 space-y-1.5">
                 {isLoadingSiswa ? (
                   <div className="h-full flex items-center justify-center text-xs text-slate-400">
                     Memuat data siswa...
@@ -293,15 +387,15 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                   </div>
                 ) : (
                   filteredStudents.map((siswa: any) => {
-                    const isChecked = selectedSiswaIds.includes(siswa.id);
+                    const isChecked = !!selectedStudents[siswa.id];
                     return (
                       <div
                         key={siswa.id}
-                        onClick={() => handleToggleSiswa(siswa.id)}
+                        onClick={() => handleToggleSiswa(siswa)}
                         className={`flex items-center gap-2.5 px-2.5 py-2 border rounded-lg cursor-pointer select-none transition-all duration-100 ${
                           isChecked
-                            ? 'border-indigo-400 bg-indigo-50/20 dark:bg-indigo-950/10 text-indigo-650 dark:text-indigo-400'
-                            : 'border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-900'
+                            ? 'border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300'
+                            : 'border-slate-100 dark:border-slate-800/40 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900'
                         }`}
                       >
                         {isChecked ? (
@@ -310,8 +404,12 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                           <Square size={15} className="text-slate-400 shrink-0" />
                         )}
                         <div className="text-left leading-tight min-w-0 flex-1">
-                          <p className="text-xs font-bold truncate text-slate-850 dark:text-slate-200" title={siswa.nama_siswa}>{siswa.nama_siswa}</p>
-                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">{siswa.nis}</p>
+                          <p className="text-xs font-bold truncate text-slate-850 dark:text-slate-200" title={siswa.nama_siswa}>
+                            {siswa.nama_siswa}
+                          </p>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                            {siswa.nis}
+                          </p>
                         </div>
                       </div>
                     );
@@ -319,18 +417,31 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                 )}
               </div>
 
-              {selectedSiswaIds.length > 0 && (
-                <div className="p-2 bg-indigo-50/40 dark:bg-indigo-950/10 border border-indigo-100/50 dark:border-indigo-900/30 rounded-xl text-center">
-                  <p className="text-[11px] font-bold text-indigo-750 dark:text-indigo-400">
-                    {selectedSiswaIds.length} Siswa Terpilih
-                  </p>
+              {/* Total Selection Counter Pill in Left Column */}
+              {selectedStudentList.length > 0 && (
+                <div className="p-2.5 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 rounded-xl flex items-center justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold text-indigo-750 dark:text-indigo-300">
+                      {selectedStudentList.length} Siswa Terpilih
+                    </p>
+                    <p className="text-[10px] text-indigo-600/70 dark:text-indigo-400/70 font-medium">
+                      Dari {selectedClassesSummary.length} Rombel
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearAllSelected}
+                    className="text-[10px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline transition-colors"
+                  >
+                    Batal Semua
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Placement Details (Mitra, Guru, Dates) */}
-          <div className="md:col-span-2 space-y-4 pl-0 md:pl-2">
+          {/* Placement Details & Selected Students Tray */}
+          <div className="md:col-span-2 space-y-3.5 pl-0 md:pl-2">
             <p className="text-xs font-bold text-slate-400 dark:text-slate-550 uppercase tracking-wider">
               Detail Penempatan Kolektif
             </p>
@@ -363,7 +474,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                         {selectedMitra.kuota > 0 ? (
                           isOverQuota ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/50 dark:text-amber-300">
-                              ⚠️ Over (+{selectedSiswaIds.length - selectedMitra.sisa})
+                              ⚠️ Over (+{selectedStudentList.length - selectedMitra.sisa})
                             </span>
                           ) : selectedMitra.isPenuh ? (
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-900/50 dark:text-rose-300">
@@ -380,7 +491,7 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
                       </div>
                     </div>
 
-                    {/* Referensi Keahlian Mitra (Opsional / Info Saja) */}
+                    {/* Referensi Keahlian Mitra */}
                     {selectedMitra.kompetensi_keahlian && (
                       <div className="mt-1.5 pt-1.5 border-t border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                         <span>Fokus Keahlian:</span>
@@ -425,19 +536,81 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
               </SimpleFormField>
             </div>
 
-            {isOverQuota && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex gap-2.5 items-start text-xs text-amber-800 dark:text-amber-300">
-                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-bold">Perhatian Over-Kuota</span>: Penempatan {selectedSiswaIds.length} siswa akan melebihi sisa kapasitas mitra ini ({selectedMitra?.sisa} slot tersisa). Sistem tetap mengizinkan penempatan ini sebagai dispensasi kemitraan DUDI.
+            {/* Tray Ringkasan Rombongan Siswa Terpilih (Lintas Rombel) */}
+            {selectedStudentList.length > 0 && (
+              <div className="p-3 bg-slate-50/90 dark:bg-slate-900/40 rounded-xl border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Users size={14} className="text-indigo-600 dark:text-indigo-400" />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Rombongan Siswa Terpilih ({selectedStudentList.length})
+                    </span>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                      {selectedClassesSummary.length} Rombel
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearAllSelected}
+                    className="text-[10px] font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400 flex items-center gap-1 transition-colors"
+                  >
+                    <Trash2 size={11} />
+                    <span>Kosongkan</span>
+                  </button>
+                </div>
+
+                {/* Distribusi Rombel */}
+                <div className="flex flex-wrap gap-1">
+                  {selectedClassesSummary.map((cls) => (
+                    <span
+                      key={cls.nama_kelas}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200/70 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                    >
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">{cls.nama_kelas}:</span> {cls.count} siswa
+                    </span>
+                  ))}
+                </div>
+
+                {/* List Siswa Chips with Quick Remove */}
+                <div className="max-h-28 overflow-y-auto pr-1 flex flex-wrap gap-1.5 border-t border-slate-200/50 dark:border-slate-800/50 pt-2">
+                  {selectedStudentList.map((student) => (
+                    <div
+                      key={student.id}
+                      className="group flex items-center gap-1.5 pl-2 pr-1 py-0.5 rounded-lg bg-white dark:bg-slate-950 border border-indigo-200/70 dark:border-indigo-900/60 text-xs shadow-2xs transition-all hover:border-indigo-400"
+                    >
+                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                        {student.nama_kelas}
+                      </span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 max-w-[130px] truncate" title={student.nama_siswa}>
+                        {student.nama_siswa}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStudent(student.id)}
+                        className="p-0.5 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        title={`Hapus ${student.nama_siswa} dari rombongan`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            <div className="p-4 bg-slate-50 dark:bg-slate-900/30 border border-slate-150/40 dark:border-slate-800/40 rounded-xl flex gap-3 items-start mt-6">
-              <Building2 className="text-indigo-500 shrink-0 mt-0.5" size={18} />
+            {isOverQuota && (
+              <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl flex gap-2.5 items-start text-xs text-amber-800 dark:text-amber-300">
+                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Perhatian Over-Kuota</span>: Penempatan {selectedStudentList.length} siswa akan melebihi sisa kapasitas mitra ini ({selectedMitra?.sisa} slot tersisa). Sistem tetap mengizinkan penempatan ini sebagai dispensasi kemitraan DUDI.
+                </div>
+              </div>
+            )}
+
+            <div className="p-3.5 bg-slate-50 dark:bg-slate-900/30 border border-slate-150/40 dark:border-slate-800/40 rounded-xl flex gap-3 items-start">
+              <Building2 className="text-indigo-500 shrink-0 mt-0.5" size={17} />
               <div className="text-xs text-slate-550 dark:text-slate-400 leading-relaxed">
-                <span className="font-bold text-slate-750 dark:text-slate-350">Catatan Plotting Kolektif</span>: Semua siswa terpilih akan di-plot secara serentak ke mitra industri dan pembimbing yang sama. Status penempatan akan langsung disetel menjadi <span className="font-semibold text-indigo-650 dark:text-indigo-400">AKTIF</span>.
+                <span className="font-bold text-slate-750 dark:text-slate-350">Catatan Plotting Kolektif</span>: Semua siswa terpilih ({selectedStudentList.length} siswa{selectedClassesSummary.length > 1 ? ` dari ${selectedClassesSummary.length} kelas` : ''}) akan di-plot secara serentak ke mitra industri dan pembimbing yang sama. Status penempatan akan langsung disetel menjadi <span className="font-semibold text-indigo-650 dark:text-indigo-400">AKTIF</span>.
               </div>
             </div>
           </div>
@@ -447,8 +620,8 @@ export const HubinPklBulkPlottingModal: React.FC<HubinPklBulkPlottingModalProps>
           <Button type="button" variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button type="submit" variant="primary" isLoading={isPending} disabled={selectedSiswaIds.length === 0}>
-            Terapkan Plotting Kolektif
+          <Button type="submit" variant="primary" isLoading={isPending} disabled={selectedStudentList.length === 0}>
+            Terapkan Plotting Kolektif ({selectedStudentList.length} Siswa)
           </Button>
         </div>
       </form>

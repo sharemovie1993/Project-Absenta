@@ -320,6 +320,8 @@ export const SiswaAttendanceTab: React.FC<SiswaAttendanceTabProps> = ({
                         ...item,
                         mapel_nama: item.mapel || item.mapel_nama || (item.sesi ? item.sesi.replace(/^KBM\s*-\s*/i, '').trim() : '') || 'Sesi Pembelajaran',
                         guru_nama: item.nama_guru || (item as any).guru || 'Guru Pengampu',
+                        guru_pengganti_nama: (item as any).guru_pengganti_nama || (item as any)._raw?.guru_pengganti_nama || null,
+                        guru_pengampu_nama: (item as any).guru_pengampu_nama || (item as any)._raw?.guru_pengampu_nama || item.nama_guru || (item as any).guru || null,
                         guru_status: item.status_guru === 'BELUM_ABSEN' ? 'BELUM_TAP' : (item.status_guru || 'BELUM_TAP'),
                       }}
                       studentStatus={isStudentTapped ? (isHadir ? 'HADIR' : isTerlambat ? 'TERLAMBAT' : isSakit ? 'IZIN' : 'ALPA') : undefined}

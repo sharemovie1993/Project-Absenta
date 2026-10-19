@@ -820,6 +820,7 @@ export class JadwalQueryController {
       include: {
         Mapel: { select: { id: true, nama_mapel: true, kode_mapel: true } },
         Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+        GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
         Kelas: { select: { id: true, nama_kelas: true } },
       },
       orderBy: [

@@ -608,6 +608,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           isLoadingMitra={isLoadingMitra}
           selectedTpFilter={selectedTpFilter}
           filterJurusan={isKaprog && kaprogJurusan ? (kaprogJurusan.singkatan || kaprogJurusan.nama) : undefined}
+          filterJurusanId={isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined}
           canManage={canManage}
         />
       </Suspense>

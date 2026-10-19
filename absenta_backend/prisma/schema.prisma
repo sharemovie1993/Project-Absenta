@@ -883,7 +883,9 @@ model Guru {
   perangkatAjar         PerangkatAjar[]            @relation("GuruPerangkat")
   parentChatSessions    ParentTeacherChatSession[]
   SesiAbsensi           SesiAbsensi[]
+  SesiAbsensiPelaksana  SesiAbsensi[]              @relation("SesiAbsensiPelaksana")
   JadwalKBM             JadwalKBM[]
+  JadwalKBMPelaksana    JadwalKBM[]                @relation("JadwalKBMPelaksana")
   SupervisiGuru         SupervisiGuru[]
   SupervisiAsSupervisor SupervisiGuru[]            @relation("Supervisor")
   SiswaPkl              SiswaPkl[]
@@ -1157,6 +1159,8 @@ model SesiAbsensi {
   id                 String          @id @default(uuid())
   tenant_id          String
   guru_id            String?
+  guru_pelaksana_id  String?
+  is_delegasi        Boolean         @default(false)
   kelas_id           String
   mapel_id           String?
   semester_id        String
@@ -1181,6 +1185,7 @@ model SesiAbsensi {
   AbsenGuru          AbsenGuru[]
   AbsenSiswa         AbsenSiswa[]
   Guru               Guru?           @relation(fields: [guru_id], references: [id])
+  GuruPelaksana      Guru?           @relation("SesiAbsensiPelaksana", fields: [guru_pelaksana_id], references: [id])
   Kelas              Kelas           @relation(fields: [kelas_id], references: [id])
   Mapel              Mapel?          @relation(fields: [mapel_id], references: [id])
   Semester           Semester        @relation(fields: [semester_id], references: [id])
@@ -2324,11 +2329,12 @@ model JadwalKBM {
   jam_selesai String // Format "HH:mm" (24-hour)
 
   // Konten
-  mapel_id       String? // Nullable
-  guru_id        String? // Nullable
-  jenis_kegiatan String  @default("KBM")
-  ruangan_id     String? // Nullable (referensi ke MasterRuangan)
-  asc_id         String? // Referensi card ID dari XML aSc TimeTables
+  mapel_id          String? // Nullable
+  guru_id           String? // Nullable (Guru SK / Resmi)
+  guru_pelaksana_id String? // Nullable (Pengajar Riil Lapangan / Delegasi)
+  jenis_kegiatan    String  @default("KBM")
+  ruangan_id        String? // Nullable (referensi ke MasterRuangan)
+  asc_id            String? // Referensi card ID dari XML aSc TimeTables
 
   // Metadata
   created_at         DateTime @default(now())
@@ -2342,6 +2348,7 @@ model JadwalKBM {
   Kelas          Kelas          @relation(fields: [kelas_id], references: [id])
   Mapel          Mapel?         @relation(fields: [mapel_id], references: [id])
   Guru           Guru?          @relation(fields: [guru_id], references: [id])
+  GuruPelaksana  Guru?          @relation("JadwalKBMPelaksana", fields: [guru_pelaksana_id], references: [id])
   MasterRuangan  MasterRuangan? @relation(fields: [ruangan_id], references: [id])
 
   // Relation ke Instance Sesi (One-to-Many)

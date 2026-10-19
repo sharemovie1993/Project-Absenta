@@ -40,19 +40,46 @@ export class SesiGuard {
       return; // Allowed for Petugas Kelas
     }
 
-    // 2. Check if user is a Guru (GURU biasa)
+    // 2. Check if user is a Guru (GURU biasa atau Pengajar Pelaksana)
     if (tenantId) {
       const isGuru = await prisma.guru.count({ where: { user_id: request.user?.id, tenant_id: tenantId } });
       if (isGuru > 0) {
         const guruRecord = await prisma.guru.findFirst({ where: { user_id: request.user?.id, tenant_id: tenantId }, select: { id: true } });
         if (guruRecord) {
-          if (guru_id && String(guru_id) !== String(guruRecord.id)) {
-            reply.status(403).send({ success: false, message: 'Forbidden: Guru hanya dapat membuat sesi untuk dirinya sendiri.' });
-            return;
-          }
           if (!request.body) request.body = {};
+
+          // Jika guru_id dikirim dan berbeda dengan user saat ini, periksa apakah dia ditugaskan sebagai guru_pelaksana_id
+          if (guru_id && String(guru_id) !== String(guruRecord.id)) {
+            const cleanJadwalId = request.body.jadwal_kbm_id ? String(request.body.jadwal_kbm_id).replace(/^sched_/, '') : null;
+            let isDelegated = false;
+
+            if (cleanJadwalId) {
+              const jadwal = await (prisma as any).jadwalKBM.findFirst({
+                where: {
+                  id: cleanJadwalId,
+                  tenant_id: tenantId,
+                  guru_id: String(guru_id),
+                  guru_pelaksana_id: guruRecord.id,
+                },
+                select: { id: true }
+              });
+              if (jadwal) isDelegated = true;
+            }
+
+            if (!isDelegated) {
+              reply.status(403).send({ success: false, message: 'Forbidden: Anda bukan pengampu resmi atau pelaksana KBM yang ditugaskan.' });
+              return;
+            }
+
+            // Tercatat sebagai sesi delegasi operasional
+            request.body.guru_id = guru_id; // Pengampu resmi (SK)
+            request.body.guru_pelaksana_id = guruRecord.id; // Pelaksana riil lapangan
+            request.body.is_delegasi = true;
+            return; // Allowed for Teaching Proxy
+          }
+
           request.body.guru_id = guruRecord.id;
-          return; // Allowed
+          return; // Allowed for Official Teacher
         }
       }
     }

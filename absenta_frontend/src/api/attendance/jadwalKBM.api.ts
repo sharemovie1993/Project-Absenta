@@ -14,12 +14,21 @@ export interface JadwalKBM {
   jenis_kegiatan?: string;
   mapel_id?: string;
   guru_id?: string;
+  guru_pelaksana_id?: string | null;
   Mapel?: {
     nama_mapel: string;
     kode_mapel: string;
   };
   Guru?: {
     id: string;
+    nama_guru?: string;
+    User?: {
+      full_name: string;
+    };
+  };
+  GuruPelaksana?: {
+    id: string;
+    nama_guru?: string;
     User?: {
       full_name: string;
     };
@@ -40,6 +49,7 @@ export interface CreateJadwalPayload {
   jam_selesai: string;
   mapel_id?: string;
   guru_id?: string;
+  guru_pelaksana_id?: string | null;
   jenis_kegiatan: string;
 }
 

@@ -91,12 +91,14 @@ export async function authMiddleware(
       }
 
       if (payload) {
+        const rawRole = (payload as any).roleName || (payload as any).role?.name || (typeof (payload as any).role === 'string' ? (payload as any).role : undefined);
+        const normalizedRole = rawRole ? String(rawRole).trim().toUpperCase() : undefined;
         const normalizedUser = {
           ...payload,
           id: payload.id || (payload as any).userId || (payload as any).user_id,
           tenantId: payload.tenantId || (payload as any).tenant_id,
           tenant_id: (payload as any).tenant_id || payload.tenantId,
-          roleName: payload.roleName || (payload as any).role?.name
+          roleName: normalizedRole
         };
         request.user = normalizedUser;
         request.tenantId = normalizedUser.tenantId;

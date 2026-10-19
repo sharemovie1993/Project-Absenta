@@ -21,7 +21,8 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
 
 
     const userId = (user as any).id ?? (user as any).userId ?? (user as any).user_id;
-    const roleName = user.roleName || user.Role?.name || user.role?.name;
+    const rawRole = user.roleName || user.Role?.name || (typeof user.role === 'string' ? user.role : user.role?.name);
+    const roleName = String(rawRole || '').trim().toUpperCase();
     const tenantId = (request as any).tenantId || (user as any).tenantId || (user as any).tenant_id;
     const endpoint = String((request as any).url || '').split('?')[0];
 
@@ -30,7 +31,7 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
     // Superadmin & Admin bypass (System Owner & Tenant Administrator)
     // PENTING: Modul keuangan / koperasi TETAP WAJIB memiliki capability resmi (Jabatan Bendahara/Ketua/Petugas)
     // agar Superadmin/Admin tidak bisa sembarangan memanipulasi arus kas tanpa penugasan struktural.
-    if (roleName === RoleName.SUPERADMIN || roleName === RoleName.ADMIN) {
+    if (roleName === RoleName.SUPERADMIN || roleName === RoleName.ADMIN || roleName === 'SUPERADMIN' || roleName === 'ADMIN') {
         const hasCoopCapability = capabilities.some(cap => cap.startsWith('cooperative.'));
         if (!hasCoopCapability) {
             return;
@@ -38,7 +39,7 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
     }
 
     // Check Exempt Roles
-    if (options.exemptRoles && options.exemptRoles.includes(roleName as RoleName)) {
+    if (options.exemptRoles && options.exemptRoles.some(r => String(r).toUpperCase() === roleName)) {
         return;
     }
 
@@ -60,7 +61,7 @@ export const requireCapability = (capabilityOrCapabilities: string | string[], o
         error: 'CAPABILITY_ACCESS_DENIED',
         code: 'FORBIDDEN',
         message:
-          roleName === RoleName.ADMIN
+          (roleName === RoleName.ADMIN || roleName === 'ADMIN')
             ? res.reason === 'ADMIN_DENIED_CAPABILITY'
               ? `Forbidden: Admin restricted from capability: ${capabilities.join(', ')}`
               : `Forbidden: Admin missing required capability: ${capabilities.join(', ')}`

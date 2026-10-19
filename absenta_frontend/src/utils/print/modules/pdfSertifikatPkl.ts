@@ -22,6 +22,10 @@ export interface SertifikatPklPrintData {
     nip_kepala?: string;
     logo_url?: string;
     logo_daerah?: string;
+    nama_dinas_atas?: string;
+    nama_dinas_bawah?: string;
+    nama_cabang_dinas?: string;
+    print_header_lines?: string[] | any[];
   };
   siswa: {
     nama_siswa: string;
@@ -197,11 +201,12 @@ export const renderSertifikatFront = (
   const avgScore = totalScore / allScores.length;
   const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(avgScore);
 
-  // A. Kop Surat - Preserve exact aspect ratio (avoid lonjong)
-  const kopStartY = 12.5;
+  // A. Kop Surat - Strictly synchronized with PrintHeader.tsx
+  const kopStartY = 12;
   const maxBoxW = 26;
-  const maxBoxH = 28;
+  const maxBoxH = 26;
 
+  // 1. Logo Kiri (Daerah / Pemda) - Render ONLY if provided, no fake fallback
   if (options?.logoDaerahBase64) {
     try {
       const aspect = options.logoDaerahAspect || (22 / 27);
@@ -211,7 +216,7 @@ export const renderSertifikatFront = (
         targetH = maxBoxH;
         targetW = maxBoxH * aspect;
       }
-      const x = 18 + (maxBoxW - targetW) / 2;
+      const x = 20 + (maxBoxW - targetW) / 2;
       const y = kopStartY + (maxBoxH - targetH) / 2;
       doc.addImage(options.logoDaerahBase64, 'PNG', x, y, targetW, targetH);
     } catch (e) {
@@ -219,6 +224,7 @@ export const renderSertifikatFront = (
     }
   }
 
+  // 2. Logo Kanan (Sekolah) - Render ONLY if provided, no fake fallback
   if (options?.logoSekolahBase64) {
     try {
       const aspect = options.logoSekolahAspect || 1.0;
@@ -228,7 +234,7 @@ export const renderSertifikatFront = (
         targetH = maxBoxH;
         targetW = maxBoxH * aspect;
       }
-      const x = (pageWidth - 18 - maxBoxW) + (maxBoxW - targetW) / 2;
+      const x = (pageWidth - 20 - maxBoxW) + (maxBoxW - targetW) / 2;
       const y = kopStartY + (maxBoxH - targetH) / 2;
       doc.addImage(options.logoSekolahBase64, 'PNG', x, y, targetW, targetH);
     } catch (e) {
@@ -236,23 +242,72 @@ export const renderSertifikatFront = (
     }
   }
 
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(10.5);
-  doc.text('PEMERINTAH DAERAH PROVINSI JAWA BARAT', pageWidth / 2, kopStartY + 3, { align: 'center' });
-  doc.text('DINAS PENDIDIKAN', pageWidth / 2, kopStartY + 7.5, { align: 'center' });
-  doc.text('CABANG DINAS PENDIDIKAN WILAYAH IV', pageWidth / 2, kopStartY + 12, { align: 'center' });
-  
-  doc.setFontSize(12);
-  doc.text(namaSekolah.toUpperCase(), pageWidth / 2, kopStartY + 17.5, { align: 'center' });
+  // 3. Centralized Kop Surat Lines (1:1 with PrintHeader.tsx standard)
+  const rawLines = (data.sekolah?.print_header_lines && data.sekolah.print_header_lines.length > 0)
+    ? data.sekolah.print_header_lines
+    : [
+        data.sekolah?.nama_dinas_atas || 'PEMERINTAH DAERAH PROVINSI JAWA BARAT',
+        data.sekolah?.nama_dinas_bawah || 'DINAS PENDIDIKAN',
+        data.sekolah?.nama_cabang_dinas || 'CABANG DINAS PENDIDIKAN WILAYAH IV',
+        namaSekolah,
+      ];
 
+  const parsedHeaderLines = rawLines.map((line: any, idx: number) => {
+    let textStr = '';
+    let bold = true;
+    let fontSize = 10;
+    if (typeof line === 'object' && line !== null) {
+      textStr = line.text || '';
+      bold = line.bold !== false;
+      fontSize = line.fontSize ? (line.fontSize * 0.9) : (idx === rawLines.length - 1 ? 12 : 10);
+    } else {
+      try {
+        const parsed = JSON.parse(line);
+        if (parsed && typeof parsed === 'object' && 'text' in parsed) {
+          textStr = parsed.text || '';
+          bold = parsed.bold !== false;
+          fontSize = parsed.fontSize ? (parsed.fontSize * 0.9) : (idx === rawLines.length - 1 ? 12 : 10);
+        } else {
+          textStr = String(line);
+        }
+      } catch {
+        textStr = String(line);
+      }
+      if (idx === rawLines.length - 1) {
+        fontSize = textStr.length > 35 ? 11 : 12;
+      }
+    }
+    return { text: textStr, bold, fontSize };
+  });
+
+  let curKopY = kopStartY + 3.5;
+  parsedHeaderLines.forEach((item: { text: string; bold: boolean; fontSize: number }) => {
+    doc.setFont('Helvetica', item.bold ? 'bold' : 'normal');
+    doc.setFontSize(item.fontSize);
+    doc.text(item.text.toUpperCase(), pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += (item.fontSize > 11 ? 5.2 : 4.2);
+  });
+
+  // Alamat & Kontak (matching PrintHeader.tsx layout)
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text(alamatSekolah, pageWidth / 2, kopStartY + 22, { align: 'center' });
-  doc.text(`Website : ${websiteSekolah}, email : ${emailSekolah}`, pageWidth / 2, kopStartY + 25.5, { align: 'center' });
-  doc.text(`${kotaSekolah} (${kodePosSekolah})`, pageWidth / 2, kopStartY + 29, { align: 'center' });
+  if (alamatSekolah) {
+    const alamatText = `${alamatSekolah}${data.sekolah?.telepon ? ` | Telp: ${data.sekolah.telepon}` : ''}`;
+    doc.text(alamatText, pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += 3.8;
+  }
 
-  // Garis Kop Pembatas
-  const lineY = kopStartY + 31.5;
+  const kontakParts: string[] = [];
+  if (websiteSekolah) kontakParts.push(`Website: ${websiteSekolah}`);
+  if (emailSekolah) kontakParts.push(`Email: ${emailSekolah}`);
+  if (kontakParts.length > 0) {
+    doc.setFontSize(7.5);
+    doc.text(kontakParts.join(' | '), pageWidth / 2, curKopY, { align: 'center' });
+    curKopY += 3.5;
+  }
+
+  // Garis Kop Pembatas (Double Line)
+  const lineY = Math.max(kopStartY + maxBoxH + 2, curKopY + 1.5);
   doc.setLineWidth(0.8);
   doc.line(20, lineY, pageWidth - 20, lineY);
   doc.setLineWidth(0.2);
@@ -757,4 +812,82 @@ export const generateSertifikatPdf = async (
   }
 
   return doc;
+};
+
+/**
+ * Generate Sertifikat PKL 2 Halaman (Depan + Nilai Belakang) untuk 1 Siswa
+ */
+export const generateSertifikatSinglePdf = async (
+  data: SertifikatPklPrintData,
+  options?: {
+    logoDaerahBase64?: string | null;
+    logoSekolahBase64?: string | null;
+    showDudiName?: boolean;
+  }
+): Promise<{ blobUrl: string; filename: string }> => {
+  const doc = await generateSertifikatPdf(data, {
+    mode: 'all',
+    logoDaerahBase64: options?.logoDaerahBase64,
+    logoSekolahBase64: options?.logoSekolahBase64,
+    showDudiName: options?.showDudiName ?? true,
+  });
+
+  const cleanName = (data.siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_');
+  const filename = `SERTIFIKAT_PKL_${cleanName}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
+};
+
+/**
+ * Generate Sertifikat PKL Gabungan Sekelas (Batch Printing)
+ * Setiap siswa mendapatkan 2 halaman (Halaman 1 Depan + Halaman 2 Nilai Belakang)
+ */
+export const generateSertifikatBatchPdf = async (
+  list: SertifikatPklPrintData[],
+  namaKelas = 'Kelas',
+  onProgress?: (current: number, total: number, studentName: string) => void,
+  options?: {
+    logoDaerahBase64?: string | null;
+    logoSekolahBase64?: string | null;
+    showDudiName?: boolean;
+  }
+): Promise<{ blobUrl: string; filename: string }> => {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  const [logoDaerahOpt, logoSekolahOpt] = await Promise.all([
+    options?.logoDaerahBase64 ? optimizeImageForPdf(options.logoDaerahBase64, 400) : Promise.resolve(null),
+    options?.logoSekolahBase64 ? optimizeImageForPdf(options.logoSekolahBase64, 400) : Promise.resolve(null),
+  ]);
+
+  for (let index = 0; index < list.length; index++) {
+    const data = list[index];
+    onProgress?.(index + 1, list.length, data.siswa?.nama_siswa || 'Siswa');
+
+    const fotoSiswaOpt = data.siswa.foto ? await optimizeImageForPdf(data.siswa.foto, 400) : null;
+    const resolvedFrontOptions = {
+      logoDaerahBase64: logoDaerahOpt?.dataUrl || options?.logoDaerahBase64,
+      logoSekolahBase64: logoSekolahOpt?.dataUrl || options?.logoSekolahBase64,
+      logoDaerahAspect: logoDaerahOpt?.aspect,
+      logoSekolahAspect: logoSekolahOpt?.aspect,
+      fotoSiswaBase64: fotoSiswaOpt?.dataUrl || data.siswa.foto,
+    };
+
+    if (index > 0) {
+      doc.addPage('a4', 'landscape');
+    }
+    renderSertifikatFront(doc, data, resolvedFrontOptions);
+
+    doc.addPage('a4', 'landscape');
+    renderSertifikatBack(doc, data, { showDudiName: options?.showDudiName ?? true });
+  }
+
+  const cleanKelas = namaKelas.replace(/\s+/g, '_');
+  const filename = `SERTIFIKAT_PKL_GABUNGAN_${cleanKelas}.pdf`;
+  const blobUrl = URL.createObjectURL(doc.output('blob'));
+  return { blobUrl, filename };
 };

@@ -23,7 +23,6 @@ Source: seed_policies.ts + capabilities.ts + seed.ts
 - academic.homeroom.manage
 - academic.manage.academic
 - academic.promotions.manage
-- academic.schedules.
 - academic.schedules.create
 - academic.schedules.delete
 - academic.schedules.manage

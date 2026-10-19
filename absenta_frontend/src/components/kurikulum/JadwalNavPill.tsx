@@ -39,6 +39,14 @@ const JADWAL_NAV_ITEMS = [
     icon: Layers,
     badge: '4. Beban Jam',
     badgeColor: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-400/20'
+  },
+  {
+    label: 'Delegasi Pengajar',
+    shortLabel: 'Guru Pengganti',
+    path: '/kurikulum/jadwal-delegasi',
+    icon: Sparkles,
+    badge: '5. Teaching Proxy',
+    badgeColor: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-400/20'
   }
 ];
 

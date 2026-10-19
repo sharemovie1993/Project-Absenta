@@ -49,7 +49,7 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({ onBackToBeranda 
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold active:scale-95 transition-all shadow-xs cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Beranda Guru</span>
+          <span>{user?.role === 'SISWA' ? 'Beranda Siswa' : 'Beranda Guru'}</span>
         </button>
         <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
           Portal Sekolah

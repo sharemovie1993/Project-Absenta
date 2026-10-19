@@ -378,18 +378,31 @@ export function usePenempatanActions({
     tahun_pelajaran_id?: string | null;
     semester_id?: string | null;
     kelas_id?: string | null;
+    items?: Array<{ siswa_id: string; kelas_id?: string | null }>;
   }) => {
-    const payload: CreatePenempatanPayload[] = (data.siswa_ids ?? [])?.map(siswa_id => ({
-      siswa_id,
-      mitra_id: data.mitra_id,
-      pembimbing_id: data.pembimbing_id,
-      tanggal_mulai: data.tanggal_mulai,
-      tanggal_selesai: data.tanggal_selesai,
-      status: 'AKTIF',
-      tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
-      semester_id: data.semester_id || null,
-      kelas_id: data.kelas_id || null,
-    }));
+    const payload: CreatePenempatanPayload[] = (data.items && data.items.length > 0)
+      ? data.items.map(item => ({
+          siswa_id: item.siswa_id,
+          mitra_id: data.mitra_id,
+          pembimbing_id: data.pembimbing_id,
+          tanggal_mulai: data.tanggal_mulai,
+          tanggal_selesai: data.tanggal_selesai,
+          status: 'AKTIF',
+          tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
+          semester_id: data.semester_id || null,
+          kelas_id: item.kelas_id || data.kelas_id || null,
+        }))
+      : (data.siswa_ids ?? [])?.map(siswa_id => ({
+          siswa_id,
+          mitra_id: data.mitra_id,
+          pembimbing_id: data.pembimbing_id,
+          tanggal_mulai: data.tanggal_mulai,
+          tanggal_selesai: data.tanggal_selesai,
+          status: 'AKTIF',
+          tahun_pelajaran_id: data.tahun_pelajaran_id || selectedTpFilter || null,
+          semester_id: data.semester_id || null,
+          kelas_id: data.kelas_id || null,
+        }));
     bulkCreateMutation.mutate(payload);
   }, [bulkCreateMutation, selectedTpFilter]);
 

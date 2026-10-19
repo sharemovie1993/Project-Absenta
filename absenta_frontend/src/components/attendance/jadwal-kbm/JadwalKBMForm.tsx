@@ -84,6 +84,7 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
       jenis_kegiatan: initialData?.jenis_kegiatan || '',
       mapel_id: initialData?.mapel_id,
       guru_id: initialData?.guru_id,
+      guru_pelaksana_id: initialData?.guru_pelaksana_id || '',
       tahun_pelajaran_id: initialData?.tahun_pelajaran_id || tahunPelajaranId || '',
       semester_id: initialData?.semester_id || semesterId || '',
       kelas_id: initialData?.kelas_id || kelasId || '',
@@ -100,12 +101,12 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
       try {
         const [mapelRes, guruRes, jenisRes] = await Promise.all([
           mapelApi.getAll({ limit: 100 }),
-          guruApi.getAll({ limit: 100, jenis_ptk: 'PENDIDIK' }),
+          guruApi.getAll({ limit: 200 }),
           jenisKegiatanMasterApi.getAll({ page: 1, limit: 100 })
         ]);
         
         setMapelOptions((mapelRes.data || []).map((m: any) => ({ value: m.id, label: `${m.nama_mapel} (${m.kode})` })));
-        setGuruOptions((guruRes.data || []).map((g: any) => ({ value: g.id, label: g.nama_guru || g.User?.full_name || 'Guru' })));
+        setGuruOptions((guruRes.data || []).map((g: any) => ({ value: g.id, label: `${g.nama_guru || g.User?.full_name || 'Guru'}${g.jenis_ptk === 'TENAGA_KEPENDIDIKAN' ? ' (Staf TU)' : ''}` })));
         const jenisMaster: JenisKegiatanMaster[] = jenisRes.data || [];
         const filtered = jenisMaster
           .filter(j => j.aktif)
@@ -295,7 +296,7 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
 
                 <div className="space-y-2 md:col-span-2 group">
                   <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
-                    Guru Pengajar <span className="text-rose-500">*</span>
+                    Guru Pengampu Resmi (SK / Dapodik) <span className="text-rose-500">*</span>
                   </Label>
                   <Controller
                     name="guru_id"
@@ -305,11 +306,40 @@ export const JadwalKBMForm: React.FC<Props> = React.memo(({ onSuccess, onCancel,
                         value={field.value}
                         onValueChange={field.onChange}
                         options={guruOptions}
-                        placeholder="Pilih Guru Pengajar"
+                        placeholder="Pilih Guru Pengampu Resmi"
                         triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 rounded-xl"
                       />
                     )}
                   />
+                  <p className="text-[10px] text-slate-400">Guru yang tercantum secara resmi di SK pembagian tugas mengajar.</p>
+                </div>
+
+                <div className="space-y-2 md:col-span-2 group bg-amber-500/5 dark:bg-amber-500/10 p-3.5 rounded-xl border border-amber-200 dark:border-amber-800/40">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tighter flex items-center gap-1.5">
+                      <span>Pengajar Pelaksana Lapangan (Opsional / Delegasi)</span>
+                    </Label>
+                    <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 rounded-md">Kasus Khusus / Guru Bantuan</span>
+                  </div>
+                  <Controller
+                    name="guru_pelaksana_id"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableSelect
+                        value={field.value || ''}
+                        onValueChange={(val) => field.onChange(val || null)}
+                        options={[
+                          { value: '', label: '-- Tidak Ada (Sama dengan Guru Resmi) --' },
+                          ...guruOptions
+                        ]}
+                        placeholder="Pilih Pengajar Pelaksana (Jika digantikan Staf TU/Honorer)"
+                        triggerClassName="h-10 text-[13px] font-bold tracking-tight bg-white dark:bg-slate-950 border-amber-200 dark:border-amber-800 rounded-xl"
+                      />
+                    )}
+                  />
+                  <p className="text-[10px] text-amber-700/80 dark:text-amber-300/70">
+                    Isi jika pelaksanaan di kelas diajar oleh guru lain atau staf TU (misal Pak Aris). Jadwal akan muncul di akun pelaksana dan ia berhak membuka presensi KBM.
+                  </p>
                 </div>
               </>
             )}

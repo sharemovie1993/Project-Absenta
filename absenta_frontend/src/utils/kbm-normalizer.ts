@@ -401,6 +401,10 @@ export function normalizeFromSesiAbsensi(raw: any): KbmItem {
     guru_nama: raw.Guru?.nama_guru || raw.guru_nama || '-',
     guru_no_hp: raw.Guru?.no_hp || raw.guru_no_hp || raw.telepon || raw.phone || null,
     guru_status: resolvedGuruStatus,
+    guru_pengganti_nama: raw.guru_pengganti_nama || raw.guru_inval_nama || raw.GuruPelaksana?.nama_guru || raw.GuruInval?.nama_guru || raw.permohonan_izin?.guru_inval?.nama_guru || null,
+    guru_pengampu_nama: raw.guru_pengampu_nama || raw.Guru?.nama_guru || raw.guru_nama || null,
+    guru_pelaksana_id: raw.guru_pelaksana_id || null,
+    is_delegasi: Boolean(raw.is_delegasi || raw.guru_pelaksana_id || raw.guru_pengganti_nama || raw.guru_inval_nama),
     jenis_kegiatan: raw.jenis_kegiatan || 'KBM',
     tanggal: raw.tanggal,
     session: raw, // physical session IS the item here

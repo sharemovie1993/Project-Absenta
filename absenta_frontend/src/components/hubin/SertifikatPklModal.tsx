@@ -10,7 +10,8 @@ import {
   Layers, 
   CheckCircle2, 
   Loader2,
-  Building2 
+  Building2,
+  ShieldCheck 
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { PrintHeader } from '../ui/PrintHeader';
@@ -24,57 +25,8 @@ import {
   getPredikatLabel, 
   SertifikatPklPrintData 
 } from '../../utils/print/modules/pdfSertifikatPkl';
+import { resolveCoverImageBase64 } from '../../utils/print/rapor/raporShared';
 import { toast } from 'sonner';
-
-// Logo Lambang Jawa Barat SVG
-const JabarLogoSvg: React.FC<{ className?: string }> = ({ className = 'w-16 h-20' }) => (
-  <svg viewBox="0 0 100 120" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    {/* Perisai Luar Hijau */}
-    <path 
-      d="M50 5 C75 5, 92 18, 92 48 C92 82, 68 108, 50 115 C32 108, 8 82, 8 48 C8 18, 25 5, 50 5 Z" 
-      fill="#057835" 
-      stroke="#FFD700" 
-      strokeWidth="4" 
-    />
-    {/* Kujang Emas di Tengah Atas */}
-    <path 
-      d="M50 18 C52 24, 55 35, 50 50 C46 38, 48 24, 50 18 Z" 
-      fill="#FFD700" 
-      stroke="#B8860B" 
-      strokeWidth="1.5"
-    />
-    <circle cx="50" cy="30" r="3" fill="#FFFFFF" />
-    {/* Padi dan Kapas Lingkar */}
-    <path 
-      d="M30 45 C30 25, 45 20, 50 20 C55 20, 70 25, 70 45 C70 65, 55 75, 50 75 C45 75, 30 65, 30 45 Z" 
-      stroke="#FFD700" 
-      strokeWidth="2" 
-      strokeDasharray="3,3"
-      fill="none" 
-    />
-    {/* Papan Catur / Dam Biru Putih Bawah */}
-    <path 
-      d="M20 78 C30 92, 42 98, 50 100 C58 98, 70 92, 80 78 Z" 
-      fill="#002D62" 
-    />
-    <rect x="28" y="80" width="8" height="6" fill="#FFFFFF" />
-    <rect x="44" y="80" width="8" height="6" fill="#FFFFFF" />
-    <rect x="60" y="80" width="8" height="6" fill="#FFFFFF" />
-    <rect x="36" y="86" width="8" height="6" fill="#FFFFFF" />
-    <rect x="52" y="86" width="8" height="6" fill="#FFFFFF" />
-    {/* Pita Kuning Bawah */}
-    <path 
-      d="M15 102 C30 112, 70 112, 85 102 C80 115, 20 115, 15 102 Z" 
-      fill="#FFD700" 
-      stroke="#B8860B" 
-      strokeWidth="1"
-    />
-  </svg>
-);
-
-const DEFAULT_JABAR_LOGO = "data:image/svg+xml;utf8," + encodeURIComponent(
-  `<svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg"><path d="M50 5 C75 5, 92 18, 92 48 C92 82, 68 108, 50 115 C32 108, 8 82, 8 48 C8 18, 25 5, 50 5 Z" fill="#057835" stroke="#FFD700" stroke-width="4"/><path d="M50 18 C52 24, 55 35, 50 50 C46 38, 48 24, 50 18 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1.5"/><circle cx="50" cy="30" r="3" fill="#FFFFFF"/><path d="M30 45 C30 25, 45 20, 50 20 C55 20, 70 25, 70 45 C70 65, 55 75, 50 75 C45 75, 30 65, 30 45 Z" stroke="#FFD700" stroke-width="2" stroke-dasharray="3,3" fill="none"/><path d="M20 78 C30 92, 42 98, 50 100 C58 98, 70 92, 80 78 Z" fill="#002D62"/><rect x="28" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="44" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="60" y="80" width="8" height="6" fill="#FFFFFF"/><rect x="36" y="86" width="8" height="6" fill="#FFFFFF"/><rect x="52" y="86" width="8" height="6" fill="#FFFFFF"/><path d="M15 102 C30 112, 70 112, 85 102 C80 115, 20 115, 15 102 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1"/></svg>`
-);
 
 interface SertifikatPklModalProps {
   isOpen: boolean;
@@ -92,6 +44,13 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
   const [activeTab, setActiveTab] = useState<'ALL' | 'FRONT' | 'BACK'>('ALL');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [showDudiName, setShowDudiName] = useState<boolean>(true);
+  const [showLogoKanan, setShowLogoKanan] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('absenta_sertifikat_logo_kanan') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Tenant Query for Centralized Kop Surat (PrintHeader)
   const { user } = useAuthStore();
@@ -117,8 +76,8 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     const rawSekolah = pklData?.sekolah || {};
     return {
       name: tenantData?.name || rawSekolah?.nama || 'SMK NEGERI 1 PLERED',
-      logo_url: tenantData?.logo_url || rawSekolah?.logo_url || undefined,
-      logo_daerah_url: tenantData?.logo_daerah_url || rawSekolah?.logo_daerah || DEFAULT_JABAR_LOGO,
+      logo_url: showLogoKanan ? (tenantData?.logo_url || rawSekolah?.logo_url || undefined) : undefined,
+      logo_daerah_url: tenantData?.logo_daerah_url || rawSekolah?.logo_daerah || undefined,
       address: tenantData?.address || rawSekolah?.alamat || 'Jl. Raya Rawasari Kec. Plered Kab. Purwakarta Telp. (0264) 7504001',
       phone: tenantData?.phone || rawSekolah?.telepon || '(0264) 7504001',
       email: tenantData?.email || rawSekolah?.email || 'smkneple@gmail.com',
@@ -278,10 +237,14 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     try {
       setIsDownloadingPdf(true);
       const pdfMode = activeTab === 'FRONT' ? 'front_only' : activeTab === 'BACK' ? 'back_only' : 'all';
+      const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
+        resolveCoverImageBase64(tenantInfoForKop.logo_daerah_url),
+        resolveCoverImageBase64(tenantInfoForKop.logo_url),
+      ]);
       const doc = await generateSertifikatPdf(certData, { 
         mode: pdfMode,
-        logoDaerahBase64: tenantInfoForKop.logo_daerah_url,
-        logoSekolahBase64: tenantInfoForKop.logo_url,
+        logoDaerahBase64,
+        logoSekolahBase64,
         showDudiName,
       });
       doc.save(`Sertifikat_PKL_${certData.siswa.nama_siswa.replace(/\s+/g, '_')}.pdf`);
@@ -375,6 +338,34 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
             <span className="sm:hidden">DUDI:</span>
             <span className={showDudiName ? 'text-emerald-400 font-extrabold' : 'text-slate-400'}>
               {showDudiName ? 'ON' : 'OFF'}
+            </span>
+          </button>
+
+          {/* Toggle On-The-Fly Logo Kanan (Logo Sekolah) pada Kop Surat */}
+          <button
+            type="button"
+            onClick={() => {
+              setShowLogoKanan((prev) => {
+                const next = !prev;
+                try {
+                  localStorage.setItem('absenta_sertifikat_logo_kanan', String(next));
+                } catch {}
+                toast.info(`Logo Kanan Sertifikat: ${next ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}`);
+                return next;
+              });
+            }}
+            title="Aktifkan atau nonaktifkan Logo Kanan (Logo Sekolah) pada kop surat secara instan"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              showLogoKanan
+                ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Logo Kanan:</span>
+            <span className="sm:hidden">Logo Kanan:</span>
+            <span className={showLogoKanan ? 'text-indigo-400 font-extrabold' : 'text-slate-400'}>
+              {showLogoKanan ? 'ON' : 'OFF'}
             </span>
           </button>
 

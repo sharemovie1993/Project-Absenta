@@ -96,6 +96,7 @@ export class JadwalCrudController {
       semester_id,
       kelas_id,
       guru_id,
+      guru_pelaksana_id,
       mapel_id,
       jenis_kegiatan,
       hari,
@@ -173,6 +174,7 @@ export class JadwalCrudController {
           semester_id,
           kelas_id,
           guru_id,
+          guru_pelaksana_id: guru_pelaksana_id || null,
           mapel_id,
           jenis_kegiatan: jenis_kegiatan || 'KBM',
           hari,
@@ -183,6 +185,7 @@ export class JadwalCrudController {
         include: {
           Mapel: { select: { nama_mapel: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });
@@ -208,6 +211,7 @@ export class JadwalCrudController {
       semester_id,
       kelas_id,
       guru_id,
+      guru_pelaksana_id,
       mapel_id,
       jenis_kegiatan,
       hari,
@@ -298,6 +302,7 @@ export class JadwalCrudController {
           semester_id,
           kelas_id,
           guru_id,
+          guru_pelaksana_id: guru_pelaksana_id !== undefined ? (guru_pelaksana_id || null) : undefined,
           mapel_id,
           jenis_kegiatan,
           hari,
@@ -308,6 +313,7 @@ export class JadwalCrudController {
         include: {
           Mapel: { select: { nama_mapel: true } },
           Guru: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
+          GuruPelaksana: { select: { id: true, nama_guru: true, User: { select: { full_name: true } } } },
           Kelas: { select: { nama_kelas: true } },
         },
       });

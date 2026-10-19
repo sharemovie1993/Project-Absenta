@@ -43,9 +43,6 @@ const RaporSummaryModal = lazy(() =>
 const TranskripModal = lazy(() =>
   import('../../components/rapor/cetak-rapor/TranskripModal').then((m) => ({ default: m.TranskripModal }))
 );
-const SertifikatPklModal = lazy(() =>
-  import('../../components/hubin/SertifikatPklModal').then((m) => ({ default: m.SertifikatPklModal }))
-);
 const RaporRenderProgressModal = lazy(() =>
   import('../../components/rapor/cetak-rapor/RaporRenderProgressModal').then((m) => ({ default: m.RaporRenderProgressModal }))
 );
@@ -552,8 +549,17 @@ export default React.memo(function CetakRaporPage() {
     filteredStudents,
   });
 
-  // ── Hook Cetak Rapor PKL Terisolasi ──
-  const { handlePrintRaporPkl, handleBatchPrintRaporPkl, handleOpenSertifikatPkl, isBatchPklPrinting } = useRaporPklPrint({
+  // ── Hook Cetak Rapor & Sertifikat PKL Terpadu ──
+  const {
+    handlePrintRaporPkl,
+    handleBatchPrintRaporPkl,
+    handlePrintSertifikatPkl,
+    handleBatchPrintSertifikatPkl,
+    isBatchPklPrinting,
+    isBatchSertifikatPrinting,
+    showLogoKananSertifikat,
+    toggleShowLogoKananSertifikat,
+  } = useRaporPklPrint({
     selectedKelas,
     classList: typedClassList,
     activeYear,
@@ -561,18 +567,6 @@ export default React.memo(function CetakRaporPage() {
     user,
     setPdfLoading,
   });
-
-  const [selectedSertifikatPklId, setSelectedSertifikatPklId] = useState<string | null>(null);
-
-  const handleOpenSertifikat = useCallback(
-    async (student: LegerStudent) => {
-      const pklId = await handleOpenSertifikatPkl(student);
-      if (pklId) {
-        setSelectedSertifikatPklId(pklId);
-      }
-    },
-    [handleOpenSertifikatPkl]
-  );
 
   const breadcrumbs = useMemo(
     () => [{ label: 'Rapor', href: '/rapor/dashboard' }, { label: 'Cetak Rapor & Leger' }],
@@ -646,7 +640,7 @@ export default React.memo(function CetakRaporPage() {
             onPrintRapor={handlePrintRapor}
             onPrintP5={handlePrintP5}
             onPrintRaporPkl={handlePrintRaporPkl}
-            onPrintSertifikatPkl={handleOpenSertifikat}
+            onPrintSertifikatPkl={handlePrintSertifikatPkl}
             onPrintLeger={() => printLeger(selectedKelas, activeYear?.id, activeSemester?.id, currentKelasObj?.nama_kelas)}
             onExportLeger={handleExportLeger}
             onBatchPrintRapor={handleBatchPrintRapor}
@@ -657,7 +651,11 @@ export default React.memo(function CetakRaporPage() {
             isBatchPrinting={isBatchPrinting}
             onBatchPrintRaporPkl={handleBatchPrintRaporPkl}
             isBatchPklPrinting={isBatchPklPrinting}
+            onBatchPrintSertifikatPkl={handleBatchPrintSertifikatPkl}
+            isBatchSertifikatPrinting={isBatchSertifikatPrinting}
             hasLegerData={Boolean(leger?.data || filteredStudents.length > 0)}
+            showLogoKananSertifikat={showLogoKananSertifikat}
+            toggleShowLogoKananSertifikat={toggleShowLogoKananSertifikat}
             onOpenTranskripModal={(s) => setSelectedTranskripStudent(s)}
             getPdfSklUrl={(sId) => raporApi.getPdfSklUrl(sId)}
             getPdfUkkUrl={(sId) => raporApi.getPdfUkkUrl(sId)}
@@ -711,17 +709,6 @@ export default React.memo(function CetakRaporPage() {
             transkripData={(transkripData?.data || transkripData || null) as unknown as TranskripNilaiData}
             isLoading={isLoadingTranskrip}
           />
-        </Suspense>
-
-        {/* Sertifikat PKL Modal (Lazy-Loaded) */}
-        <Suspense fallback={null}>
-          {selectedSertifikatPklId && (
-            <SertifikatPklModal
-              isOpen={Boolean(selectedSertifikatPklId)}
-              onClose={() => setSelectedSertifikatPklId(null)}
-              siswaPklId={selectedSertifikatPklId}
-            />
-          )}
         </Suspense>
 
         {/* Rapor Render Progress Modal (Interactive Non-Silent Feedback) */}

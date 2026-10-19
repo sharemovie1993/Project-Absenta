@@ -265,6 +265,7 @@ async function main() {
         // Klaster 2: Manajemen Jadwal Pelajaran
         { label: 'Jam Pelajaran', icon: 'Clock', path: '/kurikulum/jam-kbm', required_capability: 'academic.schedules.manage, academic.manage.academic, academic.schedules.view.list' },
         { label: 'Jadwal KBM', icon: 'Calendar', path: '/kurikulum/jadwal', required_capability: 'academic.schedules.view.list, academic.manage.academic, academic.teaching.view' },
+        { label: 'Delegasi Pengajar', icon: 'Sparkles', path: '/kurikulum/jadwal-delegasi', required_capability: 'academic.schedules.manage, academic.schedules.view.list, academic.manage.academic' },
         { label: 'Jadwal Piket', icon: 'ShieldCheck', path: '/kurikulum/jadwal-piket', required_capability: 'academic.schedules.view.list, academic.manage.academic, attendance.piket.view' },
         // Divider 2
         { label: 'divider', icon: null, path: null },

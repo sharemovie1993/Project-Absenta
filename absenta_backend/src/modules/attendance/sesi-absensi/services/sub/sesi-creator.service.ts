@@ -386,6 +386,9 @@ export class SesiCreatorService {
       }
     }
 
+    const isDelegasi = Boolean(payload.is_delegasi);
+    const guruPelaksanaId = payload.guru_pelaksana_id || null;
+
     const sesi = await (prisma.sesiAbsensi as any).create({
       data: {
         tenant_id: tenantId,
@@ -394,6 +397,8 @@ export class SesiCreatorService {
         kelas_id,
         mapel_id: mapel_id || null,
         guru_id: validGuruId,
+        guru_pelaksana_id: guruPelaksanaId,
+        is_delegasi: isDelegasi,
         tahun_pelajaran_id: targetTpId || 'default-tp',
         semester_id: targetSemId || 'default-sem',
         jenis_kegiatan,
@@ -407,7 +412,10 @@ export class SesiCreatorService {
       }
     });
 
-    if (validGuruId && finalFotoUrl) {
+    // Evaluasi presensi guru pengajar riil di kelas (guru pelaksana jika delegasi, atau guru resmi)
+    const effectiveAttendingGuruId = guruPelaksanaId || validGuruId;
+
+    if (effectiveAttendingGuruId && finalFotoUrl) {
       // ⚖️ Aturan KERAS: Guru dievaluasi dari jam jadwal resmi (JadwalKBM.jam_mulai),
       // BUKAN dari parsedStart (waktu fisik guru buka sesi).
       let teacherScheduledStart: Date = parsedStart;
@@ -418,14 +426,18 @@ export class SesiCreatorService {
         }
       }
 
+      const note = isDelegasi
+        ? 'Otomatis HADIR saat pembukaan sesi KBM (Pengajar Pelaksana / Delegasi)'
+        : 'Otomatis HADIR saat pembukaan sesi KBM (Foto)';
+
       await upsertTeacherAttendanceOnOpen(
         tenantId,
         sesi.id,
-        validGuruId,
+        effectiveAttendingGuruId,
         teacherScheduledStart,
         targetTpId || 'default-tp',
         targetSemId || 'default-sem',
-        'Otomatis HADIR saat pembukaan sesi KBM (Foto)',
+        note,
         kelas_id
       );
     }

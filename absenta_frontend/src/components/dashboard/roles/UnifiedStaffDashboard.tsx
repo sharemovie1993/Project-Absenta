@@ -238,14 +238,21 @@ export const UnifiedStaffDashboard: React.FC = () => {
     (jenisPtk === 'PENDIDIK' || (!jenisPtk && (roleName === 'GURU' || isWaliKelasFromCaps)))
   );
 
-  // 🔔 Global KBM Window Alert for Teacher (works across all tabs in dashboard)
+  // 🎓 Deteksi Penugasan Pengajar Delegasi / Guru Pengganti (Khususnya jika Staf TU / Non-Pendidik memegang jadwal KBM)
+  const hasTeachingDuty = useMemo(() => {
+    return Array.isArray(timelineItems) && timelineItems.length > 0;
+  }, [timelineItems]);
+
+  const isEffectivePendidik = isPendidik || hasTeachingDuty;
+
+  // 🔔 Global KBM Window Alert for Teacher & Proxy (works across all tabs in dashboard)
   useSessionWindowAlert({
     schedules: Array.isArray(timelineItems) ? (timelineItems as any) : [],
-    enabled: !isTuStaff && !!guruId,
-    roleLabel: 'guru',
+    enabled: isEffectivePendidik && !!guruId,
+    roleLabel: hasTeachingDuty && isTuStaff ? 'guru pengganti' : 'guru',
   });
 
-  const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isPendidik && !isAdminRole && !isKepsek && !isKurikulum);
+  const isPureGerbangStaff = isSecurityRole || (hasGerbangDuty && !isEffectivePendidik && !isAdminRole && !isKepsek && !isKurikulum);
 
   const isWaliKelas = isWaliKelasFromCaps ||
     !!guruProfile?.wali_kelas_di?.id ||
@@ -273,13 +280,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const defaultTabId = useMemo(() => {
     // 1. Admin murni mendarat di Dashboard Admin
     if (isAdminRole && !isKepsek) return 'admin';
-    // 2. Kepala Sekolah, seluruh Pendidik (Guru yang punya tugas KBM / struktural), dan Staf Gerbang mendarat di Beranda / Ringkasan
-    if (isKepsek || isPendidik || isPureGerbangStaff) return 'ringkasan';
-    // 3. Staf TU murni mendarat di tab Tata Usaha
+    // 2. Kepala Sekolah, seluruh Pendidik / Staf yang memegang tugas KBM delegasi, dan Staf Gerbang mendarat di Beranda / Ringkasan
+    if (isKepsek || isEffectivePendidik || isPureGerbangStaff) return 'ringkasan';
+    // 3. Staf TU murni tanpa jadwal mengajar mendarat di tab Tata Usaha
     if (isTuStaff) return 'kepegawaian';
     // 4. Default fallback aman
     return 'ringkasan';
-  }, [isAdminRole, isKepsek, isPendidik, isPureGerbangStaff, isTuStaff]);
+  }, [isAdminRole, isKepsek, isEffectivePendidik, isPureGerbangStaff, isTuStaff]);
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const requestedTab = searchParams.get('tab');
@@ -734,6 +741,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
       badges.push({ label: 'Staf Tata Usaha', icon: FileText, color: 'bg-violet-500/25 text-violet-100 border-violet-400/30' });
     }
 
+    // ── Badge Pengajar Pengganti KBM (Teaching Proxy) ───────────────────
+    if (isTuStaff && hasTeachingDuty) {
+      badges.push({
+        label: 'Guru Pengganti KBM',
+        icon: Sparkles,
+        color: 'bg-amber-500/25 text-amber-100 border-amber-400/30',
+      });
+    }
+
     if (badges.length === 0) {
       if (jabatan) {
         badges.push({ label: jabatan, color: 'bg-white/15 text-white border-white/20' });
@@ -791,7 +807,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
         icon: Award,
         badge: 'KEPSEK'
       });
-    } else if ((isPendidik || isPureGerbangStaff) && !isAdminRole) {
+    } else if ((isEffectivePendidik || isPureGerbangStaff) && !isAdminRole) {
       list.push({ 
         id: 'ringkasan', 
         label: isPureGerbangStaff ? 'Scan Gerbang' : 'Beranda Guru', 
@@ -808,7 +824,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     });
 
     // 1.1 Input Manual (Khusus Petugas Gerbang / Piket)
-    if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isPendidik) && !isKepsek) {
+    if ((hasGerbangDuty || isGerbang || isPureGerbangStaff) && (!isAdminRole || isEffectivePendidik) && !isKepsek) {
       list.push({
         id: 'manual_presensi',
         label: 'Input Manual',
@@ -817,8 +833,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
       });
     }
 
-    // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif)
-    if (!isPureGerbangStaff && !isKepsek && (!isTuStaff || isKurikulum) && (!isAdminRole || isPendidik)) {
+    // 2. KBM & Absen (hanya untuk Guru Pengajar Aktif atau Staf TU Pengganti Mengajar)
+    if (!isPureGerbangStaff && !isKepsek && (!isTuStaff || isKurikulum || hasTeachingDuty) && (!isAdminRole || isEffectivePendidik)) {
       list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
     }
 
@@ -873,6 +889,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKesiswaan,
     isKepsek,
     isPendidik,
+    isEffectivePendidik,
+    hasTeachingDuty,
     can,
     isPembimbingPkl,
     isFasilitatorP5Actual,
@@ -1133,7 +1151,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
               isPembimbingPkl={isPembimbingPkl}
               hasGerbangDuty={hasGerbangDuty}
               isPureGerbang={isPureGerbangStaff}
-              isPendidik={isPendidik}
+              isPendidik={isEffectivePendidik}
               timelineItems={timelineItems || []}
               onNavigateTab={handleTabChange}
             />

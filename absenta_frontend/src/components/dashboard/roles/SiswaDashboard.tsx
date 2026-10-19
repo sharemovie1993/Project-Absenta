@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button, Badge, UnconnectedBadge, renderApiValue } from '../../../components/ui';
-import { SiswaPortalAppLauncher } from '../portal/SiswaPortalAppLauncher';
+import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 import { resolveSmartDashboardMode } from '../../../helpers/dashboardModeHelper';
 import { useCapabilities } from '../../../hooks/useCapabilities';
 import { useSocket } from '../../../hooks/useSocket';
@@ -58,6 +58,7 @@ import {
   Building2 as BuildingIcon,
   ShoppingCart,
   Compass,
+  LayoutGrid,
 } from 'lucide-react';
 import api from '../../../lib/axiosInstance';
 import { kesiswaanApi } from '../../../api/kesiswaan.api';
@@ -728,6 +729,7 @@ export const SiswaDashboard: React.FC = () => {
   // Navigation Tabs definition
   const tabs = [
     { id: 'ringkasan', label: 'Ringkasan', icon: LayoutList },
+    { id: 'portal', label: 'Portal', icon: LayoutGrid },
     { id: 'kehadiran', label: 'Kehadiran', icon: CheckCircle2 },
     { id: 'catatan', label: 'Catatan', icon: FileText },
     { id: 'berkas', label: 'Berkas Saya', icon: FolderOpen },
@@ -846,6 +848,9 @@ export const SiswaDashboard: React.FC = () => {
         kode: item.Mapel?.kode_mapel || norm.mapel_nama,
         mapel: norm.mapel_nama,
         guru: norm.guru_nama,
+        guru_nama: norm.guru_nama,
+        guru_pengganti_nama: norm.guru_pengganti_nama || (item as any).guru_pengganti_nama || (item as any).GuruPelaksana?.nama_guru || (item as any).guru_inval_nama || null,
+        guru_pengampu_nama: norm.guru_pengampu_nama || norm.guru_nama || null,
         lokasi: norm.kelas_nama,
         jam: `${norm.jam_mulai} - ${norm.jam_selesai}`,
         jamLabel: norm.jamLabel,
@@ -950,6 +955,9 @@ export const SiswaDashboard: React.FC = () => {
           waktu_tap: tapWaktuStr,
           sesi: `KBM - ${sch.mapel}`,
           nama_guru: sch.guru || 'Guru Pengampu',
+          guru_nama: sch.guru || 'Guru Pengampu',
+          guru_pengganti_nama: sch.guru_pengganti_nama || sch._raw?.guru_pengganti_nama || null,
+          guru_pengampu_nama: sch.guru_pengampu_nama || sch._raw?.guru_pengampu_nama || sch.guru || null,
           status_guru: rawTeacherStatus,
           waktu_guru: sch._raw?.session?.waktu_tap || null,
           keterangan: isTapped ? (matchedTap?.keterangan || 'Presensi KBM Tercatat') : 'Sesi Terjadwal Hari Ini',
@@ -1191,7 +1199,7 @@ export const SiswaDashboard: React.FC = () => {
                 )}
               >
                 <TabIcon size={16} />
-                <span>{tab.id === 'profil' ? 'Profil & Kartu' : tab.id === 'catatan' ? 'Catatan Poin' : tab.label}</span>
+                <span>{tab.id === 'portal' ? 'Portal Apps' : tab.id === 'profil' ? 'Profil & Kartu' : tab.id === 'catatan' ? 'Catatan Poin' : tab.label}</span>
                 {badgeCount !== null && badgeCount > 0 && (
                   <span className="px-1.5 py-0.2 text-[10px] font-black rounded-full bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30">
                     {badgeCount}
@@ -1918,6 +1926,20 @@ export const SiswaDashboard: React.FC = () => {
           </motion.div>
         )}
 
+        {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH (SHARED PORTAL) */}
+        {activeTab === 'portal' && (
+          <motion.div
+            key="tab-portal"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-6"
+          >
+            <StaffPortalTab onBackToBeranda={() => handleTabChange('ringkasan')} />
+          </motion.div>
+        )}
+
         {/* TAB 2: KEHADIRAN (Kalender & Historis Presensi Gerbang) */}
         {activeTab === 'kehadiran' && (
           <motion.div
@@ -2054,7 +2076,7 @@ export const SiswaDashboard: React.FC = () => {
               )}>
                 <TabIcon size={18} />
               </div>
-              <span>{tab.label}</span>
+              <span className="truncate">{tab.id === 'berkas' ? 'Berkas' : tab.label}</span>
             </button>
           );
         })}

@@ -429,8 +429,14 @@ export const JadwalKBMList: React.FC<{ kelasId?: string }> = React.memo(({ kelas
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center font-medium">
                             <User className="mr-2 h-3.5 w-3.5 text-emerald-500" />
-                            {item.Guru?.User?.full_name || 'Guru'}
+                            <span>{item.Guru?.nama_guru || item.Guru?.User?.full_name || 'Guru'}</span>
                           </div>
+                          {item.GuruPelaksana && (
+                            <div className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-lg px-2 py-1 flex items-center gap-1 font-semibold">
+                              <span>Delegasi:</span>
+                              <strong className="text-amber-900 dark:text-amber-200 font-bold">{item.GuruPelaksana?.nama_guru || item.GuruPelaksana?.User?.full_name}</strong>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="font-black text-[10px] uppercase tracking-widest text-center py-2.5 text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">

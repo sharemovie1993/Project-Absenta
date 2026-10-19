@@ -226,6 +226,7 @@ const SupervisiPage = lazy(() => import('./pages/kurikulum/SupervisiPage'));
 const StrukturKurikulumPage = lazy(() => import('./pages/kurikulum/StrukturKurikulumPage'));
 const MasterStrukturPage = lazy(() => import('./pages/kurikulum/MasterStrukturPage'));
 const JadwalPelajaranPage = lazy(() => import('./pages/kurikulum/JadwalPelajaranPage'));
+const JadwalDelegasiPage = lazy(() => import('./pages/kurikulum/JadwalDelegasiPage'));
 const JadwalPiketGuruPage = lazy(() => import('./pages/kurikulum/JadwalPiketGuruPage'));
 const KalenderAkademikPage = lazy(() => import('./pages/kurikulum/KalenderAkademikPage'));
 const JamKBMPage = lazy(() => import('./pages/kurikulum/JamKBMPage'));
@@ -1570,6 +1571,18 @@ function App() {
                           </div>
                         }>
                           <JadwalPelajaranPage />
+                        </Suspense>
+                      </ProtectedRoute>
+                    } />
+                    {/* Delegasi Pengajar KBM (Teaching Proxy) */}
+                    <Route path="/kurikulum/jadwal-delegasi" element={
+                      <ProtectedRoute requiredCapability="academic.schedules.view.list">
+                        <Suspense fallback={
+                          <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-950">
+                            <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin" />
+                          </div>
+                        }>
+                          <JadwalDelegasiPage />
                         </Suspense>
                       </ProtectedRoute>
                     } />
