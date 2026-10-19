@@ -16,6 +16,7 @@ import { useCapabilities } from '../../../hooks/useCapabilities';
 import type { TahunPelajaran, Semester, Kelas } from '../../../types/academic';
 import toast from 'react-hot-toast';
 import type { ScopeMode } from './components/TransitionForm';
+import { isChronologicallyAfter } from './utils';
 
 // Lazy loading subcomponents (Pilar 11)
 const TransitionForm = lazy(() => import('./components/TransitionForm'));
@@ -178,6 +179,18 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
     }
   });
 
+  // Auto-validate and reset selectedTahunBaruId if it violates chronological order
+  useEffect(() => {
+    if (selectedTahunLamaId && selectedTahunBaruId && tahunPelajaran.length > 0) {
+      const lamaObj = tahunPelajaran.find(t => t.id === selectedTahunLamaId);
+      const baruObj = tahunPelajaran.find(t => t.id === selectedTahunBaruId);
+      if (lamaObj && baruObj && !isChronologicallyAfter(lamaObj.tahun, baruObj.tahun)) {
+        // Reset invalid target year
+        setSelectedTahunBaruId('');
+      }
+    }
+  }, [selectedTahunLamaId, selectedTahunBaruId, tahunPelajaran]);
+
   const handleTingkatToggle = useCallback((t: number) => {
     setSelectedTingkat(prev => {
       if (prev.includes(t)) {
@@ -197,8 +210,14 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
       toast.error('Harap pilih Tahun Pelajaran Lama dan Tahun Pelajaran Baru');
       return;
     }
+    const lamaObj = tahunPelajaran.find(t => t.id === selectedTahunLamaId);
+    const baruObj = tahunPelajaran.find(t => t.id === selectedTahunBaruId);
+    if (lamaObj && baruObj && !isChronologicallyAfter(lamaObj.tahun, baruObj.tahun)) {
+      toast.error(`Proteksi Human Error: Tahun Pelajaran Baru (${baruObj.tahun}) harus lebih tinggi dari Tahun Pelajaran Lama (${lamaObj.tahun})`);
+      return;
+    }
     setStep(2);
-  }, [selectedTahunLamaId, selectedTahunBaruId]);
+  }, [selectedTahunLamaId, selectedTahunBaruId, tahunPelajaran]);
 
   const handleScopeNext = useCallback(() => {
     if (scopeMode === 'SELECTED' && selectedTingkat.length === 0) {

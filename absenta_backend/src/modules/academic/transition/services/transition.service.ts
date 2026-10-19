@@ -35,6 +35,12 @@ export class TransitionService {
     }
     if (!tahunLama.is_active) throw new Error('Tahun pelajaran lama harus AKTIF');
     if (tahunBaru.is_active) throw new Error('Tahun pelajaran baru harus BELUM AKTIF');
+
+    const startLama = parseInt(tahunLama.tahun.match(/\d{4}/)?.[0] || '0', 10);
+    const startBaru = parseInt(tahunBaru.tahun.match(/\d{4}/)?.[0] || '0', 10);
+    if (startLama > 0 && startBaru > 0 && startBaru <= startLama) {
+      throw new Error(`Proteksi Human Error: Tahun pelajaran baru (${tahunBaru.tahun}) harus lebih tinggi dari tahun pelajaran lama (${tahunLama.tahun})`);
+    }
     const semesterAktifLama = await prisma.semester.findFirst({
       where: { tenant_id: tahunLama.tenant_id, tahun_pelajaran_id: tahunLama.id, is_active: true }
     });

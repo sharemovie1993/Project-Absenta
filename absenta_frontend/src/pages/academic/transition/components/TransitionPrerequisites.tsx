@@ -3,6 +3,7 @@ import { SectionCard } from '../../../../components/ui';
 import { CheckCircle2, XCircle, ArrowRight, ExternalLink, Settings, Info, AlertCircle } from 'lucide-react';
 import { Button } from '../../../../components/ui';
 import type { TahunPelajaran, Semester } from '../../../../types/academic';
+import { isChronologicallyAfter } from '../utils';
 
 interface StepAction {
   label: string;
@@ -37,6 +38,12 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
     ? ['genap', '2'].includes(String(currentSemester.nama_semester).toLowerCase()) 
     : false;
 
+  const isChronological = Boolean(
+    tahunAktif?.tahun && 
+    tahunBaru?.tahun && 
+    isChronologicallyAfter(tahunAktif.tahun, tahunBaru.tahun)
+  );
+
   const steps: StepItem[] = [
     {
       label: 'Tahun Pelajaran Lama',
@@ -56,15 +63,25 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
     },
     {
       label: 'Tahun Pelajaran Baru',
-      valid: !!tahunBaru,
-      message: tahunBaru ? `Siap: ${tahunBaru.tahun}` : 'Harap buat Tahun Pelajaran baru.',
-      action: !tahunBaru ? { label: 'Buat Tahun', path: '/academic/tahun-pelajaran' } : undefined
+      valid: !!tahunBaru && isChronological,
+      message: !tahunBaru 
+        ? 'Harap buat/pilih Tahun Pelajaran baru.' 
+        : !isChronological 
+        ? `Salah: ${tahunBaru.tahun} tidak boleh lebih lama dari ${tahunAktif?.tahun || 'tahun aktif'}.`
+        : `Siap: ${tahunBaru.tahun}`,
+      action: (!tahunBaru || !isChronological) ? { label: 'Buat Tahun', path: '/academic/tahun-pelajaran' } : undefined
     },
     {
       label: 'Semester Baru (Ganjil)',
-      valid: semesterBaruGanjil,
-      message: semesterBaruGanjil ? 'Semester Ganjil tersedia' : 'Harap buat Semester Ganjil di tahun baru.',
-      action: !semesterBaruGanjil ? { label: 'Atur Semester', path: '/academic/semester' } : undefined
+      valid: semesterBaruGanjil && isChronological,
+      message: !tahunBaru
+        ? 'Pilih tahun pelajaran baru dahulu.'
+        : !isChronological
+        ? 'Tahun tujuan belum valid.'
+        : semesterBaruGanjil 
+        ? 'Semester Ganjil tersedia' 
+        : 'Harap buat Semester Ganjil di tahun baru.',
+      action: (!semesterBaruGanjil && isChronological) ? { label: 'Atur Semester', path: '/academic/semester' } : undefined
     }
   ];
 
