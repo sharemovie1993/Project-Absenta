@@ -73,6 +73,8 @@ export async function getDhuhaStats(params?: {
   tahun_pelajaran_id?: string;
   semester_id?: string;
   jadwal_kegiatan_id?: string;
+  tanggal_mulai?: string;
+  tanggal_selesai?: string;
   limit?: number;
 }): Promise<DhuhaStatsResponse> {
   const res = await getUnifiedStats({ ...params, jenis_kegiatan: 'DUHA' });

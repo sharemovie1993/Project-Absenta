@@ -84,17 +84,17 @@ const GuardState: React.FC<{ navigate: ReturnType<typeof useNavigate> }> = ({ na
 // ─── TAB CONFIG ────────────────────────────────────────────────────────────────
 
 const TAB_OPTIONS = [
-  { id: 'kepanitiaan', label: 'Kepanitiaan & Terminal', icon: Users },
-  { id: 'statistik',   label: 'Progres & Statistik',    icon: BarChart2 },
-  { id: 'laporan_tim', label: 'Laporan Pendamping',      icon: FileText },
-  { id: 'laporan_kelas', label: 'Laporan Per Kelas',     icon: LayoutList },
+  { id: 'statistik',   label: 'Performa Perkembangan', icon: BarChart2 },
+  { id: 'laporan_kelas', label: 'Laporan Per Rombel',   icon: LayoutList },
+  { id: 'laporan_tim', label: 'Laporan Pendamping',    icon: FileText },
+  { id: 'kepanitiaan', label: 'Terminal Presensi & POS', icon: Users },
 ];
 
 // ─── PAGE COMPONENT ────────────────────────────────────────────────────────────
 
 const ProgramKetarunaanPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('kepanitiaan');
+  const [activeTab, setActiveTab] = useState('statistik');
   const { isKesiswaan, isAdmin, can } = useCapabilities();
 
   // Guard check
@@ -166,33 +166,31 @@ const ProgramKetarunaanPage: React.FC = () => {
   const tabOptionsMemo = useMemo(() => TAB_OPTIONS, []);
 
   // Stat cards serasi dengan standar SiswaPage
-  // Menggunakan identifier summaryTerkini (bukan latest) agar bebas dari false-positive mock/test scanner
   const statCards = useMemo(() => {
+    const ringkasan = stats?.ringkasan_periode;
     const summaryTerkini = stats?.latest;
     const hasPastSession = Boolean(stats?.trend && stats.trend.length > 0);
 
     return [
       {
-        title: 'Kehadiran Siswa',
-        value: hasPastSession && summaryTerkini?.persen_hadir_siswa !== undefined
-          ? `${summaryTerkini.persen_hadir_siswa}%`
-          : (guard?.is_active ? 'Siaga' : '—'),
+        title: 'Rata-rata Hadir Taruna',
+        value: ringkasan && ringkasan.total_sesi > 0
+          ? `${ringkasan.avg_persen_siswa}%`
+          : (hasPastSession && summaryTerkini ? `${summaryTerkini.persen_hadir_siswa}%` : (guard?.is_active ? 'Siaga' : '—')),
         icon: <Users size={14} />,
         gradient: 'from-emerald-500 to-teal-600',
-        subtitle: hasPastSession && summaryTerkini
-          ? `${summaryTerkini.hadir_siswa} dari ${summaryTerkini.total_siswa} siswa hadir`
+        subtitle: ringkasan && ringkasan.total_sesi > 0
+          ? `${ringkasan.total_hadir_siswa.toLocaleString()} taruna tercatat`
           : `${stats?.total_siswa_master ? `${stats.total_siswa_master} Siswa` : '1.200+ Siswa'} Terdaftar`,
       },
       {
-        title: 'Tim Pendamping',
-        value: hasPastSession && summaryTerkini && summaryTerkini.total_pendamping > 0
-          ? `${summaryTerkini.hadir_pendamping}/${summaryTerkini.total_pendamping}`
-          : (guard?.is_active ? '76 Siap' : '—'),
+        title: 'Kepatuhan Pembina',
+        value: ringkasan && ringkasan.total_sesi > 0
+          ? `${ringkasan.avg_persen_guru}%`
+          : (hasPastSession && summaryTerkini ? `${summaryTerkini.persen_hadir_pendamping}%` : (guard?.is_active ? '76 Siap' : '—')),
         icon: <Shield size={14} />,
         gradient: 'from-blue-600 to-indigo-600',
-        subtitle: hasPastSession && summaryTerkini && summaryTerkini.total_pendamping > 0
-          ? `${summaryTerkini.persen_hadir_pendamping}% kehadiran guru & pembina`
-          : 'Pembina Taruna & Wali Kelas Terdaftar',
+        subtitle: 'Pembina & Wali Kelas Terdaftar',
       },
       {
         title: 'Status Program',
@@ -219,7 +217,7 @@ const ProgramKetarunaanPage: React.FC = () => {
     <InfraErrorBoundary>
       <AcademicPageLayout
         title="Program Ketarunaan"
-        description="Pusat pengelolaan kepanitiaan, presensi terintegrasi, pemantauan statistik, dan pelaporan kegiatan Ketarunaan."
+        description="Pusat laporan perkembangan kedisiplinan taruna, evaluasi peleton rombel, dan kepanitiaan Ketarunaan."
         breadcrumbs={breadcrumbs}
         stats={statCards}
         isLoadingStats={isGuardLoading || isStatsLoading || isSesiLoading}
@@ -240,80 +238,55 @@ const ProgramKetarunaanPage: React.FC = () => {
             </div>
           ),
           items: [
-            { text: 'Tap tombol Hadir/Izin/Sakit pada tab Kepanitiaan untuk mencatat kehadiran pembina.' },
-            { text: 'Guru yang mengajar di jam KBM beririsan otomatis terdata dalam 2 sesi sekaligus.' },
-            { text: 'Gunakan tab Laporan Pendamping & Laporan Per Kelas untuk mencetak arsip fisik siap tanda tangan.' },
+            { text: 'Buka tab Performa Perkembangan untuk melihat tren disiplin kehadiran taruna dalam rentang waktu.' },
+            { text: 'Gunakan tab Laporan Per Rombel & Laporan Pendamping untuk arsip dan cetak fisik.' },
+            { text: 'Akses tab Terminal Presensi & POS saat jam kegiatan berlangsung untuk scan RFID atau presensi pembina.' },
           ],
         }}
       >
         <div className="space-y-6">
-          {/* Strip info jadwal aktif / standby */}
-          <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border rounded-2xl p-4 shadow-sm ${
-            !guard?.is_active
-              ? 'bg-gradient-to-r from-slate-50 to-amber-50 dark:from-slate-900/60 dark:to-amber-950/20 border-amber-200/80 dark:border-amber-800/60'
-              : guard?.is_today_scheduled_day && guard?.is_within_time_window
-                ? 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 border-amber-200/80 dark:border-amber-800/60'
-                : 'bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-900/40 dark:to-blue-950/20 border-slate-200/80 dark:border-slate-800/60'
-          }`}>
+          {/* Status strip info: Ringkas & Bersih */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl px-4 py-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                !guard?.is_active
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                  : guard?.is_today_scheduled_day && guard?.is_within_time_window
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                    : 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-              }`}>
-                <Medal className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Medal className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">
-                    {guard?.jadwal_nama || 'Program Ketarunaan'}
-                  </h3>
-                  {!guard?.is_active ? (
-                    <Badge variant="outline" className="text-[10px] font-bold border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40">
-                      Agenda Nonaktif
-                    </Badge>
-                  ) : guard?.is_today_scheduled_day && guard?.is_within_time_window ? (
-                    <Badge variant="success" className="text-[10px] font-bold">
-                      Sesi Aktif Berlangsung
-                    </Badge>
-                  ) : guard?.is_today_scheduled_day ? (
-                    <Badge variant="info" className="text-[10px] font-bold">
-                      Hari Pelaksanaan (Standby)
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] font-bold border-slate-300 text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
-                      Mode Siaga (Di Luar Hari Jadwal)
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                  {hariAktifLabel && `${hariAktifLabel} • `}
-                  {formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
-                  {sesiId ? (
-                    <span className="ml-2 font-bold text-emerald-600 dark:text-emerald-400">
-                      ● Sesi Hari Ini Berjalan
-                    </span>
-                  ) : !guard?.is_today_scheduled_day ? (
-                    <span className="ml-2 font-medium text-amber-600 dark:text-amber-400">
-                      (Hari ini {guard?.today_hari ? HARI_LABEL[guard.today_hari] || guard.today_hari : ''} bukan hari kegiatan)
-                    </span>
-                  ) : null}
-                </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-black text-slate-800 dark:text-slate-100">
+                  {guard?.jadwal_nama || 'Program Ketarunaan'}
+                </span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">•</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {hariAktifLabel ? `${hariAktifLabel} ` : ''}{formatWaktu(guard?.jadwal_waktu_mulai)} – {formatWaktu(guard?.jadwal_waktu_selesai)} WIB
+                </span>
+                {!guard?.is_active ? (
+                  <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">
+                    Agenda Nonaktif
+                  </Badge>
+                ) : guard?.is_today_scheduled_day && guard?.is_within_time_window ? (
+                  <Badge variant="success" className="text-[10px]">
+                    Sesi Berlangsung
+                  </Badge>
+                ) : guard?.is_today_scheduled_day ? (
+                  <Badge variant="info" className="text-[10px]">
+                    Hari Pelaksanaan
+                  </Badge>
+                ) : (
+                  <Badge variant="neutral" className="text-[10px]">
+                    Siaga Terjadwal
+                  </Badge>
+                )}
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:self-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="gap-1.5 text-xs bg-white/80 dark:bg-slate-900/80"
-              >
-                <RefreshCw className="w-3.5 h-3.5" /> Segarkan
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              className="gap-1.5 text-xs text-slate-500 hover:text-slate-800 self-end sm:self-center"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Segarkan
+            </Button>
           </div>
 
           {/* Container Tab Utama serasi SiswaPage */}

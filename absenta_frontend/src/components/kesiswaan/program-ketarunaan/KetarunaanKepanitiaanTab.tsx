@@ -301,21 +301,45 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
             </div>
           )}
         </div>
-      </div>
-
-      {/* SECTION 1: GURU MAPEL KBM BERIRISAN (1 TAP 2 RECORD) */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-            <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-              Guru Mapel KBM yang Beririsan Jam
+      {!isScheduledDay && !forceIncidentalMode ? (
+        <div className="p-8 text-center rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <Clock className="w-6 h-6 opacity-70" />
+          </div>
+          <div className="space-y-1 max-w-md mx-auto">
+            <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">
+              Terminal Presensi Berada Dalam Mode Siaga
             </h4>
-            <Badge variant="neutral" className="text-[10px]">
-              {guruMapelHadirCount}/{guruMapelList.length} Hadir
-            </Badge>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              Hari ini bukan jadwal reguler Program Ketarunaan ({guard?.hari_aktif?.join(', ') || "Rabu"}). Daftar kartu presensi guru disembunyikan untuk menjaga kebersihan visual dan integritas data KBM reguler.
+            </p>
+          </div>
+          <div className="pt-2 flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setForceIncidentalMode(true)}
+              className="text-xs font-bold gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-300"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-600" /> Buka Sesi Khusus / Insidental Hari Ini
+            </Button>
           </div>
         </div>
+      ) : (
+        <>
+          {/* SECTION 1: GURU MAPEL KBM BERIRISAN (1 TAP 2 RECORD) */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                  Guru Mapel KBM yang Beririsan Jam
+                </h4>
+                <Badge variant="neutral" className="text-[10px]">
+                  {guruMapelHadirCount}/{guruMapelList.length} Hadir
+                </Badge>
+              </div>
+            </div>
 
         {guruMapelList.length === 0 ? (
           <div className="p-6 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30">
@@ -585,6 +609,8 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Reusable Universal RFID Scanner Modal */}
       <UnifiedKegiatanRfidScanModal

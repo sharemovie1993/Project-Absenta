@@ -66,6 +66,8 @@ export async function getKetarunaanStats(params?: {
   tahun_pelajaran_id?: string;
   semester_id?: string;
   jadwal_kegiatan_id?: string;
+  tanggal_mulai?: string;
+  tanggal_selesai?: string;
   limit?: number;
 }): Promise<KetarunaanStatsResponse> {
   return getUnifiedStats({ ...params, jenis_kegiatan: 'KETARUNAAN' });

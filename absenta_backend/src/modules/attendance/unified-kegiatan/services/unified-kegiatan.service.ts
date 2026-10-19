@@ -764,7 +764,14 @@ export class UnifiedKegiatanService {
   /**
    * 5. Statistik & Tren: Agregasi murni dari SSOT SesiAbsensi
    */
-  async getStats(tenantId: string, params?: { tahun_pelajaran_id?: string; semester_id?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {
+  async getStats(tenantId: string, params?: { 
+    tahun_pelajaran_id?: string; 
+    semester_id?: string; 
+    jadwal_kegiatan_id?: string; 
+    jenis_kegiatan?: string;
+    tanggal_mulai?: string;
+    tanggal_selesai?: string;
+  }) {
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
 
     const sesiWhere: any = {
@@ -780,6 +787,15 @@ export class UnifiedKegiatanService {
     }
     if (params?.tahun_pelajaran_id) {
       sesiWhere.tahun_pelajaran_id = params.tahun_pelajaran_id;
+    }
+    if (params?.tanggal_mulai || params?.tanggal_selesai) {
+      sesiWhere.tanggal = {};
+      if (params.tanggal_mulai) {
+        sesiWhere.tanggal.gte = new Date(`${params.tanggal_mulai}T00:00:00.000Z`);
+      }
+      if (params.tanggal_selesai) {
+        sesiWhere.tanggal.lte = new Date(`${params.tanggal_selesai}T23:59:59.999Z`);
+      }
     }
 
     const sesiList = await prisma.sesiAbsensi.findMany({
@@ -810,6 +826,17 @@ export class UnifiedKegiatanService {
           hadir_pendamping: 0,
           persen_hadir_pendamping: 0,
           is_empty_session: true,
+        },
+        ringkasan_periode: {
+          total_sesi: 0,
+          avg_persen_siswa: 0,
+          avg_persen_guru: 0,
+          total_hadir_siswa: 0,
+          total_target_siswa: 0,
+          arah_perkembangan: 'STABIL',
+          evaluasi: 'Belum Ada Sesi',
+          tanggal_mulai: params?.tanggal_mulai || null,
+          tanggal_selesai: params?.tanggal_selesai || null,
         },
         total_siswa_master: totalSiswaMaster,
         by_tingkat: [],
@@ -877,6 +904,60 @@ export class UnifiedKegiatanService {
       });
     }
 
+    const totalSesi = trend.length;
+    const avgPersenSiswa = totalSesi > 0 
+      ? Math.round(trend.reduce((acc, t) => acc + t.persen_hadir_siswa, 0) / totalSesi) 
+      : 0;
+    const avgPersenGuru = totalSesi > 0 
+      ? Math.round(trend.reduce((acc, t) => acc + t.persen_hadir_guru, 0) / totalSesi) 
+      : 0;
+    const totalHadirSiswaKumulatif = trend.reduce((acc, t) => acc + t.hadir_siswa, 0);
+    const totalTargetSiswaKumulatif = trend.reduce((acc, t) => acc + t.total_siswa, 0);
+
+    let arahPerkembangan: 'NAIK' | 'STABIL' | 'TURUN' = 'STABIL';
+    if (totalSesi >= 2) {
+      const half = Math.floor(totalSesi / 2);
+      const firstHalf = trend.slice(0, half);
+      const secondHalf = trend.slice(half);
+      const avgFirst = firstHalf.reduce((a, b) => a + b.persen_hadir_siswa, 0) / firstHalf.length;
+      const avgSecond = secondHalf.reduce((a, b) => a + b.persen_hadir_siswa, 0) / secondHalf.length;
+      if (avgSecond - avgFirst > 2) arahPerkembangan = 'NAIK';
+      else if (avgFirst - avgSecond > 2) arahPerkembangan = 'TURUN';
+    }
+
+    const ringkasan_periode = {
+      total_sesi: totalSesi,
+      avg_persen_siswa: avgPersenSiswa,
+      avg_persen_guru: avgPersenGuru,
+      total_hadir_siswa: totalHadirSiswaKumulatif,
+      total_target_siswa: totalTargetSiswaKumulatif,
+      arah_perkembangan: arahPerkembangan,
+      evaluasi: avgPersenSiswa >= 85 ? 'Sangat Baik' : avgPersenSiswa >= 70 ? 'Baik' : avgPersenSiswa >= 50 ? 'Cukup' : 'Perlu Pendampingan',
+      tanggal_mulai: params?.tanggal_mulai || (trend[0]?.tanggal ?? null),
+      tanggal_selesai: params?.tanggal_selesai || (trend[trend.length - 1]?.tanggal ?? null),
+    };
+
+    const tingkatMap = new Map<string, { total: number; hadir: number }>();
+    for (const bk of byKelas) {
+      const kName = bk.kelas_nama.toUpperCase();
+      let tingkat = 'Lainnya';
+      if (kName.startsWith('X ') || kName.startsWith('10 ') || kName === 'X') tingkat = 'Kelas X';
+      else if (kName.startsWith('XI ') || kName.startsWith('11 ') || kName === 'XI') tingkat = 'Kelas XI';
+      else if (kName.startsWith('XII ') || kName.startsWith('12 ') || kName === 'XII') tingkat = 'Kelas XII';
+
+      const cur = tingkatMap.get(tingkat) || { total: 0, hadir: 0 };
+      cur.total += bk.total;
+      cur.hadir += bk.hadir;
+      tingkatMap.set(tingkat, cur);
+    }
+
+    const byTingkat = Array.from(tingkatMap.entries()).map(([tingkat, val]) => ({
+      tingkat,
+      total: val.total,
+      hadir: val.hadir,
+      persen: val.total > 0 ? Math.round((val.hadir / val.total) * 100) : 0,
+    }));
+
     return {
       trend,
       latest: {
@@ -888,8 +969,9 @@ export class UnifiedKegiatanService {
         persen_hadir_pendamping: latest?.persen_hadir_guru || 0,
         is_empty_session: false,
       },
+      ringkasan_periode,
       total_siswa_master: totalSiswaMaster,
-      by_tingkat: [],
+      by_tingkat: byTingkat,
       by_kelas: byKelas,
     };
   }

@@ -91,6 +91,18 @@ export interface UnifiedTrendItem {
   delta_guru?: number;
 }
 
+export interface UnifiedPeriodSummary {
+  total_sesi: number;
+  avg_persen_siswa: number;
+  avg_persen_guru: number;
+  total_hadir_siswa: number;
+  total_target_siswa: number;
+  arah_perkembangan: 'NAIK' | 'STABIL' | 'TURUN';
+  evaluasi: string;
+  tanggal_mulai: string | null;
+  tanggal_selesai: string | null;
+}
+
 export interface UnifiedStatsResponse {
   success: boolean;
   data: {
@@ -103,8 +115,10 @@ export interface UnifiedStatsResponse {
       hadir_pendamping: number;
       persen_hadir_pendamping: number;
     };
+    ringkasan_periode?: UnifiedPeriodSummary;
+    total_siswa_master?: number;
     by_tingkat: Array<{
-      tingkat: number;
+      tingkat: string | number;
       total: number;
       hadir: number;
       persen: number;
@@ -292,6 +306,9 @@ export async function getUnifiedStats(params?: {
   semester_id?: string;
   jadwal_kegiatan_id?: string;
   jenis_kegiatan?: string;
+  tanggal_mulai?: string;
+  tanggal_selesai?: string;
+  limit?: number;
 }): Promise<UnifiedStatsResponse> {
   return requestWithFallback<UnifiedStatsResponse>(
     'get',
