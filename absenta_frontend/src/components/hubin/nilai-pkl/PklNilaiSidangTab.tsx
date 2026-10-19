@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicContextBar } from '@/components/common';
 import SiswaIdentityCell from '@/components/common/SiswaIdentityCell';
-import { Info, Lock, Save, FileText, Check } from 'lucide-react';
+import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
 import { ScoreRow } from './types';
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -50,6 +50,7 @@ export interface PklNilaiSidangTabProps {
   setItemsPerPage: (n: number) => void;
   setCurrentPage: (updater: number | ((prev: number) => number)) => void;
   handleScoreChange: (siswaPklId: string, field: keyof ScoreRow, value: string | number | null) => void;
+  onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
 }
 
@@ -91,6 +92,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   setItemsPerPage,
   setCurrentPage,
   handleScoreChange,
+  onNavigateCetakRapor,
   hideFilterCard = false,
 }) => {
   return (
@@ -260,27 +262,50 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
             )}
           </div>
 
-          {/* Simpan Nilai Sidang */}
-          <div>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={onSaveBatch}
-              disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
-              title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save size={14} />
-              {isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci (DUDI 100%)' : 'Simpan Nilai Sidang')}
-            </Button>
-          </div>
         </div>
       </Card>
       )}
 
       {/* Sidang Table */}
       <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">
+        {/* Sleek, De-noised Header Bar */}
+        <div className="p-3.5 sm:px-5 sm:py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+              Lembar Penilaian Laporan & Sidang PKL
+            </h3>
+            <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
+              {displayedScores?.length || 0} Siswa
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+            <Button
+              type="button"
+              aria-label="Simpan perubahan nilai"
+              onClick={onSaveBatch}
+              disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
+              title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[36px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : 'Simpan')}</span>
+            </Button>
+
+            {onNavigateCetakRapor && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onNavigateCetakRapor}
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[36px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka Lembar Cetak Rapor & Sertifikat PKL"
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Cetak Rapor</span>
+              </Button>
+            )}
+          </div>
+        </div>
         {isLoadingRekap ? (
           <div className="text-center py-20 text-xs text-slate-400">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-2" />

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { z } from 'zod';
-import { Sliders, Save, ClipboardPaste } from 'lucide-react';
+import { Sliders } from 'lucide-react';
 import { Button, SearchableSelect } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
@@ -53,10 +53,10 @@ export interface PklUnifiedToolbarProps {
   smartClassOptions: { value: string; label: string }[];
   scoresCount: number;
   isLoadingRekap: boolean;
-  onOpenPasteModal: () => void;
-  onSaveBatch: () => void;
-  isSavingBatch: boolean;
-  displayedScoresLength: number;
+  onOpenPasteModal?: () => void;
+  onSaveBatch?: () => void;
+  isSavingBatch?: boolean;
+  displayedScoresLength?: number;
 }
 
 export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
@@ -249,55 +249,20 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
             )}
           </div>
 
-          {/* Sub-baris 2b: Filter Kelas & Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end justify-between gap-3 pt-1">
-            <div className="flex-1 max-w-sm">
-              <label htmlFor="unified-filter-kelas-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-                Filter Kelas Siswa PKL
-              </label>
-              <SearchableSelect
-                id="unified-filter-kelas-pkl"
-                aria-label="Pilih kelas siswa PKL"
-                value={selectedKelas}
-                onValueChange={setSelectedKelas}
-                options={classSelectOptions}
-                placeholder="Pilih Kelas"
-                isLoading={isLoadingRekap}
-              />
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto">
-              {activeTab !== 'sidang' && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onOpenPasteModal}
-                  className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 border-slate-200 dark:border-slate-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-slate-700 dark:text-slate-200 px-3.5"
-                >
-                  <ClipboardPaste size={14} className="text-emerald-500" />
-                  <span>Paste dari Excel</span>
-                </Button>
-              )}
-
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={onSaveBatch}
-                disabled={isSavingBatch || displayedScoresLength === 0 || (activeTab === 'sidang' && !isCompositeMode)}
-                className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 shadow-sm bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 px-4"
-              >
-                <Save size={14} />
-                <span>
-                  {isSavingBatch
-                    ? 'Menyimpan...'
-                    : (activeTab === 'sidang'
-                      ? (!isCompositeMode ? 'Skema Terkunci' : 'Simpan Nilai Sidang')
-                      : 'Simpan Nilai PKL')}
-                </span>
-              </Button>
-            </div>
+          {/* Sub-baris 2b: Filter Kelas Siswa PKL */}
+          <div className="pt-1 max-w-sm">
+            <label htmlFor="unified-filter-kelas-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
+              Filter Kelas Siswa PKL
+            </label>
+            <SearchableSelect
+              id="unified-filter-kelas-pkl"
+              aria-label="Pilih kelas siswa PKL"
+              value={selectedKelas}
+              onValueChange={setSelectedKelas}
+              options={classSelectOptions}
+              placeholder="Pilih Kelas"
+              isLoading={isLoadingRekap}
+            />
           </div>
         </div>
       )}

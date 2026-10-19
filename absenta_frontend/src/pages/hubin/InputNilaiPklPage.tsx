@@ -13,7 +13,6 @@ import { useAcademicContext } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useCapabilities } from '../../hooks/useCapabilities';
-import { SertifikatPklModal } from '../../components/hubin/SertifikatPklModal';
 import { 
   scoreFieldSchema, 
   ScoreRow, 
@@ -29,7 +28,6 @@ const PklNilaiIndustriTab = lazy(() => import('../../components/hubin/nilai-pkl/
 const PklNilaiSidangTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiSidangTab'));
 const PklDeskripsiTpTab = lazy(() => import('../../components/hubin/nilai-pkl/PklDeskripsiTpTab'));
 const PklSkemaSettingsModal = lazy(() => import('../../components/hubin/nilai-pkl/PklSkemaSettingsModal'));
-const PklNilaiPasteModal = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiPasteModal'));
 
 export interface InputNilaiPklPageProps {
   layoutMode?: 'hubin' | 'rapor';
@@ -46,9 +44,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const [activeTab, setActiveTab] = useState<string>('dudi');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMitra, setSelectedMitra] = useState('');
-  const [showPasteModal, setShowPasteModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedSiswaSertifikat, setSelectedSiswaSertifikat] = useState<ScoreRow | null>(null);
 
   // Settings Form State
   const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'COMPOSITE'>('DUDI_ONLY');
@@ -383,43 +379,14 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     toast.success('Presensi PKL (S/I/A) berhasil ditarik & disinkronkan dari data absensi harian siswa!');
   }, []);
 
-  const handleProcessPaste = useCallback((rawText: string) => {
-    if (!rawText.trim()) return;
-    const lines = rawText.trim().split('\n');
-    let matchedCount = 0;
-
-    setScores(prev => {
-      const clone = [...(prev || [])];
-      lines?.forEach(line => {
-        const parts = line.split('\t')?.map(p => p.trim());
-        if (parts && parts.length >= 2) {
-          const nis = parts[0];
-          const idx = clone.findIndex(s => s.nis === nis);
-          if (idx !== -1) {
-            matchedCount++;
-            const t = { ...clone[idx] };
-            if (parts[1] !== undefined && parts[1] !== '') t.hard_kompetensi_teknis = parseFloat(parts[1]) || null;
-            if (parts[2] !== undefined && parts[2] !== '') t.hard_sop_k3lh = parseFloat(parts[2]) || null;
-            if (parts[3] !== undefined && parts[3] !== '') t.hard_alur_bisnis = parseFloat(parts[3]) || null;
-            if (parts[4] !== undefined && parts[4] !== '') t.soft_kedisiplinan = parseFloat(parts[4]) || null;
-            if (parts[5] !== undefined && parts[5] !== '') t.soft_kerajinan_inisiatif = parseFloat(parts[5]) || null;
-            if (parts[6] !== undefined && parts[6] !== '') t.soft_kerjasama = parseFloat(parts[6]) || null;
-            if (parts[7] !== undefined && parts[7] !== '') t.soft_kejujuran = parseFloat(parts[7]) || null;
-            if (parts[8] !== undefined && parts[8] !== '') t.soft_tanggung_jawab = parseFloat(parts[8]) || null;
-            if (parts[9] !== undefined && parts[9] !== '') t.catatan_pkl = parts[9];
-
-            const calculated = calculateNilaiAkhirPkl(t, effectiveSettings);
-            t.nilai_akhir_pkl = calculated.nilai_akhir_pkl;
-            t.predikat_pkl = calculated.predikat_pkl;
-            clone[idx] = t;
-          }
-        }
-      });
-      return clone;
-    });
-
-    toast.success(`Berhasil memetakan ${matchedCount} data siswa dari Excel!`);
-  }, [effectiveSettings]);
+  const handleNavigateCetakRapor = useCallback(() => {
+    const params = new URLSearchParams();
+    if (selectedKelas) params.set('kelas_id', selectedKelas);
+    if (selectedTp) params.set('tahun_pelajaran_id', selectedTp);
+    if (selectedSemester) params.set('semester_id', selectedSemester);
+    const qs = params.toString();
+    navigate(`/rapor/cetak-rapor${qs ? `?${qs}` : ''}`);
+  }, [navigate, selectedKelas, selectedTp, selectedSemester]);
 
   const handleSaveBatch = useCallback(() => {
     if (scores.length === 0) {
@@ -575,7 +542,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                 smartClassOptions={smartClassOptions}
                 scoresCount={scores.length}
                 isLoadingRekap={isLoadingRekap}
-                onOpenPasteModal={() => setShowPasteModal(true)}
                 onSaveBatch={handleSaveBatch}
                 isSavingBatch={saveBatchMutation.isPending}
                 displayedScoresLength={displayedScores.length}
@@ -610,7 +576,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     smartClassOptions={smartClassOptions}
                     isLoadingRekap={isLoadingRekap}
                     totalRawScores={scores.length}
-                    onOpenPasteModal={() => setShowPasteModal(true)}
                     onSaveBatch={handleSaveBatch}
                     isSavingBatch={saveBatchMutation.isPending}
                     displayedScores={displayedScores}
@@ -623,7 +588,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     handleScoreChange={handleScoreChange}
                     handleApplyToSameMitra={handleApplyToSameMitra}
                     handleSyncFromDailyAttendance={handleSyncFromDailyAttendance}
-                    onPrintSertifikat={(row) => setSelectedSiswaSertifikat(row)}
+                    onNavigateCetakRapor={handleNavigateCetakRapor}
                   />
                 )}
 
@@ -672,6 +637,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     setItemsPerPage={setItemsPerPage}
                     setCurrentPage={setCurrentPage}
                     handleScoreChange={handleScoreChange}
+                    onNavigateCetakRapor={handleNavigateCetakRapor}
                   />
                 )}
 
@@ -694,14 +660,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         </AcademicPageLayout>
 
         <Suspense fallback={null}>
-          {showPasteModal && (
-            <PklNilaiPasteModal
-              isOpen={showPasteModal}
-              onClose={() => setShowPasteModal(false)}
-              onProcessPaste={handleProcessPaste}
-            />
-          )}
-
           {showSettingsModal && (
             <PklSkemaSettingsModal
               isOpen={showSettingsModal}
@@ -725,15 +683,6 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
             />
           )}
         </Suspense>
-
-        {selectedSiswaSertifikat && (
-          <SertifikatPklModal
-            isOpen={Boolean(selectedSiswaSertifikat)}
-            onClose={() => setSelectedSiswaSertifikat(null)}
-            siswaPklId={selectedSiswaSertifikat.siswa_pkl_id}
-            defaultData={selectedSiswaSertifikat}
-          />
-        )}
       </InfraErrorBoundary>
   );
 

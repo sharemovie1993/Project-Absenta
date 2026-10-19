@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicContextBar } from '@/components/common';
 import SiswaIdentityCell from '@/components/common/SiswaIdentityCell';
-import { ClipboardPaste, Save, RotateCcw, Copy, Printer } from 'lucide-react';
+import { Save, RotateCcw, Copy, Printer } from 'lucide-react';
 import { ScoreRow } from './types';
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -33,7 +33,7 @@ export interface PklNilaiIndustriTabProps {
   smartClassOptions: { value: string; label: string }[];
   isLoadingRekap: boolean;
   totalRawScores: number;
-  onOpenPasteModal: () => void;
+  onOpenPasteModal?: () => void;
   onSaveBatch: () => void;
   isSavingBatch: boolean;
   displayedScores: ScoreRow[];
@@ -46,7 +46,8 @@ export interface PklNilaiIndustriTabProps {
   handleScoreChange: (siswaPklId: string, field: keyof ScoreRow, value: string | number | null) => void;
   handleApplyToSameMitra: (mitraNama: string, instruktur: string, pic: string) => void;
   handleSyncFromDailyAttendance: () => void;
-  onPrintSertifikat: (row: ScoreRow) => void;
+  onPrintSertifikat?: (row: ScoreRow) => void;
+  onNavigateCetakRapor?: () => void;
   hideFilterCard?: boolean;
 }
 
@@ -191,7 +192,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
           {/* 1 & 2. Tahun Pelajaran & Semester */}
           <AcademicContextBar
             id="filter-pkl"
@@ -225,47 +226,49 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               isLoading={isLoadingRekap}
             />
           </div>
-
-          {/* 4. Action Button: Paste Excel */}
-          <div>
-            <label className="block text-[10px] font-bold text-transparent uppercase mb-1 select-none hidden lg:block">
-              Impor
-            </label>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onOpenPasteModal}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 border-slate-200 dark:border-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-            >
-              <ClipboardPaste size={14} className="text-emerald-500" />
-              Paste dari Excel
-            </Button>
-          </div>
-
-          {/* 5. Action Button: Simpan Nilai PKL */}
-          <div>
-            <label className="block text-[10px] font-bold text-transparent uppercase mb-1 select-none hidden lg:block">
-              Simpan
-            </label>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={onSaveBatch}
-              disabled={isSavingBatch || displayedScores?.length === 0}
-              className="w-full flex items-center justify-center gap-1.5 text-xs font-bold rounded-xl h-10 shadow-md bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50"
-            >
-              <Save size={14} />
-              {isSavingBatch ? 'Menyimpan...' : 'Simpan Nilai PKL'}
-            </Button>
-          </div>
         </div>
       </Card>
       )}
 
       {/* Grid Table */}
       <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">
+        {/* Sleek, De-noised Header Bar */}
+        <div className="p-3.5 sm:px-5 sm:py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
+              Lembar Penilaian PKL DUDI
+            </h3>
+            <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
+              {displayedScores?.length || 0} Siswa
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+            <Button
+              type="button"
+              aria-label="Simpan perubahan nilai"
+              onClick={onSaveBatch}
+              disabled={isSavingBatch || displayedScores?.length === 0}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[36px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{isSavingBatch ? 'Menyimpan...' : 'Simpan'}</span>
+            </Button>
+
+            {onNavigateCetakRapor && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onNavigateCetakRapor}
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[36px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="Buka Lembar Cetak Rapor & Sertifikat PKL"
+              >
+                <Printer className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                <span>Cetak Rapor</span>
+              </Button>
+            )}
+          </div>
+        </div>
         {isLoadingRekap ? (
           <div className="text-center py-20 text-xs text-slate-400">
             <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-2" />
@@ -337,7 +340,6 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
                     <span className="text-[9px] font-normal text-amber-600 dark:text-amber-400 uppercase tracking-tight">S / I / A (Hari)</span>
                   </th>
                   <th className="p-3 min-w-[150px]">Catatan Evaluasi</th>
-                  <th className="p-3 text-center min-w-[100px]">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -575,19 +577,6 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
                           onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_pkl', e.target.value)}
                           className="w-full min-w-[140px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-xs font-medium px-2.5 py-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-colors"
                         />
-                      </td>
-
-                      <td className="p-2 text-center">
-                        <Button
-                          type="button"
-                          size="xs"
-                          variant="outline"
-                          onClick={() => onPrintSertifikat(score)}
-                          className="text-[10px] font-bold flex items-center gap-1 mx-auto"
-                        >
-                          <Printer size={12} />
-                          Sertifikat
-                        </Button>
                       </td>
                     </tr>
                   );
