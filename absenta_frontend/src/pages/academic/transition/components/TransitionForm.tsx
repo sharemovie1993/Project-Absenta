@@ -1,28 +1,62 @@
-import React from 'react';
-import { Label, Alert, AlertDescription } from '../../../../components/ui';
+import React, { useMemo } from 'react';
+import { Label, Alert, AlertDescription, Button } from '../../../../components/ui';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
-import { Database, Target, Info, Clock } from 'lucide-react';
+import { Database, Target, Info, Clock, ArrowRight } from 'lucide-react';
 import type { TahunPelajaran } from '../../../../types/academic';
 
 export type ScopeMode = 'ALL' | 'SELECTED';
 
 interface Props {
-  tahunAktif: TahunPelajaran[];
-  tahunBelumAktif: TahunPelajaran[];
+  tahunAktif?: TahunPelajaran[];
+  tahunBelumAktif?: TahunPelajaran[];
+  tahunPelajaran?: TahunPelajaran[];
   selectedTahunLamaId: string;
   selectedTahunBaruId: string;
-  onTahunLamaChange: (val: string) => void;
-  onTahunBaruChange: (val: string) => void;
+  onTahunLamaChange?: (val: string) => void;
+  onTahunBaruChange?: (val: string) => void;
+  onSelectTahunLama?: (val: string) => void;
+  onSelectTahunBaru?: (val: string) => void;
+  onNext?: () => void;
+  loadingYears?: boolean;
 }
 
 const TransitionForm: React.FC<Props> = React.memo(({ 
   tahunAktif, 
   tahunBelumAktif, 
+  tahunPelajaran = [],
   selectedTahunLamaId,
   selectedTahunBaruId,
   onTahunLamaChange,
   onTahunBaruChange,
+  onSelectTahunLama,
+  onSelectTahunBaru,
+  onNext,
+  loadingYears = false,
 }) => {
+  const handleTahunLamaChange = onTahunLamaChange || onSelectTahunLama || (() => {});
+  const handleTahunBaruChange = onTahunBaruChange || onSelectTahunBaru || (() => {});
+
+  // Opsi Data Sumber (Tahun Pelajaran Lama / Asal)
+  const sourceOptions = useMemo(() => {
+    const list = (tahunAktif && tahunAktif.length > 0) ? tahunAktif : tahunPelajaran;
+    return (list ?? []).map(tp => ({
+      value: tp.id,
+      label: `${tp.tahun}${tp.is_active ? ' — AKTIF' : ''}`
+    }));
+  }, [tahunAktif, tahunPelajaran]);
+
+  // Opsi Data Target (Tahun Pelajaran Baru / Tujuan)
+  const targetOptions = useMemo(() => {
+    let list = (tahunBelumAktif && tahunBelumAktif.length > 0) ? tahunBelumAktif : tahunPelajaran;
+    if (selectedTahunLamaId) {
+      list = list.filter(t => t.id !== selectedTahunLamaId);
+    }
+    return (list ?? []).map(tp => ({
+      value: tp.id,
+      label: `${tp.tahun}${tp.is_active ? ' — AKTIF' : ' — PERSIAPAN'}`
+    }));
+  }, [tahunBelumAktif, tahunPelajaran, selectedTahunLamaId]);
+
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500">
       {/* Info Bar */}
@@ -61,13 +95,12 @@ const TransitionForm: React.FC<Props> = React.memo(({
             <Label className="text-[10px] uppercase font-black text-slate-400 tracking-widest flex items-center gap-2">
                Tahun Pelajaran Lama <span className="text-rose-500">*</span>
             </Label>
-            <SearchableSelect aria-label="Pilih opsi transisi" value={selectedTahunLamaId}
-              onValueChange={onTahunLamaChange}
-              options={tahunAktif?.map(tp => ({
-                value: tp.id,
-                label: `${tp.tahun} — AKTIF`
-              }))}
-              placeholder="Pilih Tahun Asal"
+            <SearchableSelect
+              aria-label="Pilih opsi transisi tahun lama"
+              value={selectedTahunLamaId}
+              onValueChange={handleTahunLamaChange}
+              options={sourceOptions}
+              placeholder={loadingYears ? "Memuat tahun pelajaran..." : "Pilih Tahun Asal"}
               triggerClassName="h-12 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300 font-black text-xs rounded-xl transition-all hover:border-slate-400"
             />
             <div className="flex items-start gap-2 pt-1">
@@ -97,13 +130,12 @@ const TransitionForm: React.FC<Props> = React.memo(({
             <Label className="text-[10px] uppercase font-black text-blue-400 tracking-widest flex items-center gap-2">
                Tahun Pelajaran Baru <span className="text-rose-500">*</span>
             </Label>
-            <SearchableSelect aria-label="Pilih opsi transisi" value={selectedTahunBaruId}
-              onValueChange={onTahunBaruChange}
-              options={tahunBelumAktif?.map(tp => ({
-                value: tp.id,
-                label: `${tp.tahun} — PERSIAPAN`
-              }))}
-              placeholder="Pilih Tahun Tujuan"
+            <SearchableSelect
+              aria-label="Pilih opsi transisi tahun baru"
+              value={selectedTahunBaruId}
+              onValueChange={handleTahunBaruChange}
+              options={targetOptions}
+              placeholder={loadingYears ? "Memuat tahun pelajaran..." : "Pilih Tahun Tujuan"}
               triggerClassName="h-12 border-blue-200 dark:border-blue-800 dark:bg-slate-950 dark:text-slate-300 font-black text-xs rounded-xl transition-all hover:border-blue-400"
             />
             <div className="flex items-start gap-2 pt-1">
@@ -113,8 +145,24 @@ const TransitionForm: React.FC<Props> = React.memo(({
           </div>
         </div>
       </div>
+
+      {/* Action Button: Next Step */}
+      {onNext && (
+        <div className="flex items-center justify-end pt-4">
+          <Button
+            type="button"
+            onClick={onNext}
+            disabled={!selectedTahunLamaId || !selectedTahunBaruId}
+            className="h-14 gap-3 font-black px-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xl shadow-blue-500/30 uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            Lanjut ke Cakupan Kenaikan
+            <ArrowRight className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 });
 
+TransitionForm.displayName = 'TransitionForm';
 export default TransitionForm;

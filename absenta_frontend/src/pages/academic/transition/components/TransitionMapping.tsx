@@ -29,6 +29,11 @@ interface Props {
   initialMapping?: ClassMapping[];
   managedClassId?: string;
   filterTingkat?: number[];
+  loadingPreview?: boolean;
+  selectedTahunLamaId?: string;
+  selectedTahunBaruId?: string;
+  scopeMode?: string;
+  selectedTingkat?: number[];
 }
 
 // ── Tema warna dinamis per tingkat (index-based, mendukung SD/SMP/SMA) ────
@@ -221,7 +226,17 @@ const TingkatColumn: React.FC<{
 };
 
 // ── Komponen utama ─────────────────────────────────────────────────────────
-const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, managedClassId, filterTingkat }) => {
+const TransitionMapping: React.FC<Props> = ({
+  onNext,
+  onBack,
+  initialMapping,
+  managedClassId,
+  filterTingkat: propFilterTingkat,
+  loadingPreview,
+  scopeMode,
+  selectedTingkat,
+}) => {
+  const filterTingkat = propFilterTingkat || (scopeMode === 'SELECTED' ? selectedTingkat : undefined);
   const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Kelas[]>([]);       // Kelas aktif saja (sumber)
@@ -721,10 +736,20 @@ const TransitionMapping: React.FC<Props> = ({ onNext, onBack, initialMapping, ma
           </div>
           <Button
             onClick={handleSubmit}
+            disabled={loadingPreview}
             className="h-11 px-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] gap-2 shadow-xl shadow-blue-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 w-full sm:w-auto"
           >
-            Peninjauan Preview
-            <ArrowRight className="w-4 h-4" />
+            {loadingPreview ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Memuat Pratinjau...
+              </>
+            ) : (
+              <>
+                Peninjauan Preview
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
           </Button>
         </div>
       </div>

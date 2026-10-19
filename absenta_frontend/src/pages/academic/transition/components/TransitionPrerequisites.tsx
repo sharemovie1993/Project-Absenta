@@ -4,24 +4,40 @@ import { CheckCircle2, XCircle, ArrowRight, ExternalLink, Settings, Info, AlertC
 import { Button } from '../../../../components/ui';
 import type { TahunPelajaran, Semester } from '../../../../types/academic';
 
+interface StepAction {
+  label: string;
+  path: string;
+}
+
+interface StepItem {
+  label: string;
+  valid: boolean;
+  message: string;
+  action?: StepAction;
+}
+
 interface Props {
-  tahunAktif: TahunPelajaran | undefined;
-  semesterAktif: Semester | undefined;
-  tahunBaru: TahunPelajaran | undefined;
-  semesterBaruGanjil: boolean;
+  tahunAktif?: TahunPelajaran;
+  semesterAktif?: Semester;
+  tahunBaru?: TahunPelajaran;
+  semesterBaruGanjil?: boolean;
+  activeSemester?: Semester;
+  tahunBaruSelected?: boolean;
 }
 
 const TransitionPrerequisites: React.FC<Props> = React.memo(({
   tahunAktif,
   semesterAktif,
   tahunBaru,
-  semesterBaruGanjil
+  semesterBaruGanjil = false,
+  activeSemester,
 }) => {
-  const isSemesterGenap = semesterAktif 
-    ? ['genap', '2'].includes(String(semesterAktif.nama_semester).toLowerCase()) 
+  const currentSemester = semesterAktif || activeSemester;
+  const isSemesterGenap = currentSemester 
+    ? ['genap', '2'].includes(String(currentSemester.nama_semester).toLowerCase()) 
     : false;
 
-  const steps = [
+  const steps: StepItem[] = [
     {
       label: 'Tahun Pelajaran Lama',
       valid: !!tahunAktif,
@@ -29,8 +45,8 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
     },
     {
       label: 'Semester Lama (Aktif)',
-      valid: !!semesterAktif,
-      message: semesterAktif ? `Aktif: ${semesterAktif.nama_semester}` : 'Belum ada semester aktif'
+      valid: !!currentSemester,
+      message: currentSemester ? `Aktif: ${currentSemester.nama_semester}` : 'Belum ada semester aktif'
     },
     {
       label: 'Syarat Kenaikan',
@@ -87,15 +103,15 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
                </p>
             </div>
 
-            {!step.valid && (step as any).action && (
+            {!step.valid && step.action && (
               <div className="mt-auto">
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  onClick={() => window.open((step as any).action.path, '_blank')}
+                  onClick={() => window.open(step.action?.path, '_blank')}
                   className="w-full justify-between h-9 text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-100 dark:text-rose-400 dark:hover:bg-rose-900/30 px-3 rounded-xl border border-rose-200 dark:border-rose-800"
                 >
-                  <span>{(step as any).action.label}</span>
+                  <span>{step.action.label}</span>
                   <ExternalLink className="w-3 h-3" />
                 </Button>
               </div>
@@ -107,4 +123,5 @@ const TransitionPrerequisites: React.FC<Props> = React.memo(({
   );
 });
 
+TransitionPrerequisites.displayName = 'TransitionPrerequisites';
 export default TransitionPrerequisites;

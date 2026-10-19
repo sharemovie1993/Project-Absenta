@@ -5,10 +5,12 @@ import type { ScopeMode } from './TransitionForm';
 
 interface Props {
   scopeMode: ScopeMode;
-  onScopeModeChange: (mode: ScopeMode) => void;
+  onScopeModeChange?: (mode: ScopeMode) => void;
+  setScopeMode?: (mode: ScopeMode) => void;
   availableTingkat: number[];
   selectedTingkat: number[];
-  onTingkatToggle: (tingkat: number) => void;
+  onTingkatToggle?: (tingkat: number) => void;
+  onToggleTingkat?: (tingkat: number) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -16,12 +18,16 @@ interface Props {
 const TransitionScope: React.FC<Props> = React.memo(({
   scopeMode,
   onScopeModeChange,
+  setScopeMode,
   availableTingkat,
   selectedTingkat,
   onTingkatToggle,
+  onToggleTingkat,
   onNext,
   onBack,
 }) => {
+  const handleScopeChange = onScopeModeChange || setScopeMode || (() => {});
+  const handleToggle = onTingkatToggle || onToggleTingkat || (() => {});
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-500">
       {/* Info Bar */}
@@ -55,7 +61,7 @@ const TransitionScope: React.FC<Props> = React.memo(({
           {/* Mode ALL */}
           <button
             type="button"
-            onClick={() => onScopeModeChange('ALL')}
+            onClick={() => handleScopeChange('ALL')}
             className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
               scopeMode === 'ALL'
                 ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-md'
@@ -83,7 +89,7 @@ const TransitionScope: React.FC<Props> = React.memo(({
           {/* Mode SELECTED */}
           <button
             type="button"
-            onClick={() => onScopeModeChange('SELECTED')}
+            onClick={() => handleScopeChange('SELECTED')}
             className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
               scopeMode === 'SELECTED'
                 ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20 shadow-md'
@@ -125,7 +131,7 @@ const TransitionScope: React.FC<Props> = React.memo(({
                     <button
                       key={t}
                       type="button"
-                      onClick={() => onTingkatToggle(t)}
+                      onClick={() => handleToggle(t)}
                       className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-tight flex items-center gap-2.5 border transition-all ${
                         isChecked
                           ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/20 scale-105'

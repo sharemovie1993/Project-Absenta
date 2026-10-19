@@ -79,6 +79,25 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Auto-select active year when data is loaded/cached
+  useEffect(() => {
+    if (tahunPelajaran.length > 0 && !selectedTahunLamaId) {
+      const active = tahunPelajaran.find(t => t.is_active) || tahunPelajaran[0];
+      if (active) {
+        setSelectedTahunLamaId(active.id);
+      }
+    }
+  }, [tahunPelajaran, selectedTahunLamaId]);
+
+  const tahunAktif = useMemo(() => {
+    const active = (tahunPelajaran ?? []).filter(t => t.is_active);
+    return active.length > 0 ? active : (tahunPelajaran ?? []);
+  }, [tahunPelajaran]);
+
+  const tahunBelumAktif = useMemo(() => {
+    return (tahunPelajaran ?? []).filter(t => t.id !== selectedTahunLamaId);
+  }, [tahunPelajaran, selectedTahunLamaId]);
+
   // 2. Fetch Active Kelas for available tingkat
   const { data: availableTingkat = [] } = useQuery<number[]>({
     queryKey: ['active-kelas-tingkat'],
@@ -298,14 +317,21 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat formulir...</div>}>
                   <div className="space-y-6">
                     <TransitionPrerequisites
+                      tahunAktif={selectedTahunLamaObj}
+                      semesterAktif={activeSemester}
                       activeSemester={activeSemester}
+                      tahunBaru={selectedTahunBaruObj}
                       semesterBaruGanjil={semesterBaruGanjil}
                       tahunBaruSelected={Boolean(selectedTahunBaruId)}
                     />
                     <TransitionForm
+                      tahunAktif={tahunAktif}
+                      tahunBelumAktif={tahunBelumAktif}
                       tahunPelajaran={tahunPelajaran}
                       selectedTahunLamaId={selectedTahunLamaId}
                       selectedTahunBaruId={selectedTahunBaruId}
+                      onTahunLamaChange={setSelectedTahunLamaId}
+                      onTahunBaruChange={setSelectedTahunBaruId}
                       onSelectTahunLama={setSelectedTahunLamaId}
                       onSelectTahunBaru={setSelectedTahunBaruId}
                       onNext={handleFormNext}
@@ -319,9 +345,11 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat cakupan tingkat...</div>}>
                   <TransitionScope
                     scopeMode={scopeMode}
+                    onScopeModeChange={setScopeMode}
                     setScopeMode={setScopeMode}
                     availableTingkat={availableTingkat}
                     selectedTingkat={selectedTingkat}
+                    onTingkatToggle={handleTingkatToggle}
                     onToggleTingkat={handleTingkatToggle}
                     onNext={handleScopeNext}
                     onBack={() => setStep(1)}
@@ -336,6 +364,7 @@ export const AcademicTransitionPage: React.FC = React.memo(() => {
                     selectedTahunBaruId={selectedTahunBaruId}
                     scopeMode={scopeMode}
                     selectedTingkat={selectedTingkat}
+                    filterTingkat={scopeMode === 'SELECTED' ? selectedTingkat : undefined}
                     onNext={handleMappingNext}
                     onBack={() => setStep(2)}
                     loadingPreview={previewMutation.isPending}
