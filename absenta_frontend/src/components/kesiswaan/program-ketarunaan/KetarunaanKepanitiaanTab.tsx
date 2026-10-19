@@ -13,7 +13,8 @@ import {
   Info,
   CalendarCheck,
   Building2,
-  GraduationCap
+  GraduationCap,
+  Scan,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -24,6 +25,7 @@ import {
   tapKetarunaanPendamping,
   type KetarunaanPendamping,
 } from '@/api/kesiswaan/programKetarunaan.api';
+import { UnifiedKegiatanRfidScanModal } from '@/components/attendance/unified-kegiatan/UnifiedKegiatanRfidScanModal';
 
 interface KetarunaanKepanitiaanTabProps {
   jadwalKegiatanId: string | null;
@@ -58,6 +60,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
   refetchSesi,
 }) => {
   const qc = useQueryClient();
+  const [rfidModalOpen, setRfidModalOpen] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['ketarunaan-pendamping', sesiId, jadwalKegiatanId],
@@ -166,6 +169,14 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setRfidModalOpen(true)}
+            className="gap-2 text-xs font-black bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-700 hover:to-indigo-700 text-white shadow-sm"
+          >
+            <Scan className="w-4 h-4" /> Mode Scan RFID (POS)
+          </Button>
           <Button variant="ghost" size="sm" onClick={handleRefresh} className="gap-1.5 text-xs font-bold">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh Status
           </Button>
@@ -367,6 +378,23 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
           ))}
         </div>
       </div>
+
+      {/* Reusable Universal RFID Scanner Modal */}
+      <UnifiedKegiatanRfidScanModal
+        isOpen={rfidModalOpen}
+        onClose={() => setRfidModalOpen(false)}
+        jenisKegiatan="KETARUNAAN"
+        title="Terminal RFID — Program Ketarunaan"
+        subtitle="Tempelkan kartu RFID Pembina, Wali Kelas, Kajur, atau Guru Mapel"
+        sesiId={realSesiId}
+        jadwalKegiatanId={jadwalKegiatanId}
+        onSuccessTap={() => {
+          handleRefresh();
+          qc.invalidateQueries({ queryKey: ['ketarunaan-stats'] });
+          qc.invalidateQueries({ queryKey: ['unified-kbm-sessions'] });
+          qc.invalidateQueries({ queryKey: ['attendance-dashboard-live'] });
+        }}
+      />
     </div>
   );
 };

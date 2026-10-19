@@ -4,9 +4,18 @@ import { getTenantTimezone, getTenantOffsetString } from '@/utils/timezone.utils
 
 export interface UnifiedTapPayload {
   guru_id: string;
-  sesi_id: string;
+  sesi_id?: string;
   status: 'HADIR' | 'IZIN' | 'SAKIT' | 'DINAS_LUAR' | 'ALPA';
   catatan?: string;
+  jenis_kegiatan?: string;
+  jadwal_kegiatan_id?: string;
+}
+
+export interface UnifiedRfidTapPayload {
+  rfid_token: string;
+  sesi_id?: string;
+  jenis_kegiatan?: string;
+  jadwal_kegiatan_id?: string;
 }
 
 export class UnifiedKegiatanService {
@@ -414,8 +423,13 @@ export class UnifiedKegiatanService {
     }
 
     if (!parentSesi) {
-      // Cari sesi kegiatan yang aktif hari ini
-      const sesiToday = await this.getSesiHariIni(tenantId, { tanggal: todayStr, jenis_kegiatan: 'KETARUNAAN' });
+      // Cari sesi kegiatan yang aktif hari ini (dinamis sesuai jenis kegiatan)
+      const jenisTarget = payload.jenis_kegiatan || 'KETARUNAAN';
+      const sesiToday = await this.getSesiHariIni(tenantId, {
+        tanggal: todayStr,
+        jenis_kegiatan: jenisTarget,
+        jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+      });
       if (sesiToday?.id) {
         payload.sesi_id = sesiToday.id;
         parentSesi = await prisma.sesiAbsensi.findUnique({
@@ -432,12 +446,13 @@ export class UnifiedKegiatanService {
     }
 
     const namaKegiatan = parentSesi.JadwalKegiatan?.nama || parentSesi.jenis_kegiatan || 'Kegiatan Pembiasaan';
+    const activeSesiId = parentSesi.id;
 
     // 1. Catat murni di AbsenGuru milik Sesi Kegiatan
     await prisma.absenGuru.upsert({
       where: {
         sesi_id_guru_id: {
-          sesi_id: payload.sesi_id,
+          sesi_id: activeSesiId,
           guru_id: payload.guru_id,
         },
       },
@@ -449,7 +464,7 @@ export class UnifiedKegiatanService {
       },
       create: {
         tenant_id: tenantId,
-        sesi_id: payload.sesi_id,
+        sesi_id: activeSesiId,
         guru_id: payload.guru_id,
         status: payload.status,
         waktu_tap: payload.status === 'HADIR' ? now : undefined,
@@ -625,6 +640,66 @@ export class UnifiedKegiatanService {
         : `Presensi pendamping berhasil dicatat`,
       synced_kbm: syncedKbm,
       kbm_sesi_id: kbmSesiId,
+    };
+  }
+
+  /**
+   * 4b. Tap Pendamping via RFID Token (Universal Reusable Engine)
+   * Dapat digunakan untuk Ketarunaan, Sholat Dhuha, Upacara Bendera, dsb.
+   */
+  async tapPendampingByRfid(tenantId: string, payload: UnifiedRfidTapPayload) {
+    const token = payload.rfid_token?.trim();
+    if (!token) {
+      throw new Error('Token RFID tidak boleh kosong');
+    }
+
+    // Cari Guru berdasarkan no_rfid, NIP, atau NUPTK
+    const guru = await prisma.guru.findFirst({
+      where: {
+        tenant_id: tenantId,
+        OR: [
+          { no_rfid: token },
+          { nip: token },
+          { nuptk: token },
+        ],
+      },
+    });
+
+    if (!guru) {
+      throw new Error(`Kartu RFID "${token}" tidak terdaftar sebagai Guru atau Pembina`);
+    }
+
+    const jenis = payload.jenis_kegiatan || 'KETARUNAAN';
+    let sesiId = payload.sesi_id;
+
+    if (!sesiId) {
+      const todayStr = this.getTodayDateStr();
+      const sesiToday = await this.getSesiHariIni(tenantId, {
+        tanggal: todayStr,
+        jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+        jenis_kegiatan: jenis,
+      });
+      sesiId = sesiToday?.id;
+    }
+
+    // Panggil engine 1 Tap 2 Record
+    const tapResult = await this.tapPendamping(tenantId, {
+      guru_id: guru.id,
+      sesi_id: sesiId,
+      status: 'HADIR',
+      jenis_kegiatan: jenis,
+      jadwal_kegiatan_id: payload.jadwal_kegiatan_id,
+      catatan: `Hadir via Scanner RFID Universal (${jenis})`,
+    });
+
+    return {
+      ...tapResult,
+      guru: {
+        id: guru.id,
+        nama_guru: guru.nama_guru,
+        nip: guru.nip,
+        foto: guru.foto || null,
+      },
     };
   }
 

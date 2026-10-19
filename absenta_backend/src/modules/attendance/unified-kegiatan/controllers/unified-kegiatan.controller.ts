@@ -59,6 +59,20 @@ export const unifiedKegiatanController = {
     }
   },
 
+  async tapPendampingRfid(request: any, reply: any) {
+    try {
+      const scope = request.dataScope as DataScope;
+      if (!scope?.tenantId) {
+        return reply.status(400).send({ message: 'Tenant ID required' });
+      }
+
+      const res = await unifiedKegiatanService.tapPendampingByRfid(scope.tenantId, request.body);
+      return reply.send(res);
+    } catch (error: any) {
+      return reply.status(400).send({ success: false, message: error.message });
+    }
+  },
+
   async getStats(request: any, reply: any) {
     try {
       const scope = request.dataScope as DataScope;

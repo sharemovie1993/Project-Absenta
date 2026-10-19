@@ -39,6 +39,15 @@ export async function unifiedKegiatanRoutes(fastify: any) {
     handler: unifiedKegiatanController.tapPendamping,
   });
 
+  // 4b. Tap Pendamping via RFID Scanner (Universal Reusable Engine)
+  fastify.post('/tap-rfid', {
+    preHandler: [
+      requireCapability(['attendance.sessions.tap', 'attendance.sessions.create', 'dashboard.view.kesiswaan']),
+      determineDataScope(),
+    ],
+    handler: unifiedKegiatanController.tapPendampingRfid,
+  });
+
   // 5. Statistik
   fastify.get('/stats', {
     preHandler: [

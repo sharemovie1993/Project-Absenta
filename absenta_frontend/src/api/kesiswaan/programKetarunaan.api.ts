@@ -3,6 +3,7 @@ import {
   getUnifiedSesiHariIni,
   getUnifiedPendamping,
   tapUnifiedPendamping,
+  tapUnifiedPendampingRfid,
   getUnifiedStats,
   getUnifiedLaporanTim,
   getUnifiedLaporanKelas,
@@ -11,6 +12,8 @@ import {
   type UnifiedGuardStatus,
   type UnifiedTapPayload,
   type UnifiedTapResponse,
+  type UnifiedRfidTapPayload,
+  type UnifiedRfidTapResponse,
   type UnifiedStatsResponse,
   type UnifiedTrendItem,
   type UnifiedLaporanTimRow,
@@ -23,6 +26,8 @@ export type KetarunaanSession = UnifiedActivitySession;
 export type KetarunaanPendamping = UnifiedPendampingItem;
 export type KetarunaanGuardStatus = UnifiedGuardStatus;
 export type TapKetarunaanPayload = UnifiedTapPayload;
+export type TapKetarunaanRfidPayload = UnifiedRfidTapPayload;
+export type TapKetarunaanRfidResponse = UnifiedRfidTapResponse;
 export type KetarunaanStatsResponse = UnifiedStatsResponse;
 export type KetarunaanTrendItem = UnifiedTrendItem;
 export type KetarunaanLaporanTimRow = UnifiedLaporanTimRow;
@@ -51,6 +56,10 @@ export async function getKetarunaanPendamping(params: {
 
 export async function tapKetarunaanPendamping(payload: TapKetarunaanPayload): Promise<UnifiedTapResponse> {
   return tapUnifiedPendamping(payload);
+}
+
+export async function tapKetarunaanPendampingRfid(payload: TapKetarunaanRfidPayload): Promise<TapKetarunaanRfidResponse> {
+  return tapUnifiedPendampingRfid({ ...payload, jenis_kegiatan: 'KETARUNAAN' });
 }
 
 export async function getKetarunaanStats(params?: {

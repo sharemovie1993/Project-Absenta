@@ -58,6 +58,22 @@ export interface UnifiedTapResponse {
   kbm_sesi_id?: string;
 }
 
+export interface UnifiedRfidTapPayload {
+  rfid_token: string;
+  sesi_id?: string;
+  jenis_kegiatan?: string;
+  jadwal_kegiatan_id?: string;
+}
+
+export interface UnifiedRfidTapResponse extends UnifiedTapResponse {
+  guru?: {
+    id: string;
+    nama_guru: string;
+    nip?: string | null;
+    foto?: string | null;
+  };
+}
+
 export interface UnifiedTrendItem {
   tanggal: string;
   sesi_ke: number;
@@ -255,6 +271,14 @@ export async function tapUnifiedPendamping(payload: UnifiedTapPayload): Promise<
   return requestWithFallback<UnifiedTapResponse>(
     'post',
     '/attendance/unified-kegiatan/tap',
+    { data: payload }
+  );
+}
+
+export async function tapUnifiedPendampingRfid(payload: UnifiedRfidTapPayload): Promise<UnifiedRfidTapResponse> {
+  return requestWithFallback<UnifiedRfidTapResponse>(
+    'post',
+    '/attendance/unified-kegiatan/tap-rfid',
     { data: payload }
   );
 }
