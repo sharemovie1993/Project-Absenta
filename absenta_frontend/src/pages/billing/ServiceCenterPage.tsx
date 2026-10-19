@@ -409,8 +409,8 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
   ], [services, activeAcademicTier, invoicesList, isLicenseServerOffline]);
 
   const tabs = useMemo(() => [
-    { id: 'services', label: 'Status Lisensi & Modul Aktif', icon: LayoutGrid },
-    { id: 'invoices', label: 'Riwayat Tagihan & Invoice', icon: History }
+    { id: 'services', label: 'Status Lisensi', icon: LayoutGrid },
+    { id: 'invoices', label: 'Riwayat Tagihan', icon: History }
   ], []);
 
   const pendingInvoice = useMemo(() => {
@@ -971,7 +971,7 @@ export const ServiceCenterPage: React.FC = React.memo(() => {
                 <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat riwayat tagihan...</div>}>
                   <BillingInvoicesSection
                     invoices={(invoicesList as ServiceInvoice[]) || []}
-                    isLoading={invoicesQuery.isLoading}
+                    isLoading={invoicesQuery.isLoading || invoicesQuery.isFetching}
                     onRefresh={() => invoicesQuery.refetch()}
                     handleViewInvoice={handleViewInvoice}
                     handleCancelInvoice={handleCancelInvoice}
