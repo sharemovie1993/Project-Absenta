@@ -17,7 +17,7 @@ import {
   Info,
   FileSpreadsheet
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
