@@ -1113,6 +1113,33 @@ export const HARDENING_REGISTRY: Record<string, ModuleHardeningConfig> = {
       }
     ]
   },
+  platform_compliance: {
+    moduleName: 'platform_compliance',
+    displayName: 'Pusat Evaluasi Kepatuhan & Kelengkapan Data',
+    standards: [
+      {
+        id: 'fault_tolerance',
+        name: 'Isolasi Kesalahan Halaman (Fault Isolation / Error Boundary)',
+        description: 'Mencegah kerusakan visual halaman total melalui pembungkusan React Error Boundary mandiri.',
+        status: 'VERIFIED',
+        details: 'Halaman terbungkus di dalam AcademicPageLayout & ErrorBoundary.'
+      },
+      {
+        id: 'dom_churn_protection',
+        name: 'Optimasi DOM Churn (Render Optimization)',
+        description: 'Penyaringan data, sorting, dan callback handlers dimemosisasi dengan useMemo dan useCallback.',
+        status: 'VERIFIED',
+        details: 'useCallback & useMemo terintegrasi pada data lists dan click handlers.'
+      },
+      {
+        id: 'code_splitting',
+        name: 'Pemisahan Kode Dinamis (Code Splitting / lazy)',
+        description: 'Memecah JS bundle subkomponen berat menggunakan React.lazy & Suspense.',
+        status: 'VERIFIED',
+        details: 'Subkomponen TeacherComplianceList, StudentComplianceList, ComplianceTrendsView, dan ComplianceNudgeModal dimuat secara lazy loading.'
+      }
+    ]
+  },
   superadmin_revenue_dashboard: {
     moduleName: 'superadmin_revenue_dashboard',
     displayName: 'Revenue Dashboard Platform (Superadmin)',
