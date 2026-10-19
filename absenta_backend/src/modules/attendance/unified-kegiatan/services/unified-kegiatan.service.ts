@@ -111,15 +111,29 @@ export class UnifiedKegiatanService {
   }
 
   /**
+   * Helper: Dapatkan rentang UTC untuk tanggal tertentu agar mencakup timezone WIB/WITA/WIT
+   */
+  public getDateRange(dateStr?: string): { gte: Date; lte: Date } {
+    const dStr = dateStr || this.getTodayDateStr();
+    const base = new Date(dStr + 'T00:00:00.000Z');
+    const gte = new Date(base.getTime() - 14 * 3600 * 1000);
+    const lte = new Date(base.getTime() + 24 * 3600 * 1000);
+    return { gte, lte };
+  }
+
+  /**
    * 2. Sesi Hari Ini: Ambil SesiAbsensi kegiatan pada tanggal tertentu
    */
   async getSesiHariIni(tenantId: string, params?: { tanggal?: string; jadwal_kegiatan_id?: string; jenis_kegiatan?: string }) {
-    const targetDate = params?.tanggal ? new Date(params.tanggal) : new Date(this.getTodayDateStr());
+    const dateRange = this.getDateRange(params?.tanggal);
     const jenis = params?.jenis_kegiatan || 'KETARUNAAN';
 
     let whereClause: any = {
       tenant_id: tenantId,
-      tanggal: targetDate,
+      tanggal: {
+        gte: dateRange.gte,
+        lte: dateRange.lte,
+      },
     };
 
     if (params?.jadwal_kegiatan_id) {
@@ -389,15 +403,32 @@ export class UnifiedKegiatanService {
     const todayStr = this.getTodayDateStr();
     const hariEnum = this.getHariEnum(todayStr);
 
-    const parentSesi = await prisma.sesiAbsensi.findUnique({
-      where: { id: payload.sesi_id },
-      include: {
-        JadwalKegiatan: true,
-      },
-    });
+    let parentSesi: any = null;
+    if (payload.sesi_id) {
+      parentSesi = await prisma.sesiAbsensi.findUnique({
+        where: { id: payload.sesi_id },
+        include: {
+          JadwalKegiatan: true,
+        },
+      });
+    }
 
     if (!parentSesi) {
-      throw new Error('Sesi kegiatan tidak ditemukan');
+      // Cari sesi kegiatan yang aktif hari ini
+      const sesiToday = await this.getSesiHariIni(tenantId, { tanggal: todayStr, jenis_kegiatan: 'KETARUNAAN' });
+      if (sesiToday?.id) {
+        payload.sesi_id = sesiToday.id;
+        parentSesi = await prisma.sesiAbsensi.findUnique({
+          where: { id: sesiToday.id },
+          include: {
+            JadwalKegiatan: true,
+          },
+        });
+      }
+    }
+
+    if (!parentSesi) {
+      throw new Error('Sesi kegiatan hari ini belum dimulai atau tidak ditemukan');
     }
 
     const namaKegiatan = parentSesi.JadwalKegiatan?.nama || parentSesi.jenis_kegiatan || 'Kegiatan Pembiasaan';

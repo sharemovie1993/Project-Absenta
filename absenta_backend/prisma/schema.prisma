@@ -178,6 +178,7 @@ model Tenant {
   JurnalWaliKelas          JurnalWaliKelas[]
   PermohonanIzinSiswa      PermohonanIzinSiswa[]
   PermohonanIzinGuru       PermohonanIzinGuru[]
+  AcademicPlenoSession     AcademicPlenoSession[]
 }
 
 enum BackupStatus {
@@ -506,6 +507,7 @@ model User {
   permohonanIzinGuruDiajukan PermohonanIzinGuru[]  @relation("PermohonanIzinGuruDiajukan")
   permohonanIzinGuruDiproses PermohonanIzinGuru[]  @relation("PermohonanIzinGuruDiproses")
   RefreshTokens              RefreshToken[]
+  AcademicPlenoAttendance    AcademicPlenoAttendance[]
 
   @@unique([tenant_id, email])
   @@index([tenant_id])
@@ -834,6 +836,7 @@ model Kelas {
   JurnalWaliKelas           JurnalWaliKelas[]
   P5FasilitatorKelas        P5FasilitatorKelas[]
   JadwalPembinaUpacara      JadwalPembinaUpacara[]
+  AcademicPlenoRombel       AcademicPlenoRombel[]
 
   @@index([tenant_id])
 }
@@ -968,6 +971,7 @@ model TahunPelajaran {
   GuruTimeOff            GuruTimeOff[]
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  AcademicPlenoSession   AcademicPlenoSession[]
 
   @@unique([tenant_id, tahun])
   @@index([tenant_id])
@@ -1003,6 +1007,7 @@ model Semester {
   GuruTimeOff            GuruTimeOff[]
   JadwalKontrakKbm       JadwalKontrakKbm[]
   AlurTujuanPembelajaran AlurTujuanPembelajaran[]
+  AcademicPlenoSession   AcademicPlenoSession[]
 
   @@index([tenant_id])
 }
@@ -1122,6 +1127,7 @@ model Siswa {
   P5NilaiSiswa        P5NilaiSiswa[]
   NilaiEskul          NilaiEskul[]
   BkKonsultasiBooking BkKonsultasiBooking[]
+  AcademicPlenoDecision AcademicPlenoDecision[]
 
   @@unique([tenant_id, nis])
   @@index([tenant_id])
@@ -5475,4 +5481,161 @@ model RefreshToken {
   @@index([user_id])
   @@index([token_hash])
   @@map("refresh_tokens")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SIDANG PLENO / RAPAT KENAIKAN KELAS & KELULUSAN
+// ═══════════════════════════════════════════════════════════════════
+
+enum AcademicPlenoStatus {
+  DRAFT
+  PRE_TRIAGE
+  IN_PROGRESS
+  FINALIZED
+  CANCELLED
+}
+
+enum PlenoDecisionType {
+  NAIK
+  NAIK_BERSYARAT
+  TINGGAL_KELAS
+  LULUS
+  TIDAK_LULUS
+  MUTASI
+}
+
+enum PlenoTriageZone {
+  GREEN
+  YELLOW
+  RED
+}
+
+model AcademicPlenoSession {
+  id                    String                   @id @default(uuid())
+  tenant_id             String
+  tahun_pelajaran_id    String
+  semester_id           String
+  title                 String
+  nomor_bap             String?
+  date                  DateTime
+  start_time            String
+  end_time              String?
+  location              String
+  description           String?                  @db.Text
+  total_eligible_voters Int                      @default(0)
+  quorum_target         Int                      @default(0)
+  status                AcademicPlenoStatus      @default(DRAFT)
+  leader_user_id        String?
+  secretary_user_id     String?
+  bap_document_url      String?
+  finalized_at          DateTime?
+  finalized_by          String?
+  closing_notes         String?                  @db.Text
+
+  created_at            DateTime                 @default(now())
+  updated_at            DateTime                 @updatedAt
+
+  Tenant                Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  TahunPelajaran        TahunPelajaran           @relation(fields: [tahun_pelajaran_id], references: [id], onDelete: Cascade)
+  Semester              Semester                 @relation(fields: [semester_id], references: [id], onDelete: Cascade)
+  
+  attendances           AcademicPlenoAttendance[]
+  rombels               AcademicPlenoRombel[]
+  decisions             AcademicPlenoDecision[]
+  minutes               AcademicPlenoMinute[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, tahun_pelajaran_id, semester_id])
+  @@index([tenant_id, status])
+}
+
+model AcademicPlenoAttendance {
+  id               String               @id @default(uuid())
+  session_id       String
+  user_id          String
+  role_in_meeting  String               @default("GURU_MAPEL")
+  is_present       Boolean              @default(false)
+  attended_at      DateTime?
+  signature_url    String?
+  notes            String?
+
+  Session          AcademicPlenoSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  User             User                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, user_id])
+  @@index([session_id])
+  @@index([user_id])
+}
+
+model AcademicPlenoRombel {
+  id                 String               @id @default(uuid())
+  session_id         String
+  kelas_id           String
+  wali_kelas_user_id String?
+  status             String               @default("PENDING")
+  total_students     Int                  @default(0)
+  green_count        Int                  @default(0)
+  yellow_count       Int                  @default(0)
+  red_count          Int                  @default(0)
+  reviewed_at        DateTime?
+  notes              String?              @db.Text
+
+  Session            AcademicPlenoSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  Kelas              Kelas                @relation(fields: [kelas_id], references: [id], onDelete: Cascade)
+  decisions          AcademicPlenoDecision[]
+
+  @@unique([session_id, kelas_id])
+  @@index([session_id])
+  @@index([kelas_id])
+}
+
+model AcademicPlenoDecision {
+  id                   String               @id @default(uuid())
+  session_id           String
+  rombel_id            String
+  siswa_id             String
+  triage_zone          PlenoTriageZone      @default(GREEN)
+  triage_reasons       String?              @db.Text
+  
+  rekomendasi_awal     PlenoDecisionType    @default(NAIK)
+  keputusan_akhir      PlenoDecisionType    @default(NAIK)
+  target_kelas_id      String?
+  
+  alasan_keputusan     String?              @db.Text
+  catatan_pendampingan String?              @db.Text
+  
+  is_disputed          Boolean              @default(false)
+  voted_by_consensus   Boolean              @default(true)
+  voting_yes           Int?
+  voting_no            Int?
+  
+  decided_by_user_id   String?
+  decided_at           DateTime             @default(now())
+
+  Session              AcademicPlenoSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+  Rombel               AcademicPlenoRombel  @relation(fields: [rombel_id], references: [id], onDelete: Cascade)
+  Siswa                Siswa                @relation(fields: [siswa_id], references: [id], onDelete: Cascade)
+
+  @@unique([session_id, siswa_id])
+  @@index([session_id])
+  @@index([rombel_id])
+  @@index([siswa_id])
+  @@index([session_id, triage_zone])
+}
+
+model AcademicPlenoMinute {
+  id           String               @id @default(uuid())
+  session_id   String
+  rombel_id    String?
+  author_id    String
+  speaker_name String?
+  speaker_role String?
+  topic        String
+  content      String               @db.Text
+  action_item  String?              @db.Text
+  created_at   DateTime             @default(now())
+
+  Session      AcademicPlenoSession @relation(fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
 }

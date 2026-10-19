@@ -268,7 +268,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
                       {p.waktu_tap ? `Tap: ${p.waktu_tap.slice(11, 16)} WIB` : 'Belum presensi'}
                     </span>
 
-                    {p.status === 'BELUM_TAP' && realSesiId ? (
+                    {p.status === 'BELUM_TAP' ? (
                       <div className="flex items-center gap-1.5">
                         <Button
                           size="sm"
@@ -348,7 +348,7 @@ export const KetarunaanKepanitiaanTab: React.FC<KetarunaanKepanitiaanTabProps> =
 
                     <div className="flex items-center gap-2 shrink-0">
                       {statusBadge(p.status)}
-                      {p.status === 'BELUM_TAP' && realSesiId && (
+                      {p.status === 'BELUM_TAP' && (
                         <Button
                           size="sm"
                           variant="outline"
