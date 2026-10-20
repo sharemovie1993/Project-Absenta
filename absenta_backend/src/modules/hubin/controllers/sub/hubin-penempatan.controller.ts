@@ -7,7 +7,9 @@ import { z } from 'zod';
 import { 
   createPenempatanSchema, 
   updatePenempatanSchema, 
-  bulkCreatePenempatanSchema 
+  bulkCreatePenempatanSchema,
+  importExcelPlottingSchema,
+  bulkDeletePenempatanSchema
 } from '../../services/hubin.schema';
 
 export class HubinPenempatanController {
@@ -131,6 +133,32 @@ export class HubinPenempatanController {
     }
   }
 
+  async bulkDeletePenempatan(request: AuthenticatedRequest, reply: any) {
+    try {
+      const parsedBody = bulkDeletePenempatanSchema.parse(request.body);
+      const data = await this.hubinService.bulkDeletePenempatan(
+        request.tenantId!,
+        parsedBody.ids,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({
+        success: true,
+        message: `Berhasil menghapus ${data.count} penempatan PKL terpilih`,
+        data
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async mutasiPenempatan(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;
@@ -157,6 +185,32 @@ export class HubinPenempatanController {
       );
       return reply.status(200).send({ success: true, message: 'Status penempatan berhasil diperbarui', data });
     } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  async importExcelPlotting(request: AuthenticatedRequest, reply: any) {
+    try {
+      const parsedBody = importExcelPlottingSchema.parse(request.body);
+      const data = await this.hubinService.importExcelPlotting(
+        request.tenantId!,
+        parsedBody,
+        request.user.id,
+        request.organizationalScope
+      );
+      return reply.status(201).send({
+        success: true,
+        message: `Berhasil memproses ${data.total_imported} data penempatan PKL`,
+        data
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          message: error.errors.map(e => e.message).join(', '),
+          errors: error.errors
+        });
+      }
       return reply.status(500).send({ success: false, message: error.message });
     }
   }

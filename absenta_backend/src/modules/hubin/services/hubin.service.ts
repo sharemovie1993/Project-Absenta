@@ -35,7 +35,9 @@ export class HubinService {
   async createPenempatan(...args: any[]) { return (this.penempatan as any).createPenempatan(...args); }
   async updatePenempatan(...args: any[]) { return (this.penempatan as any).updatePenempatan(...args); }
   async bulkCreatePenempatan(...args: any[]) { return (this.penempatan as any).bulkCreatePenempatan(...args); }
+  async importExcelPlotting(...args: any[]) { return (this.penempatan as any).importExcelPlotting(...args); }
   async deletePenempatan(...args: any[]) { return (this.penempatan as any).deletePenempatan(...args); }
+  async bulkDeletePenempatan(...args: any[]) { return (this.penempatan as any).bulkDeletePenempatan(...args); }
   async mutasiPenempatan(...args: any[]) { return (this.penempatan as any).mutasiPenempatan(...args); }
   async bulkUpdateStatus(...args: any[]) { return (this.penempatan as any).bulkUpdateStatus(...args); }
 

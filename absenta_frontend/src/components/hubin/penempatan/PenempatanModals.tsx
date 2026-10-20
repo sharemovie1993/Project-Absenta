@@ -12,6 +12,7 @@ const HubinPklPrintSurat = lazy(() => import('@/components/hubin/HubinPklPrintSu
 const HubinPklPrintMonitoringModal = lazy(() => import('@/components/hubin/HubinPklPrintMonitoringModal').then(m => ({ default: m.HubinPklPrintMonitoringModal })));
 const HubinPklMutasiModal = lazy(() => import('@/components/hubin/HubinPklMutasiModal').then(m => ({ default: m.HubinPklMutasiModal })));
 const MitraFormModal = lazy(() => import('@/components/hubin/MitraFormModal').then(m => ({ default: m.MitraFormModal })));
+const ImportPlottingPklWizardModal = lazy(() => import('./ImportPlottingPklWizardModal').then(m => ({ default: m.ImportPlottingPklWizardModal })));
 
 export interface PenempatanModalsProps {
   actions: ReturnType<typeof usePenempatanActions>;
@@ -32,6 +33,8 @@ export interface PenempatanModalsProps {
   filterJurusan?: string;
   filterJurusanId?: string;
   canManage: boolean;
+  rawMitra?: any[];
+  selectedTpFilter?: string;
 }
 
 export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
@@ -53,7 +56,8 @@ export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
   selectedTpFilter,
   filterJurusan,
   filterJurusanId,
-  canManage
+  canManage,
+  rawMitra
 }) => {
   return (
     <>
@@ -219,6 +223,19 @@ export const PenempatanModals: React.FC<PenempatanModalsProps> = React.memo(({
             editingMitra={actions.editingMitraForKontak}
             isPending={actions.updateMitraMutation.isPending}
             isEditKontakOnly={!canManage}
+          />
+        )}
+      </Suspense>
+
+      <Suspense fallback={null}>
+        {actions.isImportWizardOpen && (
+          <ImportPlottingPklWizardModal
+            isOpen={actions.isImportWizardOpen}
+            onClose={() => actions.setIsImportWizardOpen(false)}
+            rawMitra={rawMitra || []}
+            guruOptions={guruOptions}
+            tpOptions={tpOptions}
+            selectedTpFilter={selectedTpFilter}
           />
         )}
       </Suspense>

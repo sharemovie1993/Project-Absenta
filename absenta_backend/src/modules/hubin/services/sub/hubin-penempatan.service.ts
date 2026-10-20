@@ -680,6 +680,55 @@ export class HubinPenempatanService extends HubinCommonHelper {
     return result;
   }
 
+  async bulkDeletePenempatan(tenantId: string, ids: string[], actorUserId?: string | null, org?: any) {
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new Error('Daftar ID penempatan wajib diisi');
+    }
+
+    if (org && org.tenant_wide !== true) {
+      if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        const user = await prisma.user.findUnique({
+          where: { id: actorUserId || '' },
+          include: { Guru: true }
+        });
+        const countValid = await prisma.siswaPkl.count({
+          where: {
+            id: { in: ids },
+            tenant_id: tenantId,
+            OR: [
+              {
+                Siswa: {
+                  Kelas: {
+                    jurusan_id: { in: org.unit_ids }
+                  }
+                }
+              },
+              ...(user?.Guru?.id ? [{ pembimbing_id: user.Guru.id }] : [])
+            ]
+          }
+        });
+        if (countValid !== ids.length) {
+          throw new Error('Akses ditolak: Salah satu penempatan siswa tidak berada di bawah program keahlian Anda.');
+        }
+      }
+    }
+
+    const deleteResult = await prisma.siswaPkl.deleteMany({
+      where: {
+        tenant_id: tenantId,
+        id: { in: ids }
+      }
+    });
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_BULK_REMOVE', 'SiswaPkl', null, {
+      count: deleteResult.count,
+      ids
+    });
+
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+    return { count: deleteResult.count };
+  }
+
   async mutasiPenempatan(
     tenantId: string,
     id: string,
@@ -813,5 +862,178 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
     await cacheInvalidationService.invalidateHubinCache(tenantId);
     return { count: updateResult.count, status: data.status };
+  }
+
+  /**
+   * Import Plotting PKL dari Berkas Excel (Batch Wizard)
+   */
+  async importExcelPlotting(tenantId: string, payload: any, actorUserId?: string | null, org?: any) {
+    const { items, tahun_pelajaran_id, semester_id } = payload;
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('Daftar entri import tidak boleh kosong');
+    }
+
+    // 1. Ambil master mitra industri eksisting untuk caching
+    const existingMitraList = await prisma.mitraIndustri.findMany({
+      where: { tenant_id: tenantId },
+      select: { id: true, nama: true }
+    });
+
+    const mitraMap = new Map<string, string>(); // normalized_name -> id
+    existingMitraList.forEach((m) => {
+      mitraMap.set(m.nama.trim().toLowerCase(), m.id);
+    });
+
+    let newMitraCreated = 0;
+    let createdCount = 0;
+    let updatedCount = 0;
+
+    // 2. Pre-process dan resolve semua Mitra Industri
+    for (const item of items) {
+      if (item.mitra_id) {
+        continue;
+      }
+
+      const rawNama = String(item.mitra_nama || '').trim();
+      if (!rawNama) continue;
+      const normalizedNama = rawNama.toLowerCase();
+
+      if (mitraMap.has(normalizedNama)) {
+        item.mitra_id = mitraMap.get(normalizedNama);
+      } else if (item.create_mitra_if_missing !== false) {
+        // Buat mitra industri baru secara otomatis
+        const newMitra = await prisma.mitraIndustri.create({
+          data: {
+            tenant_id: tenantId,
+            nama: rawNama,
+            alamat: item.mitra_alamat || 'Alamat dari Berkas Pemetaan PKL',
+            kuota_pkl: 50,
+            status: 'AKTIF',
+            deskripsi: 'Didaftarkan otomatis melalui Wizard Import Plotting Excel'
+          }
+        });
+        mitraMap.set(normalizedNama, newMitra.id);
+        item.mitra_id = newMitra.id;
+        newMitraCreated++;
+      }
+    }
+
+    // 3. Eksekusi Batch SiswaPkl
+    for (const item of items) {
+      if (!item.siswa_id || !item.mitra_id) {
+        continue;
+      }
+
+      const siswa = await prisma.siswa.findUnique({
+        where: { id: item.siswa_id },
+        select: { id: true, kelas_id: true, tahun_pelajaran_id: true, semester_id: true }
+      });
+
+      if (!siswa) continue;
+
+      const targetTpId = tahun_pelajaran_id || siswa.tahun_pelajaran_id;
+      const targetSemId = semester_id || siswa.semester_id;
+      const targetKelasId = siswa.kelas_id;
+
+      let siswaAkademikId: string | undefined;
+      if (targetTpId && targetSemId) {
+        let sa = await prisma.siswaAkademik.findFirst({
+          where: {
+            siswa_id: item.siswa_id,
+            tahun_pelajaran_id: targetTpId,
+            semester_id: targetSemId
+          }
+        });
+
+        if (!sa && targetKelasId) {
+          try {
+            sa = await prisma.siswaAkademik.create({
+              data: {
+                siswa_id: item.siswa_id,
+                kelas_id: targetKelasId,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId,
+                status: 'AKTIF'
+              }
+            });
+          } catch (e: any) {
+            sa = await prisma.siswaAkademik.findFirst({
+              where: {
+                siswa_id: item.siswa_id,
+                tahun_pelajaran_id: targetTpId,
+                semester_id: targetSemId
+              }
+            });
+          }
+        }
+        siswaAkademikId = sa?.id;
+      }
+
+      const pembimbingId = item.pembimbing_id && String(item.pembimbing_id).trim() !== '' 
+        ? String(item.pembimbing_id).trim() 
+        : null;
+
+      const tanggalMulai = item.tanggal_mulai instanceof Date ? item.tanggal_mulai : new Date(item.tanggal_mulai);
+      const tanggalSelesai = item.tanggal_selesai ? (item.tanggal_selesai instanceof Date ? item.tanggal_selesai : new Date(item.tanggal_selesai)) : null;
+
+      // Cek apakah siswa sudah punya SiswaPkl aktif
+      const existingPkl = await prisma.siswaPkl.findFirst({
+        where: {
+          tenant_id: tenantId,
+          siswa_id: item.siswa_id,
+          status: 'AKTIF'
+        }
+      });
+
+      if (existingPkl) {
+        await prisma.siswaPkl.update({
+          where: { id: existingPkl.id },
+          data: {
+            mitra_id: item.mitra_id,
+            pembimbing_id: pembimbingId,
+            tanggal_mulai: tanggalMulai,
+            tanggal_selesai: tanggalSelesai,
+            instruktur_nama: item.instruktur_nama || existingPkl.instruktur_nama,
+            penanggung_jawab_nama: item.penanggung_jawab_nama || existingPkl.penanggung_jawab_nama,
+            alamat_dudi: item.mitra_alamat || existingPkl.alamat_dudi,
+            status: item.status || 'AKTIF'
+          }
+        });
+        updatedCount++;
+      } else {
+        await prisma.siswaPkl.create({
+          data: {
+            tenant_id: tenantId,
+            siswa_id: item.siswa_id,
+            siswa_akademik_id: siswaAkademikId,
+            mitra_id: item.mitra_id,
+            pembimbing_id: pembimbingId,
+            tanggal_mulai: tanggalMulai,
+            tanggal_selesai: tanggalSelesai,
+            instruktur_nama: item.instruktur_nama || null,
+            penanggung_jawab_nama: item.penanggung_jawab_nama || null,
+            alamat_dudi: item.mitra_alamat || null,
+            status: item.status || 'AKTIF'
+          }
+        });
+        createdCount++;
+      }
+    }
+
+    this.log(tenantId, actorUserId || null, 'HUBIN_PKL_EXCEL_IMPORT', 'SiswaPkl', null, {
+      total_imported: createdCount + updatedCount,
+      new_mitra_created: newMitraCreated,
+      created_new: createdCount,
+      updated_existing: updatedCount
+    });
+
+    await cacheInvalidationService.invalidateHubinCache(tenantId);
+
+    return {
+      total_imported: createdCount + updatedCount,
+      new_mitra_created: newMitraCreated,
+      created_new: createdCount,
+      updated_existing: updatedCount
+    };
   }
 }

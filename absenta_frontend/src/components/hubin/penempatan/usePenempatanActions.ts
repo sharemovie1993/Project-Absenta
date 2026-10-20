@@ -55,6 +55,8 @@ export function usePenempatanActions({
   // Modals Open State
   const [isPlottingOpen, setIsPlottingOpen] = useState(false);
   const [isBulkPlottingOpen, setIsBulkPlottingOpen] = useState(false);
+  const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Set<string>>(new Set());
   const [isNilaiOpen, setIsNilaiOpen] = useState(false);
   const [isKunjunganOpen, setIsKunjunganOpen] = useState(false);
   const [visitLat, setVisitLat] = useState('');
@@ -215,6 +217,21 @@ export function usePenempatanActions({
     },
     onError: (error: unknown) => {
       toast.error(getErrorMessage(error, 'Gagal menghapus penempatan'));
+    },
+  });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids: string[]) => hubinApi.bulkDeletePenempatan(ids),
+    onSuccess: (res: any) => {
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-me'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-dashboard-stats'] });
+      setSelectedRowKeys(new Set());
+      toast.success(res?.message || 'Penempatan PKL terpilih berhasil dihapus');
+    },
+    onError: (error: unknown) => {
+      toast.error(getErrorMessage(error, 'Gagal menghapus penempatan PKL terpilih'));
     },
   });
 
@@ -495,6 +512,8 @@ export function usePenempatanActions({
     setIsPlottingOpen,
     isBulkPlottingOpen,
     setIsBulkPlottingOpen,
+    isImportWizardOpen,
+    setIsImportWizardOpen,
     isNilaiOpen,
     setIsNilaiOpen,
     isKunjunganOpen,
@@ -542,6 +561,9 @@ export function usePenempatanActions({
     updateKunjunganMutation,
     deleteKunjunganMutation,
     deleteMutation,
+    bulkDeleteMutation,
+    selectedRowKeys,
+    setSelectedRowKeys,
     reviewJurnalMutation,
     updateMitraMutation,
     mutasiMutation,

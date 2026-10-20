@@ -237,11 +237,13 @@ export const hubinApi = {
   bulkUpdateStatus: (data: { ids: string[]; status: string; tanggal_selesai_aktual?: string }) =>
     requestWithFallback<any>('post', '/hubin/penempatan/bulk-status', { data }),
   bulkCreatePenempatan: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/bulk', { data }),
+  importExcelPlotting: (data: any) => requestWithFallback<any>('post', '/hubin/penempatan/import-excel', { data }),
   updatePenilaian: (id: string, nilai: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/nilai`, { data: { nilai } }),
   addKunjungan: (id: string, data: any) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/kunjungan`, { data }),
   updateKunjungan: (id: string, kunjunganId: string, data: any) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`, { data }),
   deleteKunjungan: (id: string, kunjunganId: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}/kunjungan/${kunjunganId}`),
   deletePenempatan: (id: string) => requestWithFallback<any>('delete', `/hubin/penempatan/${id}`),
+  bulkDeletePenempatan: (ids: string[]) => requestWithFallback<any>('post', '/hubin/penempatan/bulk-delete', { data: { ids } }),
   submitJurnalPortofolio: (id: string, file_url: string) => requestWithFallback<any>('post', `/hubin/penempatan/${id}/jurnal-akhir`, { data: { file_url } }),
   reviewJurnalPortofolio: (id: string, status: string, catatan: string) => requestWithFallback<any>('put', `/hubin/penempatan/${id}/jurnal-akhir/review`, { data: { status, catatan } }),
 

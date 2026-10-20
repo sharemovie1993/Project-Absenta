@@ -28,6 +28,9 @@ export interface PenempatanMobileCardProps {
   onMutasi?: (row: SiswaPkl) => void;
   onFilterSiswaHistory?: (namaSiswa: string) => void;
   onEditMitraKontak: (mitraId: string) => void;
+  selectable?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.memo(({
@@ -45,7 +48,10 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
   onEdit,
   onMutasi,
   onFilterSiswaHistory,
-  onEditMitraKontak
+  onEditMitraKontak,
+  selectable,
+  isSelected,
+  onToggleSelect
 }) => {
   const fullMitra = rawMitra?.find((m: MitraData) => m.id === row.mitra_id);
   const siswaPhone = row.Siswa?.no_hp || '';
@@ -77,6 +83,14 @@ export const PenempatanMobileCard: React.FC<PenempatanMobileCardProps> = React.m
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-3 min-w-0">
+          {selectable && (
+            <input
+              type="checkbox"
+              checked={isSelected || false}
+              onChange={() => onToggleSelect?.(row.id)}
+              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 shrink-0 cursor-pointer"
+            />
+          )}
           <SiswaIdentityCell
             foto={row.Siswa?.foto}
             nama={row.Siswa?.nama_siswa}

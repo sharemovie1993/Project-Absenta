@@ -9,7 +9,9 @@ import {
   Building2, 
   UserPlus, 
   Users, 
-  User 
+  User,
+  FileSpreadsheet,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -380,8 +382,57 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     { label: 'Penempatan PKL', path: '/hubin/penempatan' }
   ];
 
+  const handleBulkDelete = useCallback(async () => {
+    if (actions.selectedRowKeys.size === 0) return;
+    const count = actions.selectedRowKeys.size;
+    const confirmed = await confirm({
+      title: 'Hapus Penempatan Terpilih',
+      description: `Apakah Anda yakin ingin menghapus ${count} penempatan PKL terpilih? Siswa yang dihapus penempatannya akan kembali ke status belum ter-plot.`,
+      confirmText: `Hapus (${count})`,
+      variant: 'danger',
+      progressLabel: `Menghapus ${count} penempatan...`,
+    });
+    if (confirmed) {
+      actions.bulkDeleteMutation.mutate(Array.from(actions.selectedRowKeys));
+    }
+  }, [confirm, actions.selectedRowKeys, actions.bulkDeleteMutation]);
+
   const toolbar = canManage ? (
     <div className="flex items-center gap-2">
+      {actions.selectedRowKeys.size > 0 && (
+        <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2.5 py-1 rounded-xl">
+          <span className="text-xs font-bold text-rose-700 dark:text-rose-300">
+            {actions.selectedRowKeys.size} dipilih
+          </span>
+          <Button
+            onClick={handleBulkDelete}
+            disabled={actions.bulkDeleteMutation.isPending}
+            variant="destructive"
+            size="sm"
+            className="h-7 px-2 text-xs flex items-center gap-1"
+          >
+            <Trash2 size={13} />
+            Hapus Terpilih
+          </Button>
+          <Button
+            onClick={() => actions.setSelectedRowKeys(new Set())}
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-slate-500 hover:text-slate-700"
+          >
+            Batal
+          </Button>
+        </div>
+      )}
+      <Button
+        onClick={() => actions.setIsImportWizardOpen(true)}
+        variant="toolbarOutline"
+        size="toolbar"
+        className="rounded-xl h-9 px-3.5 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+      >
+        <FileSpreadsheet size={16} />
+        Import Plotting Excel
+      </Button>
       <Button
         onClick={() => actions.setIsBulkPlottingOpen(true)}
         variant="toolbarOutline"
@@ -510,9 +561,19 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       rawMitra={rawMitra}
       canManage={canManage}
       hasKolektif={hasKolektif}
+      selectable={canManage}
+      isSelected={actions.selectedRowKeys.has(row.id)}
+      onToggleSelect={(id) => {
+        actions.setSelectedRowKeys((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      }}
       {...rowActionHandlers}
     />
-  ), [rawMitra, canManage, hasKolektif, rowActionHandlers]);
+  ), [rawMitra, canManage, hasKolektif, rowActionHandlers, actions.selectedRowKeys, actions.setSelectedRowKeys]);
 
   const content = (
     <>
@@ -582,6 +643,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
               loading={isLoading}
               emptyMessage="Belum ada data penempatan siswa PKL"
               compact={true}
+              rowKey="id"
+              selectedRowKeys={actions.selectedRowKeys}
+              onSelectedRowKeysChange={actions.setSelectedRowKeys}
               pagination={paginationProps}
               toolbarRight={toolbar}
             />
@@ -610,6 +674,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           filterJurusan={isKaprog && kaprogJurusan ? (kaprogJurusan.singkatan || kaprogJurusan.nama) : undefined}
           filterJurusanId={isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined}
           canManage={canManage}
+          rawMitra={rawMitra}
         />
       </Suspense>
     </>
