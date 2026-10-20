@@ -181,6 +181,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         foto: item.Siswa?.foto || null,
         kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id || '',
         nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '',
+        jurusan_id: item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || (item.SiswaAkademik?.kelas as any)?.jurusan_id || '',
         mitra_nama: item.Mitra?.nama || item.mitra_nama || '-',
         instruktur_nama: item.instruktur_nama || '',
         penanggung_jawab_nama: item.penanggung_jawab_nama || '',
@@ -220,14 +221,26 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   // sehingga 0 lag saat guru mengetik angka nilai di spreadsheet!
   const smartClassOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
-    const itemsForOptions = (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id)
-      ? rawList.filter((item) => {
-          const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
-          return kId === walikelasKelas.id;
-        })
-      : guidanceScope === 'MY_GUIDANCE' && activeGuruId
-      ? rawList.filter((item) => item.Pembimbing?.id === activeGuruId)
-      : rawList;
+    let itemsForOptions = rawList;
+
+    if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
+      itemsForOptions = rawList.filter((item) => {
+        const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
+        return kId === walikelasKelas.id;
+      });
+    } else if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+      itemsForOptions = rawList.filter((item) => item.Pembimbing?.id === activeGuruId);
+    } else if (isKaprog && kaprogJurusan) {
+      const kaprogId = kaprogJurusan.id;
+      const kaprogSingkatan = (kaprogJurusan.singkatan || '').toLowerCase();
+      itemsForOptions = rawList.filter((item) => {
+        const jId = item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || (item.SiswaAkademik?.kelas as any)?.jurusan_id;
+        if (kaprogId && jId === kaprogId) return true;
+        const kName = (item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '').toLowerCase();
+        if (kaprogSingkatan && kName.includes(kaprogSingkatan)) return true;
+        return false;
+      });
+    }
 
     itemsForOptions.forEach((item) => {
       const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
@@ -248,7 +261,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         value: k.id,
         label: `${k.name} (${k.count} Siswa)`,
       })) || [];
-  }, [rawList, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas, activeGuruId]);
+  }, [rawList, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas, activeGuruId, isKaprog, kaprogJurusan]);
 
   const displayedScores = useMemo(() => {
     let filtered = scores;
@@ -258,9 +271,19 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
       filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
     }
+    if (isKaprog && kaprogJurusan) {
+      const kaprogId = kaprogJurusan.id;
+      const kaprogSingkatan = (kaprogJurusan.singkatan || '').toLowerCase();
+      filtered = filtered.filter((s) => {
+        if (kaprogId && (s as any).jurusan_id === kaprogId) return true;
+        const kelasLower = (s.nama_kelas || '').toLowerCase();
+        if (kaprogSingkatan && kelasLower.includes(kaprogSingkatan)) return true;
+        return false;
+      });
+    }
     if (!selectedKelas) return filtered;
     return filtered.filter((s) => s.kelas_id === selectedKelas);
-  }, [scores, selectedKelas, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+  }, [scores, selectedKelas, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas, isKaprog, kaprogJurusan]);
 
   const allScopedCount = useMemo(() => {
     if (isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
@@ -269,8 +292,19 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         return kId === walikelasKelas.id;
       }).length;
     }
+    if (isKaprog && kaprogJurusan) {
+      const kaprogId = kaprogJurusan.id;
+      const kaprogSingkatan = (kaprogJurusan.singkatan || '').toLowerCase();
+      return rawList.filter((item: RawPklItem) => {
+        const jId = item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || (item.SiswaAkademik?.kelas as any)?.jurusan_id;
+        if (kaprogId && jId === kaprogId) return true;
+        const kName = (item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas || '').toLowerCase();
+        if (kaprogSingkatan && kName.includes(kaprogSingkatan)) return true;
+        return false;
+      }).length;
+    }
     return rawList.length;
-  }, [rawList, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+  }, [rawList, isWaliKelas, isPrivilegedHubin, walikelasKelas, isKaprog, kaprogJurusan]);
 
   const myGuidanceCountNilai = useMemo(() => {
     if (!activeGuruId) return 0;
@@ -540,7 +574,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                 selectedKelas={selectedKelas}
                 setSelectedKelas={setSelectedKelas}
                 smartClassOptions={smartClassOptions}
-                scoresCount={scores.length}
+                scoresCount={isKaprog || isWaliKelas ? allScopedCount : scores.length}
                 isLoadingRekap={isLoadingRekap}
                 onSaveBatch={handleSaveBatch}
                 isSavingBatch={saveBatchMutation.isPending}

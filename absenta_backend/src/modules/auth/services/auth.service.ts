@@ -900,14 +900,26 @@ export class AuthService {
     response.kelas_ids = orgCtx.kelas_ids;
 
     // Attach kaprog_jurusan if user has KAPROG position
-    if (response.position_codes.includes('KAPROG') && orgCtx.unit_ids.length > 0) {
+    if (response.position_codes.includes('KAPROG')) {
       try {
-        const jurusan = await prisma.jurusan.findFirst({
-          where: { id: { in: orgCtx.unit_ids }, tenant_id: user.tenant_id },
-          select: { id: true, nama: true, singkatan: true }
+        const kaprogAssignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            user_id: user.id,
+            tenant_id: user.tenant_id,
+            is_active: true,
+            Position: { code: 'KAPROG' },
+            unit_id: { not: null }
+          },
+          include: {
+            Unit: { select: { id: true, nama: true, singkatan: true } }
+          }
         });
-        if (jurusan) {
-          response.kaprog_jurusan = jurusan;
+        if (kaprogAssignment?.Unit) {
+          response.kaprog_jurusan = {
+            id: kaprogAssignment.Unit.id,
+            nama: kaprogAssignment.Unit.nama,
+            singkatan: kaprogAssignment.Unit.singkatan
+          };
         }
       } catch (e) {
         console.warn('[AUTH] Failed to resolve kaprog_jurusan:', e);

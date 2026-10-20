@@ -122,11 +122,12 @@ export function useCapabilities() {
     );
 
     const isHubin =
-      userPositions.includes('HUBIN') ||
-      isRoleHubin ||
-      can('hubin.partners.manage') ||
-      can('hubin.mou.manage') ||
-      can('dashboard.view.hubin');
+      !isKaprog && (
+        userPositions.includes('HUBIN') ||
+        isRoleHubin ||
+        can('hubin.partners.manage') ||
+        can('hubin.mou.manage')
+      );
 
     const isBkk =
       userPositions.includes('BKK');

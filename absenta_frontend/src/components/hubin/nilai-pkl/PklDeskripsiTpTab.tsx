@@ -79,11 +79,20 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
     }>();
 
     // Saring siswa sesuai konteks (kelas atau jurusan binaan)
-    const targetJurusanId = selectedJurusanFilter || (isKaprog && !isHubin ? kaprogJurusan?.id : undefined);
-
     const filteredScores = scores.filter((s) => {
       if (selectedKelas && s.kelas_id !== selectedKelas) return false;
-      if (targetJurusanId && (s as any).jurusan_id && (s as any).jurusan_id !== targetJurusanId) return false;
+      if (isKaprog && kaprogJurusan) {
+        const jId = (s as any).jurusan_id;
+        if (jId && kaprogJurusan.id) {
+          if (jId !== kaprogJurusan.id) return false;
+        } else if (kaprogJurusan.singkatan) {
+          const kLower = (s.nama_kelas || '').toLowerCase();
+          if (!kLower.includes(kaprogJurusan.singkatan.toLowerCase())) return false;
+        }
+      } else if (selectedJurusanFilter) {
+        const jId = (s as any).jurusan_id;
+        if (jId && jId !== selectedJurusanFilter) return false;
+      }
       return true;
     });
 
@@ -135,7 +144,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
       if (aFilled === bFilled) return a.mitra_nama.localeCompare(b.mitra_nama);
       return aFilled ? 1 : -1;
     });
-  }, [scores, selectedKelas, mitraOptions, deskripsiListData]);
+  }, [scores, selectedKelas, mitraOptions, deskripsiListData, isKaprog, isHubin, kaprogJurusan, selectedJurusanFilter]);
 
   // Statistik Cepat
   const totalSlots = activeMitraSlots.length;
@@ -248,11 +257,12 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
             />
           </div>
 
-          {/* Context Selector untuk HUBIN */}
-          {isHubin && jurusanOptions.length > 0 && (
+          {/* Context Selector untuk Pejabat HUBIN (Multi-jurusan) */}
+          {isHubin && !isKaprog && jurusanOptions.length > 0 && (
             <select
               value={selectedJurusanFilter}
               onChange={(e) => setSelectedJurusanFilter?.(e.target.value)}
+              aria-label="Filter Berdasarkan Jurusan"
               className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer max-w-[200px] truncate shrink-0"
             >
               <option value="">Semua Jurusan</option>
@@ -262,6 +272,14 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
                 </option>
               ))}
             </select>
+          )}
+
+          {/* Badge Penguncian Tegas untuk KAPROG (Single Jurusan Sesuai SK) */}
+          {isKaprog && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
+              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Jurusan: {kaprogJurusan?.nama || 'Kuliner'} (Terkunci Sesuai SK)</span>
+            </div>
           )}
         </div>
 
