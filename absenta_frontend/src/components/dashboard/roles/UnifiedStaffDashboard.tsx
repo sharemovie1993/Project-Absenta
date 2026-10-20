@@ -73,6 +73,7 @@ import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
+import { StaffKaprogTab } from '../staff/tabs/StaffKaprogTab';
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -836,6 +837,16 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'pembimbing_pkl', label: 'Bimbingan PKL', icon: Briefcase, badge: 'PKL' });
     }
 
+    // 4.1 Kaprog (Khusus Ketua Program Keahlian / Jurusan)
+    if (isKaprog && !isKepsek) {
+      list.push({ 
+        id: 'kaprog', 
+        label: 'Kaprog Jurusan', 
+        icon: Award, 
+        badge: kaprogJurusan?.singkatan || 'KAPROG' 
+      });
+    }
+
     // 5. Fasilitator P5 (Khusus Guru Fasilitator Projek P5)
     if (isFasilitatorP5Actual && !isKepsek) {
       list.push({ id: 'p5_projek', label: 'Projek P5', icon: Sparkles, badge: 'P5' });
@@ -881,6 +892,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
     hasTeachingDuty,
     can,
     isPembimbingPkl,
+    isKaprog,
+    kaprogJurusan,
     isFasilitatorP5Actual,
     isTUKepegawaian,
     isTU,
@@ -1139,6 +1152,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
               waliKelasId={waliKelasId}
               isWaliKelas={isWaliKelas}
               isPembimbingPkl={isPembimbingPkl}
+              isKaprog={isKaprog}
+              kaprogJurusan={kaprogJurusan}
               hasGerbangDuty={hasGerbangDuty}
               isPureGerbang={isPureGerbangStaff}
               isPendidik={isEffectivePendidik}
@@ -1182,6 +1197,14 @@ export const UnifiedStaffDashboard: React.FC = () => {
           <StaffPembimbingPklTab
             guruId={guruId}
             guruNama={guruProfile?.nama_guru || user?.full_name}
+          />
+        )}
+
+        {/* 🏆 TAB KAPROG: DASHBOARD KETUA PROGRAM KEAHLIAN */}
+        {activeTab === 'kaprog' && (
+          <StaffKaprogTab
+            user={user}
+            kaprogJurusan={kaprogJurusan}
           />
         )}
 

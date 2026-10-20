@@ -81,5 +81,6 @@ export class HubinController {
   async getRekapPklSiswa(...args: any[]) { return (this.penilaian as any).getRekapPklSiswa(...args); }
   async upsertSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).upsertSettingDeskripsiPkl(...args); }
   async getSettingDeskripsiPklList(...args: any[]) { return (this.penilaian as any).getSettingDeskripsiPklList(...args); }
+  async getKaprogSummary(...args: any[]) { return (this.penilaian as any).getKaprogSummary(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }
 }

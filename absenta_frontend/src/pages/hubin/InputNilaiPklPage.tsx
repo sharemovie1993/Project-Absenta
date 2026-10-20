@@ -9,6 +9,7 @@ import { Button, TabSwitcher, SectionCard } from '@/components/ui';
 import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
+import { useJurusanOptions } from '../../hooks/useJurusanOptions';
 import { useAcademicContext } from '../../components/common';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -59,15 +60,16 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   // Role Scoping & Multi-Tenant Isolation
   const { user } = useAuthStore();
   const tenantId = user?.tenant_id || 'default';
-  const { can, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId } = useCapabilities();
-  const isPrivilegedHubin = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog;
+  const { can, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId, isHubin } = useCapabilities();
+  const isPrivilegedHubin = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog || isHubin;
   const canManageAll = isPrivilegedHubin || isWaliKelas;
   const typedUser = user as { guru_profile?: { id?: string }; guru_id?: string; Guru?: { id?: string } } | null;
   const activeGuruId = capActiveGuruId || typedUser?.guru_profile?.id || typedUser?.guru_id || typedUser?.Guru?.id || null;
   const canEditScheme = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN';
-  const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId) || isKaprog || isWaliKelas;
+  const canViewScheme = canEditScheme || can('hubin.guidance.manage') || Boolean(activeGuruId) || isKaprog || isWaliKelas || isHubin;
   const [guidanceScope, setGuidanceScope] = useState<'ALL' | 'MY_GUIDANCE'>(canManageAll ? 'ALL' : 'MY_GUIDANCE');
   const [statusFilter, setStatusFilter] = useState<'ELIGIBLE' | 'AKTIF' | 'SELESAI' | 'ALL'>('ELIGIBLE');
+  const [selectedJurusanFilter, setSelectedJurusanFilter] = useState('');
 
   useEffect(() => {
     if (isMobile) {
@@ -97,6 +99,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   });
 
   const { options: mitraOptions } = useDudiOptions();
+  const { options: jurusanOptions } = useJurusanOptions();
 
   // Single SSOT Query: Menghindari redundant double-fetching saat membuka halaman (Multi-tenant isolated)
   const { data: pklRekapResponse, isLoading: isLoadingRekap } = useQuery({
@@ -651,8 +654,12 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     isLoadingDeskripsi={isLoadingDeskripsi}
                     scores={displayedScores}
                     isKaprog={isKaprog}
+                    isHubin={isHubin}
                     kaprogJurusan={kaprogJurusan}
                     selectedKelas={selectedKelas}
+                    jurusanOptions={jurusanOptions}
+                    selectedJurusanFilter={selectedJurusanFilter}
+                    setSelectedJurusanFilter={setSelectedJurusanFilter}
                   />
                 )}
               </Suspense>

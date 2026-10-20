@@ -161,6 +161,21 @@ export class HubinPenilaianController {
     }
   }
 
+  async getKaprogSummary(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { jurusan_id } = (request.query || {}) as any;
+      const data = await this.hubinService.getKaprogPklSummary(
+        request.tenantId!,
+        request.user?.id,
+        jurusan_id,
+        request.organizationalScope
+      );
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async getSertifikatPklData(request: AuthenticatedRequest, reply: any) {
     try {
       const { id } = request.params;

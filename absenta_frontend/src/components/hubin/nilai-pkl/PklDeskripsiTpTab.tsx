@@ -38,8 +38,12 @@ export interface PklDeskripsiTpTabProps {
   isLoadingDeskripsi: boolean;
   scores?: ScoreRow[];
   isKaprog?: boolean;
+  isHubin?: boolean;
   kaprogJurusan?: { id?: string; nama?: string; singkatan?: string } | null;
   selectedKelas?: string;
+  jurusanOptions?: { value: string; label: string }[];
+  selectedJurusanFilter?: string;
+  setSelectedJurusanFilter?: (val: string) => void;
 }
 
 export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
@@ -50,8 +54,12 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
   isLoadingDeskripsi,
   scores = [],
   isKaprog = false,
+  isHubin = false,
   kaprogJurusan,
   selectedKelas,
+  jurusanOptions = [],
+  selectedJurusanFilter = '',
+  setSelectedJurusanFilter,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'BELUM' | 'SUDAH'>('ALL');
@@ -71,9 +79,13 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
     }>();
 
     // Saring siswa sesuai konteks (kelas atau jurusan binaan)
-    const filteredScores = selectedKelas 
-      ? scores.filter((s) => s.kelas_id === selectedKelas)
-      : scores;
+    const targetJurusanId = selectedJurusanFilter || (isKaprog && !isHubin ? kaprogJurusan?.id : undefined);
+
+    const filteredScores = scores.filter((s) => {
+      if (selectedKelas && s.kelas_id !== selectedKelas) return false;
+      if (targetJurusanId && (s as any).jurusan_id && (s as any).jurusan_id !== targetJurusanId) return false;
+      return true;
+    });
 
     filteredScores.forEach((s) => {
       const mitraNama = (s.mitra_nama || '').trim();
@@ -177,7 +189,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
 
     onSave({
       mitra_id: activeEditingSlot.mitra_id,
-      jurusan_id: kaprogJurusan?.id || undefined,
+      jurusan_id: selectedJurusanFilter || kaprogJurusan?.id || undefined,
       deskripsi_tp: editorText.trim(),
     });
 
@@ -194,15 +206,21 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
               <Building2 size={20} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
               <span>Slot Deskripsi Capaian Pembelajaran (TP) PKL</span>
             </h3>
-            {isKaprog && (
-              <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <GraduationCap className="w-3 h-3" />
-                {kaprogJurusan?.nama || 'Ketua Program Keahlian'}
+            {isKaprog && !isHubin && (
+              <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                <GraduationCap className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <span>Konteks Jurusan Terkunci: {kaprogJurusan?.nama || 'Ketua Program Keahlian'}</span>
+              </span>
+            )}
+            {isHubin && (
+              <span className="text-[10px] font-bold bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
+                <span>Konteks: Pejabat Hubin (Supervisi Lintas Jurusan)</span>
               </span>
             )}
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Slot perusahaan terfilter otomatis berdasarkan penempatan nyata siswa jurusan Anda pada semester aktif. Narasi ini dicetak pada sertifikat resmi dan rapor PKL siswa.
+            Slot perusahaan terfilter otomatis berdasarkan penempatan nyata siswa kejuruan pada semester aktif. Narasi ini dicetak pada sertifikat resmi dan rapor PKL siswa.
           </p>
         </div>
 
@@ -223,20 +241,66 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
         </div>
       </div>
 
+      {/* Progress Keterisian TP PKL */}
+      {totalSlots > 0 && (
+        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
+          <div className="flex items-center justify-between text-xs font-semibold">
+            <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+              <span>Progres Keterisian Deskripsi TP DUDI:</span>
+              <strong className={filledSlotsCount === totalSlots ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                {filledSlotsCount} dari {totalSlots} Perusahaan Selesai ({Math.round((filledSlotsCount / totalSlots) * 100)}%)
+              </strong>
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {pendingSlotsCount > 0 ? `Sisa ${pendingSlotsCount} mitra perlu dirumuskan TP` : '✅ 100% Siap untuk Penilaian'}
+            </span>
+          </div>
+          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+            <div 
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                filledSlotsCount === totalSlots ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-indigo-600"
+              )}
+              style={{ width: `${Math.round((filledSlotsCount / totalSlots) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Toolbar Filter Cepat & Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Cari nama perusahaan atau kelas..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari nama perusahaan atau kelas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          {/* Context Selector untuk HUBIN */}
+          {isHubin && jurusanOptions.length > 0 && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <select
+                value={selectedJurusanFilter}
+                onChange={(e) => setSelectedJurusanFilter?.(e.target.value)}
+                className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer max-w-[200px] truncate"
+              >
+                <option value="">Semua Jurusan (Semua Binaan)</option>
+                {jurusanOptions.map((j) => (
+                  <option key={j.value} value={j.value}>
+                    {j.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto shrink-0">
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}

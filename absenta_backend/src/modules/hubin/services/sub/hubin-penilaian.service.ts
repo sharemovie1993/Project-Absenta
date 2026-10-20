@@ -959,6 +959,192 @@ export class HubinPenilaianService extends HubinCommonHelper {
   }
 
   /**
+   * 📊 GET KAPROG PKL SUMMARY & PENDING TASKS
+   * Menghitung status TP PKL, kesiapan penilaian, dan pending tasks khusus unit jurusan Kaprog
+   */
+  async getKaprogPklSummary(
+    tenantId: string, 
+    userId: string, 
+    targetJurusanId?: string,
+    orgScope?: any
+  ) {
+    let jurusanId = targetJurusanId;
+    let jurusanInfo: { id: string; nama: string; singkatan: string | null } | null = null;
+
+    // 1. Resolve Jurusan Kaprog jika tidak dispesifikasikan secara eksplisit
+    if (!jurusanId) {
+      if (orgScope?.is_unit_restricted && Array.isArray(orgScope?.unit_ids) && orgScope.unit_ids.length > 0) {
+        jurusanId = orgScope.unit_ids[0];
+      } else {
+        const assignment = await prisma.organizationalAssignment.findFirst({
+          where: {
+            tenant_id: tenantId,
+            user_id: userId,
+            is_active: true,
+            Position: { code: { contains: 'KAPROG', mode: 'insensitive' } }
+          },
+          include: { Unit: { select: { id: true, nama: true, singkatan: true } } }
+        });
+        if (assignment?.Unit) {
+          jurusanId = assignment.Unit.id;
+          jurusanInfo = assignment.Unit;
+        }
+      }
+    }
+
+    if (jurusanId && !jurusanInfo) {
+      jurusanInfo = await prisma.jurusan.findFirst({
+        where: { id: jurusanId, tenant_id: tenantId },
+        select: { id: true, nama: true, singkatan: true }
+      });
+    }
+
+    // 2. Query Siswa PKL yang relevan (jurusan binaan atau seluruh tenant jika Hubin tanpa filter)
+    const pklWhere: any = {
+      tenant_id: tenantId,
+      status: { in: ['AKTIF', 'SELESAI'] }
+    };
+
+    if (jurusanId) {
+      pklWhere.Siswa = {
+        OR: [
+          { jurusan_id: jurusanId },
+          { Kelas: { jurusan_id: jurusanId } }
+        ]
+      };
+    }
+
+    const siswaPklList = await prisma.siswaPkl.findMany({
+      where: pklWhere,
+      select: {
+        id: true,
+        mitra_id: true,
+        hard_kompetensi_teknis: true,
+        nilai_json: true,
+        Mitra: { select: { id: true, nama: true, alamat: true, bidang_usaha: true } },
+        Siswa: {
+          select: {
+            id: true,
+            nama_siswa: true,
+            Kelas: { select: { id: true, nama_kelas: true } }
+          }
+        }
+      }
+    });
+
+    // 3. Agregasi Slot Mitra DUDI yang aktif digunakan siswa jurusan ini
+    const mitraMap = new Map<string, {
+      mitra_id: string;
+      nama_mitra: string;
+      alamat?: string;
+      bidang_usaha?: string;
+      siswa_count: number;
+      rombel_set: Set<string>;
+    }>();
+
+    let totalSiswaPkl = siswaPklList.length;
+    let sudahDinilaiDudi = 0;
+    let belumDinilaiDudi = 0;
+    let sudahSidang = 0;
+    let belumSidang = 0;
+
+    for (const p of siswaPklList) {
+      // Nilai DUDI
+      if (p.hard_kompetensi_teknis !== null && p.hard_kompetensi_teknis !== undefined) {
+        sudahDinilaiDudi++;
+      } else {
+        belumDinilaiDudi++;
+      }
+
+      // Nilai Sidang / Laporan
+      const sidangVal = (p.nilai_json as any)?.nilai_sidang;
+      if (sidangVal !== null && sidangVal !== undefined) {
+        sudahSidang++;
+      } else {
+        belumSidang++;
+      }
+
+      if (p.mitra_id && p.Mitra) {
+        if (!mitraMap.has(p.mitra_id)) {
+          mitraMap.set(p.mitra_id, {
+            mitra_id: p.mitra_id,
+            nama_mitra: p.Mitra.nama,
+            alamat: p.Mitra.alamat || undefined,
+            bidang_usaha: p.Mitra.bidang_usaha || undefined,
+            siswa_count: 0,
+            rombel_set: new Set<string>()
+          });
+        }
+        const m = mitraMap.get(p.mitra_id)!;
+        m.siswa_count++;
+        if (p.Siswa?.Kelas?.nama_kelas) {
+          m.rombel_set.add(p.Siswa.Kelas.nama_kelas);
+        }
+      }
+    }
+
+    const uniqueMitraIds = Array.from(mitraMap.keys());
+
+    // 4. Periksa keterisian SettingDeskripsiPkl untuk pasangan (tenantId, mitraId, jurusanId)
+    const existingDeskripsi = await prisma.settingDeskripsiPkl.findMany({
+      where: {
+        tenant_id: tenantId,
+        mitra_id: { in: uniqueMitraIds },
+        ...(jurusanId ? { jurusan_id: jurusanId } : {})
+      },
+      select: { mitra_id: true, deskripsi_tp: true }
+    });
+
+    const filledMitraIds = new Set(existingDeskripsi.filter(d => (d.deskripsi_tp || '').trim().length > 0).map(d => d.mitra_id));
+
+    const totalMitra = uniqueMitraIds.length;
+    const filledMitra = filledMitraIds.size;
+    const pendingMitra = Math.max(0, totalMitra - filledMitra);
+    const completionPercentage = totalMitra > 0 ? Math.round((filledMitra / totalMitra) * 100) : 100;
+
+    const pendingMitraList = uniqueMitraIds
+      .filter(mId => !filledMitraIds.has(mId))
+      .map(mId => {
+        const item = mitraMap.get(mId)!;
+        return {
+          mitra_id: item.mitra_id,
+          nama_mitra: item.nama_mitra,
+          alamat: item.alamat,
+          bidang_usaha: item.bidang_usaha,
+          siswa_count: item.siswa_count,
+          rombel_list: Array.from(item.rombel_set)
+        };
+      });
+
+    return {
+      jurusan: jurusanInfo,
+      tpStatus: {
+        totalMitra,
+        filledMitra,
+        pendingMitra,
+        completionPercentage
+      },
+      penilaianStatus: {
+        totalSiswaPkl,
+        sudahDinilaiDudi,
+        belumDinilaiDudi,
+        sudahSidang,
+        belumSidang
+      },
+      pendingMitraList,
+      allMitraList: Array.from(mitraMap.values()).map(item => ({
+        mitra_id: item.mitra_id,
+        nama_mitra: item.nama_mitra,
+        alamat: item.alamat,
+        bidang_usaha: item.bidang_usaha,
+        siswa_count: item.siswa_count,
+        rombel_list: Array.from(item.rombel_set),
+        has_tp: filledMitraIds.has(item.mitra_id)
+      }))
+    };
+  }
+
+  /**
    * 📜 GET SERTIFIKAT PKL DATA (HALAMAN DEPAN & BELAKANG)
    */
   async getSertifikatPklData(tenantId: string, siswaPklId: string) {

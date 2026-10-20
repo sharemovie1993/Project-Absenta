@@ -1,13 +1,14 @@
 import React, { useMemo, useState, useCallback, Suspense, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Scan, Zap, ShieldCheck, Loader } from 'lucide-react';
+import { BookOpen, Users, ClipboardList, Clock, ArrowRight, CheckCircle2, AlertCircle, Sparkles, Scan, Zap, ShieldCheck, Loader, Award } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { Button } from '../../../ui';
 import { kesiswaanApi } from '../../../../api/kesiswaan.api';
 import { piketApi, piketQueryKeys, type IzinKeluarSiswa } from '../../../../api/piket.api';
 import { kurikulumApi } from '../../../../api/kurikulum.api';
+import { hubinApi } from '../../../../api/hubin.api';
 import { getRekapBulananGuruMe } from '../../../../api/attendance/rekap.api';
 import { TimelineItem } from './StaffKbmAbsenTab';
 import { StaffWeeklyScheduleWidget } from '../../widgets/StaffWeeklyScheduleWidget';
@@ -28,6 +29,8 @@ interface StaffBerandaTabProps {
   waliKelasId?: string;
   isWaliKelas?: boolean;
   isPembimbingPkl?: boolean;
+  isKaprog?: boolean;
+  kaprogJurusan?: { id?: string; nama?: string; singkatan?: string } | null;
   hasGerbangDuty?: boolean;
   isPureGerbang?: boolean;
   isPendidik?: boolean;
@@ -42,6 +45,8 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   waliKelasId,
   isWaliKelas = false,
   isPembimbingPkl = false,
+  isKaprog = false,
+  kaprogJurusan,
   hasGerbangDuty = false,
   isPureGerbang = false,
   isPendidik = true,
@@ -51,6 +56,17 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
   const navigate = useNavigate();
   const { tenantId } = useTenant();
   const [showIzinModal, setShowIzinModal] = React.useState(false);
+
+  // Query Pending TP PKL khusus Kaprog
+  const { data: kaprogSummaryRes } = useQuery({
+    queryKey: ['kaprog-pkl-summary-beranda', kaprogJurusan?.id],
+    queryFn: () => hubinApi.getKaprogSummary({ jurusan_id: kaprogJurusan?.id }),
+    enabled: !!isKaprog,
+    staleTime: 60 * 1000,
+  });
+
+  const kaprogSummary = kaprogSummaryRes?.data || null;
+  const pendingTpCount = kaprogSummary?.tpStatus?.pendingMitra || 0;
 
   // Status apakah guru merupakan pendidik pengajar aktif
   const isActualTeachingStaff = isPendidik && !isPureGerbang && !hasGerbangDuty;
@@ -182,6 +198,46 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
+      {/* ACTIONABLE ALERT: PENDING TP PKL UNTUK KAPROG */}
+      {isKaprog && pendingTpCount > 0 && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                <span>Tugas Prioritas Kaprog: {pendingTpCount} Perusahaan Mitra Belum Memiliki Deskripsi TP</span>
+                <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full shadow-2xs">Pending</span>
+              </h4>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                Rumusan Tujuan Pembelajaran PKL jurusan {kaprogJurusan?.nama || 'binaan'} belum lengkap. Lengkapi sekarang agar instrumen penilaian sertifikat & rapor siswa dapat diisi.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onNavigateTab('kaprog')}
+              variant="outline"
+              className="text-xs font-bold rounded-xl border-amber-500/40 text-amber-800 dark:text-amber-300 hover:bg-amber-500/10"
+            >
+              Dashboard Kaprog
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
+              className="text-xs font-black rounded-xl bg-amber-600 hover:bg-amber-500 text-white gap-1 shadow-md shadow-amber-600/20"
+            >
+              <span>Lengkapi TP</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* 2 SUMMARY STAT CARDS (1 BARIS 2 KOLOM) - KHUSUS GURU PENGAJAR */}
       {isActualTeachingStaff && (
         <div className="grid grid-cols-2 gap-3 sm:gap-5">
