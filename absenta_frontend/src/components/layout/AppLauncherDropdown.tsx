@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutGrid, Home, Sparkles, ExternalLink } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { ABSENTA_APPS_REGISTRY, getVisibleApps, getActiveApp, type AbsentaApp } from '@/config/absentaAppsRegistry';
+import { getUserPositionCodes } from '@/helpers/portalNavigationHelper';
 import { cn } from '@/lib/utils';
 
 export function AppLauncherDropdown() {
@@ -27,9 +28,11 @@ export function AppLauncherDropdown() {
     return ['CORE', 'ABSENSI', 'BPBK', 'WHATSAPP_SERVICE', 'KEUANGAN', 'SARPRAS', 'HUBIN'];
   }, [subscription?.features]);
 
+  const userPositions = useMemo(() => getUserPositionCodes(user), [user]);
+
   const visibleApps = useMemo(() => {
-    return getVisibleApps(userCapabilities, activeFeatures, roleName);
-  }, [userCapabilities, activeFeatures, roleName]);
+    return getVisibleApps(userCapabilities, activeFeatures, roleName, userPositions);
+  }, [userCapabilities, activeFeatures, roleName, userPositions]);
 
   const currentApp = useMemo(() => {
     return getActiveApp(location.pathname);

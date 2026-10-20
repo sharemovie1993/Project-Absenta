@@ -10,6 +10,11 @@ import {
   UserCircle
 } from 'lucide-react';
 import { getVisibleApps, type AbsentaApp } from '@/config/absentaAppsRegistry';
+import { 
+  resolveUserDashboardTarget, 
+  getUserCapabilities, 
+  getUserPositionCodes 
+} from '@/helpers/portalNavigationHelper';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 
@@ -31,21 +36,17 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
     return raw.toUpperCase();
   }, [user]);
 
-  const isAdmin = roleName === 'ADMIN' || roleName === 'SUPERADMIN' || roleName.includes('ADMIN');
   const isSiswa = roleName === 'SISWA' || roleName === 'STUDENT';
-  const isKepsek = roleName === 'KEPALA_SEKOLAH' || roleName === 'KEPSEK';
 
-  const userCapabilities = useMemo(() => {
-    if (Array.isArray(user?.capabilities)) return user.capabilities;
-    if (typeof user?.capabilities === 'string') {
-      try { return JSON.parse(user.capabilities); } catch { return (user.capabilities as string).split(','); }
-    }
-    return [];
-  }, [user?.capabilities]);
+  const userCapabilities = useMemo(() => getUserCapabilities(user), [user]);
+  const userPositions = useMemo(() => getUserPositionCodes(user), [user]);
+
+  // Resolusi dinamis dashboard dan label berdasarkan Base Role & STRUKTUR_CODES (Position Capabilities)
+  const dashboardTarget = useMemo(() => resolveUserDashboardTarget(user), [user]);
 
   const visibleApps = useMemo(() => {
-    return getVisibleApps(userCapabilities, [], roleName);
-  }, [userCapabilities, roleName]);
+    return getVisibleApps(userCapabilities, [], roleName, userPositions);
+  }, [userCapabilities, roleName, userPositions]);
 
   const filteredApps = useMemo(() => {
     if (!searchQuery.trim()) return visibleApps;
@@ -57,24 +58,17 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
     );
   }, [visibleApps, searchQuery]);
 
-  const dashboardLabel = useMemo(() => {
-    if (isAdmin) return 'Dashboard Admin';
-    if (isKepsek) return 'Dashboard Eksekutif';
-    if (isSiswa) return 'Dashboard Siswa';
-    return 'Dashboard Guru';
-  }, [isAdmin, isKepsek, isSiswa]);
-
   const handleGoToDashboard = () => {
+    if (dashboardTarget.path) {
+      navigate(dashboardTarget.path);
+      return;
+    }
     if (onNavigateTab) {
-      if (isAdmin && !isKepsek) {
-        onNavigateTab('admin');
-      } else {
-        onNavigateTab('ringkasan');
-      }
+      onNavigateTab(dashboardTarget.tab);
     } else if (onBackToBeranda) {
       onBackToBeranda();
     } else {
-      navigate(isAdmin && !isKepsek ? '/dashboard?tab=admin' : '/dashboard?tab=ringkasan');
+      navigate(`/dashboard?tab=${dashboardTarget.tab}`);
     }
   };
 
@@ -136,20 +130,20 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
               </span>
             </div>
             <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[180px] xs:max-w-[220px] sm:max-w-xs">
-              {user?.name || user?.full_name || 'Pengguna'} • {dashboardLabel.replace('Dashboard ', '')}
+              {user?.name || user?.full_name || 'Pengguna'} • {dashboardTarget.label.replace('Dashboard ', '')}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Tombol Navigasi ke Dashboard Masing-Masing */}
+          {/* Tombol Navigasi ke Dashboard Fungsional Masing-Masing */}
           <button
             type="button"
             onClick={handleGoToDashboard}
             className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>{dashboardLabel}</span>
+            <span>{dashboardTarget.label}</span>
           </button>
 
           {/* Tombol Navigasi ke Profil Akun */}

@@ -266,20 +266,114 @@ export function getActiveApp(pathname: string): AbsentaApp | null {
 }
 
 /**
- * Menyaring aplikasi yang boleh diakses pengguna
+ * Menyaring aplikasi yang boleh diakses pengguna berdasarkan Capabilities & Position Codes (Dual-Tier)
  */
 export function getVisibleApps(
-  _userCapabilities: string[] = [],
+  userCapabilities: string[] = [],
   _activeFeatures: string[] = [],
-  roleName?: string
+  roleName?: string,
+  positionCodes: string[] = []
 ): AbsentaApp[] {
-  const normalizedRole = (roleName || '').toUpperCase();
+  const normalizedRole = (roleName || '').toUpperCase().trim();
+  const caps = new Set(userCapabilities.map(c => String(c).trim()));
+  const pos = new Set(positionCodes.map(p => String(p).toUpperCase().trim()));
 
-  // Untuk Siswa atau Orang Tua, sembunyikan aplikasi administratif internal
-  if (normalizedRole === 'SISWA' || normalizedRole === 'ORANG_TUA' || normalizedRole === 'STUDENT' || normalizedRole === 'PARENT') {
-    const hiddenForStudents = new Set(['settings', 'correspondence', 'whatsapp', 'sarpras']);
-    return ABSENTA_APPS_REGISTRY.filter(app => !hiddenForStudents.has(app.id));
+  const hasCap = (...prefixes: string[]) => {
+    for (const prefix of prefixes) {
+      for (const c of caps) {
+        if (c.startsWith(prefix) || c === prefix) return true;
+      }
+    }
+    return false;
+  };
+
+  const hasPos = (...codes: string[]) => codes.some(code => pos.has(code));
+
+  // 1. Admin & Superadmin memiliki akses ke seluruh aplikasi sekolah
+  const isAdmin = normalizedRole === 'ADMIN' || normalizedRole === 'SUPERADMIN' || hasCap('core.system.config');
+  if (isAdmin) {
+    return ABSENTA_APPS_REGISTRY;
   }
 
-  return ABSENTA_APPS_REGISTRY;
+  // 2. Anggota Koperasi Eksternal: Murni hanya boleh akses modul Koperasi
+  if (normalizedRole === 'ANGGOTA_KOPERASI_EXTERNAL') {
+    return ABSENTA_APPS_REGISTRY.filter(app => app.id === 'cooperative');
+  }
+
+  // 3. Evaluasi granular berdasarkan kapabilitas fungsional (PoLP) & penugasan struktural
+  return ABSENTA_APPS_REGISTRY.filter(app => {
+    switch (app.id) {
+      // Data Akademik
+      case 'academic':
+        return normalizedRole === 'GURU' || normalizedRole === 'SISWA' ||
+          hasCap('academic.') ||
+          hasPos('KEPALA_SEKOLAH', 'TU_KEPALA', 'TU_KEPEGAWAIAN', 'KURIKULUM', 'WALIKELAS');
+
+      // Presensi Kehadiran
+      case 'attendance':
+        return normalizedRole === 'GURU' || normalizedRole === 'SISWA' ||
+          hasCap('attendance.') ||
+          hasPos('GERBANG', 'PETUGAS_KELAS', 'KEPALA_SEKOLAH', 'KESISWAAN', 'WALIKELAS');
+
+      // Kurikulum & Pembelajaran
+      case 'kurikulum':
+        return hasPos('KURIKULUM', 'KEPALA_SEKOLAH') ||
+          hasCap('curriculum.') ||
+          hasCap('academic.teaching.') ||
+          (normalizedRole === 'GURU' && hasCap('academic.schedules.')) ||
+          (normalizedRole === 'SISWA' && hasCap('academic.schedules.view.list'));
+
+      // E-Rapor
+      case 'rapor':
+        return hasPos('KURIKULUM', 'WALIKELAS', 'KEPALA_SEKOLAH') ||
+          hasCap('academic.activities.grades.') ||
+          hasCap('academic.pleno.') ||
+          hasCap('rapor.') ||
+          normalizedRole === 'GURU' || normalizedRole === 'SISWA';
+
+      // Kesiswaan & Kedisiplinan
+      case 'kesiswaan':
+        return hasPos('KESISWAAN', 'PEMBINA_ESKUL', 'KETUA_PEMBINA_TARUNA', 'BPBK', 'GERBANG', 'WALIKELAS', 'KEPALA_SEKOLAH') ||
+          hasCap('affairs.') ||
+          normalizedRole === 'GURU' || normalizedRole === 'SISWA';
+
+      // Konseling BP/BK
+      case 'bpbk':
+        return hasPos('BPBK', 'KEPALA_SEKOLAH', 'WALIKELAS') ||
+          hasCap('bk.') ||
+          normalizedRole === 'GURU' || normalizedRole === 'SISWA';
+
+      // Persuratan & Arsip Digital
+      case 'correspondence':
+        return hasPos('TU_PERSURATAN', 'TU_KEPALA', 'KEPALA_SEKOLAH') ||
+          hasCap('correspondence.inbox.manage', 'correspondence.outbox.manage', 'correspondence.outbox.sign');
+
+      // WhatsApp Gateway
+      case 'whatsapp':
+        return hasCap('whatsapp.manage.config', 'notify.send.test.whatsapp');
+
+      // Koperasi Sekolah
+      case 'cooperative':
+        return hasPos('KETUA_KOPERASI', 'BENDAHARA_KOPERASI', 'SEKRETARIS_KOPERASI', 'MANAJER_TOKO_KOPERASI', 'PENGAWAS_KOPERASI') ||
+          hasCap('cooperative.') ||
+          normalizedRole === 'GURU' || normalizedRole === 'SISWA';
+
+      // Sarana & Prasarana
+      case 'sarpras':
+        return hasPos('SARPRAS', 'TU_SARPRAS', 'TOOLMAN', 'KABENG', 'KEPALA_SEKOLAH') ||
+          hasCap('sarpras.inventory.manage', 'sarpras.loans.manage', 'sarpras.repairs.manage');
+
+      // Hubungan Industri (Hubin & PKL)
+      case 'hubin':
+        return hasPos('HUBIN', 'KAPROG', 'BKK', 'KEPALA_SEKOLAH') ||
+          hasCap('hubin.guidance.manage', 'hubin.pkl.manage', 'hubin.self.pkl', 'hubin.self.logbook');
+
+      // Setelan Sistem
+      case 'settings':
+        return hasCap('core.system.config.view', 'core.users.roles.update', 'core.users.create');
+
+      default:
+        return true;
+    }
+  });
 }
