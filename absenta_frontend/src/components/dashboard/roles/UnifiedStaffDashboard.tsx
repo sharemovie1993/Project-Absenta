@@ -1160,7 +1160,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
         {/* 🌐 TAB PORTAL: APP LAUNCHER PUSAT APLIKASI SEKOLAH */}
         {activeTab === 'portal' && (
-          <StaffPortalTab onBackToBeranda={() => handleTabChange('ringkasan')} />
+          <StaffPortalTab 
+            onBackToBeranda={() => handleTabChange(isAdminRole && !isKepsek ? 'admin' : 'ringkasan')}
+            onNavigateTab={handleTabChange}
+          />
         )}
 
         {/* 🗓️ TAB 2: KBM & ABSEN */}

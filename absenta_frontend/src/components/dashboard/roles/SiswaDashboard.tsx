@@ -1937,7 +1937,10 @@ export const SiswaDashboard: React.FC = () => {
             transition={{ duration: 0.2 }}
             className="space-y-6"
           >
-            <StaffPortalTab onBackToBeranda={() => handleTabChange('ringkasan')} />
+            <StaffPortalTab 
+              onBackToBeranda={() => handleTabChange('ringkasan')} 
+              onNavigateTab={handleTabChange}
+            />
           </motion.div>
         )}
 

@@ -266,13 +266,20 @@ export function getActiveApp(pathname: string): AbsentaApp | null {
 }
 
 /**
- * Menyaring aplikasi yang boleh diakses pengguna (Semua Unlocked)
+ * Menyaring aplikasi yang boleh diakses pengguna
  */
 export function getVisibleApps(
   _userCapabilities: string[] = [],
   _activeFeatures: string[] = [],
-  _roleName?: string
+  roleName?: string
 ): AbsentaApp[] {
-  // Tanpa restriksi RBAC frontend: Seluruh 11 aplikasi kanonikal selalu terbuka & dapat diakses
+  const normalizedRole = (roleName || '').toUpperCase();
+
+  // Untuk Siswa atau Orang Tua, sembunyikan aplikasi administratif internal
+  if (normalizedRole === 'SISWA' || normalizedRole === 'ORANG_TUA' || normalizedRole === 'STUDENT' || normalizedRole === 'PARENT') {
+    const hiddenForStudents = new Set(['settings', 'correspondence', 'whatsapp', 'sarpras']);
+    return ABSENTA_APPS_REGISTRY.filter(app => !hiddenForStudents.has(app.id));
+  }
+
   return ABSENTA_APPS_REGISTRY;
 }
