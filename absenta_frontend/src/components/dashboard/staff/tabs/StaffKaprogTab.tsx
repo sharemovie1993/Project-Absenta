@@ -20,6 +20,7 @@ import {
 import { Card, Button, Badge, Loader } from '@/components/ui';
 import { hubinApi } from '@/api/hubin.api';
 import { cn } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 export interface StaffKaprogTabProps {
   user?: any;
@@ -53,6 +54,15 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
 
   const hasPendingTp = tpStatus.pendingMitra > 0;
 
+  const handleSinkron = async () => {
+    try {
+      await refetch();
+      toast.success('Data monitoring Kaprog berhasil disinkronkan!');
+    } catch {
+      toast.error('Gagal menyinkronkan data');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* 1. Header Banner Jurusan */}
@@ -83,7 +93,7 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
+              onClick={handleSinkron}
               disabled={isFetching}
               className="rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
             >

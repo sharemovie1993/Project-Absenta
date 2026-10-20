@@ -361,6 +361,8 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil disimpan!');
       setDeskripsiTpText('');
     },
@@ -375,6 +377,8 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
       queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
       queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil dihapus!');
     },
     onError: (err: any) => {

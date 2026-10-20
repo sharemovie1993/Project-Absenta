@@ -1038,7 +1038,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         mitra_id: true,
         hard_kompetensi_teknis: true,
         nilai_json: true,
-        Mitra: { select: { id: true, nama: true, alamat: true, bidang_usaha: true } },
+        Mitra: { select: { id: true, nama: true, alamat: true, bidang: true } },
         Siswa: {
           select: {
             id: true,
@@ -1087,7 +1087,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
             mitra_id: p.mitra_id,
             nama_mitra: p.Mitra.nama,
             alamat: p.Mitra.alamat || undefined,
-            bidang_usaha: p.Mitra.bidang_usaha || undefined,
+            bidang_usaha: p.Mitra.bidang || undefined,
             siswa_count: 0,
             rombel_set: new Set<string>()
           });
@@ -1159,6 +1159,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
         has_tp: filledMitraIds.has(item.mitra_id)
       }))
     };
+  }
+
+  async getKaprogSummary(...args: any[]) {
+    return (this as any).getKaprogPklSummary(...args);
   }
 
   /**

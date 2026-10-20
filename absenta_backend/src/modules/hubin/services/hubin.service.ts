@@ -90,5 +90,6 @@ export class HubinService {
   async getSettingDeskripsiPklList(...args: any[]) { return (this.penilaian as any).getSettingDeskripsiPklList(...args); }
   async deleteSettingDeskripsiPkl(...args: any[]) { return (this.penilaian as any).deleteSettingDeskripsiPkl(...args); }
   async getKaprogPklSummary(...args: any[]) { return (this.penilaian as any).getKaprogPklSummary(...args); }
+  async getKaprogSummary(...args: any[]) { return (this.penilaian as any).getKaprogPklSummary(...args); }
   async getSertifikatPklData(...args: any[]) { return (this.penilaian as any).getSertifikatPklData(...args); }
 }

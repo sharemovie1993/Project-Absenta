@@ -176,7 +176,7 @@ export class HubinPenilaianController {
       const { jurusan_id } = (request.query || {}) as any;
       const data = await this.hubinService.getKaprogPklSummary(
         request.tenantId!,
-        request.user?.id,
+        request.user?.id || (request.user as any)?.userId,
         jurusan_id,
         request.organizationalScope
       );
