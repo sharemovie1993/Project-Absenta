@@ -137,6 +137,14 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
   ], []);
 
+  const renderVerticalHeader = (title: string) => (
+    <div className="flex items-end justify-center h-28 pb-1.5 w-full">
+      <span className="[writing-mode:vertical-rl] rotate-180 text-[10.5px] font-bold tracking-tight text-slate-700 dark:text-slate-200 select-none whitespace-nowrap">
+        {title}
+      </span>
+    </div>
+  );
+
   const spreadsheetColumns = useMemo<SpreadsheetColumn<ScoreRow>[]>(() => [
     {
       key: 'no',
@@ -242,10 +250,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_kompetensi_teknis',
-      header: 'Teknis',
-      width: 48,
+      header: renderVerticalHeader('Teknis'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-0`}
@@ -259,10 +267,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_sop_k3lh',
-      header: 'K3LH',
-      width: 46,
+      header: renderVerticalHeader('K3LH'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-1`}
@@ -276,10 +284,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_alur_bisnis',
-      header: 'Bisnis',
-      width: 48,
+      header: renderVerticalHeader('Bisnis'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-2`}
@@ -293,10 +301,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kedisiplinan',
-      header: 'Disiplin',
-      width: 50,
+      header: renderVerticalHeader('Disiplin'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-3`}
@@ -310,10 +318,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerajinan_inisiatif',
-      header: 'Inisiatif',
-      width: 50,
+      header: renderVerticalHeader('Inisiatif'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-4`}
@@ -327,10 +335,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerjasama',
-      header: 'Kerjasama',
-      width: 54,
+      header: renderVerticalHeader('Kerjasama'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-5`}
@@ -344,10 +352,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kejujuran',
-      header: 'Kejujuran',
-      width: 54,
+      header: renderVerticalHeader('Kejujuran'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-6`}
@@ -361,10 +369,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_tanggung_jawab',
-      header: 'Tanggung Jawab',
-      width: 56,
+      header: renderVerticalHeader('Tanggung Jawab'),
+      width: 38,
       align: 'center',
-      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-7`}
