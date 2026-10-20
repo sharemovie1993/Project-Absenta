@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { guruApi } from '../api/academic.api';
+import { useAuthStore } from '../store/authStore';
 import type { Guru } from '../types/academic';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
@@ -12,9 +13,11 @@ export interface UseGuruOptionsParams {
 
 export function useGuruOptions(params: UseGuruOptionsParams = {}) {
   const { jenisPtk = 'PENDIDIK', onlyActive = true, teachingLoadMap } = params;
+  const { user } = useAuthStore();
+  const tenantId = user?.tenant_id || 'default';
 
   const query = useQuery({
-    queryKey: ['guru-options-list', jenisPtk, onlyActive],
+    queryKey: ['guru-options-list', tenantId, jenisPtk, onlyActive],
     queryFn: () => guruApi.getAll({ 
       limit: 1000, 
       ...(jenisPtk !== 'ALL' ? { jenis_ptk: jenisPtk } : {}) 

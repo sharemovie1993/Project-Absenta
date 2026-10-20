@@ -56,8 +56,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   // Deskripsi TP Form State
   const [deskripsiTpText, setDeskripsiTpText] = useState('');
 
-  // Role Scoping
+  // Role Scoping & Multi-Tenant Isolation
   const { user } = useAuthStore();
+  const tenantId = user?.tenant_id || 'default';
   const { can, isKaprog, kaprogJurusan, isWaliKelas, walikelasKelas, activeGuruId: capActiveGuruId } = useCapabilities();
   const isPrivilegedHubin = can('hubin.partners.manage') || user?.role?.name === 'ADMIN' || user?.role?.name === 'SUPERADMIN' || can('hubin.pkl.manage') || isKaprog;
   const canManageAll = isPrivilegedHubin || isWaliKelas;
@@ -97,9 +98,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
 
   const { options: mitraOptions } = useDudiOptions();
 
-  // Single SSOT Query: Menghindari redundant double-fetching saat membuka halaman
+  // Single SSOT Query: Menghindari redundant double-fetching saat membuka halaman (Multi-tenant isolated)
   const { data: pklRekapResponse, isLoading: isLoadingRekap } = useQuery({
-    queryKey: ['pkl-rekap', selectedTp, selectedSemester, statusFilter],
+    queryKey: ['pkl-rekap', tenantId, selectedTp, selectedSemester, statusFilter],
     queryFn: () =>
       hubinApi.getRekapPklSiswa({
         tahun_pelajaran_id: selectedTp || undefined,
@@ -121,7 +122,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   }, [pklRekapResponse]);
 
   const { data: hubinSettings } = useQuery({
-    queryKey: ['hubin-settings', selectedTp],
+    queryKey: ['hubin-settings', tenantId, selectedTp],
     queryFn: () => hubinApi.getSettings({ tahun_pelajaran_id: selectedTp || undefined }),
   });
 
@@ -150,9 +151,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const updateSettingsMutation = useMutation({
     mutationFn: (data: Parameters<typeof hubinApi.updateSettings>[0]) => hubinApi.updateSettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hubin-settings'] });
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
-      queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-settings', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['rapor', tenantId] });
       toast.success('Pengaturan skema & bobot penilaian PKL berhasil disimpan!');
       setShowSettingsModal(false);
     },
@@ -162,7 +163,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   });
 
   const { data: deskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
-    queryKey: ['deskripsi-tp-list', selectedMitra],
+    queryKey: ['deskripsi-tp-list', tenantId, selectedMitra],
     queryFn: () => hubinApi.getSettingDeskripsiPklList({ mitra_id: selectedMitra || undefined }),
   });
 
@@ -300,11 +301,11 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const saveBatchMutation = useMutation({
     mutationFn: hubinApi.upsertNilaiPklBatch,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
-      queryClient.invalidateQueries({ queryKey: ['rapor'] });
-      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
-      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
-      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['rapor', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab', tenantId] });
       toast.success('Nilai PKL, identitas instruktur, dan presensi berhasil disimpan!');
     },
     onError: () => {
@@ -315,7 +316,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const saveDeskripsiTpMutation = useMutation({
     mutationFn: hubinApi.upsertSettingDeskripsiPkl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list', tenantId] });
       toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil disimpan!');
       setDeskripsiTpText('');
     },
