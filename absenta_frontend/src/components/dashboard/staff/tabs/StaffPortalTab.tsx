@@ -167,118 +167,102 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-10 max-w-7xl mx-auto px-1 sm:px-0">
+    <div className="pb-24 sm:pb-10 max-w-7xl mx-auto px-1 sm:px-0">
       
-      {/* ── TOP NAV BAR: PURE PORTAL NAVIGATION STRIP ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:px-5 sm:py-3.5 shadow-xs">
+      {/* ── UNIFIED APPS LAUNCHER CONTAINER (Clean Bento Layout) ── */}
+      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-6 md:p-7 shadow-sm space-y-4 sm:space-y-5">
         
-        {/* User Identity & Info */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm">
-            <LayoutGrid className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                Portal Absenta
-              </span>
-              <span className="hidden xs:inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                Hub Sentral
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[200px] xs:max-w-xs sm:max-w-sm">
-              {user?.name || user?.full_name || 'Pengguna'} {userPositions.length > 0 && `• ${userPositions.join(' / ')}`}
-            </p>
-          </div>
-        </div>
-
-        {/* ── DYNAMIC 3-BUTTON ACTION GROUP ── */}
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        {/* Top Header: Title + Badge + Search + Action Buttons (All in One Compact Row) */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 pb-3.5 sm:pb-4 border-b border-slate-100 dark:border-slate-800">
           
-          {/* Tombol 1: Beranda Guru / Dashboard Utama */}
-          <button
-            type="button"
-            onClick={handleGoToPrimaryDashboard}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
-          >
-            <LayoutDashboard className="w-3.5 h-3.5" />
-            <span>{dashboardTarget.label}</span>
-          </button>
-
-          {/* Tombol 2: Tombol Jabatan Struktural (Khusus yang memiliki SK Jabatan Struktural seperti Kurikulum, Kesiswaan, Sarpras, Hubin, BK, Wali Kelas) */}
-          {structuralActions.map((action) => {
-            const IconComponent = STRUCTURAL_ICON_MAP[action.iconName] || LayoutDashboard;
-            return (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => handleGoToStructuralAction(action)}
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer",
-                  action.colorClass
-                )}
-              >
-                <IconComponent className="w-3.5 h-3.5" />
-                <span>{action.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Tombol 3: Profil Akun */}
-          <button
-            type="button"
-            onClick={handleGoToProfile}
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
-          >
-            <UserCircle className="w-3.5 h-3.5" />
-            <span>Profil</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── APPS LAUNCHER CONTAINER (Clean Pure Grid Launcher) ── */}
-      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 sm:p-6 md:p-8 shadow-sm space-y-4 sm:space-y-5">
-        
-        {/* Header Toolbar: Icon + Title + Apps Count + Search Input */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 sm:pb-4 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center justify-between sm:justify-start gap-2.5">
+          {/* Left: App Center Branding & App Count */}
+          <div className="flex items-center justify-between sm:justify-start gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white text-xs font-black shadow-xs">
-                A
+              <div className="w-9 h-9 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs">
+                <LayoutGrid className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                  Aplikasi Sekolah
-                </h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                    Aplikasi Sekolah
+                  </h1>
+                  <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-900/50">
+                    {filteredApps.length} Aplikasi
+                  </span>
+                </div>
                 <p className="text-[10px] sm:text-[11px] text-slate-400 hidden xs:block">
-                  Pusat layanan &amp; modul terpadu Absenta
+                  Pusat layanan modul terpadu Absenta
                 </p>
               </div>
             </div>
-            <span className="text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-              {filteredApps.length} Aplikasi
-            </span>
           </div>
 
-          {/* Quick Search */}
-          <div className="w-full sm:w-64 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari aplikasi..."
-              className="w-full pl-9 pr-7 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-blue-500/40 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs transition outline-none"
-            />
-            {searchQuery && (
+          {/* Right: Quick Search & Dynamic Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
+            {/* Quick Search */}
+            <div className="w-full sm:w-52 md:w-60 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari aplikasi..."
+                className="w-full pl-9 pr-7 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-transparent focus:border-blue-500/40 focus:bg-white dark:focus:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-xs transition outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="hidden sm:block w-px h-6 bg-slate-200 dark:bg-slate-800 mx-0.5" />
+
+            {/* Action Buttons: Beranda Guru / Jabatan Struktural / Profil */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              {/* Tombol 1: Beranda Guru / Dashboard Utama */}
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                onClick={handleGoToPrimaryDashboard}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
               >
-                ✕
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>{dashboardTarget.label}</span>
               </button>
-            )}
+
+              {/* Tombol 2: Tombol Jabatan Struktural (Kurikulum, Kesiswaan, Sarpras, Hubin, BK, Ruang Wali Kelas) */}
+              {structuralActions.map((action) => {
+                const IconComponent = STRUCTURAL_ICON_MAP[action.iconName] || LayoutDashboard;
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => handleGoToStructuralAction(action)}
+                    className={cn(
+                      "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer",
+                      action.colorClass
+                    )}
+                  >
+                    <IconComponent className="w-3.5 h-3.5" />
+                    <span>{action.label}</span>
+                  </button>
+                );
+              })}
+
+              {/* Tombol 3: Profil Akun */}
+              <button
+                type="button"
+                onClick={handleGoToProfile}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+              >
+                <UserCircle className="w-3.5 h-3.5" />
+                <span>Profil</span>
+              </button>
+            </div>
           </div>
         </div>
 
