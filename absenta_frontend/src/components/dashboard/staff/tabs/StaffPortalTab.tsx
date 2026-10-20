@@ -1,3 +1,4 @@
+// Absenta Pure Portal Launcher Component
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';

@@ -363,3 +363,11 @@ export function resolveUserDashboardTarget(user: any): UserDashboardTarget {
   // 9. Default untuk Guru / Pendidik
   return { label: 'Beranda Guru', tab: 'ringkasan', badge: 'GURU' };
 }
+
+export default {
+  getUserPositionCodes,
+  getUserCapabilities,
+  getUserStructuralActions,
+  resolveUserDashboardTarget,
+};
+
