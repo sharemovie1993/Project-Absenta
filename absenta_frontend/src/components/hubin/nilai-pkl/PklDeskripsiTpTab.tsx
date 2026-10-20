@@ -79,6 +79,8 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
     }>();
 
     // Saring siswa sesuai konteks (kelas atau jurusan binaan)
+    const targetJurusanId = (isKaprog ? kaprogJurusan?.id : selectedJurusanFilter) || selectedJurusanFilter || undefined;
+
     const filteredScores = scores.filter((s) => {
       if (selectedKelas && s.kelas_id !== selectedKelas) return false;
       if (isKaprog && kaprogJurusan) {
