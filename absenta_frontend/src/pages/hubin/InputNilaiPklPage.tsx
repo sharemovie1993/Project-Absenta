@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
-import { Button, TabSwitcher } from '@/components/ui';
+import { Button, TabSwitcher, SectionCard } from '@/components/ui';
 import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
@@ -171,7 +171,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
 
   useEffect(() => {
     if (Array.isArray(rawList)) {
-      setScores(rawList.map((item: RawPklItem) => ({
+      setScores(rawList?.map((item: RawPklItem) => ({
         siswa_pkl_id: item.id || item.siswa_pkl_id || '',
         nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
         nis: item.Siswa?.nis || item.nis || '',
@@ -240,11 +240,11 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     });
 
     return Array.from(map.values())
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((k) => ({
+      ?.sort((a, b) => a.name.localeCompare(b.name))
+      ?.map((k) => ({
         value: k.id,
         label: `${k.name} (${k.count} Siswa)`,
-      }));
+      })) || [];
   }, [rawList, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas, activeGuruId]);
 
   const displayedScores = useMemo(() => {
@@ -465,7 +465,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
             ]
           }}
         >
-          <div className="w-full space-y-4 -mt-2 sm:-mt-3">
+          <SectionCard fullWidth className="flex flex-col w-full min-w-0 space-y-4 border-none shadow-none bg-transparent p-0 -mt-2 sm:-mt-3">
             {isKaprog && (
                 <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
                   <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
@@ -652,7 +652,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                   />
                 )}
               </Suspense>
-            </div>
+            </SectionCard>
           </AcademicPageLayout>
 
         <Suspense fallback={null}>
