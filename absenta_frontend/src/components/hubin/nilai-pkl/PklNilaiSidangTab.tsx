@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicContextBar } from '@/components/common';
-import SiswaIdentityCell from '@/components/common/SiswaIdentityCell';
 import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
+import {
+  SpreadsheetGridTable,
+  SpreadsheetCellInput,
+  useSpreadsheetNavigation,
+  type SpreadsheetColumn,
+  type SpreadsheetColumnGroup,
+} from '@/components/common/SpreadsheetGrid';
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
 
@@ -95,6 +102,309 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   onNavigateCetakRapor,
   hideFilterCard = false,
 }) => {
+  const { handleKeyDown: handleKeyDownScore } = useSpreadsheetNavigation({
+    totalRows: paginatedScores?.length || 0,
+    totalCols: 2,
+    idPrefix: 'sidang-score',
+  });
+
+  const columnGroups = useMemo<SpreadsheetColumnGroup[]>(() => [
+    {
+      key: 'identitas',
+      title: 'Identitas Siswa & Mitra',
+      colSpan: 2,
+      className: 'bg-slate-100/90 dark:bg-slate-800/90',
+    },
+    {
+      key: 'komponen_nilai',
+      title: 'Komponen Nilai Akhir',
+      colSpan: 3,
+      badge: isCompositeMode ? 'Bobot Gabungan' : 'DUDI 100%',
+      className: 'bg-indigo-50/80 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300',
+      badgeClassName: isCompositeMode
+        ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
+        : 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300',
+    },
+    {
+      key: 'pelaksanaan',
+      title: 'Pelaksanaan Sidang PKL',
+      colSpan: 3,
+      className: 'bg-slate-100/90 dark:bg-slate-800/90',
+    },
+    {
+      key: 'hasil',
+      title: 'Hasil Evaluasi',
+      colSpan: 2,
+      className: 'bg-slate-100/90 dark:bg-slate-800/90',
+    },
+  ], [isCompositeMode]);
+
+  const spreadsheetColumns = useMemo<SpreadsheetColumn<ScoreRow>[]>(() => [
+    {
+      key: 'no',
+      header: 'No',
+      width: 32,
+      align: 'center',
+      freeze: 'left',
+      freezeOffset: 0,
+      renderCell: (_, index) => (
+        <span className="font-mono text-[11px] text-slate-400 font-bold">
+          {(currentPage - 1) * itemsPerPage + index + 1}
+        </span>
+      ),
+    },
+    {
+      key: 'siswa',
+      header: 'Siswa & Penempatan',
+      width: 175,
+      freeze: 'left',
+      freezeOffset: 32,
+      renderCell: (score) => {
+        const isAktif = score.status === 'AKTIF' || !score.status;
+        const isSelesai = score.status === 'SELESAI';
+
+        return (
+          <div className="space-y-0.5 py-0.5 max-w-[170px]">
+            {/* Baris 1: NAMA SISWA ,(Kelas), indikator status (dot) */}
+            <div className="flex items-center gap-1.5 leading-tight">
+              <span className="font-bold text-slate-900 dark:text-white text-xs truncate" title={score.nama_siswa}>
+                {score.nama_siswa}
+              </span>
+              {score.nama_kelas && (
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium shrink-0">
+                  ({score.nama_kelas})
+                </span>
+              )}
+              {/* Indikator Status Dot */}
+              <span
+                className={cn(
+                  'w-2 h-2 rounded-full shrink-0 ring-2 ring-white dark:ring-slate-900',
+                  isAktif
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                    : isSelesai
+                    ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]'
+                    : 'bg-slate-400'
+                )}
+                title={`Status PKL: ${score.status || 'Aktif'}`}
+              />
+            </div>
+
+            {/* Baris 2: Tempat PKL */}
+            <div
+              className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate flex items-center gap-1"
+              title={score.mitra_nama || 'Belum ada tempat PKL'}
+            >
+              <span className="text-[10px] opacity-75">🏢</span>
+              <span className="truncate">{score.mitra_nama || '-'}</span>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'dudi_avg',
+      header: 'DUDI',
+      subHeader: isCompositeMode ? `${effectiveSettings?.weightDudi ?? 70}%` : '100%',
+      width: 50,
+      align: 'center',
+      renderCell: (score) => {
+        const dudiScores = [
+          score.hard_kompetensi_teknis,
+          score.hard_sop_k3lh,
+          score.hard_alur_bisnis,
+          score.soft_kedisiplinan,
+          score.soft_kerajinan_inisiatif,
+          score.soft_kerjasama,
+          score.soft_kejujuran,
+          score.soft_tanggung_jawab
+        ].filter((g): g is number => typeof g === 'number' && g !== null);
+        const dAvg = dudiScores.length > 0 ? (dudiScores.reduce((a, b) => a + b, 0) / dudiScores.length).toFixed(1) : null;
+
+        return (
+          <span className="font-mono font-bold text-xs text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/40 px-1.5 py-0.5 rounded">
+            {dAvg ?? '-'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'nilai_laporan',
+      header: 'Laporan',
+      subHeader: isCompositeMode ? `${effectiveSettings?.weightLaporan ?? 15}%` : 'Arsip',
+      width: 52,
+      align: 'center',
+      renderCell: (score, rowIndex) => (
+        <SpreadsheetCellInput
+          id={`sidang-score-${rowIndex}-0`}
+          aria-label={`Nilai laporan ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.nilai_laporan}
+          disabled={!isCompositeMode}
+          placeholder={!isCompositeMode ? '-' : '0'}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 0)}
+          className={
+            !isCompositeMode
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+              : 'bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 border-emerald-200 dark:border-emerald-800'
+          }
+        />
+      ),
+    },
+    {
+      key: 'nilai_sidang',
+      header: 'Sidang',
+      subHeader: isCompositeMode ? `${effectiveSettings?.weightSidang ?? 15}%` : 'Arsip',
+      width: 52,
+      align: 'center',
+      renderCell: (score, rowIndex) => (
+        <SpreadsheetCellInput
+          id={`sidang-score-${rowIndex}-1`}
+          aria-label={`Nilai sidang ${score.nama_siswa}`}
+          value={!isCompositeMode ? null : score.nilai_sidang}
+          disabled={!isCompositeMode}
+          placeholder={!isCompositeMode ? '-' : '0'}
+          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', val)}
+          onKeyDown={(e) => handleKeyDownScore(e, rowIndex, 1)}
+          className={
+            !isCompositeMode
+              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-60'
+              : 'bg-purple-50/60 dark:bg-purple-950/30 text-purple-900 dark:text-purple-100 border-purple-200 dark:border-purple-800'
+          }
+        />
+      ),
+    },
+    {
+      key: 'file_portofolio',
+      header: 'Berkas',
+      width: 68,
+      align: 'center',
+      renderCell: (score) => score.file_portofolio ? (
+        <a
+          href={score.file_portofolio}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-950/40 px-1.5 py-0.5 rounded border border-indigo-200 dark:border-indigo-800"
+          title="Buka Portofolio / Berkas Laporan Siswa"
+        >
+          <FileText size={11} />
+          <span>Buka ↗</span>
+        </a>
+      ) : (
+        <span className="text-[10px] text-slate-400 italic">-</span>
+      ),
+    },
+    {
+      key: 'penguji_nama',
+      header: 'Guru Penguji',
+      width: 125,
+      renderCell: (score, index) => {
+        const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
+        return (
+          <input
+            id={`score-penguji-${globalIndex}`}
+            aria-label={`Nama penguji ${score.nama_siswa}`}
+            type="text"
+            disabled={!isCompositeMode}
+            placeholder={!isCompositeMode ? 'Terkunci' : 'Guru Penguji...'}
+            value={!isCompositeMode ? '' : (score.penguji_nama || '')}
+            onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', e.target.value)}
+            className={cn(
+              'w-full text-[10px] h-6 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 border',
+              !isCompositeMode
+                ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400'
+            )}
+          />
+        );
+      },
+    },
+    {
+      key: 'catatan_sidang',
+      header: 'Catatan Revisi',
+      width: 130,
+      renderCell: (score, index) => {
+        const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
+        return (
+          <input
+            id={`score-catatan-sidang-${globalIndex}`}
+            aria-label={`Catatan sidang ${score.nama_siswa}`}
+            type="text"
+            disabled={!isCompositeMode}
+            placeholder={!isCompositeMode ? 'Terkunci' : 'Catatan / revisi...'}
+            value={!isCompositeMode ? '' : (score.catatan_sidang || '')}
+            onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_sidang', e.target.value)}
+            className={cn(
+              'w-full text-[10px] h-6 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 border',
+              !isCompositeMode
+                ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
+                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400'
+            )}
+          />
+        );
+      },
+    },
+    {
+      key: 'nilai_akhir_pkl',
+      header: 'Nilai Akhir',
+      subHeader: 'Predikat',
+      width: 64,
+      align: 'center',
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight',
+      renderCell: (score) => {
+        const hasExamined = score.nilai_sidang !== null && score.nilai_sidang !== undefined;
+        return (
+          <div className="flex flex-col items-center justify-center leading-tight">
+            <span className="font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
+              {score.nilai_akhir_pkl ?? '-'}
+            </span>
+            <span className="text-[8px] font-bold px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {score.predikat_pkl || (isCompositeMode ? (hasExamined ? 'Gabungan' : 'DUDI') : '100% DUDI')}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status_sidang',
+      header: 'Status',
+      width: 75,
+      align: 'center',
+      renderCell: (score) => {
+        const hasExamined = score.nilai_sidang !== null && score.nilai_sidang !== undefined;
+        if (!isCompositeMode) {
+          return (
+            <span className="text-[9px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+              Non-Sidang
+            </span>
+          );
+        }
+        if (hasExamined) {
+          return Number(score.nilai_sidang) >= 70 ? (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <Check size={9} /> Lulus
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+              Revisi
+            </span>
+          );
+        }
+        return (
+          <span className="text-[9px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+            Belum
+          </span>
+        );
+      },
+    },
+  ], [
+    currentPage,
+    itemsPerPage,
+    isCompositeMode,
+    effectiveSettings,
+    handleScoreChange,
+    handleKeyDownScore,
+  ]);
+
   return (
     <div className="space-y-4">
       {/* Filter & Action Card */}
@@ -261,32 +571,35 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               </>
             )}
           </div>
-
         </div>
       </Card>
       )}
 
-      {/* Sidang Table */}
-      <Card className="border border-slate-100 dark:border-slate-800 shadow-sm rounded-2xl overflow-hidden p-0 bg-white dark:bg-slate-900">
-        {/* Sleek, De-noised Header Bar */}
-        <div className="p-3.5 sm:px-5 sm:py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-slate-900">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">
-              Lembar Penilaian Laporan & Sidang PKL
-            </h3>
-            <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300 px-2 py-0.5 rounded-md">
-              {displayedScores?.length || 0} Siswa
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-start sm:justify-end">
+      {/* High-Density Spreadsheet Grid Table */}
+      <SpreadsheetGridTable<ScoreRow>
+        data={paginatedScores || []}
+        columns={spreadsheetColumns}
+        columnGroups={columnGroups}
+        rowKey={(score, index) => score.siswa_pkl_id || `sidang-${index}`}
+        isLoading={isLoadingRekap}
+        emptyMessage={
+          selectedKelas
+            ? 'Belum ada data sidang pada kelas yang dipilih.'
+            : 'Belum ada data sidang pada periode akademik ini.'
+        }
+        density="compact"
+        enableFullscreen={true}
+        autoHeight={true}
+        headerTitle="Lembar Penilaian Laporan & Sidang PKL"
+        headerActions={
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               aria-label="Simpan perubahan nilai"
               onClick={onSaveBatch}
               disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
               title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[36px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Save className="w-3.5 h-3.5" />
               <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : 'Simpan')}</span>
@@ -297,7 +610,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
                 type="button"
                 variant="outline"
                 onClick={onNavigateCetakRapor}
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[36px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 title="Buka Lembar Cetak Rapor & Sertifikat PKL"
               >
                 <Printer className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
@@ -305,269 +618,58 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
               </Button>
             )}
           </div>
-        </div>
-        {isLoadingRekap ? (
-          <div className="text-center py-20 text-xs text-slate-400">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-indigo-500 border-t-transparent mx-auto mb-2" />
-            Memuat data ujian sidang PKL siswa...
-          </div>
-        ) : displayedScores?.length === 0 ? (
-          <div className="text-center py-20 text-xs text-slate-400">
-            Belum ada siswa pada filter ini.
-          </div>
-        ) : (
-          <div className="overflow-x-auto max-w-full">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-100 dark:border-slate-800">
-                <tr>
-                  <th className="p-3 text-center w-12">No</th>
-                  <th className="p-3 min-w-[170px]">Siswa & Rombel</th>
-                  <th className="p-3 min-w-[130px]">Portofolio / Laporan</th>
-                  <th className="p-3 text-center min-w-[85px]">
-                    <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">DUDI</span>
-                    <span className="text-[9px] font-normal text-blue-500 uppercase tracking-tight">
-                      {isCompositeMode ? `Rerata (${effectiveSettings?.weightDudi ?? 70}%)` : 'Rerata (100%)'}
-                    </span>
-                  </th>
-                  <th className="p-3 text-center min-w-[95px]">
-                    <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Laporan</span>
-                    <span className="text-[9px] font-normal text-emerald-600 dark:text-emerald-400 uppercase tracking-tight">
-                      {isCompositeMode ? `(${effectiveSettings?.weightLaporan ?? 15}%)` : '(Arsip)'}
-                    </span>
-                  </th>
-                  <th className="p-3 text-center min-w-[95px]">
-                    <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-200">Sidang</span>
-                    <span className="text-[9px] font-normal text-purple-600 dark:text-purple-400 uppercase tracking-tight">
-                      {isCompositeMode ? `(${effectiveSettings?.weightSidang ?? 15}%)` : '(Arsip)'}
-                    </span>
-                  </th>
-                  <th className="p-3 min-w-[150px]">Guru Penguji</th>
-                  <th className="p-3 min-w-[160px]">Catatan / Revisi Sidang</th>
-                  <th className="p-3 text-center min-w-[85px]">Nilai Akhir</th>
-                  <th className="p-3 text-center min-w-[80px]">Predikat</th>
-                  <th className="p-3 text-center min-w-[100px]">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {paginatedScores?.map((score, index) => {
-                  const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
-                  const dudiScores = [
-                    score.hard_kompetensi_teknis,
-                    score.hard_sop_k3lh,
-                    score.hard_alur_bisnis,
-                    score.soft_kedisiplinan,
-                    score.soft_kerajinan_inisiatif,
-                    score.soft_kerjasama,
-                    score.soft_kejujuran,
-                    score.soft_tanggung_jawab
-                  ].filter((g): g is number => typeof g === 'number' && g !== null);
-                  const dAvg = dudiScores.length > 0 ? (dudiScores.reduce((a, b) => a + b, 0) / dudiScores.length).toFixed(1) : null;
-                  const hasExamined = score.nilai_sidang !== null && score.nilai_sidang !== undefined;
-
-                  return (
-                    <tr key={`sidang-${score.siswa_pkl_id || index}`} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td className="p-3 text-center font-mono font-bold text-slate-400">{globalIndex}</td>
-                      <td className="p-3">
-                        <SiswaIdentityCell
-                          foto={score.foto}
-                          nama={score.nama_siswa}
-                          nis={score.nis}
-                          kelas={score.nama_kelas}
-                          size="sm"
-                          nameClassName="font-bold text-slate-900 dark:text-white"
-                          showMeta={true}
-                        />
-                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mt-1 pl-12">🏢 {score.mitra_nama}</p>
-                        {score.catatan_pkl && score.catatan_pkl.includes('Mutasi:') ? (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-900/40 mt-1 ml-12">
-                            🏷️ {score.catatan_pkl} (Selesai)
-                          </span>
-                        ) : score.status === 'SELESAI' ? (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40 mt-1 ml-12">
-                            ✅ Selesai
-                          </span>
-                        ) : score.status === 'AKTIF' ? (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-800/40 mt-1 ml-12">
-                            🟢 Aktif
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="p-3">
-                        {score.file_portofolio ? (
-                          <a
-                            href={score.file_portofolio}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline bg-indigo-50 dark:bg-indigo-950/40 px-2 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800"
-                          >
-                            <FileText size={12} />
-                            Buka Berkas ↗
-                          </a>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium italic">Belum Ada</span>
-                        )}
-                      </td>
-                      <td className="p-2 text-center">
-                        <span className="inline-block px-2 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 font-mono font-bold text-xs">
-                          {dAvg ?? '-'}
-                        </span>
-                      </td>
-                      <td className="p-2 text-center">
-                        <input
-                          id={`score-lap-${globalIndex}`}
-                          aria-label={`Nilai laporan ${score.nama_siswa}`}
-                          type="number" min={0} max={100}
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? '-' : '0'}
-                          value={!isCompositeMode ? '' : (score.nilai_laporan ?? '')}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'nilai_laporan', e.target.value)}
-                          className={`w-16 h-8 rounded-lg text-xs font-bold text-center shadow-sm focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                              : 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500'
-                          }`}
-                        />
-                      </td>
-                      <td className="p-2 text-center">
-                        <input
-                          id={`score-sid-${globalIndex}`}
-                          aria-label={`Nilai sidang ${score.nama_siswa}`}
-                          type="number" min={0} max={100}
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? '-' : '0'}
-                          value={!isCompositeMode ? '' : (score.nilai_sidang ?? '')}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'nilai_sidang', e.target.value)}
-                          className={`w-16 h-8 rounded-lg text-xs font-bold text-center shadow-sm focus:outline-none transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                              : 'bg-purple-50 dark:bg-purple-950/30 border border-purple-300 dark:border-purple-700 text-purple-900 dark:text-purple-100 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500'
-                          }`}
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          id={`score-penguji-${globalIndex}`}
-                          aria-label={`Nama penguji ${score.nama_siswa}`}
-                          type="text"
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? 'Terkunci (DUDI 100%)' : 'Nama Guru Penguji'}
-                          value={!isCompositeMode ? '' : score.penguji_nama}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', e.target.value)}
-                          className={`w-full min-w-[130px] rounded-lg text-xs font-medium px-2.5 py-1.5 shadow-sm focus:outline-none transition-colors ${
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                              : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
-                          }`}
-                        />
-                      </td>
-                      <td className="p-2">
-                        <input
-                          id={`score-catatan-sidang-${globalIndex}`}
-                          aria-label={`Catatan sidang ${score.nama_siswa}`}
-                          type="text"
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? 'Terkunci (DUDI 100%)' : 'Catatan & masukan penguji'}
-                          value={!isCompositeMode ? '' : score.catatan_sidang}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_sidang', e.target.value)}
-                          className={`w-full min-w-[140px] rounded-lg text-xs font-medium px-2.5 py-1.5 shadow-sm focus:outline-none transition-colors ${
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                              : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500'
-                          }`}
-                        />
-                      </td>
-                      <td className="p-2 text-center font-bold font-mono">
-                        <div className="flex flex-col items-center">
-                          <span className={score.nilai_akhir_pkl !== null ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400'}>
-                            {score.nilai_akhir_pkl ?? '-'}
-                          </span>
-                          <span className="text-[9px] text-slate-400 font-normal tracking-tight">
-                            {isCompositeMode ? (hasExamined ? 'Gabungan' : 'Fallback DUDI') : 'DUDI 100%'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-2 text-center font-semibold text-slate-700 dark:text-slate-300">
-                        {score.predikat_pkl}
-                      </td>
-                      <td className="p-2 text-center">
-                        {!isCompositeMode ? (
-                          <span className="text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                            Non-Sidang
-                          </span>
-                        ) : hasExamined ? (
-                          Number(score.nilai_sidang) >= 70 ? (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                              <Check size={10} /> Lulus
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                              Revisi
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                            Belum Sidang
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Pagination Footer */}
-        {displayedScores?.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-2.5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex items-center gap-4">
-              <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, displayedScores.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{displayedScores.length}</span> Siswa
+        }
+        footerActions={
+          displayedScores?.length > 0 ? (
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-4">
+                <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, displayedScores.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{displayedScores.length}</span> Siswa
+                </div>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="sidang-limit-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Limit:</label>
+                  <select 
+                    id="sidang-limit-select"
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer shadow-2xs"
+                  >
+                    {PAGINATION_LIMITS?.map((limit) => (
+                      <option key={limit} value={limit}>{limit} / hal</option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <label htmlFor="sidang-limit-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Limit:</label>
-                <select 
-                  id="sidang-limit-select"
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer shadow-2xs"
+              <div className="flex items-center space-x-1 border border-slate-200/80 dark:border-slate-800 rounded-xl p-0.5 bg-white dark:bg-slate-900 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1}
+                  aria-label="Halaman Sebelumnya"
+                  className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
                 >
-                  {PAGINATION_LIMITS?.map((limit) => (
-                    <option key={limit} value={limit}>{limit} / hal</option>
-                  ))}
-                </select>
+                  Prev
+                </button>
+                <div className="px-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-900/40" aria-current="page">
+                  {currentPage} / {totalPages}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Halaman Selanjutnya"
+                  className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+                >
+                  Next
+                </button>
               </div>
             </div>
-            <div className="flex items-center space-x-1 border border-slate-200/80 dark:border-slate-800 rounded-xl p-0.5 bg-white dark:bg-slate-900 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage <= 1}
-                aria-label="Halaman Sebelumnya"
-                className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-              >
-                Prev
-              </button>
-              <div className="px-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-900/40" aria-current="page">
-                {currentPage} / {totalPages}
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage >= totalPages}
-                aria-label="Halaman Selanjutnya"
-                className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </Card>
+          ) : undefined
+        }
+      />
     </div>
   );
 };
