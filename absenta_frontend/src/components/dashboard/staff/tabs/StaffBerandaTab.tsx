@@ -198,20 +198,19 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
       transition={{ duration: 0.2 }}
       className="space-y-4 sm:space-y-6"
     >
-      {/* ACTIONABLE ALERT: PENDING TP PKL UNTUK KAPROG */}
+      {/* ALERT: PENDING TP PKL KAPROG */}
       {isKaprog && pendingTpCount > 0 && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-5 h-5" />
+        <div className="p-3.5 sm:p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs sm:text-sm font-black text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                <span>Tugas Prioritas Kaprog: {pendingTpCount} Perusahaan Mitra Belum Memiliki Deskripsi TP</span>
-                <span className="text-[10px] bg-amber-500 text-white font-bold px-2 py-0.5 rounded-full shadow-2xs">Pending</span>
+              <h4 className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                {pendingTpCount} Mitra PKL Jurusan Belum Memiliki Deskripsi TP
               </h4>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-                Rumusan Tujuan Pembelajaran PKL jurusan {kaprogJurusan?.nama || 'binaan'} belum lengkap. Lengkapi sekarang agar instrumen penilaian sertifikat & rapor siswa dapat diisi.
+              <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                Lengkapi rumusan TP agar nilai PKL dapat diinput oleh pembimbing dan DUDI.
               </p>
             </div>
           </div>
@@ -221,18 +220,18 @@ export const StaffBerandaTab: React.FC<StaffBerandaTabProps> = ({
               size="sm"
               onClick={() => onNavigateTab('kaprog')}
               variant="outline"
-              className="text-xs font-bold rounded-xl border-amber-500/40 text-amber-800 dark:text-amber-300 hover:bg-amber-500/10"
+              className="text-xs font-semibold rounded-lg h-7 px-2.5 border-amber-500/30 text-amber-800 dark:text-amber-300"
             >
-              Dashboard Kaprog
+              Dashboard
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-              className="text-xs font-black rounded-xl bg-amber-600 hover:bg-amber-500 text-white gap-1 shadow-md shadow-amber-600/20"
+              className="text-xs font-semibold rounded-lg h-7 px-3 bg-amber-600 hover:bg-amber-500 text-white gap-1"
             >
               <span>Lengkapi TP</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3 h-3" />
             </Button>
           </div>
         </div>

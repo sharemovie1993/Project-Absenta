@@ -71,10 +71,10 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
               )}
             </div>
             <h2 className="text-lg sm:text-2xl font-black text-white tracking-tight">
-              {jurusanInfo?.nama || 'Program Keahlian Kejuruan'}
+              {jurusanInfo?.nama || 'Program Keahlian'}
             </h2>
-            <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-              Pusat kendali operasional program keahlian, penyelarasan kurikulum kejuruan dengan DUDI, supervisi keterisian Tujuan Pembelajaran (TP) PKL, dan pemantauan kelulusan praktik siswa.
+            <p className="text-xs text-slate-300 max-w-xl">
+              Monitoring capaian pembelajaran kejuruan, slot mitra industri, dan progres penilaian PKL.
             </p>
           </div>
 
@@ -88,13 +88,13 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
               className="rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border-white/20 gap-1.5"
             >
               <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
-              <span>Sinkron Data</span>
+              <span>Sinkron</span>
             </Button>
             <Button
               type="button"
               size="sm"
               onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-              className="rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 gap-1.5"
+              className="rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white gap-1.5"
             >
               <span>Kelola TP PKL</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -111,43 +111,43 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
         <>
           {/* 2. Actionable Pending Task Alert (To-Do Notification) */}
           {hasPendingTp ? (
-            <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-start gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                   <AlertCircle className="w-5 h-5" />
                 </div>
-                <div className="space-y-1">
-                  <h4 className="text-sm font-black text-amber-800 dark:text-amber-300 flex items-center gap-2">
-                    <span>Tindakan Prioritas: {tpStatus.pendingMitra} Perusahaan Mitra Belum Memiliki Deskripsi TP</span>
-                    <Badge variant="warning" className="text-[10px] font-bold">Mendesak</Badge>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-300">
+                    {tpStatus.pendingMitra} Perusahaan Mitra Belum Memiliki Deskripsi TP
                   </h4>
-                  <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed max-w-3xl">
-                    Perusahaan mitra yang ditempati siswa jurusan Anda membutuhkan rumusan <strong>Tujuan Pembelajaran (TP) PKL</strong> Kurikulum Merdeka. Lengkapi sekarang agar Guru Pembimbing dan instruktur DUDI dapat memberikan penilaian objektif serta menerbitkan sertifikat PKL.
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Lengkapi rumusan TP agar pembimbing dan DUDI dapat mengisi penilaian PKL.
                   </p>
                 </div>
               </div>
 
               <Button
                 type="button"
+                size="sm"
                 onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-                className="w-full md:w-auto shrink-0 rounded-xl text-xs font-black bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/20 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="w-full md:w-auto shrink-0 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white gap-1.5"
               >
-                <span>Lengkapi Deskripsi TP Sekarang</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Lengkapi TP</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </div>
           ) : (
-            <div className="p-4 sm:p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div>
                   <h4 className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    Kesiapan Instrumen TP PKL Sempurna (100%)
+                    Kesiapan Instrumen TP PKL Selesai (100%)
                   </h4>
                   <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                    Seluruh {tpStatus.totalMitra} perusahaan mitra aktif jurusan telah dilengkapi narasi capaian pembelajaran Kurikulum Merdeka.
+                    Seluruh {tpStatus.totalMitra} perusahaan mitra aktif jurusan telah memiliki rumusan capaian TP.
                   </p>
                 </div>
               </div>
@@ -156,9 +156,9 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-                className="text-xs font-bold rounded-xl border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 shrink-0"
+                className="text-xs font-semibold rounded-lg border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 shrink-0 h-7"
               >
-                Lihat Formulasi TP
+                Lihat TP
               </Button>
             </div>
           )}

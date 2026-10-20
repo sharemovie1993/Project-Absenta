@@ -197,110 +197,113 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
   };
 
   return (
-    <Card className="p-5 sm:p-6 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-6">
-      {/* Header Penjelasan & Ringkasan Slot */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base flex items-center gap-2">
-              <Building2 size={20} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span>Slot Deskripsi Capaian Pembelajaran (TP) PKL</span>
-            </h3>
-            {isKaprog && !isHubin && (
-              <span className="text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                <GraduationCap className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                <span>Konteks Jurusan Terkunci: {kaprogJurusan?.nama || 'Ketua Program Keahlian'}</span>
-              </span>
-            )}
-            {isHubin && (
-              <span className="text-[10px] font-bold bg-teal-50 dark:bg-teal-950/50 text-teal-700 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
-                <Sparkles className="w-3 h-3 text-teal-600 dark:text-teal-400" />
-                <span>Konteks: Pejabat Hubin (Supervisi Lintas Jurusan)</span>
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Slot perusahaan terfilter otomatis berdasarkan penempatan nyata siswa kejuruan pada semester aktif. Narasi ini dicetak pada sertifikat resmi dan rapor PKL siswa.
-          </p>
+    <Card className="p-4 sm:p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xs space-y-4">
+      {/* Header Ringkas & Elegan */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm sm:text-base flex items-center gap-2">
+            <Building2 size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>Deskripsi Capaian TP PKL</span>
+          </h3>
+          {isKaprog && !isHubin && (
+            <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
+              Jurusan: {kaprogJurusan?.singkatan || kaprogJurusan?.nama || 'Kejuruan'}
+            </span>
+          )}
         </div>
 
-        {/* Counter Badge Ringkasan */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-center">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase">Total DUDI</span>
-            <span className="text-sm font-black font-mono text-slate-700 dark:text-slate-200">{totalSlots}</span>
+        {/* Ringkasan Ringkas */}
+        {totalSlots > 0 && (
+          <div className="flex items-center gap-2.5 text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-medium">
+              <strong className={filledSlotsCount === totalSlots ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-200 font-bold'}>
+                {filledSlotsCount}
+              </strong>{' '}
+              dari {totalSlots} DUDI terisi
+            </span>
+            <div className="w-20 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full rounded-full transition-all duration-300",
+                  filledSlotsCount === totalSlots ? "bg-emerald-500" : "bg-amber-500"
+                )}
+                style={{ width: `${(filledSlotsCount / totalSlots) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-center border border-emerald-200/50 dark:border-emerald-800/40">
-            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 block uppercase">Lengkap</span>
-            <span className="text-sm font-black font-mono text-emerald-700 dark:text-emerald-300">{filledSlotsCount}</span>
-          </div>
-          <div className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-center border border-amber-200/50 dark:border-amber-800/40">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block uppercase">Belum Ada</span>
-            <span className="text-sm font-black font-mono text-amber-700 dark:text-amber-300">{pendingSlotsCount}</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* Progress Keterisian TP PKL */}
-      {totalSlots > 0 && (
-        <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-850/60 border border-slate-100 dark:border-slate-800 space-y-1.5">
-          <div className="flex items-center justify-between text-xs font-semibold">
-            <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
-              <span>Progres Keterisian Deskripsi TP DUDI:</span>
-              <strong className={filledSlotsCount === totalSlots ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
-                {filledSlotsCount} dari {totalSlots} Perusahaan Selesai ({Math.round((filledSlotsCount / totalSlots) * 100)}%)
-              </strong>
-            </span>
-            <span className="text-[11px] text-slate-400">
-              {pendingSlotsCount > 0 ? `Sisa ${pendingSlotsCount} mitra perlu dirumuskan TP` : '✅ 100% Siap untuk Penilaian'}
-            </span>
-          </div>
-          <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-            <div 
-              className={cn(
-                "h-full rounded-full transition-all duration-500",
-                filledSlotsCount === totalSlots ? "bg-emerald-500" : "bg-gradient-to-r from-amber-500 to-indigo-600"
-              )}
-              style={{ width: `${Math.round((filledSlotsCount / totalSlots) * 100)}%` }}
-            />
-          </div>
-        </div>
-      )}
-
       {/* Toolbar Filter Cepat & Search */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 flex-1">
           <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Cari nama perusahaan atau kelas..."
+              placeholder="Cari perusahaan atau kelas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           {/* Context Selector untuk HUBIN */}
           {isHubin && jurusanOptions.length > 0 && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <select
-                value={selectedJurusanFilter}
-                onChange={(e) => setSelectedJurusanFilter?.(e.target.value)}
-                className="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer max-w-[200px] truncate"
-              >
-                <option value="">Semua Jurusan (Semua Binaan)</option>
-                {jurusanOptions.map((j) => (
-                  <option key={j.value} value={j.value}>
-                    {j.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedJurusanFilter}
+              onChange={(e) => setSelectedJurusanFilter?.(e.target.value)}
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer max-w-[200px] truncate shrink-0"
+            >
+              <option value="">Semua Jurusan</option>
+              {jurusanOptions.map((j) => (
+                <option key={j.value} value={j.value}>
+                  {j.label}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto shrink-0">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('ALL')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              statusFilter === 'ALL'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            )}
+          >
+            Semua ({totalSlots})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('BELUM')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              statusFilter === 'BELUM'
+                ? 'bg-amber-500 text-white shadow-2xs font-bold'
+                : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50/50'
+            )}
+          >
+            Belum ({pendingSlotsCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatusFilter('SUDAH')}
+            className={cn(
+              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              statusFilter === 'SUDAH'
+                ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50/50'
+            )}
+          >
+            Sudah ({filledSlotsCount})
+          </button>
+        </div>
+      </div>
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}
@@ -371,36 +374,31 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
 
             <div className="p-5 space-y-4 overflow-y-auto">
               <div className="flex items-center justify-between">
-                <label htmlFor="slot-editor-text" className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                <label htmlFor="slot-editor-text" className="text-xs font-bold text-slate-700 dark:text-slate-200">
                   Deskripsi Capaian Pembelajaran (TP)
                 </label>
                 <button
                   type="button"
                   onClick={() => handleApplyTemplate(activeEditingSlot.mitra_nama)}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Gunakan Template Kurikulum Merdeka</span>
+                  <span>Gunakan Template</span>
                 </button>
               </div>
 
               <textarea
                 id="slot-editor-text"
-                rows={5}
+                rows={4}
                 value={editorText}
                 onChange={(e) => setEditorText(e.target.value)}
                 placeholder="Peserta didik mampu memahami alur proses bisnis industri, menerapkan K3LH, serta mempraktikkan..."
                 className="w-full p-3 text-xs sm:text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all leading-relaxed resize-none"
               />
 
-              <div className="p-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-800 dark:text-indigo-300 space-y-1">
-                <span className="font-bold flex items-center gap-1">
-                  💡 Tips Penulisan Sesuai Regulasi:
-                </span>
-                <p className="leading-relaxed opacity-90">
-                  Gunakan kata kerja operasional terukur (contoh: *mampu memahami*, *mempraktikkan*, *menganalisis*, *merakit*) dan sebutkan alat/mesin/teknologi spesifik yang dipelajari siswa di industri ini.
-                </p>
-              </div>
+              <p className="text-[11px] text-slate-400">
+                Gunakan kata kerja operasional terukur (memahami, mempraktikkan, menganalisis) sesuai bidang pekerjaan di DUDI.
+              </p>
             </div>
 
             <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-end gap-2">
@@ -439,100 +437,81 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
             : 'Tidak ada slot industri yang cocok dengan pencarian / filter ini.'}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {displayedSlots.map((slot) => {
             const isFilled = Boolean(slot.deskripsi_tp && slot.deskripsi_tp.trim().length >= 10);
 
             return (
               <div
                 key={slot.mitra_id}
-                className={cn(
-                  'rounded-2xl border p-4 sm:p-5 flex flex-col justify-between transition-all shadow-2xs space-y-3.5',
-                  isFilled
-                    ? 'bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-slate-300'
-                    : 'bg-amber-50/20 dark:bg-amber-950/10 border-amber-200/80 dark:border-amber-900/60 hover:border-amber-300'
-                )}
+                className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 flex flex-col justify-between transition-all hover:border-slate-300 dark:hover:border-slate-700 space-y-3"
               >
                 <div className="space-y-2">
                   {/* Top Bar: Nama Perusahaan & Status Badge */}
                   <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5 min-w-0 flex-1">
-                      <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate flex items-center gap-1.5">
-                        <Building2 className="w-4 h-4 text-indigo-500 shrink-0" />
-                        <span className="truncate">{slot.mitra_nama}</span>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-white truncate">
+                        {slot.mitra_nama}
                       </h4>
                       {slot.mitra_alamat && (
-                        <p className="text-[11px] text-slate-400 truncate">
+                        <p className="text-[11px] text-slate-400 truncate mt-0.5">
                           {slot.mitra_alamat}
                         </p>
                       )}
                     </div>
 
                     {isFilled ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full shrink-0">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md shrink-0">
                         <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                         Sudah Diisi
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-2.5 py-0.5 rounded-full shrink-0 animate-pulse">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md shrink-0">
                         <AlertCircle className="w-3 h-3 text-amber-500" />
                         Belum Diisi
                       </span>
                     )}
                   </div>
 
-                  {/* Info Penempatan Siswa Jurusan */}
-                  <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 flex-wrap pt-0.5">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-                      <Users className="w-3 h-3 text-indigo-500" />
+                  {/* Info Penempatan Siswa */}
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300">
                       {slot.siswa_count} Siswa
                     </span>
+                    <span>•</span>
                     <span className="truncate">
-                      Rombel: <strong className="text-slate-700 dark:text-slate-300">{slot.rombel_list.join(', ') || '-'}</strong>
+                      Rombel: {slot.rombel_list.join(', ') || '-'}
                     </span>
                   </div>
 
                   {/* Isi Deskripsi TP */}
-                  <div className="pt-1">
+                  <div className="pt-0.5">
                     {isFilled ? (
-                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                      <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed">
                         "{slot.deskripsi_tp}"
                       </div>
                     ) : (
-                      <div className="p-3 rounded-xl bg-white/60 dark:bg-slate-800/40 border border-dashed border-amber-200 dark:border-amber-800/60 text-xs text-amber-700/80 dark:text-amber-400/80 italic">
-                        Belum ada narasi deskripsi capaian pembelajaran untuk industri ini.
+                      <div className="p-2 rounded-lg bg-slate-50/70 dark:bg-slate-800/30 text-xs text-slate-400 italic">
+                        Belum ada rumusan deskripsi TP
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Tombol Aksi */}
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-100 dark:border-slate-800/60">
-                  {!isFilled && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleOpenEditor(slot);
-                        handleApplyTemplate(slot.mitra_nama);
-                      }}
-                      className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>Gunakan Template Baku</span>
-                    </button>
-                  )}
-
+                <div className="flex items-center justify-end pt-1 border-t border-slate-100 dark:border-slate-800/60">
                   <Button
                     type="button"
+                    size="sm"
                     onClick={() => handleOpenEditor(slot)}
                     variant={isFilled ? 'outline' : 'primary'}
                     className={cn(
-                      'ml-auto text-xs font-bold rounded-xl h-8 px-3 flex items-center gap-1.5 cursor-pointer',
-                      !isFilled && 'bg-amber-600 hover:bg-amber-700 text-white'
+                      'text-xs font-semibold rounded-lg h-7 px-3 flex items-center gap-1.5 cursor-pointer',
+                      !isFilled && 'bg-amber-600 hover:bg-amber-500 text-white border-none'
                     )}
                   >
                     <Edit3 className="w-3 h-3" />
-                    <span>{isFilled ? 'Edit Deskripsi' : 'Isi Deskripsi TP'}</span>
+                    <span>{isFilled ? 'Ubah TP' : 'Isi Deskripsi TP'}</span>
                   </Button>
                 </div>
               </div>
