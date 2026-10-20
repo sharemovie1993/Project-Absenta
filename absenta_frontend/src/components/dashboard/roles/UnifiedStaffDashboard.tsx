@@ -829,10 +829,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
       list.push({ id: 'jadwal', label: 'KBM & Absen', icon: BookOpen, badge: 'AKTIF' });
     }
 
-    // 3. Wali Kelas (hanya jika ditugaskan sebagai Wali Kelas)
-    if (isWaliKelas && !isKepsek) {
-      list.push({ id: 'binaan', label: 'Wali Kelas', icon: Users, badge: waliKelasNama || '8B' });
-    }
+    // 3. Wali Kelas (Dihapus dari tab tabular atas sesuai arahan pengguna; diakses langsung via Portal)
 
     // 4. Bimbingan PKL (Khusus Guru Pembimbing PKL yang bukan Waka Hubin)
     if (isPembimbingPkl && !isKepsek) {
@@ -893,11 +890,13 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
   // Normalisasi tab aktif jika tab di URL tidak termasuk dalam daftar kapabilitas user
   useEffect(() => {
+    // Tab binaan valid jika user adalah wali kelas meskipun tidak ada di deretan tombol tab atas
+    if (activeTab === 'binaan' && isWaliKelas) return;
     if (tabs.length > 0 && !tabs.some(t => t.id === activeTab)) {
       const fallback = tabs.some(t => t.id === defaultTabId) ? defaultTabId : tabs[0].id;
       setSearchParams({ tab: fallback }, { replace: true });
     }
-  }, [tabs, activeTab, defaultTabId, setSearchParams]);
+  }, [tabs, activeTab, defaultTabId, setSearchParams, isWaliKelas]);
 
   // ── 6. Quick Actions ──────────────────────────────────────────────────────────
   const quickActions = useMemo(() => {
