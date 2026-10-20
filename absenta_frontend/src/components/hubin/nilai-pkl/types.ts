@@ -55,6 +55,7 @@ export interface ScoreRow {
   nomor_sertifikat: string;
   deskripsi_tp: string;
   status?: string;
+  pembimbing_id?: string;
 }
 
 export interface RawPklItem {

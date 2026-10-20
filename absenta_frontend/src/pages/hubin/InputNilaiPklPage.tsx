@@ -24,6 +24,7 @@ import {
 
 // Lazy loaded subcomponents to optimize bundle size and enforce architecture limits
 import { PklUnifiedToolbar } from '../../components/hubin/nilai-pkl/PklUnifiedToolbar';
+import { PklSpreadsheetSkeleton } from '../../components/hubin/nilai-pkl/PklSpreadsheetSkeleton';
 const PklNilaiIndustriTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiIndustriTab'));
 const PklNilaiSidangTab = lazy(() => import('../../components/hubin/nilai-pkl/PklNilaiSidangTab'));
 const PklDeskripsiTpTab = lazy(() => import('../../components/hubin/nilai-pkl/PklDeskripsiTpTab'));
@@ -96,27 +97,28 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
 
   const { options: mitraOptions } = useDudiOptions();
 
-  const { data: pklRekap, isLoading: isLoadingRekap } = useQuery({
-    queryKey: ['pkl-rekap', selectedTp, selectedSemester, guidanceScope, activeGuruId, statusFilter],
+  // Single SSOT Query: Menghindari redundant double-fetching saat membuka halaman
+  const { data: pklRekapResponse, isLoading: isLoadingRekap } = useQuery({
+    queryKey: ['pkl-rekap', selectedTp, selectedSemester, statusFilter],
     queryFn: () =>
       hubinApi.getRekapPklSiswa({
         tahun_pelajaran_id: selectedTp || undefined,
         semester_id: selectedSemester || undefined,
         status: statusFilter === 'ALL' ? undefined : statusFilter,
-        pembimbing_id: guidanceScope === 'MY_GUIDANCE' && activeGuruId ? activeGuruId : undefined,
       }),
+    staleTime: 60 * 1000, // 1 menit cache agar perpindahan tab/bimbingan instan tanpa roundtrip
   });
 
-  const { data: allPklRekap } = useQuery({
-    queryKey: ['pkl-rekap-counts', selectedTp, selectedSemester, statusFilter],
-    queryFn: () =>
-      hubinApi.getRekapPklSiswa({
-        tahun_pelajaran_id: selectedTp || undefined,
-        semester_id: selectedSemester || undefined,
-        status: statusFilter === 'ALL' ? undefined : statusFilter,
-      }),
-    staleTime: 30000,
-  });
+  const rawList = useMemo<RawPklItem[]>(() => {
+    const rawResponse = pklRekapResponse as { data?: RawPklItem[] | { list?: RawPklItem[] } } | RawPklItem[] | undefined;
+    if (Array.isArray((rawResponse as { data?: RawPklItem[] })?.data)) {
+      return (rawResponse as { data: RawPklItem[] }).data;
+    }
+    if (Array.isArray(rawResponse)) {
+      return rawResponse;
+    }
+    return (rawResponse as { data?: { list?: RawPklItem[] } })?.data?.list || [];
+  }, [pklRekapResponse]);
 
   const { data: hubinSettings } = useQuery({
     queryKey: ['hubin-settings', selectedTp],
@@ -167,15 +169,8 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const [scores, setScores] = useState<ScoreRow[]>([]);
 
   useEffect(() => {
-    const rawResponse = pklRekap as { data?: RawPklItem[] | { list?: RawPklItem[] } } | RawPklItem[] | undefined;
-    const rawList = Array.isArray((rawResponse as { data?: RawPklItem[] })?.data) 
-      ? (rawResponse as { data: RawPklItem[] }).data 
-      : Array.isArray(rawResponse) 
-      ? rawResponse 
-      : (rawResponse as { data?: { list?: RawPklItem[] } })?.data?.list || [];
-
     if (Array.isArray(rawList)) {
-      setScores(rawList?.map((item: RawPklItem) => ({
+      setScores(rawList.map((item: RawPklItem) => ({
         siswa_pkl_id: item.id || item.siswa_pkl_id || '',
         nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
         nis: item.Siswa?.nis || item.nis || '',
@@ -212,72 +207,74 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
         nomor_sertifikat: item.nomor_sertifikat || '',
         deskripsi_tp: item.deskripsi_tp || '',
         status: item.status || 'AKTIF',
+        pembimbing_id: item.Pembimbing?.id,
       })));
     }
-  }, [pklRekap]);
+  }, [rawList]);
 
+  // Ekstraksi smartClassOptions langsung dari data mentah rawList (tidak bergantung pada scores),
+  // sehingga 0 lag saat guru mengetik angka nilai di spreadsheet!
   const smartClassOptions = useMemo(() => {
     const map = new Map<string, { id: string; name: string; count: number }>();
-    const scoresForOptions = (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id)
-      ? scores.filter((s) => s.kelas_id === walikelasKelas.id)
-      : scores;
-    scoresForOptions?.forEach((s) => {
-      if (s.kelas_id && s.nama_kelas) {
-        const existing = map.get(s.kelas_id);
+    const itemsForOptions = (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id)
+      ? rawList.filter((item) => {
+          const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
+          return kId === walikelasKelas.id;
+        })
+      : guidanceScope === 'MY_GUIDANCE' && activeGuruId
+      ? rawList.filter((item) => item.Pembimbing?.id === activeGuruId)
+      : rawList;
+
+    itemsForOptions.forEach((item) => {
+      const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
+      const kName = item.Siswa?.Kelas?.nama_kelas || item.SiswaAkademik?.kelas?.nama_kelas;
+      if (kId && kName) {
+        const existing = map.get(kId);
         if (existing) {
           existing.count++;
         } else {
-          map.set(s.kelas_id, { id: s.kelas_id, name: s.nama_kelas, count: 1 });
+          map.set(kId, { id: kId, name: kName, count: 1 });
         }
       }
     });
 
     return Array.from(map.values())
-      ?.sort((a, b) => a.name.localeCompare(b.name))
-      ?.map((k) => ({
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((k) => ({
         value: k.id,
         label: `${k.name} (${k.count} Siswa)`,
-      })) || [];
-  }, [scores, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+      }));
+  }, [rawList, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas, activeGuruId]);
 
   const displayedScores = useMemo(() => {
     let filtered = scores;
     if (guidanceScope === 'ALL' && isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
       filtered = filtered.filter((s) => s.kelas_id === walikelasKelas.id);
     }
+    if (guidanceScope === 'MY_GUIDANCE' && activeGuruId) {
+      filtered = filtered.filter((s) => s.pembimbing_id === activeGuruId);
+    }
     if (!selectedKelas) return filtered;
     return filtered.filter((s) => s.kelas_id === selectedKelas);
-  }, [scores, selectedKelas, guidanceScope, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+  }, [scores, selectedKelas, guidanceScope, activeGuruId, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
 
   const allScopedCount = useMemo(() => {
-    const raw = allPklRekap as { data?: RawPklItem[] | { list?: RawPklItem[] } } | RawPklItem[] | undefined;
-    const list = Array.isArray((raw as { data?: RawPklItem[] })?.data)
-      ? (raw as { data: RawPklItem[] }).data
-      : Array.isArray(raw)
-      ? raw
-      : (raw as { data?: { list?: RawPklItem[] } })?.data?.list || [];
     if (isWaliKelas && !isPrivilegedHubin && walikelasKelas?.id) {
-      return list.filter((item: RawPklItem) => {
+      return rawList.filter((item: RawPklItem) => {
         const kId = item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.SiswaAkademik?.kelas_id;
         return kId === walikelasKelas.id;
       }).length;
     }
-    return list.length;
-  }, [allPklRekap, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
+    return rawList.length;
+  }, [rawList, isWaliKelas, isPrivilegedHubin, walikelasKelas]);
 
   const myGuidanceCountNilai = useMemo(() => {
     if (!activeGuruId) return 0;
-    const raw = allPklRekap as { data?: RawPklItem[] | { list?: RawPklItem[] } } | RawPklItem[] | undefined;
-    const list = Array.isArray((raw as { data?: RawPklItem[] })?.data)
-      ? (raw as { data: RawPklItem[] }).data
-      : Array.isArray(raw)
-      ? raw
-      : (raw as { data?: { list?: RawPklItem[] } })?.data?.list || [];
-    return list.filter((item: RawPklItem) => {
+    return rawList.filter((item: RawPklItem) => {
       const pId = item.Pembimbing?.id;
       return pId === activeGuruId;
     }).length;
-  }, [allPklRekap, activeGuruId]);
+  }, [rawList, activeGuruId]);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -546,7 +543,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                 displayedScoresLength={displayedScores.length}
               />
 
-              <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Memuat modul nilai PKL...</div>}>
+              <Suspense fallback={<PklSpreadsheetSkeleton isMobile={isMobile} />}>
                 {(activeTab === 'dudi' || activeTab === 'nilai') && (
                   <PklNilaiIndustriTab
                     hideFilterCard={true}
