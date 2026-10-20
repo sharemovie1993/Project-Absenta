@@ -133,18 +133,6 @@ export function getUserStructuralActions(user: any): StructuralPositionAction[] 
     });
   }
 
-  // 6. Wali Kelas
-  if (positionCodes.includes('WALIKELAS') || user?.guru_profile?.wali_kelas_di?.id) {
-    addAction({
-      id: 'walikelas',
-      code: 'WALIKELAS',
-      label: 'Ruang Wali Kelas',
-      tab: 'binaan',
-      iconName: 'Users',
-      colorClass: 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800',
-    });
-  }
-
   // 7. Kepala Bengkel
   if (positionCodes.includes('KABENG')) {
     addAction({
