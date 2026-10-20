@@ -444,9 +444,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   }, [deskripsiList]);
 
   const tabs = useMemo(() => [
-    { id: 'dudi', label: `🏢 Nilai Industri (${displayedScores.length})` },
-    ...(isCompositeMode ? [{ id: 'sidang', label: `🎓 Nilai Sidang & Laporan (${displayedScores.length})` }] : []),
-    { id: 'deskripsi', label: '📝 Deskripsi TP DUDI' }
+    { id: 'dudi', label: `🏢 DUDI (${displayedScores.length})` },
+    ...(isCompositeMode ? [{ id: 'sidang', label: `🎓 Sidang (${displayedScores.length})` }] : []),
+    { id: 'deskripsi', label: '📝 Deskripsi TP' }
   ], [displayedScores.length, isCompositeMode]);
 
   const pageContent = (
