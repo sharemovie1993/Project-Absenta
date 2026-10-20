@@ -408,16 +408,21 @@ export const MitraIndustriSection: React.FC<{ hideLayout?: boolean }> = React.me
     handleDelete,
   ]);
 
-  const paginationProps = useMemo(() => ({
-    page,
-    totalPages: pagination?.totalPages || 1,
-    limit,
-    onPageChange: (p: number) => setPage(p),
-    onLimitChange: (l: number) => {
-      setLimit(l);
-      setPage(1);
-    }
-  }), [page, pagination?.totalPages, limit]);
+  const paginationProps = useMemo(() => {
+    const totalItems = pagination?.total ?? rawList.length;
+    const totalPages = pagination?.totalPages ?? Math.max(1, Math.ceil(totalItems / limit));
+    return {
+      currentPage: page,
+      totalPages: totalPages,
+      totalItems: totalItems,
+      itemsPerPage: limit,
+      onPageChange: (p: number) => setPage(p),
+      onLimitChange: (l: number) => {
+        setLimit(l);
+        setPage(1);
+      }
+    };
+  }, [page, pagination, limit, rawList.length]);
 
   const SectionCardTitle = (
     <div className="flex flex-col sm:flex-row sm:items-center gap-2 justify-between w-full pr-4">

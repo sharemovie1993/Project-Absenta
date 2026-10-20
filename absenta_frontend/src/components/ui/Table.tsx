@@ -42,10 +42,13 @@ export interface TableProps {
   onSort?: (key: string, order: 'asc' | 'desc') => void;
   // Pagination props
   pagination?: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
+    currentPage?: number;
+    page?: number;
+    totalPages?: number;
+    totalItems?: number;
+    total?: number;
+    itemsPerPage?: number;
+    limit?: number;
     onPageChange: (page: number) => void;
     onLimitChange?: (limit: number) => void;
   };
@@ -137,6 +140,24 @@ export function Table({
 
     return sorted;
   }, [data, internalSortBy, internalSortOrder, onSort]);
+
+  // Resilient normalized pagination supporting multiple property naming conventions
+  const normalizedPagination = React.useMemo(() => {
+    if (!pagination) return null;
+    const anyPag = pagination as any;
+    const currentPage: number = anyPag.currentPage ?? anyPag.page ?? 1;
+    const itemsPerPage: number = anyPag.itemsPerPage ?? anyPag.limit ?? 10;
+    const totalItems: number = anyPag.totalItems ?? anyPag.total ?? data.length ?? 0;
+    const totalPages: number = anyPag.totalPages ?? Math.max(1, Math.ceil(totalItems / (itemsPerPage || 10)));
+    return {
+      currentPage,
+      itemsPerPage,
+      totalItems,
+      totalPages,
+      onPageChange: anyPag.onPageChange,
+      onLimitChange: anyPag.onLimitChange
+    };
+  }, [pagination, data.length]);
 
   const getRowId = (row: any, index: number): string => {
     if (typeof rowKey === 'function') return rowKey(row);
@@ -261,22 +282,22 @@ export function Table({
         )}
 
         {/* Mobile Pagination with Limit Control */}
-        {pagination && (
+        {normalizedPagination && (
           <div className="flex flex-col gap-3 pt-3 pb-6 border-t border-slate-100 dark:border-slate-800">
             <div className="flex items-center justify-between px-1 text-xs">
               <span className="font-bold text-slate-500 dark:text-slate-400">
-                Total: {pagination.totalItems || data.length} Data
+                Total: {normalizedPagination.totalItems} Data
               </span>
 
-              {pagination.onLimitChange && (
+              {normalizedPagination.onLimitChange && (
                 <div className="flex items-center gap-2">
                   <label htmlFor="table-mobile-limit" className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                     Baris:
                   </label>
                   <select
                     id="table-mobile-limit"
-                    value={pagination.itemsPerPage || 10}
-                    onChange={(e) => pagination.onLimitChange?.(Number(e.target.value))}
+                    value={normalizedPagination.itemsPerPage || 10}
+                    onChange={(e) => normalizedPagination.onLimitChange?.(Number(e.target.value))}
                     className="h-8 px-2 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-200 shadow-2xs focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   >
                     {[10, 25, 50, 100].map((opt) => (
@@ -289,23 +310,23 @@ export function Table({
               )}
             </div>
 
-            {pagination.totalPages > 1 && (
+            {normalizedPagination.totalPages > 1 && (
               <div className="flex items-center justify-between gap-2">
                 <Button
                   variant="ghost"
-                  disabled={pagination.currentPage <= 1 || loading}
-                  onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
+                  disabled={normalizedPagination.currentPage <= 1 || loading}
+                  onClick={() => normalizedPagination.onPageChange(normalizedPagination.currentPage - 1)}
                   className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
                   Sebelumnya
                 </Button>
                 <span className="text-xs font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 shadow-2xs font-mono">
-                  {pagination.currentPage} / {pagination.totalPages}
+                  {normalizedPagination.currentPage} / {normalizedPagination.totalPages}
                 </span>
                 <Button
                   variant="ghost"
-                  disabled={pagination.currentPage >= pagination.totalPages || loading}
-                  onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
+                  disabled={normalizedPagination.currentPage >= normalizedPagination.totalPages || loading}
+                  onClick={() => normalizedPagination.onPageChange(normalizedPagination.currentPage + 1)}
                   className="text-[11px] font-black uppercase tracking-wider h-9 px-3.5 rounded-xl disabled:opacity-30 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
                 >
                   Berikutnya
@@ -486,20 +507,20 @@ export function Table({
       </div>
 
       {/* Standardized, Centralized Premium Pagination Footer */}
-      {pagination && (pagination.totalItems > 0 || pagination.totalPages >= 1) && (
+      {normalizedPagination && (normalizedPagination.totalItems > 0 || normalizedPagination.totalPages >= 1) && (
         <div className="flex items-center justify-between px-6 py-2 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/20 dark:bg-slate-950/20">
           <div className="flex items-center gap-4">
             <div className="text-[11px] text-slate-600 dark:text-slate-400 hidden sm:block font-medium">
-              Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{((pagination.currentPage || 1) - 1) * (pagination.itemsPerPage || 10) + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min((pagination.currentPage || 1) * (pagination.itemsPerPage || 10), pagination.totalItems || 0)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{pagination.totalItems || 0}</span>
+              Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{((normalizedPagination.currentPage || 1) - 1) * (normalizedPagination.itemsPerPage || 10) + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min((normalizedPagination.currentPage || 1) * (normalizedPagination.itemsPerPage || 10), normalizedPagination.totalItems || 0)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{normalizedPagination.totalItems || 0}</span>
             </div>
 
-            {pagination.onLimitChange && (
+            {normalizedPagination.onLimitChange && (
               <div className="flex items-center gap-2">
                 <label htmlFor="table-limit-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Limit:</label>
                 <select 
                   id="table-limit-select"
-                  value={pagination.itemsPerPage}
-                  onChange={(e) => pagination.onLimitChange?.(Number(e.target.value))}
+                  value={normalizedPagination.itemsPerPage}
+                  onChange={(e) => normalizedPagination.onLimitChange?.(Number(e.target.value))}
                   className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-800 rounded px-1 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer"
                 >
                   {[10, 25, 50, 100].map(limit => (
@@ -513,20 +534,20 @@ export function Table({
           <div className="flex items-center space-x-1 border border-gray-200/60 dark:border-gray-800/80 rounded-lg p-0.5 bg-white dark:bg-slate-900 shadow-sm ml-auto">
             <button
               type="button"
-              onClick={() => pagination.onPageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage <= 1 || loading}
+              onClick={() => normalizedPagination.onPageChange(normalizedPagination.currentPage - 1)}
+              disabled={normalizedPagination.currentPage <= 1 || loading}
               aria-label="Halaman Sebelumnya"
               className="h-6 px-2 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-md disabled:opacity-40 disabled:hover:bg-transparent transition-all duration-200"
             >
               Prev
             </button>
             <div className="px-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20 py-0.5 rounded-md border border-indigo-100/30" aria-current="page">
-              {pagination.currentPage} / {pagination.totalPages}
+              {normalizedPagination.currentPage} / {normalizedPagination.totalPages}
             </div>
             <button
               type="button"
-              onClick={() => pagination.onPageChange(pagination.currentPage + 1)}
-              disabled={pagination.currentPage >= pagination.totalPages || loading}
+              onClick={() => normalizedPagination.onPageChange(normalizedPagination.currentPage + 1)}
+              disabled={normalizedPagination.currentPage >= normalizedPagination.totalPages || loading}
               aria-label="Halaman Selanjutnya"
               className="h-6 px-2 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800/50 rounded-md disabled:opacity-40 disabled:hover:bg-transparent transition-all duration-200"
             >
