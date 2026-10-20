@@ -161,8 +161,24 @@ export class HubinPenempatanService extends HubinCommonHelper {
       where.AND = andConditions;
     }
 
-    const [total, data] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [total, activeCount, finishedCount, mitraGroup, overdueCount, data] = await Promise.all([
       prisma.siswaPkl.count({ where }),
+      prisma.siswaPkl.count({ where: { ...where, status: 'AKTIF' } }),
+      prisma.siswaPkl.count({ where: { ...where, status: 'SELESAI' } }),
+      prisma.siswaPkl.groupBy({
+        by: ['mitra_id'],
+        where,
+      }),
+      prisma.siswaPkl.count({
+        where: {
+          ...where,
+          status: 'AKTIF',
+          tanggal_selesai: { lt: todayStart },
+        },
+      }),
       prisma.siswaPkl.findMany({
         where,
         include: {
@@ -261,6 +277,13 @@ export class HubinPenempatanService extends HubinCommonHelper {
         page,
         limit,
         totalPages: Math.ceil(total / limit)
+      },
+      stats: {
+        total,
+        active: activeCount,
+        finished: finishedCount,
+        mitraCount: mitraGroup.length,
+        overdueCount
       }
     };
   }

@@ -344,10 +344,11 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   }, [pagination]);
 
   const stats = useMemo(() => {
-    const totalCount = rawPenempatan?.length || 0;
-    const activeCount = rawPenempatan?.filter((p: SiswaPkl) => p.status === 'AKTIF').length || 0;
-    const finishedCount = rawPenempatan?.filter((p: SiswaPkl) => p.status === 'SELESAI').length || 0;
-    const mitraCount = Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0;
+    const backendStats = (penempatanData as any)?.stats;
+    const totalCount = backendStats?.total ?? pagination?.total ?? (rawPenempatan?.length || 0);
+    const activeCount = backendStats?.active ?? (rawPenempatan?.filter((p: SiswaPkl) => p.status === 'AKTIF').length || 0);
+    const finishedCount = backendStats?.finished ?? (rawPenempatan?.filter((p: SiswaPkl) => p.status === 'SELESAI').length || 0);
+    const mitraCount = backendStats?.mitraCount ?? (Array.from(new Set((rawPenempatan ?? [])?.map((p: SiswaPkl) => p.mitra_id))).length || 0);
 
     return [
       {
@@ -375,7 +376,7 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
         gradient: 'from-amber-400 to-orange-600'
       }
     ];
-  }, [rawPenempatan]);
+  }, [penempatanData, pagination, rawPenempatan]);
 
   const breadcrumbs = [
     { label: 'Dashboard', path: '/dashboard' },
