@@ -1180,19 +1180,34 @@ export const ImportPlottingPklWizardModal: React.FC<ImportPlottingPklWizardModal
 
                         {/* Pembimbing */}
                         <td className="p-2.5">
-                          <div className="space-y-1">
-                            <div className="text-slate-800 dark:text-slate-200 font-medium truncate max-w-[190px]">
-                              {r.pembimbing_db_nama || r.pembimbing_excel || '-'}
+                          <div className="space-y-1 min-w-[190px]">
+                            <div className="flex items-center space-x-1 text-[11px]">
+                              <span className="text-slate-500 truncate max-w-[140px]" title={r.pembimbing_excel}>
+                                {r.pembimbing_excel ? `Excel: ${r.pembimbing_excel}` : 'Excel: -'}
+                              </span>
+                              {r.pembimbing_match_type === 'NIP_EXACT' && (
+                                <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 px-1 py-0.2 rounded text-[10px] font-mono whitespace-nowrap">
+                                  NIP ✓
+                                </span>
+                              )}
+                              {r.pembimbing_match_type === 'NAME_FUZZY' && (
+                                <span className="bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400 px-1 py-0.2 rounded text-[10px] whitespace-nowrap">
+                                  Nama ≈
+                                </span>
+                              )}
+                              {r.pembimbing_match_type === 'MANUAL' && (
+                                <span className="bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-400 px-1 py-0.2 rounded text-[10px] whitespace-nowrap">
+                                  Manual ✎
+                                </span>
+                              )}
                             </div>
-                            {!r.pembimbing_id && (
-                              <SearchableSelect
-                                placeholder="Tunjuk guru pembimbing..."
-                                options={guruOptions}
-                                value={r.pembimbing_id || ''}
-                                onChange={(val) => handleUpdateRowGuru(r.row_id, val)}
-                                className="text-xs"
-                              />
-                            )}
+                            <SearchableSelect
+                              placeholder="Tunjuk guru pembimbing..."
+                              options={guruOptions}
+                              value={r.pembimbing_id || ''}
+                              onChange={(val) => handleUpdateRowGuru(r.row_id, val)}
+                              className="text-xs"
+                            />
                           </div>
                         </td>
 
