@@ -117,7 +117,7 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
   });
 
   const guruList = useMemo(() => {
-    return (rawGuruList || []).map((g) => ({
+    return (rawGuruList || [])?.map((g) => ({
       id: g.id,
       nama_guru: g.nama_guru || '',
       nip: g.nip || null,

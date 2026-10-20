@@ -265,7 +265,7 @@ export const PengujiCombobox: React.FC<PengujiComboboxProps> = ({
                   )}
                 </div>
               ) : (
-                filteredGuruList.map((g) => {
+                filteredGuruList?.map((g) => {
                   const isSelected =
                     (value || '').trim().toLowerCase() === (g.nama_guru || '').trim().toLowerCase();
 

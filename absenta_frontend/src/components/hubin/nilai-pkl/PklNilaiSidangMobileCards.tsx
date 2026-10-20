@@ -84,7 +84,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   };
 
   const expandAll = () => {
-    const allIds = (paginatedScores || []).map((s) => s.siswa_pkl_id).filter(Boolean);
+    const allIds = (paginatedScores || [])?.map((s) => s.siswa_pkl_id).filter(Boolean);
     setExpandedCardIds(new Set(allIds));
   };
 
@@ -144,7 +144,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
           Belum ada data sidang siswa pada kelas atau filter ini.
         </div>
       ) : (
-        paginatedScores.map((score, index) => {
+        paginatedScores?.map((score, index) => {
           const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
           const isExpanded = expandedCardIds.has(score.siswa_pkl_id);
           const isAktif = score.status === 'AKTIF' || !score.status;
@@ -513,7 +513,7 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
               }}
               className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
             >
-              {PAGINATION_LIMITS.map((limit) => (
+              {PAGINATION_LIMITS?.map((limit) => (
                 <option key={limit} value={limit}>
                   {limit} / hal
                 </option>
