@@ -165,9 +165,14 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     },
   });
 
+  const effectiveJurusanId = isKaprog ? kaprogJurusan?.id : selectedJurusanFilter || undefined;
+
   const { data: deskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
-    queryKey: ['deskripsi-tp-list', tenantId, selectedMitra],
-    queryFn: () => hubinApi.getSettingDeskripsiPklList({ mitra_id: selectedMitra || undefined }),
+    queryKey: ['deskripsi-tp-list', tenantId, selectedMitra, effectiveJurusanId],
+    queryFn: () => hubinApi.getSettingDeskripsiPklList({
+      mitra_id: selectedMitra || undefined,
+      jurusan_id: effectiveJurusanId,
+    }),
   });
 
   const [scores, setScores] = useState<ScoreRow[]>([]);
@@ -353,7 +358,9 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const saveDeskripsiTpMutation = useMutation({
     mutationFn: hubinApi.upsertSettingDeskripsiPkl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor'] });
       toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil disimpan!');
       setDeskripsiTpText('');
     },

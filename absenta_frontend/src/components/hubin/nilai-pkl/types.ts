@@ -131,8 +131,10 @@ export interface RawPklItem {
 export interface DeskripsiTpItem {
   id: string;
   mitra_id?: string;
+  jurusan_id?: string;
   deskripsi_tp: string;
   Mitra?: { nama: string };
+  Jurusan?: { id: string; nama: string; singkatan: string };
 }
 
 export function calculateNilaiAkhirPkl(

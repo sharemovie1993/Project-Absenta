@@ -123,10 +123,18 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
 
     // Gabungkan dengan data deskripsi yang sudah tersimpan di database
     return Array.from(map.values()).map((slot) => {
-      const saved = deskripsiListData.find((d) => 
-        d.mitra_id === slot.mitra_id || 
-        d.Mitra?.nama?.toLowerCase() === slot.mitra_nama.toLowerCase()
-      );
+      const saved = deskripsiListData.find((d) => {
+        const matchMitra = 
+          d.mitra_id === slot.mitra_id || 
+          d.Mitra?.nama?.toLowerCase() === slot.mitra_nama.toLowerCase();
+        if (!matchMitra) return false;
+
+        // Pencocokan presisi: jika ada scope jurusan (Kaprog atau Filter Hubin), pastikan jurusan_id cocok
+        if (targetJurusanId && d.jurusan_id) {
+          return d.jurusan_id === targetJurusanId;
+        }
+        return true;
+      });
 
       return {
         mitra_id: slot.mitra_id,
