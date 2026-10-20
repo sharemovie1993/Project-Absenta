@@ -137,13 +137,21 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
   ], []);
 
-  const renderVerticalHeader = (title: string) => (
-    <div className="flex items-end justify-center h-28 pb-1.5 w-full">
-      <span className="[writing-mode:vertical-rl] rotate-180 text-[10.5px] font-bold tracking-tight text-slate-700 dark:text-slate-200 select-none whitespace-nowrap">
-        {title}
-      </span>
-    </div>
-  );
+  const renderVerticalHeader = (title: string) => {
+    const words = title.split(' ');
+    return (
+      <div className="flex items-end justify-center gap-0.5 h-[72px] pb-1 w-full">
+        {words.map((word, idx) => (
+          <span
+            key={idx}
+            className="[writing-mode:vertical-rl] rotate-180 text-[10px] font-bold tracking-tight text-slate-700 dark:text-slate-200 select-none whitespace-nowrap leading-none"
+          >
+            {word}
+          </span>
+        ))}
+      </div>
+    );
+  };
 
   const spreadsheetColumns = useMemo<SpreadsheetColumn<ScoreRow>[]>(() => [
     {
@@ -370,7 +378,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     {
       key: 'soft_tanggung_jawab',
       header: renderVerticalHeader('Tanggung Jawab'),
-      width: 38,
+      width: 42,
       align: 'center',
       headerClassName: 'text-center align-bottom p-0',
       renderCell: (score, rowIndex) => (
