@@ -4,6 +4,7 @@ import { AcademicContextBar } from '@/components/common';
 import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
+import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
 import {
   SpreadsheetGridTable,
   SpreadsheetCellInput,
@@ -575,101 +576,119 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
       </Card>
       )}
 
-      {/* High-Density Spreadsheet Grid Table */}
-      <SpreadsheetGridTable<ScoreRow>
-        data={paginatedScores || []}
-        columns={spreadsheetColumns}
-        columnGroups={columnGroups}
-        rowKey={(score, index) => score.siswa_pkl_id || `sidang-${index}`}
-        isLoading={isLoadingRekap}
-        emptyMessage={
-          selectedKelas
-            ? 'Belum ada data sidang pada kelas yang dipilih.'
-            : 'Belum ada data sidang pada periode akademik ini.'
-        }
-        density="compact"
-        enableFullscreen={true}
-        autoHeight={true}
-        headerTitle="Lembar Penilaian Laporan & Sidang PKL"
-        headerActions={
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              aria-label="Simpan perubahan nilai"
-              onClick={onSaveBatch}
-              disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
-              title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-3.5 h-3.5" />
-              <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : 'Simpan')}</span>
-            </Button>
-
-            {onNavigateCetakRapor && (
+      {/* High-Density Spreadsheet Grid Table (Desktop) vs Mobile Cards (HP) */}
+      {isMobile ? (
+        <PklNilaiSidangMobileCards
+          paginatedScores={paginatedScores || []}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+          setCurrentPage={setCurrentPage}
+          handleScoreChange={handleScoreChange}
+          onSaveBatch={onSaveBatch}
+          isSavingBatch={isSavingBatch}
+          displayedScoresLength={displayedScores?.length || 0}
+          isLoadingRekap={isLoadingRekap}
+          isCompositeMode={isCompositeMode}
+          effectiveSettings={effectiveSettings}
+        />
+      ) : (
+        <SpreadsheetGridTable<ScoreRow>
+          data={paginatedScores || []}
+          columns={spreadsheetColumns}
+          columnGroups={columnGroups}
+          rowKey={(score, index) => score.siswa_pkl_id || `sidang-${index}`}
+          isLoading={isLoadingRekap}
+          emptyMessage={
+            selectedKelas
+              ? 'Belum ada data sidang pada kelas yang dipilih.'
+              : 'Belum ada data sidang pada periode akademik ini.'
+          }
+          density="compact"
+          enableFullscreen={true}
+          autoHeight={true}
+          headerTitle="Lembar Penilaian Laporan & Sidang PKL"
+          headerActions={
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
-                onClick={onNavigateCetakRapor}
-                className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                title="Buka Lembar Cetak Rapor & Sertifikat PKL"
+                aria-label="Simpan perubahan nilai"
+                onClick={onSaveBatch}
+                disabled={isSavingBatch || displayedScores?.length === 0 || !isCompositeMode}
+                title={!isCompositeMode ? 'Form terkunci karena skema aktif adalah DUDI 100%' : undefined}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md shadow-indigo-100 dark:shadow-none text-xs h-[34px] px-3.5 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Printer className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                <span>Cetak Rapor</span>
+                <Save className="w-3.5 h-3.5" />
+                <span>{isSavingBatch ? 'Menyimpan...' : (!isCompositeMode ? 'Skema Terkunci' : 'Simpan')}</span>
               </Button>
-            )}
-          </div>
-        }
-        footerActions={
-          displayedScores?.length > 0 ? (
-            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center gap-4">
-                <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                  Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, displayedScores.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{displayedScores.length}</span> Siswa
-                </div>
-                <div className="flex items-center gap-2">
-                  <label htmlFor="sidang-limit-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Limit:</label>
-                  <select 
-                    id="sidang-limit-select"
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer shadow-2xs"
-                  >
-                    {PAGINATION_LIMITS?.map((limit) => (
-                      <option key={limit} value={limit}>{limit} / hal</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="flex items-center space-x-1 border border-slate-200/80 dark:border-slate-800 rounded-xl p-0.5 bg-white dark:bg-slate-900 shadow-2xs">
-                <button
+
+              {onNavigateCetakRapor && (
+                <Button
                   type="button"
-                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage <= 1}
-                  aria-label="Halaman Sebelumnya"
-                  className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+                  variant="outline"
+                  onClick={onNavigateCetakRapor}
+                  className="border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 rounded-xl font-bold text-xs h-[34px] px-3 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Buka Lembar Cetak Rapor & Sertifikat PKL"
                 >
-                  Prev
-                </button>
-                <div className="px-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-900/40" aria-current="page">
-                  {currentPage} / {totalPages}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage >= totalPages}
-                  aria-label="Halaman Selanjutnya"
-                  className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-                >
-                  Next
-                </button>
-              </div>
+                  <Printer className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>Cetak Rapor</span>
+                </Button>
+              )}
             </div>
-          ) : undefined
-        }
-      />
+          }
+          footerActions={
+            displayedScores?.length > 0 ? (
+              <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  <div className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                    Menampilkan <span className="font-bold text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> - <span className="font-bold text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, displayedScores.length)}</span> dari <span className="font-bold text-slate-700 dark:text-slate-300">{displayedScores.length}</span> Siswa
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="sidang-limit-select" className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Limit:</label>
+                    <select 
+                      id="sidang-limit-select"
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all cursor-pointer shadow-2xs"
+                    >
+                      {PAGINATION_LIMITS?.map((limit) => (
+                        <option key={limit} value={limit}>{limit} / hal</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-1 border border-slate-200/80 dark:border-slate-800 rounded-xl p-0.5 bg-white dark:bg-slate-900 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    aria-label="Halaman Sebelumnya"
+                    className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+                  >
+                    Prev
+                  </button>
+                  <div className="px-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/40 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-900/40" aria-current="page">
+                    {currentPage} / {totalPages}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    aria-label="Halaman Selanjutnya"
+                    className="h-6 px-2.5 text-[10px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : undefined
+          }
+        />
+      )}
     </div>
   );
 };
