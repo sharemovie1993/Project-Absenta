@@ -47,6 +47,7 @@ import {
   QrCode,
   MapPin,
   Flag,
+  AlertCircle,
   Zap
 } from 'lucide-react';
 
@@ -412,6 +413,15 @@ export const UnifiedStaffDashboard: React.FC = () => {
     enabled: !!isKaprog && can('dashboard.view.kaprog') && activeTab === 'ringkasan',
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: kaprogPklSummaryRes } = useQuery({
+    queryKey: ['kaprog-pkl-summary', kaprogJurusan?.id],
+    queryFn: () => hubinApi.getKaprogSummary({ jurusan_id: kaprogJurusan?.id }).catch(() => ({ success: true, data: null })),
+    enabled: !!isKaprog,
+    staleTime: 60 * 1000,
+  });
+
+  const pendingTpCount = kaprogPklSummaryRes?.data?.tpStatus?.pendingMitra || 0;
 
   const { data: toolmanStatsRes, isLoading: toolmanStatsLoading } = useQuery({
     queryKey: ['dashboard', 'toolman', 'stats'],
@@ -844,7 +854,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
         id: 'kaprog', 
         label: 'Kaprog Jurusan', 
         icon: Award, 
-        badge: kaprogJurusan?.singkatan || 'KAPROG' 
+        badge: pendingTpCount > 0 ? `${pendingTpCount} TP Belum Diisi` : (kaprogJurusan?.singkatan || 'KAPROG'),
+        badgeColor: pendingTpCount > 0 ? 'bg-amber-500 text-white animate-pulse' : 'bg-blue-500 text-white'
       });
     }
 
@@ -1116,7 +1127,10 @@ export const UnifiedStaffDashboard: React.FC = () => {
                 <TabIcon size={15} className={isTabActive ? "text-emerald-400" : "text-slate-400"} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs uppercase">
+                  <span className={cn(
+                    "px-2 py-0.5 rounded-full text-[9px] font-black flex items-center justify-center shadow-xs uppercase",
+                    (tab as any).badgeColor || "bg-blue-500 text-white"
+                  )}>
                     {tab.badge}
                   </span>
                 )}
@@ -1125,6 +1139,43 @@ export const UnifiedStaffDashboard: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {/* ACTIONABLE TO-DO ALERT BANNER: KAPROG PENDING TP NOTIFICATION       */}
+      {/* ────────────────────────────────────────────────────────────────── */}
+      {isKaprog && pendingTpCount > 0 && activeTab !== 'kaprog' && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs shrink-0">
+              <AlertCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                Tugas Mendesak Kaprog: Terdapat {pendingTpCount} industri mitra {kaprogJurusan?.nama ? `Jurusan ${kaprogJurusan.nama}` : ''} belum memiliki Tujuan Pembelajaran (TP) PKL
+              </p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                Segera lengkapi rumusan TP agar nilai rapor PKL siswa dapat diinput oleh pembimbing dan DUDI.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={() => handleTabChange('kaprog')}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 cursor-pointer"
+            >
+              Lihat di Tab Kaprog
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
+              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white shadow-xs cursor-pointer"
+            >
+              Lengkapi TP Sekarang ➔
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ────────────────────────────────────────────────────────────────── */}
       {/* TAB CONTENT AREA                                                   */}

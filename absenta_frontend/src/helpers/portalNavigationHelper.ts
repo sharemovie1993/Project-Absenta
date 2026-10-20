@@ -174,8 +174,9 @@ export function getUserStructuralActions(user: any): StructuralPositionAction[] 
     addAction({
       id: 'kaprog',
       code: 'KAPROG',
-      label: 'Monitoring Kaprog',
-      path: '/hubin',
+      label: 'Dashboard Kaprog',
+      path: '/dashboard?tab=kaprog',
+      tab: 'kaprog',
       iconName: 'Award',
       colorClass: 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800',
     });
