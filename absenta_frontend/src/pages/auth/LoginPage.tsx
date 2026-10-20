@@ -321,12 +321,15 @@ export default function LoginPage() {
       return <Navigate to={location.state?.from?.pathname || '/tenants'} replace />;
     }
 
-    const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard';
+    const defaultHome = isGerbang ? '/attendance/ops' : '/dashboard?tab=portal';
     const hasCompletedOnboarding = useAuthStore.getState().hasCompletedOnboarding;
     const isAdmin = roleName === 'ADMIN';
 
+    const fromPath = location.state?.from?.pathname;
+    const effectiveTarget = fromPath && fromPath !== '/' && fromPath !== '/dashboard' ? fromPath : defaultHome;
+
     // Redirect to onboarding if not completed yet (only for school admins)
-    const target = sub?.status === 'PENDING_PAYMENT' ? '/billing' : !hasCompletedOnboarding && isAdmin ? '/onboarding' : location.state?.from?.pathname || defaultHome;
+    const target = sub?.status === 'PENDING_PAYMENT' ? '/billing' : !hasCompletedOnboarding && isAdmin ? '/onboarding' : effectiveTarget;
     return <Navigate to={target} replace />;
   }
   const containerVariants = {

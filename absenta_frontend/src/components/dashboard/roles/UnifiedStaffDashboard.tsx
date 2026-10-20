@@ -276,17 +276,8 @@ export const UnifiedStaffDashboard: React.FC = () => {
 
 
 
-  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Beranda Guru / Ringkasan Utama)
-  const defaultTabId = useMemo(() => {
-    // 1. Admin murni mendarat di Dashboard Admin
-    if (isAdminRole && !isKepsek) return 'admin';
-    // 2. Kepala Sekolah, seluruh Pendidik / Staf yang memegang tugas KBM delegasi, dan Staf Gerbang mendarat di Beranda / Ringkasan
-    if (isKepsek || isEffectivePendidik || isPureGerbangStaff) return 'ringkasan';
-    // 3. Staf TU murni tanpa jadwal mengajar mendarat di tab Tata Usaha
-    if (isTuStaff) return 'kepegawaian';
-    // 4. Default fallback aman
-    return 'ringkasan';
-  }, [isAdminRole, isKepsek, isEffectivePendidik, isPureGerbangStaff, isTuStaff]);
+  // 🎯 SMART DEFAULT TAB RESOLUTION (Default Landing: Portal Pusat Modul Sekolah)
+  const defaultTabId = 'portal';
 
   // Synchronize Active Tab with Query Param (?tab=...) atau Smart Default Tab (dengan guard akses)
   const requestedTab = searchParams.get('tab');

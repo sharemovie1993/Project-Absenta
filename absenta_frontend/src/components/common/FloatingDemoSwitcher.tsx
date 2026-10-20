@@ -138,11 +138,9 @@ export const FloatingDemoSwitcher: React.FC = () => {
       toast.success(`Berhasil masuk sebagai ${profile.simulatedName} (${profile.title})!`, { id: 'switch-demo' });
       setIsOpen(false);
 
-      // 4. Clean Redirect to target dashboard
-      let targetPath = '/dashboard';
-      if (profile.roleCode === 'SISWA' || profile.category === 'STUDENT') {
-        targetPath = '/student/dashboard';
-      } else if (profile.roleCode === 'ORANG_TUA') {
+      // 4. Clean Redirect to target dashboard (Default mendarat di Portal Sekolah)
+      let targetPath = '/dashboard?tab=portal';
+      if (profile.roleCode === 'ORANG_TUA') {
         targetPath = '/parent-app';
       }
 

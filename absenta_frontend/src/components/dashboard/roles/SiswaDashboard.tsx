@@ -99,8 +99,8 @@ export const SiswaDashboard: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isPetugasKelas = can('attendance.sessions.update.attendance');
 
-  // Synchronize Active Tab with URL Query Parameter (?tab=ringkasan)
-  const activeTab = searchParams.get('tab') || 'ringkasan';
+  // Synchronize Active Tab with URL Query Parameter (Default Landing: Portal Sekolah)
+  const activeTab = searchParams.get('tab') || 'portal';
 
   const handleTabChange = (newTab: string) => {
     setSearchParams({ tab: newTab });
