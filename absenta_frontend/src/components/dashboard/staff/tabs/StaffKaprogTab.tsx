@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { 
   Award, 
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Card, Button, Badge, Loader } from '@/components/ui';
 import { hubinApi } from '@/api/hubin.api';
+import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { cn } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
@@ -32,6 +33,10 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
   kaprogJurusan,
 }) => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  // State untuk modal proxy floating input/edit TP langsung di dashboard
+  const [activeEditingSlot, setActiveEditingSlot] = useState<EditingMitraSlot | null>(null);
 
   // Query Kaprog Summary dari Backend
   const { 
@@ -53,6 +58,37 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
   const pendingMitraList: any[] = summaryData?.pendingMitraList || [];
 
   const hasPendingTp = tpStatus.pendingMitra > 0;
+
+  // Mutation untuk simpan deskripsi TP (in-place proxy)
+  const saveMutation = useMutation({
+    mutationFn: (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) =>
+      hubinApi.upsertSettingDeskripsiPkl(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      toast.success('Deskripsi TP berhasil disimpan!');
+      setActiveEditingSlot(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menyimpan deskripsi TP');
+    },
+  });
+
+  // Mutation untuk hapus deskripsi TP
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => hubinApi.deleteSettingDeskripsiPkl(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      toast.success('Deskripsi TP berhasil dihapus!');
+      setActiveEditingSlot(null);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Gagal menghapus deskripsi TP');
+    },
+  });
 
   const handleSinkron = async () => {
     try {
@@ -139,8 +175,22 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
               <Button
                 type="button"
                 size="sm"
-                onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-                className="w-full md:w-auto shrink-0 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white gap-1.5"
+                onClick={() => {
+                  if (pendingMitraList.length > 0) {
+                    const first = pendingMitraList[0];
+                    setActiveEditingSlot({
+                      mitra_id: first.mitra_id,
+                      mitra_nama: first.nama_mitra,
+                      siswa_count: first.siswa_count,
+                      rombel_list: first.rombel_list || [],
+                      deskripsi_tp: '',
+                      saved_id: undefined,
+                    });
+                  } else {
+                    navigate('/hubin/nilai-pkl?tab=deskripsi');
+                  }
+                }}
+                className="w-full md:w-auto shrink-0 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white gap-1.5 cursor-pointer"
               >
                 <span>Lengkapi TP</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -354,7 +404,14 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
                         <td className="py-3 px-4 text-right">
                           <button
                             type="button"
-                            onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
+                            onClick={() => setActiveEditingSlot({
+                              mitra_id: mitra.mitra_id,
+                              mitra_nama: mitra.nama_mitra,
+                              siswa_count: mitra.siswa_count,
+                              rombel_list: mitra.rombel_list || [],
+                              deskripsi_tp: mitra.deskripsi_tp || '',
+                              saved_id: mitra.saved_id,
+                            })}
                             className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer inline-flex items-center gap-1"
                           >
                             <span>{mitra.has_tp ? 'Ubah TP' : 'Rumuskan TP'}</span>
@@ -370,6 +427,25 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
           </Card>
         </>
       )}
+
+      {/* Floating Modal Proxy untuk Rumuskan/Ubah TP langsung di Dashboard Kaprog */}
+      <PklDeskripsiTpModal
+        isOpen={Boolean(activeEditingSlot)}
+        onClose={() => setActiveEditingSlot(null)}
+        slot={activeEditingSlot}
+        kaprogJurusan={jurusanInfo}
+        onSave={(payload) => {
+          saveMutation.mutate({
+            ...payload,
+            jurusan_id: kaprogJurusan?.id || payload.jurusan_id,
+          });
+        }}
+        onDelete={(savedId) => {
+          deleteMutation.mutate(savedId);
+        }}
+        isSaving={saveMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+      />
     </div>
   );
 };

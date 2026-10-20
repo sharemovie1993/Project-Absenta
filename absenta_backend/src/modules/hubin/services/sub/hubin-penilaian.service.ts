@@ -1109,10 +1109,17 @@ export class HubinPenilaianService extends HubinCommonHelper {
         mitra_id: { in: uniqueMitraIds },
         ...(jurusanId ? { jurusan_id: jurusanId } : {})
       },
-      select: { mitra_id: true, deskripsi_tp: true }
+      select: { id: true, mitra_id: true, deskripsi_tp: true }
     });
 
-    const filledMitraIds = new Set(existingDeskripsi.filter(d => (d.deskripsi_tp || '').trim().length > 0).map(d => d.mitra_id));
+    const deskripsiMap = new Map<string, { id: string; deskripsi_tp: string }>();
+    for (const d of existingDeskripsi) {
+      if ((d.deskripsi_tp || '').trim().length > 0) {
+        deskripsiMap.set(d.mitra_id, { id: d.id, deskripsi_tp: d.deskripsi_tp });
+      }
+    }
+
+    const filledMitraIds = new Set(deskripsiMap.keys());
 
     const totalMitra = uniqueMitraIds.length;
     const filledMitra = filledMitraIds.size;
@@ -1149,15 +1156,20 @@ export class HubinPenilaianService extends HubinCommonHelper {
         belumSidang
       },
       pendingMitraList,
-      allMitraList: Array.from(mitraMap.values()).map(item => ({
-        mitra_id: item.mitra_id,
-        nama_mitra: item.nama_mitra,
-        alamat: item.alamat,
-        bidang_usaha: item.bidang_usaha,
-        siswa_count: item.siswa_count,
-        rombel_list: Array.from(item.rombel_set),
-        has_tp: filledMitraIds.has(item.mitra_id)
-      }))
+      allMitraList: Array.from(mitraMap.values()).map(item => {
+        const saved = deskripsiMap.get(item.mitra_id);
+        return {
+          mitra_id: item.mitra_id,
+          nama_mitra: item.nama_mitra,
+          alamat: item.alamat,
+          bidang_usaha: item.bidang_usaha,
+          siswa_count: item.siswa_count,
+          rombel_list: Array.from(item.rombel_set),
+          has_tp: Boolean(saved),
+          deskripsi_tp: saved?.deskripsi_tp || '',
+          saved_id: saved?.id || undefined
+        };
+      })
     };
   }
 

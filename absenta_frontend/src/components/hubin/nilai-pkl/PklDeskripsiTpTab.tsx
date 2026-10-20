@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
 import { DeskripsiTpItem, ScoreRow } from './types';
+import { PklDeskripsiTpModal } from './PklDeskripsiTpModal';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 
@@ -71,7 +72,6 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
   
   // State modal/drawer edit deskripsi untuk slot mitra tertentu
   const [activeEditingSlot, setActiveEditingSlot] = useState<ActiveMitraSlot | null>(null);
-  const [editorText, setEditorText] = useState('');
 
   // 1. Agregasi Slot Mitra DUDI yang nyata digunakan oleh siswa periode aktif
   const activeMitraSlots = useMemo<ActiveMitraSlot[]>(() => {
@@ -186,45 +186,24 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
   // Buka editor untuk slot tertentu
   const handleOpenEditor = (slot: ActiveMitraSlot) => {
     setActiveEditingSlot(slot);
-    setEditorText(slot.deskripsi_tp || '');
   };
 
   // Tutup editor
   const handleCloseEditor = () => {
     setActiveEditingSlot(null);
-    setEditorText('');
-  };
-
-  // Terapkan Template Baku Kurikulum Merdeka
-  const handleApplyTemplate = (mitraNama: string) => {
-    const jurusanNama = kaprogJurusan?.nama || 'kompetensi kejuruan';
-    const template = `Peserta didik mampu memahami alur proses bisnis dan budaya kerja industri, menerapkan keselamatan dan kesehatan kerja (K3LH), serta mempraktikkan penguasaan kompetensi kejuruan ${jurusanNama} sesuai dengan Standar Operasional Prosedur (SOP) di ${mitraNama}.`;
-    setEditorText(template);
-    toast.success('Template capaian Kurikulum Merdeka berhasil disisipkan!');
   };
 
   // Simpan deskripsi TP untuk slot aktif
-  const handleSaveSlot = () => {
-    if (!activeEditingSlot) return;
-    if (!editorText.trim() || editorText.trim().length < 5) {
-      toast.error('Deskripsi TP minimal 5 karakter');
-      return;
-    }
-
+  const handleSaveSlot = (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => {
     onSave({
-      mitra_id: activeEditingSlot.mitra_id,
-      jurusan_id: selectedJurusanFilter || kaprogJurusan?.id || undefined,
-      deskripsi_tp: editorText.trim(),
+      ...payload,
+      jurusan_id: selectedJurusanFilter || payload.jurusan_id || kaprogJurusan?.id || undefined,
     });
-
     handleCloseEditor();
   };
 
   // Hapus / Reset deskripsi TP
   const handleDeleteSlot = (savedId: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus deskripsi TP untuk perusahaan ini? Status slot akan kembali menjadi belum diisi.')) {
-      return;
-    }
     onDelete?.(savedId);
     handleCloseEditor();
   };
@@ -348,101 +327,17 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
         </div>
       </div>
 
-      {/* Modal / Dialog Edit Deskripsi TP untuk Slot Mitra */}
-      {activeEditingSlot && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-850">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                  <Edit3 className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                    {activeEditingSlot.mitra_nama}
-                  </h4>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {activeEditingSlot.rombel_list.join(', ')} • {activeEditingSlot.siswa_count} Siswa PKL
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleCloseEditor}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4 overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <label htmlFor="slot-editor-text" className="text-xs font-bold text-slate-700 dark:text-slate-200">
-                  Deskripsi Capaian Pembelajaran (TP)
-                </label>
-                <button
-                  type="button"
-                  onClick={() => handleApplyTemplate(activeEditingSlot.mitra_nama)}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Gunakan Template</span>
-                </button>
-              </div>
-
-              <textarea
-                id="slot-editor-text"
-                rows={4}
-                value={editorText}
-                onChange={(e) => setEditorText(e.target.value)}
-                placeholder="Peserta didik mampu memahami alur proses bisnis industri, menerapkan K3LH, serta mempraktikkan..."
-                className="w-full p-3 text-xs sm:text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all leading-relaxed resize-none"
-              />
-
-              <p className="text-[11px] text-slate-400">
-                Gunakan kata kerja operasional terukur (memahami, mempraktikkan, menganalisis) sesuai bidang pekerjaan di DUDI.
-              </p>
-            </div>
-
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-              <div>
-                {activeEditingSlot.saved_id && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleDeleteSlot(activeEditingSlot.saved_id!)}
-                    disabled={isDeleting || isSaving}
-                    className="rounded-xl text-xs font-bold text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>{isDeleting ? 'Menghapus...' : 'Hapus TP'}</span>
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleCloseEditor}
-                  className="rounded-xl text-xs font-bold"
-                >
-                  Batal
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleSaveSlot}
-                  disabled={isSaving || isDeleting}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{isSaving ? 'Menyimpan...' : 'Simpan Deskripsi TP'}</span>
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal / Dialog Edit Deskripsi TP untuk Slot Mitra (Floating Modal Proxy) */}
+      <PklDeskripsiTpModal
+        isOpen={Boolean(activeEditingSlot)}
+        onClose={handleCloseEditor}
+        slot={activeEditingSlot}
+        kaprogJurusan={kaprogJurusan}
+        onSave={handleSaveSlot}
+        onDelete={handleDeleteSlot}
+        isSaving={isSaving}
+        isDeleting={isDeleting}
+      />
 
       {/* Grid Slot Kartu Industri */}
       {isLoadingDeskripsi ? (
