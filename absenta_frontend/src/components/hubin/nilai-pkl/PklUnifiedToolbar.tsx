@@ -98,13 +98,6 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
   isSavingBatch,
   displayedScoresLength,
 }) => {
-  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai';
-
-  const classSelectOptions = useMemo(() => [
-    { value: '', label: `-- Semua Kelas PKL (${scoresCount} Siswa) --` },
-    ...(smartClassOptions?.map((c) => ({ value: c.value, label: c.label })) || [])
-  ], [scoresCount, smartClassOptions]);
-
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai';
 
