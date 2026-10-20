@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ScoreRow } from './types';
+import { PengujiCombobox, GuruItem } from './PengujiCombobox';
 import {
   ChevronDown,
   ChevronUp,
@@ -36,6 +37,9 @@ export interface PklNilaiSidangMobileCardsProps {
     weightLaporan: number;
     weightSidang: number;
   };
+  guruList?: GuruItem[];
+  isLoadingGuru?: boolean;
+  onApplyPengujiToAll?: (namaPenguji: string) => void;
 }
 
 const PAGINATION_LIMITS = [10, 25, 50, 100];
@@ -54,6 +58,9 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
   isLoadingRekap,
   isCompositeMode,
   effectiveSettings,
+  guruList = [],
+  isLoadingGuru = false,
+  onApplyPengujiToAll,
 }) => {
   // Set default: kartu pertama dibuka agar penguji/guru langsung paham alur pengisian
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(() => {
@@ -409,25 +416,34 @@ export const PklNilaiSidangMobileCards: React.FC<PklNilaiSidangMobileCardsProps>
 
                     <div className="space-y-2">
                       <div>
-                        <label
-                          htmlFor={`mobile-penguji-${score.siswa_pkl_id}`}
-                          className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1"
-                        >
-                          Guru Penguji
-                        </label>
-                        <input
-                          id={`mobile-penguji-${score.siswa_pkl_id}`}
-                          type="text"
-                          disabled={!isCompositeMode}
-                          placeholder={!isCompositeMode ? 'Terkunci' : 'Masukkan nama guru penguji...'}
-                          value={!isCompositeMode ? '' : (score.penguji_nama || '')}
-                          onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', e.target.value)}
-                          className={cn(
-                            'w-full h-10 px-3 text-xs rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all',
-                            !isCompositeMode
-                              ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400'
+                        <div className="flex items-center justify-between mb-1">
+                          <label
+                            htmlFor={`mobile-penguji-${score.siswa_pkl_id}`}
+                            className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300"
+                          >
+                            Guru Penguji
+                          </label>
+                          {score.penguji_nama && onApplyPengujiToAll && isCompositeMode && (
+                            <button
+                              type="button"
+                              onClick={() => onApplyPengujiToAll(score.penguji_nama)}
+                              className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                            >
+                              Terapkan ke semua siswa
+                            </button>
                           )}
+                        </div>
+                        <PengujiCombobox
+                          id={`mobile-penguji-${score.siswa_pkl_id}`}
+                          aria-label={`Nama penguji ${score.nama_siswa}`}
+                          disabled={!isCompositeMode}
+                          placeholder={!isCompositeMode ? 'Terkunci' : 'Ketik nama manual / pilih guru...'}
+                          value={!isCompositeMode ? '' : (score.penguji_nama || '')}
+                          onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val)}
+                          guruList={guruList}
+                          isLoadingGuru={isLoadingGuru}
+                          size="md"
+                          onApplyToAll={onApplyPengujiToAll}
                         />
                       </div>
 

@@ -5,6 +5,8 @@ import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import { PklNilaiSidangMobileCards } from './PklNilaiSidangMobileCards';
+import { PengujiCombobox } from './PengujiCombobox';
+import { useGuruOptions } from '@/hooks/useGuruOptions';
 import {
   SpreadsheetGridTable,
   SpreadsheetCellInput,
@@ -108,6 +110,26 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     totalCols: 2,
     idPrefix: 'sidang-score',
   });
+
+  const { rawList: rawGuruList, isLoading: isLoadingGuru } = useGuruOptions({
+    jenisPtk: 'ALL',
+    onlyActive: false,
+  });
+
+  const guruList = useMemo(() => {
+    return (rawGuruList || []).map((g) => ({
+      id: g.id,
+      nama_guru: g.nama_guru || '',
+      nip: g.nip || null,
+    }));
+  }, [rawGuruList]);
+
+  const handleApplyPengujiToAll = (namaPenguji: string) => {
+    if (!namaPenguji) return;
+    (displayedScores || []).forEach((score) => {
+      handleScoreChange(score.siswa_pkl_id, 'penguji_nama', namaPenguji);
+    });
+  };
 
   const columnGroups = useMemo<SpreadsheetColumnGroup[]>(() => [
     {
@@ -297,24 +319,21 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     {
       key: 'penguji_nama',
       header: 'Guru Penguji',
-      width: 125,
+      width: 140,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <input
+          <PengujiCombobox
             id={`score-penguji-${globalIndex}`}
             aria-label={`Nama penguji ${score.nama_siswa}`}
-            type="text"
             disabled={!isCompositeMode}
-            placeholder={!isCompositeMode ? 'Terkunci' : 'Guru Penguji...'}
+            placeholder={!isCompositeMode ? 'Terkunci' : 'Ketik / pilih guru...'}
             value={!isCompositeMode ? '' : (score.penguji_nama || '')}
-            onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', e.target.value)}
-            className={cn(
-              'w-full text-[10px] h-6 rounded px-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 border',
-              !isCompositeMode
-                ? 'bg-slate-100 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-400 cursor-not-allowed'
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400'
-            )}
+            onChange={(val) => handleScoreChange(score.siswa_pkl_id, 'penguji_nama', val)}
+            guruList={guruList}
+            isLoadingGuru={isLoadingGuru}
+            size="sm"
+            onApplyToAll={handleApplyPengujiToAll}
           />
         );
       },
@@ -404,6 +423,9 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
     effectiveSettings,
     handleScoreChange,
     handleKeyDownScore,
+    guruList,
+    isLoadingGuru,
+    handleApplyPengujiToAll,
   ]);
 
   return (
@@ -592,6 +614,9 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
           isLoadingRekap={isLoadingRekap}
           isCompositeMode={isCompositeMode}
           effectiveSettings={effectiveSettings}
+          guruList={guruList}
+          isLoadingGuru={isLoadingGuru}
+          onApplyPengujiToAll={handleApplyPengujiToAll}
         />
       ) : (
         <SpreadsheetGridTable<ScoreRow>
