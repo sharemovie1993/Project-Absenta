@@ -649,6 +649,10 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     isSaving={saveDeskripsiTpMutation.isPending}
                     deskripsiListData={deskripsiListData}
                     isLoadingDeskripsi={isLoadingDeskripsi}
+                    scores={displayedScores}
+                    isKaprog={isKaprog}
+                    kaprogJurusan={kaprogJurusan}
+                    selectedKelas={selectedKelas}
                   />
                 )}
               </Suspense>

@@ -153,8 +153,8 @@ export class HubinPenilaianController {
 
   async getSettingDeskripsiPklList(request: AuthenticatedRequest, reply: any) {
     try {
-      const { mitra_id } = request.query;
-      const data = await this.hubinService.getSettingDeskripsiPklList(request.tenantId!, mitra_id);
+      const { mitra_id, jurusan_id } = request.query as any;
+      const data = await this.hubinService.getSettingDeskripsiPklList(request.tenantId!, mitra_id, jurusan_id);
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

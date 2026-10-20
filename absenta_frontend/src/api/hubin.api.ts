@@ -261,7 +261,7 @@ export const hubinApi = {
     pembimbing_id?: string;
   }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
   upsertSettingDeskripsiPkl: (data: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
-  getSettingDeskripsiPklList: (params?: { mitra_id?: string }) => requestWithFallback<any>('get', '/hubin/deskripsi-tp', { params }),
+  getSettingDeskripsiPklList: (params?: { mitra_id?: string; jurusan_id?: string }) => requestWithFallback<any>('get', '/hubin/deskripsi-tp', { params }),
   getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
 
   // Absensi

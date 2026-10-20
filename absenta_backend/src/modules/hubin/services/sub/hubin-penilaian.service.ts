@@ -911,37 +911,47 @@ export class HubinPenilaianService extends HubinCommonHelper {
     tenantId: string,
     data: { mitra_id: string; jurusan_id?: string | null; deskripsi_tp: string }
   ) {
-    const result = await prisma.settingDeskripsiPkl.upsert({
+    const targetJurusanId = data.jurusan_id || null;
+
+    // Cari rekaman deskripsi TP eksisting untuk kombinasi tenant + mitra + jurusan
+    const existing = await prisma.settingDeskripsiPkl.findFirst({
       where: {
-        tenant_id_mitra_id_jurusan_id: {
-          tenant_id: tenantId,
-          mitra_id: data.mitra_id,
-          jurusan_id: data.jurusan_id || '',
-        },
-      },
-      update: {
-        deskripsi_tp: data.deskripsi_tp,
-      },
-      create: {
         tenant_id: tenantId,
         mitra_id: data.mitra_id,
-        jurusan_id: data.jurusan_id || null,
-        deskripsi_tp: data.deskripsi_tp,
+        jurusan_id: targetJurusanId,
       },
     });
+
+    let result;
+    if (existing) {
+      result = await prisma.settingDeskripsiPkl.update({
+        where: { id: existing.id },
+        data: { deskripsi_tp: data.deskripsi_tp },
+      });
+    } else {
+      result = await prisma.settingDeskripsiPkl.create({
+        data: {
+          tenant_id: tenantId,
+          mitra_id: data.mitra_id,
+          jurusan_id: targetJurusanId,
+          deskripsi_tp: data.deskripsi_tp,
+        },
+      });
+    }
 
     void cacheInvalidationService.invalidatePklCache(tenantId);
     return result;
   }
 
-  async getSettingDeskripsiPklList(tenantId: string, mitraId?: string) {
+  async getSettingDeskripsiPklList(tenantId: string, mitraId?: string, jurusanId?: string) {
     const where: any = { tenant_id: tenantId };
     if (mitraId) where.mitra_id = mitraId;
+    if (jurusanId) where.jurusan_id = jurusanId;
 
     return await prisma.settingDeskripsiPkl.findMany({
       where,
       include: {
-        Mitra: { select: { id: true, nama: true } },
+        Mitra: { select: { id: true, nama: true, alamat: true } },
         Jurusan: { select: { id: true, nama: true, singkatan: true } },
       },
       orderBy: { Mitra: { nama: 'asc' } },
