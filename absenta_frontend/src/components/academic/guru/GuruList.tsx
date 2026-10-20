@@ -130,11 +130,11 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const allGurus = res.data || [];
       const totalCount = allGurus.length;
 
-      // 1. Cek NIP Kosong / NIP Sementara (9999xxxxxx)
-      setAnalysisStepText('Memeriksa guru yang belum memiliki NIP atau NIP sementara (9999)...');
+      // 1. Cek NIP Kosong / NIP Sementara (999xxxxxxx)
+      setAnalysisStepText('Memeriksa guru yang belum memiliki NIP atau NIP sementara (999)...');
       await new Promise(r => setTimeout(r, 200));
       setAnalysisProgress(75);
-      const missingNip = allGurus.filter(g => !g.nip || g.nip.trim() === '' || g.nip === '-' || g.nip.startsWith('9999'));
+      const missingNip = allGurus.filter(g => !g.nip || g.nip.trim() === '' || g.nip === '-' || g.nip.startsWith('999'));
 
       // 2. Cek NIP Duplikat
       setAnalysisStepText('Mendeteksi duplikasi NIP di dalam sistem...');
@@ -143,7 +143,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
       const nipGroups: Record<string, Guru[]> = {};
       allGurus.forEach(g => {
         const nip = g.nip ? g.nip.trim() : '';
-        if (nip && nip !== '-' && !nip.startsWith('9999')) {
+        if (nip && nip !== '-' && !nip.startsWith('999')) {
           if (!nipGroups[nip]) nipGroups[nip] = [];
           nipGroups[nip].push(g);
         }
@@ -375,7 +375,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
           value={value}
           placeholder="Tanpa NIP"
           canEdit={canManage}
-          tempBadgePrefix="9999"
+          tempBadgePrefix="999"
           onSave={async (newVal) => {
             const res = await updateGuru(guru.id, { nip: newVal || null });
             if (res.success) {
@@ -979,7 +979,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">NIP Kosong / Sementara (9999)</span>
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">NIP Kosong / Sementara (999)</span>
                     <AlertCircle size={16} className={analysisResults.missingNip.length > 0 ? 'text-red-500' : 'text-slate-400'} />
                   </div>
                   <div className="mt-2 flex items-baseline gap-2">
@@ -1018,8 +1018,8 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
                       <div>
-                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Daftar Guru Tanpa NIP / NIP Sementara (9999)</h4>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Guru yang tidak memiliki NIP resmi atau berawalan 9999xxxxxx</p>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-wider">Daftar Guru Tanpa NIP / NIP Sementara (999)</h4>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Guru yang tidak memiliki NIP resmi atau berawalan 999xxxxxxx</p>
                       </div>
                       <Badge variant={analysisResults.missingNip.length > 0 ? 'error' : 'success'}>
                         {analysisResults.missingNip.length} Guru
@@ -1030,7 +1030,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                       <div className="py-8 flex flex-col items-center justify-center text-center text-slate-400 space-y-2">
                         <CheckCircle2 size={32} className="text-emerald-500" />
                         <p className="text-xs font-bold text-slate-700 dark:text-slate-200">Semua Guru Sudah Punya NIP Resmi!</p>
-                        <p className="text-[10px] text-slate-400">Tidak ada guru dengan NIP kosong atau NIP sementara 9999.</p>
+                        <p className="text-[10px] text-slate-400">Tidak ada guru dengan NIP kosong atau NIP sementara 999.</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1039,7 +1039,7 @@ const GuruList: React.FC<GuruListProps> = React.memo(({
                             <div>
                               <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{guru.nama_guru}</p>
                               <p className="text-[10px] text-slate-400">
-                                NIP Saat ini: <span className="font-mono font-bold text-red-500">{guru.nip ? (guru.nip.startsWith('9999') ? 'NIP SEMENTARA (9999)' : `"${guru.nip}"`) : 'KOSONG'}</span>
+                                NIP Saat ini: <span className="font-mono font-bold text-red-500">{guru.nip ? (guru.nip.startsWith('999') ? 'NIP SEMENTARA (999)' : `"${guru.nip}"`) : 'KOSONG'}</span>
                                 {guru.status_kepegawaian ? ` • ${guru.status_kepegawaian}` : ''}
                               </p>
                             </div>
