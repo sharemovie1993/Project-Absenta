@@ -304,46 +304,6 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
           </button>
         </div>
       </div>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('ALL')}
-            className={cn(
-              'px-3 py-1 rounded-lg transition-all cursor-pointer',
-              statusFilter === 'ALL'
-                ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 font-bold shadow-2xs'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-            )}
-          >
-            Semua ({totalSlots})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('BELUM')}
-            className={cn(
-              'px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
-              statusFilter === 'BELUM'
-                ? 'bg-amber-500 text-white font-bold shadow-2xs'
-                : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50/50'
-            )}
-          >
-            <AlertCircle className="w-3 h-3" />
-            <span>Belum Diisi ({pendingSlotsCount})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('SUDAH')}
-            className={cn(
-              'px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
-              statusFilter === 'SUDAH'
-                ? 'bg-emerald-600 text-white font-bold shadow-2xs'
-                : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50/50'
-            )}
-          >
-            <CheckCircle2 className="w-3 h-3" />
-            <span>Sudah Ada ({filledSlotsCount})</span>
-          </button>
-        </div>
-      </div>
 
       {/* Modal / Dialog Edit Deskripsi TP untuk Slot Mitra */}
       {activeEditingSlot && (
