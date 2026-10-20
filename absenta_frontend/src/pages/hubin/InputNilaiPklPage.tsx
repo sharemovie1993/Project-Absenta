@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
-import { SectionCard, Button, TabSwitcher } from '@/components/ui';
+import { Button, TabSwitcher } from '@/components/ui';
 import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
@@ -467,9 +467,8 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
             ]
           }}
         >
-          <SectionCard fullWidth className="flex flex-col w-full min-w-0 border-none shadow-none bg-transparent p-0">
-            <div className="space-y-6">
-              {isKaprog && (
+          <div className="w-full space-y-4 -mt-2 sm:-mt-3">
+            {isKaprog && (
                 <div className="flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
                   <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <div>
@@ -656,8 +655,7 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                 )}
               </Suspense>
             </div>
-          </SectionCard>
-        </AcademicPageLayout>
+          </AcademicPageLayout>
 
         <Suspense fallback={null}>
           {showSettingsModal && (
