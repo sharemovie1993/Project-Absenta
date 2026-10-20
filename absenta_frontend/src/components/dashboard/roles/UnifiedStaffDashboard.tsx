@@ -1158,18 +1158,18 @@ export const UnifiedStaffDashboard: React.FC = () => {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={() => handleTabChange('kaprog')}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 cursor-pointer"
+              className="flex-1 sm:flex-none text-center text-xs font-bold px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 hover:bg-amber-100/50 cursor-pointer"
             >
               Lihat di Tab Kaprog
             </button>
             <button
               type="button"
               onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
-              className="text-xs font-bold px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white shadow-xs cursor-pointer"
+              className="flex-1 sm:flex-none text-center text-xs font-bold px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white shadow-xs cursor-pointer"
             >
               Lengkapi TP Sekarang ➔
             </button>

@@ -269,8 +269,8 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
 
       {/* Toolbar Filter Cepat & Search */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2 flex-1">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-1">
+          <div className="relative flex-1 w-full sm:max-w-sm">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -288,7 +288,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
               value={selectedJurusanFilter}
               onChange={(e) => setSelectedJurusanFilter?.(e.target.value)}
               aria-label="Filter Berdasarkan Jurusan"
-              className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer max-w-[200px] truncate shrink-0"
+              className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer w-full sm:w-auto sm:max-w-[200px] truncate shrink-0"
             >
               <option value="">Semua Jurusan</option>
               {jurusanOptions?.map((j) => (
@@ -301,19 +301,19 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
 
           {/* Badge Penguncian Tegas untuk KAPROG (Single Jurusan Sesuai SK) */}
           {isKaprog && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 shrink-0">
-              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span>Jurusan: {kaprogJurusan?.nama || 'Kuliner'} (Terkunci Sesuai SK)</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs font-bold text-indigo-700 dark:text-indigo-300 shrink-0 self-start sm:self-auto">
+              <GraduationCap className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="truncate">Jurusan: {kaprogJurusan?.nama || 'Kuliner'} (Terkunci Sesuai SK)</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold self-start sm:self-auto shrink-0">
+        <div className="flex items-center justify-between sm:justify-start gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold w-full sm:w-auto shrink-0 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setStatusFilter('ALL')}
             className={cn(
-              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              'flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap',
               statusFilter === 'ALL'
                 ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-2xs font-bold'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -325,7 +325,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
             type="button"
             onClick={() => setStatusFilter('BELUM')}
             className={cn(
-              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              'flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap',
               statusFilter === 'BELUM'
                 ? 'bg-amber-500 text-white shadow-2xs font-bold'
                 : 'text-amber-600 dark:text-amber-400 hover:bg-amber-50/50'
@@ -337,7 +337,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
             type="button"
             onClick={() => setStatusFilter('SUDAH')}
             className={cn(
-              'px-2.5 py-1 rounded-lg transition-all cursor-pointer',
+              'flex-1 sm:flex-none text-center px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap',
               statusFilter === 'SUDAH'
                 ? 'bg-emerald-600 text-white shadow-2xs font-bold'
                 : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50/50'
@@ -404,7 +404,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
               </p>
             </div>
 
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between gap-2">
+            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
               <div>
                 {activeEditingSlot.saved_id && (
                   <Button
@@ -419,7 +419,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                 <Button
                   type="button"
                   variant="outline"
