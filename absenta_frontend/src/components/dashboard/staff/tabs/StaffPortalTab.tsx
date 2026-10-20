@@ -7,16 +7,53 @@ import {
   LayoutGrid, 
   ArrowUpRight, 
   LayoutDashboard,
-  UserCircle
+  UserCircle,
+  BookOpen,
+  Shield,
+  Building2,
+  Globe,
+  HeartHandshake,
+  Users,
+  Activity,
+  Wrench,
+  Award,
+  Briefcase,
+  ShieldCheck,
+  FileText,
+  Mail,
+  Wallet,
+  ShoppingCart,
+  GraduationCap
 } from 'lucide-react';
 import { getVisibleApps, type AbsentaApp } from '@/config/absentaAppsRegistry';
 import { 
   resolveUserDashboardTarget, 
+  getUserStructuralActions,
   getUserCapabilities, 
-  getUserPositionCodes 
+  getUserPositionCodes,
+  type StructuralPositionAction
 } from '@/helpers/portalNavigationHelper';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
+
+const STRUCTURAL_ICON_MAP: Record<string, any> = {
+  BookOpen,
+  Shield,
+  Building2,
+  Globe,
+  HeartHandshake,
+  Users,
+  Activity,
+  Wrench,
+  Award,
+  Briefcase,
+  ShieldCheck,
+  FileText,
+  Mail,
+  Wallet,
+  ShoppingCart,
+  GraduationCap,
+};
 
 interface StaffPortalTabProps {
   onBackToBeranda?: () => void;
@@ -41,8 +78,11 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
   const userCapabilities = useMemo(() => getUserCapabilities(user), [user]);
   const userPositions = useMemo(() => getUserPositionCodes(user), [user]);
 
-  // Resolusi dinamis dashboard dan label berdasarkan Base Role & STRUKTUR_CODES (Position Capabilities)
+  // Resolusi dashboard dasar (Beranda Guru, Dashboard Admin, Dashboard Siswa, dll.)
   const dashboardTarget = useMemo(() => resolveUserDashboardTarget(user), [user]);
+
+  // Resolusi tombol jabatan struktural fungsional (Kurikulum, Kesiswaan, Sarpras, Hubin, BK, Wali Kelas, dll.)
+  const structuralActions = useMemo(() => getUserStructuralActions(user), [user]);
 
   const visibleApps = useMemo(() => {
     return getVisibleApps(userCapabilities, [], roleName, userPositions);
@@ -58,7 +98,7 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
     );
   }, [visibleApps, searchQuery]);
 
-  const handleGoToDashboard = () => {
+  const handleGoToPrimaryDashboard = () => {
     if (dashboardTarget.path) {
       navigate(dashboardTarget.path);
       return;
@@ -69,6 +109,20 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
       onBackToBeranda();
     } else {
       navigate(`/dashboard?tab=${dashboardTarget.tab}`);
+    }
+  };
+
+  const handleGoToStructuralAction = (action: StructuralPositionAction) => {
+    if (action.path) {
+      navigate(action.path);
+      return;
+    }
+    if (action.tab) {
+      if (onNavigateTab) {
+        onNavigateTab(action.tab);
+      } else {
+        navigate(`/dashboard?tab=${action.tab}`);
+      }
     }
   };
 
@@ -114,8 +168,10 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
   return (
     <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-10 max-w-7xl mx-auto px-1 sm:px-0">
       
-      {/* ── TOP NAV BAR: PURE PORTAL QUICK JUMP TO DASHBOARD & PROFIL ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:px-5 sm:py-3.5 shadow-xs">
+      {/* ── TOP NAV BAR: PURE PORTAL NAVIGATION STRIP ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3 sm:px-5 sm:py-3.5 shadow-xs">
+        
+        {/* User Identity & Info */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-blue-600/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-sm">
             <LayoutGrid className="w-4 h-4" />
@@ -129,31 +185,52 @@ export const StaffPortalTab: React.FC<StaffPortalTabProps> = ({
                 Hub Sentral
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[180px] xs:max-w-[220px] sm:max-w-xs">
-              {user?.name || user?.full_name || 'Pengguna'} • {dashboardTarget.label.replace('Dashboard ', '')}
+            <p className="text-[10px] sm:text-[11px] text-slate-400 truncate max-w-[200px] xs:max-w-xs sm:max-w-sm">
+              {user?.name || user?.full_name || 'Pengguna'} {userPositions.length > 0 && `• ${userPositions.join(' / ')}`}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          {/* Tombol Navigasi ke Dashboard Fungsional Masing-Masing */}
+        {/* ── DYNAMIC 3-BUTTON ACTION GROUP ── */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          
+          {/* Tombol 1: Beranda Guru / Dashboard Utama */}
           <button
             type="button"
-            onClick={handleGoToDashboard}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+            onClick={handleGoToPrimaryDashboard}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <LayoutDashboard className="w-3.5 h-3.5" />
             <span>{dashboardTarget.label}</span>
           </button>
 
-          {/* Tombol Navigasi ke Profil Akun */}
+          {/* Tombol 2: Tombol Jabatan Struktural (Khusus yang memiliki SK Jabatan Struktural seperti Kurikulum, Kesiswaan, Sarpras, Hubin, BK, Wali Kelas) */}
+          {structuralActions.map((action) => {
+            const IconComponent = STRUCTURAL_ICON_MAP[action.iconName] || LayoutDashboard;
+            return (
+              <button
+                key={action.id}
+                type="button"
+                onClick={() => handleGoToStructuralAction(action)}
+                className={cn(
+                  "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer",
+                  action.colorClass
+                )}
+              >
+                <IconComponent className="w-3.5 h-3.5" />
+                <span>{action.label}</span>
+              </button>
+            );
+          })}
+
+          {/* Tombol 3: Profil Akun */}
           <button
             type="button"
             onClick={handleGoToProfile}
-            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
           >
             <UserCircle className="w-3.5 h-3.5" />
-            <span>Profil Akun</span>
+            <span>Profil</span>
           </button>
         </div>
       </div>
