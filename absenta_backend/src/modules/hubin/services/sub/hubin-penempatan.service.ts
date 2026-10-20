@@ -908,8 +908,8 @@ export class HubinPenempatanService extends HubinCommonHelper {
             nama: rawNama,
             alamat: item.mitra_alamat || 'Alamat dari Berkas Pemetaan PKL',
             kuota_pkl: 50,
-            status: 'AKTIF',
-            deskripsi: 'Didaftarkan otomatis melalui Wizard Import Plotting Excel'
+            mou_status: 'AKTIF',
+            bidang: 'DU/DI PKL'
           }
         });
         mitraMap.set(normalizedNama, newMitra.id);
