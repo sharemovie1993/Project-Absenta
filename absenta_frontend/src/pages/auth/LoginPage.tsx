@@ -10,6 +10,7 @@ import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ShieldCheck, ArrowRight, AlertCircle, Home, UserCheck, Smartphone, Sparkles, QrCode } from 'lucide-react';
 import { Navbar } from '@/components/layout/Navbar';
+import { RouteAccessBadge } from '@/components/layout/RouteAccessBadge';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
 import { LoginQrScannerModal } from '@/components/auth/LoginQrScannerModal';
 import { DemoRoleSelector } from '@/components/auth/DemoRoleSelector';
@@ -460,9 +461,12 @@ export default function LoginPage() {
                 scale: 1
               }} src="/logo.png" alt="Absenta Logo" className="w-16 h-16 object-contain mb-4 rounded-xl bg-slate-50 p-2 border border-slate-100 dark:border-slate-800" />}
      
-                   <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
-                      Selamat Datang{tenantName ? `,` : ''}
-                   </h1>
+                   <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                         Selamat Datang{tenantName ? `,` : ''}
+                      </h1>
+                      <RouteAccessBadge />
+                    </div>
                    <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
                       {tenantName ? `Silakan masuk ke portal ${tenantName}` : 'Masukkan kredensial Anda untuk melanjutkan ke portal sekolah.'}
                    </p>

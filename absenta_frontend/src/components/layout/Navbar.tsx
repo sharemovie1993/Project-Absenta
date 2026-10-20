@@ -9,6 +9,7 @@ import { Menu, X, ChevronRight } from 'lucide-react';
 import axiosInstance from '@/lib/axiosInstance';
 
 import { resolveProfilePhotoUrl } from '@/lib/utils';
+import { RouteAccessBadge } from './RouteAccessBadge';
 
 export const Navbar: React.FC = () => {
   const { data: systemConfig } = useQuery({
@@ -91,9 +92,12 @@ export const Navbar: React.FC = () => {
                )}
                <div className="absolute -inset-2 bg-blue-500/10 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
-            <h1 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
-              {appName}<span className="text-blue-600">.</span>
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+                {appName}<span className="text-blue-600">.</span>
+              </h1>
+              <RouteAccessBadge />
+            </div>
           </div>
 
           {/* Desktop Navigation */}

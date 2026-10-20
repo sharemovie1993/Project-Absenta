@@ -21,6 +21,7 @@ import { resolveSmartDashboardMode } from '@/helpers/dashboardModeHelper';
 import { internalCommunicationApi, communicationKeys } from '@/api/internal-communication.api';
 import { AppLauncherDropdown } from './AppLauncherDropdown';
 import { getActiveApp } from '@/config/absentaAppsRegistry';
+import { RouteAccessBadge } from './RouteAccessBadge';
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -252,6 +253,9 @@ export const Topbar = React.memo(({ onMenuClick, isSidebarOpen }: TopbarProps) =
 
         {/* Kolom 3: Konten Topbar Kanan (Minimalist & Zero-Noise) */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
+          {/* Indikator Rute Jaringan: 🟢 Lokal / 🟣 Tunnel */}
+          <RouteAccessBadge />
+
           {/* ⠶ App Launcher (9-Dots) - Akses Cepat Modul */}
           <AppLauncherDropdown />
 

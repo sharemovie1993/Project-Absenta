@@ -5,6 +5,7 @@ import { checkSlugAvailability, checkLicenseStatus } from '@/services/licenseCli
 import { WireguardManager } from '@/services/wireguardManager';
 import { getJwtSecret } from '../../utils/auth-security.util';
 import { isOnPremiseScenario } from '@/utils/deployScenario';
+import { detectAccessRoute } from '@/middlewares/accessSourceMiddleware';
 export { getJwtSecret };
 
 export const authTenantController = {
@@ -243,6 +244,10 @@ async tenantInfo(request: any, reply: any) {
         return acc;
       }, {} as Record<string, string>);
 
+      const detected = (request as any).accessRoute
+        ? { route: (request as any).accessRoute, label: (request as any).accessLabel }
+        : detectAccessRoute(request);
+
       reply.status(200);
       return {
         success: true,
@@ -255,6 +260,8 @@ async tenantInfo(request: any, reply: any) {
           address: configMap['address'] || null,
           phone: configMap['phone'] || null,
           is_tunnel_active: isTunnelActive,
+          access_route: detected.route,
+          access_label: detected.label,
         }
       };
     } catch (err) {

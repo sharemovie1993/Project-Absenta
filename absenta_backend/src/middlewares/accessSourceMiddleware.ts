@@ -113,30 +113,56 @@ function isSchoolLanIp(ip: string): boolean {
   return false;
 }
 
+export interface AccessRouteResult {
+  route: 'LOCAL' | 'TUNNEL';
+  label: 'Lokal' | 'Tunnel';
+  clientIp: string;
+}
+
+export function detectAccessRoute(request: any): AccessRouteResult {
+  if (!request) {
+    return { route: 'LOCAL', label: 'Lokal', clientIp: '' };
+  }
+
+  // 1. Cek header eksplisit dari VPS reverse proxy
+  const rawSource = request.headers?.['x-absenta-access-source'];
+  const isWgTunnelHeader = 
+    request.headers?.['x-wireguard-tunnel'] === 'true' || 
+    request.headers?.['x-absenta-via-vps'] === 'true' ||
+    request.headers?.['x-access-gateway'] === 'easy-tunnel' ||
+    request.headers?.['x-gateway-mode'] === 'easy-tunnel';
+
+  // 2. Ambil IP Klien Pertama dari X-Forwarded-For atau X-Real-IP
+  const forwardedFor = request.headers?.['x-forwarded-for'];
+  let clientIp = '';
+  if (forwardedFor) {
+    const ips = String(forwardedFor).split(',').map((s: string) => s.trim());
+    clientIp = ips[0] || '';
+  } else {
+    clientIp = request.headers?.['x-real-ip'] || request.ip || request.raw?.socket?.remoteAddress || '';
+  }
+
+  // Jika IP Klien pertama bukan IP LAN Sekolah (atau merupakan IP Publik / Subnet WireGuard), maka Publik/Tunnel!
+  const isPublicClientIp = !isSchoolLanIp(clientIp);
+
+  const isTunnel = rawSource === 'public' || isWgTunnelHeader || isPublicClientIp;
+
+  return {
+    route: isTunnel ? 'TUNNEL' : 'LOCAL',
+    label: isTunnel ? 'Tunnel' : 'Lokal',
+    clientIp,
+  };
+}
+
 export async function accessSourceMiddleware(request: any, _reply: any) {
   const startTime = Date.now();
   (request as any)._startTime = startTime;
 
-  // 1. Cek header eksplisit dari VPS reverse proxy
-  const rawSource = request.headers['x-absenta-access-source'];
-  const isWgTunnelHeader = request.headers['x-wireguard-tunnel'] === 'true' || request.headers['x-absenta-via-vps'] === 'true';
-
-  // 2. Ambil IP Klien Pertama dari X-Forwarded-For atau X-Real-IP
-  const forwardedFor = request.headers['x-forwarded-for'];
-  let clientIp = '';
-  if (forwardedFor) {
-    // Ambil IP pertama di rantai proxy X-Forwarded-For
-    const ips = String(forwardedFor).split(',').map(s => s.trim());
-    clientIp = ips[0] || '';
-  } else {
-    clientIp = request.headers['x-real-ip'] || request.ip || '';
-  }
-
-  // Jika IP Klien pertama bukan IP LAN Sekolah (atau merupakan IP Publik / Subnet WireGuard), maka Publik!
-  const isPublicClientIp = !isSchoolLanIp(clientIp);
-
-  const isPublic = rawSource === 'public' || isWgTunnelHeader || isPublicClientIp;
-  (request as any).accessSource = isPublic ? 'PUBLIC_INTERNET' : 'LAN_SCHOOL';
+  const detected = detectAccessRoute(request);
+  (request as any).accessRoute = detected.route;
+  (request as any).accessLabel = detected.label;
+  (request as any).detectedClientIp = detected.clientIp;
+  (request as any).accessSource = detected.route === 'TUNNEL' ? 'PUBLIC_INTERNET' : 'LAN_SCHOOL';
 }
 
 export function registerTelemetryHook(fastify: any) {
