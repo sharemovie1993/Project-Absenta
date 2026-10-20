@@ -160,12 +160,12 @@ export function SpreadsheetGridTable<T>({
                       left: isFreezeLeft && col.freezeOffset !== undefined ? `${col.freezeOffset}px` : undefined,
                     }}
                     className={cn(
-                      'py-2 px-2 text-[11px] font-bold border-b border-slate-200 dark:border-slate-700 select-none whitespace-nowrap',
+                      'py-2 text-[11px] font-bold border-b border-slate-200 dark:border-slate-700 select-none align-middle',
                       col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left',
                       isFreezeLeft && 'sticky z-40 bg-slate-50 dark:bg-slate-850',
                       isLastFreeze &&
                         'border-r-2 border-slate-300 dark:border-slate-700 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.08)]',
-                      col.headerClassName
+                      col.headerClassName || 'whitespace-nowrap px-2'
                     )}
                   >
                     <div>{col.header}</div>

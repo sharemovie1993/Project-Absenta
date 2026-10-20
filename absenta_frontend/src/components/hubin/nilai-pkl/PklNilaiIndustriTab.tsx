@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
 import { AcademicContextBar } from '@/components/common';
 import { Save, RotateCcw, Copy, Printer } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
 import {
   SpreadsheetGridTable,
@@ -152,40 +153,59 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     {
       key: 'siswa',
       header: 'Siswa & Penempatan',
-      width: 165,
+      width: 175,
       freeze: 'left',
       freezeOffset: 32,
-      renderCell: (score) => (
-        <div className="space-y-0.5 py-0.5 max-w-[160px]">
-          <div className="flex items-center gap-1">
-            <span className="font-bold text-slate-900 dark:text-white text-xs truncate max-w-[125px]" title={score.nama_siswa}>
-              {score.nama_siswa}
-            </span>
-            {score.status === 'SELESAI' ? (
-              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-900 leading-none">
-                Selesai
+      renderCell: (score) => {
+        const isAktif = score.status === 'AKTIF' || !score.status;
+        const isSelesai = score.status === 'SELESAI';
+
+        return (
+          <div className="space-y-0.5 py-0.5 max-w-[170px]">
+            {/* Baris 1: NAMA SISWA ,(Kelas), indikator status (dot) */}
+            <div className="flex items-center gap-1.5 leading-tight">
+              <span className="font-bold text-slate-900 dark:text-white text-xs truncate" title={score.nama_siswa}>
+                {score.nama_siswa}
               </span>
-            ) : score.status === 'AKTIF' ? (
-              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 leading-none">
-                Aktif
-              </span>
-            ) : null}
+              {score.nama_kelas && (
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium shrink-0">
+                  ({score.nama_kelas})
+                </span>
+              )}
+              {/* Indikator Status Dot */}
+              <span
+                className={cn(
+                  'w-2 h-2 rounded-full shrink-0 ring-2 ring-white dark:ring-slate-900',
+                  isAktif
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]'
+                    : isSelesai
+                    ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.5)]'
+                    : 'bg-slate-400'
+                )}
+                title={`Status PKL: ${score.status || 'Aktif'}`}
+              />
+            </div>
+
+            {/* Baris 2: Tempat PKL */}
+            <div
+              className="text-[10px] text-indigo-600 dark:text-indigo-400 font-medium truncate flex items-center gap-1"
+              title={score.mitra_nama || 'Belum ada tempat PKL'}
+            >
+              <span className="text-[10px] opacity-75">🏢</span>
+              <span className="truncate">{score.mitra_nama || '-'}</span>
+            </div>
           </div>
-          <div className="text-[9px] text-slate-500 font-mono truncate max-w-[155px]" title={`${score.nis || '-'} • ${score.nama_kelas || '-'} • ${score.mitra_nama || '-'}`}>
-            {score.nama_kelas || '-'} • 🏢 <span className="font-semibold text-indigo-600 dark:text-indigo-400">{score.mitra_nama || '-'}</span>
-          </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'instruktur_pic',
       header: 'Instruktur',
-      subHeader: 'DUDI / PIC',
-      width: 105,
+      width: 110,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="space-y-0.5 py-0.5 max-w-[100px]">
+          <div className="space-y-0.5 py-0.5 max-w-[105px]">
             <input
               id={`score-instruktur-${globalIndex}`}
               aria-label={`Nama instruktur ${score.nama_siswa}`}
@@ -198,9 +218,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
             <div className="flex items-center gap-0.5">
               <input
                 id={`score-pic-${globalIndex}`}
-                aria-label={`Penanggung jawab DUDI ${score.nama_siswa}`}
+                aria-label={`Jabatan atau penanggung jawab DUDI ${score.nama_siswa}`}
                 type="text"
-                placeholder="PIC DUDI..."
+                placeholder="Jabatan..."
                 value={score.penanggung_jawab_nama || ''}
                 onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
                 className="w-full text-[9px] h-4.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -210,7 +230,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
                   type="button"
                   onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
                   className="shrink-0 p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-                  title={`Salin ke semua siswa ${score.mitra_nama}`}
+                  title={`Salin instruktur & jabatan ke semua siswa ${score.mitra_nama}`}
                 >
                   <Copy size={10} />
                 </button>
@@ -222,10 +242,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_kompetensi_teknis',
-      header: 'Tek',
-      subHeader: 'Hard',
-      width: 44,
+      header: 'Teknis',
+      width: 48,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-0`}
@@ -239,10 +259,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_sop_k3lh',
-      header: 'K3',
-      subHeader: 'Hard',
-      width: 44,
+      header: 'K3LH',
+      width: 46,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-1`}
@@ -256,10 +276,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_alur_bisnis',
-      header: 'Bis',
-      subHeader: 'Hard',
-      width: 44,
+      header: 'Bisnis',
+      width: 48,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-2`}
@@ -273,10 +293,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kedisiplinan',
-      header: 'Dis',
-      subHeader: 'Soft',
-      width: 44,
+      header: 'Disiplin',
+      width: 50,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-3`}
@@ -290,10 +310,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerajinan_inisiatif',
-      header: 'Ini',
-      subHeader: 'Soft',
-      width: 44,
+      header: 'Inisiatif',
+      width: 50,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-4`}
@@ -307,10 +327,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerjasama',
-      header: 'Ker',
-      subHeader: 'Soft',
-      width: 44,
+      header: 'Kerjasama',
+      width: 54,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-5`}
@@ -324,10 +344,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kejujuran',
-      header: 'Juj',
-      subHeader: 'Soft',
-      width: 44,
+      header: 'Kejujuran',
+      width: 54,
       align: 'center',
+      headerClassName: 'text-[11px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-6`}
@@ -341,10 +361,10 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_tanggung_jawab',
-      header: 'Tgg',
-      subHeader: 'Soft',
-      width: 44,
+      header: 'Tanggung Jawab',
+      width: 56,
       align: 'center',
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
           id={`score-input-${rowIndex}-7`}
@@ -358,10 +378,11 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'nilai_akhir_pkl',
-      header: 'Akhir',
+      header: 'Nilai Akhir',
       subHeader: 'Nilai/Pred',
-      width: 60,
+      width: 58,
       align: 'center',
+      headerClassName: 'text-[10px] font-bold text-center px-0.5 whitespace-normal leading-tight',
       renderCell: (score) => (
         <div className="flex flex-col items-center justify-center leading-tight">
           <span className="font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
