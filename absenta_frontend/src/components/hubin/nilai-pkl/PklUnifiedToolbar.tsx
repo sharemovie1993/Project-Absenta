@@ -1,6 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { z } from 'zod';
-import { Sliders } from 'lucide-react';
+import { Sliders, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Button, SearchableSelect } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { AcademicContextBar } from '@/components/common/AcademicContextBar';
@@ -105,11 +105,19 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
     ...(smartClassOptions?.map((c) => ({ value: c.value, label: c.label })) || [])
   ], [scoresCount, smartClassOptions]);
 
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isNilaiTab = activeTab === 'dudi' || activeTab === 'sidang' || activeTab === 'nilai';
+
+  const classSelectOptions = useMemo(() => [
+    { value: '', label: `-- Semua Kelas (${scoresCount}) --` },
+    ...(smartClassOptions?.map((c) => ({ value: c.value, label: c.label })) || [])
+  ], [scoresCount, smartClassOptions]);
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-3.5 sm:p-4 shadow-xs space-y-3.5">
-      {/* Baris 1: Konteks Akademik di Kiri, TabSwitcher & Tombol Skema di Kanan */}
-      <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${isNilaiTab ? 'pb-3 border-b border-slate-100 dark:border-slate-800' : ''}`}>
-        <div className="w-full md:w-auto">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-2.5 shadow-2xs space-y-2">
+      {/* Baris 1: Konteks Akademik & Filter Kelas di Kiri, TabSwitcher & Actions di Kanan */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
           <AcademicContextBar
             id="filter-pkl-unified"
             tahunPelajaranId={selectedTp}
@@ -122,9 +130,25 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
             isLoadingSem={isLoadingSem}
             variant="toolbar"
           />
+
+          {/* Filter Kelas Sejajar Langsung (Hemat Ruang Vertikal) */}
+          {isNilaiTab && (
+            <div className="w-44 sm:w-52">
+              <SearchableSelect
+                id="unified-filter-kelas-pkl"
+                aria-label="Pilih kelas siswa PKL"
+                value={selectedKelas}
+                onValueChange={setSelectedKelas}
+                options={classSelectOptions}
+                placeholder="Pilih Kelas"
+                isLoading={isLoadingRekap}
+                className="text-xs"
+              />
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-2 w-full md:w-auto flex-wrap">
+        <div className="flex items-center justify-between lg:justify-end gap-1.5 shrink-0 flex-wrap">
           <TabSwitcher
             activeTab={activeTab}
             onChange={(t) => setActiveTab(t as string)}
@@ -137,136 +161,127 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
               variant="outline"
               size="sm"
               onClick={onOpenSettings}
-              className="flex items-center gap-1.5 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 h-[38px] px-3 shrink-0"
+              className="flex items-center gap-1 text-[11px] font-bold rounded-lg border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 h-8 px-2.5 shrink-0 shadow-2xs"
             >
-              <Sliders size={14} className="text-indigo-600 dark:text-indigo-400" />
-              <span className="hidden sm:inline">{canEditScheme ? 'Skema & Bobot' : 'Info Bobot'}</span>
-              {isCompositeMode ? (
-                <span className="ml-1 px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold border border-indigo-200 dark:border-indigo-800">
-                  {effectiveSettings?.weightDudi}/{effectiveSettings?.weightLaporan}/{effectiveSettings?.weightSidang}%
-                </span>
-              ) : (
-                <span className="ml-1 px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold">
-                  DUDI 100%
-                </span>
-              )}
+              <Sliders size={13} className="text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden sm:inline">{canEditScheme ? 'Bobot' : 'Info'}</span>
+              <span className="px-1 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-[10px] font-mono font-bold">
+                {isCompositeMode
+                  ? `${effectiveSettings?.weightDudi}/${effectiveSettings?.weightLaporan}/${effectiveSettings?.weightSidang}%`
+                  : '100%'}
+              </span>
             </Button>
+          )}
+
+          {/* Toggle Minimize/Maximize Toolbar */}
+          {isNilaiTab && (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed((prev) => !prev)}
+              className="p-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+              title={isCollapsed ? 'Tampilkan Filter Tambahan' : 'Lipat Filter (Maksimalkan Layar)'}
+              aria-label={isCollapsed ? 'Buka Filter' : 'Lipat Filter'}
+            >
+              {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+            </button>
           )}
         </div>
       </div>
 
-      {/* Baris 2 & 3: Filter & Action Buttons untuk Tab Nilai (DUDI & Sidang) */}
-      {isNilaiTab && (
-        <div className="space-y-3">
-          {/* Sub-baris 2a: Scoping di kiri, Status Filter di kanan */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            {canManageAll && activeGuruId ? (
-              <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGuidanceScope('ALL');
-                    setSelectedKelas('');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    guidanceScope === 'ALL'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {isKaprog ? 'Semua Siswa Jurusan' : (isWaliKelas ? `Semua Siswa ${walikelasKelas?.nama_kelas || 'Kelas'}` : 'Semua Siswa PKL')} ({allScopedCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGuidanceScope('MY_GUIDANCE');
-                    setSelectedKelas('');
-                  }}
-                  className={`px-3 py-1.5 rounded-lg transition-all ${
-                    guidanceScope === 'MY_GUIDANCE'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  Bimbingan Saya ({myGuidanceCountNilai})
-                </button>
-              </div>
-            ) : (
-              <span className="text-[11px] text-slate-400 font-medium self-center">
-                Mode: {canManageAll ? 'Administrator Hubin' : 'Guru Pembimbing Lapangan'}
-              </span>
-            )}
+      {/* Baris 2: Sub-filter Scoping & Status (Dapat dilipat agar hemat layar) */}
+      {isNilaiTab && !isCollapsed && (
+        <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          {canManageAll && activeGuruId ? (
+            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-semibold self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setGuidanceScope('ALL');
+                  setSelectedKelas('');
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${
+                  guidanceScope === 'ALL'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                {isKaprog ? 'Semua Jurusan' : (isWaliKelas ? `Kelas ${walikelasKelas?.nama_kelas || ''}` : 'Semua Siswa')} ({allScopedCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setGuidanceScope('MY_GUIDANCE');
+                  setSelectedKelas('');
+                }}
+                className={`px-2.5 py-1 rounded-md text-[11px] transition-all ${
+                  guidanceScope === 'MY_GUIDANCE'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                Bimbingan Saya ({myGuidanceCountNilai})
+              </button>
+            </div>
+          ) : (
+            <span className="text-[10px] text-slate-400 font-medium self-center">
+              Mode: {canManageAll ? 'Administrator Hubin' : 'Guru Pembimbing Lapangan'}
+            </span>
+          )}
 
-            {/* Status Penempatan Filter */}
-            {!isMobile && (
-              <div className="hidden md:flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl text-xs font-semibold self-start sm:self-auto overflow-x-auto max-w-full">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('ELIGIBLE')}
-                  className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
-                    statusFilter === 'ELIGIBLE'
-                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                  title="Mode Fleksibel: Menampilkan siswa aktif & selesai tanpa duplikat riwayat mutasi"
-                >
-                  🎯 Siap Dinilai (Fleksibel)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('AKTIF')}
-                  className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
-                    statusFilter === 'AKTIF'
-                      ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  🟢 Aktif
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('SELESAI')}
-                  className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
-                    statusFilter === 'SELESAI'
-                      ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  ✅ Selesai
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter('ALL')}
-                  className={`px-2.5 py-1.5 rounded-lg transition-all whitespace-nowrap ${
-                    statusFilter === 'ALL'
-                      ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-sm font-bold'
-                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
-                  }`}
-                >
-                  📋 Semua
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Sub-baris 2b: Filter Kelas Siswa PKL */}
-          <div className="pt-1 max-w-sm">
-            <label htmlFor="unified-filter-kelas-pkl" className="block text-[10px] font-bold text-slate-400 uppercase mb-1">
-              Filter Kelas Siswa PKL
-            </label>
-            <SearchableSelect
-              id="unified-filter-kelas-pkl"
-              aria-label="Pilih kelas siswa PKL"
-              value={selectedKelas}
-              onValueChange={setSelectedKelas}
-              options={classSelectOptions}
-              placeholder="Pilih Kelas"
-              isLoading={isLoadingRekap}
-            />
-          </div>
+          {/* Status Penempatan Filter */}
+          {!isMobile && (
+            <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg text-xs font-semibold self-start sm:self-auto overflow-x-auto max-w-full">
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ELIGIBLE')}
+                className={`px-2 py-1 rounded-md text-[11px] transition-all whitespace-nowrap ${
+                  statusFilter === 'ELIGIBLE'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+                title="Siap Dinilai: Menampilkan siswa aktif & selesai tanpa duplikat mutasi"
+              >
+                🎯 Siap Dinilai
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('AKTIF')}
+                className={`px-2 py-1 rounded-md text-[11px] transition-all whitespace-nowrap ${
+                  statusFilter === 'AKTIF'
+                    ? 'bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                🟢 Aktif
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('SELESAI')}
+                className={`px-2 py-1 rounded-md text-[11px] transition-all whitespace-nowrap ${
+                  statusFilter === 'SELESAI'
+                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                ✅ Selesai
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter('ALL')}
+                className={`px-2 py-1 rounded-md text-[11px] transition-all whitespace-nowrap ${
+                  statusFilter === 'ALL'
+                    ? 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-2xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                📋 Semua
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
+  );
   );
 });
 

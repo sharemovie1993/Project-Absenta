@@ -131,7 +131,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     {
       key: 'evaluasi',
       title: 'Hasil Evaluasi & Presensi',
-      colSpan: 4,
+      colSpan: 3,
       className: 'bg-slate-100/90 dark:bg-slate-800/90',
     },
   ], []);
@@ -140,79 +140,79 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     {
       key: 'no',
       header: 'No',
-      width: 44,
+      width: 32,
       align: 'center',
       freeze: 'left',
       freezeOffset: 0,
       renderCell: (_row, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
-        return <span className="font-mono font-bold text-slate-400 text-[11px]">{globalIndex}</span>;
+        return <span className="font-mono font-bold text-slate-400 text-[10px]">{globalIndex}</span>;
       },
     },
     {
       key: 'siswa',
       header: 'Siswa & Penempatan',
-      minWidth: 230,
+      width: 165,
       freeze: 'left',
-      freezeOffset: 44,
+      freezeOffset: 32,
       renderCell: (score) => (
-        <div className="space-y-0.5 py-0.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-slate-900 dark:text-white text-xs truncate max-w-[170px]" title={score.nama_siswa}>
+        <div className="space-y-0.5 py-0.5 max-w-[160px]">
+          <div className="flex items-center gap-1">
+            <span className="font-bold text-slate-900 dark:text-white text-xs truncate max-w-[125px]" title={score.nama_siswa}>
               {score.nama_siswa}
             </span>
             {score.status === 'SELESAI' ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-900">
+              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-900 leading-none">
                 Selesai
               </span>
             ) : score.status === 'AKTIF' ? (
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+              <span className="text-[8px] font-bold px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 leading-none">
                 Aktif
               </span>
             ) : null}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono truncate max-w-[220px]">
-            {score.nis || '-'} • {score.nama_kelas || '-'} • 🏢 <span className="font-semibold text-indigo-600 dark:text-indigo-400">{score.mitra_nama || '-'}</span>
+          <div className="text-[9px] text-slate-500 font-mono truncate max-w-[155px]" title={`${score.nis || '-'} • ${score.nama_kelas || '-'} • ${score.mitra_nama || '-'}`}>
+            {score.nama_kelas || '-'} • 🏢 <span className="font-semibold text-indigo-600 dark:text-indigo-400">{score.mitra_nama || '-'}</span>
           </div>
         </div>
       ),
     },
     {
       key: 'instruktur_pic',
-      header: 'Instruktur & PIC',
-      subHeader: 'DUDI / Lapangan',
-      minWidth: 155,
+      header: 'Instruktur',
+      subHeader: 'DUDI / PIC',
+      width: 105,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="space-y-1 py-0.5">
+          <div className="space-y-0.5 py-0.5 max-w-[100px]">
             <input
               id={`score-instruktur-${globalIndex}`}
               aria-label={`Nama instruktur ${score.nama_siswa}`}
               type="text"
-              placeholder="Instruktur DUDI..."
+              placeholder="Instruktur..."
               value={score.instruktur_nama || ''}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'instruktur_nama', e.target.value)}
-              className="w-full text-[11px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full text-[10px] h-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <input
                 id={`score-pic-${globalIndex}`}
                 aria-label={`Penanggung jawab DUDI ${score.nama_siswa}`}
                 type="text"
-                placeholder="PIC / Pimpinan..."
+                placeholder="PIC DUDI..."
                 value={score.penanggung_jawab_nama || ''}
                 onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'penanggung_jawab_nama', e.target.value)}
-                className="w-full text-[10px] h-5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1.5 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full text-[9px] h-4.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded px-1 text-slate-600 dark:text-slate-400 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
               {score.mitra_nama && score.instruktur_nama && (
                 <button
                   type="button"
                   onClick={() => handleApplyToSameMitra(score.mitra_nama, score.instruktur_nama, score.penanggung_jawab_nama)}
-                  className="shrink-0 p-1 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-                  title={`Terapkan instruktur ini ke semua siswa di ${score.mitra_nama}`}
+                  className="shrink-0 p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
+                  title={`Salin ke semua siswa ${score.mitra_nama}`}
                 >
-                  <Copy size={11} />
+                  <Copy size={10} />
                 </button>
               )}
             </div>
@@ -222,9 +222,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_kompetensi_teknis',
-      header: 'Teknis',
-      subHeader: 'Hard Skill',
-      width: 66,
+      header: 'Tek',
+      subHeader: 'Hard',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -239,9 +239,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_sop_k3lh',
-      header: 'K3LH',
-      subHeader: 'Hard Skill',
-      width: 66,
+      header: 'K3',
+      subHeader: 'Hard',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -256,9 +256,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'hard_alur_bisnis',
-      header: 'Bisnis',
-      subHeader: 'Hard Skill',
-      width: 66,
+      header: 'Bis',
+      subHeader: 'Hard',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -273,9 +273,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kedisiplinan',
-      header: 'Disiplin',
-      subHeader: 'Soft Skill',
-      width: 66,
+      header: 'Dis',
+      subHeader: 'Soft',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -290,9 +290,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerajinan_inisiatif',
-      header: 'Inisiatif',
-      subHeader: 'Soft Skill',
-      width: 66,
+      header: 'Ini',
+      subHeader: 'Soft',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -307,9 +307,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kerjasama',
-      header: 'Kerjasama',
-      subHeader: 'Soft Skill',
-      width: 66,
+      header: 'Ker',
+      subHeader: 'Soft',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -324,9 +324,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_kejujuran',
-      header: 'Kejujuran',
-      subHeader: 'Soft Skill',
-      width: 66,
+      header: 'Juj',
+      subHeader: 'Soft',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -341,9 +341,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'soft_tanggung_jawab',
-      header: 'Tgg Jwb',
-      subHeader: 'Soft Skill',
-      width: 66,
+      header: 'Tgg',
+      subHeader: 'Soft',
+      width: 44,
       align: 'center',
       renderCell: (score, rowIndex) => (
         <SpreadsheetCellInput
@@ -358,56 +358,51 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'nilai_akhir_pkl',
-      header: 'Nilai Akhir',
-      width: 75,
+      header: 'Akhir',
+      subHeader: 'Nilai/Pred',
+      width: 60,
       align: 'center',
       renderCell: (score) => (
-        <span className="font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
-          {score.nilai_akhir_pkl ?? '-'}
-        </span>
-      ),
-    },
-    {
-      key: 'predikat_pkl',
-      header: 'Predikat',
-      width: 68,
-      align: 'center',
-      renderCell: (score) => (
-        <span className="text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full">
-          {score.predikat_pkl || '-'}
-        </span>
+        <div className="flex flex-col items-center justify-center leading-tight">
+          <span className="font-mono font-black text-xs text-indigo-600 dark:text-indigo-400">
+            {score.nilai_akhir_pkl ?? '-'}
+          </span>
+          <span className="text-[8px] font-bold px-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+            {score.predikat_pkl || '-'}
+          </span>
+        </div>
       ),
     },
     {
       key: 'presensi_pkl',
       header: (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-0.5">
           <span>Presensi</span>
           <button
             type="button"
             onClick={handleSyncFromDailyAttendance}
             className="p-0.5 text-slate-400 hover:text-indigo-600 rounded transition-colors"
-            title="Tarik S/I/A dari presensi harian"
+            title="Tarik S/I/A harian"
           >
-            <RotateCcw size={11} />
+            <RotateCcw size={10} />
           </button>
         </div>
       ),
-      subHeader: 'S / I / A (Hari)',
-      width: 120,
+      subHeader: 'S / I / A',
+      width: 84,
       align: 'center',
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
-          <div className="inline-flex items-center gap-1 bg-slate-50 dark:bg-slate-800/80 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700/80">
+          <div className="inline-flex items-center gap-0.5 bg-slate-50 dark:bg-slate-800/80 p-0.5 rounded border border-slate-200 dark:border-slate-700/80">
             <input
               id={`score-sakit-${globalIndex}`}
               aria-label={`Sakit ${score.nama_siswa}`}
               type="number" min={0} max={365} placeholder="0"
               value={score.sakit_pkl || ''}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'sakit_pkl', e.target.value)}
-              className="w-7 h-6 text-[10px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              title="Sakit (Hari)"
+              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-amber-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              title="Sakit"
             />
             <input
               id={`score-izin-${globalIndex}`}
@@ -415,8 +410,8 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               type="number" min={0} max={365} placeholder="0"
               value={score.izin_pkl || ''}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'izin_pkl', e.target.value)}
-              className="w-7 h-6 text-[10px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              title="Izin (Hari)"
+              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              title="Izin"
             />
             <input
               id={`score-alpa-${globalIndex}`}
@@ -424,8 +419,8 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
               type="number" min={0} max={365} placeholder="0"
               value={score.alpa_pkl || ''}
               onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'alpa_pkl', e.target.value)}
-              className="w-7 h-6 text-[10px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              title="Alpa (Hari)"
+              className="w-5.5 h-5 text-[9px] font-bold text-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-rose-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              title="Alpa"
             />
           </div>
         );
@@ -433,8 +428,9 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
     },
     {
       key: 'catatan_pkl',
-      header: 'Catatan Evaluasi',
-      minWidth: 160,
+      header: 'Catatan',
+      subHeader: 'Evaluasi',
+      width: 120,
       renderCell: (score, index) => {
         const globalIndex = (currentPage - 1) * itemsPerPage + index + 1;
         return (
@@ -445,7 +441,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
             placeholder="Catatan..."
             value={score.catatan_pkl || ''}
             onChange={(e) => handleScoreChange(score.siswa_pkl_id, 'catatan_pkl', e.target.value)}
-            className="w-full text-xs h-7 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-2 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full text-[10px] h-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         );
       },

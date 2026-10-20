@@ -81,8 +81,8 @@ export const SpreadsheetCellInput: React.FC<SpreadsheetCellInputProps> = memo(({
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       className={cn(
-        'w-full h-8 px-1 text-center font-mono text-xs rounded-md border transition-all',
-        'focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500',
+        'w-full h-7 px-0.5 text-center font-mono text-xs font-bold rounded border transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+        'focus:outline-none focus:ring-1.5 focus:ring-indigo-500 focus:border-indigo-500',
         getVariantStyles(),
         className
       )}

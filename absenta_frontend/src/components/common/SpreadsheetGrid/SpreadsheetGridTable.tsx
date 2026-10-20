@@ -34,7 +34,18 @@ export function SpreadsheetGridTable<T>({
   // Petakan grup kolom jika didefinisikan
   const hasGroups = Boolean(columnGroups && columnGroups.length > 0);
 
-  const paddingCell = density === 'compact' ? 'py-1.5 px-2' : 'py-2.5 px-3';
+  const paddingCell = density === 'compact' ? 'py-0.5 px-1' : 'py-2 px-2.5';
+
+  // Support ESC key to exit fullscreen
+  React.useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullscreen]);
 
   return (
     <div
