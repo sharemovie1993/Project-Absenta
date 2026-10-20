@@ -275,7 +275,6 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
       )}
     </div>
   );
-  );
 });
 
 export default PklUnifiedToolbar;
