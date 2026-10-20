@@ -960,6 +960,21 @@ export class HubinPenilaianService extends HubinCommonHelper {
     });
   }
 
+  async deleteSettingDeskripsiPkl(tenantId: string, id: string) {
+    const existing = await prisma.settingDeskripsiPkl.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
+    if (!existing) {
+      throw new Error('Data deskripsi TP tidak ditemukan');
+    }
+    await prisma.settingDeskripsiPkl.delete({
+      where: { id },
+    });
+    void cacheInvalidationService.invalidatePklCache(tenantId);
+    void cacheInvalidationService.invalidateHubinCache(tenantId);
+    return { success: true };
+  }
+
   /**
    * 📊 GET KAPROG PKL SUMMARY & PENDING TASKS
    * Menghitung status TP PKL, kesiapan penilaian, dan pending tasks khusus unit jurusan Kaprog

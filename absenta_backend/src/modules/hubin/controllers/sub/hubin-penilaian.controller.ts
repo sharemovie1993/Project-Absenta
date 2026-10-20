@@ -161,6 +161,16 @@ export class HubinPenilaianController {
     }
   }
 
+  async deleteSettingDeskripsiPkl(request: AuthenticatedRequest, reply: any) {
+    try {
+      const { id } = request.params as any;
+      const data = await this.hubinService.deleteSettingDeskripsiPkl(request.tenantId!, id);
+      return reply.status(200).send({ success: true, message: 'Deskripsi TP berhasil dihapus', data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
   async getKaprogSummary(request: AuthenticatedRequest, reply: any) {
     try {
       const { jurusan_id } = (request.query || {}) as any;

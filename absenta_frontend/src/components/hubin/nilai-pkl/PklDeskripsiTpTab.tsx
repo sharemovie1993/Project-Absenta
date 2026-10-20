@@ -9,6 +9,7 @@ import {
   Users, 
   GraduationCap,
   Edit3,
+  Trash2,
   X
 } from 'lucide-react';
 import { Card, Button } from '@/components/ui';
@@ -34,6 +35,8 @@ export interface PklDeskripsiTpTabProps {
   setDeskripsiTpText?: (val: string) => void;
   onSave: (payload: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => void;
   isSaving: boolean;
+  onDelete?: (id: string) => void;
+  isDeleting?: boolean;
   deskripsiListData: DeskripsiTpItem[];
   isLoadingDeskripsi: boolean;
   scores?: ScoreRow[];
@@ -50,6 +53,8 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
   mitraOptions = [],
   onSave,
   isSaving,
+  onDelete,
+  isDeleting = false,
   deskripsiListData = [],
   isLoadingDeskripsi,
   scores = [],
@@ -212,6 +217,15 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
       deskripsi_tp: editorText.trim(),
     });
 
+    handleCloseEditor();
+  };
+
+  // Hapus / Reset deskripsi TP
+  const handleDeleteSlot = (savedId: string) => {
+    if (!window.confirm('Apakah Anda yakin ingin menghapus deskripsi TP untuk perusahaan ini? Status slot akan kembali menjadi belum diisi.')) {
+      return;
+    }
+    onDelete?.(savedId);
     handleCloseEditor();
   };
 
@@ -389,25 +403,41 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
               </p>
             </div>
 
-            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCloseEditor}
-                className="rounded-xl text-xs font-bold"
-              >
-                Batal
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleSaveSlot}
-                disabled={isSaving}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
-              >
-                <Save className="w-3.5 h-3.5" />
-                <span>{isSaving ? 'Menyimpan...' : 'Simpan Deskripsi TP'}</span>
-              </Button>
+            <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 flex items-center justify-between gap-2">
+              <div>
+                {activeEditingSlot.saved_id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => handleDeleteSlot(activeEditingSlot.saved_id!)}
+                    disabled={isDeleting || isSaving}
+                    className="rounded-xl text-xs font-bold text-red-600 border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{isDeleting ? 'Menghapus...' : 'Hapus TP'}</span>
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCloseEditor}
+                  className="rounded-xl text-xs font-bold"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSaveSlot}
+                  disabled={isSaving || isDeleting}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan Deskripsi TP'}</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -487,7 +517,20 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
                 </div>
 
                 {/* Tombol Aksi */}
-                <div className="flex items-center justify-end pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                  <div>
+                    {isFilled && slot.saved_id && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSlot(slot.saved_id!)}
+                        disabled={isDeleting}
+                        title="Hapus / Reset Deskripsi TP"
+                        className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-1 rounded-md transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                   <Button
                     type="button"
                     size="sm"

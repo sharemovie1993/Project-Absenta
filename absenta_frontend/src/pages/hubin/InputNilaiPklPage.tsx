@@ -369,6 +369,19 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     }
   });
 
+  const deleteDeskripsiTpMutation = useMutation({
+    mutationFn: hubinApi.deleteSettingDeskripsiPkl,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      toast.success('Deskripsi Tujuan Pembelajaran PKL berhasil dihapus!');
+    },
+    onError: (err: any) => {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus deskripsi TP PKL');
+    }
+  });
+
   const handleScoreChange = useCallback((siswaPklId: string, field: keyof ScoreRow, val: string | number | null) => {
     setScores(prev => {
       const clone = [...(prev || [])];
@@ -691,6 +704,8 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                     setDeskripsiTpText={setDeskripsiTpText}
                     onSave={(payload) => saveDeskripsiTpMutation.mutate(payload)}
                     isSaving={saveDeskripsiTpMutation.isPending}
+                    onDelete={(id) => deleteDeskripsiTpMutation.mutate(id)}
+                    isDeleting={deleteDeskripsiTpMutation.isPending}
                     deskripsiListData={deskripsiListData}
                     isLoadingDeskripsi={isLoadingDeskripsi}
                     scores={displayedScores}
