@@ -86,6 +86,14 @@ export const ImportPlottingPklWizardModal: React.FC<ImportPlottingPklWizardModal
   // Selected Target TP & Semester
   const [targetTpId, setTargetTpId] = useState<string>(selectedTpFilter || '');
 
+  useEffect(() => {
+    if (selectedTpFilter && !targetTpId) {
+      setTargetTpId(selectedTpFilter);
+    } else if (!targetTpId && tpOptions && tpOptions.length > 0) {
+      setTargetTpId(tpOptions[0].value);
+    }
+  }, [selectedTpFilter, targetTpId, tpOptions]);
+
   // Step 5: Import Execution Progress
   const [importProgress, setImportProgress] = useState(0);
   const [importResult, setImportResult] = useState<{
@@ -1293,11 +1301,19 @@ export const ImportPlottingPklWizardModal: React.FC<ImportPlottingPklWizardModal
                     <span className="text-slate-600 dark:text-slate-400">DU/DI Baru Yang Akan Didaftarkan:</span>
                     <span className="font-bold text-amber-600">{matchStats.idukaNew} DU/DI Baru</span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-slate-200 dark:border-slate-800 text-sm">
-                    <span className="text-slate-600 dark:text-slate-400">Tahun Pelajaran:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {tpOptions?.find((t) => t.value === targetTpId)?.label || 'Tahun Pelajaran Aktif'}
-                    </span>
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center py-2 border-b border-slate-200 dark:border-slate-800 text-sm gap-1">
+                    <span className="text-slate-600 dark:text-slate-400 font-medium">Tahun Pelajaran Penempatan:</span>
+                    <select
+                      value={targetTpId}
+                      onChange={(e) => setTargetTpId(e.target.value)}
+                      className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-blue-500"
+                    >
+                      {tpOptions?.map((tp) => (
+                        <option key={tp.value} value={tp.value}>
+                          {tp.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="flex justify-between py-1.5 text-sm">
                     <span className="text-slate-600 dark:text-slate-400">Status Awal Penempatan:</span>

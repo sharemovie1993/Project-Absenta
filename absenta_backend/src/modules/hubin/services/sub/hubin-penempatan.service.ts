@@ -888,6 +888,30 @@ export class HubinPenempatanService extends HubinCommonHelper {
     let createdCount = 0;
     let updatedCount = 0;
 
+    // Resolusi Konteks Akademik Otomatis (Tahun Pelajaran & Semester Aktif)
+    let resolvedTpId = tahun_pelajaran_id;
+    if (!resolvedTpId) {
+      const activeTp = await prisma.tahunPelajaran.findFirst({
+        where: { tenant_id: tenantId, is_active: true }
+      });
+      resolvedTpId = activeTp?.id;
+    }
+
+    let resolvedSemId = semester_id;
+    if (!resolvedSemId && resolvedTpId) {
+      const activeSem = await prisma.semester.findFirst({
+        where: { tenant_id: tenantId, tahun_pelajaran_id: resolvedTpId, is_active: true }
+      });
+      if (activeSem) {
+        resolvedSemId = activeSem.id;
+      } else {
+        const anySem = await prisma.semester.findFirst({
+          where: { tenant_id: tenantId, tahun_pelajaran_id: resolvedTpId }
+        });
+        resolvedSemId = anySem?.id;
+      }
+    }
+
     // 2. Pre-process dan resolve semua Mitra Industri
     for (const item of items) {
       if (item.mitra_id) {
@@ -931,8 +955,8 @@ export class HubinPenempatanService extends HubinCommonHelper {
 
       if (!siswa) continue;
 
-      const targetTpId = tahun_pelajaran_id || siswa.tahun_pelajaran_id;
-      const targetSemId = semester_id || siswa.semester_id;
+      const targetTpId = resolvedTpId || siswa.tahun_pelajaran_id;
+      const targetSemId = resolvedSemId || siswa.semester_id;
       const targetKelasId = siswa.kelas_id;
 
       let siswaAkademikId: string | undefined;
@@ -967,6 +991,17 @@ export class HubinPenempatanService extends HubinCommonHelper {
           }
         }
         siswaAkademikId = sa?.id;
+
+        // Sinkronisasi SSOT ke Siswa jika belum ada
+        if (!siswa.tahun_pelajaran_id || !siswa.semester_id) {
+          await prisma.siswa.update({
+            where: { id: item.siswa_id },
+            data: {
+              tahun_pelajaran_id: targetTpId,
+              semester_id: targetSemId
+            }
+          });
+        }
       }
 
       const pembimbingId = item.pembimbing_id && String(item.pembimbing_id).trim() !== '' 
@@ -989,6 +1024,7 @@ export class HubinPenempatanService extends HubinCommonHelper {
         await prisma.siswaPkl.update({
           where: { id: existingPkl.id },
           data: {
+            siswa_akademik_id: siswaAkademikId || existingPkl.siswa_akademik_id,
             mitra_id: item.mitra_id,
             pembimbing_id: pembimbingId,
             tanggal_mulai: tanggalMulai,
