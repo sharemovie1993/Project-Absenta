@@ -137,6 +137,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
     isKurikulum,
     isToolman,
     isKaprog,
+    kaprogJurusan,
     isKabeng,
     isBpbk,
     isBkk,
