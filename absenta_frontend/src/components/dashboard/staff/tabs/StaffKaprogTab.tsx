@@ -308,7 +308,7 @@ export const StaffKaprogTab: React.FC<StaffKaprogTabProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {allMitraList.map((mitra) => (
+                    {allMitraList?.map((mitra) => (
                       <tr key={mitra.mitra_id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
                         <td className="py-3 px-4 font-bold text-slate-800 dark:text-slate-100">
                           {mitra.nama_mitra}

@@ -274,6 +274,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
+              aria-label="Cari nama perusahaan atau rombel kelas"
               placeholder="Cari perusahaan atau kelas..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -290,7 +291,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
               className="text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer max-w-[200px] truncate shrink-0"
             >
               <option value="">Semua Jurusan</option>
-              {jurusanOptions.map((j) => (
+              {jurusanOptions?.map((j) => (
                 <option key={j.value} value={j.value}>
                   {j.label}
                 </option>
@@ -456,7 +457,7 @@ export const PklDeskripsiTpTab: React.FC<PklDeskripsiTpTabProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {displayedSlots.map((slot) => {
+          {displayedSlots?.map((slot) => {
             const isFilled = Boolean(slot.deskripsi_tp && slot.deskripsi_tp.trim().length >= 10);
 
             return (
