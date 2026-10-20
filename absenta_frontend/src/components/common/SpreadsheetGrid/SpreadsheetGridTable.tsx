@@ -12,7 +12,8 @@ export function SpreadsheetGridTable<T>({
   emptyMessage = 'Tidak ada data untuk ditampilkan.',
   density = 'compact',
   enableFullscreen = true,
-  maxContainerHeight = 'calc(100vh - 280px)',
+  autoHeight = true,
+  maxContainerHeight,
   className,
   headerTitle,
   headerActions,
@@ -94,9 +95,20 @@ export function SpreadsheetGridTable<T>({
 
       {/* Spreadsheet Scrollable Table Body */}
       <div
-        className="w-full overflow-x-auto overflow-y-auto max-w-full flex-1"
+        className={cn(
+          'w-full overflow-x-auto max-w-full',
+          isFullscreen
+            ? 'flex-1 overflow-y-auto min-h-0'
+            : autoHeight
+            ? 'overflow-y-visible'
+            : 'flex-1 overflow-y-auto'
+        )}
         style={{
-          maxHeight: isFullscreen ? 'calc(100vh - 120px)' : maxContainerHeight,
+          maxHeight: isFullscreen
+            ? 'calc(100vh - 120px)'
+            : !autoHeight && maxContainerHeight
+            ? maxContainerHeight
+            : undefined,
         }}
       >
         <table className="w-full text-left text-xs border-collapse">

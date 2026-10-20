@@ -606,6 +606,7 @@ export const PklNilaiIndustriTab: React.FC<PklNilaiIndustriTabProps> = ({
         }
         density="compact"
         enableFullscreen={true}
+        autoHeight={true}
         headerTitle="Lembar Penilaian PKL DUDI"
         headerActions={
           <div className="flex items-center gap-2">

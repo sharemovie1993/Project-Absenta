@@ -36,6 +36,7 @@ export interface SpreadsheetGridTableProps<T> {
   density?: 'compact' | 'normal';
   enableFullscreen?: boolean;
   enableKeyboardNavigation?: boolean;
+  autoHeight?: boolean;
   maxContainerHeight?: string;
   className?: string;
   headerTitle?: React.ReactNode;
