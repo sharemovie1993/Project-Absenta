@@ -81,7 +81,7 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
   }
 
   return (
-    <div className={embedded ? "space-y-3 transition-all" : "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-all"}>
+    <div className={embedded ? "space-y-2.5 transition-all" : "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5 transition-all"}>
       {/* Header: judul + search + tombol tutup */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -102,8 +102,8 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
         </div>
 
         {/* Search */}
-        <div className="relative w-full sm:w-64">
-          <Search size={13} className="absolute left-3 top-2.5 text-slate-400" />
+        <div className="relative w-full sm:w-56">
+          <Search size={12} className="absolute left-2.5 top-2.5 text-slate-400" />
           <input
             type="text"
             id="task-search-input"
@@ -111,14 +111,14 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
             placeholder="Cari Rombel atau Mapel..."
             value={taskSearchQuery}
             onChange={(e) => onSetTaskSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold pl-8 pr-8 py-1.5 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold pl-7 pr-7 py-1 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-8"
           />
           {taskSearchQuery && (
             <button
               type="button"
               aria-label="Bersihkan pencarian"
               onClick={() => onSetTaskSearchQuery('')}
-              className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs font-bold"
+              className="absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-white text-xs font-bold"
             >
               ×
             </button>
@@ -126,14 +126,14 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
         </div>
       </div>
 
-      {/* Grid kartu tugas — hanya kelas, mapel, status */}
+      {/* Grid kartu tugas ramping — format chip horizontal 1-baris hemat ruang */}
       {filteredTasks.length === 0 ? (
-        <div className="text-center py-6 text-slate-400 text-xs italic bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="text-center py-4 text-slate-400 text-xs italic bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-800">
           Tidak ada tugas yang cocok.
         </div>
       ) : (
-        <div className="max-h-52 overflow-y-auto pr-1 custom-scrollbar">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+        <div className="max-h-44 overflow-y-auto pr-1 custom-scrollbar">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
             {filteredTasks?.map((t: TeacherTaskItem, idx: number) => {
               const isCurrent = t.kelas_id === selectedKelas && t.mapel_id === selectedMapel;
               return (
@@ -145,24 +145,24 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
                     setIsExpanded(false);
                   }}
                   title={`${t.nama_kelas} — ${t.nama_mapel}`}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  className={`px-2.5 py-1.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
                     isCurrent
-                      ? 'bg-indigo-50 dark:bg-indigo-950/70 border-2 border-indigo-500 ring-2 ring-indigo-500/20'
-                      : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/60 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700/80'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/70 border-indigo-500 ring-2 ring-indigo-500/20'
+                      : 'bg-white hover:bg-slate-50 dark:bg-slate-900/60 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-700/80'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 mb-1">
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <span className="px-1.5 py-0.5 rounded-md bg-indigo-600 text-white font-black text-[10px] shrink-0">
                       {t.nama_kelas}
                     </span>
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${
-                      t.status === 'completed' ? 'bg-emerald-500' :
-                      t.status === 'partial' ? 'bg-amber-500' : 'bg-rose-500'
-                    }`} />
+                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title={t.nama_mapel}>
+                      {getShortSubjectName(t.nama_mapel)}
+                    </span>
                   </div>
-                  <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-200 leading-tight truncate" title={t.nama_mapel}>
-                    {getShortSubjectName(t.nama_mapel)}
-                  </p>
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    t.status === 'completed' ? 'bg-emerald-500' :
+                    t.status === 'partial' ? 'bg-amber-500' : 'bg-rose-500'
+                  }`} />
                 </button>
               );
             })}
