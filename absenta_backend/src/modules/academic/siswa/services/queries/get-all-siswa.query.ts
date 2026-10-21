@@ -262,9 +262,11 @@ export async function getAllSiswaQuery(
       PelanggaranSiswa: { select: { poin: true } },
       PrestasiSiswa: { select: { poin: true } },
     },
-    orderBy: {
-      created_at: 'desc',
-    },
+    orderBy: [
+      { Kelas: { tingkat: 'asc' } },
+      { Kelas: { nama_kelas: 'asc' } },
+      { nama_siswa: 'asc' },
+    ],
     skip,
     take: limit,
   });
