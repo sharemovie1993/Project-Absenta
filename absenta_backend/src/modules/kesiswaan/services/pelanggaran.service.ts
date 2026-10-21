@@ -164,13 +164,15 @@ export class PelanggaranService {
     const limit = Number(query.limit) || 10;
     const offset = (page - 1) * limit;
 
+    const jurusanId = (query as any).jurusan_id;
+
     // 1. Coba baca dari Redis/Memory Cache (Cache HIT Check via CACHE_KEYS)
     const cacheKey = CACHE_KEYS.KESISWAAN.PELANGGARAN_LIST(
       tenantId,
       page,
       limit,
       query.search || '',
-      (query as any).kelas_id,
+      ((query as any).kelas_id || jurusanId),
       query.status
     );
 
@@ -203,6 +205,21 @@ export class PelanggaranService {
 
     if ((query as any).kelas_id) {
       where.kelas_id = (query as any).kelas_id;
+    }
+
+    if (jurusanId) {
+      where.Kelas = {
+        ...((where.Kelas as any) || {}),
+        jurusan_id: jurusanId,
+      };
+    }
+
+    if ((query as any).tahun_pelajaran_id) {
+      where.tahun_pelajaran_id = (query as any).tahun_pelajaran_id;
+    }
+
+    if ((query as any).semester_id) {
+      where.semester_id = (query as any).semester_id;
     }
 
     if (query.status) {
@@ -248,8 +265,16 @@ export class PelanggaranService {
                 select: {
                   id: true,
                   nama_kelas: true,
+                  jurusan_id: true,
                 },
               },
+            },
+          },
+          Kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              jurusan_id: true,
             },
           },
         },

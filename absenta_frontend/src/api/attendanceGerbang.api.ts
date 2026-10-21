@@ -310,6 +310,36 @@ export async function getRekapBulananKelas(
   });
 }
 
+export interface CohortLineageStage {
+  tingkat: number;
+  label: string;
+  is_current: boolean;
+  is_available: boolean;
+  kelas_id: string | null;
+  nama_kelas: string | null;
+  tahun_pelajaran_id: string | null;
+  tahun: string | null;
+  count: number;
+}
+
+export interface CohortLineageResponse {
+  success: boolean;
+  data: {
+    currentClass: { id: string; nama_kelas: string; tingkat: number; jurusan_id?: string | null };
+    stages: CohortLineageStage[];
+  };
+}
+
+export async function getKelasCohortLineage(
+  kelas_id: string,
+  params?: { tahun_pelajaran_id?: string }
+): Promise<CohortLineageResponse> {
+  return requestWithFallback<CohortLineageResponse>('get', `/attendance/rekap/kelas/${kelas_id}/lineage`, {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
 export async function getRekapBulananMapel(
   params: { kelas_id: string; mapel_id: string; bulan: string; tahun_pelajaran_id?: string }
 ): Promise<{

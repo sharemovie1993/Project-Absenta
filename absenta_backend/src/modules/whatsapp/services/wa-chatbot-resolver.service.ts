@@ -80,8 +80,8 @@ export async function removeLidMappingByPhone(phone: string) {
   }
 }
 
-// Load persisted LID mappings from Database on module start
-(async function loadLidMappingsFromDb() {
+// Load persisted LID mappings from Database asynchronously without blocking module import
+setImmediate(async function loadLidMappingsFromDb() {
   try {
     const rows = await prisma.waLidMapping.findMany({ select: { lid_key: true, phone: true } });
     let count = 0;
@@ -93,7 +93,7 @@ export async function removeLidMappingByPhone(phone: string) {
   } catch (err: any) {
     console.warn('[Chatbot] Failed to load LID mappings from Database:', err.message);
   }
-})();
+});
 
 function safeSetMap<K, V>(map: Map<K, V>, key: K, value: V, maxCapacity = 5000) {
   if (map.size >= maxCapacity) {

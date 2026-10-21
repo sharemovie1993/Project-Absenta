@@ -110,8 +110,28 @@ export async function getGuruLeaderboard(limit = 10): Promise<any> {
 }
 
 // Kaprog Stats - GET /dashboard/kaprog/stats
-export async function getKaprogStats(): Promise<any> {
+export interface KaprogStatsParams {
+  jurusan_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}
+
+export async function getKaprogStats(params?: KaprogStatsParams): Promise<any> {
   return requestWithFallback<any>('get', '/dashboard/kaprog/stats', {
+    params,
+    headers: { 'X-Skip-403-Redirect': 'true' }
+  });
+}
+
+// Kepegawaian Stats - GET /dashboard/kepegawaian/stats
+export interface KepegawaianStatsParams {
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
+}
+
+export async function getKepegawaianStats(params?: KepegawaianStatsParams): Promise<any> {
+  return requestWithFallback<any>('get', '/dashboard/kepegawaian/stats', {
+    params,
     headers: { 'X-Skip-403-Redirect': 'true' }
   });
 }

@@ -261,9 +261,11 @@ export const hubinApi = {
     pembimbing_id?: string;
   }) => requestWithFallback<any>('get', '/hubin/penempatan/rekap', { params }),
   upsertSettingDeskripsiPkl: (data: { mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
+  saveDeskripsiTp: (data: { id?: string; mitra_id: string; jurusan_id?: string; deskripsi_tp: string }) => requestWithFallback<any>('post', '/hubin/deskripsi-tp', { data }),
   getSettingDeskripsiPklList: (params?: { mitra_id?: string; jurusan_id?: string }) => requestWithFallback<any>('get', '/hubin/deskripsi-tp', { params }),
   deleteSettingDeskripsiPkl: (id: string) => requestWithFallback<any>('delete', `/hubin/deskripsi-tp/${id}`),
-  getKaprogSummary: (params?: { jurusan_id?: string }) => requestWithFallback<any>('get', '/hubin/kaprog/summary', { params }),
+  deleteDeskripsiTp: (id: string) => requestWithFallback<any>('delete', `/hubin/deskripsi-tp/${id}`),
+  getKaprogSummary: (params?: { jurusan_id?: string; tahun_pelajaran_id?: string; semester_id?: string }) => requestWithFallback<any>('get', '/hubin/kaprog/summary', { params }),
   getSertifikatPklData: (id: string) => requestWithFallback<any>('get', `/hubin/sertifikat/${id}`),
 
   // Absensi

@@ -315,11 +315,17 @@ export const authSessionController = {
       const token = jwt.sign(tokenPayload, getJwtSecret());
 
       // ✅ C1 Fix: Refresh token disimpan di DB (hash), bukan JWT — mendukung revokasi
+      // Standar Industri: jika remember_me = true, masa aktif refresh token 30 hari. Jika false, 1 hari.
       const deviceHint = String(request.headers['user-agent'] || '').slice(0, 120);
+      const reqBody = (request.body || {}) as any;
+      const isRemember = reqBody.remember_me === true || reqBody.rememberMe === true;
+      const refreshExpiresDays = isRemember ? 30 : 1;
+
       const refreshToken = await refreshTokenService.createRefreshToken(
         user.id,
         user.tenant_id || 'system',
-        deviceHint
+        deviceHint,
+        refreshExpiresDays
       );
 
       try {

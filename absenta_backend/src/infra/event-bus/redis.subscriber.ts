@@ -7,6 +7,12 @@ export async function subscribeRedisEvents(opts: { redis: any; io: any; ioApi: a
   if (!redis) return;
   const subscriber =
     typeof redis?.duplicate === 'function' ? (redis.duplicate() as any) : (createRedisConnection() as any);
+  
+  subscriber.on('error', (err: any) => {
+    if (process.env.DEBUG_REDIS === 'true') {
+      console.warn('[RedisSubscriber] Connection warning:', err?.message);
+    }
+  });
   const handlers: Record<string, (payload: any) => Promise<void>> = {
     'events:sesi_summary_update': async (payload) => handleSesiSummaryUpdate(io, ioApi, payload),
     'events:session_attendance_update': async (payload) => handleSessionAttendanceUpdate(io, ioApi, payload),

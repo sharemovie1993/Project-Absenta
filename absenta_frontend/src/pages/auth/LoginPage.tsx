@@ -24,8 +24,12 @@ const loginFormSchema = z.object({
   password: z.string().min(1, 'Kata sandi wajib diisi')
 });
 export default function LoginPage() {
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('absenta_remember_me') !== 'false';
+  });
   const [credentials, setCredentials] = useState({
-    email: '',
+    email: (typeof window !== 'undefined' ? localStorage.getItem('absenta_remembered_email') : '') || '',
     password: ''
   });
   const [localError, setLocalError] = useState('');
@@ -207,7 +211,19 @@ export default function LoginPage() {
       // Only pass tenantIdDev when on localhost (dev dropdown). When accessed via real domain, 
       // the backend resolves the tenant from the Host header automatically.
       const devTenantArg = isDevMode && isLocalhostLogin ? (tenantIdDev.trim() || undefined) : undefined;
-      await loginAction(credentials.email, credentials.password, devTenantArg);
+
+      // Persist / clear remembered identifier according to checkbox preference
+      if (rememberMe) {
+        if (credentials.email) {
+          localStorage.setItem('absenta_remembered_email', credentials.email.trim());
+        }
+        localStorage.setItem('absenta_remember_me', 'true');
+      } else {
+        localStorage.removeItem('absenta_remembered_email');
+        localStorage.setItem('absenta_remember_me', 'false');
+      }
+
+      await loginAction(credentials.email, credentials.password, devTenantArg, rememberMe);
     } catch (err) {
       const errorObj = err as {
         response?: {
@@ -236,7 +252,7 @@ export default function LoginPage() {
       }
       setLocalError(data?.message || errorObj.message || 'Gagal masuk');
     }
-  }, [credentials, tenantIdDev, loginAction, navigate]);
+  }, [credentials, tenantIdDev, loginAction, navigate, rememberMe]);
   const handleDemoRoleLogin = useCallback(async (profile: DemoRoleProfile) => {
     setActiveLoadingRoleId(profile.id);
     setLocalError('');
@@ -512,8 +528,14 @@ export default function LoginPage() {
                      </motion.div>
      
                      <div className="flex items-center justify-between py-1">
-                       <label className="flex items-center gap-2 cursor-pointer">
-                           <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                       <label className="flex items-center gap-2 cursor-pointer select-none">
+                           <input
+                             id="loginRememberMe"
+                             type="checkbox"
+                             checked={rememberMe}
+                             onChange={e => setRememberMe(e.target.checked)}
+                             className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                           />
                            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Ingat saya</span>
                        </label>
                        <button type="button" onClick={() => navigate('/login/forgot-password')} className="text-xs font-bold text-blue-600 hover:underline">Lupa kata sandi?</button>

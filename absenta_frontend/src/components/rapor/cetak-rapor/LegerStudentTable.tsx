@@ -13,12 +13,19 @@ import {
   Sparkles,
   Layers,
   ShieldCheck,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { LegerStudent } from '../../../types/cetakRapor.types';
 import { RaporPrintMenu } from '../../rapor/RaporPrintMenu';
+import { 
+  PengaturanCetakSertifikatModal, 
+  SertifikatPklPrintSettings, 
+  getStoredSertifikatSettings, 
+  saveStoredSertifikatSettings 
+} from '../../hubin/PengaturanCetakSertifikatModal';
 
 interface LegerStudentTableProps {
   students: LegerStudent[];
@@ -91,6 +98,8 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
 }) => {
   const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
   const [isCetakSekaligusMenuOpen, setIsCetakSekaligusMenuOpen] = useState(false);
+  const [isSertifikatSettingsModalOpen, setIsSertifikatSettingsModalOpen] = useState(false);
+  const [sertifikatSettings, setSertifikatSettings] = useState<SertifikatPklPrintSettings>(() => getStoredSertifikatSettings());
   const batchMenuRef = useRef<HTMLDivElement>(null);
   const cetakSekaligusMenuRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +152,20 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
 
         {/* Sisi Kanan: Cetak Sekaligus, Toggle Logo PKL, & Buku Leger */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Tombol Buka Modal Pengaturan Cetak Sertifikat PKL (SMK) */}
+          {isJenjangSmk && (
+            <button
+              type="button"
+              onClick={() => setIsSertifikatSettingsModalOpen(true)}
+              title="Pengaturan Cetak Sertifikat PKL: Logo, Nama PIC, Nama DUDI, & Jabatan"
+              className="flex items-center gap-1.5 h-[36px] px-3.5 rounded-xl border border-indigo-500/40 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-xs font-bold transition-all cursor-pointer shadow-xs"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden sm:inline">Pengaturan Sertifikat</span>
+              <span className="sm:hidden">Opsi Cetak</span>
+            </button>
+          )}
+
           {/* Tombol Toggle Instan On-The-Fly: Logo Kanan Sertifikat PKL (SMK) */}
           {isJenjangSmk && toggleShowLogoKananSertifikat && (
             <button
@@ -334,6 +357,20 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
                           </div>
                         </div>
                       </button>
+                      {isJenjangSmk && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsSertifikatSettingsModalOpen(true);
+                          }}
+                          title="Buka Pengaturan Lengkap Cetak Sertifikat PKL (Logo, PIC, DUDI, dll)"
+                          className="px-2 py-1 mr-1 text-[10px] font-bold rounded-md border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 flex items-center gap-1 cursor-pointer"
+                        >
+                          <SlidersHorizontal className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                          <span>Atur</span>
+                        </button>
+                      )}
                       {toggleShowLogoKananSertifikat && (
                         <button
                           type="button"
@@ -612,6 +649,21 @@ export const LegerStudentTable: React.FC<LegerStudentTableProps> = React.memo(({
           </tbody>
         </table>
       </div>
+
+      {/* Modal Pengaturan Cetak Sertifikat PKL */}
+      {isJenjangSmk && (
+        <PengaturanCetakSertifikatModal
+          isOpen={isSertifikatSettingsModalOpen}
+          onClose={() => setIsSertifikatSettingsModalOpen(false)}
+          currentSettings={sertifikatSettings}
+          onSave={(newSettings) => {
+            setSertifikatSettings(newSettings);
+            if (toggleShowLogoKananSertifikat && newSettings.showLogoKanan !== showLogoKananSertifikat) {
+              toggleShowLogoKananSertifikat();
+            }
+          }}
+        />
+      )}
     </Card>
   );
 });

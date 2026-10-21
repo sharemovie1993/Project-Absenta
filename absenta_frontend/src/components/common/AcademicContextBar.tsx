@@ -71,6 +71,11 @@ export interface AcademicContextBarProps {
  *   variant="toolbar"
  * />
  */
+// ── FLAG DEBUG IDENTIFIKASI MIGRASI (DEV MODE ONLY) ───────────
+// Otomatis aktif HANYA pada lingkungan development (import.meta.env.DEV).
+// Menandai komponen legacy AcademicContextBar dengan border warna UNGU.
+const DEBUG_BORDER_ACADEMIC_CONTEXT = Boolean(import.meta.env.DEV);
+
 export function AcademicContextBar({
   tahunPelajaranId,
   semesterId,
@@ -92,7 +97,21 @@ export function AcademicContextBar({
   // ── Varian: toolbar ──────────────────────────────────────────────────────
   if (variant === 'toolbar') {
     return (
-      <div className={cn('grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto', className)}>
+      <div
+        className={cn(
+          'relative grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto transition-all',
+          DEBUG_BORDER_ACADEMIC_CONTEXT &&
+            'p-2 rounded-xl !border-2 !border-purple-600 shadow-md shadow-purple-600/10 ring-2 ring-purple-600/20 bg-purple-50/20 dark:bg-purple-950/20',
+          className
+        )}
+      >
+        {DEBUG_BORDER_ACADEMIC_CONTEXT && (
+          <span className="absolute -top-2.5 right-2 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-purple-700 text-white rounded-md shadow-xs pointer-events-none select-none z-20 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-300 animate-pulse" />
+            AcademicContextBar (Legacy)
+          </span>
+        )}
+
         {/* Tahun Pelajaran */}
         <div className="w-full sm:w-52 min-w-0">
           <SearchableSelect
@@ -126,7 +145,21 @@ export function AcademicContextBar({
 
   // ── Varian: filter (dengan label di atas) ────────────────────────────────
   return (
-    <div className={cn('flex items-end gap-3 flex-wrap', className)}>
+    <div
+      className={cn(
+        'relative flex items-end gap-3 flex-wrap transition-all',
+        DEBUG_BORDER_ACADEMIC_CONTEXT &&
+          'p-3 rounded-xl !border-2 !border-purple-600 shadow-md shadow-purple-600/10 ring-2 ring-purple-600/20 bg-purple-50/20 dark:bg-purple-950/20',
+        className
+      )}
+    >
+      {DEBUG_BORDER_ACADEMIC_CONTEXT && (
+        <span className="absolute -top-2.5 right-2 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-purple-700 text-white rounded-md shadow-xs pointer-events-none select-none z-20 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-300 animate-pulse" />
+          AcademicContextBar (Legacy)
+        </span>
+      )}
+
       {/* Tahun Pelajaran */}
       <div className="space-y-1 w-full max-w-full min-w-0 sm:w-auto">
         <label

@@ -299,29 +299,70 @@ export async function dashboardRoleRoutes(fastify: any) {
 
   // Kaprog Stats
   fastify.get('/kaprog/stats', {
-    preHandler: [requireCapability('dashboard.view.kurikulum'), determineDataScope()],
+    preHandler: [
+      requireCapability([
+        'dashboard.view.kaprog',
+        'dashboard.view.hubin',
+        'academic.students.view.list',
+        'dashboard.view.kurikulum'
+      ]),
+      determineDataScope()
+    ],
     schema: {
       description: 'Get Kaprog/Kepala Program statistics',
       tags: ['Dashboard'],
+      querystring: {
+        type: 'object',
+        properties: {
+          jurusan_id: { type: 'string' },
+          tahun_pelajaran_id: { type: 'string' },
+          semester_id: { type: 'string' }
+        }
+      },
       response: {
         200: {
           type: 'object',
           properties: {
             success: { type: 'boolean' },
-            data: {
-              type: 'object',
-              properties: {
-                totalTeachers: { type: 'number' },
-                activeClasses: { type: 'number' },
-                supervisionCount: { type: 'number' },
-                programName: { type: 'string' }
-              }
-            }
+            data: { type: 'object', additionalProperties: true }
           }
         }
       }
     }
   }, dashboardController.getKaprogStats.bind(dashboardController));
+
+  // Kepegawaian Stats
+  fastify.get('/kepegawaian/stats', {
+    preHandler: [
+      requireCapability([
+        'dashboard.view.tu',
+        'dashboard.view.academic',
+        'users.view',
+        'attendance.recap.view.monthly'
+      ]),
+      determineDataScope()
+    ],
+    schema: {
+      description: 'Get TU Kepegawaian & Dapodik statistics',
+      tags: ['Dashboard'],
+      querystring: {
+        type: 'object',
+        properties: {
+          tahun_pelajaran_id: { type: 'string' },
+          semester_id: { type: 'string' }
+        }
+      },
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean' },
+            data: { type: 'object', additionalProperties: true }
+          }
+        }
+      }
+    }
+  }, dashboardController.getKepegawaianStats.bind(dashboardController));
 
   // Toolman Stats
   fastify.get('/toolman/stats', {

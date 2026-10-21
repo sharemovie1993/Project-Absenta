@@ -63,6 +63,10 @@ export class RekapService {
     return kelasRekapService.getRekapBulananMapel(kelasId, mapelId, bulan, tenantId, tahunPelajaranId);
   }
 
+  async getKelasCohortLineage(kelasId: string, tenantId: string, tahunPelajaranId?: string) {
+    return kelasRekapService.getKelasCohortLineage(kelasId, tenantId, tahunPelajaranId);
+  }
+
   // --- Domain 4: Statistik Rekap & Activity Log ---
   async getStatistikHarian(tanggal: string, tenantId: string, tahunPelajaranId?: string, scope?: DataScope) {
     return statistikRekapService.getStatistikHarian(tanggal, tenantId, tahunPelajaranId, scope);

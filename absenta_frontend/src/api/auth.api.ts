@@ -5,6 +5,7 @@ export interface LoginRequest {
   email: string;
   password: string;
   tenant_id?: string;
+  remember_me?: boolean;
 }
 
 export interface LoginResponse {
@@ -75,9 +76,10 @@ export interface UserProfileResponse {
 
 // API Functions
 
-export async function login(email: string, password: string, tenant_id?: string): Promise<LoginResponse> {
+export async function login(email: string, password: string, tenant_id?: string, remember_me?: boolean): Promise<LoginResponse> {
   const data: LoginRequest = { email, password };
   if (tenant_id) data.tenant_id = tenant_id;
+  if (remember_me !== undefined) data.remember_me = remember_me;
   return requestWithFallback<LoginResponse>('post', '/auth/login', { data });
 }
 

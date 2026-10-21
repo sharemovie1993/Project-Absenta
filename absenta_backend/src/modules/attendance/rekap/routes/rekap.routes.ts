@@ -10,6 +10,7 @@ import {
   getRekapBulananSiswaMe,
   getRekapBulananKelas,
   getRekapBulananKelasMe,
+  getKelasCohortLineage,
   getRekapHarianGuru,
   getTrackingHarianSiswa,
   getStatistikHarian,
@@ -406,6 +407,24 @@ export async function rekapRoutes(fastify: any) {
       },
     },
   }, getRekapBulananKelas);
+
+  // 3a. Linimasa Angkatan Rombel (Cohort Progression Lineage)
+  fastify.get('/kelas/:id/lineage', {
+    preHandler: [allowBothModes, organizationalScopeMiddleware, requireCapability(['attendance.reports.view', 'academic.structures.view.list'])],
+    schema: {
+      description: 'Get cohort lineage across grades (X, XI, XII) for a specific class',
+      tags: ['Rekap'],
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: { id: { type: 'string' } },
+      },
+      querystring: {
+        type: 'object',
+        properties: { tahun_pelajaran_id: { type: 'string' } },
+      },
+    },
+  }, getKelasCohortLineage);
 
   // 3b. Rekap Bulanan Siswa Per Mata Pelajaran (Mapel)
   fastify.get('/mapel/bulanan', {

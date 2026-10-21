@@ -467,6 +467,34 @@ export async function getRekapBulananKelas(request: AuthenticatedRequest, reply:
   }
 }
 
+// GET /api/attendance/rekap/kelas/:id/lineage?tahun_pelajaran_id=...
+export async function getKelasCohortLineage(request: AuthenticatedRequest, reply: any) {
+  try {
+    const { id: kelasId } = request.params as { id: string };
+    const { tahun_pelajaran_id } = request.query as { tahun_pelajaran_id?: string };
+    const tenantId = (request as any).tenantId ?? request.tenant?.id;
+
+    if (!tenantId) {
+      return reply.status(400).send({
+        success: false,
+        message: 'Tenant ID is required',
+      });
+    }
+
+    const data = await rekapService.getKelasCohortLineage(kelasId, tenantId, tahun_pelajaran_id);
+    return reply.status(200).send({
+      success: true,
+      data,
+    });
+  } catch (error: any) {
+    console.error('Error getting kelas cohort lineage:', error);
+    return reply.status(500).send({
+      success: false,
+      message: error.message || 'Internal server error',
+    });
+  }
+}
+
 // GET /api/attendance/rekap/mapel/bulanan?kelas_id=...&mapel_id=...&bulan=YYYY-MM
 export async function getRekapBulananMapel(request: AuthenticatedRequest, reply: any) {
   try {

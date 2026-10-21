@@ -44,7 +44,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'HADIR',
       titleCaseLabel: 'Guru Hadir',
       colorVariant: 'success',
-      badgeClass: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40',
+      badgeClass: 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800/50',
       dotClass: 'bg-emerald-500',
       badgePropsVariant: 'success'
     };
@@ -56,7 +56,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'TERLAMBAT',
       titleCaseLabel: 'Guru Telat',
       colorVariant: 'warning',
-      badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+      badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800/50',
       dotClass: 'bg-amber-500',
       badgePropsVariant: 'warning'
     };
@@ -68,7 +68,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'IZIN',
       titleCaseLabel: 'Guru Izin',
       colorVariant: 'info',
-      badgeClass: 'bg-blue-500/20 text-blue-300 border border-blue-500/40',
+      badgeClass: 'bg-blue-50 text-blue-800 border-blue-300 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800/50',
       dotClass: 'bg-blue-500',
       badgePropsVariant: 'info'
     };
@@ -80,7 +80,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'SAKIT',
       titleCaseLabel: 'Guru Sakit',
       colorVariant: 'orange',
-      badgeClass: 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
+      badgeClass: 'bg-orange-50 text-orange-800 border-orange-300 dark:bg-orange-950/50 dark:text-orange-300 dark:border-orange-800/50',
       dotClass: 'bg-orange-500',
       badgePropsVariant: 'warning'
     };
@@ -92,7 +92,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'IZIN PENDING',
       titleCaseLabel: 'Izin Pending',
       colorVariant: 'warning',
-      badgeClass: 'bg-amber-500/20 text-amber-900 dark:text-amber-300 border border-amber-500/40 animate-pulse',
+      badgeClass: 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800/50 animate-pulse',
       dotClass: 'bg-amber-500',
       badgePropsVariant: 'warning'
     };
@@ -104,7 +104,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'DINAS LUAR',
       titleCaseLabel: 'Dinas Luar',
       colorVariant: 'purple',
-      badgeClass: 'bg-purple-500/20 text-purple-900 dark:text-purple-300 border border-purple-500/40',
+      badgeClass: 'bg-purple-50 text-purple-800 border-purple-300 dark:bg-purple-950/50 dark:text-purple-300 dark:border-purple-800/50',
       dotClass: 'bg-purple-500',
       badgePropsVariant: 'secondary'
     };
@@ -116,8 +116,8 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'PENUGASAN',
       titleCaseLabel: 'Penugasan',
       colorVariant: 'purple',
-      badgeClass: 'bg-purple-500/20 text-purple-300 border border-purple-500/40',
-      dotClass: 'bg-purple-500',
+      badgeClass: 'bg-indigo-50 text-indigo-800 border-indigo-300 dark:bg-indigo-950/50 dark:text-indigo-300 dark:border-indigo-800/50',
+      dotClass: 'bg-indigo-500',
       badgePropsVariant: 'secondary'
     };
   }
@@ -128,7 +128,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'INVAL',
       titleCaseLabel: 'Guru Inval',
       colorVariant: 'purple',
-      badgeClass: 'bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/40',
+      badgeClass: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-300 dark:bg-fuchsia-950/50 dark:text-fuchsia-300 dark:border-fuchsia-800/50',
       dotClass: 'bg-fuchsia-500',
       badgePropsVariant: 'secondary'
     };
@@ -140,7 +140,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'ALPA',
       titleCaseLabel: 'Guru Alpa',
       colorVariant: 'error',
-      badgeClass: 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
+      badgeClass: 'bg-rose-50 text-rose-800 border-rose-300 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/50',
       dotClass: 'bg-rose-500',
       badgePropsVariant: 'error'
     };
@@ -152,7 +152,7 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'BELUM MULAI',
       titleCaseLabel: 'Belum Mulai',
       colorVariant: 'slate',
-      badgeClass: 'bg-slate-500/20 text-slate-300 border border-slate-500/40',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
       dotClass: 'bg-slate-400',
       badgePropsVariant: 'secondary'
     };
@@ -164,8 +164,8 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
       shortLabel: 'BELUM MASUK',
       titleCaseLabel: 'Belum Masuk',
       colorVariant: 'warning',
-      badgeClass: 'bg-orange-500/20 text-orange-900 dark:text-orange-300 border border-orange-500/40',
-      dotClass: 'bg-orange-500 animate-pulse',
+      badgeClass: 'bg-amber-50 text-amber-900 border-amber-400 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/60',
+      dotClass: 'bg-amber-500 animate-pulse',
       badgePropsVariant: 'warning'
     };
   }
@@ -175,8 +175,8 @@ export function getTeacherStatusMeta(rawStatus?: string): TeacherStatusMeta {
     shortLabel: 'BELUM MASUK',
     titleCaseLabel: 'Belum Masuk',
     colorVariant: 'warning',
-    badgeClass: 'bg-orange-500/20 text-orange-900 dark:text-orange-300 border border-orange-500/40',
-    dotClass: 'bg-orange-500 animate-pulse',
+    badgeClass: 'bg-amber-50 text-amber-900 border-amber-400 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700/60',
+    dotClass: 'bg-amber-500 animate-pulse',
     badgePropsVariant: 'warning'
   };
 }

@@ -173,12 +173,16 @@ export class HubinPenilaianController {
 
   async getKaprogSummary(request: AuthenticatedRequest, reply: any) {
     try {
-      const { jurusan_id } = (request.query || {}) as any;
+      const { jurusan_id, tahun_pelajaran_id, semester_id } = (request.query || {}) as any;
       const data = await this.hubinService.getKaprogPklSummary(
         request.tenantId!,
         request.user?.id || (request.user as any)?.userId,
         jurusan_id,
-        request.organizationalScope
+        request.organizationalScope,
+        {
+          tahunPelajaranId: tahun_pelajaran_id,
+          semesterId: semester_id
+        }
       );
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {

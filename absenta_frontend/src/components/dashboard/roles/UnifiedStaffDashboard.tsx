@@ -74,7 +74,8 @@ import { StaffPiketOperasionalTab } from '../staff/tabs/StaffPiketOperasionalTab
 import { StaffProfilGuruTab } from '../staff/tabs/StaffProfilGuruTab';
 import { StaffManualInputTab } from '../staff/tabs/StaffManualInputTab';
 import { StaffPembimbingPklTab } from '../staff/tabs/StaffPembimbingPklTab';
-import { StaffKaprogTab } from '../staff/tabs/StaffKaprogTab';
+// Kaprog Dashboard — clean 3-zone design (replaced StaffKaprogTab)
+const KaprogDashboard = React.lazy(() => import('./KaprogDashboard').then(m => ({ default: m.KaprogDashboard })));
 import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 
 // Modular Dashboards are accessed via Google-style App Launcher & Portal tab
@@ -82,8 +83,8 @@ import { StaffPortalTab } from '../staff/tabs/StaffPortalTab';
 import { StaffAdminOverviewTab } from '../staff/tabs/StaffAdminOverviewTab';
 // Executive Principal Dashboard — dirender di tab Overview Eksekutif untuk KEPALA_SEKOLAH
 const KepalaSekolahDashboard = React.lazy(() => import('./KepalaSekolahDashboard').then(m => ({ default: m.KepalaSekolahDashboard })));
-// Academic & Kepegawaian Dashboard — dirender di tab TU Kepegawaian
-const AcademicDashboard = React.lazy(() => import('@/pages/academic/AcademicDashboard'));
+// Kepegawaian Dashboard — dirender di tab TU Kepegawaian
+const KepegawaianDashboard = React.lazy(() => import('./KepegawaianDashboard').then(m => ({ default: m.KepegawaianDashboard })));
 
 const CatatPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/CatatPelanggaranModal').then(m => ({ default: m.CatatPelanggaranModal })));
 const TindakMasalPelanggaranModal = React.lazy(() => import('../../kesiswaan/modals/TindakMasalPelanggaranModal').then(m => ({ default: m.TindakMasalPelanggaranModal })));
@@ -452,6 +453,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
   const { data: tenantRes } = useQuery({
     queryKey: ['my-tenant'],
     queryFn: () => tenantApi.getMyTenant().catch(() => null),
+    enabled: !!user?.tenant_id,
     staleTime: 10 * 60 * 1000,
   });
   const tenantInfo = tenantRes?.success ? tenantRes.data : null;
@@ -1252,12 +1254,22 @@ export const UnifiedStaffDashboard: React.FC = () => {
           />
         )}
 
-        {/* 🏆 TAB KAPROG: DASHBOARD KETUA PROGRAM KEAHLIAN */}
+        {/* 🏆 TAB KAPROG: DASHBOARD KETUA PROGRAM KEAHLIAN — New Design */}
         {activeTab === 'kaprog' && (
-          <StaffKaprogTab
-            user={user}
-            kaprogJurusan={kaprogJurusan}
-          />
+          <Suspense fallback={
+            <div className="w-full space-y-6 py-4">
+              <div className="h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />)}
+              </div>
+              <div className="h-80 bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+            </div>
+          }>
+            <KaprogDashboard
+              user={user}
+              kaprogJurusan={kaprogJurusan}
+            />
+          </Suspense>
         )}
 
 
@@ -1270,7 +1282,7 @@ export const UnifiedStaffDashboard: React.FC = () => {
         {/* 🧑‍💼 TAB 10: TU KEPEGAWAIAN (DATA INDUK & DAPODIK) */}
         {activeTab === 'kepegawaian' && (
           <Suspense fallback={<div className="py-12 flex justify-center"><Loader /></div>}>
-            <AcademicDashboard />
+            <KepegawaianDashboard user={user} />
           </Suspense>
         )}
 

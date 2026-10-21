@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   Loader2,
   Building2,
-  ShieldCheck 
+  ShieldCheck,
+  UserCheck,
+  SlidersHorizontal 
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { PrintHeader } from '../ui/PrintHeader';
@@ -26,6 +28,12 @@ import {
   SertifikatPklPrintData 
 } from '../../utils/print/modules/pdfSertifikatPkl';
 import { resolveCoverImageBase64 } from '../../utils/print/rapor/raporShared';
+import { 
+  PengaturanCetakSertifikatModal, 
+  SertifikatPklPrintSettings, 
+  getStoredSertifikatSettings, 
+  saveStoredSertifikatSettings 
+} from './PengaturanCetakSertifikatModal';
 import { toast } from 'sonner';
 
 interface SertifikatPklModalProps {
@@ -43,14 +51,25 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
 }) => {
   const [activeTab, setActiveTab] = useState<'ALL' | 'FRONT' | 'BACK'>('ALL');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
-  const [showDudiName, setShowDudiName] = useState<boolean>(true);
-  const [showLogoKanan, setShowLogoKanan] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('absenta_sertifikat_logo_kanan') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState<SertifikatPklPrintSettings>(() => getStoredSertifikatSettings());
+
+  const showDudiName = settings.showDudiName;
+  const showPicName = settings.showPicName;
+  const showLogoKanan = settings.showLogoKanan;
+
+  const updateSettings = (newSettings: SertifikatPklPrintSettings) => {
+    setSettings(newSettings);
+    saveStoredSertifikatSettings(newSettings);
+  };
+
+  const handleQuickToggle = (key: keyof SertifikatPklPrintSettings) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      saveStoredSertifikatSettings(next);
+      return next;
+    });
+  };
 
   // Tenant Query for Centralized Kop Surat (PrintHeader)
   const { user } = useAuthStore();
@@ -76,8 +95,8 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
     const rawSekolah = pklData?.sekolah || {};
     return {
       name: tenantData?.name || rawSekolah?.nama || 'SMK NEGERI 1 PLERED',
-      logo_url: showLogoKanan ? (tenantData?.logo_url || rawSekolah?.logo_url || undefined) : undefined,
-      logo_daerah_url: tenantData?.logo_daerah_url || rawSekolah?.logo_daerah || undefined,
+      logo_url: settings.showLogoKanan ? (tenantData?.logo_url || rawSekolah?.logo_url || undefined) : undefined,
+      logo_daerah_url: settings.showLogoKiri !== false ? (tenantData?.logo_daerah_url || rawSekolah?.logo_daerah || undefined) : undefined,
       address: tenantData?.address || rawSekolah?.alamat || 'Jl. Raya Rawasari Kec. Plered Kab. Purwakarta Telp. (0264) 7504001',
       phone: tenantData?.phone || rawSekolah?.telepon || '(0264) 7504001',
       email: tenantData?.email || rawSekolah?.email || 'smkneple@gmail.com',
@@ -88,7 +107,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
       kode_pos: tenantData?.kode_pos || rawSekolah?.kode_pos || '41162',
       print_header_lines: tenantData?.print_header_lines || undefined,
     };
-  }, [tenantData, pklData?.sekolah]);
+  }, [tenantData, pklData?.sekolah, settings.showLogoKanan, settings.showLogoKiri]);
 
   // Resolve structured data
   const certData: SertifikatPklPrintData = useMemo(() => {
@@ -111,13 +130,14 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
 
     const refSertifikat = (pklData as any)?.referensi_sertifikat;
     const nomorResmi = pklData?.nomor_sertifikat || refSertifikat?.nomor_surat || defaultData?.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV';
-    const durasiResmi = String(refSertifikat?.durasi_jp || '792');
+    const durasiResmi = settings.overrideDurasiJp || String(refSertifikat?.durasi_jp || '792');
     const tempatResmi = refSertifikat?.tempat_terbit || rawSekolah.kota || 'Purwakarta';
     const rawTanggalTerbit = refSertifikat?.tanggal_terbit;
     const formattedTanggal = rawTanggalTerbit ? formatTanggalIndonesia(rawTanggalTerbit) : '22 Desember 2025';
-    const tanggalResmi = `${tempatResmi}, ${formattedTanggal}`;
-    const kepalaResmi = refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-    const nipResmi = refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || '197111022008011001';
+    const tanggalResmi = settings.overrideTanggalTerbit || `${tempatResmi}, ${formattedTanggal}`;
+    const kepalaResmi = settings.overrideKepalaSekolah || refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+    const nipResmi = settings.overrideNipKepala || refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || '197111022008011001';
+    const picJabatanResmi = settings.overrideJabatan || pklData?.penanggung_jawab_jabatan || rawMitra.pic_jabatan || defaultData?.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
 
     return {
       nomor_sertifikat: nomorResmi,
@@ -156,7 +176,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
         nama: rawMitra.nama || defaultData?.mitra_nama || 'POST MITRA',
         alamat: pklData?.alamat_dudi || rawMitra.alamat || defaultData?.alamat_dudi || 'Jl. Raya Citeko-Plered-Purwakarta',
         penanggung_jawab_nama: pklData?.penanggung_jawab_nama || rawMitra.pic_nama || defaultData?.penanggung_jawab_nama || '',
-        penanggung_jawab_jabatan: pklData?.penanggung_jawab_jabatan || rawMitra.pic_jabatan || defaultData?.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan',
+        penanggung_jawab_jabatan: picJabatanResmi,
         instruktur_nama: pklData?.instruktur_nama || defaultData?.instruktur_nama || '',
       },
       pembimbing: {
@@ -246,6 +266,7 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
         logoDaerahBase64,
         logoSekolahBase64,
         showDudiName,
+        showPicName,
       });
       doc.save(`Sertifikat_PKL_${certData.siswa.nama_siswa.replace(/\s+/g, '_')}.pdf`);
       toast.success('File PDF Sertifikat berhasil diunduh!');
@@ -322,50 +343,79 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Toggle Nama DUDI pada TTD */}
+          {/* Tombol Buka Modal Pengaturan Cetak Lengkap */}
           <button
             type="button"
-            onClick={() => setShowDudiName((prev) => !prev)}
-            title="Aktifkan atau nonaktifkan pencantuman nama DUDI / instansi di bawah teks Penanggung Jawab"
+            onClick={() => setIsSettingsOpen(true)}
+            title="Buka Pengaturan Cetak Sertifikat PKL Lengkap"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 shadow-sm"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 shrink-0 text-indigo-400" />
+            <span className="hidden sm:inline">Pengaturan Cetak</span>
+            <span className="sm:hidden">Opsi</span>
+          </button>
+
+          {/* Toggle Cepat Nama PIC / Poloskan pada TTD */}
+          <button
+            type="button"
+            onClick={() => {
+              handleQuickToggle('showPicName');
+              toast.info(`Nama PIC / Pimpinan di TTD: ${!settings.showPicName ? 'DISERTAKAN (ON)' : 'DIPOLOSKAN (OFF)'}`);
+            }}
+            title="Pilih apakah nama PIC/Pimpinan disertakan di atas garis TTD atau dipoloskan (kosong)"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-              showDudiName
+              settings.showPicName
+                ? 'bg-blue-500/20 text-blue-300 border-blue-500/40 hover:bg-blue-500/30'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Nama PIC:</span>
+            <span className="sm:hidden">PIC:</span>
+            <span className={settings.showPicName ? 'text-blue-400 font-extrabold' : 'text-slate-400'}>
+              {settings.showPicName ? 'ON' : 'POLOS'}
+            </span>
+          </button>
+
+          {/* Toggle Cepat Nama DUDI pada TTD */}
+          <button
+            type="button"
+            onClick={() => {
+              handleQuickToggle('showDudiName');
+              toast.info(`Nama DUDI di TTD: ${!settings.showDudiName ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}`);
+            }}
+            title="Aktifkan atau nonaktifkan pencantuman nama DUDI / instansi di bawah teks Penanggung Jawab"
+            className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              settings.showDudiName
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                 : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
             }`}
           >
             <Building2 className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Nama DUDI di TTD:</span>
-            <span className="sm:hidden">DUDI:</span>
-            <span className={showDudiName ? 'text-emerald-400 font-extrabold' : 'text-slate-400'}>
-              {showDudiName ? 'ON' : 'OFF'}
+            <span>DUDI:</span>
+            <span className={settings.showDudiName ? 'text-emerald-400 font-extrabold' : 'text-slate-400'}>
+              {settings.showDudiName ? 'ON' : 'OFF'}
             </span>
           </button>
 
-          {/* Toggle On-The-Fly Logo Kanan (Logo Sekolah) pada Kop Surat */}
+          {/* Toggle Cepat Logo Kanan (Logo Sekolah) pada Kop Surat */}
           <button
             type="button"
             onClick={() => {
-              setShowLogoKanan((prev) => {
-                const next = !prev;
-                try {
-                  localStorage.setItem('absenta_sertifikat_logo_kanan', String(next));
-                } catch {}
-                toast.info(`Logo Kanan Sertifikat: ${next ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}`);
-                return next;
-              });
+              handleQuickToggle('showLogoKanan');
+              toast.info(`Logo Kanan Sertifikat: ${!settings.showLogoKanan ? 'AKTIF (ON)' : 'NONAKTIF (OFF)'}`);
             }}
             title="Aktifkan atau nonaktifkan Logo Kanan (Logo Sekolah) pada kop surat secara instan"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-              showLogoKanan
+            className={`hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              settings.showLogoKanan
                 ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30'
                 : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:bg-slate-700'
             }`}
           >
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">Logo Kanan:</span>
-            <span className="sm:hidden">Logo Kanan:</span>
-            <span className={showLogoKanan ? 'text-indigo-400 font-extrabold' : 'text-slate-400'}>
-              {showLogoKanan ? 'ON' : 'OFF'}
+            <span>Logo Kanan:</span>
+            <span className={settings.showLogoKanan ? 'text-indigo-400 font-extrabold' : 'text-slate-400'}>
+              {settings.showLogoKanan ? 'ON' : 'OFF'}
             </span>
           </button>
 
@@ -693,9 +743,9 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
               </div>
 
               {/* Bottom Legend & Company Signature */}
-              <div className="flex items-start justify-between pt-6 font-sans text-[11px]">
+              <div className="flex items-start justify-between pt-4 font-sans text-[11px]">
                 {/* Keterangan Nilai Box (Border hitam) */}
-                <div className="border border-slate-950 p-3 w-64 space-y-1">
+                <div className="border border-slate-950 p-2.5 w-64 space-y-1">
                   <div className="font-semibold mb-1 italic">Keterangan Nilai :</div>
                   <div className="grid grid-cols-[60px_20px_1fr] text-[10px] leading-tight">
                     <span>90 - 100</span>
@@ -716,57 +766,23 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                   </div>
                 </div>
 
-                {/* Signature block – adaptive based on mode */}
-                {isComposite ? (
-                  <div className="flex gap-16 text-[12px] mr-4">
-                    {/* Pembimbing Sekolah */}
-                    <div className="text-center leading-relaxed">
-                      <div className="font-medium text-slate-700">Mengetahui,</div>
-                      <div>Guru Pembimbing PKL / Kaprog</div>
-                      {showDudiName && <div className="invisible select-none">&nbsp;</div>}
-                      <div className="h-14" />
-                      <div className="border-b border-slate-950 w-52 mx-auto font-bold">
-                        {certData.pembimbing?.nama || '\u00A0'}
-                      </div>
-                      {certData.pembimbing?.nip ? (
-                        <div className="text-[10px] mt-0.5">{`NIP. ${certData.pembimbing.nip}`}</div>
-                      ) : (
-                        <div className="text-[10px] mt-0.5 invisible">NIP. -</div>
-                      )}
+                {/* Signature block – Penanggung Jawab Perusahaan / Instansi */}
+                <div className="text-center text-[12px] mr-10 leading-relaxed min-w-[240px]">
+                  <div className="font-medium text-slate-800">{certData.tanggal_terbit}</div>
+                  <div>Penanggung Jawab Perusahaan / Instansi</div>
+                  {showDudiName && (
+                    <div className="font-semibold text-slate-900 dark:text-white whitespace-nowrap overflow-hidden text-ellipsis max-w-[280px] mx-auto text-[11px]">
+                      {certData.mitra.nama},
                     </div>
-                    {/* PIC DUDI */}
-                    <div className="text-center leading-relaxed">
-                      <div className="font-medium text-slate-800">{certData.tanggal_terbit}</div>
-                      <div>Penanggung Jawab Perusahaan / Instansi</div>
-                      {showDudiName && (
-                        <div className="font-semibold text-slate-900 dark:text-white">{certData.mitra.nama},</div>
-                      )}
-                      <div className="h-14" />
-                      <div className="border-b border-slate-950 w-52 mx-auto font-bold">
-                        {certData.mitra.penanggung_jawab_nama || '\u00A0'}
-                      </div>
-                      <div className="text-[10px] mt-0.5 text-slate-700 font-medium">
-                        {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
-                      </div>
-                    </div>
+                  )}
+                  <div className="h-16" />
+                  <div className="border-b border-slate-950 w-56 mx-auto font-bold min-h-[1.35em]">
+                    {showPicName ? (certData.mitra.penanggung_jawab_nama || '\u00A0') : '\u00A0'}
                   </div>
-                ) : (
-                  /* DUDI_ONLY: single signature */
-                  <div className="text-center text-[12px] mr-10 leading-relaxed">
-                    <div className="font-medium text-slate-800">{certData.tanggal_terbit}</div>
-                    <div>Penanggung Jawab Perusahaan / Instansi</div>
-                    {showDudiName && (
-                      <div className="font-semibold text-slate-900 dark:text-white">{certData.mitra.nama},</div>
-                    )}
-                    <div className="h-14" />
-                    <div className="border-b border-slate-950 w-56 mx-auto font-bold">
-                      {certData.mitra.penanggung_jawab_nama || '\u00A0'}
-                    </div>
-                    <div className="text-[10px] mt-0.5 text-slate-700 font-medium">
-                      {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
-                    </div>
+                  <div className="text-[10px] mt-0.5 text-slate-700 font-medium">
+                    {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
@@ -849,13 +865,13 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
           <div className="page-break" style={{ pageBreakAfter: 'always' }} />
 
           {/* HALAMAN 2 BELAKANG (DAFTAR NILAI) */}
-          <div className="sertifikat-print-page w-[297mm] h-[210mm] p-[15mm] box-border flex flex-col justify-between font-serif bg-white text-black">
+          <div className="sertifikat-print-page w-[297mm] h-[210mm] p-[10mm_15mm] box-border flex flex-col justify-between font-serif bg-white text-black">
             <div>
-              <div className="text-center my-2 font-serif">
-                <h1 className="text-[15pt] font-black uppercase">DAFTAR NILAI PRAKTIK KERJA LAPANGAN</h1>
+              <div className="text-center my-1 font-serif">
+                <h1 className="text-[14pt] font-black uppercase">DAFTAR NILAI PRAKTIK KERJA LAPANGAN</h1>
               </div>
 
-              <div className="grid grid-cols-[50mm_5mm_1fr] text-[10pt] font-sans gap-y-1 my-3">
+              <div className="grid grid-cols-[50mm_5mm_1fr] text-[9.5pt] font-sans gap-y-0.5 my-2">
                 <div>Nama</div><div>:</div><div className="font-bold uppercase">{certData.siswa.nama_siswa}</div>
                 <div>Nomor Induk siswa</div><div>:</div><div>{certData.siswa.nisn || certData.siswa.nis}</div>
                 <div>Konsentrasi Keahlian</div><div>:</div><div>{certData.siswa.konsentrasi_keahlian}</div>
@@ -945,10 +961,10 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
               </div>
             </div>
 
-            <div className="flex items-start justify-between pt-4 font-sans text-[9pt]">
-              <div className="border border-black p-2 w-56">
+            <div className="flex items-start justify-between pt-2 font-sans text-[8.5pt]">
+              <div className="border border-black p-1.5 w-56">
                 <div className="font-semibold italic mb-0.5">Keterangan Nilai :</div>
-                <div className="grid grid-cols-[45px_15px_1fr] text-[8pt] leading-tight">
+                <div className="grid grid-cols-[45px_15px_1fr] text-[7.5pt] leading-tight">
                   <span>90 - 100</span><span className="font-bold">A</span><span>Amat Baik</span>
                   <span>80 - 89</span><span className="font-bold">B</span><span>Baik</span>
                   <span>70 - 79</span><span className="font-bold">C</span><span>Cukup Baik</span>
@@ -956,54 +972,23 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
                 </div>
               </div>
 
-              {/* Adaptive signature block in print portal */}
-              {isComposite ? (
-                <div className="flex gap-12 text-[10pt] mr-4">
-                  <div className="text-center">
-                    <div>Mengetahui,</div>
-                    <div>Guru Pembimbing PKL / Kaprog</div>
-                    {showDudiName && <div className="invisible">&nbsp;</div>}
-                    <div className="h-[15mm]" />
-                    <div className="border-b border-black w-44 mx-auto font-bold">
-                      {certData.pembimbing?.nama || '\u00A0'}
-                    </div>
-                    {certData.pembimbing?.nip ? (
-                      <div className="text-[8pt] mt-0.5">{`NIP. ${certData.pembimbing.nip}`}</div>
-                    ) : (
-                      <div className="text-[8pt] mt-0.5 invisible">NIP. -</div>
-                    )}
+              {/* Signature block in print portal: Penanggung Jawab Perusahaan / Instansi */}
+              <div className="text-center text-[9pt] mr-12 min-w-[55mm]">
+                <div>{certData.tanggal_terbit}</div>
+                <div>Penanggung Jawab Perusahaan / Instansi</div>
+                {showDudiName && (
+                  <div className="font-semibold whitespace-nowrap overflow-hidden text-ellipsis max-w-[75mm] mx-auto text-[8pt]">
+                    {certData.mitra.nama},
                   </div>
-                  <div className="text-center">
-                    <div>{certData.tanggal_terbit}</div>
-                    <div>Penanggung Jawab Perusahaan / Instansi</div>
-                    {showDudiName && (
-                      <div className="font-semibold">{certData.mitra.nama},</div>
-                    )}
-                    <div className="h-[15mm]" />
-                    <div className="border-b border-black w-44 mx-auto font-bold">
-                      {certData.mitra.penanggung_jawab_nama || '\u00A0'}
-                    </div>
-                    <div className="text-[8pt] mt-0.5">
-                      {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
-                    </div>
-                  </div>
+                )}
+                <div className="h-[15mm]" />
+                <div className="border-b border-black w-48 mx-auto font-bold min-h-[1.35em]">
+                  {showPicName ? (certData.mitra.penanggung_jawab_nama || '\u00A0') : '\u00A0'}
                 </div>
-              ) : (
-                <div className="text-center text-[10pt] mr-12">
-                  <div>{certData.tanggal_terbit}</div>
-                  <div>Penanggung Jawab Perusahaan / Instansi</div>
-                  {showDudiName && (
-                    <div className="font-semibold">{certData.mitra.nama},</div>
-                  )}
-                  <div className="h-[15mm]" />
-                  <div className="border-b border-black w-48 mx-auto font-bold">
-                    {certData.mitra.penanggung_jawab_nama || '\u00A0'}
-                  </div>
-                  <div className="text-[8pt] mt-0.5">
-                    {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
-                  </div>
+                <div className="text-[7.5pt] mt-0.5">
+                  {certData.mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan'}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>,
@@ -1041,6 +1026,23 @@ export const SertifikatPklModal: React.FC<SertifikatPklModalProps> = React.memo(
           }
         }
       `}</style>
+
+      {/* Modal Pengaturan Cetak Sertifikat Lengkap */}
+      <PengaturanCetakSertifikatModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        currentSettings={settings}
+        onSave={updateSettings}
+        defaultData={{
+          namaSekolah: certData.sekolah?.nama,
+          kepalaSekolah: certData.sekolah?.kepala_sekolah,
+          nipKepala: certData.sekolah?.nip_kepala,
+          tanggalTerbit: certData.tanggal_terbit,
+          durasiJp: String(certData.durasi_jp),
+          mitraNama: certData.mitra?.nama,
+          picJabatan: certData.mitra?.penanggung_jawab_jabatan,
+        }}
+      />
     </div>
   );
 });

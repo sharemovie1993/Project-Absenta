@@ -119,8 +119,8 @@ axiosInstance.interceptors.request.use(
        config.url = config.url.substring(1);
     }
 
-    const token = localStorage.getItem('access_token');
-    const tenantId = localStorage.getItem('tenant_id');
+    const token = localStorage.getItem('access_token') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('access_token') : null);
+    const tenantId = localStorage.getItem('tenant_id') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tenant_id') : null);
     
     // Add Tenant Context Headers
     const host = typeof window !== 'undefined' ? window.location.hostname : '';
@@ -135,7 +135,7 @@ axiosInstance.interceptors.request.use(
         (config.headers as any)['X-Tenant-Host'] = host;
         if (sub) (config.headers as any)['X-Tenant-Sub'] = sub;
         
-        const tenantDomain = localStorage.getItem('tenant_domain');
+        const tenantDomain = localStorage.getItem('tenant_domain') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tenant_domain') : null);
         if (tenantDomain) (config.headers as any)['X-Tenant-Domain'] = tenantDomain;
     }
 
@@ -326,7 +326,7 @@ axiosInstance.interceptors.response.use(
       try {
         if (!refreshingTokenPromise) {
           refreshingTokenPromise = (async () => {
-            const refreshToken = localStorage.getItem('refresh_token');
+            const refreshToken = localStorage.getItem('refresh_token') || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('refresh_token') : null);
             if (!refreshToken) return null;
 
             const refreshResponse = await axiosInstance.post('/auth/refresh', { refreshToken });
@@ -342,9 +342,19 @@ axiosInstance.interceptors.response.use(
         const refreshed = await refreshingTokenPromise;
         if (!refreshed?.token) throw new Error('Refresh token failed');
 
-        localStorage.setItem('access_token', refreshed.token);
-        if (refreshed.refreshToken) {
-          localStorage.setItem('refresh_token', refreshed.refreshToken);
+        const isRemembered = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
+        if (isRemembered) {
+          localStorage.setItem('access_token', refreshed.token);
+          if (refreshed.refreshToken) {
+            localStorage.setItem('refresh_token', refreshed.refreshToken);
+          }
+        } else {
+          try {
+            sessionStorage.setItem('access_token', refreshed.token);
+            if (refreshed.refreshToken) {
+              sessionStorage.setItem('refresh_token', refreshed.refreshToken);
+            }
+          } catch {}
         }
 
         if (originalRequest.headers.set) {

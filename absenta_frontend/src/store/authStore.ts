@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { login, getCurrentUser, refreshToken } from '../api/auth.api';
 import { completeOnboarding } from '../api/user.api';
 import { getMyTenant } from '../api/tenants.api';
@@ -78,7 +78,7 @@ interface AuthState {
   subscriptionIssueModalMessage: string | null;
   
   // Actions
-  loginAction: (email: string, password: string, tenantIdDev?: string) => Promise<void>;
+  loginAction: (email: string, password: string, tenantIdDev?: string, rememberMe?: boolean) => Promise<void>;
   logout: () => void;
   loadUser: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -94,17 +94,56 @@ interface AuthState {
   refreshSubscription: () => Promise<void>;
 }
 
+// Helper to safely access auth storage (localStorage for remembered, sessionStorage for non-remembered)
+const getInitialToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
+};
+
+const getInitialRefreshToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+};
+
+const getInitialTenantId = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('tenant_id') || sessionStorage.getItem('tenant_id');
+};
+
+const authPersistStorage = {
+  getItem: (name: string): string | null => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(name) || sessionStorage.getItem(name);
+  },
+  setItem: (name: string, value: string): void => {
+    if (typeof window === 'undefined') return;
+    const isRemember = localStorage.getItem('absenta_remember_me') !== 'false';
+    if (isRemember) {
+      localStorage.setItem(name, value);
+      try { sessionStorage.removeItem(name); } catch {}
+    } else {
+      try { sessionStorage.setItem(name, value); } catch {}
+      localStorage.removeItem(name);
+    }
+  },
+  removeItem: (name: string): void => {
+    if (typeof window === 'undefined') return;
+    try { sessionStorage.removeItem(name); } catch {}
+    localStorage.removeItem(name);
+  }
+};
+
 // Zustand store dengan persist middleware
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       // Initial state
-      isAuthenticated: !!localStorage.getItem('access_token'),
+      isAuthenticated: !!getInitialToken(),
       user: null,
       subscription: null,
-      token: localStorage.getItem('access_token'),
-      refreshToken: localStorage.getItem('refresh_token'),
-      tenantId: localStorage.getItem('tenant_id'),
+      token: getInitialToken(),
+      refreshToken: getInitialRefreshToken(),
+      tenantId: getInitialTenantId(),
       tenantMode: null,
       isLoading: false, // Don't block initial render if we have persisted state
       error: null,
@@ -113,18 +152,42 @@ export const useAuthStore = create<AuthState>()(
       subscriptionIssueModalMessage: null,
 
       // Login action dengan integrasi API
-      loginAction: async (email: string, password: string, tenantIdDev?: string) => {
+      loginAction: async (email: string, password: string, tenantIdDev?: string, rememberMe: boolean = true) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await login(email, password, tenantIdDev);
+          const response = await login(email, password, tenantIdDev, rememberMe);
           if (response.success) {
             const { user, token, refreshToken: refToken } = response.data;
-            localStorage.setItem('access_token', token);
-            localStorage.setItem('refresh_token', refToken);
-            if (user.tenant_id) {
-              localStorage.setItem('tenant_id', user.tenant_id);
+            if (rememberMe) {
+              localStorage.setItem('absenta_remember_me', 'true');
+              localStorage.setItem('access_token', token);
+              localStorage.setItem('refresh_token', refToken);
+              if (user.tenant_id) {
+                localStorage.setItem('tenant_id', user.tenant_id);
+              } else {
+                localStorage.removeItem('tenant_id');
+              }
+              try {
+                sessionStorage.removeItem('access_token');
+                sessionStorage.removeItem('refresh_token');
+                sessionStorage.removeItem('tenant_id');
+                sessionStorage.removeItem('auth-storage');
+              } catch {}
             } else {
+              localStorage.setItem('absenta_remember_me', 'false');
+              try {
+                sessionStorage.setItem('access_token', token);
+                sessionStorage.setItem('refresh_token', refToken);
+                if (user.tenant_id) {
+                  sessionStorage.setItem('tenant_id', user.tenant_id);
+                } else {
+                  sessionStorage.removeItem('tenant_id');
+                }
+              } catch {}
+              localStorage.removeItem('access_token');
+              localStorage.removeItem('refresh_token');
               localStorage.removeItem('tenant_id');
+              localStorage.removeItem('auth-storage');
             }
 
             // Fix: Immediately set user state to avoid 403 race condition
@@ -151,7 +214,12 @@ export const useAuthStore = create<AuthState>()(
                 if (tenantRes.status === 'fulfilled') {
                   const domain = (tenantRes.value?.data as any)?.subdomain || (tenantRes.value?.data as any)?.domain;
                   if (typeof domain === 'string' && domain.trim().length > 0) {
-                    localStorage.setItem('tenant_domain', domain.trim().toLowerCase());
+                    const normDomain = domain.trim().toLowerCase();
+                    if (rememberMe) {
+                      localStorage.setItem('tenant_domain', normDomain);
+                    } else {
+                      try { sessionStorage.setItem('tenant_domain', normDomain); } catch {}
+                    }
                   }
                 }
                 if (subRes.status === 'fulfilled') {
@@ -170,14 +238,14 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoading: false, error: errorMessage, isAuthenticated: false });
           throw error;
         } finally {
-          const currentLoading = (localStorage.getItem('access_token') ? false : get().isLoading);
+          const currentLoading = (getInitialToken() ? false : get().isLoading);
           set({ isLoading: currentLoading });
         }
       },
 
       // Load user profile dari API
       loadUser: async () => {
-        const token = get().token || localStorage.getItem('access_token');
+        const token = get().token || getInitialToken();
         if (!token) return;
         
         set({ isLoading: true });
@@ -236,9 +304,14 @@ export const useAuthStore = create<AuthState>()(
             }
             // ─────────────────────────────────────────────────────────────────
 
-            const activeToken = token || localStorage.getItem('access_token');
+            const activeToken = token || getInitialToken();
             if (response.data.tenant_id) {
-              localStorage.setItem('tenant_id', response.data.tenant_id);
+              const isRemember = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
+              if (isRemember) {
+                localStorage.setItem('tenant_id', response.data.tenant_id);
+              } else {
+                try { sessionStorage.setItem('tenant_id', response.data.tenant_id); } catch {}
+              }
             }
 
             set({
@@ -260,7 +333,13 @@ export const useAuthStore = create<AuthState>()(
                 if (tenantRes.status === 'fulfilled') {
                   const domain = (tenantRes.value?.data as any)?.subdomain || (tenantRes.value?.data as any)?.domain;
                   if (typeof domain === 'string' && domain.trim().length > 0) {
-                    localStorage.setItem('tenant_domain', domain.trim().toLowerCase());
+                    const normDomain = domain.trim().toLowerCase();
+                    const isRemember = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
+                    if (isRemember) {
+                      localStorage.setItem('tenant_domain', normDomain);
+                    } else {
+                      try { sessionStorage.setItem('tenant_domain', normDomain); } catch {}
+                    }
                   }
                 }
                 if (subRes.status === 'fulfilled') {
@@ -294,7 +373,7 @@ export const useAuthStore = create<AuthState>()(
 
       // Refresh token
       refresh: async () => {
-        const refToken = get().refreshToken || localStorage.getItem('refresh_token');
+        const refToken = get().refreshToken || getInitialRefreshToken();
         if (!refToken) return;
         
         try {
@@ -302,7 +381,12 @@ export const useAuthStore = create<AuthState>()(
           
           if (response.success) {
             const newToken = response.data.token;
-            localStorage.setItem('access_token', newToken);
+            const isRemember = typeof localStorage !== 'undefined' && localStorage.getItem('absenta_remember_me') !== 'false';
+            if (isRemember) {
+              localStorage.setItem('access_token', newToken);
+            } else {
+              try { sessionStorage.setItem('access_token', newToken); } catch {}
+            }
             
             set({
               token: newToken,
@@ -317,7 +401,7 @@ export const useAuthStore = create<AuthState>()(
 
       // Logout action
       logout: () => {
-        // Hapus seluruh token & session state dari localStorage
+        // Hapus seluruh token & session state dari localStorage (tetap simpan absenta_remembered_email & absenta_remember_me)
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('tenant_id');
@@ -328,8 +412,13 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('portal_active_ws');
         localStorage.removeItem('absenta_nav_state');
 
-        // Bersihkan demo session state dari sessionStorage
+        // Bersihkan seluruh token & demo session state dari sessionStorage
         try {
+          sessionStorage.removeItem('access_token');
+          sessionStorage.removeItem('refresh_token');
+          sessionStorage.removeItem('tenant_id');
+          sessionStorage.removeItem('tenant_domain');
+          sessionStorage.removeItem('auth-storage');
           sessionStorage.removeItem('is_demo_session');
           sessionStorage.removeItem('demo_active_role');
           sessionStorage.removeItem('demo_active_name');
@@ -400,7 +489,8 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'auth-storage', // localStorage key
+      name: 'auth-storage',
+      storage: createJSONStorage(() => authPersistStorage),
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,

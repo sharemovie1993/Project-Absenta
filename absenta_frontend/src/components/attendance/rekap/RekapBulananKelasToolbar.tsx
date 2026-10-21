@@ -18,6 +18,7 @@ interface RekapBulananKelasToolbarProps {
   tahunOptions: DropdownOption[];
   selectedKelasLabel: string;
   isWaliKelasAutoFiltered: boolean;
+  extraUnderKelas?: React.ReactNode;
   // Setters
   setKelasId: (v: string) => void;
   setBulan: (v: string) => void;
@@ -28,7 +29,7 @@ interface RekapBulananKelasToolbarProps {
   onExportPdf: () => void;
 }
 
-const ViewModeSwitcher = ({
+export const ViewModeSwitcher = ({
   viewMode,
   setViewMode,
   compact = false,
@@ -76,6 +77,7 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
   tahunOptions,
   selectedKelasLabel,
   isWaliKelasAutoFiltered,
+  extraUnderKelas,
   setKelasId,
   setBulan,
   setTahunPelajaranId,
@@ -137,34 +139,8 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 items-end">
-      <div className="space-y-1.5">
-        <label htmlFor="filter-kelas-select" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Kelas</label>
-        <Suspense fallback={<SuspenseFallback />}>
-          <SearchableSelect
-            id="filter-kelas-select"
-            aria-label="Pilih Kelas Laporan"
-            value={kelasId}
-            onValueChange={setKelasId}
-            options={kelasOptions ?? []}
-            placeholder="Pilih Kelas..."
-            triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-          />
-        </Suspense>
-      </div>
-
-      <div className="space-y-1.5">
-        <label htmlFor="filter-bulan-input" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bulan Laporan</label>
-        <Input
-          id="filter-bulan-input"
-          aria-label="Pilih Bulan Laporan"
-          type="month"
-          value={bulan}
-          onChange={e => setBulan(e.target.value)}
-          className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
-        />
-      </div>
-
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 items-start">
+      {/* 1. Tahun Pelajaran */}
       <div className="space-y-1.5">
         <label htmlFor="filter-tahun-select" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tahun Pelajaran</label>
         <Suspense fallback={<SuspenseFallback />}>
@@ -180,12 +156,45 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
         </Suspense>
       </div>
 
+      {/* 2. Pilih Kelas */}
       <div className="space-y-1.5">
-        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tampilan</label>
-        <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
+        <label htmlFor="filter-kelas-select" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Pilih Kelas</label>
+        <Suspense fallback={<SuspenseFallback />}>
+          <SearchableSelect
+            id="filter-kelas-select"
+            aria-label="Pilih Kelas Laporan"
+            value={kelasId}
+            onValueChange={setKelasId}
+            options={kelasOptions ?? []}
+            placeholder="Pilih Kelas..."
+            triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+          />
+        </Suspense>
+        {extraUnderKelas}
       </div>
 
-      <div>
+      {/* 3. Bulan Laporan */}
+      <div className="space-y-1.5">
+        <label htmlFor="filter-bulan-input" className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Bulan Laporan</label>
+        <Input
+          id="filter-bulan-input"
+          aria-label="Pilih Bulan Laporan"
+          type="month"
+          value={bulan}
+          onChange={e => setBulan(e.target.value)}
+          className="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tampilan</label>
+        <div className="h-10 flex items-center">
+          <ViewModeSwitcher viewMode={viewMode} setViewMode={setViewMode} compact />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-black uppercase tracking-widest text-transparent select-none ml-1 hidden sm:block">&nbsp;</label>
         <Button
           onClick={onExportExcel}
           variant="outline"
@@ -196,7 +205,8 @@ export const RekapBulananKelasToolbar = React.memo(function RekapBulananKelasToo
         </Button>
       </div>
 
-      <div>
+      <div className="space-y-1.5">
+        <label className="text-[10px] font-black uppercase tracking-widest text-transparent select-none ml-1 hidden sm:block">&nbsp;</label>
         <Button
           onClick={onExportPdf}
           variant="outline"

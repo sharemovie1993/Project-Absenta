@@ -11,6 +11,7 @@ import {
   formatTanggalIndonesia,
 } from '../../../utils/print/modules/pdfSertifikatPkl';
 import { resolveCoverImageBase64 } from '../../../utils/print/rapor/raporShared';
+import { getStoredSertifikatSettings } from '../../hubin/PengaturanCetakSertifikatModal';
 import { LegerStudent, AcademicYear, Semester } from '../../../types/cetakRapor.types';
 import { User, useAuthStore } from '../../../store/authStore';
 import { useRaporRenderStore } from '../../../store/raporRenderStore';
@@ -147,15 +148,17 @@ function buildCertPrintData(
   const scores = [hardTeknis, hardK3lh, hardBisnis, softDisiplin, softInisiatif, softKerjasama, softJujur, softTanggungJawab];
   const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
 
+  const printSettings = getStoredSertifikatSettings();
   const refSertifikat = certDetail?.referensi_sertifikat;
   const nomorResmi = certDetail?.nomor_sertifikat || refSertifikat?.nomor_surat || placement.nomor_sertifikat || '425.1/0630/SMKN1PLD-KCD Wil.IV';
-  const durasiResmi = String(refSertifikat?.durasi_jp || '792');
+  const durasiResmi = printSettings.overrideDurasiJp || String(refSertifikat?.durasi_jp || '792');
   const tempatResmi = refSertifikat?.tempat_terbit || rawSekolah.kota || sekolah?.kota || tenantInfo?.city || 'Purwakarta';
   const rawTanggalTerbit = refSertifikat?.tanggal_terbit;
   const formattedTanggal = rawTanggalTerbit ? formatTanggalIndonesia(rawTanggalTerbit) : '22 Desember 2025';
-  const tanggalResmi = `${tempatResmi}, ${formattedTanggal}`;
-  const kepalaResmi = refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
-  const nipResmi = refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+  const tanggalResmi = printSettings.overrideTanggalTerbit || `${tempatResmi}, ${formattedTanggal}`;
+  const kepalaResmi = printSettings.overrideKepalaSekolah || refSertifikat?.penandatangan_nama || rawSekolah.kepala_sekolah || sekolah?.kepala_sekolah || tenantInfo?.kepala_sekolah || 'Wahyu Tamimbarkah, S.Pd.';
+  const nipResmi = printSettings.overrideNipKepala || refSertifikat?.penandatangan_nip || rawSekolah.nip_kepala || sekolah?.nip_kepala || tenantInfo?.nip_kepala || '197111022008011001';
+  const picJabatanResmi = printSettings.overrideJabatan || certDetail?.penanggung_jawab_jabatan || rawMitra.pic_jabatan || placement.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
 
   return {
     nomor_sertifikat: nomorResmi,
@@ -197,7 +200,7 @@ function buildCertPrintData(
       nama: rawMitra.nama || placement.Mitra?.nama || placement.mitra_nama || 'DUDI MITRA',
       alamat: certDetail?.alamat_dudi || rawMitra.alamat || placement.Mitra?.alamat || '',
       penanggung_jawab_nama: certDetail?.penanggung_jawab_nama || rawMitra.pic_nama || placement.penanggung_jawab_nama || placement.Mitra?.pic_nama || '',
-      penanggung_jawab_jabatan: certDetail?.penanggung_jawab_jabatan || rawMitra.pic_jabatan || placement.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan',
+      penanggung_jawab_jabatan: picJabatanResmi,
       instruktur_nama: certDetail?.instruktur_nama || placement.instruktur_nama || '',
     },
     pembimbing: {
@@ -563,12 +566,13 @@ export function useRaporPklPrint({
           activeSemester
         );
 
+        const printSettings = getStoredSertifikatSettings();
         const logoDaerahUrl = certData.sekolah?.logo_daerah || null;
         const logoSekolahUrl = certData.sekolah?.logo_url || null;
 
         const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
-          resolveCoverImageBase64(logoDaerahUrl),
-          showLogoKananSertifikat ? resolveCoverImageBase64(logoSekolahUrl) : Promise.resolve(null),
+          printSettings.showLogoKiri !== false ? resolveCoverImageBase64(logoDaerahUrl) : Promise.resolve(null),
+          printSettings.showLogoKanan ? resolveCoverImageBase64(logoSekolahUrl) : Promise.resolve(null),
         ]);
 
         updateProgress({
@@ -580,7 +584,9 @@ export function useRaporPklPrint({
         const { blobUrl, filename } = await generateSertifikatSinglePdf(certData, {
           logoDaerahBase64,
           logoSekolahBase64,
-          showDudiName: true,
+          showDudiName: printSettings.showDudiName,
+          showPicName: printSettings.showPicName,
+          picJabatan: printSettings.overrideJabatan || certData.mitra.penanggung_jawab_jabatan,
         });
 
         finishRender(blobUrl, filename, `Sertifikat PKL ${student.nama_siswa} berhasil dibuat!`);
@@ -645,12 +651,16 @@ export function useRaporPklPrint({
       const tenantInfo = { ...(authTenant || {}), ...(tenantData || {}) };
       const currentKelasObj = (classList ?? []).find((k) => k.id === selectedKelas);
 
-      const logoSekolahUrl = tenantInfo?.logo_url || sekolah?.logo_url || null;
-      const logoDaerahUrl = tenantInfo?.logo_daerah_url || sekolah?.logo_daerah || null;
+      const printSettings = getStoredSertifikatSettings();
+      const shouldShowLogoKiri = printSettings.showLogoKiri !== false;
+      const shouldShowLogoKanan = printSettings.showLogoKanan ?? showLogoKananSertifikat;
+
+      const logoSekolahUrl = shouldShowLogoKanan ? (tenantInfo?.logo_url || sekolah?.logo_url || null) : null;
+      const logoDaerahUrl = shouldShowLogoKiri ? (tenantInfo?.logo_daerah_url || sekolah?.logo_daerah || null) : null;
 
       const [logoDaerahBase64, logoSekolahBase64] = await Promise.all([
-        resolveCoverImageBase64(logoDaerahUrl),
-        showLogoKananSertifikat ? resolveCoverImageBase64(logoSekolahUrl) : Promise.resolve(null),
+        logoDaerahUrl ? resolveCoverImageBase64(logoDaerahUrl) : Promise.resolve(null),
+        logoSekolahUrl ? resolveCoverImageBase64(logoSekolahUrl) : Promise.resolve(null),
       ]);
 
       // Fetch detailed cert data in parallel
@@ -715,7 +725,9 @@ export function useRaporPklPrint({
         {
           logoDaerahBase64,
           logoSekolahBase64,
-          showDudiName: true,
+          showPicName: printSettings.showPicName,
+          showDudiName: printSettings.showDudiName,
+          picJabatan: printSettings.picJabatanOverride || undefined,
         }
       );
 

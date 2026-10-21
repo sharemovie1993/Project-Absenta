@@ -401,7 +401,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     }
 
     // 3. Fallback active academic context & Assessment Scheme Configurations
-    const targetTpId = tahun_pelajaran_id;
+    const targetTpId = scores.find(s => s.tahun_pelajaran_id)?.tahun_pelajaran_id || null;
     const [
       activeTp, 
       activeSem, 
@@ -434,6 +434,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
     const operations: any[] = [];
 
     for (const item of scores) {
+      if (!item?.siswa_pkl_id) continue;
+      const pklRec = pklMap.get(item.siswa_pkl_id);
+      if (!pklRec) continue;
+
       // 1. Collect non-null grades to compute Nilai DUDI (8 Aspek)
       const dudiGradeList = [
         item.hard_kompetensi_teknis,
@@ -451,8 +455,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
         : null;
 
       // 2. Resolve Laporan, Sidang, and Penguji from payload or existing nilai_json
-      const pklRec = pklMap.get(item.siswa_pkl_id);
-      const prevNilaiJson = (pklRec?.nilai_json as Record<string, any>) || {};
+      const prevNilaiJson = (pklRec.nilai_json as Record<string, any>) || {};
 
       const nilaiLaporan = item.nilai_laporan !== undefined 
         ? item.nilai_laporan 
@@ -614,6 +617,10 @@ export class HubinPenilaianService extends HubinCommonHelper {
           }
         }
       }
+    }
+
+    if (operations.length === 0) {
+      return [];
     }
 
     const results = await prisma.$transaction(operations);
@@ -983,7 +990,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
     tenantId: string, 
     userId: string, 
     targetJurusanId?: string,
-    orgScope?: any
+    orgScope?: any,
+    options?: { tahunPelajaranId?: string; semesterId?: string }
   ) {
     let jurusanId = targetJurusanId;
     let jurusanInfo: { id: string; nama: string; singkatan: string | null } | null = null;
@@ -1023,11 +1031,21 @@ export class HubinPenilaianService extends HubinCommonHelper {
     };
 
     if (jurusanId) {
-      pklWhere.Siswa = {
-        OR: [
-          { jurusan_id: jurusanId },
-          { Kelas: { jurusan_id: jurusanId } }
-        ]
+      pklWhere.AND = [
+        {
+          OR: [
+            { Siswa: { jurusan_id: jurusanId } },
+            { Siswa: { Kelas: { jurusan_id: jurusanId } } },
+            { SiswaAkademik: { kelas: { jurusan_id: jurusanId } } }
+          ]
+        }
+      ];
+    }
+
+    if (options?.tahunPelajaranId || options?.semesterId) {
+      pklWhere.SiswaAkademik = {
+        ...(options.tahunPelajaranId ? { tahun_pelajaran_id: options.tahunPelajaranId } : {}),
+        ...(options.semesterId ? { semester_id: options.semesterId } : {})
       };
     }
 
@@ -1140,6 +1158,21 @@ export class HubinPenilaianService extends HubinCommonHelper {
         };
       });
 
+    const allMitraList = Array.from(mitraMap.values()).map(item => {
+      const saved = deskripsiMap.get(item.mitra_id);
+      return {
+        mitra_id: item.mitra_id,
+        nama_mitra: item.nama_mitra,
+        alamat: item.alamat,
+        bidang_usaha: item.bidang_usaha,
+        siswa_count: item.siswa_count,
+        rombel_list: Array.from(item.rombel_set),
+        has_tp: Boolean(saved),
+        deskripsi_tp: saved?.deskripsi_tp || '',
+        saved_id: saved?.id || undefined
+      };
+    });
+
     return {
       jurusan: jurusanInfo,
       tpStatus: {
@@ -1156,20 +1189,8 @@ export class HubinPenilaianService extends HubinCommonHelper {
         belumSidang
       },
       pendingMitraList,
-      allMitraList: Array.from(mitraMap.values()).map(item => {
-        const saved = deskripsiMap.get(item.mitra_id);
-        return {
-          mitra_id: item.mitra_id,
-          nama_mitra: item.nama_mitra,
-          alamat: item.alamat,
-          bidang_usaha: item.bidang_usaha,
-          siswa_count: item.siswa_count,
-          rombel_list: Array.from(item.rombel_set),
-          has_tp: Boolean(saved),
-          deskripsi_tp: saved?.deskripsi_tp || '',
-          saved_id: saved?.id || undefined
-        };
-      })
+      allMitraList,
+      mitraList: allMitraList
     };
   }
 

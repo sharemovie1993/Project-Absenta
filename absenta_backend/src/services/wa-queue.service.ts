@@ -34,6 +34,7 @@ const bullmqConnection: ConnectionOptions = {
   port: REDIS_PORT,
   password: REDIS_PASSWORD,
   maxRetriesPerRequest: null, // Required by BullMQ
+  connectTimeout: 5000,
 };
 
 /**
@@ -44,6 +45,8 @@ const redisConnection = new IORedis({
   port: REDIS_PORT,
   password: REDIS_PASSWORD,
   maxRetriesPerRequest: null,
+  lazyConnect: true,
+  connectTimeout: 5000,
 });
 
 redisConnection.on('error', (err) => {

@@ -269,6 +269,8 @@ export async function registerPlugins(fastify: any) {
       message: 'Route not found'
     });
   });
+
+  console.log('[Bootstrap] Plugins & CORS ready. Mounting application routes...');
 }
 
 export async function registerMiddlewares(fastify: any, appendLog: (entry: any) => void) {

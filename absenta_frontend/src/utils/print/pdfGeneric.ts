@@ -9,6 +9,7 @@ import { renderKurikulumCalendarPdf, renderKurikulumRosterPdf } from './modules/
 import { renderKesiswaanPdf } from './modules/pdfKesiswaan';
 import { renderSarprasPdf } from './modules/pdfSarpras';
 import { renderHubinPdf } from './modules/pdfHubin';
+import { getBase64ImageFromUrl } from '../cooperative/coopDocUtils';
 
 export interface GenerateGenericPdfOptions {
   module: 'kurikulum' | 'kesiswaan' | 'attendance' | 'bpbk' | 'sarpras' | 'hubin';
@@ -94,9 +95,8 @@ export const drawClassHeaderInfo = (
   subtitle?: string,
   periodStr?: string
 ): number => {
-  const tahunPel = periodStr 
-    ? getAcademicYearFromPeriod(periodStr) 
-    : (checklistData?.current_year?.tahun || getAcademicYearFromPeriod());
+  const tahunPel = checklistData?.current_year?.tahun 
+    || (periodStr ? getAcademicYearFromPeriod(periodStr) : getAcademicYearFromPeriod());
     
   const progKeahlian = resolveProgramKeahlian(currentClass);
   const kelasName = currentClass?.nama_kelas || 'Kelas';
@@ -254,9 +254,29 @@ const resizeBase64Image = (base64: string, maxDim: number = 150): Promise<string
 };
 
 export const generateGenericPdf = async (options: GenerateGenericPdfOptions): Promise<Blob> => {
+  let logoDaerah = options.logoDaerahBase64 || null;
+  let logoSekolah = options.logoSekolahBase64 || null;
+
+  if (!logoDaerah && options.tenantInfo?.logo_daerah_url) {
+    try {
+      logoDaerah = await getBase64ImageFromUrl(options.tenantInfo.logo_daerah_url);
+    } catch (e) {
+      console.warn('Failed to resolve logo daerah base64', e);
+    }
+  }
+
+  const schoolLogoUrl = options.tenantInfo?.logo_url || (options.sekolah as any)?.logo || (options.sekolah as any)?.logo_url;
+  if (!logoSekolah && schoolLogoUrl) {
+    try {
+      logoSekolah = await getBase64ImageFromUrl(schoolLogoUrl);
+    } catch (e) {
+      console.warn('Failed to resolve logo sekolah base64', e);
+    }
+  }
+
   const [logoDaerahResized, logoSekolahResized] = await Promise.all([
-    options.logoDaerahBase64 ? resizeBase64Image(options.logoDaerahBase64) : Promise.resolve(null),
-    options.logoSekolahBase64 ? resizeBase64Image(options.logoSekolahBase64) : Promise.resolve(null)
+    logoDaerah ? resizeBase64Image(logoDaerah) : Promise.resolve(null),
+    logoSekolah ? resizeBase64Image(logoSekolah) : Promise.resolve(null)
   ]);
   
   options.logoDaerahBase64 = logoDaerahResized;

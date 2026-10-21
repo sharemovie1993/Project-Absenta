@@ -444,9 +444,13 @@ export const renderSertifikatBack = (
   data: SertifikatPklPrintData,
   options?: {
     showDudiName?: boolean;
+    showPicName?: boolean;
+    picNama?: string;
+    picJabatan?: string;
   }
 ) => {
   const showDudiName = options?.showDudiName ?? true;
+  const showPicName = options?.showPicName ?? true;
   const pageWidth = 297;
   const { siswa, mitra, penilaian } = data;
   const isComposite = data.assessment_mode === 'COMPOSITE';
@@ -497,16 +501,16 @@ export const renderSertifikatBack = (
   const finalPredikat = penilaian.predikat_pkl ? penilaian.predikat_pkl.toUpperCase() : getPredikatLabel(displayedNilaiAkhir);
 
   doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('DAFTAR NILAI PRAKTIK KERJA LAPANGAN', pageWidth / 2, 20, { align: 'center' });
+  doc.setFontSize(isComposite ? 12 : 13);
+  doc.text('DAFTAR NILAI PRAKTIK KERJA LAPANGAN', pageWidth / 2, isComposite ? 15 : 18, { align: 'center' });
 
-  let curY = 32;
+  let curY = isComposite ? 23 : 28;
   const leftLabelX = 20;
-  const leftColonX = 72;
-  const leftValX = 75;
-  const rowGap = 5;
+  const leftColonX = 68;
+  const leftValX = 71;
+  const rowGap = isComposite ? 4.2 : 4.8;
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(isComposite ? 8.5 : 9.5);
   doc.setFont('Helvetica', 'normal');
   doc.text('Nama', leftLabelX, curY);
   doc.text(':', leftColonX, curY);
@@ -632,7 +636,7 @@ export const renderSertifikatBack = (
   ]);
 
   autoTable(doc, {
-    startY: curY + 6,
+    startY: curY + (isComposite ? 4.5 : 5.5),
     margin: { left: 20, right: 20 },
     head: [
       [
@@ -649,121 +653,106 @@ export const renderSertifikatBack = (
     theme: 'grid',
     styles: {
       font: 'Helvetica',
-      fontSize: 8.5,
+      fontSize: isComposite ? 8.2 : 8.5,
       textColor: [0, 0, 0],
       lineColor: [0, 0, 0],
       lineWidth: 0.25,
-      cellPadding: 2,
+      cellPadding: isComposite ? [1.6, 2] : [1.8, 2],
+      minCellHeight: isComposite ? 5.3 : 5.6,
     },
     headStyles: {
       fillColor: [255, 255, 255],
       textColor: [0, 0, 0],
       lineWidth: 0.25,
       lineColor: [0, 0, 0],
+      fontSize: isComposite ? 8.2 : 8.5,
+      cellPadding: isComposite ? [1.6, 2] : [1.8, 2],
     },
     columnStyles: {
-      0: { cellWidth: 16 },
+      0: { cellWidth: 14 },
       1: { cellWidth: 'auto' },
-      2: { cellWidth: 32 },
-      3: { cellWidth: 32 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 28 },
     },
   });
 
-  const finalTableY = (doc as any).lastAutoTable?.finalY ?? 150;
-  const footerY = finalTableY + 8;
+  const finalTableY = (doc as any).lastAutoTable?.finalY ?? (isComposite ? 130 : 145);
+  const footerY = finalTableY + (isComposite ? 6 : 7);
 
   // Kotak Keterangan Nilai
+  const boxH = isComposite ? 28 : 32;
   doc.setLineWidth(0.25);
-  doc.rect(20, footerY, 65, 34);
+  doc.rect(20, footerY, 60, boxH);
 
-  doc.setFontSize(8.5);
+  doc.setFontSize(isComposite ? 8 : 8.5);
   doc.setFont('Helvetica', 'normal');
-  doc.text('Keterangan Nilai :', 22, footerY + 5);
+  doc.text('Keterangan Nilai :', 22, footerY + (isComposite ? 4.5 : 5));
 
-  const legY = footerY + 11;
-  doc.setFontSize(8);
+  const legY = footerY + (isComposite ? 9.5 : 10.5);
+  const legGap = isComposite ? 4.4 : 5;
+  doc.setFontSize(isComposite ? 7.5 : 8);
   doc.text('90 - 100', 23, legY);
-  doc.text('A', 44, legY);
-  doc.text('Amat Baik', 54, legY);
+  doc.text('A', 41, legY);
+  doc.text('Amat Baik', 49, legY);
 
-  doc.text('80 - 89', 23, legY + 5.5);
-  doc.text('B', 44, legY + 5.5);
-  doc.text('Baik', 54, legY + 5.5);
+  doc.text('80 - 89', 23, legY + legGap);
+  doc.text('B', 41, legY + legGap);
+  doc.text('Baik', 49, legY + legGap);
 
-  doc.text('70 - 79', 23, legY + 11);
-  doc.text('C', 44, legY + 11);
-  doc.text('Cukup Baik', 54, legY + 11);
+  doc.text('70 - 79', 23, legY + legGap * 2);
+  doc.text('C', 41, legY + legGap * 2);
+  doc.text('Cukup Baik', 49, legY + legGap * 2);
 
-  doc.text('60 - 69', 23, legY + 16.5);
-  doc.text('D', 44, legY + 16.5);
-  doc.text('Kurang Baik', 54, legY + 16.5);
+  doc.text('60 - 69', 23, legY + legGap * 3);
+  doc.text('D', 41, legY + legGap * 3);
+  doc.text('Kurang Baik', 49, legY + legGap * 3);
 
   const kotaSekolah = data.sekolah?.kota || 'Purwakarta';
   const tanggalTerbit = data.tanggal_terbit || `${kotaSekolah}, 22 Desember 2025`;
 
-  if (isComposite) {
-    // Bipartit TTD: Pembimbing Sekolah (kiri) | Pembimbing DUDI (kanan)
-    const pembimbingSigX = 130;
-    const picSigX = 240;
-    const lineSigY = footerY + 34;
-    const pembimbingNama = data.pembimbing?.nama || '________________';
-    const picNama = mitra.penanggung_jawab_nama || '________________';
-    const picJabatan = mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
+  const picNama = options?.picNama !== undefined ? options.picNama : (mitra.penanggung_jawab_nama || '');
+  const picJabatan = options?.picJabatan || mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
 
-    doc.setFontSize(9);
-    doc.setFont('Helvetica', 'normal');
-    doc.text('Mengetahui,', pembimbingSigX, footerY + 2, { align: 'center' });
-    doc.text('Guru Pembimbing PKL / Kaprog,', pembimbingSigX, footerY + 6.5, { align: 'center' });
-    doc.setLineWidth(0.3);
-    doc.line(pembimbingSigX - 38, lineSigY, pembimbingSigX + 38, lineSigY);
+  // TTD Tunggal: Penanggung Jawab Perusahaan / Instansi (Area TTD lega, tidak terpotong)
+  const picSigX = 230;
+  const linePicY = footerY + (isComposite ? 34 : 36);
+
+  doc.setFontSize(9);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(tanggalTerbit, picSigX, footerY + 2, { align: 'center' });
+  doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 6.5, { align: 'center' });
+
+  if (showDudiName) {
     doc.setFont('Helvetica', 'bold');
-    doc.text(pembimbingNama, pembimbingSigX, lineSigY - 1.5, { align: 'center' });
-    if (data.pembimbing?.nip) {
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.text(`NIP. ${data.pembimbing.nip}`, pembimbingSigX, lineSigY + 4, { align: 'center' });
+    const dudiNameText = `${mitra.nama},`;
+    // Pastikan nama perusahaan selalu 1 baris (auto-shrink font jika teks panjang)
+    let dudiFontSize = 8.5;
+    doc.setFontSize(dudiFontSize);
+    let nameW = doc.getTextWidth(dudiNameText);
+    const maxAllowedWidth = 92;
+    while (nameW > maxAllowedWidth && dudiFontSize > 5) {
+      dudiFontSize -= 0.25;
+      doc.setFontSize(dudiFontSize);
+      nameW = doc.getTextWidth(dudiNameText);
     }
-
-    doc.setFontSize(9);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(tanggalTerbit, picSigX, footerY + 2, { align: 'center' });
-    doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 6.5, { align: 'center' });
-    if (showDudiName) {
-      doc.setFont('Helvetica', 'bold');
-      doc.text(`${mitra.nama},`, picSigX, footerY + 11, { align: 'center' });
-    }
-    doc.setLineWidth(0.3);
-    doc.line(picSigX - 38, lineSigY, picSigX + 38, lineSigY);
-    doc.setFont('Helvetica', 'bold');
-    doc.text(picNama, picSigX, lineSigY - 1.5, { align: 'center' });
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(picJabatan, picSigX, lineSigY + 4, { align: 'center' });
-  } else {
-    // DUDI_ONLY: TTD tunggal (PIC DUDI)
-    const picSigX = 230;
-    const linePicY = footerY + 34;
-    const picNama = mitra.penanggung_jawab_nama || '________________';
-    const picJabatan = mitra.penanggung_jawab_jabatan || 'Pimpinan / Pembimbing Lapangan';
-
-    doc.setFontSize(9);
-    doc.setFont('Helvetica', 'normal');
-    doc.text(tanggalTerbit, picSigX, footerY + 2, { align: 'center' });
-    doc.text('Penanggung Jawab Perusahaan / Instansi', picSigX, footerY + 6.5, { align: 'center' });
-    if (showDudiName) {
-      doc.setFont('Helvetica', 'bold');
-      doc.text(`${mitra.nama},`, picSigX, footerY + 11, { align: 'center' });
-    }
-
-    doc.setLineWidth(0.3);
-    doc.line(picSigX - 38, linePicY, picSigX + 38, linePicY);
-
-    doc.setFont('Helvetica', 'bold');
-    doc.text(picNama, picSigX, linePicY - 1.5, { align: 'center' });
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.text(picJabatan, picSigX, linePicY + 4, { align: 'center' });
+    doc.text(dudiNameText, picSigX, footerY + 11, { align: 'center' });
   }
+
+  // Garis tanda tangan
+  doc.setLineWidth(0.3);
+  doc.line(picSigX - 38, linePicY, picSigX + 38, linePicY);
+
+  // Di atas garis = NAMA (hanya dicetak jika opsi showPicName aktif dan nama ada)
+  if (showPicName && picNama && picNama.trim().length > 0) {
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(picNama, picSigX, linePicY - 1.5, { align: 'center' });
+  }
+
+  // Di bawah garis = LABEL JABATAN
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(picJabatan, picSigX, linePicY + 4, { align: 'center' });
 };
 export const generateSertifikatPdf = async (
   data: SertifikatPklPrintData,
@@ -772,6 +761,9 @@ export const generateSertifikatPdf = async (
     logoSekolahBase64?: string | null;
     mode?: 'all' | 'front_only' | 'back_only';
     showDudiName?: boolean;
+    showPicName?: boolean;
+    picNama?: string;
+    picJabatan?: string;
   }
 ): Promise<jsPDF> => {
   const mode = options?.mode || 'all';
@@ -808,7 +800,12 @@ export const generateSertifikatPdf = async (
 
   if (mode === 'all' || mode === 'back_only') {
     if (!isFirstPage) doc.addPage('a4', 'landscape');
-    renderSertifikatBack(doc, data, { showDudiName: options?.showDudiName });
+    renderSertifikatBack(doc, data, { 
+      showDudiName: options?.showDudiName,
+      showPicName: options?.showPicName,
+      picNama: options?.picNama,
+      picJabatan: options?.picJabatan,
+    });
   }
 
   return doc;
@@ -823,6 +820,9 @@ export const generateSertifikatSinglePdf = async (
     logoDaerahBase64?: string | null;
     logoSekolahBase64?: string | null;
     showDudiName?: boolean;
+    showPicName?: boolean;
+    picNama?: string;
+    picJabatan?: string;
   }
 ): Promise<{ blobUrl: string; filename: string }> => {
   const doc = await generateSertifikatPdf(data, {
@@ -830,6 +830,9 @@ export const generateSertifikatSinglePdf = async (
     logoDaerahBase64: options?.logoDaerahBase64,
     logoSekolahBase64: options?.logoSekolahBase64,
     showDudiName: options?.showDudiName ?? true,
+    showPicName: options?.showPicName ?? true,
+    picNama: options?.picNama,
+    picJabatan: options?.picJabatan,
   });
 
   const cleanName = (data.siswa.nama_siswa || 'Siswa').replace(/\s+/g, '_');
@@ -850,6 +853,9 @@ export const generateSertifikatBatchPdf = async (
     logoDaerahBase64?: string | null;
     logoSekolahBase64?: string | null;
     showDudiName?: boolean;
+    showPicName?: boolean;
+    picNama?: string;
+    picJabatan?: string;
   }
 ): Promise<{ blobUrl: string; filename: string }> => {
   const doc = new jsPDF({
@@ -883,7 +889,12 @@ export const generateSertifikatBatchPdf = async (
     renderSertifikatFront(doc, data, resolvedFrontOptions);
 
     doc.addPage('a4', 'landscape');
-    renderSertifikatBack(doc, data, { showDudiName: options?.showDudiName ?? true });
+    renderSertifikatBack(doc, data, { 
+      showDudiName: options?.showDudiName ?? true,
+      showPicName: options?.showPicName ?? true,
+      picNama: options?.picNama,
+      picJabatan: options?.picJabatan,
+    });
   }
 
   const cleanKelas = namaKelas.replace(/\s+/g, '_');

@@ -885,4 +885,5 @@ export async function registerRoutes(fastify: any, prisma: any) {
   // fastify.addHook('onReady', async () => {
   //   console.log('🔥 Registered routes:', fastify.printRoutes());
   // });
+  console.log('[Router] All route modules successfully mounted.');
 }

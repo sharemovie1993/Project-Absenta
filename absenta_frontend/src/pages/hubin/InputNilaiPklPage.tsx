@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldCheck } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
@@ -41,12 +41,21 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const isMobile = useIsMobile(768);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Navigasi tab didelegasikan ke PklUnifiedToolbar yang mengintegrasikan standar TabSwitcher
-  const [activeTab, setActiveTab] = useState<string>('dudi');
+  const initialTab = searchParams.get('tab') || 'dudi';
+  const [activeTab, setActiveTab] = useState<string>(initialTab === 'nilai' ? 'dudi' : initialTab);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMitra, setSelectedMitra] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['dudi', 'sidang', 'deskripsi', 'nilai'].includes(tabParam)) {
+      setActiveTab(tabParam === 'nilai' ? 'dudi' : tabParam);
+    }
+  }, [searchParams]);
 
   // Settings Form State
   const [formMode, setFormMode] = useState<'DUDI_ONLY' | 'COMPOSITE'>('DUDI_ONLY');
@@ -343,15 +352,19 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
   const saveBatchMutation = useMutation({
     mutationFn: hubinApi.upsertNilaiPklBatch,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['rapor', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan', tenantId] });
-      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab', tenantId] });
+      queryClient.invalidateQueries({ queryKey: ['pkl-rekap'] });
+      queryClient.invalidateQueries({ queryKey: ['rapor'] });
+      queryClient.invalidateQueries({ queryKey: ['penempatan-pkl'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan'] });
+      queryClient.invalidateQueries({ queryKey: ['hubin-penempatan-pembimbing-tab'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
       toast.success('Nilai PKL, identitas instruktur, dan presensi berhasil disimpan!');
     },
-    onError: () => {
-      toast.error('Gagal menyimpan nilai PKL');
+    onError: (err: any) => {
+      console.error('Error saving batch nilai PKL:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Gagal menyimpan nilai PKL';
+      toast.error(msg);
     }
   });
 

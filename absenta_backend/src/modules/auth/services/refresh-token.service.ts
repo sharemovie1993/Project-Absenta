@@ -1,4 +1,4 @@
-﻿import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { prisma } from '@/utils/prisma';
 
 const REFRESH_TOKEN_EXPIRES_DAYS = 7;
@@ -11,10 +11,15 @@ const REFRESH_TOKEN_EXPIRES_DAYS = 7;
 export class RefreshTokenService {
 
   /** Generate raw token + simpan hash-nya ke DB. Kembalikan raw token untuk dikirim ke client. */
-  async createRefreshToken(userId: string, tenantId: string, deviceHint?: string): Promise<string> {
+  async createRefreshToken(
+    userId: string, 
+    tenantId: string, 
+    deviceHint?: string, 
+    expiresInDays: number = REFRESH_TOKEN_EXPIRES_DAYS
+  ): Promise<string> {
     const raw = randomBytes(48).toString('hex');
     const hash = this.hashToken(raw);
-    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
     await prisma.refreshToken.create({
       data: { user_id: userId, tenant_id: tenantId, token_hash: hash, expires_at: expiresAt, device_hint: deviceHint ?? null },
     });

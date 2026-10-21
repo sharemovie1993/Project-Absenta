@@ -122,6 +122,13 @@ export async function initRedis(): Promise<RedisClient> {
 
   sharedClient = await createClient();
 
+  // Permanent error handler to prevent Node.js "Unhandled error event"
+  sharedClient.on('error', (err) => {
+    if (process.env.DEBUG_REDIS === 'true') {
+      console.warn('[Redis] Warning/error:', err.message);
+    }
+  });
+
   // Ensure we wait for the connection to be ready before proceeding
   // This prevents race conditions where workers start before Redis is up
   return new Promise((resolve, reject) => {

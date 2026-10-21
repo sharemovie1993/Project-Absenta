@@ -604,7 +604,32 @@ export class DashboardController {
       const tenantId = request.tenantId;
       const userId = (request.user as any).id || (request.user as any).userId;
       if (!tenantId) throw new Error('Tenant ID required');
-      const data = await this.dashboardService.getKaprogStats(tenantId, userId);
+      const { jurusan_id, tahun_pelajaran_id, semester_id } = (request.query as any) || {};
+      const data = await this.dashboardService.getKaprogStats(tenantId, userId, {
+        targetJurusanId: jurusan_id,
+        tahunPelajaranId: tahun_pelajaran_id,
+        semesterId: semester_id
+      });
+      return reply.status(200).send({ success: true, data });
+    } catch (error: any) {
+      return reply.status(500).send({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * 🆕 Get Kepegawaian (TU Kepegawaian & Dapodik) Stats
+   * GET /dashboard/kepegawaian/stats
+   */
+  async getKepegawaianStats(request: AuthenticatedRequest, reply: any) {
+    try {
+      const tenantId = request.tenantId;
+      const userId = (request.user as any).id || (request.user as any).userId;
+      if (!tenantId) throw new Error('Tenant ID required');
+      const { tahun_pelajaran_id, semester_id } = (request.query as any) || {};
+      const data = await this.dashboardService.getKepegawaianStats(tenantId, userId, {
+        tahunPelajaranId: tahun_pelajaran_id,
+        semesterId: semester_id
+      });
       return reply.status(200).send({ success: true, data });
     } catch (error: any) {
       return reply.status(500).send({ success: false, message: error.message });

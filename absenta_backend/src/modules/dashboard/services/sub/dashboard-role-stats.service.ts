@@ -5,9 +5,13 @@ import { formatTenantTime, getTenantTimezone, getTenantOffsetString, getTenantDa
 import { sesiLifecycleService, SesiLifecycleService } from '@/modules/attendance/sesi-absensi/services/sesi-lifecycle.service';
 import { DashboardCommonHelper } from './dashboard-common.helper';
 import { STRUKTUR_CODES } from '@/config/organization-structure';
+import { DashboardKaprogStatsService } from './dashboard-kaprog-stats.service';
+import { DashboardKepegawaianStatsService } from './dashboard-kepegawaian-stats.service';
 
 export class DashboardRoleStatsService {
   private helper = new DashboardCommonHelper();
+  private kaprogStats = new DashboardKaprogStatsService();
+  private kepegawaianStats = new DashboardKepegawaianStatsService();
   private resolveDayRange(...args: any[]) { return this.helper.resolveDayRange(...args); }
 
   async getHubinStats(tenantId: string, userId?: string) {
@@ -625,58 +629,18 @@ export class DashboardRoleStatsService {
 
   /**
    * 🆕 Get Kaprog (Kepala Program) Stats
-   * - totalTeachers: jumlah guru di jurusan kaprog ini
-   * - activeClasses: jumlah kelas aktif hari ini di jurusan ini
-   * - supervisionCount: supervisi terjadwal hari ini
+   * Didelegasikan ke DashboardKaprogStatsService (Anti-God-File & Real Data Engine)
    */
-  async getKaprogStats(tenantId: string, userId: string) {
-    // Cari assignment Kaprog/Kepala Program untuk user ini
-    const now = new Date();
-    const assignment = await prisma.organizationalAssignment.findFirst({
-      where: {
-        user_id: userId,
-        ...(tenantId ? { tenant_id: tenantId } : {}),
-        is_active: true,
-        AND: [
-          { OR: [{ start_date: null }, { start_date: { lte: now } }] },
-          { OR: [{ end_date: null }, { end_date: { gte: now } }] }
-        ],
-        Position: { code: { contains: 'KAPROG', mode: 'insensitive' } }
-      },
-      include: { Position: { select: { name: true, code: true } } }
-    });
+  async getKaprogStats(tenantId: string, userId: string, options?: any) {
+    return this.kaprogStats.getKaprogStats(tenantId, userId, options);
+  }
 
-    const programName = assignment?.Position?.name?.replace(/KAPROG|KEPALA PROGRAM/gi, '').trim() || 'Jurusan';
-
-    // Hitung guru di jurusan yang sama (berdasarkan mengajar di kelas jurusan yang sama)
-    // Proxy: hitung guru yang punya sesi hari ini di tenant ini
-    const { startOfDay: today, endOfDay } = await this.resolveDayRange(tenantId);
-
-    const [totalTeachers, supervisionCount] = await Promise.all([
-      prisma.guru.count({ where: { ...(tenantId ? { tenant_id: tenantId } : {}) } }),
-      prisma.supervisiGuru.count({
-        where: {
-          ...(tenantId ? { tenant_id: tenantId } : {}),
-          tanggal: { gte: today, lte: endOfDay }
-        }
-      })
-    ]);
-
-    // Hitung kelas aktif hari ini
-    const activeSessions = await prisma.sesiAbsensi.count({
-      where: {
-        ...(tenantId ? { tenant_id: tenantId } : {}),
-        tanggal: { gte: today, lte: endOfDay },
-        status: 'BERLANGSUNG'
-      }
-    });
-
-    return {
-      totalTeachers,
-      activeClasses: activeSessions,
-      supervisionCount,
-      programName
-    };
+  /**
+   * 🆕 Get Kepegawaian (TU Kepegawaian & Dapodik) Stats
+   * Didelegasikan ke DashboardKepegawaianStatsService
+   */
+  async getKepegawaianStats(tenantId: string, userId: string, options?: any) {
+    return this.kepegawaianStats.getKepegawaianStats(tenantId, userId, options);
   }
 
   /**

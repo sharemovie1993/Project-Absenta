@@ -190,15 +190,38 @@ export class KelasRekapCalculator {
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4,'0')}-${String(lastDay.getMonth()+1).padStart(2,'0')}-${String(lastDay.getDate()).padStart(2,'0')}`;
     const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
-    // Get Students (Hanya Siswa Aktif)
-    const students = await prisma.siswa.findMany({
-      where: {
+    // 1. Get Students (Strict Academic Year Alignment)
+    const students = await this.getStudentsForClass(kelasId, tenantId, tahunPelajaranId);
+
+    // If no students enrolled in this class for the selected academic year, return clean empty result
+    if (students.length === 0) {
+      let waliKelasData: { nama_guru: string; nip: string | null } | null = null;
+      try {
+        const waliAssign = await prisma.organizationalAssignment.findFirst({
+          where: { kelas_id: kelasId, tenant_id: tenantId, is_active: true },
+          include: { User: { include: { Guru: true } } }
+        });
+        const g = Array.isArray(waliAssign?.User?.Guru) ? waliAssign?.User?.Guru[0] : waliAssign?.User?.Guru;
+        if (g?.nama_guru) {
+          waliKelasData = { nama_guru: g.nama_guru, nip: g.nip || null };
+        }
+      } catch (e) {}
+
+      const emptyResult: RekapKelasBulananData = {
         kelas_id: kelasId,
-        tenant_id: tenantId,
-        status: 'AKTIF',
-      },
-      select: { id: true, nama_siswa: true, nis: true }
-    });
+        bulan,
+        total_hadir: 0,
+        total_sakit: 0,
+        total_izin: 0,
+        total_alpa: 0,
+        total_telat: 0,
+        persentase_kehadiran: 0,
+        wali_kelas: waliKelasData,
+        students: []
+      };
+      await cacheService.set(cacheKey, emptyResult, 300);
+      return emptyResult;
+    }
 
     const studentIds = students.map(s => s.id);
 
@@ -486,7 +509,7 @@ export class KelasRekapCalculator {
     tenantId: string,
     tahunPelajaranId?: string
   ): Promise<RekapMapelBulananData> {
-    const cacheKey = CACHE_KEYS.ACADEMIC.REKAP_MAPEL_BULANAN(tenantId, kelasId, mapelId, bulan);
+    const cacheKey = CACHE_KEYS.ACADEMIC.REKAP_MAPEL_BULANAN(tenantId, kelasId, mapelId, bulan, tahunPelajaranId);
     const cached = await cacheService.get<RekapMapelBulananData>(cacheKey);
     if (cached) return cached;
 
@@ -502,20 +525,33 @@ export class KelasRekapCalculator {
     const lastDayStr = `${String(lastDay.getFullYear()).padStart(4, '0')}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
     const endOfMonth = new Date(`${lastDayStr}T23:59:59.999${offsetStr}`);
 
-    // 1. Fetch Students in Class (Hanya Siswa Aktif)
-    const students = await prisma.siswa.findMany({
-      where: { kelas_id: kelasId, tenant_id: tenantId, status: 'AKTIF' },
-      select: { id: true, nama_siswa: true, nis: true },
-      orderBy: { nama_siswa: 'asc' }
-    });
-
-    const studentIds = students.map(s => s.id);
+    // 1. Fetch Students in Class (Strict Academic Year Alignment)
+    const students = await this.getStudentsForClass(kelasId, tenantId, tahunPelajaranId);
 
     // 2. Fetch Mapel details
     const mapelObj = await prisma.mapel.findFirst({
       where: { id: mapelId, tenant_id: tenantId },
       select: { id: true, nama_mapel: true, kode_mapel: true }
     });
+
+    if (students.length === 0) {
+      const emptyResult: RekapMapelBulananData = {
+        kelas_id: kelasId,
+        mapel_id: mapelId,
+        nama_mapel: mapelObj?.nama_mapel || '',
+        kode_mapel: mapelObj?.kode_mapel || '',
+        bulan,
+        total_sesi: 0,
+        total_siswa: 0,
+        rata_rata_kehadiran: 0,
+        dates: [],
+        students: []
+      };
+      await cacheService.set(cacheKey, emptyResult, 300);
+      return emptyResult;
+    }
+
+    const studentIds = students.map(s => s.id);
 
     // 3. Fetch Sessions for this Mapel & Class in Month
     const sesis = await prisma.sesiAbsensi.findMany({
@@ -706,12 +742,8 @@ export class KelasRekapCalculator {
     });
     if (!kelas) throw new Error('Kelas not found');
 
-    // 2. Fetch all active students in this class
-    const students = await prisma.siswa.findMany({
-      where: { kelas_id: kelasId, tenant_id: tenantId, status: 'AKTIF' },
-      select: { id: true, nama_siswa: true, nis: true },
-      orderBy: { nama_siswa: 'asc' }
-    });
+    // 2. Fetch all active students in this class for the academic year
+    const students = await this.getStudentsForClass(kelasId, tenantId, tahunPelajaranId);
     if (!students.length) return [];
 
     // 3. Determine Time Range (Start/End of Day)
@@ -859,5 +891,283 @@ export class KelasRekapCalculator {
         poin: totalPoin
       };
     });
+  }
+
+  /**
+   * Helper: Mengambil daftar siswa yang valid terdaftar di kelas untuk tahun pelajaran yang diminta.
+   * Mengutamakan relasi historis resmi di tabel `SiswaAkademik`, lalu fallback ke pointer langsung `Siswa`.
+   * Jika tahunPelajaranId disediakan namun kelas tidak memiliki siswa di periode tersebut, mengembalikan array kosong [].
+   */
+  private async getStudentsForClass(
+    kelasId: string,
+    tenantId: string,
+    tahunPelajaranId?: string
+  ): Promise<Array<{ id: string; nama_siswa: string; nis: string | null }>> {
+    if (tahunPelajaranId) {
+      // 1. Query SiswaAkademik (Official Academic Enrollment History)
+      const saList = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: kelasId,
+          tahun_pelajaran_id: tahunPelajaranId,
+          status: { not: 'PINDAH' as any },
+          siswa: {
+            tenant_id: tenantId,
+          },
+        },
+        select: {
+          siswa: {
+            select: { id: true, nama_siswa: true, nis: true },
+          },
+        },
+      });
+
+      const studentMap = new Map<string, { id: string; nama_siswa: string; nis: string | null }>();
+      for (const item of saList) {
+        if (item.siswa && !studentMap.has(item.siswa.id)) {
+          studentMap.set(item.siswa.id, {
+            id: item.siswa.id,
+            nama_siswa: item.siswa.nama_siswa,
+            nis: item.siswa.nis,
+          });
+        }
+      }
+
+      if (studentMap.size > 0) {
+        return Array.from(studentMap.values()).sort((a, b) => a.nama_siswa.localeCompare(b.nama_siswa));
+      }
+
+      // 2. Fallback: Check direct Siswa table match on kelas_id AND tahun_pelajaran_id
+      const directSiswa = await prisma.siswa.findMany({
+        where: {
+          kelas_id: kelasId,
+          tahun_pelajaran_id: tahunPelajaranId,
+          tenant_id: tenantId,
+          status: 'AKTIF',
+        },
+        select: { id: true, nama_siswa: true, nis: true },
+        orderBy: { nama_siswa: 'asc' },
+      });
+
+      if (directSiswa.length > 0) {
+        return directSiswa;
+      }
+
+      // If tahunPelajaranId was explicitly requested and no student was enrolled in this class during that year,
+      // return empty array. DO NOT leak students from other academic years!
+      return [];
+    }
+
+    // Default when no academic year is specified: active students currently in class
+    return prisma.siswa.findMany({
+      where: {
+        kelas_id: kelasId,
+        tenant_id: tenantId,
+        status: 'AKTIF',
+      },
+      select: { id: true, nama_siswa: true, nis: true },
+      orderBy: { nama_siswa: 'asc' },
+    });
+  }
+
+  /**
+   * Helper: Mengambil Linimasa Angkatan Rombel (Cohort Progression Lineage X, XI, XII).
+   * Menganalisis jejak siswa riil di `SiswaAkademik` sehingga akurat 100% meskipun ada perubahan
+   * nama program/konsentrasi keahlian di Kurikulum Merdeka (contoh: X TE 3 -> XI TOI 3 -> XII TOI 3).
+   */
+  async getKelasCohortLineage(kelasId: string, tenantId: string, tahunPelajaranId?: string) {
+    const currentClass = await prisma.kelas.findUnique({
+      where: { id: kelasId },
+      select: {
+        id: true,
+        nama_kelas: true,
+        tingkat: true,
+        jurusan_id: true,
+        Jurusan: {
+          select: {
+            id: true,
+            nama: true,
+            kode: true,
+            program_keahlian_id: true
+          }
+        }
+      }
+    });
+    if (!currentClass) {
+      throw new Error('Kelas tidak ditemukan');
+    }
+
+    // 1. Ambil daftar siswa yang terikat pada kelas & tahun ajaran ini
+    const saWhere: any = { kelas_id: kelasId, status: { not: 'PINDAH' as any } };
+    if (tahunPelajaranId) saWhere.tahun_pelajaran_id = tahunPelajaranId;
+    if (tenantId) saWhere.siswa = { tenant_id: tenantId };
+
+    let saStudents = await prisma.siswaAkademik.findMany({
+      where: saWhere,
+      select: { siswa_id: true, tahunPelajaran: { select: { tahun: true } } },
+      distinct: ['siswa_id']
+    });
+
+    if (saStudents.length === 0) {
+      saStudents = await prisma.siswaAkademik.findMany({
+        where: {
+          kelas_id: kelasId,
+          status: { not: 'PINDAH' as any },
+          ...(tenantId ? { siswa: { tenant_id: tenantId } } : {})
+        },
+        select: { siswa_id: true, tahunPelajaran: { select: { tahun: true } } },
+        distinct: ['siswa_id']
+      });
+    }
+
+    const studentIds = saStudents.map(s => s.siswa_id);
+
+    // Resolusi daftar tingkat adaptif multi-jenjang (SD: 1-6, SMP: 7-9, SMA/SMK: 10-12/13)
+    let targetTingkatList: number[] = [10, 11, 12];
+    if (currentClass.tingkat >= 1 && currentClass.tingkat <= 6) {
+      targetTingkatList = [1, 2, 3, 4, 5, 6];
+    } else if (currentClass.tingkat >= 7 && currentClass.tingkat <= 9) {
+      targetTingkatList = [7, 8, 9];
+    } else if (currentClass.tingkat >= 10) {
+      const tenant = await prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { durasi_smk: true }
+      });
+      const is4Tahun = tenant?.durasi_smk === '4_TAHUN' || currentClass.tingkat === 13;
+      targetTingkatList = is4Tahun ? [10, 11, 12, 13] : [10, 11, 12];
+    }
+
+    const ROMAN_MAP: Record<number, string> = {
+      1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI',
+      7: 'VII', 8: 'VIII', 9: 'IX',
+      10: 'X', 11: 'XI', 12: 'XII', 13: 'XIII'
+    };
+
+    if (studentIds.length === 0) {
+      return {
+        currentClass,
+        stages: targetTingkatList.map(tingkat => ({
+          tingkat,
+          label: ROMAN_MAP[tingkat] ? `Kelas ${ROMAN_MAP[tingkat]}` : `Tingkat ${tingkat}`,
+          is_current: tingkat === currentClass.tingkat,
+          is_available: tingkat === currentClass.tingkat,
+          kelas_id: tingkat === currentClass.tingkat ? currentClass.id : null,
+          nama_kelas: tingkat === currentClass.tingkat ? currentClass.nama_kelas : null,
+          tahun_pelajaran_id: tingkat === currentClass.tingkat ? (tahunPelajaranId || null) : null,
+          tahun: null,
+          count: 0
+        }))
+      };
+    }
+
+    // Resolusi tahun dasar (baseStartYear) untuk validasi kronologi akademik angkatan (+1 tingkat = +1 tahun)
+    let currentTpYear = saStudents[0]?.tahunPelajaran?.tahun || '';
+    if (tahunPelajaranId) {
+      const tpObj = await prisma.tahunPelajaran.findUnique({
+        where: { id: tahunPelajaranId },
+        select: { tahun: true }
+      });
+      if (tpObj?.tahun) currentTpYear = tpObj.tahun;
+    }
+    const baseYearMatch = currentTpYear.match(/^(\d{4})/);
+    const baseStartYear = baseYearMatch ? parseInt(baseYearMatch[1], 10) : null;
+    const baseTingkat = currentClass.tingkat;
+
+    // 2. Ambil riwayat akademik seluruh siswa ini di jenjang 10, 11, 12 beserta data Jurusan/ProgramKeahlian
+    const history = await prisma.siswaAkademik.findMany({
+      where: {
+        siswa_id: { in: studentIds },
+        status: { not: 'PINDAH' as any },
+        ...(tenantId ? { siswa: { tenant_id: tenantId } } : {})
+      },
+      include: {
+        kelas: {
+          select: {
+            id: true,
+            nama_kelas: true,
+            tingkat: true,
+            jurusan_id: true,
+            Jurusan: {
+              select: {
+                id: true,
+                nama: true,
+                kode: true,
+                program_keahlian_id: true
+              }
+            }
+          }
+        },
+        tahunPelajaran: { select: { id: true, tahun: true } }
+      }
+    });
+
+    // 3. Untuk setiap tingkat pada jenjang ini, cari kelas & tahun ajaran mayoritas dari rombel ini
+    const stages = targetTingkatList.map(tingkat => {
+      // a. Filter awal berdasarkan tingkat kelas target
+      let candidates = history.filter(h => h.kelas.tingkat === tingkat);
+
+      // b. Validasi Program Keahlian / Jurusan Guard:
+      // Di SMK Kurikulum Merdeka, siswa kelas 10 di Program Keahlian (misal TE) hanya boleh bermutasi ke Konsentrasi
+      // di bawah Program Keahlian yang sama (misal TOI/TAV). Tidak boleh lompat ke program lain (misal Mesin/TP).
+      if (currentClass.Jurusan?.program_keahlian_id) {
+        candidates = candidates.filter(
+          h => h.kelas.Jurusan?.program_keahlian_id === currentClass.Jurusan?.program_keahlian_id
+        );
+      } else if (currentClass.jurusan_id) {
+        candidates = candidates.filter(h => h.kelas.jurusan_id === currentClass.jurusan_id);
+      }
+
+      // c. Validasi Kronologi Kalender Akademik:
+      // Tingkat target harus berada di tahun kalender yang proporsional secara linier:
+      // expectedYear = baseStartYear + (tingkat - baseTingkat)
+      if (baseStartYear) {
+        const expectedStartYear = baseStartYear + (tingkat - baseTingkat);
+        candidates = candidates.filter(h => {
+          const ym = h.tahunPelajaran.tahun.match(/^(\d{4})/);
+          return ym && parseInt(ym[1], 10) === expectedStartYear;
+        });
+      }
+
+      const frequencyMap = new Map<string, { count: number; kelas_id: string; nama_kelas: string; tingkat: number; tahun_pelajaran_id: string; tahun: string }>();
+
+      for (const item of candidates) {
+        const key = `${item.kelas_id}::${item.tahun_pelajaran_id}`;
+        const existing = frequencyMap.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          frequencyMap.set(key, {
+            count: 1,
+            kelas_id: item.kelas_id,
+            nama_kelas: item.kelas.nama_kelas,
+            tingkat: item.kelas.tingkat,
+            tahun_pelajaran_id: item.tahun_pelajaran_id,
+            tahun: item.tahunPelajaran.tahun
+          });
+        }
+      }
+
+      const sorted = Array.from(frequencyMap.values()).sort((a, b) => b.count - a.count);
+
+      // d. Ambang Batas Quorum Mayoritas Rombel:
+      // Minimal harus mencakup sekurang-kurangnya 20% populasi rombel atau min 3 siswa (bukan anomali 1-2 siswa mengulang/mutasi)
+      const minQuorum = Math.max(3, Math.floor(studentIds.length * 0.2));
+      const best = (sorted[0] && sorted[0].count >= (studentIds.length < 5 ? 1 : minQuorum)) ? sorted[0] : null;
+
+      const isCurrent = (best && best.kelas_id === kelasId && (tahunPelajaranId ? best.tahun_pelajaran_id === tahunPelajaranId : true)) || false;
+
+      return {
+        tingkat,
+        label: ROMAN_MAP[tingkat] ? `Kelas ${ROMAN_MAP[tingkat]}` : `Tingkat ${tingkat}`,
+        is_current: isCurrent,
+        is_available: Boolean(best),
+        kelas_id: best?.kelas_id || null,
+        nama_kelas: best?.nama_kelas || null,
+        tahun_pelajaran_id: best?.tahun_pelajaran_id || null,
+        tahun: best?.tahun || null,
+        count: best?.count || 0
+      };
+    });
+
+    return { currentClass, stages };
   }
 }
