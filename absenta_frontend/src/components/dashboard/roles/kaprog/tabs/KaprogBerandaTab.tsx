@@ -39,6 +39,7 @@ interface KaprogBerandaTabProps {
   };
   recentActivities?: Array<{ id: string | number; title: string; desc: string; time: string }>;
   agendaHariIni?: Array<{ jam: string; agenda: string }>;
+  onOpenPenempatan?: () => void;
 }
 
 export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
@@ -47,6 +48,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   kaprogStatsData,
   recentActivities = [],
   agendaHariIni = [],
+  onOpenPenempatan,
 }) => {
   const navigate = useNavigate();
 
@@ -177,7 +179,13 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
               <button
                 key={idx}
                 type="button"
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  if (item.title === 'Penempatan Siswa' && onOpenPenempatan) {
+                    onOpenPenempatan();
+                  } else {
+                    navigate(item.path);
+                  }
+                }}
                 className="flex flex-col text-left p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-800/80 hover:border-indigo-300 dark:hover:border-indigo-800 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-all group"
               >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-colors mb-2.5">

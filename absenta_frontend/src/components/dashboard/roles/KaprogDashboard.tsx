@@ -10,15 +10,18 @@ import {
   Users, 
   Wrench, 
   CheckCircle2, 
-  ChevronRight
+  ChevronRight,
+  ClipboardList
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
+import { Modal } from '@/components/ui/Modal';
 import { cn } from '@/lib/utils';
 import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
 import { useAuthStore } from '@/store/authStore';
 import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
+import { PenempatanPklView } from '@/components/hubin/penempatan/PenempatanPklView';
 import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -70,6 +73,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   // Floating Modal state for Guru Penugasan & Kontak
   const [selectedGuruPenugasan, setSelectedGuruPenugasan] = useState<GuruProduktifItem | null>(null);
+
+  // Floating Modal state for Scoped PKL Plotting View
+  const [isPlottingPklModalOpen, setIsPlottingPklModalOpen] = useState(false);
+
+  const handleClosePlottingModal = useCallback(() => {
+    setIsPlottingPklModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+  }, [queryClient]);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
   const academicFilter = useAcademicFilter({
@@ -542,6 +554,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     kaprogStatsData={kaprogStatsData}
                     recentActivities={recentActivities}
                     agendaHariIni={agendaHariIni}
+                    onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
                   />
                 )}
                 {activeTab === 'siswa' && (
@@ -561,6 +574,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     setMitraFilter={setMitraFilter}
                     filteredMitraList={filteredMitraList}
                     onSelectEditingSlot={handleSelectEditingSlot}
+                    onOpenPlottingModal={() => setIsPlottingPklModalOpen(true)}
+                    jurusanNama={resolvedJurusan?.nama}
                   />
                 )}
                 {activeTab === 'kehadiran' && (
@@ -614,6 +629,46 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           onClose={handleCloseGuruModal}
           onNavigateToSesi={handleNavigateToSesi}
         />
+      )}
+
+      {/* 7. Modal Reusable View: Plotting & Penempatan Siswa PKL Scoped Jurusan */}
+      {isPlottingPklModalOpen && (
+        <Modal
+          isOpen={isPlottingPklModalOpen}
+          onClose={handleClosePlottingModal}
+          size="full"
+          className="w-[98vw] max-w-[98vw] 2xl:max-w-[1720px]"
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Penempatan & Plotting Siswa PKL
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    {resolvedJurusan?.nama || 'Kejuruan'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Kelola penempatan siswa ke mitra industri, tunjuk pembimbing, dan pantau masa penempatan jurusan Anda.
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+            <PenempatanPklView
+              isModal={true}
+              jurusanId={resolvedJurusan?.id}
+              jurusanNama={resolvedJurusan?.nama}
+              initialTpId={academic.selectedTahunPelajaran}
+              onClose={handleClosePlottingModal}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -7,7 +7,8 @@ import {
   Award, 
   Search, 
   ChevronRight, 
-  ArrowUpRight 
+  ArrowUpRight,
+  Users
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui';
@@ -40,6 +41,8 @@ interface KaprogPklTabProps {
     saved_id?: string;
   }>;
   onSelectEditingSlot: (slot: EditingMitraSlot) => void;
+  onOpenPlottingModal?: () => void;
+  jurusanNama?: string;
 }
 
 export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
@@ -49,6 +52,8 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
   setMitraFilter,
   filteredMitraList = [],
   onSelectEditingSlot,
+  onOpenPlottingModal,
+  jurusanNama = 'Kejuruan',
 }) => {
   const navigate = useNavigate();
 
@@ -113,18 +118,36 @@ export const KaprogPklTab: React.FC<KaprogPklTabProps> = React.memo(({
       {/* Progress Capaian Penilaian (Simplified, Low Noise) */}
       <Card noPadding className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Progres Penilaian PKL
-          </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/hubin/nilai-pkl?tab=dudi')}
-            className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 self-start sm:self-auto cursor-pointer"
-          >
-            <span>Rekap Nilai</span>
-            <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
-          </Button>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Progres Penilaian PKL
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Monitoring capaian nilai industri dan kelulusan sidang peserta PKL {jurusanNama}.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {onOpenPlottingModal && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={onOpenPlottingModal}
+                className="text-xs font-bold rounded-xl gap-1.5 shadow-2xs bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5" />
+                <span>Plotting Siswa PKL</span>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/hubin/nilai-pkl?tab=dudi')}
+              className="text-xs font-semibold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 gap-1.5 cursor-pointer"
+            >
+              <span>Rekap Nilai</span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-slate-400" />
+            </Button>
+          </div>
         </div>
 
         {/* 2-Column Progress Grid (Reduced Visual Noise) */}
