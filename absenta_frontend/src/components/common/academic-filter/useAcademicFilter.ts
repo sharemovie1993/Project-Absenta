@@ -7,6 +7,7 @@ import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { useMapelOptions } from '@/hooks/useMapelOptions';
 import { useGuruOptions } from '@/hooks/useGuruOptions';
 import { useSiswaOptions } from '@/hooks/useSiswaOptions';
+import { useDudiOptions } from '@/hooks/useDudiOptions';
 import { useDebounce } from '@/hooks/useDebounce';
 import { getKelasCohortLineage, type CohortLineageStage } from '@/api/attendanceGerbang.api';
 import { useJenjang } from '@/hooks/useJenjang';
@@ -43,6 +44,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableSemester = false,
     enableTingkat = false,
     enableKelas = false,
+    enableMitra = false,
     enableCohort = true,
     enableMapel = false,
     enableBulan = false,
@@ -55,6 +57,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     initialSemesterId = '',
     initialTingkat = '',
     initialKelasId = '',
+    initialMitraId = '',
     initialMapelId = '',
     initialBulan = '',
     initialTanggal = '',
@@ -64,10 +67,15 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
     jurusanId,
     searchDebounceMs = 350,
+    allowAllKelas = false,
+    allowAllMitra = true,
+    isKelasDisabled = false,
+    mitraOptions: customMitraOptions,
 
     onFilterChange,
     onTpChange,
     onKelasChange,
+    onMitraChange,
     onMapelChange,
   } = options;
 
@@ -76,6 +84,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const [semesterId, setSemesterId] = useState<string>(initialSemesterId);
   const [tingkat, setTingkat] = useState<number | ''>(initialTingkat);
   const [kelasId, setKelasId] = useState<string>(initialKelasId);
+  const [mitraId, setMitraId] = useState<string>(initialMitraId);
   const [mapelId, setMapelId] = useState<string>(initialMapelId);
   const [bulan, setBulan] = useState<string>(initialBulan || (enableBulan ? toLocalMonth() : ''));
   const [tanggal, setTanggal] = useState<string>(initialTanggal || (enableTanggal ? toLocalDate() : ''));
@@ -124,20 +133,52 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     if (jurusanId) {
       list = list.filter((k) => k.jurusan_id === jurusanId);
     }
-    return list.map((k) => ({
+    const mapped = list.map((k) => ({
       value: k.id,
       label: `${k.nama_kelas} - Tingkat ${k.tingkat}`,
       nama_kelas: k.nama_kelas,
       tingkat: k.tingkat,
     }));
-  }, [rawKelasList, tingkat, jurusanId]);
+    if (allowAllKelas) {
+      return [{ value: '', label: 'Semua Kelas' }, ...mapped];
+    }
+    return mapped;
+  }, [rawKelasList, tingkat, jurusanId, allowAllKelas]);
 
   // Auto-select kelas pertama jika belum dipilih & enableKelas aktif
   useEffect(() => {
-    if (enableKelas && kelasOptions.length > 0 && (!kelasId || !kelasOptions.some((k) => k.value === kelasId))) {
+    if (!allowAllKelas && enableKelas && kelasOptions.length > 0 && (!kelasId || !kelasOptions.some((k) => k.value === kelasId))) {
       setKelasId(kelasOptions[0].value);
     }
-  }, [enableKelas, kelasOptions, kelasId]);
+  }, [enableKelas, kelasOptions, kelasId, allowAllKelas]);
+
+  // ── DUDI / Mitra Industri Options Hook ──────────────────────────────────────
+  const {
+    options: fetchedMitraOptions,
+    isLoading: isLoadingFetchedMitra,
+  } = useDudiOptions({
+    enabled: enableMitra && !customMitraOptions,
+  });
+
+  const mitraOptions: SearchableSelectOption[] = useMemo(() => {
+    const baseList = customMitraOptions || fetchedMitraOptions || [];
+    if (allowAllMitra) {
+      if (!baseList.some((m) => m.value === '')) {
+        return [{ value: '', label: 'Semua Mitra Industri' }, ...baseList];
+      }
+    }
+    return baseList;
+  }, [customMitraOptions, fetchedMitraOptions, allowAllMitra]);
+
+  const isLoadingMitra = customMitraOptions ? false : isLoadingFetchedMitra;
+
+  const handleMitraChange = useCallback(
+    (newMitraId: string) => {
+      setMitraId(newMitraId);
+      onMitraChange?.(newMitraId);
+    },
+    [onMitraChange]
+  );
 
   const {
     options: mapelOptions,
@@ -311,14 +352,19 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     if (activeTp?.id) setTahunPelajaranId(activeTp.id);
     setSemesterId(initialSemesterId);
     setTingkat(initialTingkat);
-    if (kelasOptions[0]?.value) setKelasId(kelasOptions[0].value);
+    if (allowAllKelas) {
+      setKelasId(initialKelasId || '');
+    } else if (kelasOptions[0]?.value) {
+      setKelasId(kelasOptions[0].value);
+    }
+    setMitraId(initialMitraId || '');
     if (enableBulan) setBulan(toLocalMonth());
     if (enableTanggal) setTanggal(toLocalDate());
     setMapelId('');
     setGuruId('');
     setSiswaId('');
     setSearchQuery('');
-  }, [activeTp, initialSemesterId, initialTingkat, kelasOptions, enableBulan, enableTanggal]);
+  }, [activeTp, initialSemesterId, initialTingkat, allowAllKelas, initialKelasId, kelasOptions, initialMitraId, enableBulan, enableTanggal]);
 
   // ── 5. Values & Change Listener ────────────────────────────────────────────
   const values: AcademicFilterValues = useMemo(
@@ -327,6 +373,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       semesterId,
       tingkat,
       kelasId,
+      mitraId,
       mapelId,
       bulan,
       tanggal,
@@ -339,6 +386,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       semesterId,
       tingkat,
       kelasId,
+      mitraId,
       mapelId,
       bulan,
       tanggal,
@@ -361,6 +409,10 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     return kelasOptions.find((k) => k.value === kelasId)?.label || '';
   }, [kelasOptions, kelasId]);
 
+  const selectedMitraLabel = useMemo(() => {
+    return mitraOptions.find((m) => m.value === mitraId)?.label || '';
+  }, [mitraOptions, mitraId]);
+
   const selectedMapelLabel = useMemo(() => {
     return mapelOptions.find((m) => m.value === mapelId)?.label || '';
   }, [mapelOptions, mapelId]);
@@ -371,6 +423,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableSemester,
     enableTingkat,
     enableKelas,
+    enableMitra,
     enableCohort,
     enableMapel,
     enableBulan,
@@ -388,6 +441,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setSemesterId,
     setTingkat,
     setKelasId: handleKelasChange,
+    setMitraId: handleMitraChange,
     setMapelId: handleMapelChange,
     setBulan,
     setTanggal,
@@ -399,6 +453,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     semesterOptions,
     tingkatOptions,
     kelasOptions,
+    mitraOptions,
     mapelOptions,
     guruOptions,
     siswaOptions,
@@ -406,6 +461,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoadingTp,
     isLoadingSem,
     isLoadingKelas,
+    isLoadingMitra,
     isLoadingMapel,
     isLoadingGuru,
     isLoadingSiswa,
@@ -414,6 +470,11 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     cohortStages,
     suggestedStage,
     onJumpCohortStage: handleJumpCohortStage,
+
+    allowAllKelas,
+    allowAllMitra,
+    isKelasDisabled,
+    onReset: resetFilters,
   };
 
   return {
@@ -424,6 +485,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setSemesterId,
     setTingkat,
     setKelasId: handleKelasChange,
+    setMitraId: handleMitraChange,
     setMapelId: handleMapelChange,
     setBulan,
     setTanggal,
@@ -434,6 +496,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
 
     handleTpChange,
     handleKelasChange,
+    handleMitraChange,
     handleMapelChange,
     handleJumpCohortStage,
 
@@ -441,6 +504,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     semesterOptions,
     tingkatOptions,
     kelasOptions,
+    mitraOptions,
     mapelOptions,
     guruOptions,
     siswaOptions,
@@ -448,6 +512,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoadingTp,
     isLoadingSem,
     isLoadingKelas,
+    isLoadingMitra,
     isLoadingMapel,
     isLoadingGuru,
     isLoadingSiswa,
@@ -466,6 +531,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     })(),
     activeSemester: semesterOptions.find((s) => s.value === semesterId) ? { id: semesterId, nama_semester: semesterOptions.find((s) => s.value === semesterId)?.label || '', is_active: true } : null,
     selectedKelasLabel,
+    selectedMitraLabel,
     selectedMapelLabel,
     cohortStages,
     suggestedStage,

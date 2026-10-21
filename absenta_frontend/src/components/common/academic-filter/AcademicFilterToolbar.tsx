@@ -8,7 +8,8 @@ import {
   Plus, 
   Upload, 
   Search, 
-  X 
+  X,
+  RotateCcw
 } from 'lucide-react';
 import type { AcademicFilterToolbarProps } from './types';
 
@@ -30,6 +31,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   enableSemester = false,
   enableTingkat = false,
   enableKelas = false,
+  enableMitra = false,
   enableCohort = true,
   enableMapel = false,
   enableBulan = false,
@@ -43,6 +45,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   setSemesterId,
   setTingkat,
   setKelasId,
+  setMitraId,
   setMapelId,
   setBulan,
   setTanggal,
@@ -54,6 +57,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   semesterOptions = [],
   tingkatOptions = [],
   kelasOptions = [],
+  mitraOptions = [],
   mapelOptions = [],
   guruOptions = [],
   siswaOptions = [],
@@ -61,13 +65,17 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   isLoadingTp = false,
   isLoadingSem = false,
   isLoadingKelas = false,
+  isLoadingMitra = false,
   isLoadingMapel = false,
   isLoadingGuru = false,
   isLoadingSiswa = false,
 
+  isKelasDisabled = false,
+
   cohortStages = [],
   onJumpCohortStage,
 
+  onReset,
   onAdd,
   addLabel = 'Tambah Data',
   onImport,
@@ -214,6 +222,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   options={kelasOptions}
                   isLoading={isLoadingKelas}
                   placeholder="Pilih Kelas..."
+                  disabled={isKelasDisabled}
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>
@@ -256,6 +265,30 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* 4B. Mitra Industri (DUDI / Hubin) */}
+          {enableMitra && (
+            <div className="space-y-1.5 flex-1 min-w-[150px] max-w-full sm:max-w-[240px]">
+              <label
+                htmlFor="filter-mitra-select"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+              >
+                Mitra Industri
+              </label>
+              <Suspense fallback={<SuspenseFallback />}>
+                <SearchableSelect
+                  id="filter-mitra-select"
+                  aria-label="Pilih Mitra Industri"
+                  value={values.mitraId}
+                  onValueChange={setMitraId}
+                  options={mitraOptions}
+                  isLoading={isLoadingMitra}
+                  placeholder="-- Semua Mitra --"
+                  triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                />
+              </Suspense>
             </div>
           )}
 
@@ -411,6 +444,23 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Reset Action Button */}
+          {onReset && (
+            <div className="pt-2 sm:pt-6">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onReset}
+                className="h-10 px-3 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl shrink-0 transition-colors cursor-pointer"
+                title="Reset semua filter ke default"
+              >
+                <RotateCcw size={14} className="mr-1.5" />
+                Reset
+              </Button>
             </div>
           )}
 

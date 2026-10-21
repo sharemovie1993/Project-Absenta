@@ -3,7 +3,15 @@ import { useMemo } from 'react';
 import { hubinApi, type MitraIndustri } from '../api/hubin.api';
 import type { SearchableSelectOption } from '../components/ui/SearchableSelect';
 
-export function useDudiOptions(search?: string) {
+export interface UseDudiOptionsParams {
+  search?: string;
+  enabled?: boolean;
+}
+
+export function useDudiOptions(searchOrParams?: string | UseDudiOptionsParams) {
+  const search = typeof searchOrParams === 'string' ? searchOrParams : searchOrParams?.search;
+  const enabled = typeof searchOrParams === 'object' && searchOrParams?.enabled !== undefined ? searchOrParams.enabled : true;
+
   const query = useQuery({
     queryKey: ['hubin-dudi-options-list', search],
     queryFn: async () => {
@@ -14,6 +22,7 @@ export function useDudiOptions(search?: string) {
       return list;
     },
     staleTime: 10 * 60 * 1000,
+    enabled,
   });
 
   const rawList = useMemo(() => {

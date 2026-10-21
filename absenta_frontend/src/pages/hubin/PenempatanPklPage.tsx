@@ -11,7 +11,9 @@ import {
   Users, 
   User,
   FileSpreadsheet,
-  Trash2
+  Trash2,
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -21,19 +23,17 @@ import { getMyTenant } from '../../api/tenants.api';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SectionCard, Table, Button } from '../../components/ui';
-import { type TabOption } from '../../components/ui/TabSwitcher';
+import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { formatDate } from '../../utils/layoutUtils';
 import useConfirm from '../../hooks/useConfirm';
 import { getPenempatanColumns } from '../../components/hubin/HubinPklColumns';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { usePembimbingPklOptions } from '../../hooks/usePembimbingPklOptions';
-import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { MobileAcademicList } from '../../components/academic/shared/MobileAcademicList';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 
 import { PenempatanMobileCard } from '../../components/hubin/penempatan/PenempatanMobileCard';
-import { PenempatanFilterBar } from '../../components/hubin/penempatan/PenempatanFilterBar';
 import { usePenempatanActions } from '../../components/hubin/penempatan/usePenempatanActions';
 
 const PenempatanModals = lazy(() => import('../../components/hubin/penempatan/PenempatanModals').then(m => ({ default: m.PenempatanModals })));
@@ -55,7 +55,6 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const confirm = useConfirm();
   const isMobile = useIsMobile();
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [guruSearch, setGuruSearch] = useState('');
@@ -79,37 +78,39 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
     enabled: !!user?.tenant_id
   });
 
-  // Konteks Tahun Pelajaran, Kelas & Mitra Filter
-  const { options: tpOptions, activeTahunPelajaran, isLoading: isLoadingTp } = useTahunPelajaranOptions();
-  const { options: kelasOptions, isLoading: isLoadingKelas } = useKelasOptions({
-    jurusanId: isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined
+  const isWaliKelasRestricted = Boolean(isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog);
+
+  // Standarisasi Academic Filter Engine (Pilar 21 & Pilar 31 SSOT)
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableKelas: true,
+    allowAllKelas: true,
+    enableMitra: true,
+    allowAllMitra: true,
+    enableSearch: true,
+    enableCohort: false,
+    searchPlaceholder: 'Cari siswa atau mitra...',
+    jurusanId: isKaprog && kaprogJurusan?.id ? kaprogJurusan.id : undefined,
+    initialKelasId: isWaliKelasRestricted ? walikelasKelas!.id : '',
+    isKelasDisabled: isWaliKelasRestricted,
   });
-  const [selectedTpFilter, setSelectedTpFilter] = useState<string>('');
-  const [selectedMitraFilter, setSelectedMitraFilter] = useState<string>('');
-  const [selectedKelasFilter, setSelectedKelasFilter] = useState<string>('');
+
+  const selectedTpFilter = academicFilter.values.tahunPelajaranId;
+  const selectedMitraFilter = academicFilter.values.mitraId;
+  const selectedKelasFilter = academicFilter.values.kelasId;
+  const searchTerm = academicFilter.values.searchQuery;
 
   // Khusus Wali Kelas: Otomatis kunci filter kelas ke kelas binaan
   useEffect(() => {
-    if (isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog) {
-      setSelectedKelasFilter(walikelasKelas.id);
+    if (isWaliKelasRestricted && walikelasKelas?.id && academicFilter.values.kelasId !== walikelasKelas.id) {
+      academicFilter.setKelasId(walikelasKelas.id);
     }
-  }, [isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog]);
+  }, [isWaliKelasRestricted, walikelasKelas, academicFilter]);
 
+  // Reset pagination saat filter berganti
   useEffect(() => {
-    if (activeTahunPelajaran?.id && !selectedTpFilter) {
-      setSelectedTpFilter(activeTahunPelajaran.id);
-    }
-  }, [activeTahunPelajaran, selectedTpFilter]);
-
-  const tpFilterOptions = useMemo(() => [
-    { label: 'Semua Tahun Pelajaran', value: '' },
-    ...tpOptions
-  ], [tpOptions]);
-
-  const kelasFilterOptions = useMemo(() => [
-    { label: 'Semua Kelas', value: '' },
-    ...kelasOptions
-  ], [kelasOptions]);
+    setPage(1);
+  }, [selectedTpFilter, selectedMitraFilter, selectedKelasFilter, searchTerm]);
 
   // Integrated Custom Hooks (Pilar 31 Data Layer)
   const { options: guruOptions, isLoading: isLoadingGuru } = usePembimbingPklOptions();
@@ -178,11 +179,6 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const rawMitra = useMemo(() => {
     return (Array.isArray(rawMitraRes?.data) ? rawMitraRes.data : []) as MitraData[];
   }, [rawMitraRes]);
-
-  const mitraFilterOptions = useMemo(() => [
-    { label: 'Semua Mitra Industri', value: '' },
-    ...((rawMitra || [])?.map((m: MitraData) => ({ label: m.nama, value: m.id })).sort((a, b) => a.label.localeCompare(b.label)) || [])
-  ], [rawMitra]);
 
   const { options: mitraOptions, isLoading: isLoadingMitra } = useDudiOptions(mitraSearch);
 
@@ -264,23 +260,6 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       p.Mitra?.nama?.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [rawPenempatan, searchTerm, activeTab, activeGuruId, selectedMitraFilter, selectedKelasFilter]);
-
-  const hasActiveFilters = Boolean(
-    selectedMitraFilter || 
-    selectedKelasFilter || 
-    searchTerm || 
-    (selectedTpFilter && activeTahunPelajaran?.id && selectedTpFilter !== activeTahunPelajaran.id)
-  );
-
-  const handleResetFilters = useCallback(() => {
-    setSelectedMitraFilter('');
-    setSelectedKelasFilter(isWaliKelas && walikelasKelas?.id && !isAdmin && !isHubin && !isKaprog ? walikelasKelas.id : '');
-    setSearchTerm('');
-    if (activeTahunPelajaran?.id) {
-      setSelectedTpFilter(activeTahunPelajaran.id);
-    }
-    setPage(1);
-  }, [activeTahunPelajaran, isWaliKelas, walikelasKelas, isAdmin, isHubin, isKaprog]);
 
   // Overdue Students calculation
   const overdueStudents = useMemo(() => {
@@ -504,9 +483,9 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
       actions.setSelectedMutasiPkl(row);
       actions.setIsMutasiOpen(true);
     },
-    onFilterSiswaHistory: (namaSiswa: string) => setSearchTerm(namaSiswa),
+    onFilterSiswaHistory: (namaSiswa: string) => academicFilter.setSearchQuery(namaSiswa),
     onEditMitraKontak: actions.handleOpenEditMitraKontak
-  }), [actions, confirm]);
+  }), [actions, confirm, academicFilter]);
 
   // Table Columns
   const columns = useMemo(() => getPenempatanColumns({
@@ -579,47 +558,77 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
   const content = (
     <>
       <SectionCard title="Data Penempatan PKL Siswa" icon={ClipboardList} fullWidth noPadding>
-        <PenempatanFilterBar
-          isKaprog={isKaprog}
-          kaprogJurusan={kaprogJurusan}
-          isWaliKelas={isWaliKelas}
-          walikelasKelas={walikelasKelas}
-          isAdmin={isAdmin}
-          isHubin={isHubin}
-          canManage={canManage}
-          overdueStudents={overdueStudents}
-          isBatchCheckingOut={isBatchCheckingOut}
-          onBatchCheckoutOverdue={handleBatchCheckoutOverdue}
-          showTabs={showTabs}
-          tabOptions={tabOptions}
-          activeTab={activeTab}
-          onTabChange={(id) => setActiveTab(id as 'ALL' | 'MY_GUIDANCE')}
-          tpFilterOptions={tpFilterOptions}
-          selectedTpFilter={selectedTpFilter}
-          onTpFilterChange={(val) => {
-            setSelectedTpFilter(val);
-            setPage(1);
-          }}
-          isLoadingTp={isLoadingTp}
-          kelasFilterOptions={kelasFilterOptions}
-          selectedKelasFilter={selectedKelasFilter}
-          onKelasFilterChange={(val) => {
-            setSelectedKelasFilter(val);
-            setPage(1);
-          }}
-          isLoadingKelas={isLoadingKelas}
-          mitraFilterOptions={mitraFilterOptions}
-          selectedMitraFilter={selectedMitraFilter}
-          onMitraFilterChange={(val) => {
-            setSelectedMitraFilter(val);
-            setPage(1);
-          }}
-          isLoadingRawMitra={isLoadingRawMitra}
-          searchTerm={searchTerm}
-          onSearchTermChange={setSearchTerm}
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={handleResetFilters}
-        />
+        {/* Banner Khusus Kaprog: Unit Terkunci */}
+        {isKaprog && (
+          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
+            <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <div>
+              <span className="font-bold">Mode Ketua Program Keahlian (Kaprog):</span>{' '}
+              <span>
+                Data penempatan dibatasi otomatis untuk Jurusan{' '}
+                <strong>{kaprogJurusan?.nama || 'Binaan Anda'}</strong>.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
+        {isWaliKelasRestricted && (
+          <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
+            <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div>
+              <span className="font-bold">Mode Wali Kelas (Monitoring Kelas Binaan):</span>{' '}
+              <span>
+                Data penempatan dibatasi otomatis untuk siswa kelas{' '}
+                <strong>{walikelasKelas?.nama_kelas || 'Binaan Anda'}</strong>.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Banner Aksi Cepat: Siswa Periode Berakhir */}
+        {overdueStudents?.length > 0 && canManage && (
+          <div className="mx-4 mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-900/50 rounded-2xl animate-in fade-in duration-200">
+            <div className="flex items-center gap-2.5 text-xs text-amber-800 dark:text-amber-200">
+              <Clock size={16} className="text-amber-600 dark:text-amber-400 shrink-0" />
+              <span>
+                Terdapat <strong>{overdueStudents.length} siswa</strong> yang jadwal PKL-nya telah berakhir dan menunggu konfirmasi penarikan.
+              </span>
+            </div>
+            <Button
+              type="button"
+              size="xs"
+              variant="warning"
+              onClick={handleBatchCheckoutOverdue}
+              disabled={isBatchCheckingOut}
+              className="shrink-0 text-xs font-bold rounded-xl shadow-sm"
+            >
+              {isBatchCheckingOut ? 'Memproses...' : `⚡ Tandai Selesai (${overdueStudents.length} Siswa)`}
+            </Button>
+          </div>
+        )}
+
+        {/* Tab Filters (Semua Penempatan / Bimbingan Saya) */}
+        {showTabs && (
+          <div className="px-4 pt-4 w-full flex justify-start overflow-x-auto no-scrollbar flex-nowrap">
+            <div className="whitespace-nowrap">
+              <TabSwitcher
+                options={tabOptions}
+                activeTab={activeTab}
+                onChange={(id) => setActiveTab(id as 'ALL' | 'MY_GUIDANCE')}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Standarisasi Academic Filter Engine Toolbar */}
+        <div className="p-4 border-b border-gray-100 dark:border-gray-800">
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="plain"
+            className="!p-0 !border-0 !shadow-none !bg-transparent"
+          />
+        </div>
 
         <div className="bg-transparent overflow-hidden">
           {isMobile ? (
@@ -659,8 +668,8 @@ export const PenempatanPklSection: React.FC = React.memo(() => {
           actions={actions}
           mitraOptions={mitraOptions}
           guruOptions={guruOptions}
-          kelasOptions={kelasOptions}
-          tpOptions={tpOptions}
+          kelasOptions={academicFilter.kelasOptions.filter(k => k.value !== '')}
+          tpOptions={academicFilter.tpOptions.filter(t => t.value !== '')}
           placedStudentIds={placedStudentIds}
           tenantData={tenantData}
           collectiveStudents={collectiveStudents}
