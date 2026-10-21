@@ -4,6 +4,7 @@ import { TeacherProgressInfo, TeacherTaskItem } from '../../../types/inputNilai.
 import { getShortSubjectName } from '../../../utils/mapelAbbreviator';
 
 interface TeacherProgressCardProps {
+  embedded?: boolean;
   progressInfo?: TeacherProgressInfo;
   showProgressDetail: boolean;
   onToggleProgressDetail: () => void;
@@ -18,6 +19,7 @@ interface TeacherProgressCardProps {
 }
 
 export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
+  embedded = false,
   progressInfo,
   taskSearchQuery,
   onSetTaskSearchQuery,
@@ -40,7 +42,7 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
   // Jika sedang collapsed dan ada activeTask, render bilah ramping 1-baris (~40px)
   if (!isExpanded && activeTask) {
     return (
-      <div className="bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all">
+      <div className={embedded ? "flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all" : "bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all"}>
         <div className="flex items-center gap-2.5 flex-wrap min-w-0">
           <span className="px-2 py-1 rounded-lg bg-indigo-600 text-white font-black text-xs shrink-0 shadow-xs">
             {activeTask.nama_kelas}
@@ -79,7 +81,7 @@ export const TeacherProgressCard: React.FC<TeacherProgressCardProps> = memo(({
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-all">
+    <div className={embedded ? "space-y-3 transition-all" : "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-all"}>
       {/* Header: judul + search + tombol tutup */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">

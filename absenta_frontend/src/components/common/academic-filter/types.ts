@@ -171,6 +171,7 @@ export interface AcademicFilterToolbarProps {
   // Custom slots
   actionsLeft?: React.ReactNode;
   actionsRight?: React.ReactNode;
+  bottomContent?: React.ReactNode;
   children?: React.ReactNode;
 
   // Presentation variants

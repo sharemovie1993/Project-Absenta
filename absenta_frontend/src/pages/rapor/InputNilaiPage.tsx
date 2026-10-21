@@ -732,55 +732,41 @@ export default React.memo(function InputNilaiPage() {
                 </div>
               ) : undefined
             }
+            bottomContent={
+              activeRoleTab === 'my_tasks' && (
+                hasTeachingTasks ? (
+                  <TeacherProgressCard
+                    embedded={true}
+                    progressInfo={progressInfo}
+                    showProgressDetail={showProgressDetail}
+                    onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
+                    taskStatusFilter={taskStatusFilter}
+                    onSetTaskStatusFilter={setTaskStatusFilter}
+                    taskSearchQuery={taskSearchQuery}
+                    onSetTaskSearchQuery={setTaskSearchQuery}
+                    filteredTasks={filteredTasks}
+                    selectedKelas={selectedKelas}
+                    selectedMapel={selectedMapel}
+                    onSelectTask={(kId, mId, kNama, mNama) => {
+                      setSelectedKelas(kId);
+                      setSelectedMapel(mId);
+                      toast.info(`Memilih ${kNama} — ${mNama}`);
+                    }}
+                  />
+                ) : (
+                  <div className="py-4 text-center space-y-2">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Belum Ada Jadwal KBM pada Periode Ini
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-md mx-auto">
+                      Tidak ditemukan jadwal mengajar aktif pada Tahun Pelajaran / Semester terpilih.
+                      {canSupervise && ' Silakan beralih ke Mode Supervisi untuk memantau atau menginput nilai seluruh rombel sekolah.'}
+                    </p>
+                  </div>
+                )
+              )
+            }
           />
-
-          {/* VIEW TAB 1: Daftar Rombel Guru (Khusus Mode Tugas Mengajar) */}
-          {activeRoleTab === 'my_tasks' && (
-            hasTeachingTasks ? (
-              <TeacherProgressCard
-                progressInfo={progressInfo}
-                showProgressDetail={showProgressDetail}
-                onToggleProgressDetail={() => setShowProgressDetail(!showProgressDetail)}
-                taskStatusFilter={taskStatusFilter}
-                onSetTaskStatusFilter={setTaskStatusFilter}
-                taskSearchQuery={taskSearchQuery}
-                onSetTaskSearchQuery={setTaskSearchQuery}
-                filteredTasks={filteredTasks}
-                selectedKelas={selectedKelas}
-                selectedMapel={selectedMapel}
-                onSelectTask={(kId, mId, kNama, mNama) => {
-                  setSelectedKelas(kId);
-                  setSelectedMapel(mId);
-                  toast.info(`Memilih ${kNama} — ${mNama}`);
-                }}
-              />
-            ) : (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
-                  <BookOpen size={24} />
-                </div>
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  Belum Ada Jadwal KBM pada Periode Ini
-                </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
-                  Tidak ditemukan jadwal mengajar aktif pada Tahun Pelajaran / Semester terpilih.
-                  {canSupervise
-                    ? ' Sebagai Kurikulum/Administrator, Anda dapat beralih ke Mode Supervisi untuk memantau atau menginput nilai seluruh rombel sekolah.'
-                    : ' Silakan berkoordinasi dengan Tim Kurikulum apabila jadwal KBM Anda belum selesai diplot.'}
-                </p>
-                {canSupervise && (
-                  <button
-                    type="button"
-                    onClick={() => handleRoleTabChange('supervisi')}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
-                  >
-                    <Layers size={14} />
-                    <span>Buka Supervisi Seluruh Sekolah</span>
-                  </button>
-                )}
-              </div>
-            )
-          )}
 
           {saveSuccessMsg && (
             <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-xl flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">

@@ -77,6 +77,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
   actionsLeft,
   actionsRight,
+  bottomContent,
   children,
 
   variant = 'card',
@@ -466,6 +467,13 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
             </div>
           )}
         </div>
+
+        {/* Bottom Content / Embedded Slot dengan Divider */}
+        {bottomContent && (
+          <div className="pt-3 border-t border-slate-200/60 dark:border-slate-800/60">
+            {bottomContent}
+          </div>
+        )}
       </div>
     </div>
   );
