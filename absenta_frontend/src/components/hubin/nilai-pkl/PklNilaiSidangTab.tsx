@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Card, Button, SearchableSelect } from '@/components/ui';
-import { AcademicContextBar } from '@/components/common';
+import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { Info, Lock, Save, FileText, Check, Printer } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScoreRow } from './types';
@@ -529,19 +529,41 @@ export const PklNilaiSidangTab: React.FC<PklNilaiSidangTabProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
           {/* 1 & 2. Tahun Pelajaran & Semester */}
-          <AcademicContextBar
-            id="filter-sidang"
-            tahunPelajaranId={selectedTp}
-            semesterId={selectedSemester}
-            onTahunPelajaranChange={setSelectedTp}
-            onSemesterChange={setSelectedSemester}
-            tpOptions={tpOptions}
-            semesterOptions={semesterOptions}
-            isLoadingTp={isLoadingTp}
-            isLoadingSem={isLoadingSem}
-            variant="filter"
-            className="contents"
-          />
+          <div className="sm:col-span-2">
+            <AcademicFilterToolbar
+              enableTp={true}
+              enableSemester={true}
+              values={{
+                tahunPelajaranId: selectedTp || '',
+                semesterId: selectedSemester || '',
+                tingkat: '',
+                kelasId: '',
+                bulan: '',
+                tanggal: '',
+                guruId: '',
+                siswaId: '',
+                searchQuery: '',
+              }}
+              setTahunPelajaranId={setSelectedTp}
+              setSemesterId={setSelectedSemester}
+              setTingkat={() => {}}
+              setKelasId={() => {}}
+              setBulan={() => {}}
+              setTanggal={() => {}}
+              setGuruId={() => {}}
+              setSiswaId={() => {}}
+              setSearchQuery={() => {}}
+              tpOptions={tpOptions || []}
+              semesterOptions={semesterOptions || []}
+              tingkatOptions={[]}
+              kelasOptions={[]}
+              guruOptions={[]}
+              siswaOptions={[]}
+              isLoadingTp={isLoadingTp}
+              isLoadingSem={isLoadingSem}
+              variant="compact"
+            />
+          </div>
 
           {/* Filter Kelas */}
           <div>

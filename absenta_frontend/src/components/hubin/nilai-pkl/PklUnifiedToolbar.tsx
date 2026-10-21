@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Sliders, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Button, SearchableSelect } from '@/components/ui';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 
 // Zod Schema Guard (Pilar 25 Hardening)
 export const pklToolbarFilterSchema = z.object({
@@ -157,17 +157,38 @@ export const PklUnifiedToolbar: React.FC<PklUnifiedToolbarProps> = React.memo(({
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row xl:items-center justify-between gap-2.5">
           {/* Kiri: Konteks Akademik & Filter Kelas */}
           <div className="flex items-center gap-2 flex-wrap">
-            <AcademicContextBar
-              id="filter-pkl-unified"
-              tahunPelajaranId={selectedTp}
-              semesterId={selectedSemester}
-              onTahunPelajaranChange={setSelectedTp}
-              onSemesterChange={setSelectedSemester}
-              tpOptions={tpOptions}
-              semesterOptions={semesterOptions}
+            <AcademicFilterToolbar
+              enableTp={true}
+              enableSemester={true}
+              values={{
+                tahunPelajaranId: selectedTp || '',
+                semesterId: selectedSemester || '',
+                tingkat: '',
+                kelasId: '',
+                bulan: '',
+                tanggal: '',
+                guruId: '',
+                siswaId: '',
+                searchQuery: '',
+              }}
+              setTahunPelajaranId={setSelectedTp}
+              setSemesterId={setSelectedSemester}
+              setTingkat={() => {}}
+              setKelasId={() => {}}
+              setBulan={() => {}}
+              setTanggal={() => {}}
+              setGuruId={() => {}}
+              setSiswaId={() => {}}
+              setSearchQuery={() => {}}
+              tpOptions={tpOptions || []}
+              semesterOptions={semesterOptions || []}
+              tingkatOptions={[]}
+              kelasOptions={[]}
+              guruOptions={[]}
+              siswaOptions={[]}
               isLoadingTp={isLoadingTp}
               isLoadingSem={isLoadingSem}
-              variant="toolbar"
+              variant="compact"
             />
 
             {/* Filter Kelas Sejajar Langsung */}

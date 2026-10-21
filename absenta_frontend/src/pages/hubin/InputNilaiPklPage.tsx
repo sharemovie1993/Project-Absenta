@@ -10,7 +10,7 @@ import { hubinApi } from '../../api/hubin.api';
 import { toast } from 'sonner';
 import { useDudiOptions } from '../../hooks/useDudiOptions';
 import { useJurusanOptions } from '../../hooks/useJurusanOptions';
-import { useAcademicContext } from '../../components/common';
+import { useAcademicFilter } from '@/components/common/academic-filter';
 import { useAuthStore } from '../../store/authStore';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { useCapabilities } from '../../hooks/useCapabilities';
@@ -92,20 +92,22 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
     }
   }, [canManageAll]);
 
-  // Academic Context
+  // Academic Context Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+    onTpChange: () => setSelectedKelas(''),
+  });
+
   const {
-    selectedTahunPelajaran: selectedTp,
-    selectedSemester,
+    values: { tahunPelajaranId: selectedTp, semesterId: selectedSemester },
     handleTpChange: setSelectedTp,
-    handleSemesterChange: setSelectedSemester,
+    setSemesterId: setSelectedSemester,
     tpOptions,
     semesterOptions,
     isLoadingTp,
     isLoadingSem,
-  } = useAcademicContext({
-    onTpChange: () => setSelectedKelas(''),
-    onSemesterChange: () => setSelectedKelas(''),
-  });
+  } = academicFilter;
 
   const { options: mitraOptions } = useDudiOptions();
   const { options: jurusanOptions } = useJurusanOptions();
