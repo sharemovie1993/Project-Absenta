@@ -39,6 +39,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   enableGuru = false,
   enableSiswa = false,
   enableSearch = false,
+  enableGender = false,
+  enableStatusSiswa = false,
 
   values,
   setTahunPelajaranId,
@@ -52,6 +54,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   setGuruId,
   setSiswaId,
   setSearchQuery,
+  setGender,
+  setStatusSiswa,
 
   tpOptions = [],
   semesterOptions = [],
@@ -61,6 +65,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   mapelOptions = [],
   guruOptions = [],
   siswaOptions = [],
+  genderOptions = [],
+  statusSiswaOptions = [],
 
   isLoadingTp = false,
   isLoadingSem = false,
@@ -69,6 +75,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
   isLoadingMapel = false,
   isLoadingGuru = false,
   isLoadingSiswa = false,
+  isLoadingGender = false,
+  isLoadingStatusSiswa = false,
 
   isKelasDisabled = false,
 
@@ -114,6 +122,20 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
   const hasStandardActions = Boolean(onAdd || onImport || onExportExcel || onExportPdf || actionsRight);
 
+  const resolvedGenderOptions = genderOptions.length > 0 ? genderOptions : [
+    { value: '', label: 'Semua Gender' },
+    { value: 'L', label: 'Laki-laki (L)' },
+    { value: 'P', label: 'Perempuan (P)' },
+  ];
+
+  const resolvedStatusSiswaOptions = statusSiswaOptions.length > 0 ? statusSiswaOptions : [
+    { value: '', label: 'Semua Status' },
+    { value: 'AKTIF', label: 'Siswa Aktif' },
+    { value: 'LULUS', label: 'Lulus (Alumni)' },
+    { value: 'MUTASI', label: 'Mutasi / Pindah' },
+    { value: 'KELUAR', label: 'Keluar / Drop Out' },
+  ];
+
   return (
     <div className={containerClasses}>
       {DEBUG_BORDER_ACADEMIC_FILTER && (
@@ -150,7 +172,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-tp-select"
                   aria-label="Pilih Tahun Pelajaran"
                   value={values.tahunPelajaranId}
-                  onValueChange={setTahunPelajaranId}
+                  onValueChange={(v) => setTahunPelajaranId?.(v)}
                   options={tpOptions}
                   isLoading={isLoadingTp}
                   placeholder="Pilih Tahun..."
@@ -174,7 +196,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-sem-select"
                   aria-label="Pilih Semester"
                   value={values.semesterId}
-                  onValueChange={setSemesterId}
+                  onValueChange={(v) => setSemesterId?.(v)}
                   options={semesterOptions}
                   isLoading={isLoadingSem}
                   placeholder="Pilih Semester..."
@@ -198,7 +220,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-tingkat-select"
                   aria-label="Pilih Tingkat"
                   value={values.tingkat ? String(values.tingkat) : ''}
-                  onValueChange={(v) => setTingkat(v ? parseInt(v, 10) : '')}
+                  onValueChange={(v) => setTingkat?.(v ? parseInt(v, 10) : '')}
                   options={[
                     { value: '', label: 'Semua Tingkat' },
                     ...tingkatOptions,
@@ -224,7 +246,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-kelas-select"
                   aria-label="Pilih Kelas"
                   value={values.kelasId}
-                  onValueChange={setKelasId}
+                  onValueChange={(v) => setKelasId?.(v)}
                   options={kelasOptions}
                   isLoading={isLoadingKelas}
                   placeholder="Pilih Kelas..."
@@ -288,7 +310,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-mitra-select"
                   aria-label="Pilih Mitra Industri"
                   value={values.mitraId}
-                  onValueChange={setMitraId}
+                  onValueChange={(v) => setMitraId?.(v)}
                   options={mitraOptions}
                   isLoading={isLoadingMitra}
                   placeholder="-- Semua Mitra --"
@@ -312,7 +334,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-mapel-select"
                   aria-label="Pilih Mata Pelajaran"
                   value={values.mapelId}
-                  onValueChange={setMapelId}
+                  onValueChange={(v) => setMapelId?.(v)}
                   options={mapelOptions}
                   isLoading={isLoadingMapel}
                   placeholder={
@@ -343,7 +365,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-guru-select"
                   aria-label="Pilih Guru"
                   value={values.guruId}
-                  onValueChange={setGuruId}
+                  onValueChange={(v) => setGuruId?.(v)}
                   options={guruOptions}
                   isLoading={isLoadingGuru}
                   placeholder="Semua Guru..."
@@ -368,11 +390,59 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
                   id="filter-siswa-select"
                   aria-label="Pilih Siswa"
                   value={values.siswaId}
-                  onValueChange={setSiswaId}
+                  onValueChange={(v) => setSiswaId?.(v)}
                   options={siswaOptions}
                   isLoading={isLoadingSiswa}
                   placeholder="Semua Siswa..."
                   clearable
+                  triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                />
+              </Suspense>
+            </div>
+          )}
+
+          {/* 6B. Jenis Kelamin */}
+          {enableGender && (
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[170px]')}>
+              <label
+                htmlFor="filter-gender-select"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+              >
+                Jenis Kelamin
+              </label>
+              <Suspense fallback={<SuspenseFallback />}>
+                <SearchableSelect
+                  id="filter-gender-select"
+                  aria-label="Pilih Jenis Kelamin"
+                  value={values.gender || ''}
+                  onValueChange={(val) => setGender?.(val)}
+                  options={resolvedGenderOptions}
+                  isLoading={isLoadingGender}
+                  placeholder="Semua Gender"
+                  triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
+                />
+              </Suspense>
+            </div>
+          )}
+
+          {/* 6C. Status Siswa */}
+          {enableStatusSiswa && (
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[190px]')}>
+              <label
+                htmlFor="filter-status-siswa-select"
+                className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
+              >
+                Status Siswa
+              </label>
+              <Suspense fallback={<SuspenseFallback />}>
+                <SearchableSelect
+                  id="filter-status-siswa-select"
+                  aria-label="Pilih Status Siswa"
+                  value={values.statusSiswa || ''}
+                  onValueChange={(val) => setStatusSiswa?.(val)}
+                  options={resolvedStatusSiswaOptions}
+                  isLoading={isLoadingStatusSiswa}
+                  placeholder="Semua Status"
                   triggerClassName="h-10 rounded-xl bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-xs font-bold"
                 />
               </Suspense>

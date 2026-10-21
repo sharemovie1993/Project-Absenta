@@ -2,8 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { 
   Users, 
-  Search, 
-  Filter, 
   ChevronLeft, 
   ChevronRight, 
   GraduationCap, 
@@ -11,15 +9,13 @@ import {
   Phone, 
   Building2, 
   Eye, 
-  RotateCcw,
-  Sparkles,
-  Layers,
-  ArrowUpDown
+  Layers
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button, Badge, Modal, Loader } from '@/components/ui';
 import { getSiswaList } from '@/api/academic/siswa.api';
 import { getKelasList } from '@/api/academic/kelas.api';
+import { AcademicFilterToolbar } from '@/components/common/academic-filter';
 import { resolveProfilePhotoUrl, cn } from '@/lib/utils';
 import { KelasKehadiranItem } from '../types';
 import { SiswaDetailView } from '@/components/academic/siswa/SiswaDetailView';
@@ -68,7 +64,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
   }, [tahunPelajaranId, semesterId]);
 
   // Fetch classes for this jurusan dynamically
-  const { data: kelasRes } = useQuery({
+  const { data: kelasRes, isLoading: isKelasLoading } = useQuery({
     queryKey: ['kaprog-kelas-options', jurusanId, selectedTingkat],
     queryFn: () => getKelasList(1, 100, '', selectedTingkat, jurusanId || ''),
     enabled: Boolean(jurusanId),
@@ -89,23 +85,6 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
     }
     return kelasList;
   }, [kelasRes, kelasList, selectedTingkat]);
-
-  // Reset pagination & class when any filter changes
-  const handleFilterKelasChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedKelasId(e.target.value);
-    setPage(1);
-  }, []);
-
-  const handleFilterTingkatChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedTingkat(e.target.value);
-    setSelectedKelasId('');
-    setPage(1);
-  }, []);
-
-  const handleFilterStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStatus(e.target.value);
-    setPage(1);
-  }, []);
 
   const handleResetFilters = useCallback(() => {
     setSearchTerm('');
@@ -219,117 +198,81 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
         </div>
       </div>
 
-      {/* 2. Filter & Toolbar Card */}
-      <Card noPadding className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 min-w-[240px]">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Cari nama, NIS, atau NISN siswa ${jurusanNama}...`}
-              className="w-full pl-9 pr-3.5 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-            />
-          </div>
-
-          {/* Controls: Tingkat, Kelas, Gender, Reset */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter Tingkat */}
-            <select
-              value={selectedTingkat}
-              onChange={handleFilterTingkatChange}
-              className="h-9 px-2.5 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="">Semua Tingkat</option>
-              <option value="10">Kelas X</option>
-              <option value="11">Kelas XI</option>
-              <option value="12">Kelas XII</option>
-              <option value="13">Kelas XIII (4 Thn)</option>
-            </select>
-
-            {/* Filter Kelas Rombel */}
-            <select
-              value={selectedKelasId}
-              onChange={handleFilterKelasChange}
-              className="h-9 px-2.5 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="">Semua Rombel Jurusan</option>
-              {availableKelasList.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.namaKelas}
-                </option>
-              ))}
-            </select>
-
-            {/* Filter Status Siswa */}
-            <select
-              value={selectedStatus}
-              onChange={handleFilterStatusChange}
-              className="h-9 px-2.5 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-            >
-              <option value="AKTIF">Status: Aktif</option>
-              <option value="LULUS">Status: Lulus (Alumni)</option>
-              <option value="ALL">Status: Semua Status</option>
-            </select>
-
-            {/* Gender Toggle */}
-            <div className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => { setSelectedGender(''); setPage(1); }}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg transition-colors cursor-pointer',
-                  selectedGender === ''
-                    ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSelectedGender('L'); setPage(1); }}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg transition-colors cursor-pointer',
-                  selectedGender === 'L'
-                    ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                L
-              </button>
-              <button
-                type="button"
-                onClick={() => { setSelectedGender('P'); setPage(1); }}
-                className={cn(
-                  'px-2.5 py-1 rounded-lg transition-colors cursor-pointer',
-                  selectedGender === 'P'
-                    ? 'bg-white dark:bg-slate-700 text-pink-600 dark:text-pink-400 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-900'
-                )}
-              >
-                P
-              </button>
-            </div>
-
-            {/* Reset Button */}
-            {(searchTerm || selectedKelasId || selectedTingkat || selectedGender || selectedStatus !== 'AKTIF') && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={handleResetFilters}
-                className="h-9 px-2.5 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 gap-1 rounded-xl"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Reset</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </Card>
+      {/* 2. Standardized Central AcademicFilterToolbar Engine */}
+      <AcademicFilterToolbar
+        variant="card"
+        enableSearch={true}
+        searchPlaceholder={`Cari nama, NIS, atau NISN siswa ${jurusanNama}...`}
+        enableTingkat={true}
+        enableKelas={true}
+        enableGender={true}
+        enableStatusSiswa={true}
+        enableTp={false}
+        enableSemester={false}
+        enableCohort={false}
+        values={{
+          tahunPelajaranId: tahunPelajaranId || '',
+          semesterId: semesterId || '',
+          tingkat: selectedTingkat ? parseInt(selectedTingkat, 10) : '',
+          kelasId: selectedKelasId,
+          mitraId: '',
+          mapelId: '',
+          bulan: '',
+          tanggal: '',
+          guruId: '',
+          siswaId: '',
+          searchQuery: searchTerm,
+          gender: selectedGender,
+          statusSiswa: selectedStatus,
+        }}
+        setSearchQuery={(q) => setSearchTerm(q)}
+        setTingkat={(t) => {
+          setSelectedTingkat(t ? String(t) : '');
+          setSelectedKelasId('');
+          setPage(1);
+        }}
+        setKelasId={(id) => {
+          setSelectedKelasId(id);
+          setPage(1);
+        }}
+        setGender={(g) => {
+          setSelectedGender(g);
+          setPage(1);
+        }}
+        setStatusSiswa={(s) => {
+          setSelectedStatus(s);
+          setPage(1);
+        }}
+        tingkatOptions={[
+          { value: '10', label: 'Kelas X' },
+          { value: '11', label: 'Kelas XI' },
+          { value: '12', label: 'Kelas XII' },
+          { value: '13', label: 'Kelas XIII (4 Thn)' },
+        ]}
+        kelasOptions={[
+          { value: '', label: 'Semua Rombel Jurusan' },
+          ...availableKelasList.map((k) => ({
+            value: k.id,
+            label: k.namaKelas,
+          })),
+        ]}
+        genderOptions={[
+          { value: '', label: 'Semua Gender' },
+          { value: 'L', label: 'Laki-laki (L)' },
+          { value: 'P', label: 'Perempuan (P)' },
+        ]}
+        statusSiswaOptions={[
+          { value: 'AKTIF', label: 'Status: Aktif' },
+          { value: 'LULUS', label: 'Status: Lulus (Alumni)' },
+          { value: 'ALL', label: 'Status: Semua Status' },
+        ]}
+        isLoadingKelas={isKelasLoading}
+        onReset={
+          searchTerm || selectedKelasId || selectedTingkat || selectedGender || selectedStatus !== 'AKTIF'
+            ? handleResetFilters
+            : undefined
+        }
+      />
 
       {/* 3. Main Data Table */}
       <Card noPadding className="rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 overflow-hidden">

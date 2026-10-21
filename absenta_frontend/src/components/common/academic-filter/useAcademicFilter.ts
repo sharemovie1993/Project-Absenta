@@ -52,6 +52,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableGuru = false,
     enableSiswa = false,
     enableSearch = false,
+    enableGender = false,
+    enableStatusSiswa = false,
 
     initialTpId = '',
     initialSemesterId = '',
@@ -64,6 +66,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     initialGuruId = '',
     initialSiswaId = '',
     initialSearch = '',
+    initialGender = '',
+    initialStatusSiswa = '',
 
     jurusanId,
     searchDebounceMs = 350,
@@ -71,12 +75,16 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     allowAllMitra = true,
     isKelasDisabled = false,
     mitraOptions: customMitraOptions,
+    genderOptions: customGenderOptions,
+    statusSiswaOptions: customStatusSiswaOptions,
 
     onFilterChange,
     onTpChange,
     onKelasChange,
     onMitraChange,
     onMapelChange,
+    onGenderChange,
+    onStatusSiswaChange,
   } = options;
 
   // ── 1. Controlled Filter State ──────────────────────────────────────────────
@@ -91,6 +99,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   const [guruId, setGuruId] = useState<string>(initialGuruId);
   const [siswaId, setSiswaId] = useState<string>(initialSiswaId);
   const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
+  const [gender, setGender] = useState<string>(initialGender);
+  const [statusSiswa, setStatusSiswa] = useState<string>(initialStatusSiswa);
 
   const debouncedSearchQuery = useDebounce(searchQuery, searchDebounceMs);
 
@@ -220,6 +230,40 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     onlyActive: true,
     enabled: enableSiswa,
   });
+
+  // ── Gender & Status Siswa Options & Handlers ───────────────────────────────
+  const defaultGenderOptions: SearchableSelectOption[] = useMemo(() => [
+    { value: '', label: 'Semua Gender' },
+    { value: 'L', label: 'Laki-laki (L)' },
+    { value: 'P', label: 'Perempuan (P)' },
+  ], []);
+
+  const defaultStatusSiswaOptions: SearchableSelectOption[] = useMemo(() => [
+    { value: '', label: 'Semua Status' },
+    { value: 'AKTIF', label: 'Siswa Aktif' },
+    { value: 'LULUS', label: 'Lulus (Alumni)' },
+    { value: 'MUTASI', label: 'Mutasi / Pindah' },
+    { value: 'KELUAR', label: 'Keluar / Drop Out' },
+  ], []);
+
+  const genderOptions = customGenderOptions || defaultGenderOptions;
+  const statusSiswaOptions = customStatusSiswaOptions || defaultStatusSiswaOptions;
+
+  const handleGenderChange = useCallback(
+    (newGender: string) => {
+      setGender(newGender);
+      onGenderChange?.(newGender);
+    },
+    [onGenderChange]
+  );
+
+  const handleStatusSiswaChange = useCallback(
+    (newStatus: string) => {
+      setStatusSiswa(newStatus);
+      onStatusSiswaChange?.(newStatus);
+    },
+    [onStatusSiswaChange]
+  );
 
   // ── 3. Query Linimasa Angkatan Rombel Riil (Cohort Lineage) ─────────────────
   const isCohortEnabled = enableKelas && enableCohort && Boolean(kelasId);
@@ -364,7 +408,9 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setGuruId('');
     setSiswaId('');
     setSearchQuery('');
-  }, [activeTp, initialSemesterId, initialTingkat, allowAllKelas, initialKelasId, kelasOptions, initialMitraId, enableBulan, enableTanggal]);
+    setGender(initialGender);
+    setStatusSiswa(initialStatusSiswa);
+  }, [activeTp, initialSemesterId, initialTingkat, allowAllKelas, initialKelasId, kelasOptions, initialMitraId, enableBulan, enableTanggal, initialGender, initialStatusSiswa]);
 
   // ── 5. Values & Change Listener ────────────────────────────────────────────
   const values: AcademicFilterValues = useMemo(
@@ -380,6 +426,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       guruId,
       siswaId,
       searchQuery: debouncedSearchQuery,
+      gender,
+      statusSiswa,
     }),
     [
       tahunPelajaranId,
@@ -393,6 +441,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
       guruId,
       siswaId,
       debouncedSearchQuery,
+      gender,
+      statusSiswa,
     ]
   );
 
@@ -431,6 +481,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     enableGuru,
     enableSiswa,
     enableSearch,
+    enableGender,
+    enableStatusSiswa,
 
     values: {
       ...values,
@@ -448,6 +500,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setGuruId,
     setSiswaId,
     setSearchQuery,
+    setGender: handleGenderChange,
+    setStatusSiswa: handleStatusSiswaChange,
 
     tpOptions,
     semesterOptions,
@@ -457,6 +511,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     mapelOptions,
     guruOptions,
     siswaOptions,
+    genderOptions,
+    statusSiswaOptions,
 
     isLoadingTp,
     isLoadingSem,
@@ -492,12 +548,16 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     setGuruId,
     setSiswaId,
     setSearchQuery,
+    setGender: handleGenderChange,
+    setStatusSiswa: handleStatusSiswaChange,
     resetFilters,
 
     handleTpChange,
     handleKelasChange,
     handleMitraChange,
     handleMapelChange,
+    handleGenderChange,
+    handleStatusSiswaChange,
     handleJumpCohortStage,
 
     tpOptions,
@@ -508,6 +568,8 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     mapelOptions,
     guruOptions,
     siswaOptions,
+    genderOptions,
+    statusSiswaOptions,
 
     isLoadingTp,
     isLoadingSem,
