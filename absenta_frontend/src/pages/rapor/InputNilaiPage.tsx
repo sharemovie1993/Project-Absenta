@@ -17,6 +17,7 @@ import { TabSwitcher, TabOption } from '../../components/ui/TabSwitcher';
 import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
+import { Badge } from '../../components/ui/Badge';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
 import { AcademicFilterToolbar, useAcademicFilter } from '../../components/common/academic-filter';
