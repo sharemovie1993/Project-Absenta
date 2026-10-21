@@ -9,10 +9,7 @@ import {
   Users, 
   Wrench, 
   CheckCircle2, 
-  AlertCircle, 
-  ChevronRight, 
-  X, 
-  AlertTriangle
+  ChevronRight
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -29,7 +26,6 @@ import { KaprogPklTab } from './kaprog/tabs/KaprogPklTab';
 import { KaprogKehadiranTab } from './kaprog/tabs/KaprogKehadiranTab';
 import { KaprogGuruTab } from './kaprog/tabs/KaprogGuruTab';
 import { KaprogSaranaTab } from './kaprog/tabs/KaprogSaranaTab';
-import { KaprogSideSummary } from './kaprog/tabs/KaprogSideSummary';
 import { KaprogGuruDetailModal } from './kaprog/KaprogGuruDetailModal';
 import { 
   KaprogTabId, 
@@ -63,9 +59,6 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
   // Active Tab State (beranda | pkl | kehadiran | guru | sarana)
   const [activeTab, setActiveTab] = useState<KaprogTabId>('beranda');
-
-  // Dismissed Alert Strip state
-  const [dismissedAlerts, setDismissedAlerts] = useState<Record<string, boolean>>({});
 
   // Search filter inside PKL tab
   const [mitraFilter, setMitraFilter] = useState('');
@@ -454,8 +447,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
         </div>
       </div>
 
-      {/* 2. Desktop 3-Column Layout (>= lg: Left Sidebar Controls + Center Main Content + Right Side Summary) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)_260px] gap-6 items-start">
+      {/* 2. Desktop 2-Column Layout (>= lg: Left Sidebar Controls + Wide Main Content Canvas) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Sidebar Controls (Desktop sticky) */}
         <aside className="hidden lg:block sticky top-20 space-y-3">
           {/* Identitas Jurusan Ringkas */}
@@ -525,83 +518,8 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
           </nav>
         </aside>
 
-        {/* Center Column: Main Content */}
+        {/* Main Content Area */}
         <main className="min-w-0 space-y-4">
-          {/* Dismissible Alert Strips */}
-          <AnimatePresence>
-            {tpStatus.pendingMitra > 0 && !dismissedAlerts['tp-alert'] && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="font-semibold">Perhatian Kurikulum:</span>
-                    <span>
-                      Terdapat {tpStatus.pendingMitra} industri mitra PKL yang belum dirumuskan Tujuan Pembelajaran (TP).
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleTabSelect('pkl')}
-                      className="font-bold underline hover:text-amber-900 dark:hover:text-amber-100 cursor-pointer"
-                    >
-                      Buka PKL
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDismissedAlerts((prev) => ({ ...prev, 'tp-alert': true }))}
-                      className="p-1 hover:bg-amber-500/20 rounded-md transition-colors text-amber-700 dark:text-amber-400"
-                      aria-label="Tutup notifikasi"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {atRiskStudents.length > 0 && !dismissedAlerts['presensi-alert'] && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="overflow-hidden"
-              >
-                <div className="flex items-center justify-between gap-3 px-3.5 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-300 text-xs">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-                    <span className="font-semibold">Flag Presensi:</span>
-                    <span>
-                      {atRiskStudents.length} siswa jurusan terdeteksi alfa &gt; 3 hari / kehadiran di bawah 85%.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleTabSelect('kehadiran')}
-                      className="font-bold underline hover:text-rose-900 dark:hover:text-rose-100 cursor-pointer"
-                    >
-                      Tinjau Siswa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDismissedAlerts((prev) => ({ ...prev, 'presensi-alert': true }))}
-                      className="p-1 hover:bg-rose-500/20 rounded-md transition-colors text-rose-700 dark:text-rose-400"
-                      aria-label="Tutup notifikasi"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {isLoadingTotal ? (
             <div className="py-20 flex flex-col items-center justify-center gap-3">
               <Loader size="md" />
@@ -665,14 +583,6 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
             </AnimatePresence>
           )}
         </main>
-
-        {/* Right Column: Side Summary Strip (Desktop >= lg) */}
-        <aside className="hidden lg:block sticky top-20">
-          <KaprogSideSummary
-            agendaHariIni={agendaHariIni}
-            tpStatus={tpStatus}
-          />
-        </aside>
       </div>
 
       {/* 5. Floating Modal Formulasi TP PKL */}

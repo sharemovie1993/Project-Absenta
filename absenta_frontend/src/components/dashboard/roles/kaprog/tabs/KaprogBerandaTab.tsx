@@ -195,48 +195,59 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
         </div>
       </Card>
 
-      {/* Recent Activity Mini List */}
-      <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
-          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-slate-400" />
-            <span>Aktivitas & Log Terbaru Jurusan</span>
-          </h3>
-          <span className="text-[11px] text-slate-400 font-medium">Realtime update</span>
-        </div>
+      {/* 2-Column Bottom Section: Aktivitas & Log + Agenda Hari Ini */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Kolom 1: Recent Activity Mini List */}
+        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span>Aktivitas & Log Terbaru Jurusan</span>
+            </h3>
+            <span className="text-[11px] text-slate-400 font-medium">Realtime update</span>
+          </div>
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-          {(recentActivities || [])?.map((act) => (
-            <div key={act.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
-              <div className="space-y-0.5">
-                <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                  {act.title}
+          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+            {(recentActivities || [])?.map((act) => (
+              <div key={act.id} className="py-2.5 first:pt-1 last:pb-1 flex items-start justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    {act.title}
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {act.desc}
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {act.desc}
-                </div>
+                <span className="text-[10px] text-slate-400 shrink-0 font-mono mt-0.5">
+                  {act.time}
+                </span>
               </div>
-              <span className="text-[10px] text-slate-400 shrink-0 font-mono mt-0.5">
-                {act.time}
-              </span>
-            </div>
-          ))}
-        </div>
-      </Card>
+            ))}
+          </div>
+        </Card>
 
-      {/* Konten Khusus Tampil di Mobile: Agenda & Status Ringkas */}
-      <div className="block lg:hidden space-y-4">
-        <Card noPadding className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
-          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-            Agenda Hari Ini
-          </h4>
-          <div className="space-y-2">
+        {/* Kolom 2: Agenda & Supervisi Hari Ini */}
+        <Card noPadding className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <CalendarCheck className="w-4 h-4 text-indigo-500" />
+              <span>Agenda & Supervisi Hari Ini</span>
+            </h3>
+            <span className="w-2 h-2 rounded-full bg-emerald-500" title="Jadwal Aktif" />
+          </div>
+
+          <div className="space-y-2.5">
             {(agendaHariIni || [])?.map((ag, i) => (
-              <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs">
-                <div className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold">
-                  {ag.jam}
+              <div key={i} className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs space-y-0.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                    {ag.jam}
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-medium bg-slate-200/60 dark:bg-slate-700/60 px-1.5 py-0.2 rounded">
+                    {(ag as any).tipe || 'KBM'}
+                  </span>
                 </div>
-                <div className="font-medium text-slate-800 dark:text-slate-200 mt-0.5">
+                <div className="font-medium text-slate-800 dark:text-slate-200">
                   {ag.agenda}
                 </div>
               </div>
