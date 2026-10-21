@@ -54,6 +54,7 @@ export interface PenempatanPklViewProps {
   isModal?: boolean;
   readOnly?: boolean;
   hideHeaderStats?: boolean;
+  hideScopeBanner?: boolean;
   initialKelasId?: string;
   initialTpId?: string;
   onClose?: () => void;
@@ -66,6 +67,7 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
   isModal = false,
   readOnly = false,
   hideHeaderStats = false,
+  hideScopeBanner = false,
   initialKelasId,
   initialTpId,
   onClose,
@@ -614,8 +616,8 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
         noPadding
         className={cn(isModal && "!border-0 !shadow-none !bg-transparent")}
       >
-        {/* Banner Khusus Kaprog: Unit Terkunci */}
-        {isJurusanScoped && (
+        {/* Banner Khusus Kaprog: Unit Terkunci (Hanya pada halaman mandiri Hubin, bukan di modal/dashboard) */}
+        {isJurusanScoped && !isModal && !hideScopeBanner && (
           <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 rounded-2xl text-xs text-indigo-900 dark:text-indigo-200">
             <ShieldCheck size={18} className="text-indigo-600 dark:text-indigo-400 shrink-0" />
             <div>
@@ -628,8 +630,8 @@ export const PenempatanPklView: React.FC<PenempatanPklViewProps> = React.memo(({
           </div>
         )}
 
-        {/* Banner Khusus Wali Kelas: Kelas Terkunci */}
-        {isWaliKelasRestricted && (
+        {/* Banner Khusus Wali Kelas: Kelas Terkunci (Hanya pada halaman mandiri) */}
+        {isWaliKelasRestricted && !isModal && !hideScopeBanner && (
           <div className="mx-4 mt-4 flex items-center gap-2.5 p-3 bg-emerald-50/80 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 rounded-2xl text-xs text-emerald-900 dark:text-emerald-200">
             <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
