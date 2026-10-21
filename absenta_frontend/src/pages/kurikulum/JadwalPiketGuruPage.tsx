@@ -22,8 +22,7 @@ import { getMyTenant } from '../../api/tenants.api';
 import { useJenjang } from '../../hooks/useJenjang';
 import { useAuthStore } from '../../store/authStore';
 import { useCapabilities } from '../../hooks/useCapabilities';
-import { useAcademicContext } from '../../hooks/useAcademicContext';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../components/common/academic-filter';
 import { useGuruOptions } from '../../hooks/useGuruOptions';
 import { useJurusanOptions } from '../../hooks/useJurusanOptions';
 import { usePiketGuruOptions } from '../../hooks/usePiketGuruOptions';
@@ -62,16 +61,19 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
   const [viewMode, setViewMode] = useState<'GRID' | 'TABLE'>('GRID');
 
   // ── Konteks Akademik (TP + Semester) ──
+  // Academic Context Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
   const {
-    selectedTahunPelajaran: selectedTpId,
-    selectedSemester: selectedSemId,
+    values: { tahunPelajaranId: selectedTpId, semesterId: selectedSemId },
     handleTpChange: setSelectedTpId,
-    handleSemesterChange: setSelectedSemId,
+    setSemesterId: setSelectedSemId,
     tpOptions,
     semesterOptions,
-    tpRawList: tahunPelajaranList,
-    semesterRawList: semesterList,
-  } = useAcademicContext();
+  } = academicFilter;
 
   const { rawList: guruList } = useGuruOptions({ jenisPtk: 'ALL' });
   const { rawList: jurusanList } = useJurusanOptions();
@@ -205,15 +207,9 @@ export const JadwalPiketGuruPage: React.FC = React.memo(() => {
             {/* Filter Bar */}
             <Card className="p-4 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <AcademicContextBar
-                  id="piket"
-                  tahunPelajaranId={selectedTpId}
-                  semesterId={selectedSemId}
-                  onTahunPelajaranChange={setSelectedTpId}
-                  onSemesterChange={setSelectedSemId}
-                  tpOptions={tpOptions}
-                  semesterOptions={semesterOptions}
-                  variant="toolbar"
+                <AcademicFilterToolbar
+                  {...academicFilter.toolbarProps}
+                  variant="compact"
                 />
 
                 <div className="flex items-center gap-2">

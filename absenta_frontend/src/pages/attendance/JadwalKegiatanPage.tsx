@@ -30,8 +30,7 @@ import {
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { Button, SectionCard, TabSwitcher } from '@/components/ui';
 import { Loader } from '@/components/ui/Loader';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
-import { useAcademicContext } from '@/hooks/useAcademicContext';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import PremiumFeatureGate from '@/components/auth/PremiumFeatureGate';
 import type { JadwalKegiatanFormData } from '@/components/attendance/kegiatan/JadwalKegiatanFormModal';
 import { formatDate } from '@/utils/layoutUtils';
@@ -76,19 +75,22 @@ export default React.memo(function JadwalKegiatanPage() {
   const [presetMasterNama, setPresetMasterNama] = useState<string | undefined>(undefined);
 
   // Konteks Akademik Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
   const {
-    selectedTahunPelajaran: selectedTpId,
-    selectedSemester: selectedSemId,
+    values: { tahunPelajaranId: selectedTpId, semesterId: selectedSemId },
     handleTpChange: setSelectedTpId,
-    handleSemesterChange: setSelectedSemId,
+    setSemesterId: setSelectedSemId,
     tpOptions,
     semesterOptions,
-    tpRawList: tahunPelajaranList,
-  } = useAcademicContext();
+    activeTpYear,
+  } = academicFilter;
 
-  const activeTpData = tahunPelajaranList.find(tp => tp.id === selectedTpId) || tahunPelajaranList.find(tp => tp.is_active) || tahunPelajaranList[0];
-  const activeTahunPelajaranId = selectedTpId || activeTpData?.id || '';
-  const activeTahunPelajaranName = activeTpData?.tahun || 'Tahun Ajaran Aktif';
+  const activeTahunPelajaranId = selectedTpId || activeTpYear?.id || '';
+  const activeTahunPelajaranName = activeTpYear?.tahun || 'Tahun Ajaran Aktif';
 
   const { rawList: jadwalItems = [], isLoading: loadingJadwal } = useJadwalKegiatan();
   const { rawList: masterKegiatans = [], isLoading: loadingMasters } = useJenisKegiatanMaster();
@@ -329,15 +331,9 @@ export default React.memo(function JadwalKegiatanPage() {
         description="Kelola jadwal kegiatan rutin pembiasaan dan eskul sekolah."
       >
         <div className="mb-4">
-          <AcademicContextBar
-            id="jadwal-kegiatan-context"
-            tahunPelajaranId={selectedTpId}
-            semesterId={selectedSemId}
-            onTahunPelajaranChange={setSelectedTpId}
-            onSemesterChange={setSelectedSemId}
-            tpOptions={tpOptions}
-            semesterOptions={semesterOptions}
-            variant="toolbar"
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
           />
         </div>
 

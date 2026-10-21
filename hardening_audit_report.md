@@ -525,7 +525,7 @@ Berikut adalah rincian masalah teknis riil yang terdeteksi di setiap file halama
 * **Status Kepatuhan:** 🟡 **SEBAGIAN TERSTANDAR (Butuh Refaktor Ringan)**
 * **Rincian Temuan Masalah & Rekomendasi:**
   * ⚠️  Terdeteksi penggunaan tipe data longgar ": any" atau casting tidak aman "as any" (Melemahkan keamanan tipe TS)
-  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 804 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [RaporPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/RaporPklPage.tsx) (19 baris), [InputNilaiPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/InputNilaiPklPage.tsx) (785 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
+  * ⚠️  Ukuran berkas terlalu besar (total terdeteksi 806 baris). Batas maks: Halaman Utama < 800 baris, Subkomponen < 500 baris. Kontributor: [RaporPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/rapor/RaporPklPage.tsx) (19 baris), [InputNilaiPklPage.tsx](file:///D:/BarayaProject/Project Absenta/absenta_frontend/src/pages/hubin/InputNilaiPklPage.tsx) (787 baris). Pindahkan subkomponen UI ke folder 'src/components/[kategori]/[nama_modul]/', gunakan sufiks penamaan standar (Form/List/Modal), dan muat dengan lazy() + Suspense.
 
 ---
 

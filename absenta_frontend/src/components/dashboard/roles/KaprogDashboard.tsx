@@ -22,7 +22,7 @@ import { hubinApi } from '@/api/hubin.api';
 import { getKaprogStats } from '@/api/dashboard.api';
 import { useAuthStore } from '@/store/authStore';
 import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
-import { AcademicContextBar, useAcademicContext } from '@/components/common';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -78,8 +78,24 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
   // Floating Modal state for Guru Penugasan & Kontak
   const [selectedGuruPenugasan, setSelectedGuruPenugasan] = useState<GuruProduktifItem | null>(null);
 
-  // Konteks Akademik Standard Platform (useAcademicContext SSOT)
-  const academic = useAcademicContext();
+  // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const academic = useMemo(() => ({
+    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
+    selectedSemester: academicFilter.values.semesterId,
+    activeYear: academicFilter.activeTpYear,
+    activeSemester: academicFilter.activeSemester,
+    tpOptions: academicFilter.tpOptions,
+    semesterOptions: academicFilter.semesterOptions,
+    handleTpChange: academicFilter.handleTpChange,
+    handleSemesterChange: academicFilter.setSemesterId,
+    isLoadingTp: academicFilter.isLoadingTp,
+    isLoadingSem: academicFilter.isLoadingSem,
+  }), [academicFilter]);
 
   // --------------------------------------------------------------------------
   // Data Fetching: 1. PKL Summary (Dual-Layer Cache)
@@ -405,17 +421,9 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
         {/* Bilah Konteks Akademik & Tombol Aksi */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-          <AcademicContextBar
-            tahunPelajaranId={academic.selectedTahunPelajaran}
-            semesterId={academic.selectedSemester}
-            onTahunPelajaranChange={academic.handleTpChange}
-            onSemesterChange={academic.handleSemesterChange}
-            tpOptions={academic.tpOptions}
-            semesterOptions={academic.semesterOptions}
-            isLoadingTp={academic.isLoadingTp}
-            isLoadingSem={academic.isLoadingSem}
-            variant="toolbar"
-            className="w-full sm:w-auto"
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
           />
 
           <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">

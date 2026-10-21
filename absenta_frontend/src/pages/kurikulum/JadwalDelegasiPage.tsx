@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Search, ArrowRightLeft, UserCheck, Clock, BookOpen, Layers, X, Filter, RefreshCw, RotateCcw } from 'lucide-react';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { Button, Badge, Input, SearchableSelect, SectionCard, Table, type Column } from '../../components/ui';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
-import { useAcademicContext } from '../../hooks/useAcademicContext';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../components/common/academic-filter';
 import { MobileAcademicList } from '@/components/academic/shared/MobileAcademicList';
 import { getJadwalKBM, updateJadwalKBM, type JadwalKBM } from '../../api/attendance/jadwalKBM.api';
 import { getGuruList } from '../../api/academic/guru.api';
@@ -36,10 +35,25 @@ export default function JadwalDelegasiPage() {
   const isMobile = useIsMobile();
 
   // Academic Context (Tahun Pelajaran & Semester)
-  const academic = useAcademicContext({
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
     onTpChange: () => setCurrentPage(1),
-    onSemesterChange: () => setCurrentPage(1),
   });
+
+  const academic = useMemo(() => ({
+    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
+    selectedSemester: academicFilter.values.semesterId,
+    activeYear: academicFilter.activeTpYear,
+    activeSemester: academicFilter.activeSemester,
+    isAcademicActive: Boolean(academicFilter.activeTpYear?.is_active && academicFilter.activeSemester?.is_active),
+    tpOptions: academicFilter.tpOptions,
+    semesterOptions: academicFilter.semesterOptions,
+    handleTpChange: academicFilter.handleTpChange,
+    handleSemesterChange: academicFilter.setSemesterId,
+    isLoadingTp: academicFilter.isLoadingTp,
+    isLoadingSem: academicFilter.isLoadingSem,
+  }), [academicFilter]);
 
   // Filters State
   const [selectedKelasId, setSelectedKelasId] = useState<string>('');
@@ -524,17 +538,9 @@ export default function JadwalDelegasiPage() {
       {/* Row 0: Academic Context Bar (Tahun Pelajaran & Semester) */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-gray-800">
         <div className="flex items-center gap-2">
-          <AcademicContextBar
-            id="delegasi"
-            tahunPelajaranId={academic.selectedTahunPelajaran}
-            semesterId={academic.selectedSemester}
-            onTahunPelajaranChange={academic.handleTpChange}
-            onSemesterChange={academic.handleSemesterChange}
-            tpOptions={academic.tpOptions}
-            semesterOptions={academic.semesterOptions}
-            isLoadingTp={academic.isLoadingTp}
-            isLoadingSem={academic.isLoadingSem}
-            variant="toolbar"
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
           />
         </div>
         {academic.isAcademicActive && (
@@ -663,17 +669,9 @@ export default function JadwalDelegasiPage() {
               <div className="space-y-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
                 {/* Academic Context Selector Mobile */}
                 <div className="pb-2 border-b border-slate-100 dark:border-slate-800">
-                  <AcademicContextBar
-                    id="delegasi-mobile"
-                    tahunPelajaranId={academic.selectedTahunPelajaran}
-                    semesterId={academic.selectedSemester}
-                    onTahunPelajaranChange={academic.handleTpChange}
-                    onSemesterChange={academic.handleSemesterChange}
-                    tpOptions={academic.tpOptions}
-                    semesterOptions={academic.semesterOptions}
-                    isLoadingTp={academic.isLoadingTp}
-                    isLoadingSem={academic.isLoadingSem}
-                    variant="toolbar"
+                  <AcademicFilterToolbar
+                    {...academicFilter.toolbarProps}
+                    variant="compact"
                   />
                 </div>
 
