@@ -52,6 +52,9 @@ interface KelasListProps {
   refreshTrigger?: number;
   guruId?: string;
   activeTahunPelajaran?: string;
+  jurusanId?: string;
+  isJurusanDisabled?: boolean;
+  readOnly?: boolean;
 }
 
 const KelasList = React.memo<KelasListProps>(({ 
@@ -64,7 +67,10 @@ const KelasList = React.memo<KelasListProps>(({
   isExporting = false,
   refreshTrigger = 0,
   guruId = '',
-  activeTahunPelajaran
+  activeTahunPelajaran,
+  jurusanId: propJurusanId,
+  isJurusanDisabled = false,
+  readOnly = false,
 }) => {
   const confirm = useConfirm();
   const { can } = useCapabilities();
@@ -99,9 +105,15 @@ const KelasList = React.memo<KelasListProps>(({
 
   // Filter states
   const [filterTingkat, setFilterTingkat] = useState('');
-  const [filterJurusan, setFilterJurusan] = useState('');
+  const [filterJurusan, setFilterJurusan] = useState(propJurusanId || '');
   const [filterStatus, setFilterStatus] = useState('');
   const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (propJurusanId !== undefined) {
+      setFilterJurusan(propJurusanId);
+    }
+  }, [propJurusanId]);
 
   // Jurusan options hook
   const { rawList: jurusanList } = useJurusanOptions();
@@ -139,21 +151,22 @@ const KelasList = React.memo<KelasListProps>(({
   
   // Check if user can perform CRUD operations
   const canManage = useMemo(() => {
+    if (readOnly) return false;
     return can('academic.structures.update') || can('academic.structures.delete');
-  }, [can]);
+  }, [readOnly, can]);
 
   const isFiltered = useMemo(() => {
-    return searchTerm !== '' || filterTingkat !== '' || filterJurusan !== '' || filterStatus !== '' || guruId !== '';
-  }, [searchTerm, filterTingkat, filterJurusan, filterStatus, guruId]);
+    return searchTerm !== '' || filterTingkat !== '' || (filterJurusan !== '' && filterJurusan !== propJurusanId) || filterStatus !== '' || guruId !== '';
+  }, [searchTerm, filterTingkat, filterJurusan, propJurusanId, filterStatus, guruId]);
 
   const handleResetFilter = useCallback(() => {
     setSearchTerm('');
     setFilterTingkat('');
-    setFilterJurusan('');
+    setFilterJurusan(propJurusanId || '');
     setFilterStatus('');
     setCurrentPage(1);
     setSelectedIds(new Set());
-  }, []);
+  }, [propJurusanId]);
 
   const allVisibleSelected = useMemo(() => {
     if (kelasList.length === 0) return false;
@@ -538,7 +551,7 @@ const KelasList = React.memo<KelasListProps>(({
             triggerClassName="h-10 text-[13px] w-full rounded-xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 shadow-sm"
           />
         </div>
-        {hasJurusan && (
+        {hasJurusan && !isJurusanDisabled && (
           <div className="w-full md:w-52">
             <SearchableSelect 
               value={filterJurusan}

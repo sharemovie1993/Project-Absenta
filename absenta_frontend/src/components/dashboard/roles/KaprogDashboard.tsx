@@ -11,7 +11,8 @@ import {
   Wrench, 
   CheckCircle2, 
   ChevronRight,
-  ClipboardList
+  ClipboardList,
+  Layers
 } from 'lucide-react';
 import { Button, Badge, Loader } from '@/components/ui';
 import { Modal } from '@/components/ui/Modal';
@@ -22,6 +23,7 @@ import { useAuthStore } from '@/store/authStore';
 import { PklDeskripsiTpModal, EditingMitraSlot } from '@/components/hubin/nilai-pkl/PklDeskripsiTpModal';
 import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { PenempatanPklView } from '@/components/hubin/penempatan/PenempatanPklView';
+import { KelasView } from '@/components/academic/kelas/KelasView';
 import toast from 'react-hot-toast';
 
 // Subkomponen Modular Ter-Hardening (Pilar 21B - God File Guard)
@@ -81,6 +83,15 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
     setIsPlottingPklModalOpen(false);
     queryClient.invalidateQueries({ queryKey: ['kaprog-pkl-summary'] });
     queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+  }, [queryClient]);
+
+  // Floating Modal state for Scoped Struktur Kelas View
+  const [isStrukturKelasModalOpen, setIsStrukturKelasModalOpen] = useState(false);
+
+  const handleCloseStrukturKelasModal = useCallback(() => {
+    setIsStrukturKelasModalOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['kaprog-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['academic-stats'] });
   }, [queryClient]);
 
   // Konteks Akademik Standard Platform (useAcademicFilter SSOT)
@@ -555,6 +566,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
                     recentActivities={recentActivities}
                     agendaHariIni={agendaHariIni}
                     onOpenPenempatan={() => setIsPlottingPklModalOpen(true)}
+                    onOpenStrukturKelas={() => setIsStrukturKelasModalOpen(true)}
                     onSelectTab={handleTabSelect}
                   />
                 )}
@@ -667,6 +679,45 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
               jurusanNama={resolvedJurusan?.nama}
               initialTpId={academic.selectedTahunPelajaran}
               onClose={handleClosePlottingModal}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {/* 8. Modal Reusable View: Struktur Rombel & Kelas Belajar Scoped Jurusan */}
+      {isStrukturKelasModalOpen && (
+        <Modal
+          isOpen={isStrukturKelasModalOpen}
+          onClose={handleCloseStrukturKelasModal}
+          size="full"
+          className="w-[98vw] max-w-[98vw] 2xl:max-w-[1720px]"
+          title={
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Struktur Rombel & Kelas Belajar
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/40">
+                    {resolvedJurusan?.nama || 'Kejuruan'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Daftar rombel, penetapan wali kelas, dan struktur kelas khusus program keahlian Anda.
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <div className="p-4 sm:p-5 max-h-[85vh] overflow-y-auto">
+            <KelasView
+              isModal={true}
+              jurusanId={resolvedJurusan?.id}
+              jurusanNama={resolvedJurusan?.nama}
+              onClose={handleCloseStrukturKelasModal}
             />
           </div>
         </Modal>

@@ -41,6 +41,7 @@ interface KaprogBerandaTabProps {
   recentActivities?: Array<{ id: string | number; title: string; desc: string; time: string }>;
   agendaHariIni?: Array<{ jam: string; agenda: string }>;
   onOpenPenempatan?: () => void;
+  onOpenStrukturKelas?: () => void;
   onSelectTab?: (tabId: KaprogTabId) => void;
 }
 
@@ -51,6 +52,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
   recentActivities = [],
   agendaHariIni = [],
   onOpenPenempatan,
+  onOpenStrukturKelas,
   onSelectTab,
 }) => {
   const navigate = useNavigate();
@@ -170,6 +172,7 @@ export const KaprogBerandaTab: React.FC<KaprogBerandaTabProps> = React.memo(({
             {
               title: 'Struktur Kelas',
               desc: 'Daftar rombel kejuruan',
+              action: onOpenStrukturKelas,
               tabId: 'siswa' as KaprogTabId,
               path: '/academic/kelas',
               icon: Layers,
