@@ -23,8 +23,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { Card, SectionCard, Button, Badge, SearchableSelect } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { useAcademicContext } from '@/hooks/useAcademicContext';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { raporApi } from '../../api/rapor.api';
@@ -84,8 +83,24 @@ export const P5Page: React.FC = React.memo(() => {
   const waliKelasId = walikelasKelas?.id || (walikelasKelasIds && walikelasKelasIds.length > 0 ? walikelasKelasIds[0] : null);
   const waliKelasNama = walikelasKelas?.nama_kelas || (walikelasKelas as any)?.nama || 'Kelas Binaan';
 
-  // Academic Context
-  const academicCtx = useAcademicContext();
+  // Academic Context Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const academicCtx = useMemo(() => ({
+    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
+    selectedSemester: academicFilter.values.semesterId,
+    activeSemester: academicFilter.activeSemester,
+    tpOptions: academicFilter.tpOptions,
+    semesterOptions: academicFilter.semesterOptions,
+    handleTpChange: academicFilter.handleTpChange,
+    handleSemesterChange: academicFilter.setSemesterId,
+    isLoadingTp: academicFilter.isLoadingTp,
+    isLoadingSem: academicFilter.isLoadingSem,
+  }), [academicFilter]);
+
   const { options: allKelasOptions, isLoading: isLoadingAllKelas } = useKelasOptions({ onlyActive: true });
 
   // 1. Fetch Projek yang difasilitasi oleh guru login
@@ -539,17 +554,9 @@ export const P5Page: React.FC = React.memo(() => {
               {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role & Pengaturan di kanan */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-full md:w-auto">
-                  <AcademicContextBar
-                    id="p5-rapor"
-                    tahunPelajaranId={academicCtx.selectedTahunPelajaran}
-                    semesterId={academicCtx.selectedSemester}
-                    onTahunPelajaranChange={academicCtx.handleTpChange}
-                    onSemesterChange={academicCtx.handleSemesterChange}
-                    tpOptions={academicCtx.tpOptions}
-                    semesterOptions={academicCtx.semesterOptions}
-                    isLoadingTp={academicCtx.isLoadingTp}
-                    isLoadingSem={academicCtx.isLoadingSem}
-                    variant="toolbar"
+                  <AcademicFilterToolbar
+                    {...academicFilter.toolbarProps}
+                    variant="compact"
                   />
                 </div>
 

@@ -20,9 +20,8 @@ import {
 import toast from 'react-hot-toast';
 import { formatDate } from '../../utils/layoutUtils';
 import { raporApi, type RaporSettings } from '../../api/rapor.api';
-import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useCapabilities } from '../../hooks/useCapabilities';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../components/common/academic-filter';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
@@ -69,8 +68,23 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
     }, { replace: true });
   }, [setSearchParams]);
 
-  // Academic Context
-  const academicCtx = useAcademicContext();
+  // Academic Context Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const academicCtx = useMemo(() => ({
+    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
+    selectedSemester: academicFilter.values.semesterId,
+    activeSemester: academicFilter.activeSemester,
+    tpOptions: academicFilter.tpOptions,
+    semesterOptions: academicFilter.semesterOptions,
+    handleTpChange: academicFilter.handleTpChange,
+    handleSemesterChange: academicFilter.setSemesterId,
+    isLoadingTp: academicFilter.isLoadingTp,
+    isLoadingSem: academicFilter.isLoadingSem,
+  }), [academicFilter]);
 
   // Capabilities & Authorization Guard (PoLP)
   const { isAdmin, isKurikulum, isKepsek, isTuHead, can } = useCapabilities();
@@ -295,16 +309,9 @@ export const RaporSettingsPage: React.FC = React.memo(() => {
         breadcrumbs={breadcrumbs}
         hardeningModuleKey="rapor_settings_page"
         topSlot={
-          <AcademicContextBar
-            tahunPelajaranId={academicCtx.selectedTahunPelajaran}
-            semesterId={academicCtx.selectedSemester}
-            onTahunPelajaranChange={academicCtx.handleTpChange}
-            onSemesterChange={academicCtx.handleSemesterChange}
-            tpOptions={academicCtx.tpOptions}
-            semesterOptions={academicCtx.semesterOptions}
-            isLoadingTp={academicCtx.isLoadingTp}
-            isLoadingSem={academicCtx.isLoadingSem}
-            variant="toolbar"
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
           />
         }
         instruction={{

@@ -14,7 +14,7 @@ import { Card } from '../../ui/Card';
 import { Button } from '../../ui/Button';
 import { Badge } from '../../ui/Badge';
 import { SearchableSelect, SearchableSelectOption } from '../../ui/SearchableSelect';
-import { AcademicContextBar } from '../../common/AcademicContextBar';
+import { AcademicFilterToolbar } from '../../common/academic-filter';
 import { TabSwitcher, TabOption } from '../../ui/TabSwitcher';
 
 export interface CetakRaporHeaderCardProps {
@@ -98,17 +98,38 @@ export const CetakRaporHeaderCard: React.FC<CetakRaporHeaderCardProps> = memo(({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div className="w-full md:w-auto">
             {onTahunPelajaranChange && onSemesterChange && (
-              <AcademicContextBar
-                id="cetak-rapor"
-                tahunPelajaranId={selectedTahunPelajaran}
-                semesterId={selectedSemester}
-                onTahunPelajaranChange={onTahunPelajaranChange}
-                onSemesterChange={onSemesterChange}
-                tpOptions={tpOptions}
-                semesterOptions={semesterOptions}
+              <AcademicFilterToolbar
+                enableTp={true}
+                enableSemester={true}
+                values={{
+                  tahunPelajaranId: selectedTahunPelajaran || '',
+                  semesterId: selectedSemester || '',
+                  tingkat: '',
+                  kelasId: '',
+                  bulan: '',
+                  tanggal: '',
+                  guruId: '',
+                  siswaId: '',
+                  searchQuery: '',
+                }}
+                setTahunPelajaranId={onTahunPelajaranChange}
+                setSemesterId={onSemesterChange}
+                setTingkat={() => {}}
+                setKelasId={() => {}}
+                setBulan={() => {}}
+                setTanggal={() => {}}
+                setGuruId={() => {}}
+                setSiswaId={() => {}}
+                setSearchQuery={() => {}}
+                tpOptions={tpOptions || []}
+                semesterOptions={semesterOptions || []}
+                tingkatOptions={[]}
+                kelasOptions={[]}
+                guruOptions={[]}
+                siswaOptions={[]}
                 isLoadingTp={isLoadingTp}
                 isLoadingSem={isLoadingSem}
-                variant="toolbar"
+                variant="compact"
               />
             )}
           </div>

@@ -21,8 +21,7 @@ import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoun
 import { Card, SectionCard, Button, Badge, SearchableSelect } from '../../components/ui';
 import { TabSwitcher, type TabOption } from '../../components/ui/TabSwitcher';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { useAcademicContext } from '@/hooks/useAcademicContext';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { useKelasOptions } from '@/hooks/useKelasOptions';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import {
@@ -85,7 +84,26 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
   const { can, isWaliKelas, isKurikulum, isAdmin } = useCapabilities();
 
   // 1. Konteks Akademik Terpusat
-  const academicCtx = useAcademicContext();
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
+  const isArchivedAcademic = !academicFilter.activeTpYear?.is_active;
+
+  const academicCtx = useMemo(() => ({
+    selectedTahunPelajaran: academicFilter.values.tahunPelajaranId,
+    selectedSemester: academicFilter.values.semesterId,
+    activeSemester: academicFilter.activeSemester,
+    tpOptions: academicFilter.tpOptions,
+    semesterOptions: academicFilter.semesterOptions,
+    handleTpChange: academicFilter.handleTpChange,
+    handleSemesterChange: academicFilter.setSemesterId,
+    isLoadingTp: academicFilter.isLoadingTp,
+    isLoadingSem: academicFilter.isLoadingSem,
+    isArchivedAcademic,
+  }), [academicFilter, isArchivedAcademic]);
+
   const { options: kelasOptions = [], isLoading: isLoadingKelas } = useKelasOptions();
 
   // 2. Akses & Role Detection
@@ -400,17 +418,9 @@ export const NilaiEskulPage: React.FC = React.memo(() => {
               {/* Baris 1: Konteks Akademik di kiri, Role Tabs di kanan */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="w-full md:w-auto">
-                  <AcademicContextBar
-                    id="rapor-eskul"
-                    tahunPelajaranId={academicCtx.selectedTahunPelajaran}
-                    semesterId={academicCtx.selectedSemester}
-                    onTahunPelajaranChange={academicCtx.handleTpChange}
-                    onSemesterChange={academicCtx.handleSemesterChange}
-                    tpOptions={academicCtx.tpOptions}
-                    semesterOptions={academicCtx.semesterOptions}
-                    isLoadingTp={academicCtx.isLoadingTp}
-                    isLoadingSem={academicCtx.isLoadingSem}
-                    variant="toolbar"
+                  <AcademicFilterToolbar
+                    {...academicFilter.toolbarProps}
+                    variant="compact"
                   />
                 </div>
 

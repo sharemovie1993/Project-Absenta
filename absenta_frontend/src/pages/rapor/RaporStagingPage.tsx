@@ -20,7 +20,7 @@ import {
   Calendar,
 } from 'lucide-react';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { TabSwitcher, TabOption } from '@/components/ui/TabSwitcher';
@@ -32,7 +32,6 @@ import { toast } from 'react-hot-toast';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/utils/date.utils';
 import { raporApi, RaporStagingItem, RaporStagingDetail, RaporPreSyncReport } from '@/api/rapor.api';
-import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { useConfirm } from '@/providers/ConfirmProvider';
 
 // ── Lazy Loading Komponen Berat (Pilar 11 / Hardening Guard) ──
@@ -72,16 +71,15 @@ export default React.memo(function RaporStagingPage() {
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
 
+  // Konteks Akademik Terpusat
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
   const {
-    selectedTahunPelajaran,
-    selectedSemester,
-    handleTpChange,
-    handleSemesterChange,
-    tpOptions,
-    semesterOptions,
-    isLoadingTp,
-    isLoadingSem,
-  } = useAcademicContext();
+    values: { tahunPelajaranId: selectedTahunPelajaran, semesterId: selectedSemester },
+  } = academicFilter;
 
   // Search & Navigation Hierarchy State
   const [searchQuery, setSearchQuery] = useState('');
@@ -416,17 +414,9 @@ export default React.memo(function RaporStagingPage() {
           {/* Header Action Bar Terpadu */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-slate-50/70 dark:bg-slate-900/40 border-b border-slate-200/80 dark:border-slate-800 rounded-t-2xl">
             <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <AcademicContextBar
-                id="staging-rapor-context"
-                tahunPelajaranId={selectedTahunPelajaran}
-                semesterId={selectedSemester}
-                onTahunPelajaranChange={handleTpChange}
-                onSemesterChange={handleSemesterChange}
-                tpOptions={tpOptions}
-                semesterOptions={semesterOptions}
-                isLoadingTp={isLoadingTp}
-                isLoadingSem={isLoadingSem}
-                variant="toolbar"
+              <AcademicFilterToolbar
+                {...academicFilter.toolbarProps}
+                variant="compact"
               />
             </div>
             <div className="flex items-center gap-2 shrink-0">

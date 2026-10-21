@@ -19,12 +19,11 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { SectionCard } from '../../components/ui/SectionCard';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { SearchableSelect, SearchableSelectOption } from '../../components/ui/SearchableSelect';
-import { AcademicContextBar } from '../../components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '../../components/common/academic-filter';
 import { raporApi } from '../../api/rapor.api';
 import { useKelasOptions } from '../../hooks/useKelasOptions';
 import { useMapelOptions } from '../../hooks/useMapelOptions';
 import { useSiswaOptions } from '../../hooks/useSiswaOptions';
-import { useAcademicContext } from '../../hooks/useAcademicContext';
 import { useJenjang } from '../../hooks/useJenjang';
 import { toast } from 'sonner';
 
@@ -155,24 +154,12 @@ export default React.memo(function InputNilaiPage() {
   });
   const { rawList: mapelList } = useMapelOptions();
 
-  // ── Konteks Akademik (TP + Semester) — via hook reusable ──
-  const {
-    selectedTahunPelajaran,
-    setSelectedTahunPelajaran,
-    selectedSemester,
-    setSelectedSemester,
-    handleTpChange,
-    handleSemesterChange,
-    tpOptions,
-    semesterOptions,
-    isLoadingTp,
-    isLoadingSem,
-    activeYear,
-    activeSemester,
-    isCurrentTpActive,
-  } = useAcademicContext({
+  // ── Konteks Akademik Terpusat ──
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
     initialTpId: initialContext.tpId,
-    initialSemId: initialContext.semId,
+    initialSemesterId: initialContext.semId,
     onTpChange: useCallback((newTpId: string) => {
       // Isolasi Akademik: Reset pilihan kelas dan mapel saat berganti tahun pelajaran
       setSelectedKelas('');
@@ -184,17 +171,23 @@ export default React.memo(function InputNilaiPage() {
         tahunPelajaranId: newTpId,
       });
     }, [activeRoleTab]),
-    onSemesterChange: useCallback((newSemId: string) => {
-      setSelectedKelas('');
-      setSelectedMapel('');
-      saveNilaiContext({
-        tab: activeRoleTab,
-        kelasId: '',
-        mapelId: '',
-        semesterId: newSemId,
-      });
-    }, [activeRoleTab]),
   });
+
+  const {
+    values: { tahunPelajaranId: selectedTahunPelajaran, semesterId: selectedSemester },
+    setTahunPelajaranId: setSelectedTahunPelajaran,
+    setSemesterId: setSelectedSemester,
+    handleTpChange,
+    setSemesterId: handleSemesterChange,
+    tpOptions,
+    semesterOptions,
+    isLoadingTp,
+    isLoadingSem,
+    activeTpYear: activeYear,
+    activeSemester,
+  } = academicFilter;
+
+  const isCurrentTpActive = Boolean(activeYear?.is_active);
 
   const { data: teacherProgressData } = useQuery({
     queryKey: ['teacher-progress', activeYear?.id, activeSemester?.id],
@@ -705,17 +698,9 @@ export default React.memo(function InputNilaiPage() {
             {/* Baris 1: Konteks Akademik (TP & Semester) di kiri, Tab Switcher Role di kanan */}
             <div className={`flex flex-col md:flex-row md:items-center justify-between gap-3 ${activeRoleTab !== 'my_tasks' ? 'pb-3 border-b border-slate-100 dark:border-slate-800' : ''}`}>
               <div className="w-full md:w-auto">
-                <AcademicContextBar
-                  id="input-nilai"
-                  tahunPelajaranId={selectedTahunPelajaran}
-                  semesterId={selectedSemester}
-                  onTahunPelajaranChange={handleTpChange}
-                  onSemesterChange={handleSemesterChange}
-                  tpOptions={tpOptions}
-                  semesterOptions={semesterOptions}
-                  isLoadingTp={isLoadingTp}
-                  isLoadingSem={isLoadingSem}
-                  variant="toolbar"
+                <AcademicFilterToolbar
+                  {...academicFilter.toolbarProps}
+                  variant="compact"
                 />
               </div>
 

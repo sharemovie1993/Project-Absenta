@@ -20,14 +20,13 @@ import {
 import { Button } from '@/components/ui/Button';
 import { AcademicPageLayout } from '@/components/academic/AcademicPageLayout';
 import { WorkspaceAppLauncherCard } from '@/components/common/WorkspaceAppLauncherCard';
-import { AcademicContextBar } from '@/components/common/AcademicContextBar';
+import { AcademicFilterToolbar, useAcademicFilter } from '@/components/common/academic-filter';
 import { AnalyticsCard } from '@/components/ui/AnalyticsCard';
 import { TvModeToggle } from '@/components/ui/TvModeToggle';
 import { cn } from '@/lib/utils';
 import { raporApi } from '@/api/rapor.api';
 import { useCapabilities } from '@/hooks/useCapabilities';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { useAcademicContext } from '@/hooks/useAcademicContext';
 import { TeacherMonitoringTable } from '@/components/rapor/dashboard/TeacherMonitoringTable';
 import { PersonalTeacherProgressWidget } from '@/components/rapor/dashboard/PersonalTeacherProgressWidget';
 import { ClassSubjectProgressCard } from '@/components/rapor/cetak-rapor/ClassSubjectProgressCard';
@@ -42,19 +41,17 @@ export default React.memo(function RaporDashboard() {
   // ── Tab Switcher (Khusus Akun Kurikulum/Admin/Kepsek) ──
   const [activeTab, setActiveTab] = useState<'monitoring' | 'personal'>('monitoring');
 
-  // ── Konteks Akademik (TP + Semester) ──
+  // ── Konteks Akademik Terpusat (TP + Semester) ──
+  const academicFilter = useAcademicFilter({
+    enableTp: true,
+    enableSemester: true,
+  });
+
   const {
-    selectedTahunPelajaran,
-    selectedSemester,
-    handleTpChange,
-    handleSemesterChange,
-    tpOptions,
-    semesterOptions,
-    isLoadingTp,
-    isLoadingSem,
-    activeYear,
+    values: { tahunPelajaranId: selectedTahunPelajaran, semesterId: selectedSemester },
+    activeTpYear: activeYear,
     activeSemester,
-  } = useAcademicContext();
+  } = academicFilter;
 
   // ── Query 1: Monitoring Seluruh Guru (Untuk Kurikulum / Admin / Kepsek) ──
   const { data: schoolMonitoringRes, isLoading: isLoadingSchool } = useQuery({
@@ -104,17 +101,9 @@ export default React.memo(function RaporDashboard() {
       topSlot={<WorkspaceAppLauncherCard workspaceId="RAPOR_WORKSPACE" />}
       toolbar={
         <div className={`flex items-center gap-2 flex-wrap ${isMobile ? 'w-full' : ''}`}>
-          <AcademicContextBar
-            id="dash-rapor"
-            tahunPelajaranId={selectedTahunPelajaran}
-            semesterId={selectedSemester}
-            onTahunPelajaranChange={handleTpChange}
-            onSemesterChange={handleSemesterChange}
-            tpOptions={tpOptions}
-            semesterOptions={semesterOptions}
-            isLoadingTp={isLoadingTp}
-            isLoadingSem={isLoadingSem}
-            variant="toolbar"
+          <AcademicFilterToolbar
+            {...academicFilter.toolbarProps}
+            variant="compact"
           />
           <TvModeToggle />
           {canViewSchoolMonitoring && (
