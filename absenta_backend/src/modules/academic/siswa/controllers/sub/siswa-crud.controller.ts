@@ -58,6 +58,8 @@ async getAllSiswa(request: any, reply: any) {
       const tingkat = request.query.tingkat as string | undefined;
       const gender = request.query.gender as string | undefined;
       const jurusan_id = request.query.jurusan_id as string | undefined;
+      const tahun_pelajaran_id = request.query.tahun_pelajaran_id as string | undefined;
+      const semester_id = request.query.semester_id as string | undefined;
       
       const search_fields_param = request.query.search_fields as string | undefined;
       const searchFields = search_fields_param ? search_fields_param.split(',').map(f => f.trim()) : undefined;
@@ -74,6 +76,8 @@ async getAllSiswa(request: any, reply: any) {
         tingkat,
         gender,
         jurusan_id,
+        tahun_pelajaran_id,
+        semester_id,
       });
 
       return reply.status(200).send({

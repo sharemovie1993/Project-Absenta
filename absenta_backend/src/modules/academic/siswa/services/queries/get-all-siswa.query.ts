@@ -17,9 +17,24 @@ export async function getAllSiswaQuery(
   const status = params?.status || '';
   const gender = params?.gender || '';
   const tingkat = params?.tingkat !== undefined ? String(params.tingkat) : '';
+  const jurusanId = params?.jurusan_id || '';
+  const tahunPelajaranId = params?.tahun_pelajaran_id || '';
+  const semesterId = params?.semester_id || '';
 
-  const isSearchable = !!search || !!params?.user_id;
-  const cacheKey = CACHE_KEYS.ACADEMIC.SISWA_LIST(tenantId, page, limit, search, kelasId, status, gender, tingkat);
+  const isSearchable = !!search || !!params?.user_id || !!tahunPelajaranId || !!semesterId;
+  const cacheKey = CACHE_KEYS.ACADEMIC.SISWA_LIST(
+    tenantId,
+    page,
+    limit,
+    search,
+    kelasId,
+    status,
+    gender,
+    tingkat,
+    jurusanId,
+    tahunPelajaranId,
+    semesterId
+  );
 
   if (!isSearchable) {
     const cached = await cacheService.get<PaginatedSiswaResponse>(cacheKey);
@@ -65,10 +80,6 @@ export async function getAllSiswaQuery(
   }
 
   const safeKelasId = typeof params?.kelas_id === 'string' && params.kelas_id.trim() !== '' ? params.kelas_id.trim() : undefined;
-  if (safeKelasId) {
-    whereClause.kelas_id = safeKelasId;
-  }
-
   const safeStatus = typeof params?.status === 'string' && params.status.trim() !== '' ? params.status.trim() : undefined;
   if (safeStatus) {
     whereClause.status = safeStatus;
@@ -80,19 +91,17 @@ export async function getAllSiswaQuery(
   }
 
   const safeTingkat = params?.tingkat !== undefined && String(params.tingkat).trim() !== '' ? Number(params.tingkat) : undefined;
-  if (safeTingkat !== undefined && !isNaN(safeTingkat)) {
-    if (!whereClause.Kelas) {
-      whereClause.Kelas = {};
-    }
-    whereClause.Kelas.tingkat = safeTingkat;
-  }
-
   const safeJurusanId = typeof params?.jurusan_id === 'string' && params.jurusan_id.trim() !== '' ? params.jurusan_id.trim() : undefined;
-  if (safeJurusanId) {
-    if (!whereClause.Kelas) {
-      whereClause.Kelas = {};
-    }
-    whereClause.Kelas.jurusan_id = safeJurusanId;
+  const safeTahunPelajaranId = typeof params?.tahun_pelajaran_id === 'string' && params.tahun_pelajaran_id.trim() !== '' ? params.tahun_pelajaran_id.trim() : undefined;
+  const safeSemesterId = typeof params?.semester_id === 'string' && params.semester_id.trim() !== '' ? params.semester_id.trim() : undefined;
+
+  // Build kelas filter object
+  const kelasFilter: any = {};
+  if (safeTingkat !== undefined && !isNaN(safeTingkat)) {
+    kelasFilter.tingkat = safeTingkat;
+  }
+  if (safeKelasId) {
+    kelasFilter.id = safeKelasId;
   }
 
   // Apply Isolate/Scope filter from Organization Engine
@@ -109,24 +118,63 @@ export async function getAllSiswaQuery(
       }
     } else {
       if (org.is_unit_restricted === true && Array.isArray(org.unit_ids) && org.unit_ids.length > 0) {
+        const allowedUnits = safeJurusanId
+          ? (org.unit_ids.includes(safeJurusanId) ? [safeJurusanId] : [])
+          : org.unit_ids;
+        kelasFilter.jurusan_id = allowedUnits.length === 1 ? allowedUnits[0] : { in: allowedUnits };
+      } else if (safeJurusanId) {
+        kelasFilter.jurusan_id = safeJurusanId;
+      }
+
+      if (!org.is_unit_restricted) {
         if (safeKelasId) {
-          whereClause.Kelas = {
-            id: safeKelasId,
-            jurusan_id: { in: org.unit_ids }
-          };
+          whereClause.kelas_id = safeKelasId;
         } else {
-          whereClause.Kelas = {
-            jurusan_id: { in: org.unit_ids }
-          };
-        }
-      } else if (safeKelasId) {
-        whereClause.kelas_id = safeKelasId;
-      } else {
-        const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
-        if (allowed.length > 0) {
-          whereClause.kelas_id = { in: allowed };
+          const allowed = Array.isArray(org.kelas_ids) ? org.kelas_ids.map((x: any) => String(x)) : [];
+          if (allowed.length > 0) {
+            whereClause.kelas_id = { in: allowed };
+          }
         }
       }
+    }
+  } else {
+    if (safeJurusanId) {
+      kelasFilter.jurusan_id = safeJurusanId;
+    }
+    if (safeKelasId) {
+      whereClause.kelas_id = safeKelasId;
+    }
+  }
+
+  // Handle academic year and class filtering
+  if (safeTahunPelajaranId) {
+    const currentPointerWhere: any = {
+      tahun_pelajaran_id: safeTahunPelajaranId,
+      ...(safeSemesterId ? { semester_id: safeSemesterId } : {}),
+      ...(Object.keys(kelasFilter).length > 0 ? { Kelas: kelasFilter } : {}),
+    };
+
+    const historicalSaWhere: any = {
+      tahun_pelajaran_id: safeTahunPelajaranId,
+      ...(safeSemesterId ? { semester_id: safeSemesterId } : {}),
+      ...(Object.keys(kelasFilter).length > 0 ? { kelas: kelasFilter } : {}),
+    };
+
+    if (!whereClause.AND) {
+      whereClause.AND = [];
+    }
+    whereClause.AND.push({
+      OR: [
+        currentPointerWhere,
+        { SiswaAkademik: { some: historicalSaWhere } },
+      ],
+    });
+  } else {
+    if (Object.keys(kelasFilter).length > 0) {
+      whereClause.Kelas = {
+        ...(whereClause.Kelas || {}),
+        ...kelasFilter,
+      };
     }
   }
 
@@ -173,10 +221,29 @@ export async function getAllSiswaQuery(
         },
       },
       SiswaAkademik: {
+        where: safeTahunPelajaranId
+          ? {
+              tahun_pelajaran_id: safeTahunPelajaranId,
+              ...(safeSemesterId ? { semester_id: safeSemesterId } : {}),
+            }
+          : undefined,
         take: 1,
         select: {
           status: true,
           semester_id: true,
+          kelas: {
+            select: {
+              id: true,
+              nama_kelas: true,
+              tingkat: true,
+            },
+          },
+          tahunPelajaran: {
+            select: {
+              id: true,
+              tahun: true,
+            },
+          },
         },
       },
       OrangTuaSiswa: {
@@ -193,7 +260,7 @@ export async function getAllSiswaQuery(
         },
       },
       PelanggaranSiswa: { select: { poin: true } },
-      PrestasiSiswa: { select: { poin: true } }
+      PrestasiSiswa: { select: { poin: true } },
     },
     orderBy: {
       created_at: 'desc',
@@ -204,13 +271,25 @@ export async function getAllSiswaQuery(
 
   const totalPages = Math.ceil(total / limit);
 
-  const formattedSiswa = siswa.map((s: any) => ({
-    ...s,
-    OrangTua: (s.OrangTuaSiswa || []).map((ots: any) => ots.OrangTua),
-    OrangTuaSiswa: undefined,
-    poin_pelanggaran: (s.PelanggaranSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
-    poin_prestasi: (s.PrestasiSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
-  }));
+  const formattedSiswa = siswa.map((s: any) => {
+    const historicalAcademic = s.SiswaAkademik?.[0];
+    const resolvedKelas = safeTahunPelajaranId && historicalAcademic?.kelas
+      ? historicalAcademic.kelas
+      : s.Kelas;
+    const resolvedTahunPelajaran = safeTahunPelajaranId && historicalAcademic?.tahunPelajaran
+      ? historicalAcademic.tahunPelajaran
+      : s.TahunPelajaran;
+
+    return {
+      ...s,
+      Kelas: resolvedKelas,
+      TahunPelajaran: resolvedTahunPelajaran,
+      OrangTua: (s.OrangTuaSiswa || []).map((ots: any) => ots.OrangTua),
+      OrangTuaSiswa: undefined,
+      poin_pelanggaran: (s.PelanggaranSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
+      poin_prestasi: (s.PrestasiSiswa || []).reduce((acc: number, curr: any) => acc + curr.poin, 0),
+    };
+  });
 
   const result: PaginatedSiswaResponse = {
     data: formattedSiswa as SiswaResponse[],

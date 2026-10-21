@@ -19,6 +19,7 @@ import {
 import { Card } from '@/components/ui/Card';
 import { Button, Badge, Modal, Loader } from '@/components/ui';
 import { getSiswaList } from '@/api/academic/siswa.api';
+import { getKelasList } from '@/api/academic/kelas.api';
 import { resolveProfilePhotoUrl, cn } from '@/lib/utils';
 import { KelasKehadiranItem } from '../types';
 import { SiswaDetailView } from '@/components/academic/siswa/SiswaDetailView';
@@ -45,6 +46,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
   const [selectedKelasId, setSelectedKelasId] = useState('');
   const [selectedTingkat, setSelectedTingkat] = useState('');
   const [selectedGender, setSelectedGender] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('AKTIF');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -60,7 +62,35 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Reset pagination when any filter changes
+  // Reset pagination when academic year/semester context changes
+  React.useEffect(() => {
+    setPage(1);
+  }, [tahunPelajaranId, semesterId]);
+
+  // Fetch classes for this jurusan dynamically
+  const { data: kelasRes } = useQuery({
+    queryKey: ['kaprog-kelas-options', jurusanId, selectedTingkat],
+    queryFn: () => getKelasList(1, 100, '', selectedTingkat, jurusanId || ''),
+    enabled: Boolean(jurusanId),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const availableKelasList = useMemo(() => {
+    if (kelasRes?.data && kelasRes.data.length > 0) {
+      return kelasRes.data.map((k) => ({
+        id: k.id,
+        namaKelas: k.nama_kelas,
+        tingkat: k.tingkat,
+      }));
+    }
+    // Fallback to kelasList from prop if API is loading or empty
+    if (selectedTingkat) {
+      return kelasList.filter((k) => String((k as any).tingkat || '') === String(selectedTingkat));
+    }
+    return kelasList;
+  }, [kelasRes, kelasList, selectedTingkat]);
+
+  // Reset pagination & class when any filter changes
   const handleFilterKelasChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedKelasId(e.target.value);
     setPage(1);
@@ -68,6 +98,12 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
 
   const handleFilterTingkatChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedTingkat(e.target.value);
+    setSelectedKelasId('');
+    setPage(1);
+  }, []);
+
+  const handleFilterStatusChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedStatus(e.target.value);
     setPage(1);
   }, []);
 
@@ -77,10 +113,11 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
     setSelectedKelasId('');
     setSelectedTingkat('');
     setSelectedGender('');
+    setSelectedStatus('AKTIF');
     setPage(1);
   }, []);
 
-  // Fetch Siswa scoped to Jurusan
+  // Fetch Siswa scoped to Jurusan & Academic Context
   const { data: siswaRes, isLoading, isFetching } = useQuery({
     queryKey: [
       'kaprog-siswa-list',
@@ -90,18 +127,23 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
       debouncedSearch,
       selectedKelasId,
       selectedTingkat,
-      selectedGender
+      selectedGender,
+      selectedStatus,
+      tahunPelajaranId,
+      semesterId,
     ],
     queryFn: () => getSiswaList(
       page,
       pageSize,
       debouncedSearch,
       selectedKelasId,
-      'AKTIF',
+      selectedStatus === 'ALL' ? '' : selectedStatus,
       selectedGender,
       '',
       selectedTingkat,
-      jurusanId
+      jurusanId,
+      tahunPelajaranId,
+      semesterId
     ),
     enabled: Boolean(jurusanId),
     staleTime: 60 * 1000
@@ -214,11 +256,22 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
               className="h-9 px-2.5 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
             >
               <option value="">Semua Rombel Jurusan</option>
-              {kelasList.map((k) => (
+              {availableKelasList.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.namaKelas}
                 </option>
               ))}
+            </select>
+
+            {/* Filter Status Siswa */}
+            <select
+              value={selectedStatus}
+              onChange={handleFilterStatusChange}
+              className="h-9 px-2.5 rounded-xl text-xs font-medium bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            >
+              <option value="AKTIF">Status: Aktif</option>
+              <option value="LULUS">Status: Lulus (Alumni)</option>
+              <option value="ALL">Status: Semua Status</option>
             </select>
 
             {/* Gender Toggle */}
@@ -262,7 +315,7 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
             </div>
 
             {/* Reset Button */}
-            {(searchTerm || selectedKelasId || selectedTingkat || selectedGender) && (
+            {(searchTerm || selectedKelasId || selectedTingkat || selectedGender || selectedStatus !== 'AKTIF') && (
               <Button
                 type="button"
                 size="sm"
@@ -355,9 +408,16 @@ export const KaprogSiswaTab: React.FC<KaprogSiswaTabProps> = React.memo(({
 
                       {/* Kelas */}
                       <td className="py-3 px-4">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
-                          {kelasName}
-                        </span>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                            {kelasName}
+                          </span>
+                          {s.status && s.status !== 'AKTIF' && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60">
+                              {s.status}
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Gender */}

@@ -12,6 +12,8 @@ export interface PaginationParams {
   tingkat?: string | number;
   gender?: string;
   jurusan_id?: string;
+  tahun_pelajaran_id?: string;
+  semester_id?: string;
 }
 
 export interface SiswaResponse {

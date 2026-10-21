@@ -58,7 +58,9 @@ export const getSiswaList = async (
   gender = '',
   user_id = '',
   tingkat = '',
-  jurusan_id = ''
+  jurusan_id = '',
+  tahun_pelajaran_id = '',
+  semester_id = ''
 ): Promise<PaginatedResponse<Siswa>> => {
   const params: any = { page, limit };
   if (search) params.search = search;
@@ -68,6 +70,8 @@ export const getSiswaList = async (
   if (user_id) params.user_id = user_id;
   if (tingkat) params.tingkat = tingkat;
   if (jurusan_id) params.jurusan_id = jurusan_id;
+  if (tahun_pelajaran_id) params.tahun_pelajaran_id = tahun_pelajaran_id;
+  if (semester_id) params.semester_id = semester_id;
 
   return requestWithFallback<PaginatedResponse<Siswa>>('get', '/academic/siswa', { params });
 };
