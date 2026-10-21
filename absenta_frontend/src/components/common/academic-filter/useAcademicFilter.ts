@@ -88,6 +88,7 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
   // ── 2. Data Options Hooks ───────────────────────────────────────────────────
   const {
     options: tpOptions,
+    rawList: tpRawList,
     activeYear: activeTp,
     isLoading: isLoadingTp,
   } = useTahunPelajaranOptions();
@@ -452,7 +453,17 @@ export function useAcademicFilter(options: UseAcademicFilterOptions = {}): UseAc
     isLoadingSiswa,
     isLoadingCohort,
 
-    activeTpYear: activeTp ? { id: activeTp.id, tahun: activeTp.tahun } : null,
+    activeTpYear: (() => {
+      const selectedTpObj = tpRawList?.find((y) => y.id === tahunPelajaranId) || activeTp || null;
+      return selectedTpObj
+        ? {
+            id: selectedTpObj.id,
+            tahun: selectedTpObj.tahun,
+            nama: (selectedTpObj as any).nama || selectedTpObj.tahun,
+            is_active: Boolean(selectedTpObj.is_active),
+          }
+        : null;
+    })(),
     activeSemester: semesterOptions.find((s) => s.value === semesterId) ? { id: semesterId, nama_semester: semesterOptions.find((s) => s.value === semesterId)?.label || '', is_active: true } : null,
     selectedKelasLabel,
     selectedMapelLabel,

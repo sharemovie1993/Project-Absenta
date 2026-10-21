@@ -95,7 +95,7 @@ export interface UseAcademicFilterReturn {
   isLoadingCohort: boolean;
 
   // Derived objects & Cohort Lineage
-  activeTpYear: { id: string; tahun: string } | null;
+  activeTpYear: { id: string; tahun: string; nama?: string; is_active?: boolean } | null;
   activeSemester: { id: string; nama_semester: string; is_active: boolean } | null;
   selectedKelasLabel: string;
   selectedMapelLabel: string;
