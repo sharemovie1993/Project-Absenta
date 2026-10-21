@@ -373,7 +373,6 @@ async function main() {
         { label: 'Plot & Pantau PKL', icon: 'Users', path: '/hubin/penempatan', required_capability: 'hubin.pkl.manage, hubin.pkl.view.list, hubin.guidance.manage' },
         { label: 'Presensi PKL', icon: 'Clock', path: '/hubin/absensi', required_capability: 'hubin.self.pkl, hubin.absensi.view.history, hubin.pkl.view.list' },
         { label: 'Nilai PKL', icon: 'Award', path: '/hubin/nilai-pkl', required_capability: 'hubin.pkl.manage, hubin.guidance.manage, hubin.pkl.view.list' },
-        { label: 'Capaian & TP PKL', icon: 'FileText', path: '/hubin/deskripsi-tp', required_capability: 'hubin.pkl.manage, hubin.guidance.manage' },
         // Divider 1
         { label: 'divider', icon: null, path: null },
         // Klaster 2: Karir, BKK, Alumni & TEFA

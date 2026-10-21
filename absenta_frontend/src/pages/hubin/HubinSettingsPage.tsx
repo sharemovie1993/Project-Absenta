@@ -12,19 +12,12 @@ import {
   Calendar, 
   CheckCircle2, 
   Sparkles,
-  RefreshCw,
-  Trash2,
-  Edit2
+  RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { hubinApi } from '../../api/hubin.api';
 import { useTahunPelajaranOptions } from '../../hooks/useTahunPelajaranOptions';
-import { useDudiOptions } from '../../hooks/useDudiOptions';
-import { useJurusanOptions } from '../../hooks/useJurusanOptions';
-import { useCapabilities } from '../../hooks/useCapabilities';
 import { useIsMobile } from '../../hooks/useIsMobile';
-import { PklDeskripsiTpTab } from '../../components/hubin/nilai-pkl/PklDeskripsiTpTab';
-import { ScoreRow } from '../../components/hubin/nilai-pkl/types';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import PremiumFeatureGate from '../../components/auth/PremiumFeatureGate';
 import { InfraErrorBoundary } from '../../components/superadmin/infra/InfraErrorBoundary';
@@ -42,20 +35,6 @@ const sertifikatSettingsSchema = z.object({
   durasiJp: z.string().min(1, 'Durasi JP wajib diisi'),
 });
 
-const deskripsiTpSchema = z.object({
-  mitra_id: z.string().min(1, 'Mitra industri wajib dipilih'),
-  deskripsi_tp: z.string().min(5, 'Deskripsi capaian pembelajaran minimal 5 karakter'),
-});
-
-interface DeskripsiTpItem {
-  id: string;
-  mitra_id?: string;
-  Mitra?: { id: string; nama: string };
-  jurusan_id?: string | null;
-  Jurusan?: { id: string; nama: string; singkatan?: string } | null;
-  deskripsi_tp: string;
-}
-
 export const HubinSettingsPage: React.FC = React.memo(() => {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -64,12 +43,12 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   const urlTp = searchParams.get('tp');
 
   const [activeTab, setActiveTab] = useState<string>(
-    urlTab && ['sertifikat', 'skema', 'deskripsi', 'storage'].includes(urlTab) ? urlTab : 'sertifikat'
+    urlTab && ['sertifikat', 'skema', 'storage'].includes(urlTab) ? urlTab : 'sertifikat'
   );
 
   // Sync tab from URL if changed
   useEffect(() => {
-    if (urlTab && ['sertifikat', 'skema', 'deskripsi', 'storage'].includes(urlTab)) {
+    if (urlTab && ['sertifikat', 'skema', 'storage'].includes(urlTab)) {
       setActiveTab(urlTab);
     }
   }, [urlTab]);
@@ -133,61 +112,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   const [formWeightLaporan, setFormWeightLaporan] = useState<number>(15);
   const [formWeightSidang, setFormWeightSidang] = useState<number>(15);
 
-  // Form State: Tab 3 - Master Deskripsi TP
-  const { isKaprog, kaprogJurusan, isHubin } = useCapabilities();
-  const { options: mitraOptions } = useDudiOptions();
-  const { options: rawJurusanOptions } = useJurusanOptions();
-  const jurusanOptions = useMemo(() => [
-    { value: '', label: 'Semua Jurusan (General)' },
-    ...(rawJurusanOptions || [])
-  ], [rawJurusanOptions]);
-  const [selectedMitra, setSelectedMitra] = useState('');
-  const [selectedJurusan, setSelectedJurusan] = useState('');
-  const [deskripsiTpText, setDeskripsiTpText] = useState('');
-
-  // Query rekapitulasi penempatan siswa PKL untuk agregasi slot DUDI aktif
-  const { data: rawPklRekap } = useQuery({
-    queryKey: ['pkl-rekap-settings', selectedTp],
-    queryFn: () => hubinApi.getPklRekap({
-      tahun_pelajaran_id: selectedTp || undefined,
-    }),
-    enabled: activeTab === 'deskripsi',
-  });
-
-  const scores = useMemo((): ScoreRow[] => {
-    const rawResponse = rawPklRekap as any;
-    const list = rawResponse?.data?.list || rawResponse?.data || rawResponse || [];
-    if (!Array.isArray(list)) return [];
-    return list.map((item: any) => ({
-      siswa_pkl_id: item.id || item.siswa_pkl_id || '',
-      nama_siswa: item.Siswa?.nama_siswa || item.siswa_nama || '',
-      nis: item.Siswa?.nis || item.nis || '',
-      foto: item.Siswa?.foto || null,
-      kelas_id: item.Siswa?.Kelas?.id || item.Siswa?.kelas_id || item.kelas_id || '',
-      nama_kelas: item.Siswa?.Kelas?.nama_kelas || item.nama_kelas || '',
-      jurusan_id: item.Siswa?.jurusan_id || (item.Siswa?.Kelas as any)?.jurusan_id || item.jurusan_id || '',
-      mitra_nama: item.Mitra?.nama || item.mitra_nama || '',
-      alamat_dudi: item.Mitra?.alamat || item.alamat_dudi || '',
-      deskripsi_tp: item.deskripsi_tp || '',
-    }));
-  }, [rawPklRekap]);
-
-  const { data: rawDeskripsiList, isLoading: isLoadingDeskripsi } = useQuery({
-    queryKey: ['deskripsi-tp-list', selectedMitra, selectedJurusan],
-    queryFn: () => hubinApi.getSettingDeskripsiPklList({ 
-      mitra_id: selectedMitra || undefined,
-      jurusan_id: selectedJurusan || undefined,
-    }),
-  });
-
-  const deskripsiList = useMemo<DeskripsiTpItem[]>(() => {
-    const raw = (rawDeskripsiList as { data?: DeskripsiTpItem[] })?.data;
-    if (Array.isArray(raw)) return raw;
-    if (Array.isArray(rawDeskripsiList)) return rawDeskripsiList as DeskripsiTpItem[];
-    return [];
-  }, [rawDeskripsiList]);
-
-  // Form State: Tab 4 - Cloud Storage
+  // Form State: Tab 3 - Cloud Storage
   const [folderUrl, setFolderUrl] = useState('');
   const [driveMode, setDriveMode] = useState('simulated');
 
@@ -280,33 +205,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
     });
   }, [selectedTp, formMode, formWeightDudi, formWeightLaporan, formWeightSidang, saveSettingsMutation]);
 
-  // Handler Tab 3: Simpan Deskripsi TP
-  const saveDeskripsiTpMutation = useMutation({
-    mutationFn: (data: { mitra_id: string; deskripsi_tp: string; jurusan_id?: string }) =>
-      hubinApi.upsertSettingDeskripsiPkl(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
-      toast.success('Master deskripsi Capaian TP berhasil disimpan!');
-      setDeskripsiTpText('');
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || 'Gagal menyimpan deskripsi TP');
-    },
-  });
-
-  const deleteDeskripsiTpMutation = useMutation({
-    mutationFn: (id: string) => hubinApi.deleteSettingDeskripsiPkl(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deskripsi-tp-list'] });
-      queryClient.invalidateQueries({ queryKey: ['pkl-rekap-settings'] });
-      toast.success('Master deskripsi Capaian TP berhasil dihapus!');
-    },
-    onError: (err: { message?: string }) => {
-      toast.error(err?.message || 'Gagal menghapus deskripsi TP');
-    },
-  });
-
-  // Handler Tab 4: Simpan Storage
+  // Handler Tab 3: Simpan Storage
   const handleSaveStorage = useCallback(() => {
     saveSettingsMutation.mutate({
       folderUrl: folderUrl.trim(),
@@ -322,7 +221,6 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
   const tabs = useMemo(() => [
     { id: 'sertifikat', label: isMobile ? '📜 Sertifikat' : '📜 Nomor Surat & Sertifikat' },
     { id: 'skema', label: isMobile ? '⚖️ Skema Nilai' : '⚖️ Skema & Bobot Penilaian' },
-    { id: 'deskripsi', label: isMobile ? '📝 Capaian TP' : '📝 Master Capaian / TP PKL' },
     { id: 'storage', label: isMobile ? '☁️ Cloud Storage' : '☁️ Cloud Storage & Berkas' }
   ], [isMobile]);
 
@@ -330,7 +228,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
     <PremiumFeatureGate
       moduleName="HUBIN"
       featureName="Pengaturan & Referensi Data Hubin"
-      description="Pusat konfigurasi dan referensi resmi persuratan sertifikat, skema penilaian, master capaian pembelajaran, serta arsip digital PKL."
+      description="Pusat konfigurasi dan referensi resmi persuratan sertifikat, skema penilaian, serta arsip digital PKL."
     >
       <InfraErrorBoundary>
         <AcademicPageLayout
@@ -344,7 +242,6 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
             items: [
               { text: "Tab Nomor Surat & Sertifikat: Masukkan 1 nomor surat resmi dari TU untuk 1 angkatan/tahun pelajaran berjalan." },
               { text: "Tab Skema & Bobot: Atur pembagian persentase penilaian antara industri DUDI, laporan, dan seminar sidang." },
-              { text: "Tab Master Capaian: Definisikan standar narasi deskripsi TP PKL yang otomatis dicetak di lembar transkrip nilai." },
               { text: "Tab Cloud Storage: Sambungkan folder Google Drive untuk arsip portofolio dan dokumen PKL siswa." }
             ]
           }}
@@ -731,27 +628,7 @@ export const HubinSettingsPage: React.FC = React.memo(() => {
               </div>
             )}
 
-            {/* TAB 3: MASTER DESKRIPSI TP (KARTU GRID INTERAKTIF DUDI & CAPAIAN TP) */}
-            {activeTab === 'deskripsi' && (
-              <PklDeskripsiTpTab
-                mitraOptions={mitraOptions}
-                onSave={(payload) => saveDeskripsiTpMutation.mutate(payload)}
-                isSaving={saveDeskripsiTpMutation.isPending}
-                onDelete={(id) => deleteDeskripsiTpMutation.mutate(id)}
-                isDeleting={deleteDeskripsiTpMutation.isPending}
-                deskripsiListData={deskripsiList}
-                isLoadingDeskripsi={isLoadingDeskripsi}
-                scores={scores}
-                isKaprog={isKaprog}
-                isHubin={isHubin}
-                kaprogJurusan={kaprogJurusan}
-                jurusanOptions={jurusanOptions}
-                selectedJurusanFilter={selectedJurusan}
-                setSelectedJurusanFilter={setSelectedJurusan}
-              />
-            )}
-
-            {/* TAB 4: CLOUD STORAGE */}
+            {/* TAB 3: CLOUD STORAGE */}
             {activeTab === 'storage' && (
               <div className="max-w-2xl space-y-4 sm:space-y-6">
                 <Card className="p-3.5 sm:p-5 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">

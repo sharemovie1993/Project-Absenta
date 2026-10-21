@@ -140,7 +140,6 @@ export const RELATED_NAV_GROUPS: NavPillGroup[] = [
       p.startsWith('/hubin/mitra') ||
       p.startsWith('/hubin/penempatan') ||
       p.startsWith('/hubin/nilai-pkl') ||
-      p.startsWith('/hubin/deskripsi-tp') ||
       p.startsWith('/hubin/monitoring') ||
       p.startsWith('/hubin/absensi') ||
       p.startsWith('/hubin/cetak-berkas') ||

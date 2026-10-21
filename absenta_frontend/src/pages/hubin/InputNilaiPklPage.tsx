@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, FileText } from 'lucide-react';
+import { ShieldCheck, GraduationCap } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AcademicPageLayout } from '../../components/academic/AcademicPageLayout';
 import { InfraErrorBoundary } from '@/components/superadmin/infra/InfraErrorBoundary';
@@ -508,12 +508,12 @@ export const InputNilaiPklPage: React.FC<InputNilaiPklPageProps> = React.memo(({
                   </div>
                   <button
                     type="button"
-                    onClick={() => navigate('/hubin/settings?tab=deskripsi')}
+                    onClick={() => navigate('/dashboard?tab=pkl')}
                     className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 dark:text-indigo-300 bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 shadow-2xs hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-                    title="Buka Pengaturan Master Deskripsi TP PKL"
+                    title="Buka Formulasi TP PKL di Dashboard Kaprog"
                   >
-                    <FileText size={13} />
-                    <span>Master Deskripsi TP →</span>
+                    <GraduationCap size={13} />
+                    <span>Dashboard Kaprog (Formulasi TP) →</span>
                   </button>
                 </div>
               )}

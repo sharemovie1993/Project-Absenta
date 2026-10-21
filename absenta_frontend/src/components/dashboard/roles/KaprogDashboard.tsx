@@ -441,7 +441,7 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
 
             <Button
               size="sm"
-              onClick={() => navigate('/hubin/nilai-pkl?tab=deskripsi')}
+              onClick={() => handleTabSelect('pkl')}
               className="text-xs h-9 px-3 gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-xs"
             >
               <GraduationCap className="w-3.5 h-3.5" />
