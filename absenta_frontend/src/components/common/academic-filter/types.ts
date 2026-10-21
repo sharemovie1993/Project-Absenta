@@ -198,7 +198,7 @@ export interface AcademicFilterToolbarProps {
   children?: React.ReactNode;
 
   // Presentation variants
-  variant?: 'card' | 'plain' | 'compact';
+  variant?: 'card' | 'plain' | 'compact' | 'sidebar';
   className?: string;
   searchPlaceholder?: string;
 }

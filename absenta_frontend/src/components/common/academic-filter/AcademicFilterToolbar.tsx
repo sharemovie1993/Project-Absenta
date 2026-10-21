@@ -98,6 +98,8 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
       'p-3 sm:p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 shadow-2xs',
     variant === 'compact' &&
       'p-2 sm:p-2.5 rounded-lg border border-slate-200/70 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/30',
+    variant === 'sidebar' &&
+      'p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs w-full',
     variant === 'plain' && '',
     DEBUG_BORDER_ACADEMIC_FILTER &&
       '!border-2 !border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20',
@@ -129,10 +131,14 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
         )}
 
         {/* Baris Filter Dinamis */}
-        <div className="flex flex-wrap items-start gap-2.5 sm:gap-3.5">
+        <div className={cn(
+          variant === 'sidebar'
+            ? 'flex flex-col gap-3 w-full'
+            : 'flex flex-wrap items-start gap-2.5 sm:gap-3.5'
+        )}>
           {/* 1. Tahun Pelajaran */}
           {enableTp && (
-            <div className="space-y-1.5 flex-1 min-w-[140px] max-w-full sm:max-w-[240px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[140px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-tp-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -156,7 +162,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 2. Semester */}
           {enableSemester && (
-            <div className="space-y-1.5 flex-1 min-w-[130px] max-w-full sm:max-w-[180px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[130px] max-w-full sm:max-w-[180px]')}>
               <label
                 htmlFor="filter-sem-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -180,7 +186,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 3. Tingkat */}
           {enableTingkat && (
-            <div className="space-y-1.5 flex-1 min-w-[120px] max-w-full sm:max-w-[160px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[120px] max-w-full sm:max-w-[160px]')}>
               <label
                 htmlFor="filter-tingkat-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -206,7 +212,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 4. Pilih Kelas + Cohort Lineage Badges */}
           {enableKelas && (
-            <div className="space-y-1.5 flex-1 min-w-[150px] max-w-full sm:max-w-[240px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-kelas-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -270,7 +276,7 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* 4B. Mitra Industri (DUDI / Hubin) */}
           {enableMitra && (
-            <div className="space-y-1.5 flex-1 min-w-[150px] max-w-full sm:max-w-[240px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[150px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-mitra-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -292,9 +298,9 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
             </div>
           )}
 
-          {/* 4B. Mata Pelajaran */}
+          {/* 4C. Mata Pelajaran */}
           {enableMapel && (
-            <div className="space-y-1.5 flex-1 min-w-[160px] max-w-full sm:max-w-[240px]">
+            <div className={cn('space-y-1.5', variant === 'sidebar' ? 'w-full min-w-0' : 'flex-1 min-w-[160px] max-w-full sm:max-w-[240px]')}>
               <label
                 htmlFor="filter-mapel-select"
                 className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 block"
@@ -449,13 +455,16 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* Reset Action Button */}
           {onReset && (
-            <div className="pt-2 sm:pt-6">
+            <div className={cn(variant === 'sidebar' ? 'pt-1 w-full' : 'pt-2 sm:pt-6')}>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={onReset}
-                className="h-10 px-3 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl shrink-0 transition-colors cursor-pointer"
+                className={cn(
+                  'h-10 px-3 text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition-colors cursor-pointer',
+                  variant === 'sidebar' ? 'w-full justify-center' : 'shrink-0'
+                )}
                 title="Reset semua filter ke default"
               >
                 <RotateCcw size={14} className="mr-1.5" />
@@ -469,7 +478,11 @@ export const AcademicFilterToolbar = React.memo(function AcademicFilterToolbar({
 
           {/* Standar CRUD & Export Actions (Align Baseline di Desktop, Full-Width Flex di Mobile) */}
           {hasStandardActions && (
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto pt-2 sm:pt-6">
+            <div className={cn(
+              variant === 'sidebar'
+                ? 'flex flex-col gap-2 w-full pt-1'
+                : 'flex flex-wrap items-center gap-2 w-full sm:w-auto sm:ml-auto pt-2 sm:pt-6'
+            )}>
               {onExportExcel && (
                 <Button
                   onClick={onExportExcel}
