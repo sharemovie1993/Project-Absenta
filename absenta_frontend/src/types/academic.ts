@@ -248,6 +248,7 @@ export interface Jurusan {
   kode?: string;
   singkatan?: string;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
   created_at: Date;

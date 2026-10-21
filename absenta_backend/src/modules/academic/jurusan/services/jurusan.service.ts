@@ -10,6 +10,7 @@ export interface CreateJurusanInput {
   kode?: string | null;
   singkatan?: string | null;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
 }
@@ -19,6 +20,7 @@ export interface UpdateJurusanInput {
   kode?: string | null;
   singkatan?: string | null;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
 }
@@ -30,6 +32,7 @@ export interface JurusanResponse {
   kode?: string | null;
   singkatan?: string | null;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
   created_at: Date;
@@ -184,6 +187,7 @@ export class JurusanService {
         kode: input.kode,
         singkatan: input.singkatan,
         warna: input.warna,
+        logo_url: input.logo_url,
         durasi_jurusan: input.durasi_jurusan || 'DEFAULT_SEKOLAH',
         ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },
@@ -274,6 +278,7 @@ export class JurusanService {
         ...(input.kode !== undefined && { kode: input.kode }),
         ...(input.singkatan !== undefined && { singkatan: input.singkatan }),
         ...(input.warna !== undefined && { warna: input.warna }),
+        ...(input.logo_url !== undefined && { logo_url: input.logo_url }),
         ...(input.durasi_jurusan !== undefined && { durasi_jurusan: input.durasi_jurusan }),
         ...(input.program_keahlian_id !== undefined && { program_keahlian_id: input.program_keahlian_id }),
       },

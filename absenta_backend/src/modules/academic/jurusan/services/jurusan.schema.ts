@@ -5,6 +5,7 @@ export const createJurusanSchema = z.object({
   kode: z.string().optional().nullable(),
   singkatan: z.string().optional().nullable(),
   warna: z.string().optional().nullable(),
+  logo_url: z.string().optional().nullable(),
   program_keahlian_id: z.string().optional().nullable(),
   durasi_jurusan: z.string().optional().nullable(),
 });

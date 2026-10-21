@@ -25,6 +25,7 @@ export interface CreateJurusanPayload {
   kode?: string;
   singkatan?: string;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
 }
@@ -34,6 +35,7 @@ export interface UpdateJurusanPayload {
   kode?: string;
   singkatan?: string;
   warna?: string | null;
+  logo_url?: string | null;
   program_keahlian_id?: string | null;
   durasi_jurusan?: string | null;
 }

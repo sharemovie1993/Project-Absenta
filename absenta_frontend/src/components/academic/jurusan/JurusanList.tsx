@@ -192,8 +192,17 @@ const JurusanList: React.FC<JurusanListProps> = React.memo(({
       key: 'nama', 
       label: 'Nama Jurusan',
       sortable: true,
-      render: (value: string) => (
-        <div className="font-bold text-slate-800 dark:text-slate-200">{value}</div>
+      render: (value: string, jurusan: Jurusan) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 overflow-hidden font-bold text-[10px] text-slate-600 dark:text-slate-300">
+            {jurusan.logo_url ? (
+              <img src={jurusan.logo_url} alt={value} className="w-full h-full object-contain p-0.5" />
+            ) : (
+              jurusan.singkatan || jurusan.kode || 'JUR'
+            )}
+          </div>
+          <div className="font-bold text-slate-800 dark:text-slate-200">{value}</div>
+        </div>
       )
     },
     { 

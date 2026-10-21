@@ -51,6 +51,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
       kode: '',
       singkatan: '',
       warna: 'indigo',
+      logo_url: '',
       program_keahlian_id: '',
       durasi_jurusan: 'DEFAULT_SEKOLAH'
     }
@@ -70,6 +71,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
           kode: jurusan.kode || '',
           singkatan: jurusan.singkatan || '',
           warna: jurusan.warna || 'indigo',
+          logo_url: jurusan.logo_url || '',
           program_keahlian_id: jurusan.program_keahlian_id || '',
           durasi_jurusan: jurusan.durasi_jurusan || 'DEFAULT_SEKOLAH'
         });
@@ -97,6 +99,7 @@ export const JurusanForm = React.memo<JurusanFormProps>(({
         kode: data.kode || undefined,
         singkatan: data.singkatan || undefined,
         warna: data.warna || null,
+        logo_url: data.logo_url || null,
         program_keahlian_id: data.program_keahlian_id || null,
         durasi_jurusan: data.durasi_jurusan || 'DEFAULT_SEKOLAH'
       };

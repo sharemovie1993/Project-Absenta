@@ -65,12 +65,12 @@ export class DashboardKaprogStatsService {
     // 2. Resolve Jurusan Kaprog & Profil Penugasan
     // ------------------------------------------------------------------------
     let targetJurusanId = options?.targetJurusanId;
-    let jurusanInfo: { id: string; nama: string; singkatan: string | null; kode: string | null } | null = null;
+    let jurusanInfo: { id: string; nama: string; singkatan: string | null; kode: string | null; logo_url?: string | null } | null = null;
 
     if (targetJurusanId) {
       jurusanInfo = await prisma.jurusan.findFirst({
         where: { id: targetJurusanId, tenant_id: tenantId },
-        select: { id: true, nama: true, singkatan: true, kode: true }
+        select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true }
       });
     }
 
@@ -93,7 +93,7 @@ export class DashboardKaprogStatsService {
           }
         },
         include: {
-          Unit: { select: { id: true, nama: true, singkatan: true, kode: true } },
+          Unit: { select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true } },
           Position: { select: { name: true, code: true } }
         }
       });
@@ -108,7 +108,7 @@ export class DashboardKaprogStatsService {
     if (!jurusanInfo) {
       jurusanInfo = await prisma.jurusan.findFirst({
         where: { tenant_id: tenantId },
-        select: { id: true, nama: true, singkatan: true, kode: true }
+        select: { id: true, nama: true, singkatan: true, kode: true, logo_url: true }
       });
       targetJurusanId = jurusanInfo?.id;
     }
@@ -1163,7 +1163,8 @@ export class DashboardKaprogStatsService {
         id: jurusanInfo?.id || '',
         nama: jurusanInfo?.nama || 'Program Keahlian',
         singkatan: jurusanInfo?.singkatan || 'KAPROG',
-        kode: jurusanInfo?.kode || jurusanInfo?.singkatan || 'KPR'
+        kode: jurusanInfo?.kode || jurusanInfo?.singkatan || 'KPR',
+        logo_url: jurusanInfo?.logo_url || null
       },
       kpi: {
         siswaPklAktif: penilaianStatus.totalSiswaPkl || 0,

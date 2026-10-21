@@ -1008,7 +1008,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
             is_active: true,
             Position: { code: { contains: 'KAPROG', mode: 'insensitive' } }
           },
-          include: { Unit: { select: { id: true, nama: true, singkatan: true } } }
+          include: { Unit: { select: { id: true, nama: true, singkatan: true, logo_url: true } } }
         });
         if (assignment?.Unit) {
           jurusanId = assignment.Unit.id;
@@ -1020,7 +1020,7 @@ export class HubinPenilaianService extends HubinCommonHelper {
     if (jurusanId && !jurusanInfo) {
       jurusanInfo = await prisma.jurusan.findFirst({
         where: { id: jurusanId, tenant_id: tenantId },
-        select: { id: true, nama: true, singkatan: true }
+        select: { id: true, nama: true, singkatan: true, logo_url: true }
       });
     }
 

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Info as InfoIcon, Hash, Layers, Pipette } from 'lucide-react';
+import { BookOpen, Info as InfoIcon, Hash, Layers, Pipette, Upload, Image as ImageIcon } from 'lucide-react';
 import { Input } from '../../../ui/Input';
 import { Label } from '../../../ui/Label';
+import { Button } from '../../../ui/Button';
+import axiosInstance from '../../../../lib/axiosInstance';
 import { SectionCard, DetailRow } from './FormShared';
 import { getProgramKeahlianList, createProgramKeahlian } from '../../../../api/academic/program-keahlian.api';
 import { getGlobalPresets } from '../../../../api/academic/jurusan-presets.api';
@@ -49,6 +51,36 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
   }, [watchedWarna]);
 
   const [presets, setPresets] = useState<any[]>([]);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const watchedLogoUrl = watch('logo_url');
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingLogo(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await axiosInstance.post('/upload/file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const url = res.data?.data?.url || res.data?.url;
+      if (url) {
+        if (setValue) {
+          setValue('logo_url', url, { shouldDirty: true, shouldTouch: true });
+        }
+        toast.success('Logo jurusan berhasil diunggah');
+      }
+    } catch (err) {
+      console.error('Failed to upload logo:', err);
+      toast.error('Gagal mengunggah logo jurusan');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
 
   useEffect(() => {
     getProgramKeahlianList(1, 100).then(res => setProgramKeahlianList(res.data)).catch(() => {});
@@ -90,6 +122,19 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
     return (
       <SectionCard title="Informasi Jurusan (Konsentrasi Keahlian)" icon={BookOpen}>
         <DetailRow icon={<BookOpen size={16} />} label="Nama Konsentrasi Keahlian" value={watch('nama')} />
+        {watchedLogoUrl && (
+          <DetailRow
+            icon={<ImageIcon size={16} />}
+            label="Logo Jurusan"
+            value={
+              <img 
+                src={watchedLogoUrl} 
+                alt="Logo Jurusan" 
+                className="w-10 h-10 object-contain rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1" 
+              />
+            }
+          />
+        )}
         <DetailRow icon={<Hash size={16} />} label="Singkatan" value={watch('singkatan') || '-'} />
         <DetailRow icon={<Hash size={16} />} label="Kode Internal" value={watch('kode') || '-'} />
         <DetailRow
@@ -279,6 +324,89 @@ export const JurusanInfoSection = React.memo<JurusanInfoSectionProps>(({
           <option value="3_TAHUN">3 Tahun (Tingkat X, XI, XII)</option>
           <option value="4_TAHUN">4 Tahun (Tingkat X, XI, XII, XIII)</option>
         </select>
+      </div>
+
+      {/* Upload Logo Jurusan */}
+      <div className="space-y-2 md:col-span-2 p-3.5 bg-slate-50/70 dark:bg-slate-800/40 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div className="flex items-center justify-between px-1">
+          <Label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tighter">
+            Logo / Lambang Jurusan (Opsional)
+          </Label>
+          <span className="text-[10px] text-slate-400 font-normal">PNG / JPG / WebP / SVG</span>
+        </div>
+
+        <div className="flex items-center gap-3.5 mt-1">
+          {/* Logo Preview Avatar */}
+          <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden shrink-0 shadow-xs relative group">
+            {watchedLogoUrl ? (
+              <>
+                <img 
+                  src={watchedLogoUrl} 
+                  alt="Logo Jurusan" 
+                  className="w-full h-full object-contain p-1"
+                />
+                {!isViewMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (setValue) {
+                        setValue('logo_url', '', { shouldDirty: true, shouldTouch: true });
+                      }
+                    }}
+                    className="absolute inset-0 bg-black/60 text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+                  >
+                    Hapus
+                  </button>
+                )}
+              </>
+            ) : (
+              <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+                {watch('singkatan') || 'LOGO'}
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-1">
+            <input
+              type="file"
+              id="jurusan-logo-file-input"
+              accept="image/*"
+              disabled={uploadingLogo || isViewMode}
+              onChange={handleLogoUpload}
+              className="hidden"
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={uploadingLogo || isViewMode}
+                onClick={() => document.getElementById('jurusan-logo-file-input')?.click()}
+                className="text-xs font-semibold gap-1.5 rounded-xl h-8 px-3"
+              >
+                <Upload size={13} />
+                <span>{uploadingLogo ? 'Mengunggah...' : watchedLogoUrl ? 'Ganti Logo' : 'Unggah Logo'}</span>
+              </Button>
+              {watchedLogoUrl && !isViewMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setValue) {
+                      setValue('logo_url', '', { shouldDirty: true, shouldTouch: true });
+                    }
+                  }}
+                  className="text-xs text-rose-500 hover:text-rose-700 font-medium px-2 py-1"
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+              Logo ini akan dipasang di sidebar kiri dashboard Kaprog, modul PKL, dan sertifikat.
+            </p>
+          </div>
+        </div>
+        <input type="hidden" {...register('logo_url')} />
       </div>
 
       {/* Singkatan */}

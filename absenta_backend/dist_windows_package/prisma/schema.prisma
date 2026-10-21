@@ -728,6 +728,7 @@ model Jurusan {
   kode                  String?
   singkatan             String?
   warna                 String?
+  logo_url              String?
   program_keahlian_id   String? // FK ke ProgramKeahlian (Konsentrasi Keahlian)
   durasi_jurusan        String? @default("DEFAULT_SEKOLAH") // DEFAULT_SEKOLAH | 3_TAHUN | 4_TAHUN
   created_at            DateTime                   @default(now())

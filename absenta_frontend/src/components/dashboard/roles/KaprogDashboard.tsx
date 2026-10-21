@@ -382,25 +382,23 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       {/* 1. Mobile Top Controls (< lg only: Identity + Action Buttons + Filter + Tab Pills) */}
       <div className="flex lg:hidden flex-col gap-3">
         {/* Mobile Identity Bar */}
-        <div className="flex items-center justify-between gap-2.5 p-3.5 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs tracking-tight shrink-0">
-              {resolvedJurusan?.singkatan || 'TKJ'}
+        <div className="flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden">
+              {(resolvedJurusan as any)?.logo_url ? (
+                <img 
+                  src={(resolvedJurusan as any).logo_url} 
+                  alt={resolvedJurusan?.nama || 'Logo Jurusan'} 
+                  className="w-full h-full object-contain p-0.5"
+                />
+              ) : (
+                resolvedJurusan?.singkatan?.toUpperCase() || 'KUL'
+              )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                {resolvedJurusan?.nama || 'Kejuruan'}
+              <h2 className="text-xs font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                {resolvedJurusan?.nama || 'KULINER'}
               </h2>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                  {kelasKehadiranList.length} Rombel Kejuruan
-                </span>
-                {!academic.isAcademicActive && (
-                  <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.2 rounded-md border border-amber-200/60">
-                    Arsip
-                  </span>
-                )}
-              </div>
             </div>
           </div>
         </div>
@@ -451,25 +449,23 @@ export const KaprogDashboard: React.FC<KaprogDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-[230px_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Sidebar Controls (Desktop sticky) */}
         <aside className="hidden lg:block sticky top-20 space-y-3">
-          {/* Identitas Jurusan Ringkas */}
-          <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-xs tracking-tight shrink-0">
-              {resolvedJurusan?.singkatan || 'TKJ'}
+          {/* Identitas Jurusan Ringkas & Minimalis */}
+          <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/60 dark:border-indigo-800/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xs tracking-wider shrink-0 overflow-hidden shadow-xs">
+              {(resolvedJurusan as any)?.logo_url ? (
+                <img 
+                  src={(resolvedJurusan as any).logo_url} 
+                  alt={resolvedJurusan?.nama || 'Logo Jurusan'} 
+                  className="w-full h-full object-contain p-1"
+                />
+              ) : (
+                resolvedJurusan?.singkatan?.toUpperCase() || 'KUL'
+              )}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate" title={resolvedJurusan?.nama || 'Kejuruan'}>
-                {resolvedJurusan?.nama || 'Kejuruan'}
+              <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 tracking-wider truncate uppercase">
+                {resolvedJurusan?.nama || 'KULINER'}
               </h2>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                  {kelasKehadiranList.length} Rombel
-                </span>
-                {!academic.isAcademicActive && (
-                  <span className="text-[9px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.2 rounded-md border border-amber-200/60">
-                    Arsip
-                  </span>
-                )}
-              </div>
             </div>
           </div>
 
